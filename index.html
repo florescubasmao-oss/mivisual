@@ -213,7 +213,7 @@ const respuesta = await fetch(url);
 const texto = await respuesta.text();
 
 const filas = texto.split("\n");
-  const encabezados = filas[0].split(",");
+const encabezados = filas[0].split(",");
 
 let resultado = `
 <div style="
