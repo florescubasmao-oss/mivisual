@@ -178,6 +178,10 @@ const cuadrilla = datos[3];
 const sede = datos[4];
 const plataforma = datos[5];
 
+  localStorage.setItem("cuadrilla", cuadrilla);
+localStorage.setItem("sede", sede);
+localStorage.setItem("plataforma", plataforma);
+
 document.getElementById("usuarioInfo").innerHTML =
 "✅ " + cuadrilla +
 "<br>🏢 " + sede +
