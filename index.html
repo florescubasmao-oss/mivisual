@@ -109,6 +109,7 @@ Plataforma Operativa Zona Norte
   <button onclick="login()">Ingresar</button>
 
   <div id="usuarioInfo"></div>
+  <div id="resultadoProduccion"></div>
 </div>
 <div class="menu" id="menuPrincipal" style="display:none;">
 
@@ -206,7 +207,23 @@ async function mostrarProduccion(){
 
 const cuadrilla = localStorage.getItem("cuadrilla");
 
-alert("Buscando producción de:\n\n" + cuadrilla);
+document.getElementById("resultadoProduccion").innerHTML =
+`
+<div style="
+background:#1f2d48;
+padding:20px;
+margin:20px;
+border-radius:12px;
+color:white;
+font-size:18px;
+">
+📊 PRODUCCIÓN<br><br>
+
+Cuadrilla:<br>
+${cuadrilla}
+</div>
+`;
+
 
 }
 
