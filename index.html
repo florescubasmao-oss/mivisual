@@ -110,7 +110,7 @@ Plataforma Operativa Zona Norte
 
   <div id="usuarioInfo"></div>
 </div>
-<div class="menu">
+<div class="menu" id="menuPrincipal" style="display:none;">
 
 <div class="card">
 📊 PRODUCCIÓN
@@ -180,6 +180,8 @@ document.getElementById("usuarioInfo").innerHTML =
 "✅ " + cuadrilla +
 "<br>🏢 " + sede +
 "<br>📡 " + plataforma;
+
+ document.getElementById("menuPrincipal").style.display = "grid";
 
 return;
 }
