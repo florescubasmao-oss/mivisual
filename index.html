@@ -207,23 +207,42 @@ async function mostrarProduccion(){
 
 const cuadrilla = localStorage.getItem("cuadrilla");
 
-document.getElementById("resultadoProduccion").innerHTML =
-`
+const url = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRpVkCmSvopgPByWsEX6nkuAT6mf3yD2_Cywpl9pFSZEqYpxmprDePPeV0KNgT14YpEP6gkVlvOAtZy/pub?gid=463676034&single=true&output=csv";
+
+const respuesta = await fetch(url);
+const texto = await respuesta.text();
+
+const filas = texto.split("\n");
+
+let resultado = `
 <div style="
 background:#1f2d48;
 padding:20px;
 margin:20px;
 border-radius:12px;
 color:white;
-font-size:18px;
 ">
-📊 PRODUCCIÓN<br><br>
-
-Cuadrilla:<br>
-${cuadrilla}
-</div>
+<h2>📊 PRODUCCIÓN</h2>
 `;
 
+for(let i=1;i<filas.length;i++){
+
+const datos = filas[i].split(",");
+
+if(datos[2] && datos[2].trim() === cuadrilla.trim()){
+
+resultado += `
+<hr>
+📅 ${datos[4]}<br>
+👷 ${datos[2]}<br>
+`;
+}
+
+}
+
+resultado += "</div>";
+
+document.getElementById("resultadoProduccion").innerHTML = resultado;
 
 }
 
