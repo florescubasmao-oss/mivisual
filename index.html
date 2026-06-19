@@ -202,9 +202,11 @@ document.getElementById("usuarioInfo").innerHTML =
 </script>
   <script>
 
-function mostrarProduccion(){
+async function mostrarProduccion(){
 
-alert("Conexión a Producción lista. Siguiente paso: leer datos reales.");
+const cuadrilla = localStorage.getItem("cuadrilla");
+
+alert("Buscando producción de:\n\n" + cuadrilla);
 
 }
 
