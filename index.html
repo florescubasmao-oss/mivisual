@@ -70,8 +70,15 @@ MI VISUAL
 
 <div class="subtitulo">
 Plataforma Operativa Zona Norte
+  
 </div>
+<div class="login-box">
+  <input type="email" id="correo" placeholder="Correo">
+  <input type="password" id="clave" placeholder="Clave">
+  <button onclick="login()">Ingresar</button>
 
+  <div id="usuarioInfo"></div>
+</div>
 <div class="menu">
 
 <div class="card">
@@ -111,6 +118,48 @@ Plataforma Operativa Zona Norte
 <div class="footer">
 Visual Connections SAC - Zona Norte
 </div>
+<script>
 
+async function login() {
+
+const correo = document.getElementById("correo").value.trim();
+const clave = document.getElementById("clave").value.trim();
+
+const url = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRpVkCmSvopgPByWsEX6nkuAT6mf3yD2_Cywpl9pFSZEqYpxmprDePPeV0KNgT14YpEP6gkVlvOAtZy/pub?gid=0&single=true&output=csv";
+
+const respuesta = await fetch(url);
+const texto = await respuesta.text();
+
+const filas = texto.split("\n");
+
+for(let i=1; i<filas.length; i++){
+
+const datos = filas[i].split(",");
+
+const correoSheet = datos[1]?.replace(/"/g,"").trim();
+const claveSheet = datos[2]?.replace(/"/g,"").trim();
+
+if(correo === correoSheet && clave === claveSheet){
+
+const cuadrilla = datos[3];
+const sede = datos[4];
+const plataforma = datos[5];
+
+document.getElementById("usuarioInfo").innerHTML =
+"✅ " + cuadrilla +
+"<br>🏢 " + sede +
+"<br>📡 " + plataforma;
+
+return;
+}
+
+}
+
+document.getElementById("usuarioInfo").innerHTML =
+"❌ Correo o clave incorrecta";
+
+}
+
+</script>
 </body>
 </html>
