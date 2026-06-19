@@ -163,7 +163,6 @@ const url = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRpVkCmSvopgPByWsEX
 
 const respuesta = await fetch(url);
 const texto = await respuesta.text();
-  console.log(texto);
 
 const filas = texto.split("\n");
 
@@ -212,6 +211,8 @@ const url = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRpVkCmSvopgPByWsEX
 
 const respuesta = await fetch(url);
 const texto = await respuesta.text();
+  console.log(texto);
+alert("CSV cargado");
 
 const filas = texto.split("\n");
 const encabezados = filas[0].split(",");
