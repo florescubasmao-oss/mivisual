@@ -208,11 +208,19 @@ async function mostrarProduccion() {
 
 const cuadrilla = localStorage.getItem("cuadrilla");
 
-alert("CUADRILLA: " + cuadrilla);
+const url = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRpVkCmSvopgPByWsEX6nkuAT6mf3yD2_Cywpl9pFSZEqYpxmprDePPeV0KNgT14YpEP6gkVlvOAtZy/pub?gid=463676034&single=true&output=csv";
+
+const respuesta = await fetch(url);
+const texto = await respuesta.text();
+
+alert("CSV CARGADO");
+
+console.log(texto);
 
 document.getElementById("resultadoProduccion").innerHTML =
-"<h3>📊 PRODUCCIÓN</h3><br>" +
-"Cuadrilla: " + cuadrilla;
+"<h3>📊 PRODUCCIÓN</h3><pre>" +
+texto.substring(0,500) +
+"</pre>";
 
 }
 
