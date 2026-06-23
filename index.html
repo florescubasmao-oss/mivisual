@@ -135,8 +135,8 @@ Plataforma Operativa Zona Norte
 🏆 RANKING
 </div>
 
-<div class="card">
-📚 BIBLIOTECA
+<div class="card" onclick="mostrarAccesos()">
+🚀 ACCESOS
 </div>
 
 <div class="card">
@@ -775,6 +775,67 @@ ${iconoPlataforma} Mi Puesto Plataforma
 `;
 
 break;
+}
+
+}
+
+document.getElementById("resultadoProduccion").innerHTML = resultado;
+
+}
+
+async function mostrarAccesos(){
+
+const cuadrilla = localStorage.getItem("cuadrilla");
+const sede = localStorage.getItem("sede");
+
+const url = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRpVkCmSvopgPByWsEX6nkuAT6mf3yD2_Cywpl9pFSZEqYpxmprDePPeV0KNgT14YpEP6gkVlvOAtZy/pub?gid=177192408&single=true&output=csv";
+
+const respuesta = await fetch(url);
+const texto = await respuesta.text();
+
+const filas = texto.split("\n");
+
+let resultado = "<h3>🚀 ACCESOS</h3>";
+
+for(let i=1; i<filas.length; i++){
+
+const datos = filas[i].split(",");
+
+let destino = datos[1]?.trim();
+let nombre = datos[2]?.trim();
+let link = datos[3]?.trim();
+
+if(
+destino == "TODOS" ||
+destino == sede ||
+destino == cuadrilla
+){
+
+resultado += `
+<div style="
+background:#1f2d48;
+padding:15px;
+margin:10px 0;
+border-radius:10px;
+text-align:center;
+">
+
+<a href="${link}"
+target="_blank"
+style="
+color:white;
+font-size:18px;
+font-weight:bold;
+text-decoration:none;
+display:block;
+">
+
+${nombre}
+
+</a>
+
+</div>
+`;
 }
 
 }
