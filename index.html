@@ -127,7 +127,7 @@ Plataforma Operativa Zona Norte
 🔧 % RECABLEADO
 </div>
 
-<div class="card">
+<div class="card" onclick="mostrarVTRGAR()">
 📈 % VTR / GAR
 </div>
 
@@ -575,6 +575,137 @@ font-weight:bold;
 <br><br>
 
 ${colorMes} Recableado: ${porcentajeMes.toFixed(2)}%<br><br>
+
+</div>
+`
++ resultado;
+
+document.getElementById("resultadoProduccion").innerHTML = resultado;
+
+}
+
+async function mostrarVTRGAR() {
+
+const cuadrilla = localStorage.getItem("cuadrilla");
+
+const url = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRpVkCmSvopgPByWsEX6nkuAT6mf3yD2_Cywpl9pFSZEqYpxmprDePPeV0KNgT14YpEP6gkVlvOAtZy/pub?gid=1778246699&single=true&output=csv";
+
+const respuesta = await fetch(url);
+const texto = await respuesta.text();
+
+const filas = texto.split("\n");
+
+const encabezado = filas[0];
+const datosFilas = filas.slice(1).reverse();
+
+filas.length = 0;
+filas.push(encabezado, ...datosFilas);
+
+let totalGAR = 0;
+let totalVTR = 0;
+let totalOrdenes = 0;
+
+let resultado = "<h3>📈 % VTR / GAR</h3>";
+
+for(let i=1; i<filas.length; i++){
+
+const datos = filas[i].split(",");
+
+if(datos[2] && datos[2].trim() === cuadrilla.trim()){
+
+let fecha = datos[3];
+let ordenes = Number(datos[4]) || 0;
+let gar = Number(datos[5]) || 0;
+let vtr = Number(datos[6]) || 0;
+let totalGarVtr = Number(datos[7]) || 0;
+let porcentaje = Number(datos[8]) || 0;
+
+porcentaje = porcentaje * 100;
+
+totalGAR += gar;
+totalVTR += vtr;
+totalOrdenes += ordenes;
+
+let semaforo = "🟢";
+
+if(porcentaje >= 7){
+semaforo = "🔴";
+}
+else if(porcentaje >= 4){
+semaforo = "🟠";
+}
+else if(porcentaje >= 1){
+semaforo = "🟡";
+}
+
+resultado += `
+<div style="
+background:#1f2d48;
+padding:15px;
+margin:10px 0;
+border-radius:10px;
+">
+
+<h4>📅 Actualizado al ${fecha}</h4>
+
+<div style="
+font-size:22px;
+font-weight:bold;
+margin:10px 0;
+">
+${semaforo} ${porcentaje.toFixed(2)}%
+</div>
+
+<hr>
+
+✅ Finalizadas: ${ordenes}<br>
+🛡️ GAR: ${gar}<br>
+📺 VTR: ${vtr}<br>
+📊 Total GAR/VTR: ${totalGarVtr}
+
+</div>
+`;
+}
+}
+
+let porcentajeMes = 0;
+
+if(totalOrdenes > 0){
+porcentajeMes = ((totalGAR + totalVTR) / totalOrdenes) * 100;
+}
+
+let colorMes = "🟢";
+
+if(porcentajeMes >= 7){
+colorMes = "🔴";
+}
+else if(porcentajeMes >= 4){
+colorMes = "🟠";
+}
+else if(porcentajeMes >= 1){
+colorMes = "🟡";
+}
+
+resultado =
+`
+<div style="
+background:#1f2d48;
+padding:15px;
+margin-bottom:15px;
+border-radius:10px;
+color:white;
+font-weight:bold;
+">
+
+📈 RESUMEN DEL MES
+
+<br><br>
+
+${colorMes} VTR / GAR: ${porcentajeMes.toFixed(2)}%<br><br>
+
+🛡️ GAR: ${totalGAR}<br>
+📺 VTR: ${totalVTR}<br>
+✅ Finalizadas: ${totalOrdenes}
 
 </div>
 `
