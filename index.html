@@ -131,7 +131,7 @@ Plataforma Operativa Zona Norte
 📈 % VTR / GAR
 </div>
 
-<div class="card">
+<div class="card" onclick="mostrarRanking()">
 🏆 RANKING
 </div>
 
@@ -698,6 +698,71 @@ ${colorMes} VTR / GAR: ${porcentajeMes.toFixed(2)}%<br><br>
 </div>
 `
 + resultado;
+
+document.getElementById("resultadoProduccion").innerHTML = resultado;
+
+}
+
+async function mostrarRanking(){
+
+const cuadrilla = localStorage.getItem("cuadrilla");
+
+const url = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRpVkCmSvopgPByWsEX6nkuAT6mf3yD2_Cywpl9pFSZEqYpxmprDePPeV0KNgT14YpEP6gkVlvOAtZy/pub?gid=1269910675&single=true&output=csv";
+
+const respuesta = await fetch(url);
+const texto = await respuesta.text();
+
+const filas = texto.split("\n");
+
+let resultado = "<h3>🏆 RANKING</h3>";
+
+for(let i=1; i<filas.length; i++){
+
+const datos = filas[i].split(",");
+
+if(datos[1] && datos[1].trim() === cuadrilla.trim()){
+
+let fecha = datos[2];
+let puestoSede = datos[4];
+let puestoRegion = datos[5];
+let puestoPlataforma = datos[6];
+
+resultado += `
+<div style="
+background:#1f2d48;
+padding:20px;
+margin:10px 0;
+border-radius:10px;
+text-align:center;
+">
+
+<h4>📅 Actualizado al ${fecha}</h4>
+
+<hr>
+
+🥇 Mi Puesto Sede
+
+<h2>#${puestoSede}</h2>
+
+<hr>
+
+🌎 Mi Puesto Región
+
+<h2>#${puestoRegion}</h2>
+
+<hr>
+
+📡 Mi Puesto Plataforma
+
+<h2>#${puestoPlataforma}</h2>
+
+</div>
+`;
+
+break;
+}
+
+}
 
 document.getElementById("resultadoProduccion").innerHTML = resultado;
 
