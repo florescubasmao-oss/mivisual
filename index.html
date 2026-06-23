@@ -143,8 +143,8 @@ Plataforma Operativa Zona Norte
 📚 BIBLIOTECA
 </div>
 
-<div class="card">
-🎥 TUTORIALES
+<div class="card" onclick="mostrarCapacitacion()">
+🎓 CAPACITACIÓN
 </div>
 
 </div>
@@ -896,6 +896,67 @@ display:block;
 
 📄 ${nombre}
 
+</a>
+
+</div>
+`;
+}
+
+document.getElementById("resultadoProduccion").innerHTML = resultado;
+
+}
+
+async function mostrarCapacitacion(){
+
+const url = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRpVkCmSvopgPByWsEX6nkuAT6mf3yD2_Cywpl9pFSZEqYpxmprDePPeV0KNgT14YpEP6gkVlvOAtZy/pub?gid=459416480&single=true&output=csv";
+
+const respuesta = await fetch(url);
+const texto = await respuesta.text();
+
+const filas = texto.split("\n");
+
+let resultado = `
+<h3 style="text-align:center;">
+🎓 CAPACITACIÓN
+</h3>
+`;
+
+for(let i=1; i<filas.length; i++){
+
+const datos = filas[i].split(",");
+
+let nombre = datos[1]?.replace(/"/g,"").trim();
+let tipo = datos[2]?.replace(/"/g,"").trim();
+let link = datos[3]?.replace(/"/g,"").trim();
+
+let icono = "📁";
+
+if(tipo == "VIDEO") icono = "🎥";
+if(tipo == "PDF") icono = "📄";
+if(tipo == "PPT") icono = "📊";
+
+resultado += `
+<div style="
+background:#1f2d48;
+padding:15px;
+margin:10px 0;
+border-radius:10px;
+">
+
+<h4>${icono} ${nombre}</h4>
+
+<a href="${link}" target="_blank"
+style="
+display:inline-block;
+margin-top:10px;
+padding:10px 15px;
+background:#16a34a;
+color:white;
+text-decoration:none;
+border-radius:8px;
+font-weight:bold;
+">
+ABRIR
 </a>
 
 </div>
