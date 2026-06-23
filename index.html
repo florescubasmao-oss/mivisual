@@ -756,6 +756,12 @@ let fecha = datos[2];
 let puestoSede = datos[4];
 let puestoRegion = datos[5];
 let puestoPlataforma = datos[6];
+let totalSede = 9;
+let totalRegion = 24;
+let totalPlataforma = 12;
+let barraSede = ((totalSede - puestoSede + 1) / totalSede) * 100;
+let barraRegion = ((totalRegion - puestoRegion + 1) / totalRegion) * 100;
+let barraPlataforma = ((totalPlataforma - puestoPlataforma + 1) / totalPlataforma) * 100;
   
 let iconoSede = "🏅";
 if(puestoSede == 1) iconoSede = "🥇";
@@ -788,18 +794,87 @@ text-align:center;
 ${iconoSede} Mi Puesto Sede
 
 <h2>#${puestoSede}</h2>
+<h2>#${puestoSede}</h2>
+
+<div style="
+width:100%;
+background:#334155;
+height:12px;
+border-radius:10px;
+margin-top:10px;
+">
+
+<div style="
+width:${barraSede}%;
+background:#22c55e;
+height:12px;
+border-radius:10px;
+">
+</div>
+
+</div>
+
+<div style="margin-top:5px;">
+${puestoSede} de ${totalSede}
+</div>
 
 <hr>
 
 ${iconoRegion} Mi Puesto Región
 
 <h2>#${puestoRegion}</h2>
+<h2>#${puestoSede}</h2>
+
+<div style="
+width:100%;
+background:#334155;
+height:12px;
+border-radius:10px;
+margin-top:10px;
+">
+
+<div style="
+width:${barraSede}%;
+background:#22c55e;
+height:12px;
+border-radius:10px;
+">
+</div>
+
+</div>
+
+<div style="margin-top:5px;">
+${puestoSede} de ${totalSede}
+</div>
 
 <hr>
 
 ${iconoPlataforma} Mi Puesto Plataforma
 
 <h2>#${puestoPlataforma}</h2>
+<h2>#${puestoSede}</h2>
+
+<div style="
+width:100%;
+background:#334155;
+height:12px;
+border-radius:10px;
+margin-top:10px;
+">
+
+<div style="
+width:${barraSede}%;
+background:#22c55e;
+height:12px;
+border-radius:10px;
+">
+</div>
+
+</div>
+
+<div style="margin-top:5px;">
+${puestoSede} de ${totalSede}
+</div>
 
 </div>
 `;
