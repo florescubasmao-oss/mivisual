@@ -113,8 +113,10 @@ Plataforma Operativa Zona Norte
 
 </div>
 
-<button onclick="volverInicio()"
+<button id="btnInicio"
+onclick="volverInicio()"
 style="
+display:none;
 margin-left:10px;
 background:#16a34a;
 color:white;
@@ -206,7 +208,9 @@ document.getElementById("usuarioInfo").innerHTML =
 "<br>🏢 " + sede +
 "<br>📡 " + plataforma;
 
- document.getElementById("panelLogin").style.display = "none";
+document.getElementById("panelLogin").style.display = "none";
+
+document.getElementById("btnInicio").style.display = "inline-block";
 
 document.getElementById("menuPrincipal").style.display = "grid";
 
