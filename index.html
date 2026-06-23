@@ -203,57 +203,9 @@ document.getElementById("usuarioInfo").innerHTML =
 </script>
   <script>
 
-async function mostrarProduccion(){
-
-alert("ENTRE A PRODUCCION");
-
-const cuadrilla = localStorage.getItem("cuadrilla");
-
-const url = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRpVkCmSvopgPByWsEX6nkuAT6mf3yD2_Cywpl9pFSZEqYpxmprDePPeV0KNgT14YpEP6gkVlvOAtZy/pub?gid=463676034&single=true&output=csv";
-
-const respuesta = await fetch(url);
-const texto = await respuesta.text();
-  console.log(texto);
-alert("CSV cargado");
-
-const filas = texto.split("\n");
-const encabezados = filas[0].split(",");
-
-let resultado = `
-<div style="
-background:#1f2d48;
-padding:20px;
-margin:20px;
-border-radius:12px;
-color:white;
-">
-<h2>📊 PRODUCCIÓN</h2>
-`;
-
-for(let i=1;i<filas.length;i++){
-
-const datos = filas[i].split(",");
-  alert("CUADRILLA LOGIN: " + cuadrilla);
-alert("CUADRILLA CSV: " + datos[2]);
-console.log("CUADRILLA LOGIN:", cuadrilla);
-console.log("CUADRILLA CSV:", datos[2]);
-if(datos[2] && datos[2].trim() === cuadrilla.trim()){
-
-
-let detalle = "";
-
-for(let j = 5; j < datos.length; j++){
-
-  let valor = Number(datos[j]);
-
-  if(valor > 0){
-
-    detalle += `
-    <div style="margin:5px 0;">
-      ${encabezados[j]}: <b>${valor}</b>
-    </div>
-    `;
-  }
+async function mostrarProduccion() {
+    alert("ENTRE A PRODUCCION");
+}
 
 }
 
