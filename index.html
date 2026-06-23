@@ -104,9 +104,14 @@ Plataforma Operativa Zona Norte
   
 </div>
 <div class="login-box">
-  <input type="email" id="correo" placeholder="Correo">
-  <input type="password" id="clave" placeholder="Clave">
- <button onclick="login()">Ingresar</button>
+
+<div id="panelLogin">
+
+<input type="email" id="correo" placeholder="Correo">
+<input type="password" id="clave" placeholder="Clave">
+<button onclick="login()">Ingresar</button>
+
+</div>
 
 <button onclick="volverInicio()"
 style="
@@ -201,7 +206,9 @@ document.getElementById("usuarioInfo").innerHTML =
 "<br>🏢 " + sede +
 "<br>📡 " + plataforma;
 
- document.getElementById("menuPrincipal").style.display = "grid";
+ document.getElementById("panelLogin").style.display = "none";
+
+document.getElementById("menuPrincipal").style.display = "grid";
 
 return;
 }
