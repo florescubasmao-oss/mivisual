@@ -221,7 +221,22 @@ filas.push(encabezado, ...datosFilas);
   
 const encabezados = filas[0].split(",");
 
-let resultado = "<h3>📊 PRODUCCIÓN</h3>";
+let resultado = `
+<button onclick="volverInicio()"
+style="
+background:#2563eb;
+color:white;
+border:none;
+padding:10px 20px;
+border-radius:8px;
+cursor:pointer;
+margin-bottom:15px;
+">
+🏠 Volver al Menú
+</button>
+
+<h3>📊 PRODUCCIÓN</h3>
+`;
   
 let totalUltimaMilla = 0;
 let totalRecableadoVT = 0;
@@ -375,7 +390,22 @@ filas.push(encabezado, ...datosFilas);
 let totalFinalizadas = 0;
 let totalGeneral = 0;
 
-let resultado = "<h3>🎯 EFECTIVIDAD</h3>";
+let resultado = `
+<button onclick="volverInicio()"
+style="
+background:#2563eb;
+color:white;
+border:none;
+padding:10px 20px;
+border-radius:8px;
+cursor:pointer;
+margin-bottom:15px;
+">
+🏠 Volver al Menú
+</button>
+
+<h3>🎯 EFECTIVIDAD</h3>
+`;
 
 for(let i=1; i<filas.length; i++){
 
@@ -964,6 +994,17 @@ ABRIR
 }
 
 document.getElementById("resultadoProduccion").innerHTML = resultado;
+
+}
+
+function volverInicio(){
+
+document.getElementById("resultadoProduccion").innerHTML = "";
+
+window.scrollTo({
+top: 0,
+behavior: "smooth"
+});
 
 }
   
