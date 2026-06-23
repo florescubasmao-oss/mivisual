@@ -804,7 +804,20 @@ const datos = filas[i].split(",");
 let destino = datos[1]?.trim();
 let nombre = datos[2]?.trim();
 let link = datos[3]?.trim();
+let icono = "🔗";
 
+if(nombre.includes("Asistencia")) icono = "📅";
+
+else if(nombre.includes("Reunión")) icono = "🎥";
+
+else if(nombre.includes("Liquidación")) icono = "💰";
+
+else if(nombre.includes("VALIDACION")) icono = "📋";
+
+else if(nombre.includes("BOT")) icono = "🤖";
+
+else if(nombre.includes("Grupo")) icono = "📢";
+  
 if(
 destino == "TODOS" ||
 destino == sede ||
@@ -830,7 +843,7 @@ text-decoration:none;
 display:block;
 ">
 
-${nombre}
+${icono} ${nombre}
 
 </a>
 
