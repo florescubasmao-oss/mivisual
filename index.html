@@ -217,12 +217,20 @@ const filas = texto.split("\n");
 const encabezados = filas[0].split(",");
 
 let resultado = "<h3>📊 PRODUCCIÓN</h3>";
-
+  
+let totalUltimaMilla = 0;
+let totalRecableadoVT = 0;
+let totalInstalaciones = 0;
+  
 for(let i=1; i<filas.length; i++){
 
 const datos = filas[i].split(",");
 
 if(datos[2] && datos[2].trim() === cuadrilla.trim()){
+
+totalUltimaMilla += Number(datos[5]) || 0;
+totalInstalaciones += Number(datos[15]) || 0;
+totalRecableadoVT += Number(datos[21]) || 0;
 
 let detalle = "";
 
@@ -260,7 +268,29 @@ ${detalle}
 `;
 }
 }
+resultado =
+`
+<div style="
+background:#16a34a;
+padding:15px;
+margin-bottom:15px;
+border-radius:10px;
+color:white;
+font-weight:bold;
+">
 
+📊 RESUMEN DEL MES
+
+<br><br>
+
+🔧 Última Milla: ${totalUltimaMilla}<br>
+🏠 Instalaciones: ${totalInstalaciones}<br>
+📡 Recableado VT: ${totalRecableadoVT}
+
+</div>
+`
++ resultado;
+  
 document.getElementById("resultadoProduccion").innerHTML = resultado;
 
 }
