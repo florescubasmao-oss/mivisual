@@ -203,7 +203,6 @@ document.getElementById("usuarioInfo").innerHTML =
 </script>
  
 <script>
-
 async function mostrarProduccion() {
 
 const cuadrilla = localStorage.getItem("cuadrilla");
@@ -213,14 +212,26 @@ const url = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRpVkCmSvopgPByWsEX
 const respuesta = await fetch(url);
 const texto = await respuesta.text();
 
-alert("CSV CARGADO");
+const filas = texto.split("\n");
 
-console.log(texto);
+let resultado = "<h3>📊 PRODUCCIÓN</h3>";
 
-document.getElementById("resultadoProduccion").innerHTML =
-"<h3>📊 PRODUCCIÓN</h3><pre>" +
-texto.substring(0,500) +
-"</pre>";
+for(let i=1; i<filas.length; i++){
+
+const datos = filas[i].split(",");
+
+if(datos[2] && datos[2].trim() === cuadrilla.trim()){
+
+resultado += `
+<hr>
+📅 ${datos[4]}<br>
+🏠 ${datos[2]}<br>
+`;
+}
+
+}
+
+document.getElementById("resultadoProduccion").innerHTML = resultado;
 
 }
 
