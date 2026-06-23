@@ -213,6 +213,11 @@ const respuesta = await fetch(url);
 const texto = await respuesta.text();
 
 const filas = texto.split("\n");
+const encabezado = filas[0];
+const datosFilas = filas.slice(1).reverse();
+
+filas.length = 0;
+filas.push(encabezado, ...datosFilas);
   
 const encabezados = filas[0].split(",");
 
