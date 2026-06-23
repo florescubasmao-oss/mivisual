@@ -227,9 +227,20 @@ const datos = filas[i].split(",");
 if(datos[2] && datos[2].trim() === cuadrilla.trim()){
 
 resultado += `
-<hr>
-📅 ${datos[4]}<br>
-🏠 ${datos[2]}<br>
+<div style="
+background:#1f2d48;
+padding:15px;
+margin:10px 0;
+border-radius:10px;
+">
+
+<h4>📅 ${datos[4]}</h4>
+
+🔧 Última Milla: <b>${datos[5]}</b><br>
+📶 Cableado UTP Cat 5 Postventa: <b>${datos[6]}</b><br>
+🏠 Cuadrilla: <b>${datos[2]}</b>
+
+</div>
 `;
 }
 
