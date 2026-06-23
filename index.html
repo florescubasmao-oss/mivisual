@@ -123,7 +123,7 @@ Plataforma Operativa Zona Norte
 🎯 EFECTIVIDAD
 </div>
 
-<div class="card">
+<div class="card" onclick="mostrarRecableado()">
 🔧 % RECABLEADO
 </div>
 
@@ -473,6 +473,128 @@ document.getElementById("resultadoProduccion").innerHTML = resultado;
 
 }
 
+async function mostrarRecableado(){
+
+const cuadrilla = localStorage.getItem("cuadrilla");
+
+const url = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRpVkCmSvopgPByWsEX6nkuAT6mf3yD2_Cywpl9pFSZEqYpxmprDePPeV0KNgT14YpEP6gkVlvOAtZy/pub?gid=317412212&single=true&output=csv";
+
+const respuesta = await fetch(url);
+const texto = await respuesta.text();
+
+const filas = texto.split("\n");
+
+const encabezado = filas[0];
+const datosFilas = filas.slice(1).reverse();
+
+filas.length = 0;
+filas.push(encabezado, ...datosFilas);
+
+let totalLosRojos = 0;
+let totalRecableados = 0;
+
+let resultado = "<h3>🔧 % RECABLEADO</h3>";
+
+for(let i=1; i<filas.length; i++){
+
+const datos = filas[i].split(",");
+
+if(datos[2] && datos[2].trim() === cuadrilla.trim()){
+
+let fecha = datos[3];
+let losRojos = Number(datos[4]) || 0;
+let recableados = Number(datos[5]) || 0;
+let porcentaje = Number(datos[6]) || 0;
+
+totalLosRojos += losRojos;
+totalRecableados += recableados;
+
+let semaforo = "🟢";
+
+if(porcentaje >= 55){
+semaforo = "🔴";
+}
+else if(porcentaje >= 42){
+semaforo = "🟠";
+}
+else if(porcentaje >= 22){
+semaforo = "🟡";
+}
+
+resultado += `
+<div style="
+background:#1f2d48;
+padding:15px;
+margin:10px 0;
+border-radius:10px;
+">
+
+<h4>📅 ${fecha}</h4>
+
+<div style="
+font-size:22px;
+font-weight:bold;
+margin:10px 0;
+">
+${semaforo} ${porcentaje.toFixed(2)}%
+</div>
+
+<hr>
+
+🔴 LOS Rojos: ${losRojos}<br>
+🔧 Recableados: ${recableados}
+
+</div>
+`;
+}
+}
+
+let porcentajeMes = 0;
+
+if(totalLosRojos > 0){
+porcentajeMes = (totalRecableados / totalLosRojos) * 100;
+}
+
+let colorMes = "🟢";
+
+if(porcentajeMes >= 55){
+colorMes = "🔴";
+}
+else if(porcentajeMes >= 42){
+colorMes = "🟠";
+}
+else if(porcentajeMes >= 22){
+colorMes = "🟡";
+}
+
+resultado =
+`
+<div style="
+background:#16a34a;
+padding:15px;
+margin-bottom:15px;
+border-radius:10px;
+color:white;
+font-weight:bold;
+">
+
+🔧 RESUMEN DEL MES
+
+<br><br>
+
+${colorMes} Recableado: ${porcentajeMes.toFixed(2)}%<br><br>
+
+🔴 LOS Rojos: ${totalLosRojos}<br>
+🔧 Recableados: ${totalRecableados}
+
+</div>
+`
++ resultado;
+
+document.getElementById("resultadoProduccion").innerHTML = resultado;
+
+}
+  
 </script>
 
 </body>
