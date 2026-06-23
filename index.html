@@ -212,7 +212,11 @@ const url = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRpVkCmSvopgPByWsEX
 const respuesta = await fetch(url);
 const texto = await respuesta.text();
 
-const filas = texto.split("\n");
+alert("TOTAL FILAS: " + filas.length);
+
+for(let i=0; i<5; i++){
+  alert(filas[i]);
+}
 
 let resultado = "<h3>📊 PRODUCCIÓN</h3>";
 
