@@ -106,7 +106,20 @@ Plataforma Operativa Zona Norte
 <div class="login-box">
   <input type="email" id="correo" placeholder="Correo">
   <input type="password" id="clave" placeholder="Clave">
-  <button onclick="login()">Ingresar</button>
+ <button onclick="login()">Ingresar</button>
+
+<button onclick="volverInicio()"
+style="
+margin-left:10px;
+background:#16a34a;
+color:white;
+border:none;
+padding:10px 20px;
+border-radius:5px;
+cursor:pointer;
+">
+🏠 Inicio
+</button>
 
   <div id="usuarioInfo"></div>
   <div id="resultadoProduccion"></div>
@@ -222,18 +235,6 @@ filas.push(encabezado, ...datosFilas);
 const encabezados = filas[0].split(",");
 
 let resultado = `
-<button onclick="volverInicio()"
-style="
-background:#2563eb;
-color:white;
-border:none;
-padding:10px 20px;
-border-radius:8px;
-cursor:pointer;
-margin-bottom:15px;
-">
-🏠 Volver al Menú
-</button>
 
 <h3>📊 PRODUCCIÓN</h3>
 `;
@@ -391,18 +392,6 @@ let totalFinalizadas = 0;
 let totalGeneral = 0;
 
 let resultado = `
-<button onclick="volverInicio()"
-style="
-background:#2563eb;
-color:white;
-border:none;
-padding:10px 20px;
-border-radius:8px;
-cursor:pointer;
-margin-bottom:15px;
-">
-🏠 Volver al Menú
-</button>
 
 <h3>🎯 EFECTIVIDAD</h3>
 `;
@@ -1004,6 +993,17 @@ document.getElementById("resultadoProduccion").innerHTML = "";
 window.scrollTo({
 top: 0,
 behavior: "smooth"
+});
+
+}
+
+function volverInicio(){
+
+document.getElementById("resultadoProduccion").innerHTML = "";
+
+window.scrollTo({
+top:0,
+behavior:"smooth"
 });
 
 }
