@@ -233,6 +233,8 @@ const datos = filas[i].split(",");
 
 if(datos[2] && datos[2].trim() === cuadrilla.trim()){
 
+  let puntosDia = 0;
+
 totalUltimaMilla += Number(datos[5]) || 0;
 totalInstalaciones += Number(datos[15]) || 0;
 totalRecableadoVT += Number(datos[21]) || 0;
@@ -242,6 +244,38 @@ let detalle = "";
 for(let j = 5; j < datos.length; j++){
 
    let valor = Number(datos[j]);
+
+  if(j == 5) puntosDia += valor * 1;
+if(j == 6) puntosDia += valor * 1;
+if(j == 7) puntosDia += valor * 1;
+if(j == 8) puntosDia += valor * 1;
+if(j == 9) puntosDia += valor * 1;
+if(j == 10) puntosDia += valor * 1;
+if(j == 11) puntosDia += valor * 1;
+if(j == 12) puntosDia += valor * 1;
+if(j == 13) puntosDia += valor * 1;
+
+if(j == 14) puntosDia += valor * 1.5;
+
+if(j == 15) puntosDia += valor * 2;
+
+if(j == 16) puntosDia += valor * 1;
+
+if(j == 17) puntosDia += valor * 1;
+
+if(j == 18) puntosDia += valor * 2;
+
+if(j == 19) puntosDia += valor * 2;
+
+if(j == 20) puntosDia += valor * 2.5;
+
+if(j == 21) puntosDia += valor * 2;
+
+if(j == 22) puntosDia += valor * 1;
+
+if(j == 23) puntosDia += valor * 2;
+
+if(j == 24) puntosDia += valor * 2;
 
    if(valor > 0){
 
@@ -253,6 +287,15 @@ for(let j = 5; j < datos.length; j++){
    }
 }
 
+  let semaforo = "🔴 SIN BONO";
+
+if(puntosDia >= 4.5){
+   semaforo = "🟢 BONO GANADO";
+}
+else if(puntosDia == 4){
+   semaforo = "🟡 CERCA AL BONO";
+}
+
 resultado += `
 <div style="
 background:#1f2d48;
@@ -262,6 +305,18 @@ border-radius:10px;
 ">
 
 <h4>📅 ${datos[4]}</h4>
+
+<div style="
+font-size:18px;
+font-weight:bold;
+margin:10px 0;
+">
+${semaforo}
+</div>
+
+⭐ Puntos: <b>${puntosDia}</b>
+
+<br><br>
 
 🏠 <b>${datos[2]}</b>
 
