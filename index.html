@@ -205,7 +205,15 @@ document.getElementById("usuarioInfo").innerHTML =
 <script>
 
 async function mostrarProduccion() {
-    alert("ENTRE A PRODUCCION");
+
+const cuadrilla = localStorage.getItem("cuadrilla");
+
+alert("CUADRILLA: " + cuadrilla);
+
+document.getElementById("resultadoProduccion").innerHTML =
+"<h3>📊 PRODUCCIÓN</h3><br>" +
+"Cuadrilla: " + cuadrilla;
+
 }
 
 </script>
