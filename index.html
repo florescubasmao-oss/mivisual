@@ -139,6 +139,10 @@ Plataforma Operativa Zona Norte
 🚀 ACCESOS
 </div>
 
+<div class="card" onclick="mostrarBiblioteca()">
+📚 BIBLIOTECA
+</div>
+
 <div class="card">
 🎥 TUTORIALES
 </div>
@@ -847,6 +851,55 @@ ${icono} ${nombre}
 `;
 }
 
+}
+
+document.getElementById("resultadoProduccion").innerHTML = resultado;
+
+}
+
+async function mostrarBiblioteca(){
+
+const url = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRpVkCmSvopgPByWsEX6nkuAT6mf3yD2_Cywpl9pFSZEqYpxmprDePPeV0KNgT14YpEP6gkVlvOAtZy/pub?gid=1577462287&single=true&output=csv";
+
+const respuesta = await fetch(url);
+const texto = await respuesta.text();
+
+const filas = texto.split("\n");
+
+let resultado = "<h3>📚 BIBLIOTECA</h3>";
+
+for(let i=1; i<filas.length; i++){
+
+const datos = filas[i].split(",");
+
+let nombre = datos[1]?.trim();
+let link = datos[2]?.trim();
+
+resultado += `
+<div style="
+background:#1f2d48;
+padding:15px;
+margin:10px 0;
+border-radius:10px;
+text-align:center;
+">
+
+<a href="${link}"
+target="_blank"
+style="
+color:white;
+font-size:18px;
+font-weight:bold;
+text-decoration:none;
+display:block;
+">
+
+📄 ${nombre}
+
+</a>
+
+</div>
+`;
 }
 
 document.getElementById("resultadoProduccion").innerHTML = resultado;
