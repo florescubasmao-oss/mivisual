@@ -213,6 +213,8 @@ const respuesta = await fetch(url);
 const texto = await respuesta.text();
 
 const filas = texto.split("\n");
+  
+const encabezados = filas[0].split(",");
 
 let resultado = "<h3>📊 PRODUCCIÓN</h3>";
 
@@ -221,6 +223,22 @@ for(let i=1; i<filas.length; i++){
 const datos = filas[i].split(",");
 
 if(datos[2] && datos[2].trim() === cuadrilla.trim()){
+
+let detalle = "";
+
+for(let j = 5; j < datos.length; j++){
+
+   let valor = Number(datos[j]);
+
+   if(valor > 0){
+
+      detalle += `
+      <div style="margin:5px 0;">
+      ${encabezados[j]}: <b>${valor}</b>
+      </div>
+      `;
+   }
+}
 
 resultado += `
 <div style="
@@ -232,12 +250,15 @@ border-radius:10px;
 
 <h4>📅 ${datos[4]}</h4>
 
-🔧 Última Milla: <b>${datos[5]}</b><br>
-📶 Cableado UTP Cat 5 Postventa: <b>${datos[6]}</b><br>
-🏠 Cuadrilla: <b>${datos[2]}</b>
+🏠 <b>${datos[2]}</b>
+
+<hr>
+
+${detalle}
 
 </div>
 `;
+}
 }
 
 }
