@@ -264,9 +264,6 @@ let totalRecableadoPost = 0;
 let totalTraslados = 0;
 
 let totalPuntos = 0;
-for(let j=5; j<=24; j++){
-    totalProduccion += Number(datos[j]) || 0;
-}
   
 for(let i=1; i<filas.length; i++){
 
@@ -275,6 +272,10 @@ const datos = filas[i].split(",");
 if(datos[2] && datos[2].trim() === cuadrilla.trim()){
 
   let puntosDia = 0;
+  
+  for(let j=5; j<=28; j++){
+        totalProduccion += Number(datos[j]) || 0;
+    }
 
 // Última Milla
 totalUltimaMilla += Number(datos[5]) || 0;
