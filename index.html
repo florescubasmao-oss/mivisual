@@ -255,9 +255,18 @@ let resultado = `
 <h3>📊 PRODUCCIÓN</h3>
 `;
   
+let totalProduccion = 0;
+
 let totalUltimaMilla = 0;
-let totalRecableadoVT = 0;
 let totalInstalaciones = 0;
+let totalRecableadoVT = 0;
+let totalRecableadoPost = 0;
+let totalTraslados = 0;
+
+let totalPuntos = 0;
+for(let j=5; j<=24; j++){
+    totalProduccion += Number(datos[j]) || 0;
+}
   
 for(let i=1; i<filas.length; i++){
 
@@ -267,9 +276,29 @@ if(datos[2] && datos[2].trim() === cuadrilla.trim()){
 
   let puntosDia = 0;
 
+// Última Milla
 totalUltimaMilla += Number(datos[5]) || 0;
-totalInstalaciones += Number(datos[15]) || 0;
-totalRecableadoVT += Number(datos[21]) || 0;
+
+// Instalaciones
+totalInstalaciones += (Number(datos[15]) || 0);
+totalInstalaciones += (Number(datos[16]) || 0);
+
+// Recableado Postventa
+totalRecableadoPost += (Number(datos[6]) || 0);
+totalRecableadoPost += (Number(datos[7]) || 0);
+totalRecableadoPost += (Number(datos[8]) || 0);
+totalRecableadoPost += (Number(datos[9]) || 0);
+totalRecableadoPost += (Number(datos[20]) || 0);
+totalRecableadoPost += (Number(datos[21]) || 0);
+totalRecableadoPost += (Number(datos[22]) || 0);
+totalRecableadoPost += (Number(datos[23]) || 0);
+
+// Recableado Visita Técnica
+totalRecableadoVT += Number(datos[24]) || 0;
+
+// Traslados
+totalTraslados += (Number(datos[27]) || 0);
+totalTraslados += (Number(datos[28]) || 0);
 
 let detalle = "";
 
