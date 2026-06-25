@@ -303,41 +303,38 @@ totalTraslados += (Number(datos[28]) || 0);
 
 let detalle = "";
 
+const puntos = {
+5: 1,
+6: 1,
+7: 1,
+8: 1,
+9: 1,
+10: 1,
+11: 1,
+12: 1,
+13: 1,
+14: 1.5,
+15: 2,
+16: 2,
+17: 1,
+18: 2,
+19: 2,
+20: 2.5,
+21: 2,
+22: 2,
+23: 2,
+24: 2,
+25: 1,
+26: 1,
+27: 2,
+28: 2
+};
+  
 for(let j = 5; j < datos.length; j++){
 
    let valor = Number(datos[j]);
 
-  if(j == 5) puntosDia += valor * 1;
-if(j == 6) puntosDia += valor * 1;
-if(j == 7) puntosDia += valor * 1;
-if(j == 8) puntosDia += valor * 1;
-if(j == 9) puntosDia += valor * 1;
-if(j == 10) puntosDia += valor * 1;
-if(j == 11) puntosDia += valor * 1;
-if(j == 12) puntosDia += valor * 1;
-if(j == 13) puntosDia += valor * 1;
-
-if(j == 14) puntosDia += valor * 1.5;
-
-if(j == 15) puntosDia += valor * 2;
-
-if(j == 16) puntosDia += valor * 1;
-
-if(j == 17) puntosDia += valor * 1;
-
-if(j == 18) puntosDia += valor * 2;
-
-if(j == 19) puntosDia += valor * 2;
-
-if(j == 20) puntosDia += valor * 2.5;
-
-if(j == 21) puntosDia += valor * 2;
-
-if(j == 22) puntosDia += valor * 1;
-
-if(j == 23) puntosDia += valor * 2;
-
-if(j == 24) puntosDia += valor * 2;
+ puntosDia += valor * (puntos[j] || 0);
 
    if(valor > 0){
 
