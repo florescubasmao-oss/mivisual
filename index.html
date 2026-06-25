@@ -304,35 +304,36 @@ totalTraslados += (Number(datos[28]) || 0);
 let detalle = "";
 
 const puntos = {
-5: 1,
-6: 1,
-7: 1,
-8: 1,
-9: 1,
-10: 1,
-11: 1,
-12: 1,
-13: 1,
-14: 1.5,
-15: 2,
-16: 2,
-17: 1,
-18: 2,
-19: 2,
-20: 2.5,
-21: 2,
-22: 2,
-23: 2,
-24: 2,
-25: 1,
-26: 1,
-27: 2,
-28: 2
+5: 1,      // Atención de Averías Última Milla
+6: 1,      // Cableado UTP Cat 5
+7: 1,      // Cableado UTP Cat 5 + 1 Mesh
+8: 1,      // Cableado UTP Cat 5 + 2 Mesh
+9: 1,      // Cableado UTP Cat 6 + 2 Mesh
+10: 1,     // Cambio de Equipo Mesh
+11: 1,     // Cambio de Equipo ONT
+12: 1,     // Cambio de Fono WIN
+13: 1,     // Cambio de TV BOX
+14: 1,     // Cambio de TV BOX Adicional
+15: 1.5,   // Instalación y Activación en Condominios
+16: 2,     // Instalación y Activación en Residenciales
+17: 1,     // Prueba de Servicio
+18: 1,     // Pruebas de Servicio
+19: 1,     // Reubicación con Reserva
+20: 2,     // Reubicación sin Reserva
+21: 2,     // Recableado Postventa
+22: 2,     // Recableado Postventa + 1 ONT
+23: 2.5,   // Recableado Postventa + UTP + 1 ONT
+24: 2,     // Recableado Visita Técnica
+25: 1,     // Entrega y Configuración de Mesh
+26: 1,     // Entrega y Configuración de TV BOX
+27: 1.5,   // Traslado por Mudanza en Condominio
+28: 2      // Traslado por Mudanza en Residenciales
 };
   
 for(let j = 5; j < datos.length; j++){
 
    let valor = Number(datos[j]);
+  console.log(j, encabezados[j], valor);
 
  puntosDia += valor * (puntos[j] || 0);
 
