@@ -280,14 +280,6 @@ const perfilUsuario = localStorage.getItem("perfil");
 
 if (perfilUsuario == "TECNICO") {
 
-    document.getElementById("cardProduccion").style.display = "block";
-    document.getElementById("cardEfectividad").style.display = "block";
-    document.getElementById("cardRecableado").style.display = "block";
-    document.getElementById("cardVTRGAR").style.display = "block";
-    document.getElementById("cardRanking").style.display = "block";
-    document.getElementById("cardAccesos").style.display = "block";
-    document.getElementById("cardBiblioteca").style.display = "block";
-    document.getElementById("cardCapacitacion").style.display = "block";
 
 }
 
@@ -299,8 +291,9 @@ if (perfilUsuario === "JEFATURA") {
     console.log("Ingreso Jefatura");
 }
 
+configurarMenu();
+    
 document.getElementById("btnInicio").style.display = "inline-block";
-
 document.getElementById("menuPrincipal").style.display = "grid";
 
 return;
