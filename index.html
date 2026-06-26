@@ -266,6 +266,19 @@ document.getElementById("usuarioInfo").innerHTML =
 "<br>👤 " + perfil;
 
 document.getElementById("panelLogin").style.display = "none";
+const perfilUsuario = localStorage.getItem("perfil");
+
+if (perfilUsuario === "TECNICO") {
+    console.log("Ingreso Técnico");
+}
+
+if (perfilUsuario === "SUPERVISOR") {
+    console.log("Ingreso Supervisor");
+}
+
+if (perfilUsuario === "JEFATURA") {
+    console.log("Ingreso Jefatura");
+}
 
 document.getElementById("btnInicio").style.display = "inline-block";
 
