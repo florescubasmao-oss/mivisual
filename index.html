@@ -213,6 +213,18 @@ cursor:pointer;
 🎓 CAPACITACIÓN
 </div>
 
+<div id="cardDashboardSupervisor" class="card" onclick="mostrarDashboardSupervisor()">
+📊 DASHBOARD SUPERVISOR
+</div>
+
+<div id="cardDashboardJefatura" class="card" onclick="mostrarDashboardJefatura()">
+🌎 DASHBOARD JEFATURA
+</div>
+
+<div id="cardAdministracion" class="card" onclick="mostrarAdministracion()">
+⚙️ ADMINISTRACIÓN
+</div>
+
 </div>
 
 <div class="footer">
@@ -1187,6 +1199,16 @@ behavior:"smooth"
 function configurarMenu(){
 
     const perfil = localStorage.getItem("perfil");
+
+    // Ocultar todas las tarjetas
+document.getElementById("cardProduccion").style.display = "none";
+document.getElementById("cardEfectividad").style.display = "none";
+document.getElementById("cardRecableado").style.display = "none";
+document.getElementById("cardVTRGAR").style.display = "none";
+document.getElementById("cardRanking").style.display = "none";
+document.getElementById("cardAccesos").style.display = "none";
+document.getElementById("cardBiblioteca").style.display = "none";
+document.getElementById("cardCapacitacion").style.display = "none";
 
     if(perfil === "TECNICO"){
         console.log("Menú Técnico");
