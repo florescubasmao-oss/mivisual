@@ -1201,29 +1201,47 @@ function configurarMenu(){
     const perfil = localStorage.getItem("perfil");
 
     // Ocultar todas las tarjetas
-document.getElementById("cardProduccion").style.display = "none";
-document.getElementById("cardEfectividad").style.display = "none";
-document.getElementById("cardRecableado").style.display = "none";
-document.getElementById("cardVTRGAR").style.display = "none";
-document.getElementById("cardRanking").style.display = "none";
-document.getElementById("cardAccesos").style.display = "none";
-document.getElementById("cardBiblioteca").style.display = "none";
-document.getElementById("cardCapacitacion").style.display = "none";
+    document.getElementById("cardProduccion").style.display = "none";
+    document.getElementById("cardEfectividad").style.display = "none";
+    document.getElementById("cardRecableado").style.display = "none";
+    document.getElementById("cardVTRGAR").style.display = "none";
+    document.getElementById("cardRanking").style.display = "none";
+    document.getElementById("cardAccesos").style.display = "none";
+    document.getElementById("cardBiblioteca").style.display = "none";
+    document.getElementById("cardCapacitacion").style.display = "none";
 
-    if(perfil === "TECNICO"){
-        console.log("Menú Técnico");
+    if(perfil=="TECNICO"){
+
+        document.getElementById("cardProduccion").style.display="block";
+        document.getElementById("cardEfectividad").style.display="block";
+        document.getElementById("cardRecableado").style.display="block";
+        document.getElementById("cardVTRGAR").style.display="block";
+        document.getElementById("cardRanking").style.display="block";
+        document.getElementById("cardAccesos").style.display="block";
+        document.getElementById("cardBiblioteca").style.display="block";
+        document.getElementById("cardCapacitacion").style.display="block";
+
     }
 
-    if(perfil === "SUPERVISOR"){
-        console.log("Menú Supervisor");
+    if(perfil=="SUPERVISOR"){
+
+        document.getElementById("cardRanking").style.display="block";
+        document.getElementById("cardAccesos").style.display="block";
+        document.getElementById("cardBiblioteca").style.display="block";
+        document.getElementById("cardCapacitacion").style.display="block";
+
     }
 
-    if(perfil === "JEFATURA"){
-        console.log("Menú Jefatura");
+    if(perfil=="JEFATURA"){
+
+        document.getElementById("cardRanking").style.display="block";
+        document.getElementById("cardAccesos").style.display="block";
+        document.getElementById("cardBiblioteca").style.display="block";
+        document.getElementById("cardCapacitacion").style.display="block";
+
     }
 
 }
-
 function mostrarDashboardSupervisor(){
 
     alert("Dashboard Supervisor - En construcción");
