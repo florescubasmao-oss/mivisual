@@ -181,37 +181,35 @@ cursor:pointer;
 </div>
 <div class="menu" id="menuPrincipal" style="display:none;">
 
-<div class="card" onclick="mostrarProduccion()">
-
+<div id="cardProduccion" class="card" onclick="mostrarProduccion()">
 📊 PRODUCCIÓN
-
 </div>
 
-<div class="card" onclick="mostrarEfectividad()">
+<div id="cardEfectividad" class="card" onclick="mostrarEfectividad()">
 🎯 EFECTIVIDAD
 </div>
 
-<div class="card" onclick="mostrarRecableado()">
+<div id="cardRecableado" class="card" onclick="mostrarRecableado()">
 🔧 % RECABLEADO
 </div>
 
-<div class="card" onclick="mostrarVTRGAR()">
+<div id="cardVTRGAR" class="card" onclick="mostrarVTRGAR()">
 📈 % VTR / GAR
 </div>
 
-<div class="card" onclick="mostrarRanking()">
+<div id="cardRanking" class="card" onclick="mostrarRanking()">
 🏆 RANKING
 </div>
 
-<div class="card" onclick="mostrarAccesos()">
+<div id="cardAccesos" class="card" onclick="mostrarAccesos()">
 🚀 ACCESOS
 </div>
 
-<div class="card" onclick="mostrarBiblioteca()">
+<div id="cardBiblioteca" class="card" onclick="mostrarBiblioteca()">
 📚 BIBLIOTECA
 </div>
 
-<div class="card" onclick="mostrarCapacitacion()">
+<div id="cardCapacitacion" class="card" onclick="mostrarCapacitacion()">
 🎓 CAPACITACIÓN
 </div>
 
@@ -268,8 +266,17 @@ document.getElementById("usuarioInfo").innerHTML =
 document.getElementById("panelLogin").style.display = "none";
 const perfilUsuario = localStorage.getItem("perfil");
 
-if (perfilUsuario === "TECNICO") {
-    console.log("Ingreso Técnico");
+if (perfilUsuario == "TECNICO") {
+
+    document.getElementById("cardProduccion").style.display = "block";
+    document.getElementById("cardEfectividad").style.display = "block";
+    document.getElementById("cardRecableado").style.display = "block";
+    document.getElementById("cardVTRGAR").style.display = "block";
+    document.getElementById("cardRanking").style.display = "block";
+    document.getElementById("cardAccesos").style.display = "block";
+    document.getElementById("cardBiblioteca").style.display = "block";
+    document.getElementById("cardCapacitacion").style.display = "block";
+
 }
 
 if (perfilUsuario === "SUPERVISOR") {
@@ -1165,16 +1172,6 @@ document.getElementById("resultadoProduccion").innerHTML = resultado;
 
 }
 
-function volverInicio(){
-
-document.getElementById("resultadoProduccion").innerHTML = "";
-
-window.scrollTo({
-top: 0,
-behavior: "smooth"
-});
-
-}
 
 function volverInicio(){
 
@@ -1186,12 +1183,24 @@ behavior:"smooth"
 });
 
 }
-  
-</script>
 
-</div>
+function configurarMenu(){
 
-<script>
+    const perfil = localStorage.getItem("perfil");
+
+    if(perfil === "TECNICO"){
+        console.log("Menú Técnico");
+    }
+
+    if(perfil === "SUPERVISOR"){
+        console.log("Menú Supervisor");
+    }
+
+    if(perfil === "JEFATURA"){
+        console.log("Menú Jefatura");
+    }
+
+}
 
 window.addEventListener("load", function () {
 
@@ -1200,11 +1209,14 @@ window.addEventListener("load", function () {
         document.getElementById("pantallaCarga").style.display = "none";
         document.getElementById("contenidoApp").style.display = "block";
 
-    }, 2000);
+    },2000);
 
 });
-
+  
 </script>
+
+</div>
+
 <script>
 if ("serviceWorker" in navigator) {
 
