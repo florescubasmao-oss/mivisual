@@ -278,17 +278,38 @@ document.getElementById("usuarioInfo").innerHTML =
 document.getElementById("panelLogin").style.display = "none";
 const perfilUsuario = localStorage.getItem("perfil");
 
-if (perfilUsuario == "TECNICO") {
+if (perfil == "TECNICO") {
 
+    cardProduccion.style.display = "block";
+    cardEfectividad.style.display = "block";
+    cardRecableado.style.display = "block";
+    cardVTRGAR.style.display = "block";
+    cardRanking.style.display = "block";
+    cardAccesos.style.display = "block";
+    cardBiblioteca.style.display = "block";
+    cardCapacitacion.style.display = "block";
 
 }
 
-if (perfilUsuario === "SUPERVISOR") {
-    console.log("Ingreso Supervisor");
+if (perfil == "SUPERVISOR") {
+
+    cardRanking.style.display = "block";
+    cardAccesos.style.display = "block";
+    cardBiblioteca.style.display = "block";
+    cardCapacitacion.style.display = "block";
+    cardDashboardSupervisor.style.display = "block";
+
 }
 
-if (perfilUsuario === "JEFATURA") {
-    console.log("Ingreso Jefatura");
+if (perfil == "JEFATURA") {
+
+    cardRanking.style.display = "block";
+    cardAccesos.style.display = "block";
+    cardBiblioteca.style.display = "block";
+    cardCapacitacion.style.display = "block";
+    cardDashboardJefatura.style.display = "block";
+    cardAdministracion.style.display = "block";
+
 }
 
 configurarMenu();
@@ -1193,47 +1214,47 @@ function configurarMenu(){
 
     const perfil = localStorage.getItem("perfil");
 
-    // Ocultar todas las tarjetas
-    document.getElementById("cardProduccion").style.display = "none";
-    document.getElementById("cardEfectividad").style.display = "none";
-    document.getElementById("cardRecableado").style.display = "none";
-    document.getElementById("cardVTRGAR").style.display = "none";
-    document.getElementById("cardRanking").style.display = "none";
-    document.getElementById("cardAccesos").style.display = "none";
-    document.getElementById("cardBiblioteca").style.display = "none";
-    document.getElementById("cardCapacitacion").style.display = "none";
+    // ocultar todo primero
+    cardProduccion.style.display = "none";
+    cardEfectividad.style.display = "none";
+    cardRecableado.style.display = "none";
+    cardVTRGAR.style.display = "none";
+    cardRanking.style.display = "none";
+    cardAccesos.style.display = "none";
+    cardBiblioteca.style.display = "none";
+    cardCapacitacion.style.display = "none";
+    cardDashboardSupervisor.style.display = "none";
+    cardDashboardJefatura.style.display = "none";
+    cardAdministracion.style.display = "none";
 
-    if(perfil=="TECNICO"){
+    if (perfil == "TECNICO") {
+    cardProduccion.style.display = "block";
+    cardEfectividad.style.display = "block";
+    cardRecableado.style.display = "block";
+    cardVTRGAR.style.display = "block";
+    cardRanking.style.display = "block";
+    cardAccesos.style.display = "block";
+    cardBiblioteca.style.display = "block";
+    cardCapacitacion.style.display = "block";
+}
 
-        document.getElementById("cardProduccion").style.display="block";
-        document.getElementById("cardEfectividad").style.display="block";
-        document.getElementById("cardRecableado").style.display="block";
-        document.getElementById("cardVTRGAR").style.display="block";
-        document.getElementById("cardRanking").style.display="block";
-        document.getElementById("cardAccesos").style.display="block";
-        document.getElementById("cardBiblioteca").style.display="block";
-        document.getElementById("cardCapacitacion").style.display="block";
+if (perfil == "SUPERVISOR") {
+    cardRanking.style.display = "block";
+    cardAccesos.style.display = "block";
+    cardBiblioteca.style.display = "block";
+    cardCapacitacion.style.display = "block";
+    cardDashboardSupervisor.style.display = "block";
+}
 
-    }
-
-    if(perfil=="SUPERVISOR"){
-
-        document.getElementById("cardRanking").style.display="block";
-        document.getElementById("cardAccesos").style.display="block";
-        document.getElementById("cardBiblioteca").style.display="block";
-        document.getElementById("cardCapacitacion").style.display="block";
-
-    }
-
-    if(perfil=="JEFATURA"){
-
-        document.getElementById("cardRanking").style.display="block";
-        document.getElementById("cardAccesos").style.display="block";
-        document.getElementById("cardBiblioteca").style.display="block";
-        document.getElementById("cardCapacitacion").style.display="block";
-
-    }
-
+if (perfil == "JEFATURA") {
+    cardRanking.style.display = "block";
+    cardAccesos.style.display = "block";
+    cardBiblioteca.style.display = "block";
+    cardCapacitacion.style.display = "block";
+    cardDashboardSupervisor.style.display = "block";
+    cardDashboardJefatura.style.display = "block";
+    cardAdministracion.style.display = "block";
+}
 }
 function mostrarDashboardSupervisor(){
 
