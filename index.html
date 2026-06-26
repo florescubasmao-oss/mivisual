@@ -246,15 +246,24 @@ if(correo === correoSheet && clave === claveSheet){
 const cuadrilla = datos[3];
 const sede = datos[4];
 const plataforma = datos[5];
+const perfil = datos[6];
+const nivel = datos[7];
+const estado = datos[8];
 
-  localStorage.setItem("cuadrilla", cuadrilla);
+localStorage.setItem("cuadrilla", cuadrilla);
 localStorage.setItem("sede", sede);
 localStorage.setItem("plataforma", plataforma);
 
+localStorage.setItem("perfil", perfil);
+localStorage.setItem("nivel", nivel);
+localStorage.setItem("estado", estado);
+localStorage.setItem("correo", correo);
+
 document.getElementById("usuarioInfo").innerHTML =
-"✅ " + cuadrilla +
+"✅ <b>" + cuadrilla + "</b>" +
 "<br>🏢 " + sede +
-"<br>📡 " + plataforma;
+"<br>🎓 " + plataforma +
+"<br>👤 " + perfil;
 
 document.getElementById("panelLogin").style.display = "none";
 
