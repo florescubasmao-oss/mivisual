@@ -261,6 +261,7 @@ const nivel = datos[7];
 const estado = datos[8];
 
 localStorage.setItem("cuadrilla", cuadrilla);
+localStorage.setItem("usuario", usuario);
 localStorage.setItem("sede", sede);
 localStorage.setItem("plataforma", plataforma);
 
@@ -333,6 +334,8 @@ document.getElementById("usuarioInfo").innerHTML =
 async function mostrarProduccion() {
 
 const cuadrilla = localStorage.getItem("cuadrilla");
+const perfil = localStorage.getItem("perfil");
+const sede = localStorage.getItem("sede");
 
 const url = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRpVkCmSvopgPByWsEX6nkuAT6mf3yD2_Cywpl9pFSZEqYpxmprDePPeV0KNgT14YpEP6gkVlvOAtZy/pub?gid=463676034&single=true&output=csv";
 
