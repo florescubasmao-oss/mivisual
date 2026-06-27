@@ -18,12 +18,11 @@
 <body>
 
   <div id="pantallaCarga">
-
-<img src="img/splash.png" class="splash" 
+<img src="img/splash.png" class="splash">
 
 </div>
 
-<div id="contenidoApp" style="display:none;">
+<div id="contenidoApp" style="display:block;">
 
 <div style="margin-top:5px;">
 
@@ -1087,63 +1086,6 @@ document.getElementById("resultadoProduccion").innerHTML = resultado;
 }
 
 
-function volverInicio(){
-
-document.getElementById("resultadoProduccion").innerHTML = "";
-
-window.scrollTo({
-top:0,
-behavior:"smooth"
-});
-
-}
-
-function configurarMenu(){
-
-    const perfil = localStorage.getItem("perfil");
-
-    // ocultar todo primero
-    cardProduccion.style.display = "none";
-    cardEfectividad.style.display = "none";
-    cardRecableado.style.display = "none";
-    cardVTRGAR.style.display = "none";
-    cardRanking.style.display = "none";
-    cardAccesos.style.display = "none";
-    cardBiblioteca.style.display = "none";
-    cardCapacitacion.style.display = "none";
-    cardDashboardSupervisor.style.display = "none";
-    cardDashboardJefatura.style.display = "none";
-    cardAdministracion.style.display = "none";
-
-    if (perfil == "TECNICO") {
-    cardProduccion.style.display = "block";
-    cardEfectividad.style.display = "block";
-    cardRecableado.style.display = "block";
-    cardVTRGAR.style.display = "block";
-    cardRanking.style.display = "block";
-    cardAccesos.style.display = "block";
-    cardBiblioteca.style.display = "block";
-    cardCapacitacion.style.display = "block";
-}
-
-if (perfil == "SUPERVISOR") {
-    cardRanking.style.display = "block";
-    cardAccesos.style.display = "block";
-    cardBiblioteca.style.display = "block";
-    cardCapacitacion.style.display = "block";
-    cardDashboardSupervisor.style.display = "block";
-}
-
-if (perfil == "JEFATURA") {
-    cardRanking.style.display = "block";
-    cardAccesos.style.display = "block";
-    cardBiblioteca.style.display = "block";
-    cardCapacitacion.style.display = "block";
-    cardDashboardSupervisor.style.display = "block";
-    cardDashboardJefatura.style.display = "block";
-    cardAdministracion.style.display = "block";
-}
-}
 function mostrarDashboardSupervisor(){
 
     alert("Dashboard Supervisor - En construcción");
@@ -1187,6 +1129,8 @@ if ("serviceWorker" in navigator) {
 
 }
 </script>
+
+<script src="./js/app.js"></script>
 
 </body>
 </html>
