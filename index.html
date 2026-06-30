@@ -1088,7 +1088,255 @@ document.getElementById("resultadoProduccion").innerHTML = resultado;
 
 function mostrarDashboardSupervisor(){
 
-    alert("Dashboard Supervisor - En construcción");
+document.getElementById("resultadoProduccion").innerHTML = `
+
+<div class="dashboard">
+
+<h2>📊 DASHBOARD SUPERVISOR</h2>
+
+<div class="filtros">
+
+<label>Desde</label><br>
+<input type="date" id="fechaInicio">
+
+<br><br>
+
+<label>Hasta</label><br>
+<input type="date" id="fechaFin">
+
+<br><br>
+
+<button onclick="consultarDashboard()">
+CONSULTAR
+</button>
+
+</div>
+
+<hr>
+
+<div class="kpis">
+
+<div class="kpi">
+<h3>Producción</h3>
+<p id="kpiProduccion">0</p>
+</div>
+
+<div class="kpi">
+<h3>Efectividad</h3>
+<p id="kpiEfectividad">0%</p>
+</div>
+
+<div class="kpi">
+<h3>Recableado</h3>
+<p id="kpiRecableado">0%</p>
+</div>
+
+<div class="kpi">
+<h3>VTR/GAR</h3>
+<p id="kpiVtrGar">0%</p>
+</div>
+
+</div>
+
+<hr>
+
+<div id="tablaDashboard">
+
+Aquí aparecerán las cuadrillas.
+
+</div>
+
+</div>
+
+`;
+
+}
+
+
+async function consultarDashboard(){
+
+console.log("Perfil:", localStorage.getItem("perfil"));
+console.log("Sede:", localStorage.getItem("sede"));
+console.log("Usuario:", localStorage.getItem("usuario"));
+
+const fechaInicio = document.getElementById("fechaInicio").value;
+const fechaFin = document.getElementById("fechaFin").value;
+
+if(fechaInicio=="" || fechaFin==""){
+
+    alert("Seleccione ambas fechas");
+    return;
+
+}
+
+const url="https://docs.google.com/spreadsheets/d/e/2PACX-1vRpVkCmSvopgPByWsEX6nkuAT6mf3yD2_Cywpl9pFSZEqYpxmprDePPeV0KNgT14YpEP6gkVlvOAtZy/pub?gid=463676034&single=true&output=csv";
+
+const respuesta=await fetch(url);
+
+const texto=await respuesta.text();
+
+const filas=texto.split("\n");
+
+const urlUsuarios = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRpVkCmSvopgPByWsEX6nkuAT6mf3yD2_Cywpl9pFSZEqYpxmprDePPeV0KNgT14YpEP6gkVlvOAtZy/pub?gid=0&single=true&output=csv";
+
+const respuestaUsuarios = await fetch(urlUsuarios);
+
+const textoUsuarios = await respuestaUsuarios.text();
+
+const filasUsuarios = textoUsuarios.split("\n");
+
+const sedeSupervisor = localStorage.getItem("sede");
+const sedeSupervisorTxt = (sedeSupervisor || "").trim().toUpperCase();
+
+const cuadrillasPermitidas = [];
+
+console.log("Sede Supervisor:", sedeSupervisorTxt);
+
+for(let i=1; i<filasUsuarios.length; i++){
+
+    const datos = filasUsuarios[i].split(",");
+
+    const cuadrilla = (datos[3] || "").replace(/"/g,"").trim().toUpperCase();
+    const sede = (datos[4] || "").replace(/"/g,"").trim().toUpperCase();
+    const perfil = (datos[6] || "").replace(/"/g,"").trim().toUpperCase();
+
+    console.log(
+    "Cuadrilla:", cuadrilla,
+    "| Sede:", sede,
+    "| Perfil:", perfil
+);
+
+    if(sede == sedeSupervisorTxt && perfil == "TECNICO"){
+
+        cuadrillasPermitidas.push(cuadrilla);
+
+    }
+
+}
+
+console.log(cuadrillasPermitidas);
+
+console.log("Usuarios:", filasUsuarios.length);
+
+console.log("Supervisor:", sedeSupervisor);
+
+let resultado = "";
+
+const dashboard = {};
+
+const listaCuadrillas = [];
+
+for(let i=1; i<filas.length; i++){
+
+    const datos = filas[i].split(",");
+
+    const fecha = (datos[4] || "").trim();
+    const cuadrilla = (datos[2] || "").replace(/"/g,"").trim().toUpperCase();
+
+    if(!cuadrillasPermitidas.includes(cuadrilla)){
+        continue;
+    }
+
+    const ultimaMilla = Number(datos[5] || 0);
+
+    const utp5 = Number(datos[6] || 0);
+    const utp5Mesh1 = Number(datos[7] || 0);
+    const utp5Mesh2 = Number(datos[8] || 0);
+    const utp6Mesh2 = Number(datos[9] || 0);
+
+    const mesh = Number(datos[10] || 0);
+    const ont = Number(datos[11] || 0);
+
+    const instCondo = Number(datos[15] || 0);
+    const instRes = Number(datos[16] || 0);
+
+    const trasladoCondo = Number(datos[27] || 0);
+    const trasladoRes = Number(datos[28] || 0);
+
+    const instalaciones = instCondo + instRes;
+
+    const traslados = trasladoCondo + trasladoRes;
+
+    const postventa =
+        utp5 +
+        utp5Mesh1 +
+        utp5Mesh2 +
+        utp6Mesh2 +
+        mesh +
+        ont;
+
+    if(!dashboard[cuadrilla]){
+
+        dashboard[cuadrilla] = {
+
+            ultimaMilla:0,
+            instalaciones:0,
+            traslados:0,
+            postventa:0
+
+        };
+
+    }
+
+    dashboard[cuadrilla].ultimaMilla += ultimaMilla;
+    dashboard[cuadrilla].instalaciones += instalaciones;
+    dashboard[cuadrilla].traslados += traslados;
+    dashboard[cuadrilla].postventa += postventa;
+
+}
+
+let totalProduccionGeneral = 0;
+
+Object.values(dashboard).forEach(info=>{
+
+    totalProduccionGeneral +=
+        info.ultimaMilla +
+        info.instalaciones +
+        info.traslados +
+        info.postventa;
+
+});
+
+Object.keys(dashboard).forEach(cuadrilla=>{
+
+    const info = dashboard[cuadrilla];
+
+    const total =
+        info.ultimaMilla +
+        info.instalaciones +
+        info.traslados +
+        info.postventa;
+
+    resultado += `
+    <div style="
+        padding:10px;
+        margin:6px;
+        background:#1b2a41;
+        border-radius:8px;
+        color:white;
+    ">
+
+        <b>${cuadrilla}</b><br><br>
+
+        Última Milla: ${info.ultimaMilla}<br>
+        Instalaciones: ${info.instalaciones}<br>
+        Traslados: ${info.traslados}<br>
+        Postventa: ${info.postventa}<br>
+
+        <hr>
+
+        <b>Total: ${total}</b>
+
+    </div>
+    `;
+
+});
+
+document.getElementById("tablaDashboard").innerHTML = resultado;
+
+console.log("TOTAL GENERAL:", totalProduccionGeneral);
+
+document.getElementById("kpiProduccion").innerHTML = totalProduccionGeneral;
 
 }
 
@@ -1130,6 +1378,11 @@ if ("serviceWorker" in navigator) {
 }
 </script>
 
+<script src="./js/utilidades.js"></script>
+<script src="./js/dashboards.js"></script>
+<script src="./js/indicadores.js"></script>
+<script src="./js/ranking.js"></script>
+<script src="./js/accesos.js"></script>
 <script src="./js/app.js"></script>
 
 </body>
