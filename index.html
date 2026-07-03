@@ -2136,7 +2136,264 @@ function mostrarDashboardJefatura(){
 
 function mostrarAdministracion(){
 
-    alert("Administración - En construcción");
+    document.getElementById("contenidoApp").innerHTML = `
+
+    <div style="padding:20px;max-width:900px;margin:auto;">
+
+        <h2 style="text-align:center;">
+        ⚙️ ADMINISTRACIÓN
+        </h2>
+
+        <br>
+
+        <div class="card"
+        onclick="mostrarImportarProduccion()">
+
+        📥 ACTUALIZAR PRODUCCIÓN
+
+        <br><br>
+
+        <small>
+        Importar producción desde la hoja
+        IMPORTAR_PRODUCCION
+        </small>
+
+        </div>
+
+        <br>
+
+        <div class="card">
+        📊 ACTUALIZAR EFECTIVIDAD
+        <br><small>Próximamente</small>
+        </div>
+
+        <br>
+
+        <div class="card">
+        🔁 ACTUALIZAR % RECABLEADO
+        <br><small>Próximamente</small>
+        </div>
+
+        <br>
+
+        <div class="card">
+        🛡️ ACTUALIZAR VTR/GAR
+        <br><small>Próximamente</small>
+        </div>
+
+        <br>
+
+        <div class="card">
+        👥 ACTUALIZAR USUARIOS
+        <br><small>Próximamente</small>
+        </div>
+
+        <br><br>
+
+        <button
+        class="button_1"
+        onclick="volverInicio()">
+
+        🏠 VOLVER
+
+        </button>
+
+    </div>
+
+    `;
+
+}
+
+function mostrarImportarProduccion(){
+
+    document.getElementById("contenidoApp").innerHTML = `
+        <div style="padding:20px;max-width:900px;margin:auto;">
+            <h2 style="text-align:center;">📥 ACTUALIZAR PRODUCCIÓN</h2>
+            <br>
+
+            <div class="card">
+                Pega aquí la base descargada del sistema central.
+                <br><br>
+                <textarea
+id="textoProduccion"
+style="width:100%;height:300px;border-radius:8px;padding:10px;">
+</textarea>
+
+<br><br>
+
+<button class="button_1" onclick="procesarProduccion()">
+🔄 PROCESAR PRODUCCIÓN
+</button>
+
+&nbsp;
+
+<button class="button_1" onclick="mostrarAdministracion()">
+🏠 VOLVER
+</button>
+
+<br><br>
+
+<div id="vistaPrevia"></div>
+
+
+            </div>
+          
+        </div>
+    `;
+}
+
+function procesarProduccion(){
+
+    const texto = document.getElementById("textoProduccion").value.trim();
+
+    if(texto === ""){
+        alert("Primero pega la base del sistema.");
+        return;
+    }
+
+    const lineas = texto
+        .split(/\r?\n/)
+        .map(x => x.trim())
+        .filter(x => x !== "");
+
+    const catalogo = [
+        { codigo: "TR", texto: "TRASLADO DE SERVICIOS POR MUDANZA EN RESIDENCIALES - POST VENTA" },
+        { codigo: "TVBOXPV", texto: "SERVICIO DE ENTREGA Y CONFIGURACIÓN DE TV BOX - POST VENTA" },
+        { codigo: "UM", texto: "ATENCIÓN DE AVERÍAS ÚLTIMA MILLA" },
+        { codigo: "ONT", texto: "CAMBIO DE EQUIPO ONT" },
+        { codigo: "MESH", texto: "CAMBIO DE EQUIPO MESH" },
+        { codigo: "IR", texto: "INSTALACION Y ACTIVACION DE ABONADOS EN RESIDENCIALES" },
+        { codigo: "IC", texto: "INSTALACIÓN Y ACTIVACIÓN DE ABONADOS EN CONDOMINIOS" }
+    ];
+
+    function esFecha(txt){
+        return /^\d{1,2}\/\d{1,2}\/\d{4}$/.test(txt);
+    }
+
+    function esCantidad(txt){
+        return /^\d+$/.test(txt);
+    }
+
+    function normalizar(txt){
+        return txt
+            .toUpperCase()
+            .normalize("NFD")
+            .replace(/[\u0300-\u036f]/g, "")
+            .replace(/\s+/g, " ")
+            .trim();
+    }
+
+    let cuadrilla = "";
+    let fechaActual = "";
+    let ordenActual = "";
+    let registros = [];
+
+    lineas.forEach((linea, i) => {
+
+        if (i === 0) {
+            cuadrilla = linea;
+            return;
+        }
+
+        if (esFecha(linea)) {
+            fechaActual = linea;
+            return;
+        }
+
+        if (esCantidad(linea)) {
+            if (ordenActual && fechaActual && cuadrilla) {
+
+                let codigo = "OT";
+
+                const ordenBuscada = normalizar(ordenActual);
+
+                for (let item of catalogo) {
+                    if (ordenBuscada.includes(normalizar(item.texto))) {
+                        codigo = item.codigo;
+                        break;
+                    }
+                }
+
+                registros.push({
+                    cuadrilla,
+                    fecha: fechaActual,
+                    orden: ordenActual,
+                    codigo,
+                    cantidad: parseInt(linea, 10)
+                });
+
+                ordenActual = "";
+            }
+            return;
+        }
+
+        ordenActual = linea;
+    });
+
+console.table(registros);
+
+let html = `
+<h3>✅ Vista previa (${registros.length} registros)</h3>
+
+<table style="width:100%;border-collapse:collapse;background:white;color:black;">
+<tr style="background:#1f4e79;color:white;">
+<th>Fecha</th>
+<th>Código</th>
+<th>Cantidad</th>
+</tr>
+`;
+
+registros.forEach(r => {
+
+    html += `
+    <tr>
+        <td>${r.fecha}</td>
+        <td>${r.codigo}</td>
+        <td style="text-align:center">${r.cantidad}</td>
+    </tr>
+    `;
+
+});
+
+html += "</table>";
+
+document.getElementById("vistaPrevia").innerHTML = html;
+
+fetch("https://script.google.com/macros/s/AKfycbx-b8eZEKlbENRT3ZZ9va9hFNiZLayjBpBFX6uop-5qfLbjIYUMTS_hfc7G0a71BIhW/exec",{
+
+    method:"POST",
+
+    headers:{
+        "Content-Type":"application/json"
+    },
+
+    body:JSON.stringify(registros)
+
+})
+
+.then(r=>r.json())
+
+.then(res=>{
+
+    if(res.ok){
+
+        alert("✅ Se importaron "+res.registros+" registros.");
+
+    }else{
+
+        alert(res.error);
+
+    }
+
+})
+
+.catch(err=>{
+
+    console.error(err);
+
+    alert("Error al conectar con la API.");
+
+});
 
 }
 
