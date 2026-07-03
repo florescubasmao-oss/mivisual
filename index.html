@@ -1088,6 +1088,10 @@ document.getElementById("resultadoProduccion").innerHTML = resultado;
 
 function mostrarDashboardSupervisor(){
 
+setTimeout(() => {
+    consultarDashboard();
+}, 0);
+
 document.getElementById("resultadoProduccion").innerHTML = `
 
 <div class="dashboard">
@@ -1096,6 +1100,7 @@ document.getElementById("resultadoProduccion").innerHTML = `
 
 <div class="filtros">
 
+<div id="filtroFechas" style="display:none;">
 <label>Desde</label><br>
 <input type="date" id="fechaInicio">
 
@@ -1110,30 +1115,40 @@ document.getElementById("resultadoProduccion").innerHTML = `
 CONSULTAR
 </button>
 
+  </div>
+
 </div>
 
 <hr>
 
-<div class="kpis">
+<div id="resumenGeneral"
+style="
+margin-top:15px;
+padding:15px;
+background:#162842;
+border-radius:10px;
+color:white;
+text-align:center;
+line-height:28px;
+">
 
-<div class="kpi">
-<h3>Producción</h3>
-<p id="kpiProduccion">0</p>
+<h3>📊 RESUMEN GENERAL</h3>
+
+<div id="periodoResumen"
+style="
+font-size:15px;
+color:#BFD7EA;
+margin-top:-8px;
+margin-bottom:15px;
+font-weight:600;
+">
+Periodo: Cargando...
 </div>
 
-<div class="kpi">
-<h3>Efectividad</h3>
-<p id="kpiEfectividad">0%</p>
-</div>
+<div id="textoResumen">
 
-<div class="kpi">
-<h3>Recableado</h3>
-<p id="kpiRecableado">0%</p>
-</div>
+    Cargando...
 
-<div class="kpi">
-<h3>VTR/GAR</h3>
-<p id="kpiVtrGar">0%</p>
 </div>
 
 </div>
@@ -1152,22 +1167,13 @@ Aquí aparecerán las cuadrillas.
 
 }
 
+let periodoActual = "";
 
 async function consultarDashboard(){
 
 console.log("Perfil:", localStorage.getItem("perfil"));
 console.log("Sede:", localStorage.getItem("sede"));
 console.log("Usuario:", localStorage.getItem("usuario"));
-
-const fechaInicio = document.getElementById("fechaInicio").value;
-const fechaFin = document.getElementById("fechaFin").value;
-
-if(fechaInicio=="" || fechaFin==""){
-
-    alert("Seleccione ambas fechas");
-    return;
-
-}
 
 const url="https://docs.google.com/spreadsheets/d/e/2PACX-1vRpVkCmSvopgPByWsEX6nkuAT6mf3yD2_Cywpl9pFSZEqYpxmprDePPeV0KNgT14YpEP6gkVlvOAtZy/pub?gid=463676034&single=true&output=csv";
 
@@ -1176,6 +1182,26 @@ const respuesta=await fetch(url);
 const texto=await respuesta.text();
 
 const filas=texto.split("\n");
+const primeraFila = filas[1];
+
+if (primeraFila) {
+
+    const columnas = primeraFila.split(",");
+
+    const fechaActualizacion = columnas[3].trim();
+
+    const partes = fechaActualizacion.split("/");
+
+    const meses = [
+        "Enero","Febrero","Marzo","Abril",
+        "Mayo","Junio","Julio","Agosto",
+        "Septiembre","Octubre","Noviembre","Diciembre"
+    ];
+
+    periodoActual =
+        meses[parseInt(partes[1]) - 1] + " " + partes[2];
+}
+
 
 //=========================
 // EFECTIVIDAD
@@ -1280,6 +1306,30 @@ const textoVtr = await respuestaVtr.text();
 const filasVtr = textoVtr.split("\n");
 
 const vtrCuadrillas = {};
+
+const PUNTAJES = {
+
+ultimaMilla:1,
+
+instRes:2,
+instCondo:1.5,
+
+trasladoRes:2,
+trasladoCondo:1.5,
+
+ont:1,
+mesh:1,
+
+utp5:1,
+utp5Mesh1:1,
+utp5Mesh2:1,
+utp6Mesh2:1,
+
+recPV:2,
+recPVUtpOnt:2.5,
+recVT:2
+
+};
 
 //=========================
 // CARGAR VTR/GAR
@@ -1464,6 +1514,7 @@ let sumaVtr = 0;
 let totalCuadrillas = 0;
 
 let totalProduccionGeneral = 0;
+let totalPuntosGeneral = 0;
 
 Object.values(dashboard).forEach(info=>{
 
@@ -1499,23 +1550,69 @@ const ranking = Object.keys(dashboard).map(cuadrilla => {
         info.mesh +
         info.ont;
 
-    return {
-        cuadrilla,
-        info,
-        total
-    };
+        const puntos =
+
+info.ultimaMilla * PUNTAJES.ultimaMilla +
+
+info.instRes * PUNTAJES.instRes +
+
+info.instCondo * PUNTAJES.instCondo +
+
+info.trasladoRes * PUNTAJES.trasladoRes +
+
+info.trasladoCondo * PUNTAJES.trasladoCondo +
+
+info.utp5 * PUNTAJES.utp5 +
+
+info.utp5Mesh1 * PUNTAJES.utp5Mesh1 +
+
+info.utp5Mesh2 * PUNTAJES.utp5Mesh2 +
+
+info.utp6Mesh2 * PUNTAJES.utp6Mesh2 +
+
+info.mesh * PUNTAJES.mesh +
+
+info.ont * PUNTAJES.ont;
+
+return {
+
+cuadrilla,
+
+info,
+
+total,
+
+puntos
+
+};
 
 });
 
 ranking.sort((a,b)=> b.total - a.total);
+
+const maxProduccion = ranking.length > 0 ? ranking[0].total : 1;
 
 ranking.forEach((item, indice)=>{
 
     const cuadrilla = item.cuadrilla;
     const info = item.info;
     const total = item.total;
+    const puntos = item.puntos;
+    totalPuntosGeneral += puntos;
 
-    const ef = efectividadCuadrillas[cuadrilla] || 0;
+    let colorPuntos = "#e74c3c";
+let estadoPuntos = "🔴 Debajo de la meta";
+
+if (puntos >= 130) {
+    colorPuntos = "#2ecc71";
+    estadoPuntos = "🟢 Meta cumplida";
+}
+else if (puntos >= 110) {
+    colorPuntos = "#f1c40f";
+    estadoPuntos = "🟡 Cerca de la meta";
+}
+
+ const ef = efectividadCuadrillas[cuadrilla] || 0;
 const rec = recableadoCuadrillas[cuadrilla] || 0;
 const vtr = vtrCuadrillas[cuadrilla] || 0;
 
@@ -1525,6 +1622,57 @@ sumaVtr += vtr;
 totalCuadrillas++;
 
     let detalleDias = "";
+
+    let detallePuntos = `
+<div style="
+margin-top:10px;
+padding:10px;
+background:#182945;
+border-radius:8px;
+display:none;
+"
+id="puntos_${cuadrilla.replace(/\s+/g,'_')}">
+
+<b>⭐ DETALLE DE PUNTOS</b>
+
+<hr>
+
+Última Milla:
+${info.ultimaMilla} × ${PUNTAJES.ultimaMilla}
+= ${(info.ultimaMilla*PUNTAJES.ultimaMilla).toFixed(1)}
+
+<br><br>
+
+Inst. Residencial:
+${info.instRes} × ${PUNTAJES.instRes}
+= ${(info.instRes*PUNTAJES.instRes).toFixed(1)}
+
+<br><br>
+
+Inst. Condominio:
+${info.instCondo} × ${PUNTAJES.instCondo}
+= ${(info.instCondo*PUNTAJES.instCondo).toFixed(1)}
+
+<br><br>
+
+Traslado Residencial:
+${info.trasladoRes} × ${PUNTAJES.trasladoRes}
+= ${(info.trasladoRes*PUNTAJES.trasladoRes).toFixed(1)}
+
+<br><br>
+
+Traslado Condominio:
+${info.trasladoCondo} × ${PUNTAJES.trasladoCondo}
+= ${(info.trasladoCondo*PUNTAJES.trasladoCondo).toFixed(1)}
+
+<hr>
+
+<b>TOTAL :</b>
+
+⭐ ${puntos.toFixed(1)} puntos
+
+</div>
+`;
 
 Object.keys(info.dias).forEach(fecha=>{
 
@@ -1651,9 +1799,64 @@ ${info.ont>0 ? `ONT: ${info.ont}<br>` : ""}
 
 ` : ""}
 
-        <hr>
+<hr>
 
-        <b>Producción: ${total}</b>
+<b>Producción: ${total}</b>
+
+<br>
+
+⭐ <b>Puntos:</b>
+
+<span style="color:${colorPuntos};font-weight:bold;">
+${puntos.toFixed(1)} / 130
+</span>
+
+<br>
+
+<span style="color:${colorPuntos};font-size:13px;font-weight:bold;">
+${estadoPuntos}
+</span>
+
+<br><br>
+
+<button
+onclick="toggleDetalle('puntos_${cuadrilla.replace(/\s+/g,'_')}', this)"
+style="
+width:100%;
+padding:6px;
+margin-top:8px;
+background:#27496d;
+color:white;
+border:none;
+border-radius:6px;
+cursor:pointer;
+font-weight:bold;
+">
+
+⭐ Ver detalle de puntos
+
+</button>
+
+${detallePuntos}
+
+<div style="
+width:100%;
+height:12px;
+background:#3b4c63;
+border-radius:10px;
+overflow:hidden;
+">
+
+<div style="
+width:${(total/maxProduccion)*100}%;
+height:100%;
+background:linear-gradient(90deg,#2ecc71,#00d2ff);
+border-radius:10px;
+transition:0.8s;
+">
+</div>
+
+</div>
 
         <br><br>
 
@@ -1743,7 +1946,7 @@ overflow:hidden;
 ">
 
 <div style="
-width:${(total/totalProduccionGeneral)*100}%;
+width:${(total/maxProduccion)*100}%;
 height:100%;
 background:#27ae60;
 ">
@@ -1754,7 +1957,8 @@ background:#27ae60;
 <hr>
 
 <button
-onclick="toggleDetalle('${cuadrilla.replace(/'/g,'')}')"
+id="btn_${cuadrilla.replace(/\s+/g,'_')}"
+onclick="toggleDetalle('detalle_${cuadrilla.replace(/\s+/g,'_')}', this)"
 style="
 width:100%;
 padding:8px;
@@ -1786,22 +1990,142 @@ document.getElementById("tablaDashboard").innerHTML = resultado;
 
 console.log("TOTAL GENERAL:", totalProduccionGeneral);
 
-document.getElementById("kpiEfectividad").innerHTML =
-totalCuadrillas > 0
-? (sumaEfectividad / totalCuadrillas).toFixed(2) + "%"
-: "0%";
 
-document.getElementById("kpiRecableado").innerHTML =
-totalCuadrillas > 0
-? (sumaRecableado / totalCuadrillas).toFixed(2) + "%"
-: "0%";
+const promedioProduccion = totalCuadrillas > 0
+    ? (totalProduccionGeneral / totalCuadrillas).toFixed(1)
+    : "0";
 
-document.getElementById("kpiVtrGar").innerHTML =
-totalCuadrillas > 0
-? (sumaVtr / totalCuadrillas).toFixed(2) + "%"
-: "0%";
+const metaPuntos = totalCuadrillas * 130;
 
-document.getElementById("kpiProduccion").innerHTML = totalProduccionGeneral;
+const porcentajePuntos =
+metaPuntos > 0
+? ((totalPuntosGeneral / metaPuntos) * 100).toFixed(0)
+: 0;
+
+document.getElementById("periodoResumen").textContent =
+    "Periodo: " + periodoActual;
+
+let colorPuntaje = "#e74c3c"; // Rojo
+
+if (porcentajePuntos >= 90) {
+    colorPuntaje = "#2ecc71"; // Verde
+}
+else if (porcentajePuntos >= 75) {
+    colorPuntaje = "#f1c40f"; // Amarillo
+}
+
+// RECABLEADO
+let colorRecableado = "#e74c3c";
+
+const recableadoGeneral =
+(sumaRecableado / totalCuadrillas);
+
+if (recableadoGeneral <= 40) {
+    colorRecableado = "#2ecc71";
+}
+else if (recableadoGeneral <= 55) {
+    colorRecableado = "#f1c40f";
+}
+
+// EFECTIVIDAD
+let colorEfectividad = "#e74c3c";
+
+const efectividadGeneral =
+(sumaEfectividad / totalCuadrillas);
+
+if (efectividadGeneral >= 80) {
+    colorEfectividad = "#2ecc71";
+}
+else if (efectividadGeneral >= 70) {
+    colorEfectividad = "#f1c40f";
+}
+
+// VTR / GAR
+let colorVTR = "#e74c3c";
+
+const vtrGeneral =
+(sumaVtr / totalCuadrillas);
+
+if (vtrGeneral <= 5) {
+    colorVTR = "#2ecc71";
+}
+else if (vtrGeneral <= 7) {
+    colorVTR = "#f1c40f";
+}
+
+document.getElementById("textoResumen").innerHTML = `
+
+
+<div style="
+display:grid;
+grid-template-columns:repeat(auto-fit,minmax(140px,1fr));
+gap:12px;
+margin-top:15px;
+">
+
+<div style="background:#223354;padding:15px;border-radius:10px;">
+<div style="font-size:13px;color:#9fb7d8;">Producción</div>
+<div style="font-size:28px;font-weight:bold;">${totalProduccionGeneral}</div>
+</div>
+
+<div style="background:#223354;padding:15px;border-radius:10px;">
+<div style="font-size:13px;color:#9fb7d8;">Cuadrillas</div>
+<div style="font-size:28px;font-weight:bold;">${totalCuadrillas}</div>
+</div>
+
+<div style="background:#223354;padding:15px;border-radius:10px;">
+    <div style="font-size:13px;color:#9fb7d8;">⭐ Puntaje</div>
+    <div style="font-size:24px;font-weight:bold;">
+        ${totalPuntosGeneral.toFixed(0)} / ${metaPuntos}
+    </div>
+
+    <div style="
+        font-size:15px;
+        color:${colorPuntaje};
+        margin-top:5px;
+    ">
+        ${porcentajePuntos}%
+    </div>
+
+    <div style="
+        width:100%;
+        height:10px;
+        background:#1b2d4a;
+        border-radius:10px;
+        overflow:hidden;
+        margin-top:8px;
+    ">
+        <div style="
+            width:${porcentajePuntos}%;
+            height:100%;
+            background:${colorPuntaje};
+        "></div>
+    </div>
+</div>
+
+<div style="background:#223354;padding:15px;border-radius:10px;">
+    <div style="font-size:13px;color:#9fb7d8;">📈 Efectividad</div>
+    <div style="font-size:28px;font-weight:bold;color:${colorEfectividad};">
+        ${(sumaEfectividad/totalCuadrillas).toFixed(2)}%
+    </div>
+</div>
+
+<div style="background:#223354;padding:15px;border-radius:10px;">
+    <div style="font-size:13px;color:#9fb7d8;">🔁 Recableado</div>
+    <div style="font-size:28px;font-weight:bold;color:${colorRecableado};">
+        ${(sumaRecableado/totalCuadrillas).toFixed(2)}%
+    </div>
+</div>
+
+<div style="background:#223354;padding:15px;border-radius:10px;">
+    <div style="font-size:13px;color:#9fb7d8;">📡 VTR / GAR</div>
+    <div style="font-size:28px;font-weight:bold;color:${colorVTR};">
+        ${(sumaVtr/totalCuadrillas).toFixed(2)}%
+    </div>
+</div>
+
+</div>
+`;
 
 }
 
@@ -1828,21 +2152,50 @@ window.addEventListener("load", function () {
 
 });
 
-function toggleDetalle(cuadrilla){
-
-    const id = "detalle_" + cuadrilla.replace(/\s+/g,"_");
+function toggleDetalle(id, btn){
 
     const div = document.getElementById(id);
 
-    if(div.style.display=="none"){
+    if(!div) return;
 
-        div.style.display="block";
+    if(div.style.display === "none"){
+
+        div.style.display = "block";
+
+        if(btn){
+
+            if(id.startsWith("puntos_")){
+
+                btn.innerHTML = "⭐ Ocultar detalle de puntos";
+
+            }else{
+
+                btn.innerHTML = "▲ Ocultar detalle diario";
+
+            }
+
 
     }else{
 
-        div.style.display="none";
+        div.style.display = "none";
+
+        if(btn){
+
+            if(id.startsWith("puntos_")){
+
+                btn.innerHTML = "⭐ Ver detalle de puntos";
+
+            }else{
+
+                btn.innerHTML = "▼ Ver detalle diario";
+
+            }
+
+        }
 
     }
+
+}
 
 }
   
