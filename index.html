@@ -2359,25 +2359,20 @@ html += "</table>";
 
 document.getElementById("vistaPrevia").innerHTML = html;
 
-fetch("https://script.google.com/macros/s/AKfycbx-b8eZEKlbENRT3ZZ9va9hFNiZLayjBpBFX6uop-5qfLbjIYUMTS_hfc7G0a71BIhW/exec",{
+const url = "https://script.google.com/macros/s/AKfycbx-b8eZEKlbENRT3ZZ9va9hFNiZLayjBpBFX6uop-5qfLbjIYUMTS_hfc7G0a71BIhW/exec";
 
-    method:"POST",
-
-    headers:{
-        "Content-Type":"application/json"
-    },
-
-    body:JSON.stringify(registros)
-
+fetch(url, {
+    method: "POST",
+    body: JSON.stringify(registros)
 })
+.then(r => r.text())
+.then(txt => {
 
-.then(r=>r.json())
-
-.then(res=>{
+    const res = JSON.parse(txt);
 
     if(res.ok){
 
-        alert("✅ Se importaron "+res.registros+" registros.");
+        alert("✅ Se importaron " + res.registros + " registros.");
 
     }else{
 
@@ -2386,7 +2381,6 @@ fetch("https://script.google.com/macros/s/AKfycbx-b8eZEKlbENRT3ZZ9va9hFNiZLayjBp
     }
 
 })
-
 .catch(err=>{
 
     console.error(err);
