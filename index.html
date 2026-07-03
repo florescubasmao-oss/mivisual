@@ -1088,10 +1088,6 @@ document.getElementById("resultadoProduccion").innerHTML = resultado;
 
 function mostrarDashboardSupervisor(){
 
-setTimeout(() => {
-    consultarDashboard();
-}, 0);
-
 document.getElementById("resultadoProduccion").innerHTML = `
 
 <div class="dashboard">
@@ -1164,6 +1160,10 @@ Aquí aparecerán las cuadrillas.
 </div>
 
 `;
+
+setTimeout(() => {
+    consultarDashboard();
+}, 0);
 
 }
 
