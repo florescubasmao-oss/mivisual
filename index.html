@@ -2314,13 +2314,14 @@ function procesarProduccion(){
                     }
                 }
 
-                registros.push({
-                    cuadrilla,
-                    fecha: fechaActual,
-                    orden: ordenActual,
-                    codigo,
-                    cantidad: parseInt(linea, 10)
-                });
+registros.push({
+    usuario: localStorage.getItem("usuario"),
+    cuadrilla,
+    fecha: fechaActual,
+    orden: ordenActual,
+    codigo,
+    cantidad: parseInt(linea, 10)
+});
 
                 ordenActual = "";
             }
