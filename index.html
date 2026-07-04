@@ -2373,7 +2373,10 @@ fetch(url, {
 
     if(res.ok){
 
-        alert("✅ Se importaron " + res.registros + " registros.");
+        alert(
+    "✅ Nuevos: " + res.insertados +
+    "\n🔄 Actualizados: " + res.actualizados
+);
 
     }else{
 
