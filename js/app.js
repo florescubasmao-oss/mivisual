@@ -80,13 +80,22 @@ async function login() {
 
 function volverInicio(){
 
-    document.getElementById("resultadoProduccion").innerHTML="";
+    configurarMenu();
+
+    document.getElementById("btnInicio").style.display = "inline-block";
+    document.getElementById("menuPrincipal").style.display = "grid";
 
     window.scrollTo({
-        top:0,
-        behavior:"smooth"
+        top: 0,
+        behavior: "smooth"
     });
 
+}
+
+
+function mostrarCard(id, estado){
+    const el = document.getElementById(id);
+    if (el) el.style.display = estado;
 }
 
 function configurarMenu(){
@@ -95,45 +104,51 @@ function configurarMenu(){
 
     const perfil = localStorage.getItem("perfil");
 
+    const menu = document.getElementById("menuPrincipal");
+    const pantalla = document.getElementById("pantalla");
+
+    if (pantalla) pantalla.innerHTML = "";
+    if (menu) menu.style.display = "grid";
+
     // ocultar todo primero
-    cardProduccion.style.display = "none";
-    cardEfectividad.style.display = "none";
-    cardRecableado.style.display = "none";
-    cardVTRGAR.style.display = "none";
-    cardRanking.style.display = "none";
-    cardAccesos.style.display = "none";
-    cardBiblioteca.style.display = "none";
-    cardCapacitacion.style.display = "none";
-    cardDashboardSupervisor.style.display = "none";
-    cardDashboardJefatura.style.display = "none";
-    cardAdministracion.style.display = "none";
+    mostrarCard("cardProduccion", "none");
+    mostrarCard("cardEfectividad", "none");
+    mostrarCard("cardRecableado", "none");
+    mostrarCard("cardVTRGAR", "none");
+    mostrarCard("cardRanking", "none");
+    mostrarCard("cardAccesos", "none");
+    mostrarCard("cardBiblioteca", "none");
+    mostrarCard("cardCapacitacion", "none");
+    mostrarCard("cardDashboardSupervisor", "none");
+    mostrarCard("cardDashboardJefatura", "none");
+    mostrarCard("cardAdministracion", "none");
 
     if (perfil == "TECNICO") {
-    cardProduccion.style.display = "block";
-    cardEfectividad.style.display = "block";
-    cardRecableado.style.display = "block";
-    cardVTRGAR.style.display = "block";
-    cardRanking.style.display = "block";
-    cardAccesos.style.display = "block";
-    cardBiblioteca.style.display = "block";
-    cardCapacitacion.style.display = "block";
-}
+        mostrarCard("cardProduccion", "block");
+        mostrarCard("cardEfectividad", "block");
+        mostrarCard("cardRecableado", "block");
+        mostrarCard("cardVTRGAR", "block");
+        mostrarCard("cardRanking", "block");
+        mostrarCard("cardAccesos", "block");
+        mostrarCard("cardBiblioteca", "block");
+        mostrarCard("cardCapacitacion", "block");
+    }
 
-if (perfil == "SUPERVISOR") {
-    cardRanking.style.display = "block";
-    cardAccesos.style.display = "block";
-    cardBiblioteca.style.display = "block";
-    cardCapacitacion.style.display = "block";
-    cardDashboardSupervisor.style.display = "block";
-}
+    if (perfil == "SUPERVISOR") {
+        mostrarCard("cardRanking", "block");
+        mostrarCard("cardAccesos", "block");
+        mostrarCard("cardBiblioteca", "block");
+        mostrarCard("cardCapacitacion", "block");
+        mostrarCard("cardDashboardSupervisor", "block");
+    }
 
-if (perfil == "JEFATURA") {
-    cardRanking.style.display = "block";
-    cardAccesos.style.display = "block";
-    cardBiblioteca.style.display = "block";
-    cardCapacitacion.style.display = "block";
-    cardDashboardSupervisor.style.display = "block";
-    cardDashboardJefatura.style.display = "block";
-    cardAdministracion.style.display = "block";
-}
+    if (perfil == "JEFATURA") {
+        mostrarCard("cardRanking", "block");
+        mostrarCard("cardAccesos", "block");
+        mostrarCard("cardBiblioteca", "block");
+        mostrarCard("cardCapacitacion", "block");
+        mostrarCard("cardDashboardSupervisor", "block");
+        mostrarCard("cardDashboardJefatura", "block");
+        mostrarCard("cardAdministracion", "block");
+    }
 }

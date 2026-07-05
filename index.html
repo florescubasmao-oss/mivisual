@@ -23,6 +23,7 @@
 </div>
 
 <div id="contenidoApp" style="display:block;">
+<div id="pantalla"></div>
 
 <div style="margin-top:5px;">
 
@@ -64,7 +65,7 @@ cursor:pointer;
 </div>
 <div class="menu" id="menuPrincipal" style="display:none;">
 
-<div id="cardProduccion" class="card" onclick="mostrarProduccion()">
+<div id="cardProduccion" class="card" onclick="mostrarProduccionV2()">
 📊 PRODUCCIÓN
 </div>
 
@@ -215,6 +216,7 @@ document.getElementById("usuarioInfo").innerHTML =
 </script>
  
 <script>
+
 async function mostrarProduccion() {
 
 const cuadrilla = localStorage.getItem("cuadrilla");
@@ -404,6 +406,280 @@ font-weight:bold;
   
 document.getElementById("resultadoProduccion").innerHTML = resultado;
   
+}
+
+const urlProduccion =
+"https://docs.google.com/spreadsheets/d/e/2PACX-1vRpVkCmSvopgPByWsEX6nkuAT6mf3yD2_Cywpl9pFSZEqYpxmprDePPeV0KNgT14YpEP6gkVlvOAtZy/pub?gid=1814992325&single=true&output=csv";
+
+const urlCatalogo =
+"https://docs.google.com/spreadsheets/d/e/2PACX-1vRpVkCmSvopgPByWsEX6nkuAT6mf3yD2_Cywpl9pFSZEqYpxmprDePPeV0KNgT14YpEP6gkVlvOAtZy/pub?gid=2013842388&single=true&output=csv";
+
+async function mostrarProduccionV2(){
+
+    const cuadrilla = localStorage.getItem("cuadrilla");
+
+    let totalProduccion = 0;
+
+let totalUltimaMilla = 0;
+let totalInstalaciones = 0;
+let totalRecableadoVT = 0;
+let totalRecableadoPost = 0;
+let totalTraslados = 0;
+
+let totalPuntos = 0;
+
+    const respuestaProduccion = await fetch(urlProduccion);
+    const textoProduccion = await respuestaProduccion.text();
+
+    const respuestaCatalogo = await fetch(urlCatalogo);
+    const textoCatalogo = await respuestaCatalogo.text();
+
+    const filasProduccion = textoProduccion.trim().split("\n");
+    const filasCatalogo = textoCatalogo.trim().split("\n");
+
+    console.log("Registros Producción:", filasProduccion.length-1);
+    console.log("Registros Catálogo:", filasCatalogo.length-1);
+
+    //--------------------------------------------------
+    // CATALOGO
+    //--------------------------------------------------
+
+    const catalogo = {};
+
+    
+    for(let i=1;i<filasCatalogo.length;i++){
+
+        const d = filasCatalogo[i].split(",");
+
+        catalogo[d[0].trim()] = {
+
+            tipo: d[1].trim(),
+            plataforma: d[2].trim(),
+            puntaje: Number(d[3]),
+            grupo: d[4].trim()
+
+        };
+
+    }
+
+    console.log(catalogo);
+
+    //--------------------------------------------------
+    // PRODUCCION DEL USUARIO
+    //--------------------------------------------------
+
+    const registros = [];
+
+    for(let i=1;i<filasProduccion.length;i++){
+
+        const d = filasProduccion[i].split(",");
+
+
+console.log(
+    "Cuadrilla hoja:", d[1],
+    "| Cuadrilla login:", cuadrilla
+);
+
+const hoja = d[1].replace("...", "").trim();
+
+const login = cuadrilla.trim();
+
+if(!login.startsWith(hoja)){
+    console.log("NO COINCIDE");
+    continue;
+}
+
+console.log("COINCIDE");
+
+        registros.push({
+
+            usuario:d[0],
+            cuadrilla:d[1],
+            fecha:d[2],
+            codigo:d[3],
+            cantidad:Number(d[4]),
+
+            tipo:catalogo[d[3]]?.tipo || "",
+            grupo:catalogo[d[3]]?.grupo || "",
+            puntaje:catalogo[d[3]]?.puntaje || 0
+
+        });
+
+    }
+
+   console.table(registros);
+
+registros.forEach(r=>{
+
+    totalProduccion += r.cantidad;
+
+    totalPuntos += r.cantidad * r.puntaje;
+
+    switch(r.grupo){
+
+        case "ULTIMA_MILLA":
+            totalUltimaMilla += r.cantidad;
+            break;
+
+        case "INSTALACION":
+            totalInstalaciones += r.cantidad;
+            break;
+
+        case "RECABLEADO_VT":
+            totalRecableadoVT += r.cantidad;
+            break;
+
+        case "RECABLEADO_POST":
+            totalRecableadoPost += r.cantidad;
+            break;
+
+        case "TRASLADO":
+            totalTraslados += r.cantidad;
+            break;
+
+    }
+
+});
+
+console.log({
+
+    totalProduccion,
+    totalUltimaMilla,
+    totalInstalaciones,
+    totalRecableadoVT,
+    totalRecableadoPost,
+    totalTraslados,
+    totalPuntos
+
+});
+
+const dashboard = {
+    resumen:{
+        totalProduccion,
+        totalUltimaMilla,
+        totalInstalaciones,
+        totalRecableadoVT,
+        totalRecableadoPost,
+        totalTraslados,
+        totalPuntos
+    },
+    detalle: registros
+};
+
+renderDashboardProduccion(dashboard);
+
+}
+
+function renderDashboardProduccion(data){
+
+    let html = `
+
+    <div class="card">
+
+        <h2>📊 Producción</h2>
+
+        <div style="margin-top:15px">
+
+            <p><b>Producción Total:</b> ${data.resumen.totalProduccion}</p>
+
+            <p><b>Última Milla:</b> ${data.resumen.totalUltimaMilla}</p>
+
+            <p><b>Instalaciones:</b> ${data.resumen.totalInstalaciones}</p>
+
+            <p><b>Recableado VT:</b> ${data.resumen.totalRecableadoVT}</p>
+
+            <p><b>Recableado Postventa:</b> ${data.resumen.totalRecableadoPost}</p>
+
+            <p><b>Traslados:</b> ${data.resumen.totalTraslados}</p>
+
+            <hr>
+
+            <h3>⭐ Puntos: ${data.resumen.totalPuntos}</h3>
+
+        </div>
+
+    </div>
+
+    `;
+
+html += `
+<div style="text-align:center;margin:25px 0;">
+    <button
+        onclick="volverInicio()"
+        style="
+            background:#16a34a;
+            color:white;
+            border:none;
+            padding:12px 30px;
+            border-radius:10px;
+            font-size:16px;
+            font-weight:bold;
+            cursor:pointer;
+        ">
+        🏠 Volver al Menú
+    </button>
+</div>
+`;
+
+    html += `<hr style="margin:25px 0;">`;
+
+html += `<h2>📅 Historial de Producción</h2>`;
+
+let fechaActual = "";
+
+data.detalle.sort((a, b) => {
+
+    const fa = a.fecha.split("/").reverse().join("");
+    const fb = b.fecha.split("/").reverse().join("");
+
+    return fb.localeCompare(fa);
+
+});
+
+data.detalle.forEach(r => {
+
+    if (r.fecha !== fechaActual) {
+
+    fechaActual = r.fecha;
+
+    html += `
+        <h3 style="margin-top:25px;">
+            📅 ${fechaActual}
+        </h3>
+    `;
+
+}
+
+    html += `
+
+    <div class="card" style="margin-top:15px; padding:15px;">
+
+        <h3 style="
+    margin:10px 0;
+    color:#ffffff;
+    font-size:18px;
+    line-height:1.4;
+">
+    ${r.tipo}
+</h3>
+
+        <p style="font-size:17px;">
+    📦 <b>Cantidad:</b> ${r.cantidad}
+</p>
+
+       <p style="font-size:17px;color:#FFD700;">
+    ⭐ <b>Puntos:</b> ${r.puntaje * r.cantidad}
+</p>
+
+    </div>
+
+    `;
+
+});
+
+
+    document.getElementById("pantalla").innerHTML = html;
+
 }
 
 async function mostrarEfectividad(){
@@ -2136,12 +2412,11 @@ function mostrarDashboardJefatura(){
 
 function mostrarAdministracion(){
 
-    document.getElementById("contenidoApp").innerHTML = `
-
+    let html = `
     <div style="padding:20px;max-width:900px;margin:auto;">
 
-        <h2 style="text-align:center;">
-        ⚙️ ADMINISTRACIÓN
+        <h2>⚙️ ADMINISTRACIÓN</h2>
+
         </h2>
 
         <br>
@@ -2202,11 +2477,13 @@ function mostrarAdministracion(){
 
     `;
 
+    document.getElementById("pantalla").innerHTML = html;
+
 }
 
 function mostrarImportarProduccion(){
 
-    document.getElementById("contenidoApp").innerHTML = `
+    document.getElementById("pantalla").innerHTML = `
         <div style="padding:20px;max-width:900px;margin:auto;">
             <h2 style="text-align:center;">📥 ACTUALIZAR PRODUCCIÓN</h2>
             <br>
@@ -2242,29 +2519,47 @@ style="width:100%;height:300px;border-radius:8px;padding:10px;">
     `;
 }
 
-function procesarProduccion(){
+async function procesarProduccion() {
 
-    const texto = document.getElementById("textoProduccion").value.trim();
+    let texto = document.getElementById("textoProduccion").value;
+
+// Normalizar texto pegado desde Excel o Google Sheets
+texto = texto
+    .replace(/\t+/g, " ")      // TAB -> espacio
+    .replace(/\u00A0/g, " ")   // espacio no separable
+    .replace(/[ ]{2,}/g, " ")  // varios espacios -> uno
+    .trim();
 
     if(texto === ""){
         alert("Primero pega la base del sistema.");
         return;
     }
 
-    const lineas = texto
-        .split(/\r?\n/)
-        .map(x => x.trim())
-        .filter(x => x !== "");
+const lineas = texto
+    .split(/\r?\n/)
+    .map(x => x.replace(/\t+/g, " ").trim())
+    .filter(x => x.length > 0);
 
-    const catalogo = [
-        { codigo: "TR", texto: "TRASLADO DE SERVICIOS POR MUDANZA EN RESIDENCIALES - POST VENTA" },
-        { codigo: "TVBOXPV", texto: "SERVICIO DE ENTREGA Y CONFIGURACIÓN DE TV BOX - POST VENTA" },
-        { codigo: "UM", texto: "ATENCIÓN DE AVERÍAS ÚLTIMA MILLA" },
-        { codigo: "ONT", texto: "CAMBIO DE EQUIPO ONT" },
-        { codigo: "MESH", texto: "CAMBIO DE EQUIPO MESH" },
-        { codigo: "IR", texto: "INSTALACION Y ACTIVACION DE ABONADOS EN RESIDENCIALES" },
-        { codigo: "IC", texto: "INSTALACIÓN Y ACTIVACIÓN DE ABONADOS EN CONDOMINIOS" }
-    ];
+const URL_CATALOGO =
+"https://docs.google.com/spreadsheets/d/e/2PACX-1vRpVkCmSvopgPByWsEX6nkuAT6mf3yD2_Cywpl9pFSZEqYpxmprDePPeV0KNgT14YpEP6gkVlvOAtZy/pub?gid=2013842388&single=true&output=csv";
+
+const respuesta = await fetch(URL_CATALOGO);
+
+const csv = await respuesta.text();
+const catalogo = csv
+    .split(/\r?\n/)
+    .slice(1) // omite encabezado
+    .map(fila => {
+
+        const c = fila.split(",");
+
+        return {
+            codigo: (c[0] || "").trim(),
+            texto: (c[1] || "").trim()
+        };
+
+    })
+    .filter(x => x.codigo && x.texto);
 
     function esFecha(txt){
         return /^\d{1,2}\/\d{1,2}\/\d{4}$/.test(txt);
@@ -2290,48 +2585,86 @@ function procesarProduccion(){
 
     lineas.forEach((linea, i) => {
 
-        if (i === 0) {
-            cuadrilla = linea;
-            return;
+    // Detectar cualquier cuadrilla (P1, P2, P10, P11...)
+if (/^P\s*\d+/i.test(linea)) {
+
+cuadrilla = linea
+    .replace(/^P\s+(\d+)/i, "P$1")   // P 1 -> P1
+    .replace(/\s+\d+$/, "")          // elimina el total final (73, 57, etc.)
+    .trim();
+
+    fechaActual = "";
+    ordenActual = "";
+
+    return;
+}
+
+// Ignorar líneas que solo contienen un total
+if (/^\d+$/.test(linea)) {
+    return;
+}
+
+    // Fecha con posible total al final
+    const mFecha = linea.match(/^(\d{1,2}\/\d{1,2}\/\d{4})/);
+
+    if (mFecha) {
+        fechaActual = mFecha[1];
+        return;
+    }
+
+    // Partida + cantidad al final
+    const mOrden = linea.match(/^(.*?)(\d+)$/);
+
+    if (mOrden) {
+
+        ordenActual = mOrden[1].trim();
+        const cantidad = parseInt(mOrden[2],10);
+
+        // Ignorar líneas que realmente son fechas
+        if (esFecha(ordenActual)) return;
+
+        // Ignorar líneas vacías
+        if (ordenActual === "") return;
+
+        let codigo = "OT";
+
+        const ordenBuscada = normalizar(ordenActual);
+
+        for (let item of catalogo){
+
+            if (
+    ordenBuscada === normalizar(item.texto) ||
+    ordenBuscada.includes(normalizar(item.texto)) ||
+    normalizar(item.texto).includes(ordenBuscada)
+) {
+                codigo = item.codigo;
+                break;
+            }
+
         }
 
-        if (esFecha(linea)) {
-            fechaActual = linea;
-            return;
-        }
+        registros.push({
 
-        if (esCantidad(linea)) {
-            if (ordenActual && fechaActual && cuadrilla) {
+            usuario: localStorage.getItem("usuario"),
+            cuadrilla,
+            fecha: fechaActual,
+            orden: ordenActual,
+            codigo,
+            cantidad
 
-                let codigo = "OT";
+        });
 
-                const ordenBuscada = normalizar(ordenActual);
+    }
 
-                for (let item of catalogo) {
-                    if (ordenBuscada.includes(normalizar(item.texto))) {
-                        codigo = item.codigo;
-                        break;
-                    }
-                }
-
-registros.push({
-    usuario: localStorage.getItem("usuario"),
-    cuadrilla,
-    fecha: fechaActual,
-    orden: ordenActual,
-    codigo,
-    cantidad: parseInt(linea, 10)
 });
 
-                ordenActual = "";
-            }
-            return;
-        }
-
-        ordenActual = linea;
-    });
-
 console.table(registros);
+
+const sinCatalogo = registros.filter(r => r.codigo === "OT");
+
+console.table(sinCatalogo);
+
+console.log("Sin catálogo:", sinCatalogo.length);
 
 let html = `
 <h3>✅ Vista previa (${registros.length} registros)</h3>
