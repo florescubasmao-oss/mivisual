@@ -432,3 +432,235 @@ alert(
 });
 
 }
+
+function mostrarImportarEfectividad(){
+
+    mostrarPantalla(`
+        <div style="padding:20px;max-width:900px;margin:auto;">
+            <h2 style="text-align:center;">📊 ACTUALIZAR EFECTIVIDAD</h2>
+            <br>
+
+            <div class="card">
+                Pega aquí la base descargada del sistema central.
+                <br><br>
+
+                <textarea
+                    id="textoEfectividad"
+                    style="width:100%;height:300px;border-radius:8px;padding:10px;"
+                    placeholder="Pega aquí la base de efectividad..."
+                ></textarea>
+
+                <br><br>
+
+                <button class="button_1" onclick="procesarEfectividad()">
+                    📊 PROCESAR EFECTIVIDAD
+                </button>
+
+                &nbsp;
+
+                <button class="button_1" onclick="mostrarAdministracion()">
+                    🏠 VOLVER
+                </button>
+
+                <br><br>
+
+                <div id="vistaPreviaEfectividad"></div>
+            </div>
+        </div>
+    `);
+}
+
+
+async function procesarEfectividad(){
+
+    let texto = document.getElementById("textoEfectividad").value;
+
+    texto = texto
+        .replace(/\u00A0/g, " ")
+        .trim();
+
+    if(texto === ""){
+        alert("Primero pega la base de efectividad.");
+        return;
+    }
+
+    const lineas = texto
+        .split(/\r?\n/)
+        .map(x => x.trim())
+        .filter(x => x.length > 0);
+
+    if(lineas.length < 2){
+        alert("La base pegada no tiene suficientes filas.");
+        return;
+    }
+
+    function limpiar(txt){
+        return (txt || "")
+            .toString()
+            .replace(/"/g, "")
+            .trim();
+    }
+
+    function numero(txt){
+        txt = limpiar(txt)
+            .replace("%", "")
+            .replace(",", ".");
+        return Number(txt) || 0;
+    }
+
+    function normalizar(txt){
+        return limpiar(txt)
+            .toUpperCase()
+            .normalize("NFD")
+            .replace(/[\u0300-\u036f]/g, "")
+            .replace(/\s+/g, " ")
+            .trim();
+    }
+
+    function separarFila(linea){
+        if(linea.includes("\t")){
+            return linea.split("\t").map(limpiar);
+        }
+
+        if(linea.includes(";")){
+            return linea.split(";").map(limpiar);
+        }
+
+        return linea.split(",").map(limpiar);
+    }
+
+    const encabezados = separarFila(lineas[0]).map(normalizar);
+
+    const idxCuadrilla = encabezados.findIndex(x =>
+        x.includes("CUADRILLA") ||
+        x.includes("ETIQUETAS") ||
+        x.includes("FILA")
+    );
+
+    const idxFecha = encabezados.findIndex(x =>
+        x.includes("ACTUALIZACION") ||
+        x.includes("ACTUALIZACIÓN") ||
+        x.includes("FECHA")
+    );
+
+    const idxFinalizada = encabezados.findIndex(x => x.includes("FINALIZADA"));
+    const idxCancelada = encabezados.findIndex(x => x.includes("CANCELADA"));
+    const idxRegestion = encabezados.findIndex(x => x.includes("REGESTION") || x.includes("REGESTIÓN"));
+    const idxReprogramado = encabezados.findIndex(x => x.includes("REPROGRAMADO"));
+    const idxTotal = encabezados.findIndex(x => x.includes("TOTAL"));
+
+    if(idxCuadrilla === -1 || idxFinalizada === -1 || idxCancelada === -1 || idxTotal === -1){
+        alert(
+            "La base no tiene las columnas necesarias.\n\n" +
+            "Debe tener como mínimo:\n" +
+            "- Cuadrilla o Etiquetas de fila\n" +
+            "- Finalizada\n" +
+            "- Cancelada\n" +
+            "- Total general"
+        );
+        return;
+    }
+
+    const usuario = localStorage.getItem("usuario") || "ADMIN";
+    const registros = [];
+
+    for(let i = 1; i < lineas.length; i++){
+
+        const c = separarFila(lineas[i]);
+
+        const cuadrilla = limpiar(c[idxCuadrilla]);
+
+        if(!cuadrilla) continue;
+        if(normalizar(cuadrilla).includes("TOTAL GENERAL")) continue;
+
+        const finalizada = numero(c[idxFinalizada]);
+        const cancelada = numero(c[idxCancelada]);
+        const regestion = idxRegestion >= 0 ? numero(c[idxRegestion]) : 0;
+        const reprogramado = idxReprogramado >= 0 ? numero(c[idxReprogramado]) : 0;
+        const total = numero(c[idxTotal]);
+        const fecha = idxFecha >= 0 ? limpiar(c[idxFecha]) : "";
+
+        if(total === 0) continue;
+
+        registros.push({
+            usuario: usuario,
+            cuadrilla: cuadrilla,
+            fecha: fecha,
+            finalizada: finalizada,
+            cancelada: cancelada,
+            regestion: regestion,
+            reprogramado: reprogramado,
+            total: total
+        });
+    }
+
+    if(registros.length === 0){
+        alert("No se encontraron registros válidos para procesar.");
+        return;
+    }
+
+    let html = `
+        <h3>✅ Vista previa (${registros.length} registros)</h3>
+
+        <table style="width:100%;border-collapse:collapse;background:white;color:black;">
+            <tr style="background:#1f4e79;color:white;">
+                <th>Cuadrilla</th>
+                <th>Finalizada</th>
+                <th>Cancelada</th>
+                <th>Regestión</th>
+                <th>Reprogramado</th>
+                <th>Total</th>
+            </tr>
+    `;
+
+    registros.forEach(r => {
+        html += `
+            <tr>
+                <td>${r.cuadrilla}</td>
+                <td style="text-align:center">${r.finalizada}</td>
+                <td style="text-align:center">${r.cancelada}</td>
+                <td style="text-align:center">${r.regestion}</td>
+                <td style="text-align:center">${r.reprogramado}</td>
+                <td style="text-align:center">${r.total}</td>
+            </tr>
+        `;
+    });
+
+    html += `</table>`;
+
+    document.getElementById("vistaPreviaEfectividad").innerHTML = html;
+
+    const url = "https://script.google.com/macros/s/AKfycbwQLJ_PKwb7ZE-MwznlJVFGgCcBcnesv7a6JltMIJbo3U4C_dxSzmIbtZoFJuDHcmxg/exec";
+
+    try{
+
+        const respuesta = await fetch(url, {
+            method: "POST",
+            body: JSON.stringify({
+                accion: "procesarEfectividad",
+                registros: registros
+            })
+        });
+
+        const textoRespuesta = await respuesta.text();
+        const res = JSON.parse(textoRespuesta);
+
+        if(res.ok){
+
+            alert(
+                "✅ EFECTIVIDAD ACTUALIZADA" +
+                "\n\nRegistros: " + res.registros +
+                "\n\nPeríodo: " + res.periodo +
+                "\n\nActualizado al: " + res.actualizadoAl +
+                "\n\nPromedio: " + (res.promedio * 100).toFixed(2) + "%"
+            );
+
+        }else{
+            alert("❌ Error: " + res.error);
+        }
+
+    }catch(err){
+        console.error(err);
+        alert("❌ Error al conectar con la API de efectividad.");
+    }
+}

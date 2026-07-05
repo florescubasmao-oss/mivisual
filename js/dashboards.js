@@ -1542,9 +1542,9 @@ function mostrarAdministracion(){
 
         <br>
 
-<div class="card" onclick="actualizarEfectividad()" style="cursor:pointer;">
+<div class="card" onclick="mostrarImportarEfectividad()" style="cursor:pointer;">
 📊 ACTUALIZAR EFECTIVIDAD
-<br><small>Actualizar desde hoja EFECTIVIDAD</small>
+<br><small>Importar efectividad desde base pegada</small>
 </div>
 
         <br>
@@ -1583,45 +1583,5 @@ function mostrarAdministracion(){
     `;
 
     mostrarPantalla(html);
-
-}
-
-async function actualizarEfectividad() {
-
-  const url = "https://script.google.com/macros/s/AKfycbyrqtbvW1-uYv-KvQ7pratKHLDUQLnI9uD9W5QIN0G4fwb-uU5Naogzjhj7qtb1sRaM/exec";
-
-  try {
-
-    const resp = await fetch(url, {
-      method: "POST",
-      body: JSON.stringify({
-        accion: "actualizarEfectividad"
-      })
-    });
-
-    const texto = await resp.text();
-    const res = JSON.parse(texto);
-
-    if (res.ok) {
-
-      alert(
-        "✅ EFECTIVIDAD ACTUALIZADA" +
-        "\nRegistros: " + res.registros +
-       "\nPeríodo: " + res.periodo +
-"\nActualizado al: " + res.actualizadoAl +
-        "\nPromedio: " + (res.promedio * 100).toFixed(2) + "%"
-      );
-
-    } else {
-
-      alert("❌ Error: " + res.error);
-
-    }
-
-  } catch (err) {
-
-    alert("❌ Error al actualizar efectividad: " + err.message);
-
-  }
 
 }
