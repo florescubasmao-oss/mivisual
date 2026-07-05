@@ -406,7 +406,7 @@ font-weight:bold;
 `
 + resultado;
   
-document.getElementById("resultadoProduccion").innerHTML = resultado;
+mostrarPantalla(resultado);
   
 }
 
@@ -682,7 +682,7 @@ data.detalle.forEach(r => {
 });
 
 
-    document.getElementById("pantalla").innerHTML = html;
+    mostrarPantalla(html);
 
 }
 
@@ -805,7 +805,7 @@ ${colorMes} Efectividad: ${efectividadMes.toFixed(2)}%
 `
 + resultado;
 
-document.getElementById("resultadoProduccion").innerHTML = resultado;
+mostrarPantalla(resultado);
 
 }
 
@@ -918,7 +918,7 @@ ${colorMes} Recableado: ${porcentajeMes.toFixed(2)}%<br><br>
 `
 + resultado;
 
-document.getElementById("resultadoProduccion").innerHTML = resultado;
+mostrarPantalla(resultado);
 
 }
 
@@ -1039,7 +1039,7 @@ ${colorMes} VTR / GAR: ${porcentajeMes.toFixed(2)}%<br><br>
 `
 + resultado;
 
-document.getElementById("resultadoProduccion").innerHTML = resultado;
+mostrarPantalla(resultado);
 
 }
 
@@ -1183,7 +1183,7 @@ break;
 
 }
 
-document.getElementById("resultadoProduccion").innerHTML = resultado;
+mostrarPantalla(resultado);
 
 }
 
@@ -1257,7 +1257,7 @@ ${icono} ${nombre}
 
 }
 
-document.getElementById("resultadoProduccion").innerHTML = resultado;
+mostrarPantalla(resultado);
 
 }
 
@@ -1306,7 +1306,7 @@ display:block;
 `;
 }
 
-document.getElementById("resultadoProduccion").innerHTML = resultado;
+mostrarPantalla(resultado);
 
 }
 
@@ -1367,14 +1367,14 @@ ABRIR
 `;
 }
 
-document.getElementById("resultadoProduccion").innerHTML = resultado;
+mostrarPantalla(resultado);
 
 }
 
 
 function mostrarDashboardSupervisor(){
 
-document.getElementById("resultadoProduccion").innerHTML = `
+mostrarPantalla(`
 
 <div class="dashboard">
 
@@ -1445,7 +1445,7 @@ Aquí aparecerán las cuadrillas.
 
 </div>
 
-`;
+`);
 
 setTimeout(() => {
     consultarDashboard();
@@ -2487,13 +2487,13 @@ function mostrarAdministracion(){
 
     `;
 
-    document.getElementById("pantalla").innerHTML = html;
+    mostrarPantalla(html);
 
 }
 
 function mostrarImportarProduccion(){
 
-    document.getElementById("pantalla").innerHTML = `
+    mostrarPantalla(`
         <div style="padding:20px;max-width:900px;margin:auto;">
             <h2 style="text-align:center;">📥 ACTUALIZAR PRODUCCIÓN</h2>
             <br>
@@ -2526,7 +2526,7 @@ style="width:100%;height:300px;border-radius:8px;padding:10px;">
             </div>
           
         </div>
-    `;
+    `);
 }
 
 async function procesarProduccion() {

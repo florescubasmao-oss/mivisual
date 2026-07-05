@@ -79,17 +79,8 @@ async function login() {
 }
 
 function volverInicio(){
-
-    const pantalla = document.getElementById("pantalla");
-    const resultado = document.getElementById("resultadoProduccion");
-    const menu = document.getElementById("menuPrincipal");
-
-    if (pantalla) pantalla.innerHTML = "";
-    if (resultado) resultado.innerHTML = "";
-    if (menu) menu.style.display = "grid";
-
+    limpiarPantalla();
     configurarMenu();
-
     setTimeout(() => {
         window.scrollTo({ top: 0, behavior: "smooth" });
     }, 300);
@@ -99,6 +90,28 @@ function volverInicio(){
 function mostrarCard(id, estado){
     const el = document.getElementById(id);
     if (el) el.style.display = estado;
+}
+
+
+function mostrarPantalla(html){
+    const pantalla = document.getElementById("pantalla");
+    const resultado = document.getElementById("resultadoProduccion");
+    const menu = document.getElementById("menuPrincipal");
+
+    if (resultado) resultado.innerHTML = "";
+    if (menu) menu.style.display = "none";
+    if (pantalla) pantalla.innerHTML = html;
+
+    setTimeout(() => {
+        window.scrollTo({ top: 0, behavior: "smooth" });
+    }, 100);
+}
+
+function limpiarPantalla(){
+    const pantalla = document.getElementById("pantalla");
+    const resultado = document.getElementById("resultadoProduccion");
+    if (pantalla) pantalla.innerHTML = "";
+    if (resultado) resultado.innerHTML = "";
 }
 
 function configurarMenu(){
