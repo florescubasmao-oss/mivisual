@@ -1,4 +1,4 @@
-console.log("LOGIN.JS CARGADO");
+// MI VISUAL - archivo modularizado
 
 async function login() {
 

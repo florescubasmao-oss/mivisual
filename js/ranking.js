@@ -1,4 +1,4 @@
-console.log("RANKING.JS CARGADO");
+// MI VISUAL - archivo modularizado
 
 async function mostrarRanking(){
 

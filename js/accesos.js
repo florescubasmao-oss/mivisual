@@ -1,4 +1,4 @@
-console.log("ACCESOS.JS CARGADO");
+// MI VISUAL - archivo modularizado
 
 async function mostrarAccesos(){
 
@@ -181,83 +181,6 @@ ABRIR
 }
 
 mostrarPantalla(resultado);
-
-}
-
-function mostrarDashboardJefatura(){
-
-    alert("Dashboard Jefatura - En construcción");
-
-}
-
-function mostrarAdministracion(){
-
-    let html = `
-    <div style="padding:20px;max-width:900px;margin:auto;">
-
-        <h2>⚙️ ADMINISTRACIÓN</h2>
-
-        </h2>
-
-        <br>
-
-        <div class="card"
-        onclick="mostrarImportarProduccion()">
-
-        📥 ACTUALIZAR PRODUCCIÓN
-
-        <br><br>
-
-        <small>
-        Importar producción desde la hoja
-        IMPORTAR_PRODUCCION
-        </small>
-
-        </div>
-
-        <br>
-
-        <div class="card">
-        📊 ACTUALIZAR EFECTIVIDAD
-        <br><small>Próximamente</small>
-        </div>
-
-        <br>
-
-        <div class="card">
-        🔁 ACTUALIZAR % RECABLEADO
-        <br><small>Próximamente</small>
-        </div>
-
-        <br>
-
-        <div class="card">
-        🛡️ ACTUALIZAR VTR/GAR
-        <br><small>Próximamente</small>
-        </div>
-
-        <br>
-
-        <div class="card">
-        👥 ACTUALIZAR USUARIOS
-        <br><small>Próximamente</small>
-        </div>
-
-        <br><br>
-
-        <button
-        class="button_1"
-        onclick="volverInicio()">
-
-        🏠 VOLVER
-
-        </button>
-
-    </div>
-
-    `;
-
-    mostrarPantalla(html);
 
 }
 

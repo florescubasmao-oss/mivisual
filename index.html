@@ -116,18 +116,23 @@ cursor:pointer;
 Visual Connections SAC - Zona Norte
 </div>
 
-
-
 </div>
+
+<script src="./js/utilidades.js"></script>
+<script src="./js/dashboards.js"></script>
+<script src="./js/indicadores.js"></script>
+<script src="./js/ranking.js"></script>
+<script src="./js/accesos.js"></script>
+<script src="./js/app.js"></script>
+
+
 
 <script>
 if ("serviceWorker" in navigator) {
-
     navigator.serviceWorker
       .register("./sw.js")
       .then(()=>console.log("SW OK"))
       .catch(err=>console.log(err));
-
 }
 </script>
 

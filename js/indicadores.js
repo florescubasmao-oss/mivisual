@@ -1,4 +1,4 @@
-console.log("INDICADORES.JS CARGADO");
+// MI VISUAL - archivo modularizado
 
 async function mostrarEfectividad(){
 

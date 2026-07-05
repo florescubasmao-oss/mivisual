@@ -1,14 +1,30 @@
-console.log("UTILIDADES.JS CARGADO");
+// MI VISUAL - archivo modularizado
 
-window.addEventListener("load", function () {
+function mostrarCard(id, estado){
+    const el = document.getElementById(id);
+    if (el) el.style.display = estado;
+}
 
-    setTimeout(function () {
+function mostrarPantalla(html){
+    const pantalla = document.getElementById("pantalla");
+    const resultado = document.getElementById("resultadoProduccion");
+    const menu = document.getElementById("menuPrincipal");
 
-        document.getElementById("pantallaCarga").style.display = "none";
-        document.getElementById("contenidoApp").style.display = "block";
+    if (resultado) resultado.innerHTML = "";
+    if (menu) menu.style.display = "none";
+    if (pantalla) pantalla.innerHTML = html;
 
-    },2000);
-});
+    setTimeout(() => {
+        window.scrollTo({ top: 0, behavior: "smooth" });
+    }, 100);
+}
+
+function limpiarPantalla(){
+    const pantalla = document.getElementById("pantalla");
+    const resultado = document.getElementById("resultadoProduccion");
+    if (pantalla) pantalla.innerHTML = "";
+    if (resultado) resultado.innerHTML = "";
+}
 
 function toggleDetalle(id, btn){
 

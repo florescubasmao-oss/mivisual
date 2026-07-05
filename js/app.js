@@ -1,3 +1,5 @@
+// MI VISUAL - archivo modularizado
+
 console.log("APP.JS CARGADO");
 
 function volverInicio(){
@@ -6,34 +8,6 @@ function volverInicio(){
     setTimeout(() => {
         window.scrollTo({ top: 0, behavior: "smooth" });
     }, 300);
-}
-
-
-function mostrarCard(id, estado){
-    const el = document.getElementById(id);
-    if (el) el.style.display = estado;
-}
-
-
-function mostrarPantalla(html){
-    const pantalla = document.getElementById("pantalla");
-    const resultado = document.getElementById("resultadoProduccion");
-    const menu = document.getElementById("menuPrincipal");
-
-    if (resultado) resultado.innerHTML = "";
-    if (menu) menu.style.display = "none";
-    if (pantalla) pantalla.innerHTML = html;
-
-    setTimeout(() => {
-        window.scrollTo({ top: 0, behavior: "smooth" });
-    }, 100);
-}
-
-function limpiarPantalla(){
-    const pantalla = document.getElementById("pantalla");
-    const resultado = document.getElementById("resultadoProduccion");
-    if (pantalla) pantalla.innerHTML = "";
-    if (resultado) resultado.innerHTML = "";
 }
 
 function configurarMenu(){
@@ -92,3 +66,13 @@ function configurarMenu(){
         mostrarCard("cardAdministracion", "block");
     }
 }
+
+window.addEventListener("load", function () {
+
+    setTimeout(function () {
+
+        document.getElementById("pantallaCarga").style.display = "none";
+        document.getElementById("contenidoApp").style.display = "block";
+
+    },2000);
+});
