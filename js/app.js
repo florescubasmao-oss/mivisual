@@ -85,10 +85,14 @@ function volverInicio(){
     document.getElementById("btnInicio").style.display = "inline-block";
     document.getElementById("menuPrincipal").style.display = "grid";
 
-    window.scrollTo({
-        top: 0,
-        behavior: "smooth"
-    });
+    setTimeout(() => {
+
+        window.scrollTo({
+            top: 0,
+            behavior: "smooth"
+        });
+
+    }, 200);
 
 }
 
