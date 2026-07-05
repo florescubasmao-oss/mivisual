@@ -1607,7 +1607,8 @@ async function actualizarEfectividad() {
       alert(
         "✅ EFECTIVIDAD ACTUALIZADA" +
         "\nRegistros: " + res.registros +
-        "\nMes: " + res.mes +
+       "\nPeríodo: " + res.periodo +
+"\nActualizado al: " + res.actualizadoAl +
         "\nPromedio: " + (res.promedio * 100).toFixed(2) + "%"
       );
 
