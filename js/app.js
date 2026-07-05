@@ -92,7 +92,7 @@ function volverInicio(){
             behavior: "smooth"
         });
 
-    }, 200);
+    }, 300);
 
 }
 
