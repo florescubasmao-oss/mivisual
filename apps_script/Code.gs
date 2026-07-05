@@ -1,10 +1,23 @@
 const HOJA_PRODUCCION = "PRODUCCION_APP";
 const HOJA_EFECTIVIDAD = "EFECTIVIDAD";
+const HOJA_RECABLEADO = "POR RECABLEADO";
 
 function doGet() {
   return ContentService
     .createTextOutput("MI VISUAL API OK")
     .setMimeType(ContentService.MimeType.TEXT);
+}
+
+/* =========================
+   FUNCIONES GENERALES
+========================= */
+
+function normalizarCuadrilla(nombre) {
+  return (nombre || "")
+    .toString()
+    .replace(/^P\s+(\d+)/i, "P$1")
+    .replace(/\s+/g, " ")
+    .trim();
 }
 
 function normalizarFecha(fecha) {
@@ -31,15 +44,11 @@ function obtenerMes(fecha) {
   }
 
   const texto = fecha.toString();
-
   const partes = texto.split("/");
+
   if (partes.length == 3) {
     return meses[Number(partes[1]) - 1];
   }
-
-  if (texto.includes("Jun")) return "JUNIO";
-  if (texto.includes("Jul")) return "JULIO";
-  if (texto.includes("Aug")) return "AGOSTO";
 
   return texto.toUpperCase();
 }
@@ -53,195 +62,12 @@ function formatearFecha(fecha) {
 }
 
 function generarID(cuadrilla, fecha, codigo) {
-  return cuadrilla.trim() + "|" + normalizarFecha(fecha) + "|" + codigo.trim();
+  return normalizarCuadrilla(cuadrilla) + "|" + normalizarFecha(fecha) + "|" + codigo.toString().trim();
 }
 
-function actualizarEfectividad() {
-  const ss = SpreadsheetApp.getActiveSpreadsheet();
-  const hoja = ss.getSheetByName(HOJA_EFECTIVIDAD);
-
-  if (!hoja) throw new Error("No existe la hoja EFECTIVIDAD");
-
-  const datos = hoja.getDataRange().getValues();
-
-  if (datos.length < 2) {
-    throw new Error("La hoja EFECTIVIDAD no tiene datos");
-  }
-
-  const salida = [[
-    "ID",
-    "Usuario",
-    "Cuadrilla",
-    "ACTUALIZACION",
-    "Finalizada",
-    "Cancelada",
-    "Regestión",
-    "Reprogramado",
-    "Total General",
-    "Efectividad"
-  ]];
-
-  let totalFinalizadas = 0;
-  let totalGeneral = 0;
-  let fechaMasReciente = null;
-
-  for (let i = 1; i < datos.length; i++) {
-    const fila = datos[i];
-
-    const id = fila[0] || i;
-    const usuario = fila[1];
-    const cuadrilla = fila[2];
-    const fecha = fila[3];
-
-    const finalizada = Number(fila[4]) || 0;
-    const cancelada = Number(fila[5]) || 0;
-    const regestion = Number(fila[6]) || 0;
-    const reprogramado = Number(fila[7]) || 0;
-    const total = Number(fila[8]) || 0;
-
-    if (!usuario || !cuadrilla || total === 0) continue;
-
-    if (fecha instanceof Date) {
-      if (fechaMasReciente === null || fecha > fechaMasReciente) {
-        fechaMasReciente = fecha;
-      }
-    }
-
-    const efectividad = finalizada / total;
-
-    salida.push([
-      id,
-      usuario,
-      cuadrilla,
-      fecha,
-      finalizada,
-      cancelada,
-      regestion,
-      reprogramado,
-      total,
-      efectividad
-    ]);
-
-    totalFinalizadas += finalizada;
-    totalGeneral += total;
-  }
-
-  const periodo = fechaMasReciente ? obtenerMes(fechaMasReciente) : "";
-  const actualizadoAl = fechaMasReciente ? formatearFecha(fechaMasReciente) : "";
-
-  hoja.clearContents();
-  hoja.getRange(1, 1, salida.length, salida[0].length).setValues(salida);
-
-  if (salida.length > 1) {
-    hoja.getRange(2, 10, salida.length - 1, 1).setNumberFormat("0.00%");
-  }
-
-  return {
-    ok: true,
-    modulo: "EFECTIVIDAD",
-    registros: salida.length - 1,
-    periodo: periodo,
-    actualizadoAl: actualizadoAl,
-    promedio: totalGeneral > 0 ? totalFinalizadas / totalGeneral : 0
-  };
-}
-
-function procesarEfectividad(registros, periodoManual, actualizadoAlManual) {
-  const ss = SpreadsheetApp.getActiveSpreadsheet();
-  const hoja = ss.getSheetByName(HOJA_EFECTIVIDAD);
-
-  if (!hoja) throw new Error("No existe la hoja EFECTIVIDAD");
-
-  if (!registros || registros.length === 0) {
-    throw new Error("No se recibieron registros de efectividad");
-  }
-
-  const salida = [[
-    "ID",
-    "Usuario",
-    "Cuadrilla",
-    "ACTUALIZACION",
-    "Finalizada",
-    "Cancelada",
-    "Regestión",
-    "Reprogramado",
-    "Total General",
-    "Efectividad"
-  ]];
-
-  let totalFinalizadas = 0;
-  let totalGeneral = 0;
-  let fechaMasReciente = null;
-
-  registros.forEach((r, i) => {
-    const usuario = r.usuario || "ADMIN";
-    const cuadrilla = r.cuadrilla || "";
-    const fecha = r.fecha || actualizadoAlManual || "";
-
-    const finalizada = Number(r.finalizada) || 0;
-    const cancelada = Number(r.cancelada) || 0;
-    const regestion = Number(r.regestion) || 0;
-    const reprogramado = Number(r.reprogramado) || 0;
-    const total = Number(r.total) || 0;
-
-    if (!cuadrilla || total === 0) return;
-
-    const efectividad = finalizada / total;
-    const id = cuadrilla.trim() + "|" + fecha + "|" + (i + 1);
-
-    salida.push([
-      id,
-      usuario,
-      cuadrilla,
-      fecha,
-      finalizada,
-      cancelada,
-      regestion,
-      reprogramado,
-      total,
-      efectividad
-    ]);
-
-    totalFinalizadas += finalizada;
-    totalGeneral += total;
-
-    if (fecha) {
-      const partes = fecha.toString().split("/");
-
-      if (partes.length === 3) {
-        const f = new Date(
-          Number(partes[2]),
-          Number(partes[1]) - 1,
-          Number(partes[0])
-        );
-
-        if (!fechaMasReciente || f > fechaMasReciente) {
-          fechaMasReciente = f;
-        }
-      }
-    }
-  });
-
-  if (salida.length <= 1) {
-    throw new Error("No se encontraron registros válidos");
-  }
-
-  const periodo = periodoManual || (fechaMasReciente ? obtenerMes(fechaMasReciente) : "");
-  const actualizadoAl = actualizadoAlManual || (fechaMasReciente ? formatearFecha(fechaMasReciente) : "");
-
-  hoja.clearContents();
-  hoja.getRange(1, 1, salida.length, salida[0].length).setValues(salida);
-  hoja.getRange(2, 10, salida.length - 1, 1).setNumberFormat("0.00%");
-
-  return {
-    ok: true,
-    modulo: "EFECTIVIDAD",
-    registros: salida.length - 1,
-    periodo: periodo,
-    actualizadoAl: actualizadoAl,
-    promedio: totalGeneral > 0 ? totalFinalizadas / totalGeneral : 0
-  };
-}
+/* =========================
+   PRODUCCIÓN
+========================= */
 
 function procesarProduccion(registros) {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
@@ -274,13 +100,14 @@ function procesarProduccion(registros) {
   let actualizados = 0;
 
   registros.forEach(r => {
-    const id = generarID(r.cuadrilla, r.fecha, r.codigo);
+    const cuadrilla = normalizarCuadrilla(r.cuadrilla);
+    const id = generarID(cuadrilla, r.fecha, r.codigo);
     const ahora = new Date();
 
     if (indice[id]) {
       hoja.getRange(indice[id], 1, 1, 7).setValues([[
         r.usuario,
-        r.cuadrilla,
+        cuadrilla,
         r.fecha,
         r.codigo,
         r.cantidad,
@@ -292,7 +119,7 @@ function procesarProduccion(registros) {
     } else {
       insertar.push([
         r.usuario,
-        r.cuadrilla,
+        cuadrilla,
         r.fecha,
         r.codigo,
         r.cantidad,
@@ -316,12 +143,223 @@ function procesarProduccion(registros) {
   };
 }
 
+/* =========================
+   EFECTIVIDAD
+========================= */
+
+function procesarEfectividad(registros, periodoManual, actualizadoAlManual) {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const hoja = ss.getSheetByName(HOJA_EFECTIVIDAD);
+
+  if (!hoja) throw new Error("No existe la hoja EFECTIVIDAD");
+
+  if (!registros || registros.length === 0) {
+    throw new Error("No se recibieron registros de efectividad");
+  }
+
+  const salida = [[
+    "ID",
+    "Usuario",
+    "Cuadrilla",
+    "ACTUALIZACION",
+    "Finalizada",
+    "Cancelada",
+    "Regestión",
+    "Reprogramado",
+    "Total General",
+    "Efectividad"
+  ]];
+
+  let totalFinalizadas = 0;
+  let totalGeneral = 0;
+
+  registros.forEach((r, i) => {
+    const usuario = r.usuario || "ADMIN";
+    const cuadrilla = normalizarCuadrilla(r.cuadrilla);
+    const fecha = actualizadoAlManual || r.fecha || "";
+
+    const finalizada = Number(r.finalizada) || 0;
+    const cancelada = Number(r.cancelada) || 0;
+    const regestion = Number(r.regestion) || 0;
+    const reprogramado = Number(r.reprogramado) || 0;
+    const total = Number(r.total) || 0;
+
+    if (!cuadrilla || total === 0) return;
+
+    const efectividad = finalizada / total;
+    const id = cuadrilla + "|" + (periodoManual || "") + "|" + (i + 1);
+
+    salida.push([
+      id,
+      usuario,
+      cuadrilla,
+      fecha,
+      finalizada,
+      cancelada,
+      regestion,
+      reprogramado,
+      total,
+      efectividad
+    ]);
+
+    totalFinalizadas += finalizada;
+    totalGeneral += total;
+  });
+
+  if (salida.length <= 1) {
+    throw new Error("No se encontraron registros válidos");
+  }
+
+  const periodo = periodoManual || "";
+  const actualizadoAl = actualizadoAlManual || "";
+
+  hoja.clearContents();
+  hoja.getRange(1, 1, salida.length, salida[0].length).setValues(salida);
+  hoja.getRange(2, 10, salida.length - 1, 1).setNumberFormat("0.00%");
+
+  return {
+    ok: true,
+    modulo: "EFECTIVIDAD",
+    registros: salida.length - 1,
+    periodo: periodo,
+    actualizadoAl: actualizadoAl,
+    promedio: totalGeneral > 0 ? totalFinalizadas / totalGeneral : 0
+  };
+}
+
+/* =========================
+   RECABLEADO
+========================= */
+
+function procesarRecableado(registros, periodoManual, actualizadoAlManual) {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const hoja = ss.getSheetByName(HOJA_RECABLEADO);
+
+  if (!hoja) throw new Error("No existe la hoja POR RECABLEADO");
+
+  if (!registros || registros.length === 0) {
+    throw new Error("No se recibieron registros de recableado");
+  }
+
+  const salida = [[
+    "ID",
+    "Usuario",
+    "Cuadrilla",
+    "ACTUALIZACION",
+    "los rojo asignadas",
+    "Recableados",
+    "PORCENTAJE"
+  ]];
+
+  let totalRojoGeneral = 0;
+  let totalRecableados = 0;
+
+  registros.forEach((r, i) => {
+    const usuario = r.usuario || "ADMIN";
+    const cuadrilla = normalizarCuadrilla(r.cuadrilla);
+    const fecha = actualizadoAlManual || "";
+
+    const totalRojo = Number(r.totalRojo) || 0;
+    const recableados = Number(r.recableados) || 0;
+
+    if (!cuadrilla || totalRojo === 0) return;
+
+    const porcentaje = recableados / totalRojo;
+    const id = cuadrilla + "|" + (periodoManual || "") + "|" + (i + 1);
+
+    salida.push([
+      id,
+      usuario,
+      cuadrilla,
+      fecha,
+      totalRojo,
+      recableados,
+      porcentaje
+    ]);
+
+    totalRojoGeneral += totalRojo;
+    totalRecableados += recableados;
+  });
+
+  if (salida.length <= 1) {
+    throw new Error("No se encontraron registros válidos de recableado");
+  }
+
+  const periodo = periodoManual || "";
+  const actualizadoAl = actualizadoAlManual || "";
+
+  hoja.clearContents();
+  hoja.getRange(1, 1, salida.length, salida[0].length).setValues(salida);
+  hoja.getRange(2, 7, salida.length - 1, 1).setNumberFormat("0.00%");
+
+  return {
+    ok: true,
+    modulo: "RECABLEADO",
+    registros: salida.length - 1,
+    periodo: periodo,
+    actualizadoAl: actualizadoAl,
+    promedio: totalRojoGeneral > 0 ? totalRecableados / totalRojoGeneral : 0
+  };
+}
+
+/* =========================
+   EFECTIVIDAD MODO ANTERIOR
+========================= */
+
+function actualizarEfectividad() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const hoja = ss.getSheetByName(HOJA_EFECTIVIDAD);
+
+  if (!hoja) throw new Error("No existe la hoja EFECTIVIDAD");
+
+  const datos = hoja.getDataRange().getValues();
+
+  if (datos.length < 2) {
+    throw new Error("La hoja EFECTIVIDAD no tiene datos");
+  }
+
+  const registros = [];
+
+  for (let i = 1; i < datos.length; i++) {
+    const fila = datos[i];
+
+    registros.push({
+      usuario: fila[1],
+      cuadrilla: fila[2],
+      fecha: fila[3],
+      finalizada: fila[4],
+      cancelada: fila[5],
+      regestion: fila[6],
+      reprogramado: fila[7],
+      total: fila[8]
+    });
+  }
+
+  return procesarEfectividad(registros, "", "");
+}
+
+/* =========================
+   API PRINCIPAL
+========================= */
+
 function doPost(e) {
   try {
     const data = JSON.parse(e.postData.contents);
 
     if (data.accion === "procesarEfectividad") {
       const respuesta = procesarEfectividad(
+        data.registros,
+        data.periodo,
+        data.actualizadoAl
+      );
+
+      return ContentService
+        .createTextOutput(JSON.stringify(respuesta))
+        .setMimeType(ContentService.MimeType.JSON);
+    }
+
+    if (data.accion === "procesarRecableado") {
+      const respuesta = procesarRecableado(
         data.registros,
         data.periodo,
         data.actualizadoAl

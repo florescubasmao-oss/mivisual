@@ -1549,9 +1549,9 @@ function mostrarAdministracion(){
 
         <br>
 
-        <div class="card">
+        <div class="card" onclick="mostrarImportarRecableado()" style="cursor:pointer;">
         🔁 ACTUALIZAR % RECABLEADO
-        <br><small>Próximamente</small>
+        <br><small>Importar recableado desde base pegada</small>
         </div>
 
         <br>

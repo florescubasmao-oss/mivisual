@@ -396,7 +396,7 @@ html += "</table>";
 
 document.getElementById("vistaPrevia").innerHTML = html;
 
-const url = "https://script.google.com/macros/s/AKfycbx-NZ7WfllSRNWMaHTSgaUR2bexmnH3qCzBryczxRoCXKM_p8k9QeiksUiQs4ycvt-O/exec";
+const url = "https://script.google.com/macros/s/AKfycbwxrKYIpSx2WZheF4r7EdKcM67qca5oMiJiddYAF5gDtHTNuo4rEQmybxacD_X2YDmY/exec";
 
 fetch(url, {
     method: "POST",
@@ -672,7 +672,7 @@ async function procesarEfectividad(){
 
     document.getElementById("vistaPreviaEfectividad").innerHTML = html;
 
-    const url = "https://script.google.com/macros/s/AKfycbx-NZ7WfllSRNWMaHTSgaUR2bexmnH3qCzBryczxRoCXKM_p8k9QeiksUiQs4ycvt-O/exec";
+    const url = "https://script.google.com/macros/s/AKfycbwxrKYIpSx2WZheF4r7EdKcM67qca5oMiJiddYAF5gDtHTNuo4rEQmybxacD_X2YDmY/exec";
 
     try{
 
@@ -706,5 +706,279 @@ async function procesarEfectividad(){
     }catch(err){
         console.error(err);
         alert("❌ Error al conectar con la API de efectividad.");
+    }
+}
+
+
+
+function mostrarImportarRecableado(){
+
+    mostrarPantalla(`
+        <div style="padding:20px;max-width:900px;margin:auto;">
+            <h2 style="text-align:center;">🔁 ACTUALIZAR % RECABLEADO</h2>
+            <br>
+
+            <div class="card">
+                <label style="font-weight:bold;">Período</label>
+                <select
+                    id="periodoRecableado"
+                    style="width:100%;padding:10px;border-radius:8px;margin-top:6px;"
+                >
+                    <option value="">Seleccione período</option>
+                    <option value="ENERO">ENERO</option>
+                    <option value="FEBRERO">FEBRERO</option>
+                    <option value="MARZO">MARZO</option>
+                    <option value="ABRIL">ABRIL</option>
+                    <option value="MAYO">MAYO</option>
+                    <option value="JUNIO">JUNIO</option>
+                    <option value="JULIO">JULIO</option>
+                    <option value="AGOSTO">AGOSTO</option>
+                    <option value="SEPTIEMBRE">SEPTIEMBRE</option>
+                    <option value="OCTUBRE">OCTUBRE</option>
+                    <option value="NOVIEMBRE">NOVIEMBRE</option>
+                    <option value="DICIEMBRE">DICIEMBRE</option>
+                </select>
+
+                <br><br>
+
+                <label style="font-weight:bold;">Actualizado al</label>
+                <input
+                    type="date"
+                    id="fechaRecableado"
+                    style="width:100%;padding:10px;border-radius:8px;margin-top:6px;"
+                >
+
+                <br><br>
+
+                Pega aquí la base de recableados descargada del sistema central.
+                <br><br>
+
+                <textarea
+                    id="textoRecableado"
+                    style="width:100%;height:300px;border-radius:8px;padding:10px;"
+                    placeholder="Pega aquí la base de recableado..."
+                ></textarea>
+
+                <br><br>
+
+                <button class="button_1" onclick="procesarRecableado()">
+                    🔁 PROCESAR RECABLEADO
+                </button>
+
+                &nbsp;
+
+                <button class="button_1" onclick="mostrarAdministracion()">
+                    🏠 VOLVER
+                </button>
+
+                <br><br>
+
+                <div id="vistaPreviaRecableado"></div>
+            </div>
+        </div>
+    `);
+}
+
+
+async function procesarRecableado(){
+
+    const periodo = document.getElementById("periodoRecableado").value;
+    const fechaInput = document.getElementById("fechaRecableado").value;
+
+    if(!periodo || !fechaInput){
+        alert("Selecciona el período y la fecha de actualización.");
+        return;
+    }
+
+    const partesFecha = fechaInput.split("-");
+    const actualizadoAl = partesFecha[2] + "/" + partesFecha[1] + "/" + partesFecha[0];
+
+    let texto = document.getElementById("textoRecableado").value;
+
+    texto = texto
+        .replace(/\u00A0/g, " ")
+        .trim();
+
+    if(texto === ""){
+        alert("Primero pega la base de recableado.");
+        return;
+    }
+
+    const lineas = texto
+        .split(/\r?\n/)
+        .map(x => x.trim())
+        .filter(x => x.length > 0);
+
+    if(lineas.length < 2){
+        alert("La base pegada no tiene suficientes filas.");
+        return;
+    }
+
+    function limpiar(txt){
+        return (txt || "")
+            .toString()
+            .replace(/"/g, "")
+            .trim();
+    }
+
+    function numero(txt){
+        return Number(
+            limpiar(txt)
+                .replace("%", "")
+                .replace(",", ".")
+        ) || 0;
+    }
+
+    function normalizar(txt){
+        return limpiar(txt)
+            .toUpperCase()
+            .normalize("NFD")
+            .replace(/[\u0300-\u036f]/g, "")
+            .replace(/\s+/g, " ")
+            .trim();
+    }
+
+    function normalizarCuadrilla(txt){
+        return limpiar(txt)
+            .replace(/^P\s+(\d+)/i, "P$1")
+            .replace(/\s+/g, " ")
+            .trim();
+    }
+
+    function separarLinea(linea){
+        if(linea.includes("\t")){
+            const partes = linea.split("\t").map(limpiar);
+            return {
+                descripcion: partes.slice(0, -1).join(" ").trim() || partes[0],
+                cantidad: numero(partes[partes.length - 1])
+            };
+        }
+
+        const match = linea.match(/^(.*?)(\d+(?:[\.,]\d+)?)$/);
+        if(match){
+            return {
+                descripcion: limpiar(match[1]),
+                cantidad: numero(match[2])
+            };
+        }
+
+        return {
+            descripcion: limpiar(linea),
+            cantidad: 0
+        };
+    }
+
+    const usuario = localStorage.getItem("usuario") || "ADMIN";
+    const registros = [];
+    let actual = null;
+
+    lineas.forEach(linea => {
+
+        const item = separarLinea(linea);
+        const descripcionNormalizada = normalizar(item.descripcion);
+
+        if(/^P\s*\d+\b/i.test(item.descripcion)){
+            if(actual){
+                registros.push(actual);
+            }
+
+            actual = {
+                usuario: usuario,
+                cuadrilla: normalizarCuadrilla(item.descripcion),
+                totalRojo: item.cantidad,
+                recableados: 0
+            };
+
+            return;
+        }
+
+        if(!actual) return;
+
+        if(descripcionNormalizada.includes("RECABLEADO")){
+            actual.recableados += item.cantidad;
+        }
+
+    });
+
+    if(actual){
+        registros.push(actual);
+    }
+
+    const registrosValidos = registros
+        .filter(r => r.cuadrilla && r.totalRojo > 0)
+        .map(r => ({
+            usuario: r.usuario,
+            cuadrilla: r.cuadrilla,
+            totalRojo: r.totalRojo,
+            recableados: r.recableados,
+            porcentaje: r.totalRojo > 0 ? r.recableados / r.totalRojo : 0
+        }));
+
+    if(registrosValidos.length === 0){
+        alert("No se encontraron registros válidos de recableado.");
+        return;
+    }
+
+    let html = `
+        <h3>✅ Vista previa (${registrosValidos.length} registros)</h3>
+
+        <table style="width:100%;border-collapse:collapse;background:white;color:black;">
+            <tr style="background:#1f4e79;color:white;">
+                <th>Cuadrilla</th>
+                <th>Total Rojo</th>
+                <th>Recableados</th>
+                <th>Porcentaje</th>
+            </tr>
+    `;
+
+    registrosValidos.forEach(r => {
+        html += `
+            <tr>
+                <td>${r.cuadrilla}</td>
+                <td style="text-align:center">${r.totalRojo}</td>
+                <td style="text-align:center">${r.recableados}</td>
+                <td style="text-align:center">${(r.porcentaje * 100).toFixed(2)}%</td>
+            </tr>
+        `;
+    });
+
+    html += `</table>`;
+
+    document.getElementById("vistaPreviaRecableado").innerHTML = html;
+
+    const url = "https://script.google.com/macros/s/AKfycbwxrKYIpSx2WZheF4r7EdKcM67qca5oMiJiddYAF5gDtHTNuo4rEQmybxacD_X2YDmY/exec";
+
+    try{
+
+        const respuesta = await fetch(url, {
+            method: "POST",
+            body: JSON.stringify({
+                accion: "procesarRecableado",
+                periodo: periodo,
+                actualizadoAl: actualizadoAl,
+                registros: registrosValidos
+            })
+        });
+
+        const textoRespuesta = await respuesta.text();
+        const res = JSON.parse(textoRespuesta);
+
+        if(res.ok){
+
+            alert(
+                "✅ RECABLEADO ACTUALIZADO" +
+                "\n\nRegistros: " + res.registros +
+                "\n\nPeríodo: " + res.periodo +
+                "\n\nActualizado al: " + res.actualizadoAl +
+                "\n\nPromedio: " + (res.promedio * 100).toFixed(2) + "%"
+            );
+
+        }else{
+            alert("❌ Error: " + res.error);
+        }
+
+    }catch(err){
+        console.error(err);
+        alert("❌ Error al conectar con la API de recableado.");
     }
 }
