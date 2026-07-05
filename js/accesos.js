@@ -396,7 +396,7 @@ html += "</table>";
 
 document.getElementById("vistaPrevia").innerHTML = html;
 
-const url = "https://script.google.com/macros/s/AKfycbwQLJ_PKwb7ZE-MwznlJVFGgCcBcnesv7a6JltMIJbo3U4C_dxSzmIbtZoFJuDHcmxg/exec";
+const url = "https://script.google.com/macros/s/AKfycbxI2vaN2ZfJh0jQHeOIFPmAt2l7FQY-4zHWGGsRqKAGQSv4-2cS1M2cQV6TFQiJXIpK/exec";
 
 fetch(url, {
     method: "POST",
@@ -672,7 +672,7 @@ async function procesarEfectividad(){
 
     document.getElementById("vistaPreviaEfectividad").innerHTML = html;
 
-    const url = "https://script.google.com/macros/s/AKfycbwQLJ_PKwb7ZE-MwznlJVFGgCcBcnesv7a6JltMIJbo3U4C_dxSzmIbtZoFJuDHcmxg/exec";
+    const url = "https://script.google.com/macros/s/AKfycbxI2vaN2ZfJh0jQHeOIFPmAt2l7FQY-4zHWGGsRqKAGQSv4-2cS1M2cQV6TFQiJXIpK/exec";
 
     try{
 
