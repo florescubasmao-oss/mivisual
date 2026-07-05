@@ -982,3 +982,232 @@ async function procesarRecableado(){
         alert("❌ Error al conectar con la API de recableado.");
     }
 }
+
+
+function mostrarImportarVtrGar(){
+
+    mostrarPantalla(`
+        <div style="padding:20px;max-width:900px;margin:auto;">
+            <h2 style="text-align:center;">🛡️ ACTUALIZAR VTR/GAR</h2>
+            <br>
+
+            <div class="card">
+                <label style="font-weight:bold;">Período</label>
+                <select
+                    id="periodoVtrGar"
+                    style="width:100%;padding:10px;border-radius:8px;margin-top:6px;"
+                >
+                    <option value="">Seleccione período</option>
+                    <option value="ENERO">ENERO</option>
+                    <option value="FEBRERO">FEBRERO</option>
+                    <option value="MARZO">MARZO</option>
+                    <option value="ABRIL">ABRIL</option>
+                    <option value="MAYO">MAYO</option>
+                    <option value="JUNIO">JUNIO</option>
+                    <option value="JULIO">JULIO</option>
+                    <option value="AGOSTO">AGOSTO</option>
+                    <option value="SEPTIEMBRE">SEPTIEMBRE</option>
+                    <option value="OCTUBRE">OCTUBRE</option>
+                    <option value="NOVIEMBRE">NOVIEMBRE</option>
+                    <option value="DICIEMBRE">DICIEMBRE</option>
+                </select>
+
+                <br><br>
+
+                <label style="font-weight:bold;">Actualizado al</label>
+                <input
+                    type="date"
+                    id="fechaVtrGar"
+                    style="width:100%;padding:10px;border-radius:8px;margin-top:6px;"
+                >
+
+                <br><br>
+
+                Pega aquí la base VTR/GAR descargada del sistema central.
+                <br><br>
+
+                <textarea
+                    id="textoVtrGar"
+                    style="width:100%;height:300px;border-radius:8px;padding:10px;"
+                    placeholder="Pega aquí la base VTR/GAR..."
+                ></textarea>
+
+                <br><br>
+
+                <button class="button_1" onclick="procesarVtrGar()">
+                    🛡️ PROCESAR VTR/GAR
+                </button>
+
+                &nbsp;
+
+                <button class="button_1" onclick="mostrarAdministracion()">
+                    🏠 VOLVER
+                </button>
+
+                <br><br>
+
+                <div id="vistaPreviaVtrGar"></div>
+            </div>
+        </div>
+    `);
+}
+
+
+async function procesarVtrGar(){
+
+    const periodo = document.getElementById("periodoVtrGar").value;
+    const fechaInput = document.getElementById("fechaVtrGar").value;
+
+    if(!periodo || !fechaInput){
+        alert("Selecciona el período y la fecha de actualización.");
+        return;
+    }
+
+    const partesFecha = fechaInput.split("-");
+    const actualizadoAl = partesFecha[2] + "/" + partesFecha[1] + "/" + partesFecha[0];
+
+    let texto = document.getElementById("textoVtrGar").value;
+
+    texto = texto
+        .replace(/\u00A0/g, " ")
+        .trim();
+
+    if(texto === ""){
+        alert("Primero pega la base VTR/GAR.");
+        return;
+    }
+
+    const lineas = texto
+        .split(/\r?\n/)
+        .map(x => x.trim())
+        .filter(x => x.length > 0);
+
+    function limpiar(txt){
+        return (txt || "")
+            .toString()
+            .replace(/"/g, "")
+            .trim();
+    }
+
+    function numero(txt){
+        return Number(
+            limpiar(txt)
+                .replace("%", "")
+                .replace(",", ".")
+        ) || 0;
+    }
+
+    function normalizarCuadrilla(txt){
+        return limpiar(txt)
+            .replace(/^P\s+(\d+)/i, "P$1")
+            .replace(/\s+/g, " ")
+            .trim();
+    }
+
+    function separarLinea(linea){
+        if(linea.includes("\t")){
+            const partes = linea.split("\t").map(limpiar);
+            return {
+                cuadrilla: normalizarCuadrilla(partes.slice(0, -1).join(" ").trim() || partes[0]),
+                cantidad: numero(partes[partes.length - 1])
+            };
+        }
+
+        const match = linea.match(/^(.*?)(\d+(?:[\.,]\d+)?)$/);
+        if(match){
+            return {
+                cuadrilla: normalizarCuadrilla(match[1]),
+                cantidad: numero(match[2])
+            };
+        }
+
+        return {
+            cuadrilla: normalizarCuadrilla(linea),
+            cantidad: 0
+        };
+    }
+
+    const usuario = localStorage.getItem("usuario") || "ADMIN";
+    const registros = [];
+
+    lineas.forEach(linea => {
+        const item = separarLinea(linea);
+
+        if(!item.cuadrilla || item.cantidad < 0) return;
+        if(!/^P\d+\b/i.test(item.cuadrilla)) return;
+
+        registros.push({
+            usuario: usuario,
+            cuadrilla: item.cuadrilla,
+            gar: 0,
+            vtr: item.cantidad
+        });
+    });
+
+    if(registros.length === 0){
+        alert("No se encontraron registros válidos de VTR/GAR.");
+        return;
+    }
+
+    let html = `
+        <h3>✅ Vista previa (${registros.length} registros pegados)</h3>
+
+        <table style="width:100%;border-collapse:collapse;background:white;color:black;">
+            <tr style="background:#1f4e79;color:white;">
+                <th>Cuadrilla</th>
+                <th>GAR</th>
+                <th>VTR/GAR</th>
+            </tr>
+    `;
+
+    registros.forEach(r => {
+        html += `
+            <tr>
+                <td>${r.cuadrilla}</td>
+                <td style="text-align:center">${r.gar}</td>
+                <td style="text-align:center">${r.vtr}</td>
+            </tr>
+        `;
+    });
+
+    html += `</table>`;
+
+    document.getElementById("vistaPreviaVtrGar").innerHTML = html;
+
+    const url = "https://script.google.com/macros/s/AKfycbwxrKYIpSx2WZheF4r7EdKcM67qca5oMiJiddYAF5gDtHTNuo4rEQmybxacD_X2YDmY/exec";
+
+    try{
+
+        const respuesta = await fetch(url, {
+            method: "POST",
+            body: JSON.stringify({
+                accion: "procesarVtrGar",
+                periodo: periodo,
+                actualizadoAl: actualizadoAl,
+                registros: registros
+            })
+        });
+
+        const textoRespuesta = await respuesta.text();
+        const res = JSON.parse(textoRespuesta);
+
+        if(res.ok){
+
+            alert(
+                "✅ VTR/GAR ACTUALIZADO" +
+                "\n\nRegistros: " + res.registros +
+                "\n\nPeríodo: " + res.periodo +
+                "\n\nActualizado al: " + res.actualizadoAl +
+                "\n\nTotal VTR/GAR: " + res.totalVtrGar +
+                "\n\nPromedio: " + (res.promedio * 100).toFixed(2) + "%"
+            );
+
+        }else{
+            alert("❌ Error: " + res.error);
+        }
+
+    }catch(err){
+        console.error(err);
+        alert("❌ Error al conectar con la API de VTR/GAR.");
+    }
+}

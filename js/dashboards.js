@@ -1556,9 +1556,9 @@ function mostrarAdministracion(){
 
         <br>
 
-        <div class="card">
+        <div class="card" onclick="mostrarImportarVtrGar()" style="cursor:pointer;">
         🛡️ ACTUALIZAR VTR/GAR
-        <br><small>Próximamente</small>
+        <br><small>Importar VTR/GAR desde base pegada</small>
         </div>
 
         <br>
