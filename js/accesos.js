@@ -396,7 +396,7 @@ html += "</table>";
 
 document.getElementById("vistaPrevia").innerHTML = html;
 
-const url = "https://script.google.com/macros/s/AKfycbx-b8eZEKlbENRT3ZZ9va9hFNiZLayjBpBFX6uop-5qfLbjIYUMTS_hfc7G0a71BIhW/exec";
+const url = "https://script.google.com/macros/s/AKfycbwQLJ_PKwb7ZE-MwznlJVFGgCcBcnesv7a6JltMIJbo3U4C_dxSzmIbtZoFJuDHcmxg/exec";
 
 fetch(url, {
     method: "POST",
@@ -441,6 +441,37 @@ function mostrarImportarEfectividad(){
             <br>
 
             <div class="card">
+                <label style="font-weight:bold;">Período</label>
+                <select
+                    id="periodoEfectividad"
+                    style="width:100%;padding:10px;border-radius:8px;margin-top:6px;"
+                >
+                    <option value="">Seleccione período</option>
+                    <option value="ENERO">ENERO</option>
+                    <option value="FEBRERO">FEBRERO</option>
+                    <option value="MARZO">MARZO</option>
+                    <option value="ABRIL">ABRIL</option>
+                    <option value="MAYO">MAYO</option>
+                    <option value="JUNIO">JUNIO</option>
+                    <option value="JULIO">JULIO</option>
+                    <option value="AGOSTO">AGOSTO</option>
+                    <option value="SEPTIEMBRE">SEPTIEMBRE</option>
+                    <option value="OCTUBRE">OCTUBRE</option>
+                    <option value="NOVIEMBRE">NOVIEMBRE</option>
+                    <option value="DICIEMBRE">DICIEMBRE</option>
+                </select>
+
+                <br><br>
+
+                <label style="font-weight:bold;">Actualizado al</label>
+                <input
+                    type="date"
+                    id="fechaEfectividad"
+                    style="width:100%;padding:10px;border-radius:8px;margin-top:6px;"
+                >
+
+                <br><br>
+
                 Pega aquí la base descargada del sistema central.
                 <br><br>
 
@@ -472,6 +503,17 @@ function mostrarImportarEfectividad(){
 
 
 async function procesarEfectividad(){
+
+    const periodo = document.getElementById("periodoEfectividad").value;
+    const fechaInput = document.getElementById("fechaEfectividad").value;
+
+    if(!periodo || !fechaInput){
+        alert("Selecciona el período y la fecha de actualización.");
+        return;
+    }
+
+    const partesFecha = fechaInput.split("-");
+    const actualizadoAl = partesFecha[2] + "/" + partesFecha[1] + "/" + partesFecha[0];
 
     let texto = document.getElementById("textoEfectividad").value;
 
@@ -638,6 +680,8 @@ async function procesarEfectividad(){
             method: "POST",
             body: JSON.stringify({
                 accion: "procesarEfectividad",
+                periodo: periodo,
+                actualizadoAl: actualizadoAl,
                 registros: registros
             })
         });

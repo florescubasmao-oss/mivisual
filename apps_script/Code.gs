@@ -146,7 +146,7 @@ function actualizarEfectividad() {
   };
 }
 
-function procesarEfectividad(registros) {
+function procesarEfectividad(registros, periodoManual, actualizadoAlManual) {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
   const hoja = ss.getSheetByName(HOJA_EFECTIVIDAD);
 
@@ -176,7 +176,7 @@ function procesarEfectividad(registros) {
   registros.forEach((r, i) => {
     const usuario = r.usuario || "ADMIN";
     const cuadrilla = r.cuadrilla || "";
-    const fecha = r.fecha || "";
+    const fecha = r.fecha || actualizadoAlManual || "";
 
     const finalizada = Number(r.finalizada) || 0;
     const cancelada = Number(r.cancelada) || 0;
@@ -226,8 +226,8 @@ function procesarEfectividad(registros) {
     throw new Error("No se encontraron registros válidos");
   }
 
-  const periodo = fechaMasReciente ? obtenerMes(fechaMasReciente) : "";
-  const actualizadoAl = fechaMasReciente ? formatearFecha(fechaMasReciente) : "";
+  const periodo = periodoManual || (fechaMasReciente ? obtenerMes(fechaMasReciente) : "");
+  const actualizadoAl = actualizadoAlManual || (fechaMasReciente ? formatearFecha(fechaMasReciente) : "");
 
   hoja.clearContents();
   hoja.getRange(1, 1, salida.length, salida[0].length).setValues(salida);
@@ -321,7 +321,11 @@ function doPost(e) {
     const data = JSON.parse(e.postData.contents);
 
     if (data.accion === "procesarEfectividad") {
-      const respuesta = procesarEfectividad(data.registros);
+      const respuesta = procesarEfectividad(
+        data.registros,
+        data.periodo,
+        data.actualizadoAl
+      );
 
       return ContentService
         .createTextOutput(JSON.stringify(respuesta))
