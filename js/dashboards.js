@@ -1544,7 +1544,7 @@ function mostrarAdministracion(){
 
 <div class="card" onclick="actualizarEfectividad()" style="cursor:pointer;">
 📊 ACTUALIZAR EFECTIVIDAD
-<br><small>Importar desde IMPORTAR_EFECTIVIDAD</small>
+<br><small>Actualizar desde hoja EFECTIVIDAD</small>
 </div>
 
         <br>
@@ -1588,7 +1588,7 @@ function mostrarAdministracion(){
 
 async function actualizarEfectividad() {
 
-  const url = "https://script.google.com/macros/s/AKfycbwvycIchBQhuBIC8zBPTWyYwILgcKNv_m4XIjg1z-NfC1R3m9sx5Y1KwzjsnOJhRAx1/exec";
+  const url = "https://script.google.com/macros/s/AKfycbyrqtbvW1-uYv-KvQ7pratKHLDUQLnI9uD9W5QIN0G4fwb-uU5Naogzjhj7qtb1sRaM/exec";
 
   try {
 
