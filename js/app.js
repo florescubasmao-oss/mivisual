@@ -80,20 +80,19 @@ async function login() {
 
 function volverInicio(){
 
+    const pantalla = document.getElementById("pantalla");
+    const resultado = document.getElementById("resultadoProduccion");
+    const menu = document.getElementById("menuPrincipal");
+
+    if (pantalla) pantalla.innerHTML = "";
+    if (resultado) resultado.innerHTML = "";
+    if (menu) menu.style.display = "grid";
+
     configurarMenu();
 
-    document.getElementById("btnInicio").style.display = "inline-block";
-    document.getElementById("menuPrincipal").style.display = "grid";
-
     setTimeout(() => {
-
-        window.scrollTo({
-            top: 0,
-            behavior: "smooth"
-        });
-
+        window.scrollTo({ top: 0, behavior: "smooth" });
     }, 300);
-
 }
 
 
@@ -110,8 +109,10 @@ function configurarMenu(){
 
     const menu = document.getElementById("menuPrincipal");
     const pantalla = document.getElementById("pantalla");
+    const resultado = document.getElementById("resultadoProduccion");
 
     if (pantalla) pantalla.innerHTML = "";
+    if (resultado) resultado.innerHTML = ""; 
     if (menu) menu.style.display = "grid";
 
     // ocultar todo primero

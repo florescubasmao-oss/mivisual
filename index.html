@@ -23,7 +23,6 @@
 </div>
 
 <div id="contenidoApp" style="display:block;">
-<div id="pantalla"></div>
 
 <div style="margin-top:5px;">
 
@@ -111,9 +110,12 @@ cursor:pointer;
 
 </div>
 
+<div id="pantalla"></div>
+
 <div class="footer">
 Visual Connections SAC - Zona Norte
 </div>
+
 <script>
 
 async function login() {
@@ -416,6 +418,8 @@ const urlCatalogo =
 
 async function mostrarProduccionV2(){
 
+    document.getElementById("menuPrincipal").style.display = "none";
+
     const cuadrilla = localStorage.getItem("cuadrilla");
 
     let totalProduccion = 0;
@@ -684,6 +688,8 @@ data.detalle.forEach(r => {
 
 async function mostrarEfectividad(){
 
+document.getElementById("menuPrincipal").style.display = "none";
+
 const cuadrilla = localStorage.getItem("cuadrilla");
 
 const url = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRpVkCmSvopgPByWsEX6nkuAT6mf3yD2_Cywpl9pFSZEqYpxmprDePPeV0KNgT14YpEP6gkVlvOAtZy/pub?gid=1731471693&single=true&output=csv";
@@ -805,6 +811,8 @@ document.getElementById("resultadoProduccion").innerHTML = resultado;
 
 async function mostrarRecableado(){
 
+document.getElementById("menuPrincipal").style.display = "none";
+
 const cuadrilla = localStorage.getItem("cuadrilla");
 
 const url = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRpVkCmSvopgPByWsEX6nkuAT6mf3yD2_Cywpl9pFSZEqYpxmprDePPeV0KNgT14YpEP6gkVlvOAtZy/pub?gid=317412212&single=true&output=csv";
@@ -915,6 +923,8 @@ document.getElementById("resultadoProduccion").innerHTML = resultado;
 }
 
 async function mostrarVTRGAR() {
+
+document.getElementById("menuPrincipal").style.display = "none";
 
 const cuadrilla = localStorage.getItem("cuadrilla");
 
