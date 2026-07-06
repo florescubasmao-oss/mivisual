@@ -81,20 +81,20 @@ function colorSemaforoRanking(tipo, valor){
     const n = numeroRanking(valor);
 
     if(tipo === "efectividad"){
-        if(n >= 0.65) return "🟢";
-        if(n >= 0.55) return "🟡";
+        if(n >= 0.75) return "🟢";
+        if(n >= 0.65) return "🟡";
         return "🔴";
     }
 
     if(tipo === "recableado"){
-        if(n <= 0.05) return "🟢";
-        if(n <= 0.08) return "🟡";
+        if(n <= 0.45) return "🟢";
+        if(n <= 0.55) return "🟡";
         return "🔴";
     }
 
     if(tipo === "vtrgar"){
-        if(n <= 0.03) return "🟢";
-        if(n <= 0.05) return "🟡";
+        if(n <= 0.02) return "🟢";
+        if(n <= 0.04) return "🟡";
         return "🔴";
     }
 
@@ -123,61 +123,185 @@ function filaRanking(datos){
     };
 }
 
-function tablaRanking(lista){
-    let html = `
-        <div style="overflow-x:auto;">
-        <table style="width:100%;border-collapse:collapse;background:white;color:black;font-size:13px;">
-            <tr style="background:#1f4e79;color:white;">
-                <th>Puesto</th>
-                <th>Cuadrilla</th>
-                <th>Sede</th>
-                <th>Plataforma</th>
-                <th>Producción</th>
-                <th>Efectividad</th>
-                <th>% Rec.</th>
-                <th>% VTR/GAR</th>
-            </tr>
+function nombreMesRanking(fechaTexto){
+    const meses = [
+        "ENERO", "FEBRERO", "MARZO", "ABRIL", "MAYO", "JUNIO",
+        "JULIO", "AGOSTO", "SEPTIEMBRE", "OCTUBRE", "NOVIEMBRE", "DICIEMBRE"
+    ];
+
+    if(!fechaTexto) return "";
+
+    const partes = fechaTexto.toString().split("/");
+    if(partes.length === 3){
+        const mes = Number(partes[1]) - 1;
+        return meses[mes] || "";
+    }
+
+    return "";
+}
+
+function encabezadoPeriodoRanking(item){
+    const periodo = nombreMesRanking(item?.actualizacion || "");
+    const actualizado = item?.actualizacion || "";
+
+    return `
+        <div style="
+            background:linear-gradient(135deg,#0f172a,#1e3a8a);
+            border-radius:18px;
+            padding:16px;
+            margin:12px 0 18px 0;
+            color:white;
+            box-shadow:0 8px 20px rgba(0,0,0,.20);
+        ">
+            <div style="font-size:13px;opacity:.85;">📅 PERÍODO</div>
+            <div style="font-size:22px;font-weight:800;margin-top:4px;">
+                ${periodo || "SIN PERÍODO"}
+            </div>
+            <div style="font-size:14px;margin-top:8px;opacity:.95;">
+                Actualizado al: <b>${actualizado || "-"}</b>
+            </div>
+        </div>
     `;
+}
 
-    lista.forEach(r => {
-        html += `
-            <tr>
-                <td style="text-align:center;font-weight:bold;">${medallaRanking(r.puestoRegion)}</td>
-                <td>${r.cuadrilla}</td>
-                <td style="text-align:center;">${r.sede}</td>
-                <td style="text-align:center;">${r.plataforma}</td>
-                <td style="text-align:center;">${r.produccion}</td>
-                <td style="text-align:center;">${formatoPorcentajeRanking(r.efectividad)} ${colorSemaforoRanking("efectividad", r.efectividad)}</td>
-                <td style="text-align:center;">${formatoPorcentajeRanking(r.recableado)} ${colorSemaforoRanking("recableado", r.recableado)}</td>
-                <td style="text-align:center;">${formatoPorcentajeRanking(r.vtrgar)} ${colorSemaforoRanking("vtrgar", r.vtrgar)}</td>
-            </tr>
-        `;
-    });
+function tarjetaPuestoRanking(titulo, puesto, medalla, icono){
+    return `
+        <div style="
+            background:#1f2d48;
+            border-radius:18px;
+            padding:16px;
+            color:white;
+            text-align:center;
+            box-shadow:0 6px 16px rgba(0,0,0,.18);
+            flex:1;
+            min-width:145px;
+        ">
+            <div style="font-size:14px;opacity:.85;">${icono} ${titulo}</div>
+            <div style="font-size:36px;font-weight:900;margin-top:8px;">
+                #${puesto || 0} ${medalla || ""}
+            </div>
+        </div>
+    `;
+}
 
-    html += `</table></div>`;
-    return html;
+function indicadorMiniRanking(titulo, valor, extra){
+    return `
+        <div style="
+            background:#0f172a;
+            border:1px solid rgba(255,255,255,.10);
+            border-radius:14px;
+            padding:12px;
+            color:white;
+        ">
+            <div style="font-size:12px;opacity:.80;">${titulo}</div>
+            <div style="font-size:18px;font-weight:800;margin-top:4px;">${valor}</div>
+            ${extra ? `<div style="font-size:13px;margin-top:4px;">${extra}</div>` : ""}
+        </div>
+    `;
+}
+
+function tarjetaCuadrillaRanking(r, tipoPuesto){
+    let puesto = r.puestoRegion;
+    let medalla = medallaRanking(r.puestoRegion);
+
+    if(tipoPuesto === "sede"){
+        puesto = r.puestoSede;
+        medalla = medallaRanking(r.puestoSede);
+    }
+
+    if(tipoPuesto === "plataforma"){
+        puesto = r.puestoPlataforma;
+        medalla = medallaRanking(r.puestoPlataforma);
+    }
+
+    return `
+        <div style="
+            background:#1f2d48;
+            border-radius:18px;
+            padding:15px;
+            margin:12px 0;
+            color:white;
+            box-shadow:0 6px 16px rgba(0,0,0,.18);
+        ">
+            <div style="display:flex;gap:12px;align-items:center;">
+                <div style="
+                    background:#16a34a;
+                    color:white;
+                    border-radius:14px;
+                    min-width:54px;
+                    height:54px;
+                    display:flex;
+                    align-items:center;
+                    justify-content:center;
+                    font-size:22px;
+                    font-weight:900;
+                ">
+                    ${medalla || ("#" + puesto)}
+                </div>
+
+                <div style="flex:1;">
+                    <div style="font-size:15px;font-weight:800;line-height:1.25;">
+                        ${r.cuadrilla}
+                    </div>
+                    <div style="font-size:12px;opacity:.78;margin-top:4px;">
+                        ${r.sede || "-"} · ${r.plataforma || "-"}
+                    </div>
+                </div>
+            </div>
+
+            <div style="
+                display:grid;
+                grid-template-columns:repeat(2,minmax(0,1fr));
+                gap:10px;
+                margin-top:14px;
+            ">
+                ${indicadorMiniRanking("Producción", r.produccion, "")}
+                ${indicadorMiniRanking("Efectividad", formatoPorcentajeRanking(r.efectividad), colorSemaforoRanking("efectividad", r.efectividad))}
+                ${indicadorMiniRanking("% Recableado", formatoPorcentajeRanking(r.recableado), colorSemaforoRanking("recableado", r.recableado))}
+                ${indicadorMiniRanking("% VTR/GAR", formatoPorcentajeRanking(r.vtrgar), colorSemaforoRanking("vtrgar", r.vtrgar))}
+            </div>
+        </div>
+    `;
+}
+
+function listaTarjetasRanking(lista, tipoPuesto){
+    if(!lista || lista.length === 0){
+        return `<div class="card">No hay datos para mostrar.</div>`;
+    }
+
+    return lista.map(r => tarjetaCuadrillaRanking(r, tipoPuesto)).join("");
 }
 
 function vistaTecnicoRanking(item){
     return `
-        <div style="padding:20px;max-width:900px;margin:auto;">
-            <h2 style="text-align:center;">🏆 MI RANKING</h2>
+        <div style="padding:18px;max-width:720px;margin:auto;">
+            <h2 style="text-align:center;margin-bottom:6px;">🏆 MI RANKING</h2>
 
-            <div class="card" style="text-align:center;">
-                <h3>${item.cuadrilla}</h3>
-                <p>Actualizado al: <b>${item.actualizacion}</b></p>
-                <hr>
-<h2>Puesto Región: ${item.puestoRegion} ${medallaRanking(item.puestoRegion)}</h2>
+            ${encabezadoPeriodoRanking(item)}
 
-<h2>Puesto Sede: ${item.puestoSede} ${medallaRanking(item.puestoSede)}</h2>
-
-<h2>Puesto Plataforma: ${item.puestoPlataforma} ${medallaRanking(item.puestoPlataforma)}</h2>
-
+            <div style="
+                background:#1f2d48;
+                border-radius:18px;
+                padding:16px;
+                color:white;
+                box-shadow:0 8px 20px rgba(0,0,0,.20);
+            ">
+                <div style="font-size:13px;opacity:.80;">CUADRILLA</div>
+                <div style="font-size:18px;font-weight:800;margin-top:5px;line-height:1.25;">
+                    ${item.cuadrilla}
+                </div>
             </div>
 
-            <br>
-
-            ${tablaRanking([item])}
+            <div style="
+                display:grid;
+                grid-template-columns:1fr;
+                gap:12px;
+                margin-top:16px;
+            ">
+                ${tarjetaPuestoRanking("REGIÓN", item.puestoRegion, medallaRanking(item.puestoRegion), "🌎")}
+                ${tarjetaPuestoRanking("SEDE", item.puestoSede, medallaRanking(item.puestoSede), "🏢")}
+                ${tarjetaPuestoRanking("PLATAFORMA", item.puestoPlataforma, medallaRanking(item.puestoPlataforma), "🛠️")}
+            </div>
 
             <br>
             <button class="button_1" onclick="volverInicio()">🏠 VOLVER</button>
@@ -190,7 +314,6 @@ async function mostrarRanking(){
     const perfil = normalizarTextoRanking(localStorage.getItem("perfil"));
     const cuadrillaUsuario = normalizarCuadrillaRanking(localStorage.getItem("cuadrilla"));
     const sedeUsuario = normalizarTextoRanking(localStorage.getItem("sede"));
-    const plataformaUsuario = normalizarTextoRanking(localStorage.getItem("plataforma"));
 
     const url = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRpVkCmSvopgPByWsEX6nkuAT6mf3yD2_Cywpl9pFSZEqYpxmprDePPeV0KNgT14YpEP6gkVlvOAtZy/pub?gid=1269910675&single=true&output=csv";
 
@@ -230,17 +353,36 @@ async function mostrarRanking(){
 
         let listaFiltrada = lista;
         let titulo = "🌎 RANKING ZONA NORTE";
+        let tipoPuesto = "region";
 
         if(perfil === "SUPERVISOR"){
             listaFiltrada = lista.filter(x => x.sede === sedeUsuario);
             titulo = "👨‍💼 RANKING SEDE " + sedeUsuario;
+            tipoPuesto = "sede";
         }
 
+        const referencia = listaFiltrada[0] || lista[0];
+
         let html = `
-            <div style="padding:20px;max-width:1100px;margin:auto;">
-                <h2>${titulo}</h2>
-                <p>Indicadores por cuadrilla. El puntaje interno no se muestra.</p>
-                ${tablaRanking(listaFiltrada)}
+            <div style="padding:18px;max-width:980px;margin:auto;">
+                <h2 style="text-align:center;margin-bottom:6px;">${titulo}</h2>
+
+                ${encabezadoPeriodoRanking(referencia)}
+
+                <div style="
+                    background:#1f2d48;
+                    border-radius:16px;
+                    padding:14px;
+                    color:white;
+                    margin-bottom:12px;
+                    font-size:14px;
+                    line-height:1.4;
+                ">
+                    Indicadores por cuadrilla. El puntaje interno no se muestra.
+                </div>
+
+                ${listaTarjetasRanking(listaFiltrada, tipoPuesto)}
+
                 <br>
                 <button class="button_1" onclick="volverInicio()">🏠 VOLVER</button>
             </div>

@@ -1678,28 +1678,17 @@ function mostrarImportarRanking(){
                 ✅ VTR/GAR
                 <br><br>
 
-                <label>Período</label>
-                <select id="periodoRanking" style="width:100%;padding:10px;border-radius:8px;">
-                    <option>ENERO</option>
-                    <option>FEBRERO</option>
-                    <option>MARZO</option>
-                    <option>ABRIL</option>
-                    <option>MAYO</option>
-                    <option selected>JUNIO</option>
-                    <option>JULIO</option>
-                    <option>AGOSTO</option>
-                    <option>SEPTIEMBRE</option>
-                    <option>OCTUBRE</option>
-                    <option>NOVIEMBRE</option>
-                    <option>DICIEMBRE</option>
-                </select>
+                <div style="
+                    background:#12395c;
+                    padding:14px;
+                    border-radius:10px;
+                    line-height:1.4;
+                ">
+                    📅 El período y la fecha de actualización se tomarán automáticamente
+                    desde las fechas registradas en Producción y Efectividad.
+                </div>
 
-                <br><br>
-
-                <label>Actualizado al</label>
-                <input type="date" id="fechaRanking" value="${fechaHoyRanking()}" style="width:100%;padding:10px;border-radius:8px;">
-
-                <br><br>
+                <br>
 
                 <button class="button_1" onclick="procesarRanking()">
                     🏆 GENERAR RANKING
@@ -1721,17 +1710,6 @@ function mostrarImportarRanking(){
 
 async function procesarRanking(){
 
-    const periodo = document.getElementById("periodoRanking").value;
-    const fechaInput = document.getElementById("fechaRanking").value;
-
-    if(!periodo || !fechaInput){
-        alert("Selecciona el período y la fecha de actualización.");
-        return;
-    }
-
-    const partesFecha = fechaInput.split("-");
-    const actualizadoAl = partesFecha[2] + "/" + partesFecha[1] + "/" + partesFecha[0];
-
     const url = "https://script.google.com/macros/s/AKfycbxRwwwzQpQSK2joexiMQ7vj-Ff2Yp0PY0yZttnsLZSRxXyh9AWSawBuvpC2s2GrQZ3O/exec";
 
     try{
@@ -1741,9 +1719,7 @@ async function procesarRanking(){
         const respuesta = await fetch(url, {
             method: "POST",
             body: JSON.stringify({
-                accion: "actualizarRanking",
-                periodo: periodo,
-                actualizadoAl: actualizadoAl
+                accion: "actualizarRanking"
             })
         });
 
@@ -1778,3 +1754,4 @@ async function procesarRanking(){
         alert("❌ Error al conectar con la API de ranking.");
     }
 }
+
