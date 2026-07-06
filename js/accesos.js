@@ -396,7 +396,7 @@ html += "</table>";
 
 document.getElementById("vistaPrevia").innerHTML = html;
 
-const url = "https://script.google.com/macros/s/AKfycbxOfv7907QcBS6Gd0O26bmz-1t87Cj8meYR4Ob9GnVsVf3Kjuc5CqrTaaEj8_5HIy0/exec";
+const url = "https://script.google.com/macros/s/AKfycbwHo2Qlp9R6fSb0Z6J0ZBT4FhatzOu-wp_AyxgeZIMHZUIe6xvoyv2SogA8Wd-udX2j/exec";
 
 fetch(url, {
     method: "POST",
@@ -672,7 +672,7 @@ async function procesarEfectividad(){
 
     document.getElementById("vistaPreviaEfectividad").innerHTML = html;
 
-    const url = "https://script.google.com/macros/s/AKfycbxOfv7907QcBS6Gd0O26bmz-1t87Cj8meYR4Ob9GnVsVf3Kjuc5CqrTaaEj8_5HIy0/exec";
+    const url = "https://script.google.com/macros/s/AKfycbwHo2Qlp9R6fSb0Z6J0ZBT4FhatzOu-wp_AyxgeZIMHZUIe6xvoyv2SogA8Wd-udX2j/exec";
 
     try{
 
@@ -946,7 +946,7 @@ async function procesarRecableado(){
 
     document.getElementById("vistaPreviaRecableado").innerHTML = html;
 
-    const url = "https://script.google.com/macros/s/AKfycbxOfv7907QcBS6Gd0O26bmz-1t87Cj8meYR4Ob9GnVsVf3Kjuc5CqrTaaEj8_5HIy0/exec";
+    const url = "https://script.google.com/macros/s/AKfycbwHo2Qlp9R6fSb0Z6J0ZBT4FhatzOu-wp_AyxgeZIMHZUIe6xvoyv2SogA8Wd-udX2j/exec";
 
     try{
 
@@ -1097,6 +1097,15 @@ async function procesarVtrGar(){
         ) || 0;
     }
 
+    function normalizarTexto(txt){
+        return limpiar(txt)
+            .toUpperCase()
+            .normalize("NFD")
+            .replace(/[\u0300-\u036f]/g, "")
+            .replace(/\s+/g, " ")
+            .trim();
+    }
+
     function normalizarCuadrilla(txt){
         return limpiar(txt)
             .replace(/^P\s+(\d+)/i, "P$1")
@@ -1108,7 +1117,15 @@ async function procesarVtrGar(){
         if(linea.includes("\t")){
             const partes = linea.split("\t").map(limpiar);
             return {
-                cuadrilla: normalizarCuadrilla(partes.slice(0, -1).join(" ").trim() || partes[0]),
+                nombre: partes.slice(0, -1).join(" ").trim() || partes[0],
+                cantidad: numero(partes[partes.length - 1])
+            };
+        }
+
+        if(linea.includes(";")){
+            const partes = linea.split(";").map(limpiar);
+            return {
+                nombre: partes.slice(0, -1).join(" ").trim() || partes[0],
                 cantidad: numero(partes[partes.length - 1])
             };
         }
@@ -1116,33 +1133,54 @@ async function procesarVtrGar(){
         const match = linea.match(/^(.*?)(\d+(?:[\.,]\d+)?)$/);
         if(match){
             return {
-                cuadrilla: normalizarCuadrilla(match[1]),
+                nombre: limpiar(match[1]),
                 cantidad: numero(match[2])
             };
         }
 
         return {
-            cuadrilla: normalizarCuadrilla(linea),
+            nombre: limpiar(linea),
             cantidad: 0
         };
     }
 
     const usuario = localStorage.getItem("usuario") || "ADMIN";
-    const registros = [];
+    const mapa = {};
+    let cuadrillaActual = "";
 
     lineas.forEach(linea => {
         const item = separarLinea(linea);
+        const nombre = limpiar(item.nombre);
+        const textoNormal = normalizarTexto(nombre);
+        const cantidad = item.cantidad;
 
-        if(!item.cuadrilla || item.cantidad < 0) return;
-        if(!/^P\d+\b/i.test(item.cuadrilla)) return;
+        if(/^P\s*\d+\s/i.test(nombre)){
+            cuadrillaActual = normalizarCuadrilla(nombre);
 
-        registros.push({
-            usuario: usuario,
-            cuadrilla: item.cuadrilla,
-            gar: 0,
-            vtr: item.cantidad
-        });
+            if(!mapa[cuadrillaActual]){
+                mapa[cuadrillaActual] = {
+                    usuario: usuario,
+                    cuadrilla: cuadrillaActual,
+                    gar: 0,
+                    vtr: 0
+                };
+            }
+
+            return;
+        }
+
+        if(!cuadrillaActual) return;
+
+        if(textoNormal.includes("GARANTIA")){
+            mapa[cuadrillaActual].gar += cantidad;
+        }
+
+        if(textoNormal.includes("REITERADA")){
+            mapa[cuadrillaActual].vtr += cantidad;
+        }
     });
+
+    const registros = Object.values(mapa);
 
     if(registros.length === 0){
         alert("No se encontraron registros válidos de VTR/GAR.");
@@ -1150,13 +1188,14 @@ async function procesarVtrGar(){
     }
 
     let html = `
-        <h3>✅ Vista previa (${registros.length} registros pegados)</h3>
+        <h3>✅ Vista previa (${registros.length} cuadrillas pegadas)</h3>
 
         <table style="width:100%;border-collapse:collapse;background:white;color:black;">
             <tr style="background:#1f4e79;color:white;">
                 <th>Cuadrilla</th>
                 <th>GAR</th>
-                <th>VTR/GAR</th>
+                <th>VTR</th>
+                <th>Total GAR/VTR</th>
             </tr>
     `;
 
@@ -1166,6 +1205,7 @@ async function procesarVtrGar(){
                 <td>${r.cuadrilla}</td>
                 <td style="text-align:center">${r.gar}</td>
                 <td style="text-align:center">${r.vtr}</td>
+                <td style="text-align:center">${r.gar + r.vtr}</td>
             </tr>
         `;
     });
@@ -1174,7 +1214,7 @@ async function procesarVtrGar(){
 
     document.getElementById("vistaPreviaVtrGar").innerHTML = html;
 
-    const url = "https://script.google.com/macros/s/AKfycbxOfv7907QcBS6Gd0O26bmz-1t87Cj8meYR4Ob9GnVsVf3Kjuc5CqrTaaEj8_5HIy0/exec";
+    const url = "https://script.google.com/macros/s/AKfycbwHo2Qlp9R6fSb0Z6J0ZBT4FhatzOu-wp_AyxgeZIMHZUIe6xvoyv2SogA8Wd-udX2j/exec";
 
     try{
 
@@ -1198,7 +1238,9 @@ async function procesarVtrGar(){
                 "\n\nRegistros: " + res.registros +
                 "\n\nPeríodo: " + res.periodo +
                 "\n\nActualizado al: " + res.actualizadoAl +
-                "\n\nTotal VTR/GAR: " + res.totalVtrGar +
+                "\n\nGAR: " + res.gar +
+                "\n\nVTR: " + res.vtr +
+                "\n\nTOTAL GAR/VTR: " + res.totalVtrGar +
                 "\n\nPromedio: " + (res.promedio * 100).toFixed(2) + "%"
             );
 

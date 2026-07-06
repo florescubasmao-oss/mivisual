@@ -21,6 +21,16 @@ function normalizarCuadrilla(nombre) {
     .trim();
 }
 
+function normalizarTexto(txt) {
+  return (txt || "")
+    .toString()
+    .toUpperCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
 function normalizarFecha(fecha) {
   if (fecha instanceof Date) {
     return Utilities.formatDate(fecha, Session.getScriptTimeZone(), "yyyyMMdd");
@@ -34,52 +44,19 @@ function normalizarFecha(fecha) {
   return fecha.toString();
 }
 
-function obtenerMes(fecha) {
-  const meses = [
-    "ENERO", "FEBRERO", "MARZO", "ABRIL", "MAYO", "JUNIO",
-    "JULIO", "AGOSTO", "SEPTIEMBRE", "OCTUBRE", "NOVIEMBRE", "DICIEMBRE"
-  ];
-
-  if (fecha instanceof Date) {
-    return meses[fecha.getMonth()];
-  }
-
-  const texto = fecha.toString();
-  const partes = texto.split("/");
-
-  if (partes.length == 3) {
-    return meses[Number(partes[1]) - 1];
-  }
-
-  return texto.toUpperCase();
-}
-
-function formatearFecha(fecha) {
-  if (fecha instanceof Date) {
-    return Utilities.formatDate(fecha, Session.getScriptTimeZone(), "dd/MM/yyyy");
-  }
-
-  return fecha.toString();
-}
-
 function generarID(cuadrilla, fecha, codigo) {
   return normalizarCuadrilla(cuadrilla) + "|" + normalizarFecha(fecha) + "|" + codigo.toString().trim();
 }
 
-function responderJSON(respuesta) {
-  return ContentService
-    .createTextOutput(JSON.stringify(respuesta))
-    .setMimeType(ContentService.MimeType.JSON);
-}
-
-function leerBaseEfectividad() {
+function obtenerBaseEfectividad() {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
   const hoja = ss.getSheetByName(HOJA_EFECTIVIDAD);
 
   if (!hoja) throw new Error("No existe la hoja EFECTIVIDAD");
 
   const datos = hoja.getDataRange().getValues();
-  const base = [];
+  const lista = [];
+  const mapa = {};
 
   for (let i = 1; i < datos.length; i++) {
     const fila = datos[i];
@@ -88,15 +65,14 @@ function leerBaseEfectividad() {
     const finalizadas = Number(fila[4]) || 0;
 
     if (!cuadrilla) continue;
+    if (mapa[cuadrilla]) continue;
 
-    base.push({
-      usuario: usuario,
-      cuadrilla: cuadrilla,
-      finalizadas: finalizadas
-    });
+    const item = { usuario, cuadrilla, finalizadas };
+    lista.push(item);
+    mapa[cuadrilla] = item;
   }
 
-  return base;
+  return { lista, mapa };
 }
 
 /* =========================
@@ -148,7 +124,6 @@ function procesarProduccion(registros) {
         id,
         ahora
       ]]);
-
       actualizados++;
     } else {
       insertar.push([
@@ -160,7 +135,6 @@ function procesarProduccion(registros) {
         id,
         ahora
       ]);
-
       nuevos++;
     }
   });
@@ -172,8 +146,8 @@ function procesarProduccion(registros) {
   return {
     ok: true,
     modulo: "PRODUCCION",
-    nuevos: nuevos,
-    actualizados: actualizados
+    nuevos,
+    actualizados
   };
 }
 
@@ -244,9 +218,6 @@ function procesarEfectividad(registros, periodoManual, actualizadoAlManual) {
     throw new Error("No se encontraron registros válidos");
   }
 
-  const periodo = periodoManual || "";
-  const actualizadoAl = actualizadoAlManual || "";
-
   hoja.clearContents();
   hoja.getRange(1, 1, salida.length, salida[0].length).setValues(salida);
   hoja.getRange(2, 10, salida.length - 1, 1).setNumberFormat("0.00%");
@@ -255,16 +226,14 @@ function procesarEfectividad(registros, periodoManual, actualizadoAlManual) {
     ok: true,
     modulo: "EFECTIVIDAD",
     registros: salida.length - 1,
-    periodo: periodo,
-    actualizadoAl: actualizadoAl,
+    periodo: periodoManual || "",
+    actualizadoAl: actualizadoAlManual || "",
     promedio: totalGeneral > 0 ? totalFinalizadas / totalGeneral : 0
   };
 }
 
 /* =========================
    RECABLEADO
-   Incluye en cero cuadrillas que no aparecen
-   tomando como base EFECTIVIDAD
 ========================= */
 
 function procesarRecableado(registros, periodoManual, actualizadoAlManual) {
@@ -273,20 +242,21 @@ function procesarRecableado(registros, periodoManual, actualizadoAlManual) {
 
   if (!hoja) throw new Error("No existe la hoja PORCENTAJE REC");
 
-  const baseEfectividad = leerBaseEfectividad();
-
-  if (baseEfectividad.length === 0) {
-    throw new Error("No hay base de EFECTIVIDAD para completar cuadrillas en cero");
+  if (!registros || registros.length === 0) {
+    throw new Error("No se recibieron registros de recableado");
   }
 
-  const mapa = {};
+  const baseEfectividad = obtenerBaseEfectividad();
+  const baseLista = baseEfectividad.lista;
+  const mapaRecableado = {};
 
-  (registros || []).forEach(r => {
+  registros.forEach(r => {
     const cuadrilla = normalizarCuadrilla(r.cuadrilla);
     if (!cuadrilla) return;
 
-    mapa[cuadrilla] = {
-      totalRojo: Number(r.rojoAsignadas || r.total || r.totalRojo || r.losRojoAsignadas) || 0,
+    mapaRecableado[cuadrilla] = {
+      usuario: r.usuario || "ADMIN",
+      rojoAsignadas: Number(r.rojoAsignadas || r.total || r.totalRojo || r.losRojoAsignadas) || 0,
       recableados: Number(r.recableados || r.recableado) || 0
     };
   });
@@ -304,18 +274,26 @@ function procesarRecableado(registros, periodoManual, actualizadoAlManual) {
   let totalRojo = 0;
   let totalRecableados = 0;
 
-  baseEfectividad.forEach((base, i) => {
-    const dato = mapa[base.cuadrilla] || { totalRojo: 0, recableados: 0 };
-    const rojoAsignadas = Number(dato.totalRojo) || 0;
-    const recableados = Number(dato.recableados) || 0;
+  const filasBase = baseLista.length > 0
+    ? baseLista
+    : Object.keys(mapaRecableado).map(c => ({ usuario: "ADMIN", cuadrilla: c }));
+
+  filasBase.forEach((b, i) => {
+    const cuadrilla = normalizarCuadrilla(b.cuadrilla);
+    const datos = mapaRecableado[cuadrilla] || {};
+
+    const usuario = b.usuario || datos.usuario || "ADMIN";
+    const fecha = actualizadoAlManual || "";
+    const rojoAsignadas = Number(datos.rojoAsignadas) || 0;
+    const recableados = Number(datos.recableados) || 0;
     const porcentaje = rojoAsignadas > 0 ? recableados / rojoAsignadas : 0;
-    const id = base.cuadrilla + "|" + periodoManual + "|" + (i + 1);
+    const id = cuadrilla + "|" + periodoManual + "|" + (i + 1);
 
     salida.push([
       id,
-      base.usuario,
-      base.cuadrilla,
-      actualizadoAlManual || "",
+      usuario,
+      cuadrilla,
+      fecha,
       rojoAsignadas,
       recableados,
       porcentaje
@@ -325,10 +303,6 @@ function procesarRecableado(registros, periodoManual, actualizadoAlManual) {
     totalRecableados += recableados;
   });
 
-  const periodo = periodoManual || "";
-  const actualizadoAl = actualizadoAlManual || "";
-  const promedio = totalRojo > 0 ? totalRecableados / totalRojo : 0;
-
   hoja.clearContents();
   hoja.getRange(1, 1, salida.length, salida[0].length).setValues(salida);
   hoja.getRange(2, 7, salida.length - 1, 1).setNumberFormat("0.00%");
@@ -337,21 +311,79 @@ function procesarRecableado(registros, periodoManual, actualizadoAlManual) {
     ok: true,
     modulo: "RECABLEADO",
     registros: salida.length - 1,
-    periodo: periodo,
-    actualizadoAl: actualizadoAl,
-    totalRojo: totalRojo,
-    totalRecableados: totalRecableados,
-    promedio: promedio
+    periodo: periodoManual || "",
+    actualizadoAl: actualizadoAlManual || "",
+    totalRojo,
+    totalRecableados,
+    promedio: totalRojo > 0 ? totalRecableados / totalRojo : 0
   };
 }
 
 /* =========================
-   VTR / GAR
-   La cantidad pegada se toma como VTR/GAR.
-   GAR queda en 0 por ahora.
-   Finalizadas se toman desde EFECTIVIDAD.
-   Cuadrillas no pegadas quedan en 0.
+   VTR/GAR
+   GARANTIA = GAR
+   REITERADA = VTR
 ========================= */
+
+function convertirRegistrosVtrGar(registros) {
+  const mapa = {};
+  let cuadrillaActual = "";
+
+  if (!registros) return mapa;
+
+  if (typeof registros === "string") {
+    registros = registros
+      .split(/\r?\n/)
+      .map(x => x.trim())
+      .filter(x => x.length > 0)
+      .map(linea => {
+        const partes = linea.split(/\t|;/).map(x => x.trim());
+        return {
+          nombre: partes[0] || "",
+          cantidad: Number(partes[1]) || 0
+        };
+      });
+  }
+
+  if (!Array.isArray(registros)) return mapa;
+
+  registros.forEach(r => {
+    const nombre = r.nombre || r.descripcion || r.tipo || r.cuadrilla || "";
+    const texto = normalizarTexto(nombre);
+    const cantidad = Number(r.cantidad || r.total || r.valor || r.vtrgar || 0) || 0;
+
+    if (/^P\s*\d+\s/.test(texto)) {
+      cuadrillaActual = normalizarCuadrilla(nombre);
+
+      if (!mapa[cuadrillaActual]) {
+        mapa[cuadrillaActual] = {
+          usuario: r.usuario || "ADMIN",
+          gar: Number(r.gar) || 0,
+          vtr: Number(r.vtr) || 0
+        };
+      }
+
+      if (Number(r.gar) || Number(r.vtr)) {
+        mapa[cuadrillaActual].gar += Number(r.gar) || 0;
+        mapa[cuadrillaActual].vtr += Number(r.vtr) || 0;
+      }
+
+      return;
+    }
+
+    if (!cuadrillaActual) return;
+
+    if (texto.includes("GARANTIA")) {
+      mapa[cuadrillaActual].gar += cantidad;
+    }
+
+    if (texto.includes("REITERADA")) {
+      mapa[cuadrillaActual].vtr += cantidad;
+    }
+  });
+
+  return mapa;
+}
 
 function procesarVtrGar(registros, periodoManual, actualizadoAlManual) {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
@@ -359,28 +391,14 @@ function procesarVtrGar(registros, periodoManual, actualizadoAlManual) {
 
   if (!hoja) throw new Error("No existe la hoja POR VTR/GAR");
 
-  const baseEfectividad = leerBaseEfectividad();
+  const baseEfectividad = obtenerBaseEfectividad();
+  const baseLista = baseEfectividad.lista;
 
-  if (baseEfectividad.length === 0) {
-    throw new Error("No hay base de EFECTIVIDAD para calcular VTR/GAR");
+  if (baseLista.length === 0) {
+    throw new Error("La hoja EFECTIVIDAD no tiene cuadrillas para calcular VTR/GAR");
   }
 
-  const mapa = {};
-
-  (registros || []).forEach(r => {
-    const cuadrilla = normalizarCuadrilla(r.cuadrilla);
-    if (!cuadrilla) return;
-
-    const gar = Number(r.gar) || 0;
-    const vtr = Number(r.vtr || r.vtrgar || r.total || r.cantidad) || 0;
-
-    if (!mapa[cuadrilla]) {
-      mapa[cuadrilla] = { gar: 0, vtr: 0 };
-    }
-
-    mapa[cuadrilla].gar += gar;
-    mapa[cuadrilla].vtr += vtr;
-  });
+  const mapaVtrGar = convertirRegistrosVtrGar(registros);
 
   const salida = [[
     "ID",
@@ -397,22 +415,26 @@ function procesarVtrGar(registros, periodoManual, actualizadoAlManual) {
   let totalFinalizadas = 0;
   let totalGar = 0;
   let totalVtr = 0;
-  let totalVtrGar = 0;
+  let totalGarVtr = 0;
 
-  baseEfectividad.forEach((base, i) => {
-    const dato = mapa[base.cuadrilla] || { gar: 0, vtr: 0 };
-    const finalizadas = Number(base.finalizadas) || 0;
-    const gar = Number(dato.gar) || 0;
-    const vtr = Number(dato.vtr) || 0;
+  baseLista.forEach((b, i) => {
+    const cuadrilla = normalizarCuadrilla(b.cuadrilla);
+    const datos = mapaVtrGar[cuadrilla] || {};
+
+    const usuario = b.usuario || datos.usuario || "ADMIN";
+    const fecha = actualizadoAlManual || "";
+    const finalizadas = Number(b.finalizadas) || 0;
+    const gar = Number(datos.gar) || 0;
+    const vtr = Number(datos.vtr) || 0;
     const total = gar + vtr;
     const porcentaje = finalizadas > 0 ? total / finalizadas : 0;
-    const id = base.cuadrilla + "|" + periodoManual + "|" + (i + 1);
+    const id = cuadrilla + "|" + periodoManual + "|" + (i + 1);
 
     salida.push([
       id,
-      base.usuario,
-      base.cuadrilla,
-      actualizadoAlManual || "",
+      usuario,
+      cuadrilla,
+      fecha,
       finalizadas,
       gar,
       vtr,
@@ -423,12 +445,8 @@ function procesarVtrGar(registros, periodoManual, actualizadoAlManual) {
     totalFinalizadas += finalizadas;
     totalGar += gar;
     totalVtr += vtr;
-    totalVtrGar += total;
+    totalGarVtr += total;
   });
-
-  const periodo = periodoManual || "";
-  const actualizadoAl = actualizadoAlManual || "";
-  const promedio = totalFinalizadas > 0 ? totalVtrGar / totalFinalizadas : 0;
 
   hoja.clearContents();
   hoja.getRange(1, 1, salida.length, salida[0].length).setValues(salida);
@@ -438,108 +456,26 @@ function procesarVtrGar(registros, periodoManual, actualizadoAlManual) {
     ok: true,
     modulo: "VTR/GAR",
     registros: salida.length - 1,
-    periodo: periodo,
-    actualizadoAl: actualizadoAl,
-    totalFinalizadas: totalFinalizadas,
-    totalGar: totalGar,
-    totalVtr: totalVtr,
-    totalVtrGar: totalVtrGar,
-    promedio: promedio
+    periodo: periodoManual || "",
+    actualizadoAl: actualizadoAlManual || "",
+    totalFinalizadas,
+    gar: totalGar,
+    vtr: totalVtr,
+    totalGarVtr,
+    totalVtrGar: totalGarVtr,
+    promedio: totalFinalizadas > 0 ? totalGarVtr / totalFinalizadas : 0
   };
 }
 
 /* =========================
    EFECTIVIDAD MODO ANTERIOR
-   Se mantiene por seguridad
 ========================= */
 
 function actualizarEfectividad() {
-  const ss = SpreadsheetApp.getActiveSpreadsheet();
-  const hoja = ss.getSheetByName(HOJA_EFECTIVIDAD);
-
-  if (!hoja) throw new Error("No existe la hoja EFECTIVIDAD");
-
-  const datos = hoja.getDataRange().getValues();
-
-  if (datos.length < 2) {
-    throw new Error("La hoja EFECTIVIDAD no tiene datos");
-  }
-
-  const salida = [[
-    "ID",
-    "Usuario",
-    "Cuadrilla",
-    "ACTUALIZACION",
-    "Finalizada",
-    "Cancelada",
-    "Regestión",
-    "Reprogramado",
-    "Total General",
-    "Efectividad"
-  ]];
-
-  let totalFinalizadas = 0;
-  let totalGeneral = 0;
-  let fechaMasReciente = null;
-
-  for (let i = 1; i < datos.length; i++) {
-    const fila = datos[i];
-
-    const id = fila[0] || i;
-    const usuario = fila[1];
-    const cuadrilla = normalizarCuadrilla(fila[2]);
-    const fecha = fila[3];
-
-    const finalizada = Number(fila[4]) || 0;
-    const cancelada = Number(fila[5]) || 0;
-    const regestion = Number(fila[6]) || 0;
-    const reprogramado = Number(fila[7]) || 0;
-    const total = Number(fila[8]) || 0;
-
-    if (!usuario || !cuadrilla || total === 0) continue;
-
-    if (fecha instanceof Date) {
-      if (fechaMasReciente === null || fecha > fechaMasReciente) {
-        fechaMasReciente = fecha;
-      }
-    }
-
-    const efectividad = finalizada / total;
-
-    salida.push([
-      id,
-      usuario,
-      cuadrilla,
-      fecha,
-      finalizada,
-      cancelada,
-      regestion,
-      reprogramado,
-      total,
-      efectividad
-    ]);
-
-    totalFinalizadas += finalizada;
-    totalGeneral += total;
-  }
-
-  const periodo = fechaMasReciente ? obtenerMes(fechaMasReciente) : "";
-  const actualizadoAl = fechaMasReciente ? formatearFecha(fechaMasReciente) : "";
-
-  hoja.clearContents();
-  hoja.getRange(1, 1, salida.length, salida[0].length).setValues(salida);
-
-  if (salida.length > 1) {
-    hoja.getRange(2, 10, salida.length - 1, 1).setNumberFormat("0.00%");
-  }
-
   return {
     ok: true,
     modulo: "EFECTIVIDAD",
-    registros: salida.length - 1,
-    periodo: periodo,
-    actualizadoAl: actualizadoAl,
-    promedio: totalGeneral > 0 ? totalFinalizadas / totalGeneral : 0
+    mensaje: "Modo anterior conservado. Usar procesarEfectividad."
   };
 }
 
@@ -552,39 +488,43 @@ function doPost(e) {
     const data = JSON.parse(e.postData.contents);
 
     if (data.accion === "procesarEfectividad") {
-      return responderJSON(procesarEfectividad(
-        data.registros,
-        data.periodo,
-        data.actualizadoAl
-      ));
+      return ContentService
+        .createTextOutput(JSON.stringify(procesarEfectividad(data.registros, data.periodo, data.actualizadoAl)))
+        .setMimeType(ContentService.MimeType.JSON);
     }
 
     if (data.accion === "procesarRecableado") {
-      return responderJSON(procesarRecableado(
-        data.registros,
-        data.periodo,
-        data.actualizadoAl
-      ));
+      return ContentService
+        .createTextOutput(JSON.stringify(procesarRecableado(data.registros, data.periodo, data.actualizadoAl)))
+        .setMimeType(ContentService.MimeType.JSON);
     }
 
-    if (data.accion === "procesarVtrGar") {
-      return responderJSON(procesarVtrGar(
-        data.registros,
-        data.periodo,
-        data.actualizadoAl
-      ));
+    if (
+      data.accion === "procesarVtrGar" ||
+      data.accion === "procesarVTRGAR" ||
+      data.accion === "procesarVtrgar"
+    ) {
+      return ContentService
+        .createTextOutput(JSON.stringify(procesarVtrGar(data.registros || data.texto || data.base, data.periodo, data.actualizadoAl)))
+        .setMimeType(ContentService.MimeType.JSON);
     }
 
     if (data.accion === "actualizarEfectividad") {
-      return responderJSON(actualizarEfectividad());
+      return ContentService
+        .createTextOutput(JSON.stringify(actualizarEfectividad()))
+        .setMimeType(ContentService.MimeType.JSON);
     }
 
-    return responderJSON(procesarProduccion(data));
+    return ContentService
+      .createTextOutput(JSON.stringify(procesarProduccion(data)))
+      .setMimeType(ContentService.MimeType.JSON);
 
   } catch (err) {
-    return responderJSON({
-      ok: false,
-      error: err.toString()
-    });
+    return ContentService
+      .createTextOutput(JSON.stringify({
+        ok: false,
+        error: err.toString()
+      }))
+      .setMimeType(ContentService.MimeType.JSON);
   }
 }
