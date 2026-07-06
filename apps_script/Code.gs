@@ -15,6 +15,13 @@ function doGet() {
    FUNCIONES GENERALES
 ========================= */
 
+function obtenerHoja(nombre) {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const hoja = ss.getSheetByName(nombre);
+  if (!hoja) throw new Error("No existe la hoja " + nombre);
+  return hoja;
+}
+
 function normalizarCuadrilla(nombre) {
   return (nombre || "")
     .toString()
@@ -39,7 +46,7 @@ function normalizarFecha(fecha) {
   }
 
   const partes = fecha.toString().split("/");
-  if (partes.length == 3) {
+  if (partes.length === 3) {
     return partes[2] + partes[1].padStart(2, "0") + partes[0].padStart(2, "0");
   }
 
@@ -48,36 +55,6 @@ function normalizarFecha(fecha) {
 
 function generarID(cuadrilla, fecha, codigo) {
   return normalizarCuadrilla(cuadrilla) + "|" + normalizarFecha(fecha) + "|" + codigo.toString().trim();
-}
-
-function obtenerHoja(nombre) {
-  const ss = SpreadsheetApp.getActiveSpreadsheet();
-  const hoja = ss.getSheetByName(nombre);
-  if (!hoja) throw new Error("No existe la hoja " + nombre);
-  return hoja;
-}
-
-function obtenerBaseEfectividad() {
-  const hoja = obtenerHoja(HOJA_EFECTIVIDAD);
-  const datos = hoja.getDataRange().getValues();
-  const lista = [];
-  const mapa = {};
-
-  for (let i = 1; i < datos.length; i++) {
-    const fila = datos[i];
-    const usuario = fila[1] || "ADMIN";
-    const cuadrilla = normalizarCuadrilla(fila[2]);
-    const finalizadas = Number(fila[4]) || 0;
-
-    if (!cuadrilla) continue;
-    if (mapa[cuadrilla]) continue;
-
-    const item = { usuario, cuadrilla, finalizadas };
-    lista.push(item);
-    mapa[cuadrilla] = item;
-  }
-
-  return { lista, mapa };
 }
 
 /* =========================
@@ -229,10 +206,37 @@ function procesarEfectividad(registros, periodoManual, actualizadoAlManual) {
     ok: true,
     modulo: "EFECTIVIDAD",
     registros: salida.length - 1,
-    periodo: periodoManual || "",
-    actualizadoAl: actualizadoAlManual || "",
+    periodo: periodoRanking,
+    actualizadoAl: actualizadoAlRanking,
     promedio: totalGeneral > 0 ? totalFinalizadas / totalGeneral : 0
   };
+}
+
+/* =========================
+   BASE EFECTIVIDAD
+========================= */
+
+function obtenerBaseEfectividad() {
+  const hoja = obtenerHoja(HOJA_EFECTIVIDAD);
+  const datos = hoja.getDataRange().getValues();
+  const lista = [];
+  const mapa = {};
+
+  for (let i = 1; i < datos.length; i++) {
+    const fila = datos[i];
+    const usuario = fila[1] || "ADMIN";
+    const cuadrilla = normalizarCuadrilla(fila[2]);
+    const finalizadas = Number(fila[4]) || 0;
+
+    if (!cuadrilla) continue;
+    if (mapa[cuadrilla]) continue;
+
+    const item = { usuario, cuadrilla, finalizadas };
+    lista.push(item);
+    mapa[cuadrilla] = item;
+  }
+
+  return { lista, mapa };
 }
 
 /* =========================
@@ -311,8 +315,8 @@ function procesarRecableado(registros, periodoManual, actualizadoAlManual) {
     ok: true,
     modulo: "RECABLEADO",
     registros: salida.length - 1,
-    periodo: periodoManual || "",
-    actualizadoAl: actualizadoAlManual || "",
+    periodo: periodoRanking,
+    actualizadoAl: actualizadoAlRanking,
     totalRojo,
     totalRecableados,
     promedio: totalRojo > 0 ? totalRecableados / totalRojo : 0
@@ -412,8 +416,8 @@ function procesarVtrGar(registros, periodoManual, actualizadoAlManual) {
     ok: true,
     modulo: "VTR/GAR",
     registros: salida.length - 1,
-    periodo: periodoManual || "",
-    actualizadoAl: actualizadoAlManual || "",
+    periodo: periodoRanking,
+    actualizadoAl: actualizadoAlRanking,
     totalFinalizadas,
     gar: totalGar,
     vtr: totalVtr,
@@ -544,10 +548,7 @@ function editarUsuario(usuarioBuscar, cambios) {
 
 function cambiarClave(usuarioBuscar, nuevaClave) {
   if (!nuevaClave) throw new Error("La nueva clave no puede estar vacía");
-
-  return editarUsuario(usuarioBuscar, {
-    clave: nuevaClave
-  });
+  return editarUsuario(usuarioBuscar, { clave: nuevaClave });
 }
 
 function cambiarEstadoUsuario(usuarioBuscar, estadoNuevo) {
@@ -557,9 +558,7 @@ function cambiarEstadoUsuario(usuarioBuscar, estadoNuevo) {
     throw new Error("Estado no válido. Usa ACTIVO, SUSPENDIDO o BAJA");
   }
 
-  return editarUsuario(usuarioBuscar, {
-    estado: estado
-  });
+  return editarUsuario(usuarioBuscar, { estado });
 }
 
 function cambiarPermisoUsuario(usuarioBuscar, perfilNuevo, nivelNuevo) {
@@ -575,7 +574,7 @@ function cambiarPermisoUsuario(usuarioBuscar, perfilNuevo, nivelNuevo) {
   }
 
   return editarUsuario(usuarioBuscar, {
-    perfil: perfil,
+    perfil,
     nivelAcceso: nivel
   });
 }
@@ -583,14 +582,6 @@ function cambiarPermisoUsuario(usuarioBuscar, perfilNuevo, nivelNuevo) {
 function listarUsuarios() {
   const hoja = obtenerHoja(HOJA_USUARIOS);
   const datos = hoja.getDataRange().getValues();
-
-  if (datos.length <= 1) {
-    return {
-      ok: true,
-      modulo: "USUARIOS",
-      usuarios: []
-    };
-  }
 
   const usuarios = [];
 
@@ -612,7 +603,7 @@ function listarUsuarios() {
   return {
     ok: true,
     modulo: "USUARIOS",
-    usuarios: usuarios
+    usuarios
   };
 }
 
@@ -660,7 +651,10 @@ function obtenerProduccionPorCuadrilla() {
     if (!cuadrilla) continue;
 
     if (!mapa[cuadrilla]) {
-      mapa[cuadrilla] = { usuario, produccion: 0 };
+      mapa[cuadrilla] = {
+        usuario,
+        produccion: 0
+      };
     }
 
     mapa[cuadrilla].produccion += cantidad;
@@ -676,6 +670,7 @@ function obtenerEfectividadPorCuadrilla() {
 
   for (let i = 1; i < datos.length; i++) {
     const fila = datos[i];
+
     const usuario = fila[1] || "ADMIN";
     const cuadrilla = normalizarCuadrilla(fila[2]);
     const fecha = fila[3];
@@ -704,6 +699,7 @@ function obtenerRecableadoPorCuadrilla() {
 
   for (let i = 1; i < datos.length; i++) {
     const fila = datos[i];
+
     const cuadrilla = normalizarCuadrilla(fila[2]);
     const rojoAsignadas = Number(fila[4]) || 0;
     const recableados = Number(fila[5]) || 0;
@@ -728,6 +724,7 @@ function obtenerVtrGarPorCuadrilla() {
 
   for (let i = 1; i < datos.length; i++) {
     const fila = datos[i];
+
     const cuadrilla = normalizarCuadrilla(fila[2]);
     const finalizadas = Number(fila[4]) || 0;
     const gar = Number(fila[5]) || 0;
@@ -784,8 +781,90 @@ function obtenerMedalla(puesto) {
   return "";
 }
 
+
+function convertirFechaRanking(valor) {
+  if (!valor) return null;
+
+  if (valor instanceof Date && !isNaN(valor.getTime())) {
+    return valor;
+  }
+
+  const texto = valor.toString().trim();
+  if (!texto) return null;
+
+  let partes = texto.split("/");
+  if (partes.length === 3) {
+    const dia = Number(partes[0]);
+    const mes = Number(partes[1]) - 1;
+    const anio = Number(partes[2]);
+    const fecha = new Date(anio, mes, dia);
+    if (!isNaN(fecha.getTime())) return fecha;
+  }
+
+  partes = texto.split("-");
+  if (partes.length === 3) {
+    const fecha = new Date(Number(partes[0]), Number(partes[1]) - 1, Number(partes[2]));
+    if (!isNaN(fecha.getTime())) return fecha;
+  }
+
+  return null;
+}
+
+function obtenerNombreMesRanking(fecha) {
+  const meses = [
+    "ENERO", "FEBRERO", "MARZO", "ABRIL", "MAYO", "JUNIO",
+    "JULIO", "AGOSTO", "SEPTIEMBRE", "OCTUBRE", "NOVIEMBRE", "DICIEMBRE"
+  ];
+
+  if (!(fecha instanceof Date) || isNaN(fecha.getTime())) return "";
+
+  return meses[fecha.getMonth()];
+}
+
+function obtenerCorteRankingAutomatico() {
+  const fuentes = [
+    { hoja: HOJA_PRODUCCION, columna: 3 },
+    { hoja: HOJA_EFECTIVIDAD, columna: 4 }
+  ];
+
+  let fechaMaxima = null;
+
+  fuentes.forEach(fuente => {
+    const hoja = obtenerHoja(fuente.hoja);
+    const ultimaFila = hoja.getLastRow();
+
+    if (ultimaFila <= 1) return;
+
+    const valores = hoja.getRange(2, fuente.columna, ultimaFila - 1, 1).getValues();
+
+    valores.forEach(fila => {
+      const fecha = convertirFechaRanking(fila[0]);
+
+      if (fecha && (!fechaMaxima || fecha > fechaMaxima)) {
+        fechaMaxima = fecha;
+      }
+    });
+  });
+
+  if (!fechaMaxima) {
+    return {
+      periodo: "",
+      actualizadoAl: ""
+    };
+  }
+
+  return {
+    periodo: obtenerNombreMesRanking(fechaMaxima),
+    actualizadoAl: Utilities.formatDate(fechaMaxima, Session.getScriptTimeZone(), "dd/MM/yyyy")
+  };
+}
+
+
 function actualizarRanking(periodoManual, actualizadoAlManual) {
   const hojaRanking = obtenerHoja(HOJA_RANKING);
+  const corteAutomatico = obtenerCorteRankingAutomatico();
+  const periodoRanking = periodoManual || corteAutomatico.periodo || "";
+  const actualizadoAlRanking = actualizadoAlManual || corteAutomatico.actualizadoAl || "";
 
   const mapaUsuarios = obtenerMapaUsuarios();
   const mapaProduccion = obtenerProduccionPorCuadrilla();
@@ -794,6 +873,7 @@ function actualizarRanking(periodoManual, actualizadoAlManual) {
   const mapaVtrGar = obtenerVtrGarPorCuadrilla();
 
   const cuadrillas = {};
+
   Object.keys(mapaUsuarios).forEach(c => cuadrillas[c] = true);
   Object.keys(mapaProduccion).forEach(c => cuadrillas[c] = true);
   Object.keys(mapaEfectividad).forEach(c => cuadrillas[c] = true);
@@ -814,7 +894,7 @@ function actualizarRanking(periodoManual, actualizadoAlManual) {
       usuario: u.usuario || p.usuario || e.usuario || "ADMIN",
       sede: u.sede || "",
       plataforma: u.plataforma || "",
-      actualizacion: actualizadoAlManual || e.fecha || "",
+      actualizacion: actualizadoAlRanking || e.fecha || "",
       produccion: Number(p.produccion) || 0,
       efectividad: Number(e.efectividad) || 0,
       recableado: Number(r.porcentajeRecableado) || 0,
@@ -905,12 +985,11 @@ function actualizarRanking(periodoManual, actualizadoAlManual) {
     ok: true,
     modulo: "RANKING",
     registros: lista.length,
-    periodo: periodoManual || "",
-    actualizadoAl: actualizadoAlManual || "",
+    periodo: periodoRanking,
+    actualizadoAl: actualizadoAlRanking,
     primeroRegion: lista[0] ? lista[0].cuadrilla : ""
   };
 }
-
 
 /* =========================
    API PRINCIPAL
