@@ -71,11 +71,10 @@ function formatoPorcentajeRanking(valor){
 }
 
 function medallaRanking(puesto){
-    puesto = Number(puesto) || 0;
-    if(puesto === 1) return "🥇";
-    if(puesto === 2) return "🥈";
-    if(puesto === 3) return "🥉";
-    return puesto;
+    if(Number(puesto) === 1) return "🥇";
+    if(Number(puesto) === 2) return "🥈";
+    if(Number(puesto) === 3) return "🥉";
+    return "";
 }
 
 function colorSemaforoRanking(tipo, valor){
