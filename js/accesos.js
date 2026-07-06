@@ -396,7 +396,7 @@ html += "</table>";
 
 document.getElementById("vistaPrevia").innerHTML = html;
 
-const url = "https://script.google.com/macros/s/AKfycbwxrKYIpSx2WZheF4r7EdKcM67qca5oMiJiddYAF5gDtHTNuo4rEQmybxacD_X2YDmY/exec";
+const url = "https://script.google.com/macros/s/AKfycbxOfv7907QcBS6Gd0O26bmz-1t87Cj8meYR4Ob9GnVsVf3Kjuc5CqrTaaEj8_5HIy0/exec";
 
 fetch(url, {
     method: "POST",
@@ -672,7 +672,7 @@ async function procesarEfectividad(){
 
     document.getElementById("vistaPreviaEfectividad").innerHTML = html;
 
-    const url = "https://script.google.com/macros/s/AKfycbwxrKYIpSx2WZheF4r7EdKcM67qca5oMiJiddYAF5gDtHTNuo4rEQmybxacD_X2YDmY/exec";
+    const url = "https://script.google.com/macros/s/AKfycbxOfv7907QcBS6Gd0O26bmz-1t87Cj8meYR4Ob9GnVsVf3Kjuc5CqrTaaEj8_5HIy0/exec";
 
     try{
 
@@ -946,7 +946,7 @@ async function procesarRecableado(){
 
     document.getElementById("vistaPreviaRecableado").innerHTML = html;
 
-    const url = "https://script.google.com/macros/s/AKfycbwxrKYIpSx2WZheF4r7EdKcM67qca5oMiJiddYAF5gDtHTNuo4rEQmybxacD_X2YDmY/exec";
+    const url = "https://script.google.com/macros/s/AKfycbxOfv7907QcBS6Gd0O26bmz-1t87Cj8meYR4Ob9GnVsVf3Kjuc5CqrTaaEj8_5HIy0/exec";
 
     try{
 
@@ -1174,7 +1174,7 @@ async function procesarVtrGar(){
 
     document.getElementById("vistaPreviaVtrGar").innerHTML = html;
 
-    const url = "https://script.google.com/macros/s/AKfycbwxrKYIpSx2WZheF4r7EdKcM67qca5oMiJiddYAF5gDtHTNuo4rEQmybxacD_X2YDmY/exec";
+    const url = "https://script.google.com/macros/s/AKfycbxOfv7907QcBS6Gd0O26bmz-1t87Cj8meYR4Ob9GnVsVf3Kjuc5CqrTaaEj8_5HIy0/exec";
 
     try{
 
