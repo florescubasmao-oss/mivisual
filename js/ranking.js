@@ -168,9 +168,12 @@ function vistaTecnicoRanking(item){
                 <h3>${item.cuadrilla}</h3>
                 <p>Actualizado al: <b>${item.actualizacion}</b></p>
                 <hr>
-                <h2>Puesto Región: ${medallaRanking(item.puestoRegion)}</h2>
-                <h2>Puesto Sede: ${medallaRanking(item.puestoSede)}</h2>
-                <h2>Puesto Plataforma: ${medallaRanking(item.puestoPlataforma)}</h2>
+<h2>Puesto Región: ${item.puestoRegion} ${medallaRanking(item.puestoRegion)}</h2>
+
+<h2>Puesto Sede: ${item.puestoSede} ${medallaRanking(item.puestoSede)}</h2>
+
+<h2>Puesto Plataforma: ${item.puestoPlataforma} ${medallaRanking(item.puestoPlataforma)}</h2>
+
             </div>
 
             <br>
