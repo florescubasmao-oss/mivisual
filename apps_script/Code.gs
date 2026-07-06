@@ -352,20 +352,47 @@ function convertirRegistrosVtrGar(registros) {
     const texto = normalizarTexto(nombre);
     const cantidad = Number(r.cantidad || r.total || r.valor || r.vtrgar || 0) || 0;
 
+    /*
+      CASO 1:
+      El frontend ya envía la vista previa procesada:
+      { cuadrilla, gar, vtr, total }
+      En este caso NO se debe volver a interpretar ni duplicar.
+    */
+    if (r.cuadrilla && (r.gar !== undefined || r.vtr !== undefined)) {
+      const cuadrilla = normalizarCuadrilla(r.cuadrilla);
+
+      if (!mapa[cuadrilla]) {
+        mapa[cuadrilla] = {
+          usuario: r.usuario || "ADMIN",
+          gar: 0,
+          vtr: 0
+        };
+      }
+
+      mapa[cuadrilla].gar += Number(r.gar) || 0;
+      mapa[cuadrilla].vtr += Number(r.vtr) || 0;
+      return;
+    }
+
+    /*
+      CASO 2:
+      Base pegada en bloques:
+      P1 CUADRILLA 6
+      GARANTIA 1
+      REITERADA 5
+
+      La línea de cuadrilla solo marca la cuadrilla actual.
+      NO suma el total de cabecera.
+    */
     if (/^P\s*\d+\s/.test(texto)) {
       cuadrillaActual = normalizarCuadrilla(nombre);
 
       if (!mapa[cuadrillaActual]) {
         mapa[cuadrillaActual] = {
           usuario: r.usuario || "ADMIN",
-          gar: Number(r.gar) || 0,
-          vtr: Number(r.vtr) || 0
+          gar: 0,
+          vtr: 0
         };
-      }
-
-      if (Number(r.gar) || Number(r.vtr)) {
-        mapa[cuadrillaActual].gar += Number(r.gar) || 0;
-        mapa[cuadrillaActual].vtr += Number(r.vtr) || 0;
       }
 
       return;

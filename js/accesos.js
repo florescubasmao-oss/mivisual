@@ -396,7 +396,7 @@ html += "</table>";
 
 document.getElementById("vistaPrevia").innerHTML = html;
 
-const url = "https://script.google.com/macros/s/AKfycbwHo2Qlp9R6fSb0Z6J0ZBT4FhatzOu-wp_AyxgeZIMHZUIe6xvoyv2SogA8Wd-udX2j/exec";
+const url = "https://script.google.com/macros/s/AKfycbzW2H9GImLJlo4Rydu0jvBVsI3_FGIxEc-SKtBQU7hiRth9bSu3SNVaYLsggUxneHZL/exec";
 
 fetch(url, {
     method: "POST",
@@ -672,7 +672,7 @@ async function procesarEfectividad(){
 
     document.getElementById("vistaPreviaEfectividad").innerHTML = html;
 
-    const url = "https://script.google.com/macros/s/AKfycbwHo2Qlp9R6fSb0Z6J0ZBT4FhatzOu-wp_AyxgeZIMHZUIe6xvoyv2SogA8Wd-udX2j/exec";
+    const url = "https://script.google.com/macros/s/AKfycbzW2H9GImLJlo4Rydu0jvBVsI3_FGIxEc-SKtBQU7hiRth9bSu3SNVaYLsggUxneHZL/exec";
 
     try{
 
@@ -946,7 +946,7 @@ async function procesarRecableado(){
 
     document.getElementById("vistaPreviaRecableado").innerHTML = html;
 
-    const url = "https://script.google.com/macros/s/AKfycbwHo2Qlp9R6fSb0Z6J0ZBT4FhatzOu-wp_AyxgeZIMHZUIe6xvoyv2SogA8Wd-udX2j/exec";
+    const url = "https://script.google.com/macros/s/AKfycbzW2H9GImLJlo4Rydu0jvBVsI3_FGIxEc-SKtBQU7hiRth9bSu3SNVaYLsggUxneHZL/exec";
 
     try{
 
@@ -1214,7 +1214,7 @@ async function procesarVtrGar(){
 
     document.getElementById("vistaPreviaVtrGar").innerHTML = html;
 
-    const url = "https://script.google.com/macros/s/AKfycbwHo2Qlp9R6fSb0Z6J0ZBT4FhatzOu-wp_AyxgeZIMHZUIe6xvoyv2SogA8Wd-udX2j/exec";
+    const url = "https://script.google.com/macros/s/AKfycbzW2H9GImLJlo4Rydu0jvBVsI3_FGIxEc-SKtBQU7hiRth9bSu3SNVaYLsggUxneHZL/exec";
 
     try{
 
