@@ -30,6 +30,7 @@ function configurarMenu(){
     mostrarCard("cardRecableado", "none");
     mostrarCard("cardVTRGAR", "none");
     mostrarCard("cardRanking", "none");
+    mostrarCard("cardObservaciones", "none");
     mostrarCard("cardAccesos", "none");
     mostrarCard("cardBiblioteca", "none");
     mostrarCard("cardCapacitacion", "none");
@@ -43,6 +44,7 @@ function configurarMenu(){
         mostrarCard("cardRecableado", "block");
         mostrarCard("cardVTRGAR", "block");
         mostrarCard("cardRanking", "block");
+        mostrarCard("cardObservaciones", "block");
         mostrarCard("cardAccesos", "block");
         mostrarCard("cardBiblioteca", "block");
         mostrarCard("cardCapacitacion", "block");
@@ -50,6 +52,7 @@ function configurarMenu(){
 
     if (perfil == "SUPERVISOR") {
         mostrarCard("cardRanking", "block");
+        mostrarCard("cardObservaciones", "block");
         mostrarCard("cardAccesos", "block");
         mostrarCard("cardBiblioteca", "block");
         mostrarCard("cardCapacitacion", "block");
@@ -58,6 +61,7 @@ function configurarMenu(){
 
     if (perfil == "JEFATURA") {
         mostrarCard("cardRanking", "block");
+        mostrarCard("cardObservaciones", "block");
         mostrarCard("cardAccesos", "block");
         mostrarCard("cardBiblioteca", "block");
         mostrarCard("cardCapacitacion", "block");

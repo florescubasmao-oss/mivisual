@@ -113,3 +113,26 @@ font-size:12px;
   font-weight:bold;
 }
   
+
+
+/* OBSERVACIONES - Mobile cards */
+.obs-contenedor{max-width:760px;margin:0 auto;padding:14px;}
+.obs-contenedor h2{margin:8px 0 4px 0;}
+.obs-sub{color:#64748b;margin-top:0;}
+.obs-contenedor input,.obs-contenedor select,.obs-contenedor textarea{width:100%;box-sizing:border-box;margin:6px 0 12px 0;padding:12px;border:1px solid #cbd5e1;border-radius:10px;font-size:15px;background:white;}
+.obs-contenedor label{font-weight:700;font-size:14px;color:#334155;}
+.btnObsPrincipal,.obs-acciones button,.obs-contenedor button{border:0;border-radius:10px;padding:12px 14px;margin:6px 4px 8px 0;background:#0f766e;color:white;font-weight:700;cursor:pointer;}
+.obs-filtros{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:12px 0;}
+.obs-card{background:#fff;border:1px solid #e2e8f0;border-left:6px solid #94a3b8;border-radius:16px;padding:14px;margin:12px 0;box-shadow:0 6px 16px rgba(15,23,42,.08);}
+.obs-card-head{display:flex;justify-content:space-between;gap:10px;align-items:flex-start;margin-bottom:12px;}
+.obs-badge{font-size:12px;font-weight:800;border-radius:999px;background:#f1f5f9;padding:7px 9px;white-space:nowrap;}
+.obs-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px;}
+.obs-grid div{background:#f8fafc;border-radius:12px;padding:10px;}
+.obs-grid span{display:block;font-size:11px;color:#64748b;text-transform:uppercase;font-weight:700;}
+.obs-grid b{font-size:14px;color:#0f172a;}
+.obs-descripcion{background:#f8fafc;border-radius:12px;padding:10px;margin:8px 0;color:#334155;}
+.obs-acciones{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px;}
+.obs-derivado{border-left-color:#eab308;}.obs-proceso{border-left-color:#2563eb;}.obs-penalizado{border-left-color:#dc2626;}.obs-apelado{border-left-color:#7c3aed;}.obs-subsanado{border-left-color:#16a34a;}
+.obs-vacio,.obs-error{background:#f8fafc;border-radius:12px;padding:16px;margin-top:12px;}
+.obs-error{color:#b91c1c;background:#fee2e2;}
+@media(max-width:520px){.obs-filtros,.obs-grid{grid-template-columns:1fr}.obs-card{border-radius:14px;padding:12px}.obs-contenedor{padding:10px}.obs-card-head{flex-direction:column}.obs-badge{align-self:flex-start}}

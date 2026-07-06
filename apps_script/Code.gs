@@ -4,6 +4,8 @@ const HOJA_RECABLEADO = "PORCENTAJE REC";
 const HOJA_VTRGAR = "POR VTR/GAR";
 const HOJA_USUARIOS = "USUARIOS";
 const HOJA_RANKING = "RANKING";
+const HOJA_OBSERVACIONES = "OBSERVACIONES";
+const CARPETA_EVIDENCIAS_OBSERVACIONES = "1W23rJjyUgmYGTlG2NzrpvasIWbwKBV6h";
 
 function doGet() {
   return ContentService
@@ -55,6 +57,28 @@ function normalizarFecha(fecha) {
 
 function generarID(cuadrilla, fecha, codigo) {
   return normalizarCuadrilla(cuadrilla) + "|" + normalizarFecha(fecha) + "|" + codigo.toString().trim();
+}
+
+function respuestaJson(data) {
+  return ContentService
+    .createTextOutput(JSON.stringify(data))
+    .setMimeType(ContentService.MimeType.JSON);
+}
+
+function normalizarUsuario(txt) {
+  return normalizarTexto(txt).replace(/\s+/g, "");
+}
+
+function formatearFechaArchivo(fecha) {
+  return Utilities.formatDate(fecha, Session.getScriptTimeZone(), "yyyyMMdd");
+}
+
+function obtenerPeriodoActual(fecha) {
+  const meses = [
+    "ENERO", "FEBRERO", "MARZO", "ABRIL", "MAYO", "JUNIO",
+    "JULIO", "AGOSTO", "SEPTIEMBRE", "OCTUBRE", "NOVIEMBRE", "DICIEMBRE"
+  ];
+  return meses[fecha.getMonth()] + " " + fecha.getFullYear();
 }
 
 /* =========================
@@ -206,8 +230,8 @@ function procesarEfectividad(registros, periodoManual, actualizadoAlManual) {
     ok: true,
     modulo: "EFECTIVIDAD",
     registros: salida.length - 1,
-    periodo: periodoRanking,
-    actualizadoAl: actualizadoAlRanking,
+    periodo: periodoManual || "",
+    actualizadoAl: actualizadoAlManual || "",
     promedio: totalGeneral > 0 ? totalFinalizadas / totalGeneral : 0
   };
 }
@@ -315,8 +339,8 @@ function procesarRecableado(registros, periodoManual, actualizadoAlManual) {
     ok: true,
     modulo: "RECABLEADO",
     registros: salida.length - 1,
-    periodo: periodoRanking,
-    actualizadoAl: actualizadoAlRanking,
+    periodo: periodoManual || "",
+    actualizadoAl: actualizadoAlManual || "",
     totalRojo,
     totalRecableados,
     promedio: totalRojo > 0 ? totalRecableados / totalRojo : 0
@@ -416,8 +440,8 @@ function procesarVtrGar(registros, periodoManual, actualizadoAlManual) {
     ok: true,
     modulo: "VTR/GAR",
     registros: salida.length - 1,
-    periodo: periodoRanking,
-    actualizadoAl: actualizadoAlRanking,
+    periodo: periodoManual || "",
+    actualizadoAl: actualizadoAlManual || "",
     totalFinalizadas,
     gar: totalGar,
     vtr: totalVtr,
@@ -605,6 +629,283 @@ function listarUsuarios() {
     modulo: "USUARIOS",
     usuarios
   };
+}
+
+
+/* =========================
+   OBSERVACIONES
+========================= */
+
+function encabezadoObservaciones() {
+  return [[
+    "ID",
+    "FECHA DE REGISTRO",
+    "PERIODO",
+    "Registrado Por",
+    "Perfil Registro",
+    "Sede",
+    "Plataforma",
+    "Supervisor",
+    "Cuadrilla",
+    "Fuente",
+    "Código",
+    "Tipo Observación",
+    "Descripción",
+    "Estado",
+    "Monto",
+    "Fecha Descargo",
+    "Descargo Técnico",
+    "Evidencia Técnico",
+    "Fecha Revisión",
+    "Plazo"
+  ]];
+}
+
+function asegurarHojaObservaciones() {
+  const hoja = obtenerHoja(HOJA_OBSERVACIONES);
+  if (hoja.getLastRow() === 0) {
+    hoja.getRange(1, 1, 1, 20).setValues(encabezadoObservaciones());
+  }
+  return hoja;
+}
+
+function generarIdObservacion() {
+  return "OBS-" + Utilities.formatDate(new Date(), Session.getScriptTimeZone(), "yyyyMMddHHmmss");
+}
+
+function limpiarNombreArchivo(txt) {
+  return (txt || "")
+    .toString()
+    .toUpperCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^A-Z0-9]/g, "");
+}
+
+function obtenerUsuarioApp(usuarioBuscar) {
+  const hoja = obtenerHoja(HOJA_USUARIOS);
+  const datos = hoja.getDataRange().getValues();
+  const usuarioNormalizado = normalizarUsuario(usuarioBuscar);
+
+  for (let i = 1; i < datos.length; i++) {
+    const usuario = normalizarUsuario(datos[i][0]);
+    if (usuario === usuarioNormalizado) {
+      return {
+        usuario,
+        correo: datos[i][1],
+        clave: datos[i][2],
+        cuadrilla: normalizarCuadrilla(datos[i][3]),
+        sede: normalizarTexto(datos[i][4]),
+        plataforma: normalizarTexto(datos[i][5]),
+        perfil: normalizarTexto(datos[i][6]),
+        nivelAcceso: normalizarTexto(datos[i][7]),
+        estado: normalizarTexto(datos[i][8]),
+        usuarioSupervisor: normalizarUsuario(datos[i][9])
+      };
+    }
+  }
+
+  throw new Error("No se encontró el usuario: " + usuarioBuscar);
+}
+
+function esPerfilJefatura(perfil) {
+  const p = normalizarTexto(perfil);
+  return p === "JEFATURA" || p === "ADMIN" || p === "ADMINISTRADOR";
+}
+
+function obtenerDatosCuadrillaApp(cuadrillaBuscar) {
+  const mapa = obtenerMapaUsuarios();
+  const cuadrilla = normalizarCuadrilla(cuadrillaBuscar);
+  if (!mapa[cuadrilla]) throw new Error("No se encontró la cuadrilla en USUARIOS: " + cuadrillaBuscar);
+  return mapa[cuadrilla];
+}
+
+function guardarEvidenciaObservacion(cuadrilla, codigo, evidenciaBase64, evidenciaNombre, evidenciaMimeType) {
+  if (!evidenciaBase64) return "";
+
+  const carpeta = DriveApp.getFolderById(CARPETA_EVIDENCIAS_OBSERVACIONES);
+  const extension = evidenciaNombre && evidenciaNombre.indexOf(".") >= 0
+    ? evidenciaNombre.split(".").pop().toLowerCase()
+    : "jpg";
+
+  const nombreArchivo = limpiarNombreArchivo(cuadrilla) + "_" +
+    limpiarNombreArchivo(codigo) + "_" +
+    formatearFechaArchivo(new Date()) + "." + extension;
+
+  const bytes = Utilities.base64Decode(evidenciaBase64);
+  const blob = Utilities.newBlob(bytes, evidenciaMimeType || "image/jpeg", nombreArchivo);
+  const archivo = carpeta.createFile(blob);
+  archivo.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
+  return archivo.getUrl();
+}
+
+function registrarObservacion(data) {
+  const hoja = asegurarHojaObservaciones();
+  const usuarioRegistro = obtenerUsuarioApp(data.usuario);
+
+  if (!(usuarioRegistro.perfil === "SUPERVISOR" || esPerfilJefatura(usuarioRegistro.perfil))) {
+    throw new Error("Solo Supervisor o Jefatura pueden registrar observaciones");
+  }
+
+  const cuadrilla = normalizarCuadrilla(data.cuadrilla);
+  const datosCuadrilla = obtenerDatosCuadrillaApp(cuadrilla);
+
+  if (usuarioRegistro.perfil === "SUPERVISOR" && usuarioRegistro.sede !== datosCuadrilla.sede) {
+    throw new Error("Supervisor solo puede registrar observaciones de su sede");
+  }
+
+  const fuente = normalizarTexto(data.fuente);
+  const tipo = normalizarTexto(data.tipoObservacion || data.tipo);
+  const estado = normalizarTexto(data.estado || "DERIVADO");
+
+  if (!["WIN", "VISUAL"].includes(fuente)) throw new Error("Fuente no válida. Usa WIN o VISUAL");
+  if (!["SEGURIDAD", "IMPLEMENTACION", "IMPLEMENTACIÓN", "GESTION TECNICA", "GESTIÓN TÉCNICA"].includes(tipo)) throw new Error("Tipo de observación no válido");
+  if (!["DERIVADO", "EN PROCESO", "PENALIZADO", "APELADO", "SUBSANADO"].includes(estado)) throw new Error("Estado no válido");
+
+  const ahora = new Date();
+  const plazo = new Date(ahora.getTime() + (24 * 60 * 60 * 1000));
+  const id = generarIdObservacion();
+
+  hoja.appendRow([
+    id,
+    ahora,
+    obtenerPeriodoActual(ahora),
+    usuarioRegistro.usuario,
+    usuarioRegistro.perfil,
+    datosCuadrilla.sede,
+    datosCuadrilla.plataforma,
+    datosCuadrilla.usuarioSupervisor,
+    cuadrilla,
+    fuente,
+    data.codigo || "",
+    tipo,
+    data.descripcion || "",
+    estado,
+    Number(data.monto) || 0,
+    "",
+    "",
+    "",
+    "",
+    plazo
+  ]);
+
+  const fila = hoja.getLastRow();
+  hoja.getRange(fila, 2).setNumberFormat("dd/mm/yyyy hh:mm");
+  hoja.getRange(fila, 15).setNumberFormat('"S/ "0.00');
+  hoja.getRange(fila, 20).setNumberFormat("dd/mm/yyyy hh:mm");
+
+  return { ok: true, modulo: "OBSERVACIONES", accion: "REGISTRAR", id };
+}
+
+function listarObservaciones(data) {
+  const hoja = asegurarHojaObservaciones();
+  const datos = hoja.getDataRange().getValues();
+  const usuario = obtenerUsuarioApp(data.usuario);
+  const lista = [];
+
+  for (let i = 1; i < datos.length; i++) {
+    const fila = datos[i];
+    const item = {
+      id: fila[0],
+      fechaRegistro: fila[1],
+      periodo: fila[2],
+      registradoPor: fila[3],
+      perfilRegistro: fila[4],
+      sede: fila[5],
+      plataforma: fila[6],
+      supervisor: fila[7],
+      cuadrilla: fila[8],
+      fuente: fila[9],
+      codigo: fila[10],
+      tipoObservacion: fila[11],
+      descripcion: fila[12],
+      estado: fila[13],
+      monto: fila[14],
+      fechaDescargo: fila[15],
+      descargoTecnico: fila[16],
+      evidenciaTecnico: fila[17],
+      fechaRevision: fila[18],
+      plazo: fila[19]
+    };
+
+    let permitir = false;
+    if (usuario.perfil === "TECNICO") permitir = normalizarCuadrilla(usuario.cuadrilla) === normalizarCuadrilla(item.cuadrilla);
+    if (usuario.perfil === "SUPERVISOR") permitir = normalizarTexto(usuario.sede) === normalizarTexto(item.sede);
+    if (esPerfilJefatura(usuario.perfil)) permitir = true;
+    if (!permitir) continue;
+
+    if (data.estado && normalizarTexto(data.estado) !== normalizarTexto(item.estado)) continue;
+    if (data.fuente && normalizarTexto(data.fuente) !== normalizarTexto(item.fuente)) continue;
+    if (data.sede && normalizarTexto(data.sede) !== normalizarTexto(item.sede)) continue;
+
+    lista.push(item);
+  }
+
+  return { ok: true, modulo: "OBSERVACIONES", accion: "LISTAR", registros: lista.length, observaciones: lista };
+}
+
+function buscarFilaObservacion(id) {
+  const hoja = obtenerHoja(HOJA_OBSERVACIONES);
+  const datos = hoja.getDataRange().getValues();
+  for (let i = 1; i < datos.length; i++) {
+    if ((datos[i][0] || "").toString() === id.toString()) {
+      return { hoja, fila: i + 1, datos: datos[i] };
+    }
+  }
+  throw new Error("No se encontró la observación: " + id);
+}
+
+function registrarDescargo(data) {
+  const encontrado = buscarFilaObservacion(data.id);
+  const hoja = encontrado.hoja;
+  const fila = encontrado.fila;
+  const obs = encontrado.datos;
+  const usuario = obtenerUsuarioApp(data.usuario);
+
+  if (usuario.perfil !== "TECNICO") throw new Error("Solo el técnico puede registrar descargo");
+  if (normalizarCuadrilla(usuario.cuadrilla) !== normalizarCuadrilla(obs[8])) throw new Error("El técnico solo puede descargar observaciones de su cuadrilla");
+
+  const link = guardarEvidenciaObservacion(obs[8], obs[10], data.evidenciaBase64, data.evidenciaNombre, data.evidenciaMimeType);
+  const ahora = new Date();
+
+  hoja.getRange(fila, 16).setValue(ahora);
+  hoja.getRange(fila, 17).setValue(data.descargoTecnico || "");
+  if (link) hoja.getRange(fila, 18).setValue(link);
+  hoja.getRange(fila, 16).setNumberFormat("dd/mm/yyyy hh:mm");
+
+  return { ok: true, modulo: "OBSERVACIONES", accion: "DESCARGO", id: data.id, evidencia: link };
+}
+
+function actualizarEstadoObservacion(data) {
+  const encontrado = buscarFilaObservacion(data.id);
+  const hoja = encontrado.hoja;
+  const fila = encontrado.fila;
+  const obs = encontrado.datos;
+  const usuario = obtenerUsuarioApp(data.usuario);
+  const nuevoEstado = normalizarTexto(data.estado);
+
+  if (!["DERIVADO", "EN PROCESO", "PENALIZADO", "APELADO", "SUBSANADO"].includes(nuevoEstado)) throw new Error("Estado no válido");
+
+  const registradoPor = normalizarUsuario(obs[3]);
+  const perfilRegistro = normalizarTexto(obs[4]);
+  let puedeEditar = false;
+
+  if (esPerfilJefatura(usuario.perfil)) puedeEditar = true;
+  if (usuario.perfil === "SUPERVISOR" && perfilRegistro === "SUPERVISOR" && registradoPor === usuario.usuario && normalizarTexto(usuario.sede) === normalizarTexto(obs[5])) puedeEditar = true;
+
+  if (!puedeEditar) throw new Error("No tienes permiso para cambiar el estado de esta observación");
+
+  hoja.getRange(fila, 14).setValue(nuevoEstado);
+  if (data.monto !== undefined && data.monto !== null && data.monto !== "") {
+    hoja.getRange(fila, 15).setValue(Number(data.monto) || 0);
+    hoja.getRange(fila, 15).setNumberFormat('"S/ "0.00');
+  }
+
+  const ahora = new Date();
+  hoja.getRange(fila, 19).setValue(ahora);
+  hoja.getRange(fila, 19).setNumberFormat("dd/mm/yyyy hh:mm");
+
+  return { ok: true, modulo: "OBSERVACIONES", accion: "CAMBIAR_ESTADO", id: data.id, estado: nuevoEstado };
 }
 
 /* =========================
@@ -998,6 +1299,30 @@ function actualizarRanking(periodoManual, actualizadoAlManual) {
 function doPost(e) {
   try {
     const data = JSON.parse(e.postData.contents);
+
+    if (data.accion === "registrarObservacion") {
+      return ContentService
+        .createTextOutput(JSON.stringify(registrarObservacion(data)))
+        .setMimeType(ContentService.MimeType.JSON);
+    }
+
+    if (data.accion === "listarObservaciones") {
+      return ContentService
+        .createTextOutput(JSON.stringify(listarObservaciones(data)))
+        .setMimeType(ContentService.MimeType.JSON);
+    }
+
+    if (data.accion === "registrarDescargo") {
+      return ContentService
+        .createTextOutput(JSON.stringify(registrarDescargo(data)))
+        .setMimeType(ContentService.MimeType.JSON);
+    }
+
+    if (data.accion === "actualizarEstadoObservacion") {
+      return ContentService
+        .createTextOutput(JSON.stringify(actualizarEstadoObservacion(data)))
+        .setMimeType(ContentService.MimeType.JSON);
+    }
 
     if (data.accion === "procesarEfectividad") {
       return ContentService
