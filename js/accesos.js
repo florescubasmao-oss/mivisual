@@ -396,7 +396,7 @@ html += "</table>";
 
 document.getElementById("vistaPrevia").innerHTML = html;
 
-const url = "https://script.google.com/macros/s/AKfycbzW2H9GImLJlo4Rydu0jvBVsI3_FGIxEc-SKtBQU7hiRth9bSu3SNVaYLsggUxneHZL/exec";
+const url = "https://script.google.com/macros/s/AKfycbzWZRh9Jam-jWaJL5QVrgzR0h7d0ufUd3gfCa39Yl1ACgJbRRYg7ECbujs7AdxoMduX/exec";
 
 fetch(url, {
     method: "POST",
@@ -672,7 +672,7 @@ async function procesarEfectividad(){
 
     document.getElementById("vistaPreviaEfectividad").innerHTML = html;
 
-    const url = "https://script.google.com/macros/s/AKfycbzW2H9GImLJlo4Rydu0jvBVsI3_FGIxEc-SKtBQU7hiRth9bSu3SNVaYLsggUxneHZL/exec";
+    const url = "https://script.google.com/macros/s/AKfycbzWZRh9Jam-jWaJL5QVrgzR0h7d0ufUd3gfCa39Yl1ACgJbRRYg7ECbujs7AdxoMduX/exec";
 
     try{
 
@@ -946,7 +946,7 @@ async function procesarRecableado(){
 
     document.getElementById("vistaPreviaRecableado").innerHTML = html;
 
-    const url = "https://script.google.com/macros/s/AKfycbzW2H9GImLJlo4Rydu0jvBVsI3_FGIxEc-SKtBQU7hiRth9bSu3SNVaYLsggUxneHZL/exec";
+    const url = "https://script.google.com/macros/s/AKfycbzWZRh9Jam-jWaJL5QVrgzR0h7d0ufUd3gfCa39Yl1ACgJbRRYg7ECbujs7AdxoMduX/exec";
 
     try{
 
@@ -1214,7 +1214,7 @@ async function procesarVtrGar(){
 
     document.getElementById("vistaPreviaVtrGar").innerHTML = html;
 
-    const url = "https://script.google.com/macros/s/AKfycbzW2H9GImLJlo4Rydu0jvBVsI3_FGIxEc-SKtBQU7hiRth9bSu3SNVaYLsggUxneHZL/exec";
+    const url = "https://script.google.com/macros/s/AKfycbzWZRh9Jam-jWaJL5QVrgzR0h7d0ufUd3gfCa39Yl1ACgJbRRYg7ECbujs7AdxoMduX/exec";
 
     try{
 
@@ -1251,5 +1251,401 @@ async function procesarVtrGar(){
     }catch(err){
         console.error(err);
         alert("❌ Error al conectar con la API de VTR/GAR.");
+    }
+}
+
+
+/* =========================
+   USUARIOS
+========================= */
+
+function mostrarImportarUsuarios(){
+
+    mostrarPantalla(`
+        <div style="padding:20px;max-width:1000px;margin:auto;">
+            <h2 style="text-align:center;">👥 ACTUALIZAR USUARIOS</h2>
+            <br>
+
+            <div class="card">
+                <h3>📋 Importar base de usuarios</h3>
+                <p>Pega aquí la base de usuarios desde Google Sheets o Excel.</p>
+
+                <textarea
+                    id="textoUsuarios"
+                    style="width:100%;height:260px;border-radius:8px;padding:10px;"
+                    placeholder="Usuario    Correo    Clave    Cuadrilla    Sede    Plataforma    Perfil    Nivel de Acceso    Estado    UsuarioSupervisor"
+                ></textarea>
+
+                <br><br>
+
+                <button class="button_1" onclick="procesarUsuarios()">
+                    👥 PROCESAR USUARIOS
+                </button>
+
+                &nbsp;
+
+                <button class="button_1" onclick="listarUsuariosApp()">
+                    📋 VER USUARIOS
+                </button>
+
+                &nbsp;
+
+                <button class="button_1" onclick="mostrarAdministracion()">
+                    🏠 VOLVER
+                </button>
+
+                <br><br>
+                <div id="vistaPreviaUsuarios"></div>
+            </div>
+
+            <br>
+
+            <div class="card">
+                <h3>⚙️ Gestión rápida de usuario</h3>
+
+                <label>Usuario</label>
+                <input id="usuarioGestion" style="width:100%;padding:10px;border-radius:8px;" placeholder="Ejemplo: P1TRASLADOVISUAL">
+
+                <br><br>
+
+                <label>Nueva clave</label>
+                <input id="claveGestion" style="width:100%;padding:10px;border-radius:8px;" placeholder="Nueva clave">
+
+                <br><br>
+
+                <button class="button_1" onclick="cambiarClaveUsuarioApp()">🔑 Cambiar clave</button>
+                <button class="button_1" onclick="cambiarEstadoUsuarioApp('SUSPENDIDO')">⛔ Suspender</button>
+                <button class="button_1" onclick="cambiarEstadoUsuarioApp('ACTIVO')">✅ Activar</button>
+                <button class="button_1" onclick="cambiarEstadoUsuarioApp('BAJA')">🗑️ Baja</button>
+
+                <br><br>
+
+                <button class="button_1" onclick="cambiarPermisoUsuarioApp('TECNICO','CUADRILLA')">👷 Permiso Técnico</button>
+                <button class="button_1" onclick="cambiarPermisoUsuarioApp('SUPERVISOR','SEDE')">👨‍💼 Permiso Supervisor</button>
+                <button class="button_1" onclick="cambiarPermisoUsuarioApp('ADMIN','ADMIN')">🛡️ Permiso Admin</button>
+            </div>
+
+            <br>
+
+            <div class="card">
+                <h3>✏️ Editar datos básicos</h3>
+                <p>Llena solo los campos que deseas cambiar. El usuario es obligatorio.</p>
+
+                <input id="editCorreo" style="width:100%;padding:10px;border-radius:8px;" placeholder="Correo"><br><br>
+                <input id="editCuadrilla" style="width:100%;padding:10px;border-radius:8px;" placeholder="Cuadrilla"><br><br>
+                <input id="editSede" style="width:100%;padding:10px;border-radius:8px;" placeholder="Sede"><br><br>
+                <input id="editPlataforma" style="width:100%;padding:10px;border-radius:8px;" placeholder="Plataforma"><br><br>
+                <input id="editUsuarioSupervisor" style="width:100%;padding:10px;border-radius:8px;" placeholder="UsuarioSupervisor"><br><br>
+
+                <button class="button_1" onclick="editarUsuarioApp()">💾 Guardar cambios básicos</button>
+            </div>
+        </div>
+    `);
+}
+
+function limpiarUsuarioCampo(txt){
+    return (txt || "").toString().replace(/"/g, "").trim();
+}
+
+function normalizarUsuarioTexto(txt){
+    return limpiarUsuarioCampo(txt)
+        .toUpperCase()
+        .normalize("NFD")
+        .replace(/[\u0300-\u036f]/g, "")
+        .replace(/\s+/g, " ")
+        .trim();
+}
+
+function normalizarUsuarioCuadrilla(txt){
+    return limpiarUsuarioCampo(txt)
+        .replace(/^P\s+(\d+)/i, "P$1")
+        .replace(/\s+/g, " ")
+        .trim();
+}
+
+function separarFilaUsuarios(linea){
+    if(linea.includes("\t")) return linea.split("\t").map(limpiarUsuarioCampo);
+    if(linea.includes(";")) return linea.split(";").map(limpiarUsuarioCampo);
+    return linea.split(",").map(limpiarUsuarioCampo);
+}
+
+function indiceColumnaUsuarios(encabezados, opciones){
+    return encabezados.findIndex(h => opciones.some(op => h.includes(op)));
+}
+
+function parsearUsuariosPegados(texto){
+    const lineas = texto
+        .replace(/\u00A0/g, " ")
+        .split(/\r?\n/)
+        .map(x => x.trim())
+        .filter(x => x.length > 0);
+
+    if(lineas.length < 2){
+        throw new Error("La base de usuarios no tiene suficientes filas.");
+    }
+
+    const encabezados = separarFilaUsuarios(lineas[0]).map(normalizarUsuarioTexto);
+
+    const idxUsuario = indiceColumnaUsuarios(encabezados, ["USUARIO"]);
+    const idxCorreo = indiceColumnaUsuarios(encabezados, ["CORREO", "EMAIL"]);
+    const idxClave = indiceColumnaUsuarios(encabezados, ["CLAVE", "PASSWORD"]);
+    const idxCuadrilla = indiceColumnaUsuarios(encabezados, ["CUADRILLA"]);
+    const idxSede = indiceColumnaUsuarios(encabezados, ["SEDE"]);
+    const idxPlataforma = indiceColumnaUsuarios(encabezados, ["PLATAFORMA"]);
+    const idxPerfil = indiceColumnaUsuarios(encabezados, ["PERFIL"]);
+    const idxNivel = indiceColumnaUsuarios(encabezados, ["NIVEL"]);
+    const idxEstado = indiceColumnaUsuarios(encabezados, ["ESTADO"]);
+    const idxSupervisor = indiceColumnaUsuarios(encabezados, ["USUARIOSUPERVISOR", "SUPERVISOR"]);
+
+    if(idxUsuario === -1 || idxClave === -1 || idxCuadrilla === -1){
+        throw new Error("La base debe tener como mínimo: Usuario, Clave y Cuadrilla.");
+    }
+
+    const registros = [];
+
+    for(let i = 1; i < lineas.length; i++){
+        const c = separarFilaUsuarios(lineas[i]);
+        const usuario = normalizarUsuarioTexto(c[idxUsuario]).replace(/\s+/g, "");
+
+        if(!usuario) continue;
+
+        registros.push({
+            usuario: usuario,
+            correo: idxCorreo >= 0 ? limpiarUsuarioCampo(c[idxCorreo]) : "",
+            clave: idxClave >= 0 ? limpiarUsuarioCampo(c[idxClave]) : "",
+            cuadrilla: idxCuadrilla >= 0 ? normalizarUsuarioCuadrilla(c[idxCuadrilla]) : "",
+            sede: idxSede >= 0 ? normalizarUsuarioTexto(c[idxSede]) : "",
+            plataforma: idxPlataforma >= 0 ? normalizarUsuarioTexto(c[idxPlataforma]) : "",
+            perfil: idxPerfil >= 0 ? normalizarUsuarioTexto(c[idxPerfil]) : "TECNICO",
+            nivelAcceso: idxNivel >= 0 ? normalizarUsuarioTexto(c[idxNivel]) : "CUADRILLA",
+            estado: idxEstado >= 0 ? normalizarUsuarioTexto(c[idxEstado]) : "ACTIVO",
+            usuarioSupervisor: idxSupervisor >= 0 ? normalizarUsuarioTexto(c[idxSupervisor]) : ""
+        });
+    }
+
+    return registros;
+}
+
+async function procesarUsuarios(){
+    const texto = document.getElementById("textoUsuarios").value;
+
+    try{
+        const registros = parsearUsuariosPegados(texto);
+
+        if(registros.length === 0){
+            alert("No se encontraron usuarios válidos.");
+            return;
+        }
+
+        let html = `
+            <h3>✅ Vista previa (${registros.length} usuarios)</h3>
+            <table style="width:100%;border-collapse:collapse;background:white;color:black;font-size:12px;">
+                <tr style="background:#1f4e79;color:white;">
+                    <th>Usuario</th>
+                    <th>Correo</th>
+                    <th>Cuadrilla</th>
+                    <th>Sede</th>
+                    <th>Plataforma</th>
+                    <th>Perfil</th>
+                    <th>Nivel</th>
+                    <th>Estado</th>
+                </tr>
+        `;
+
+        registros.slice(0, 50).forEach(r => {
+            html += `
+                <tr>
+                    <td>${r.usuario}</td>
+                    <td>${r.correo}</td>
+                    <td>${r.cuadrilla}</td>
+                    <td>${r.sede}</td>
+                    <td>${r.plataforma}</td>
+                    <td>${r.perfil}</td>
+                    <td>${r.nivelAcceso}</td>
+                    <td>${r.estado}</td>
+                </tr>
+            `;
+        });
+
+        html += `</table>`;
+        document.getElementById("vistaPreviaUsuarios").innerHTML = html;
+
+        const url = "https://script.google.com/macros/s/AKfycbzWZRh9Jam-jWaJL5QVrgzR0h7d0ufUd3gfCa39Yl1ACgJbRRYg7ECbujs7AdxoMduX/exec";
+
+        const respuesta = await fetch(url, {
+            method: "POST",
+            body: JSON.stringify({
+                accion: "procesarUsuarios",
+                registros: registros
+            })
+        });
+
+        const res = JSON.parse(await respuesta.text());
+
+        if(res.ok){
+            alert("✅ USUARIOS ACTUALIZADOS\n\nRegistros: " + res.registros);
+        }else{
+            alert("❌ Error: " + res.error);
+        }
+
+    }catch(err){
+        console.error(err);
+        alert("❌ " + err.message);
+    }
+}
+
+async function enviarAccionUsuario(payload, mensajeOk){
+    const url = "https://script.google.com/macros/s/AKfycbzWZRh9Jam-jWaJL5QVrgzR0h7d0ufUd3gfCa39Yl1ACgJbRRYg7ECbujs7AdxoMduX/exec";
+
+    try{
+        const respuesta = await fetch(url, {
+            method: "POST",
+            body: JSON.stringify(payload)
+        });
+
+        const res = JSON.parse(await respuesta.text());
+
+        if(res.ok){
+            alert("✅ " + mensajeOk);
+        }else{
+            alert("❌ Error: " + res.error);
+        }
+    }catch(err){
+        console.error(err);
+        alert("❌ Error al conectar con la API de usuarios.");
+    }
+}
+
+function obtenerUsuarioGestion(){
+    const usuario = normalizarUsuarioTexto(document.getElementById("usuarioGestion").value).replace(/\s+/g, "");
+    if(!usuario){
+        alert("Ingresa el usuario a gestionar.");
+        return "";
+    }
+    return usuario;
+}
+
+function cambiarClaveUsuarioApp(){
+    const usuario = obtenerUsuarioGestion();
+    if(!usuario) return;
+
+    const nuevaClave = limpiarUsuarioCampo(document.getElementById("claveGestion").value);
+    if(!nuevaClave){
+        alert("Ingresa la nueva clave.");
+        return;
+    }
+
+    enviarAccionUsuario({
+        accion: "cambiarClave",
+        usuario: usuario,
+        nuevaClave: nuevaClave
+    }, "Clave actualizada para " + usuario);
+}
+
+function cambiarEstadoUsuarioApp(estado){
+    const usuario = obtenerUsuarioGestion();
+    if(!usuario) return;
+
+    enviarAccionUsuario({
+        accion: "cambiarEstadoUsuario",
+        usuario: usuario,
+        estado: estado
+    }, "Usuario " + usuario + " actualizado a estado " + estado);
+}
+
+function cambiarPermisoUsuarioApp(perfil, nivelAcceso){
+    const usuario = obtenerUsuarioGestion();
+    if(!usuario) return;
+
+    enviarAccionUsuario({
+        accion: "cambiarPermisoUsuario",
+        usuario: usuario,
+        perfil: perfil,
+        nivelAcceso: nivelAcceso
+    }, "Permiso actualizado para " + usuario + ": " + perfil + " / " + nivelAcceso);
+}
+
+function editarUsuarioApp(){
+    const usuario = obtenerUsuarioGestion();
+    if(!usuario) return;
+
+    const cambios = {};
+
+    const correo = limpiarUsuarioCampo(document.getElementById("editCorreo").value);
+    const cuadrilla = limpiarUsuarioCampo(document.getElementById("editCuadrilla").value);
+    const sede = limpiarUsuarioCampo(document.getElementById("editSede").value);
+    const plataforma = limpiarUsuarioCampo(document.getElementById("editPlataforma").value);
+    const usuarioSupervisor = limpiarUsuarioCampo(document.getElementById("editUsuarioSupervisor").value);
+
+    if(correo) cambios.correo = correo;
+    if(cuadrilla) cambios.cuadrilla = normalizarUsuarioCuadrilla(cuadrilla);
+    if(sede) cambios.sede = sede;
+    if(plataforma) cambios.plataforma = plataforma;
+    if(usuarioSupervisor) cambios.usuarioSupervisor = usuarioSupervisor;
+
+    if(Object.keys(cambios).length === 0){
+        alert("Llena al menos un dato para editar.");
+        return;
+    }
+
+    enviarAccionUsuario({
+        accion: "editarUsuario",
+        usuario: usuario,
+        cambios: cambios
+    }, "Datos actualizados para " + usuario);
+}
+
+async function listarUsuariosApp(){
+    const url = "https://script.google.com/macros/s/AKfycbzWZRh9Jam-jWaJL5QVrgzR0h7d0ufUd3gfCa39Yl1ACgJbRRYg7ECbujs7AdxoMduX/exec";
+
+    try{
+        const respuesta = await fetch(url, {
+            method: "POST",
+            body: JSON.stringify({ accion: "listarUsuarios" })
+        });
+
+        const res = JSON.parse(await respuesta.text());
+
+        if(!res.ok){
+            alert("❌ Error: " + res.error);
+            return;
+        }
+
+        const usuarios = res.usuarios || [];
+
+        let html = `
+            <h3>📋 Usuarios registrados (${usuarios.length})</h3>
+            <table style="width:100%;border-collapse:collapse;background:white;color:black;font-size:12px;">
+                <tr style="background:#1f4e79;color:white;">
+                    <th>Usuario</th>
+                    <th>Correo</th>
+                    <th>Cuadrilla</th>
+                    <th>Sede</th>
+                    <th>Perfil</th>
+                    <th>Nivel</th>
+                    <th>Estado</th>
+                </tr>
+        `;
+
+        usuarios.forEach(u => {
+            html += `
+                <tr>
+                    <td>${u.usuario}</td>
+                    <td>${u.correo}</td>
+                    <td>${u.cuadrilla}</td>
+                    <td>${u.sede}</td>
+                    <td>${u.perfil}</td>
+                    <td>${u.nivelAcceso}</td>
+                    <td>${u.estado}</td>
+                </tr>
+            `;
+        });
+
+        html += `</table>`;
+        document.getElementById("vistaPreviaUsuarios").innerHTML = html;
+
+    }catch(err){
+        console.error(err);
+        alert("❌ Error al listar usuarios.");
     }
 }

@@ -2,6 +2,7 @@ const HOJA_PRODUCCION = "PRODUCCION_APP";
 const HOJA_EFECTIVIDAD = "EFECTIVIDAD";
 const HOJA_RECABLEADO = "PORCENTAJE REC";
 const HOJA_VTRGAR = "POR VTR/GAR";
+const HOJA_USUARIOS = "USUARIOS";
 
 function doGet() {
   return ContentService
@@ -48,12 +49,15 @@ function generarID(cuadrilla, fecha, codigo) {
   return normalizarCuadrilla(cuadrilla) + "|" + normalizarFecha(fecha) + "|" + codigo.toString().trim();
 }
 
-function obtenerBaseEfectividad() {
+function obtenerHoja(nombre) {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
-  const hoja = ss.getSheetByName(HOJA_EFECTIVIDAD);
+  const hoja = ss.getSheetByName(nombre);
+  if (!hoja) throw new Error("No existe la hoja " + nombre);
+  return hoja;
+}
 
-  if (!hoja) throw new Error("No existe la hoja EFECTIVIDAD");
-
+function obtenerBaseEfectividad() {
+  const hoja = obtenerHoja(HOJA_EFECTIVIDAD);
   const datos = hoja.getDataRange().getValues();
   const lista = [];
   const mapa = {};
@@ -80,10 +84,11 @@ function obtenerBaseEfectividad() {
 ========================= */
 
 function procesarProduccion(registros) {
-  const ss = SpreadsheetApp.getActiveSpreadsheet();
-  const hoja = ss.getSheetByName(HOJA_PRODUCCION);
+  const hoja = obtenerHoja(HOJA_PRODUCCION);
 
-  if (!hoja) throw new Error("No existe PRODUCCION_APP");
+  if (!Array.isArray(registros)) {
+    throw new Error("Producción no recibió una lista válida");
+  }
 
   const ultimaFila = hoja.getLastRow();
   let base = [];
@@ -156,12 +161,9 @@ function procesarProduccion(registros) {
 ========================= */
 
 function procesarEfectividad(registros, periodoManual, actualizadoAlManual) {
-  const ss = SpreadsheetApp.getActiveSpreadsheet();
-  const hoja = ss.getSheetByName(HOJA_EFECTIVIDAD);
+  const hoja = obtenerHoja(HOJA_EFECTIVIDAD);
 
-  if (!hoja) throw new Error("No existe la hoja EFECTIVIDAD");
-
-  if (!registros || registros.length === 0) {
+  if (!Array.isArray(registros) || registros.length === 0) {
     throw new Error("No se recibieron registros de efectividad");
   }
 
@@ -215,7 +217,7 @@ function procesarEfectividad(registros, periodoManual, actualizadoAlManual) {
   });
 
   if (salida.length <= 1) {
-    throw new Error("No se encontraron registros válidos");
+    throw new Error("No se encontraron registros válidos de efectividad");
   }
 
   hoja.clearContents();
@@ -237,12 +239,9 @@ function procesarEfectividad(registros, periodoManual, actualizadoAlManual) {
 ========================= */
 
 function procesarRecableado(registros, periodoManual, actualizadoAlManual) {
-  const ss = SpreadsheetApp.getActiveSpreadsheet();
-  const hoja = ss.getSheetByName(HOJA_RECABLEADO);
+  const hoja = obtenerHoja(HOJA_RECABLEADO);
 
-  if (!hoja) throw new Error("No existe la hoja PORCENTAJE REC");
-
-  if (!registros || registros.length === 0) {
+  if (!Array.isArray(registros) || registros.length === 0) {
     throw new Error("No se recibieron registros de recableado");
   }
 
@@ -321,102 +320,31 @@ function procesarRecableado(registros, periodoManual, actualizadoAlManual) {
 
 /* =========================
    VTR/GAR
-   GARANTIA = GAR
-   REITERADA = VTR
 ========================= */
 
 function convertirRegistrosVtrGar(registros) {
   const mapa = {};
-  let cuadrillaActual = "";
 
-  if (!registros) return mapa;
-
-  if (typeof registros === "string") {
-    registros = registros
-      .split(/\r?\n/)
-      .map(x => x.trim())
-      .filter(x => x.length > 0)
-      .map(linea => {
-        const partes = linea.split(/\t|;/).map(x => x.trim());
-        return {
-          nombre: partes[0] || "",
-          cantidad: Number(partes[1]) || 0
-        };
-      });
+  if (!Array.isArray(registros)) {
+    throw new Error("VTR/GAR no recibió una lista válida");
   }
 
-  if (!Array.isArray(registros)) return mapa;
-
   registros.forEach(r => {
-    const nombre = r.nombre || r.descripcion || r.tipo || r.cuadrilla || "";
-    const texto = normalizarTexto(nombre);
-    const cantidad = Number(r.cantidad || r.total || r.valor || r.vtrgar || 0) || 0;
+    const cuadrilla = normalizarCuadrilla(r.cuadrilla);
+    if (!cuadrilla) return;
 
-    /*
-      CASO 1:
-      El frontend ya envía la vista previa procesada:
-      { cuadrilla, gar, vtr, total }
-      En este caso NO se debe volver a interpretar ni duplicar.
-    */
-    if (r.cuadrilla && (r.gar !== undefined || r.vtr !== undefined)) {
-      const cuadrilla = normalizarCuadrilla(r.cuadrilla);
-
-      if (!mapa[cuadrilla]) {
-        mapa[cuadrilla] = {
-          usuario: r.usuario || "ADMIN",
-          gar: 0,
-          vtr: 0
-        };
-      }
-
-      mapa[cuadrilla].gar += Number(r.gar) || 0;
-      mapa[cuadrilla].vtr += Number(r.vtr) || 0;
-      return;
-    }
-
-    /*
-      CASO 2:
-      Base pegada en bloques:
-      P1 CUADRILLA 6
-      GARANTIA 1
-      REITERADA 5
-
-      La línea de cuadrilla solo marca la cuadrilla actual.
-      NO suma el total de cabecera.
-    */
-    if (/^P\s*\d+\s/.test(texto)) {
-      cuadrillaActual = normalizarCuadrilla(nombre);
-
-      if (!mapa[cuadrillaActual]) {
-        mapa[cuadrillaActual] = {
-          usuario: r.usuario || "ADMIN",
-          gar: 0,
-          vtr: 0
-        };
-      }
-
-      return;
-    }
-
-    if (!cuadrillaActual) return;
-
-    if (texto.includes("GARANTIA")) {
-      mapa[cuadrillaActual].gar += cantidad;
-    }
-
-    if (texto.includes("REITERADA")) {
-      mapa[cuadrillaActual].vtr += cantidad;
-    }
+    mapa[cuadrilla] = {
+      usuario: r.usuario || "ADMIN",
+      gar: Number(r.gar) || 0,
+      vtr: Number(r.vtr) || 0
+    };
   });
 
   return mapa;
 }
 
 function procesarVtrGar(registros, periodoManual, actualizadoAlManual) {
-  const ss = SpreadsheetApp.getActiveSpreadsheet();
-  const hoja = ss.getSheetByName(HOJA_VTRGAR);
-
-  if (!hoja) throw new Error("No existe la hoja POR VTR/GAR");
+  const hoja = obtenerHoja(HOJA_VTRGAR);
 
   const baseEfectividad = obtenerBaseEfectividad();
   const baseLista = baseEfectividad.lista;
@@ -495,14 +423,195 @@ function procesarVtrGar(registros, periodoManual, actualizadoAlManual) {
 }
 
 /* =========================
-   EFECTIVIDAD MODO ANTERIOR
+   USUARIOS
 ========================= */
 
-function actualizarEfectividad() {
+function encabezadoUsuarios() {
+  return [[
+    "Usuario",
+    "Correo",
+    "Clave",
+    "Cuadrilla",
+    "Sede",
+    "Plataforma",
+    "Perfil",
+    "Nivel de Acceso",
+    "Estado",
+    "UsuarioSupervisor"
+  ]];
+}
+
+function procesarUsuarios(registros) {
+  const hoja = obtenerHoja(HOJA_USUARIOS);
+
+  if (!Array.isArray(registros) || registros.length === 0) {
+    throw new Error("No se recibieron registros de usuarios");
+  }
+
+  const salida = encabezadoUsuarios();
+
+  registros.forEach(r => {
+    const usuario = normalizarTexto(r.usuario).replace(/\s+/g, "");
+    const correo = (r.correo || "").toString().trim();
+    const clave = (r.clave || "").toString().trim();
+    const cuadrilla = normalizarCuadrilla(r.cuadrilla);
+    const sede = normalizarTexto(r.sede);
+    const plataforma = normalizarTexto(r.plataforma);
+    const perfil = normalizarTexto(r.perfil || "TECNICO");
+    const nivelAcceso = normalizarTexto(r.nivelAcceso || r["nivel de acceso"] || "CUADRILLA");
+    const estado = normalizarTexto(r.estado || "ACTIVO");
+    const usuarioSupervisor = normalizarTexto(r.usuarioSupervisor || "");
+
+    if (!usuario) return;
+
+    salida.push([
+      usuario,
+      correo,
+      clave,
+      cuadrilla,
+      sede,
+      plataforma,
+      perfil,
+      nivelAcceso,
+      estado,
+      usuarioSupervisor
+    ]);
+  });
+
+  if (salida.length <= 1) {
+    throw new Error("No se encontraron usuarios válidos");
+  }
+
+  hoja.clearContents();
+  hoja.getRange(1, 1, salida.length, salida[0].length).setValues(salida);
+
   return {
     ok: true,
-    modulo: "EFECTIVIDAD",
-    mensaje: "Modo anterior conservado. Usar procesarEfectividad."
+    modulo: "USUARIOS",
+    accion: "IMPORTAR",
+    registros: salida.length - 1
+  };
+}
+
+function buscarFilaUsuario(usuarioBuscar) {
+  const hoja = obtenerHoja(HOJA_USUARIOS);
+  const datos = hoja.getDataRange().getValues();
+  const usuarioNormalizado = normalizarTexto(usuarioBuscar).replace(/\s+/g, "");
+
+  for (let i = 1; i < datos.length; i++) {
+    const usuario = normalizarTexto(datos[i][0]).replace(/\s+/g, "");
+    if (usuario === usuarioNormalizado) {
+      return {
+        hoja,
+        fila: i + 1,
+        datos: datos[i]
+      };
+    }
+  }
+
+  throw new Error("No se encontró el usuario: " + usuarioBuscar);
+}
+
+function editarUsuario(usuarioBuscar, cambios) {
+  const encontrado = buscarFilaUsuario(usuarioBuscar);
+  const hoja = encontrado.hoja;
+  const fila = encontrado.fila;
+  const actual = encontrado.datos;
+
+  const nuevo = [
+    cambios.usuario ? normalizarTexto(cambios.usuario).replace(/\s+/g, "") : actual[0],
+    cambios.correo !== undefined ? cambios.correo : actual[1],
+    cambios.clave !== undefined ? cambios.clave : actual[2],
+    cambios.cuadrilla !== undefined ? normalizarCuadrilla(cambios.cuadrilla) : actual[3],
+    cambios.sede !== undefined ? normalizarTexto(cambios.sede) : actual[4],
+    cambios.plataforma !== undefined ? normalizarTexto(cambios.plataforma) : actual[5],
+    cambios.perfil !== undefined ? normalizarTexto(cambios.perfil) : actual[6],
+    cambios.nivelAcceso !== undefined ? normalizarTexto(cambios.nivelAcceso) : actual[7],
+    cambios.estado !== undefined ? normalizarTexto(cambios.estado) : actual[8],
+    cambios.usuarioSupervisor !== undefined ? normalizarTexto(cambios.usuarioSupervisor) : actual[9]
+  ];
+
+  hoja.getRange(fila, 1, 1, 10).setValues([nuevo]);
+
+  return {
+    ok: true,
+    modulo: "USUARIOS",
+    accion: "EDITAR",
+    usuario: nuevo[0]
+  };
+}
+
+function cambiarClave(usuarioBuscar, nuevaClave) {
+  if (!nuevaClave) throw new Error("La nueva clave no puede estar vacía");
+
+  return editarUsuario(usuarioBuscar, {
+    clave: nuevaClave
+  });
+}
+
+function cambiarEstadoUsuario(usuarioBuscar, estadoNuevo) {
+  const estado = normalizarTexto(estadoNuevo);
+
+  if (!["ACTIVO", "SUSPENDIDO", "BAJA"].includes(estado)) {
+    throw new Error("Estado no válido. Usa ACTIVO, SUSPENDIDO o BAJA");
+  }
+
+  return editarUsuario(usuarioBuscar, {
+    estado: estado
+  });
+}
+
+function cambiarPermisoUsuario(usuarioBuscar, perfilNuevo, nivelNuevo) {
+  const perfil = normalizarTexto(perfilNuevo);
+  const nivel = normalizarTexto(nivelNuevo);
+
+  if (!["TECNICO", "SUPERVISOR", "ADMIN"].includes(perfil)) {
+    throw new Error("Perfil no válido. Usa TECNICO, SUPERVISOR o ADMIN");
+  }
+
+  if (!["CUADRILLA", "SEDE", "ZONA", "ADMIN"].includes(nivel)) {
+    throw new Error("Nivel de acceso no válido. Usa CUADRILLA, SEDE, ZONA o ADMIN");
+  }
+
+  return editarUsuario(usuarioBuscar, {
+    perfil: perfil,
+    nivelAcceso: nivel
+  });
+}
+
+function listarUsuarios() {
+  const hoja = obtenerHoja(HOJA_USUARIOS);
+  const datos = hoja.getDataRange().getValues();
+
+  if (datos.length <= 1) {
+    return {
+      ok: true,
+      modulo: "USUARIOS",
+      usuarios: []
+    };
+  }
+
+  const usuarios = [];
+
+  for (let i = 1; i < datos.length; i++) {
+    usuarios.push({
+      usuario: datos[i][0],
+      correo: datos[i][1],
+      clave: datos[i][2],
+      cuadrilla: datos[i][3],
+      sede: datos[i][4],
+      plataforma: datos[i][5],
+      perfil: datos[i][6],
+      nivelAcceso: datos[i][7],
+      estado: datos[i][8],
+      usuarioSupervisor: datos[i][9]
+    });
+  }
+
+  return {
+    ok: true,
+    modulo: "USUARIOS",
+    usuarios: usuarios
   };
 }
 
@@ -532,18 +641,50 @@ function doPost(e) {
       data.accion === "procesarVtrgar"
     ) {
       return ContentService
-        .createTextOutput(JSON.stringify(procesarVtrGar(data.registros || data.texto || data.base, data.periodo, data.actualizadoAl)))
+        .createTextOutput(JSON.stringify(procesarVtrGar(data.registros, data.periodo, data.actualizadoAl)))
         .setMimeType(ContentService.MimeType.JSON);
     }
 
-    if (data.accion === "actualizarEfectividad") {
+    if (data.accion === "procesarUsuarios") {
       return ContentService
-        .createTextOutput(JSON.stringify(actualizarEfectividad()))
+        .createTextOutput(JSON.stringify(procesarUsuarios(data.registros)))
         .setMimeType(ContentService.MimeType.JSON);
     }
+
+    if (data.accion === "listarUsuarios") {
+      return ContentService
+        .createTextOutput(JSON.stringify(listarUsuarios()))
+        .setMimeType(ContentService.MimeType.JSON);
+    }
+
+    if (data.accion === "editarUsuario") {
+      return ContentService
+        .createTextOutput(JSON.stringify(editarUsuario(data.usuario, data.cambios || {})))
+        .setMimeType(ContentService.MimeType.JSON);
+    }
+
+    if (data.accion === "cambiarClave") {
+      return ContentService
+        .createTextOutput(JSON.stringify(cambiarClave(data.usuario, data.nuevaClave)))
+        .setMimeType(ContentService.MimeType.JSON);
+    }
+
+    if (data.accion === "cambiarEstadoUsuario") {
+      return ContentService
+        .createTextOutput(JSON.stringify(cambiarEstadoUsuario(data.usuario, data.estado)))
+        .setMimeType(ContentService.MimeType.JSON);
+    }
+
+    if (data.accion === "cambiarPermisoUsuario") {
+      return ContentService
+        .createTextOutput(JSON.stringify(cambiarPermisoUsuario(data.usuario, data.perfil, data.nivelAcceso)))
+        .setMimeType(ContentService.MimeType.JSON);
+    }
+
+    const respuesta = procesarProduccion(data);
 
     return ContentService
-      .createTextOutput(JSON.stringify(procesarProduccion(data)))
+      .createTextOutput(JSON.stringify(respuesta))
       .setMimeType(ContentService.MimeType.JSON);
 
   } catch (err) {

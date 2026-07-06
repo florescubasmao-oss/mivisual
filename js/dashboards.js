@@ -1563,9 +1563,9 @@ function mostrarAdministracion(){
 
         <br>
 
-        <div class="card">
+        <div class="card" onclick="mostrarImportarUsuarios()" style="cursor:pointer;">
         👥 ACTUALIZAR USUARIOS
-        <br><small>Próximamente</small>
+        <br><small>Importar, editar, suspender y cambiar permisos</small>
         </div>
 
         <br><br>
