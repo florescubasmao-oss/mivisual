@@ -396,7 +396,7 @@ html += "</table>";
 
 document.getElementById("vistaPrevia").innerHTML = html;
 
-const url = "https://script.google.com/macros/s/AKfycbzWZRh9Jam-jWaJL5QVrgzR0h7d0ufUd3gfCa39Yl1ACgJbRRYg7ECbujs7AdxoMduX/exec";
+const url = "https://script.google.com/macros/s/AKfycbxRwwwzQpQSK2joexiMQ7vj-Ff2Yp0PY0yZttnsLZSRxXyh9AWSawBuvpC2s2GrQZ3O/exec";
 
 fetch(url, {
     method: "POST",
@@ -672,7 +672,7 @@ async function procesarEfectividad(){
 
     document.getElementById("vistaPreviaEfectividad").innerHTML = html;
 
-    const url = "https://script.google.com/macros/s/AKfycbzWZRh9Jam-jWaJL5QVrgzR0h7d0ufUd3gfCa39Yl1ACgJbRRYg7ECbujs7AdxoMduX/exec";
+    const url = "https://script.google.com/macros/s/AKfycbxRwwwzQpQSK2joexiMQ7vj-Ff2Yp0PY0yZttnsLZSRxXyh9AWSawBuvpC2s2GrQZ3O/exec";
 
     try{
 
@@ -946,7 +946,7 @@ async function procesarRecableado(){
 
     document.getElementById("vistaPreviaRecableado").innerHTML = html;
 
-    const url = "https://script.google.com/macros/s/AKfycbzWZRh9Jam-jWaJL5QVrgzR0h7d0ufUd3gfCa39Yl1ACgJbRRYg7ECbujs7AdxoMduX/exec";
+    const url = "https://script.google.com/macros/s/AKfycbxRwwwzQpQSK2joexiMQ7vj-Ff2Yp0PY0yZttnsLZSRxXyh9AWSawBuvpC2s2GrQZ3O/exec";
 
     try{
 
@@ -1214,7 +1214,7 @@ async function procesarVtrGar(){
 
     document.getElementById("vistaPreviaVtrGar").innerHTML = html;
 
-    const url = "https://script.google.com/macros/s/AKfycbzWZRh9Jam-jWaJL5QVrgzR0h7d0ufUd3gfCa39Yl1ACgJbRRYg7ECbujs7AdxoMduX/exec";
+    const url = "https://script.google.com/macros/s/AKfycbxRwwwzQpQSK2joexiMQ7vj-Ff2Yp0PY0yZttnsLZSRxXyh9AWSawBuvpC2s2GrQZ3O/exec";
 
     try{
 
@@ -1470,7 +1470,7 @@ async function procesarUsuarios(){
         html += `</table>`;
         document.getElementById("vistaPreviaUsuarios").innerHTML = html;
 
-        const url = "https://script.google.com/macros/s/AKfycbzWZRh9Jam-jWaJL5QVrgzR0h7d0ufUd3gfCa39Yl1ACgJbRRYg7ECbujs7AdxoMduX/exec";
+        const url = "https://script.google.com/macros/s/AKfycbxRwwwzQpQSK2joexiMQ7vj-Ff2Yp0PY0yZttnsLZSRxXyh9AWSawBuvpC2s2GrQZ3O/exec";
 
         const respuesta = await fetch(url, {
             method: "POST",
@@ -1495,7 +1495,7 @@ async function procesarUsuarios(){
 }
 
 async function enviarAccionUsuario(payload, mensajeOk){
-    const url = "https://script.google.com/macros/s/AKfycbzWZRh9Jam-jWaJL5QVrgzR0h7d0ufUd3gfCa39Yl1ACgJbRRYg7ECbujs7AdxoMduX/exec";
+    const url = "https://script.google.com/macros/s/AKfycbxRwwwzQpQSK2joexiMQ7vj-Ff2Yp0PY0yZttnsLZSRxXyh9AWSawBuvpC2s2GrQZ3O/exec";
 
     try{
         const respuesta = await fetch(url, {
@@ -1596,7 +1596,7 @@ function editarUsuarioApp(){
 }
 
 async function listarUsuariosApp(){
-    const url = "https://script.google.com/macros/s/AKfycbzWZRh9Jam-jWaJL5QVrgzR0h7d0ufUd3gfCa39Yl1ACgJbRRYg7ECbujs7AdxoMduX/exec";
+    const url = "https://script.google.com/macros/s/AKfycbxRwwwzQpQSK2joexiMQ7vj-Ff2Yp0PY0yZttnsLZSRxXyh9AWSawBuvpC2s2GrQZ3O/exec";
 
     try{
         const respuesta = await fetch(url, {
@@ -1647,5 +1647,134 @@ async function listarUsuariosApp(){
     }catch(err){
         console.error(err);
         alert("❌ Error al listar usuarios.");
+    }
+}
+
+/* =========================
+   RANKING
+========================= */
+
+function fechaHoyRanking(){
+    const hoy = new Date();
+    const yyyy = hoy.getFullYear();
+    const mm = String(hoy.getMonth() + 1).padStart(2, "0");
+    const dd = String(hoy.getDate()).padStart(2, "0");
+    return `${yyyy}-${mm}-${dd}`;
+}
+
+function mostrarImportarRanking(){
+
+    mostrarPantalla(`
+        <div style="padding:20px;max-width:900px;margin:auto;">
+            <h2 style="text-align:center;">🏆 ACTUALIZAR RANKING</h2>
+            <br>
+
+            <div class="card">
+                Este proceso genera el ranking usando las bases ya actualizadas:
+                <br><br>
+                ✅ Producción<br>
+                ✅ Efectividad<br>
+                ✅ % Recableado<br>
+                ✅ VTR/GAR
+                <br><br>
+
+                <label>Período</label>
+                <select id="periodoRanking" style="width:100%;padding:10px;border-radius:8px;">
+                    <option>ENERO</option>
+                    <option>FEBRERO</option>
+                    <option>MARZO</option>
+                    <option>ABRIL</option>
+                    <option>MAYO</option>
+                    <option selected>JUNIO</option>
+                    <option>JULIO</option>
+                    <option>AGOSTO</option>
+                    <option>SEPTIEMBRE</option>
+                    <option>OCTUBRE</option>
+                    <option>NOVIEMBRE</option>
+                    <option>DICIEMBRE</option>
+                </select>
+
+                <br><br>
+
+                <label>Actualizado al</label>
+                <input type="date" id="fechaRanking" value="${fechaHoyRanking()}" style="width:100%;padding:10px;border-radius:8px;">
+
+                <br><br>
+
+                <button class="button_1" onclick="procesarRanking()">
+                    🏆 GENERAR RANKING
+                </button>
+
+                &nbsp;
+
+                <button class="button_1" onclick="mostrarAdministracion()">
+                    🏠 VOLVER
+                </button>
+
+                <br><br>
+
+                <div id="resultadoRankingAdmin"></div>
+            </div>
+        </div>
+    `);
+}
+
+async function procesarRanking(){
+
+    const periodo = document.getElementById("periodoRanking").value;
+    const fechaInput = document.getElementById("fechaRanking").value;
+
+    if(!periodo || !fechaInput){
+        alert("Selecciona el período y la fecha de actualización.");
+        return;
+    }
+
+    const partesFecha = fechaInput.split("-");
+    const actualizadoAl = partesFecha[2] + "/" + partesFecha[1] + "/" + partesFecha[0];
+
+    const url = "https://script.google.com/macros/s/AKfycbxRwwwzQpQSK2joexiMQ7vj-Ff2Yp0PY0yZttnsLZSRxXyh9AWSawBuvpC2s2GrQZ3O/exec";
+
+    try{
+        const contenedor = document.getElementById("resultadoRankingAdmin");
+        contenedor.innerHTML = "⏳ Generando ranking...";
+
+        const respuesta = await fetch(url, {
+            method: "POST",
+            body: JSON.stringify({
+                accion: "actualizarRanking",
+                periodo: periodo,
+                actualizadoAl: actualizadoAl
+            })
+        });
+
+        const textoRespuesta = await respuesta.text();
+        const res = JSON.parse(textoRespuesta);
+
+        if(res.ok){
+            contenedor.innerHTML = `
+                <div style="padding:15px;border-radius:10px;background:#12395c;margin-top:10px;">
+                    ✅ <b>RANKING ACTUALIZADO</b><br><br>
+                    Registros: ${res.registros}<br>
+                    Período: ${res.periodo}<br>
+                    Actualizado al: ${res.actualizadoAl}<br>
+                    Primero Región: ${res.primeroRegion || ""}
+                </div>
+            `;
+
+            alert(
+                "✅ RANKING ACTUALIZADO" +
+                "\n\nRegistros: " + res.registros +
+                "\n\nPeríodo: " + res.periodo +
+                "\n\nActualizado al: " + res.actualizadoAl +
+                "\n\nPrimero Región: " + (res.primeroRegion || "")
+            );
+        }else{
+            contenedor.innerHTML = "❌ Error: " + res.error;
+            alert("❌ Error: " + res.error);
+        }
+
+    }catch(err){
+        console.error(err);
+        alert("❌ Error al conectar con la API de ranking.");
     }
 }

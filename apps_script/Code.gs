@@ -3,6 +3,7 @@ const HOJA_EFECTIVIDAD = "EFECTIVIDAD";
 const HOJA_RECABLEADO = "PORCENTAJE REC";
 const HOJA_VTRGAR = "POR VTR/GAR";
 const HOJA_USUARIOS = "USUARIOS";
+const HOJA_RANKING = "RANKING";
 
 function doGet() {
   return ContentService
@@ -616,6 +617,302 @@ function listarUsuarios() {
 }
 
 /* =========================
+   RANKING
+========================= */
+
+function obtenerMapaUsuarios() {
+  const hoja = obtenerHoja(HOJA_USUARIOS);
+  const datos = hoja.getDataRange().getValues();
+  const mapa = {};
+
+  for (let i = 1; i < datos.length; i++) {
+    const fila = datos[i];
+    const usuario = normalizarTexto(fila[0]).replace(/\s+/g, "");
+    const cuadrilla = normalizarCuadrilla(fila[3]);
+
+    if (!cuadrilla) continue;
+
+    mapa[cuadrilla] = {
+      usuario,
+      sede: normalizarTexto(fila[4]),
+      plataforma: normalizarTexto(fila[5]),
+      perfil: normalizarTexto(fila[6]),
+      nivelAcceso: normalizarTexto(fila[7]),
+      estado: normalizarTexto(fila[8]),
+      usuarioSupervisor: normalizarTexto(fila[9])
+    };
+  }
+
+  return mapa;
+}
+
+function obtenerProduccionPorCuadrilla() {
+  const hoja = obtenerHoja(HOJA_PRODUCCION);
+  const datos = hoja.getDataRange().getValues();
+  const mapa = {};
+
+  for (let i = 1; i < datos.length; i++) {
+    const fila = datos[i];
+    const usuario = fila[0] || "ADMIN";
+    const cuadrilla = normalizarCuadrilla(fila[1]);
+    const cantidad = Number(fila[4]) || 0;
+
+    if (!cuadrilla) continue;
+
+    if (!mapa[cuadrilla]) {
+      mapa[cuadrilla] = { usuario, produccion: 0 };
+    }
+
+    mapa[cuadrilla].produccion += cantidad;
+  }
+
+  return mapa;
+}
+
+function obtenerEfectividadPorCuadrilla() {
+  const hoja = obtenerHoja(HOJA_EFECTIVIDAD);
+  const datos = hoja.getDataRange().getValues();
+  const mapa = {};
+
+  for (let i = 1; i < datos.length; i++) {
+    const fila = datos[i];
+    const usuario = fila[1] || "ADMIN";
+    const cuadrilla = normalizarCuadrilla(fila[2]);
+    const fecha = fila[3];
+    const finalizadas = Number(fila[4]) || 0;
+    const total = Number(fila[8]) || 0;
+    const efectividad = Number(fila[9]) || 0;
+
+    if (!cuadrilla) continue;
+
+    mapa[cuadrilla] = {
+      usuario,
+      fecha,
+      finalizadas,
+      total,
+      efectividad
+    };
+  }
+
+  return mapa;
+}
+
+function obtenerRecableadoPorCuadrilla() {
+  const hoja = obtenerHoja(HOJA_RECABLEADO);
+  const datos = hoja.getDataRange().getValues();
+  const mapa = {};
+
+  for (let i = 1; i < datos.length; i++) {
+    const fila = datos[i];
+    const cuadrilla = normalizarCuadrilla(fila[2]);
+    const rojoAsignadas = Number(fila[4]) || 0;
+    const recableados = Number(fila[5]) || 0;
+    const porcentaje = Number(fila[6]) || 0;
+
+    if (!cuadrilla) continue;
+
+    mapa[cuadrilla] = {
+      rojoAsignadas,
+      recableados,
+      porcentajeRecableado: porcentaje
+    };
+  }
+
+  return mapa;
+}
+
+function obtenerVtrGarPorCuadrilla() {
+  const hoja = obtenerHoja(HOJA_VTRGAR);
+  const datos = hoja.getDataRange().getValues();
+  const mapa = {};
+
+  for (let i = 1; i < datos.length; i++) {
+    const fila = datos[i];
+    const cuadrilla = normalizarCuadrilla(fila[2]);
+    const finalizadas = Number(fila[4]) || 0;
+    const gar = Number(fila[5]) || 0;
+    const vtr = Number(fila[6]) || 0;
+    const totalGarVtr = Number(fila[7]) || 0;
+    const porcentaje = Number(fila[8]) || 0;
+
+    if (!cuadrilla) continue;
+
+    mapa[cuadrilla] = {
+      finalizadas,
+      gar,
+      vtr,
+      totalGarVtr,
+      porcentajeVtrGar: porcentaje
+    };
+  }
+
+  return mapa;
+}
+
+function puntajePositivo(valor, maximo) {
+  if (maximo <= 0) return 0;
+  return (valor / maximo) * 100;
+}
+
+function puntajeNegativo(valor, maximo) {
+  if (maximo <= 0) return 100;
+  return 100 - ((valor / maximo) * 100);
+}
+
+function asignarPuestos(lista, campoOrden, campoPuesto, grupoCampo) {
+  const grupos = {};
+
+  lista.forEach(item => {
+    const grupo = grupoCampo ? item[grupoCampo] : "GENERAL";
+    if (!grupos[grupo]) grupos[grupo] = [];
+    grupos[grupo].push(item);
+  });
+
+  Object.keys(grupos).forEach(grupo => {
+    grupos[grupo]
+      .sort((a, b) => b[campoOrden] - a[campoOrden])
+      .forEach((item, index) => {
+        item[campoPuesto] = index + 1;
+      });
+  });
+}
+
+function obtenerMedalla(puesto) {
+  if (puesto === 1) return "🥇";
+  if (puesto === 2) return "🥈";
+  if (puesto === 3) return "🥉";
+  return "";
+}
+
+function actualizarRanking(periodoManual, actualizadoAlManual) {
+  const hojaRanking = obtenerHoja(HOJA_RANKING);
+
+  const mapaUsuarios = obtenerMapaUsuarios();
+  const mapaProduccion = obtenerProduccionPorCuadrilla();
+  const mapaEfectividad = obtenerEfectividadPorCuadrilla();
+  const mapaRecableado = obtenerRecableadoPorCuadrilla();
+  const mapaVtrGar = obtenerVtrGarPorCuadrilla();
+
+  const cuadrillas = {};
+  Object.keys(mapaUsuarios).forEach(c => cuadrillas[c] = true);
+  Object.keys(mapaProduccion).forEach(c => cuadrillas[c] = true);
+  Object.keys(mapaEfectividad).forEach(c => cuadrillas[c] = true);
+  Object.keys(mapaRecableado).forEach(c => cuadrillas[c] = true);
+  Object.keys(mapaVtrGar).forEach(c => cuadrillas[c] = true);
+
+  const lista = [];
+
+  Object.keys(cuadrillas).forEach(cuadrilla => {
+    const u = mapaUsuarios[cuadrilla] || {};
+    const p = mapaProduccion[cuadrilla] || {};
+    const e = mapaEfectividad[cuadrilla] || {};
+    const r = mapaRecableado[cuadrilla] || {};
+    const v = mapaVtrGar[cuadrilla] || {};
+
+    lista.push({
+      cuadrilla,
+      usuario: u.usuario || p.usuario || e.usuario || "ADMIN",
+      sede: u.sede || "",
+      plataforma: u.plataforma || "",
+      actualizacion: actualizadoAlManual || e.fecha || "",
+      produccion: Number(p.produccion) || 0,
+      efectividad: Number(e.efectividad) || 0,
+      recableado: Number(r.porcentajeRecableado) || 0,
+      vtrgar: Number(v.porcentajeVtrGar) || 0
+    });
+  });
+
+  if (lista.length === 0) {
+    throw new Error("No hay información para generar ranking");
+  }
+
+  const maxProduccion = Math.max(...lista.map(x => x.produccion));
+  const maxRecableado = Math.max(...lista.map(x => x.recableado));
+  const maxVtrGar = Math.max(...lista.map(x => x.vtrgar));
+
+  lista.forEach(item => {
+    const scoreProduccion = puntajePositivo(item.produccion, maxProduccion);
+    const scoreEfectividad = item.efectividad * 100;
+    const scoreRecableado = puntajeNegativo(item.recableado, maxRecableado);
+    const scoreVtrGar = puntajeNegativo(item.vtrgar, maxVtrGar);
+
+    item.puntajeFinal =
+      (scoreProduccion * 0.40) +
+      (scoreEfectividad * 0.30) +
+      (scoreVtrGar * 0.15) +
+      (scoreRecableado * 0.15);
+  });
+
+  asignarPuestos(lista, "puntajeFinal", "puestoRegion", null);
+  asignarPuestos(lista, "puntajeFinal", "puestoSede", "sede");
+  asignarPuestos(lista, "puntajeFinal", "puestoPlataforma", "plataforma");
+
+  lista.sort((a, b) => a.puestoRegion - b.puestoRegion);
+
+  const salida = [[
+    "ID",
+    "Cuadrilla",
+    "ACTUALIZACION",
+    "Usuario",
+    "Sede",
+    "Plataforma",
+    "Producción",
+    "Efectividad",
+    "% Recableado",
+    "% VTR/GAR",
+    "Puntaje Final",
+    "Puesto SEDE",
+    "Mi Puesto REGION",
+    "Mi Puesto por plataforma",
+    "Medalla Región",
+    "Medalla Sede",
+    "Medalla Plataforma"
+  ]];
+
+  lista.forEach((item, i) => {
+    salida.push([
+      i + 1,
+      item.cuadrilla,
+      item.actualizacion,
+      item.usuario,
+      item.sede,
+      item.plataforma,
+      item.produccion,
+      item.efectividad,
+      item.recableado,
+      item.vtrgar,
+      item.puntajeFinal,
+      item.puestoSede,
+      item.puestoRegion,
+      item.puestoPlataforma,
+      obtenerMedalla(item.puestoRegion),
+      obtenerMedalla(item.puestoSede),
+      obtenerMedalla(item.puestoPlataforma)
+    ]);
+  });
+
+  hojaRanking.clearContents();
+  hojaRanking.getRange(1, 1, salida.length, salida[0].length).setValues(salida);
+
+  if (salida.length > 1) {
+    hojaRanking.getRange(2, 8, salida.length - 1, 1).setNumberFormat("0.00%");
+    hojaRanking.getRange(2, 9, salida.length - 1, 1).setNumberFormat("0.00%");
+    hojaRanking.getRange(2, 10, salida.length - 1, 1).setNumberFormat("0.00%");
+    hojaRanking.getRange(2, 11, salida.length - 1, 1).setNumberFormat("0.00");
+  }
+
+  return {
+    ok: true,
+    modulo: "RANKING",
+    registros: lista.length,
+    periodo: periodoManual || "",
+    actualizadoAl: actualizadoAlManual || "",
+    primeroRegion: lista[0] ? lista[0].cuadrilla : ""
+  };
+}
+
+
+/* =========================
    API PRINCIPAL
 ========================= */
 
@@ -678,6 +975,12 @@ function doPost(e) {
     if (data.accion === "cambiarPermisoUsuario") {
       return ContentService
         .createTextOutput(JSON.stringify(cambiarPermisoUsuario(data.usuario, data.perfil, data.nivelAcceso)))
+        .setMimeType(ContentService.MimeType.JSON);
+    }
+
+    if (data.accion === "actualizarRanking") {
+      return ContentService
+        .createTextOutput(JSON.stringify(actualizarRanking(data.periodo, data.actualizadoAl)))
         .setMimeType(ContentService.MimeType.JSON);
     }
 

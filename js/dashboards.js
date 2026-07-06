@@ -1568,6 +1568,13 @@ function mostrarAdministracion(){
         <br><small>Importar, editar, suspender y cambiar permisos</small>
         </div>
 
+        <br>
+
+        <div class="card" onclick="mostrarImportarRanking()" style="cursor:pointer;">
+        🏆 ACTUALIZAR RANKING
+        <br><small>Generar ranking desde Producción, Efectividad, Recableado y VTR/GAR</small>
+        </div>
+
         <br><br>
 
         <button
