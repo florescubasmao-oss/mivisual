@@ -1,6 +1,6 @@
 // MI VISUAL - Módulo Observaciones
 
-const API_OBSERVACIONES = "https://script.google.com/macros/s/AKfycbyhNI7z2tSw_aZzt187FGnwBbpe7vfQDpe1dt-LCVFmDpNXsin4TZZPriG0wvOxRfSU/exec";
+const API_OBSERVACIONES = "https://script.google.com/macros/s/AKfycbykWyLiVHlNhwf6TbnDThP-KFWU6LRUflqI-9-jltTFhWoEw-7SexBGTjTdJnpFo8Rm/exec";
 
 function usuarioActualObs(){
     return {
@@ -106,7 +106,9 @@ async function cargarObservaciones(){
 function cardObservacion(o, u){
     const puedeDescargar = u.perfil === "TECNICO";
     const puedeCambiar = u.perfil === "SUPERVISOR" || u.perfil === "JEFATURA" || u.perfil === "ADMIN" || u.perfil === "ADMINISTRADOR";
-    const evidencia = o.evidenciaTecnico ? `<a href="${o.evidenciaTecnico}" target="_blank">📎 Ver evidencia</a>` : "Pendiente";
+    const evidencia = o.evidenciaTecnico
+        ? o.evidenciaTecnico.toString().split("|").filter(x => x.trim()).map((url, i) => `<a href="${url.trim()}" target="_blank">📎 Evidencia ${i + 1}</a>`).join("<br>")
+        : "Pendiente";
 
     return `
     <div class="obs-card ${claseEstadoObs(o.estado)}">
@@ -115,6 +117,7 @@ function cardObservacion(o, u){
             <span class="obs-badge">${o.estado || "-"}</span>
         </div>
         <div class="obs-grid">
+            <div><span>Cuadrilla</span><b>${o.cuadrilla || "-"}</b></div>
             <div><span>Fuente</span><b>${o.fuente || "-"}</b></div>
             <div><span>Código/Ticket</span><b>${o.codigo || "-"}</b></div>
             <div><span>Tipo</span><b>${o.tipoObservacion || "-"}</b></div>
@@ -251,8 +254,8 @@ function mostrarDescargoObservacion(id){
         <div class="obs-contenedor">
             <h2>📤 Enviar Descargo</h2>
             <textarea id="descargoTexto" rows="6" placeholder="Escribe tu descargo..."></textarea>
-            <label>Evidencia imagen</label>
-            <input id="descargoArchivo" type="file" accept="image/*">
+            <label>Evidencia imagen (máximo 5 fotos)</label>
+            <input id="descargoArchivo" type="file" accept="image/*" multiple>
             <button class="btnObsPrincipal" onclick="guardarDescargoObservacion('${id}')">Enviar Descargo</button>
             <button onclick="mostrarObservaciones()">Volver</button>
             <div id="descargoMensaje"></div>
@@ -280,16 +283,27 @@ async function guardarDescargoObservacion(id){
     msg.innerHTML = "Enviando...";
 
     try{
-        const file = document.getElementById("descargoArchivo").files[0];
-        const archivo = await leerArchivoBase64(file);
+        const files = Array.from(document.getElementById("descargoArchivo").files || []);
+        if(files.length > 5){
+            throw new Error("Solo puedes subir máximo 5 fotos.");
+        }
+
+        const evidencias = [];
+        for(const file of files){
+            const archivo = await leerArchivoBase64(file);
+            evidencias.push({
+                base64: archivo.base64,
+                nombre: archivo.nombre,
+                mime: archivo.mime
+            });
+        }
+
         const data = await apiObservaciones({
             accion: "registrarDescargo",
             usuario: u.usuario,
             id,
             descargoTecnico: document.getElementById("descargoTexto").value,
-            evidenciaBase64: archivo.base64,
-            evidenciaNombre: archivo.nombre,
-            evidenciaMimeType: archivo.mime
+            evidencias
         });
         if(!data.ok) throw new Error(data.error || "Error al enviar descargo");
         msg.innerHTML = "✅ Descargo enviado correctamente.";

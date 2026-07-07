@@ -771,7 +771,7 @@ function obtenerDatosCuadrillaApp(cuadrillaBuscar) {
   return mapa[cuadrilla];
 }
 
-function guardarEvidenciaObservacion(cuadrilla, codigo, evidenciaBase64, evidenciaNombre, evidenciaMimeType) {
+function guardarEvidenciaObservacion(cuadrilla, codigo, evidenciaBase64, evidenciaNombre, evidenciaMimeType, indice) {
   if (!evidenciaBase64) return "";
 
   const carpeta = DriveApp.getFolderById(CARPETA_EVIDENCIAS_OBSERVACIONES);
@@ -779,9 +779,10 @@ function guardarEvidenciaObservacion(cuadrilla, codigo, evidenciaBase64, evidenc
     ? evidenciaNombre.split(".").pop().toLowerCase()
     : "jpg";
 
+  const correlativo = indice ? "_" + String(indice).padStart(2, "0") : "";
   const nombreArchivo = limpiarNombreArchivo(cuadrilla) + "_" +
     limpiarNombreArchivo(codigo) + "_" +
-    formatearFechaArchivo(new Date()) + "." + extension;
+    formatearFechaArchivo(new Date()) + correlativo + "." + extension;
 
   const bytes = Utilities.base64Decode(evidenciaBase64);
   const blob = Utilities.newBlob(bytes, evidenciaMimeType || "image/jpeg", nombreArchivo);
@@ -790,6 +791,26 @@ function guardarEvidenciaObservacion(cuadrilla, codigo, evidenciaBase64, evidenc
   return archivo.getUrl();
 }
 
+function guardarEvidenciasObservacion(cuadrilla, codigo, evidencias) {
+  if (!Array.isArray(evidencias) || evidencias.length === 0) return "";
+  if (evidencias.length > 5) throw new Error("Solo se permite subir máximo 5 fotos");
+
+  const links = [];
+  evidencias.forEach((ev, i) => {
+    if (!ev || !ev.base64) return;
+    const link = guardarEvidenciaObservacion(
+      cuadrilla,
+      codigo,
+      ev.base64,
+      ev.nombre || ("evidencia_" + (i + 1) + ".jpg"),
+      ev.mime || "image/jpeg",
+      i + 1
+    );
+    if (link) links.push(link);
+  });
+
+  return links.join("|");
+}
 function registrarObservacion(data) {
   const hoja = asegurarHojaObservaciones();
   const usuarioRegistro = obtenerUsuarioApp(data.usuario);
@@ -916,17 +937,30 @@ function registrarDescargo(data) {
   if (usuario.perfil !== "TECNICO") throw new Error("Solo el técnico puede registrar descargo");
   if (normalizarCuadrilla(usuario.cuadrilla) !== normalizarCuadrilla(obs[8])) throw new Error("El técnico solo puede descargar observaciones de su cuadrilla");
 
-  const link = guardarEvidenciaObservacion(obs[8], obs[10], data.evidenciaBase64, data.evidenciaNombre, data.evidenciaMimeType);
+  let evidencias = [];
+
+  if (Array.isArray(data.evidencias)) {
+    evidencias = data.evidencias;
+  } else if (data.evidenciaBase64) {
+    evidencias = [{
+      base64: data.evidenciaBase64,
+      nombre: data.evidenciaNombre || "evidencia.jpg",
+      mime: data.evidenciaMimeType || "image/jpeg"
+    }];
+  }
+
+  if (evidencias.length > 5) throw new Error("Solo se permite subir máximo 5 fotos");
+
+  const links = guardarEvidenciasObservacion(obs[8], obs[10], evidencias);
   const ahora = new Date();
 
   hoja.getRange(fila, 16).setValue(ahora);
   hoja.getRange(fila, 17).setValue(data.descargoTecnico || "");
-  if (link) hoja.getRange(fila, 18).setValue(link);
+  if (links) hoja.getRange(fila, 18).setValue(links);
   hoja.getRange(fila, 16).setNumberFormat("dd/mm/yyyy hh:mm");
 
-  return { ok: true, modulo: "OBSERVACIONES", accion: "DESCARGO", id: data.id, evidencia: link };
+  return { ok: true, modulo: "OBSERVACIONES", accion: "DESCARGO", id: data.id, evidencias: links };
 }
-
 function actualizarEstadoObservacion(data) {
   const encontrado = buscarFilaObservacion(data.id);
   const hoja = encontrado.hoja;
