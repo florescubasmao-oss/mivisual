@@ -1,6 +1,15 @@
-// MI VISUAL - Módulo Actividad en Campo v45
+// MI VISUAL - Módulo Actividad en Campo v47
 
 const API_ACTIVIDAD_CAMPO = "https://script.google.com/macros/s/AKfycbz3HDtjgZvWv0UzLH1fwzt8GGFtKktfU-vAcUgtu85bAjUYyxq4cOPxCHw49jBB4Azl/exec";
+
+const TIPOS_ACTIVIDAD_CAMPO = [
+    "AUDITORIA EN FRIO",
+    "SUPERVISION EN CALIENTE",
+    "SEGUIMIENTO",
+    "VALIDACION DE OBSERVACION",
+    "CAPACITACION",
+    "CHECKLIST"
+];
 
 function usuarioActualActividad(){
     return {
@@ -31,8 +40,8 @@ function mostrarCargandoActividad(texto){
     if(!overlay){
         overlay = document.createElement("div");
         overlay.id = "actLoadingOverlay";
-        overlay.className = "obs-loading-overlay";
-        overlay.innerHTML = `<div class="obs-loading-box"><div class="obs-spinner"></div><b id="actLoadingTexto">Procesando...</b></div>`;
+        overlay.className = "act-loading-overlay";
+        overlay.innerHTML = `<div class="act-loading-box"><div class="act-spinner"></div><b id="actLoadingTexto">Procesando...</b></div>`;
         document.body.appendChild(overlay);
     }
     const t = document.getElementById("actLoadingTexto");
@@ -48,42 +57,73 @@ function ocultarCargandoActividad(){
 function estiloActividadCampo(){
     if(document.getElementById("styleActividadCampo")) return "";
     return `<style id="styleActividadCampo">
-        .act-wrap{max-width:1100px;margin:0 auto;padding:12px;color:#fff;}
-        .act-head{background:#172946;border-radius:18px;padding:18px;margin-bottom:14px;box-shadow:0 12px 25px rgba(0,0,0,.25);}
-        .act-head h2{margin:0 0 6px;font-size:22px;}
-        .act-sub{margin:0;color:#c9d7ef;font-size:13px;}
+        .act-wrap{max-width:1120px;margin:0 auto;padding:14px;color:#fff;box-sizing:border-box;}
+        .act-head{background:linear-gradient(135deg,#172946,#203a63);border-radius:20px;padding:18px;margin-bottom:14px;box-shadow:0 12px 28px rgba(0,0,0,.28);border:1px solid rgba(255,255,255,.08);}
+        .act-head h2{margin:0 0 7px;font-size:24px;line-height:1.15;}
+        .act-sub{margin:0;color:#c9d7ef;font-size:13px;line-height:1.35;}
         .act-actions{display:flex;gap:10px;flex-wrap:wrap;margin:14px 0;}
-        .act-btn{border:none;border-radius:10px;padding:11px 14px;color:#fff;background:#0d6efd;font-weight:800;cursor:pointer;}
+        .act-btn{border:none;border-radius:12px;padding:12px 15px;color:#fff;background:#0d6efd;font-weight:900;cursor:pointer;min-height:44px;box-shadow:0 5px 12px rgba(0,0,0,.18);}
+        .act-btn:disabled{opacity:.65;cursor:not-allowed;}
         .act-btn.sec{background:#243855;}
         .act-btn.ok{background:#16a34a;}
         .act-btn.warn{background:#0ea5e9;}
-        .act-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;}
-        .act-field{display:flex;flex-direction:column;gap:6px;}
-        .act-field label{font-size:12px;font-weight:800;color:#d9e7ff;}
-        .act-field input,.act-field select,.act-field textarea{width:100%;box-sizing:border-box;border:1px solid #34506f;background:#0c1d34;color:#fff;border-radius:10px;padding:11px;font-size:14px;}
-        .act-field textarea{min-height:90px;resize:vertical;}
-        .act-card{background:#20314e;border-radius:14px;padding:14px;margin:10px 0;border:1px solid rgba(255,255,255,.08);}
-        .act-kpis{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin:12px 0;}
-        .act-kpi{background:#13243f;border-radius:14px;padding:14px;text-align:center;}
-        .act-kpi span{display:block;font-size:12px;color:#c9d7ef;}
-        .act-kpi b{font-size:26px;}
-        .act-table{width:100%;border-collapse:collapse;font-size:12px;}
-        .act-table th,.act-table td{border-bottom:1px solid rgba(255,255,255,.1);padding:9px;text-align:left;vertical-align:top;}
-        .act-table th{color:#9ec5ff;background:#172946;}
-        .act-links a{display:inline-block;margin:3px 5px 3px 0;color:#9ec5ff;font-weight:800;}
-        .act-msg{margin-top:10px;font-weight:800;}
+        .act-btn.danger{background:#dc3545;}
+        .act-card{background:#20314e;border-radius:18px;padding:16px;margin:12px 0;border:1px solid rgba(255,255,255,.08);box-shadow:0 8px 22px rgba(0,0,0,.18);}
+        .act-card h3{margin:0 0 12px;font-size:18px;}
+        .act-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px;align-items:end;}
+        .act-grid-3{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px;align-items:end;}
+        .act-field{display:flex;flex-direction:column;gap:7px;min-width:0;}
+        .act-field label{font-size:12px;font-weight:900;color:#d9e7ff;line-height:1.25;text-transform:uppercase;letter-spacing:.2px;}
+        .act-field input,.act-field select,.act-field textarea{width:100%;box-sizing:border-box;border:1px solid #3c5d81;background:#0c1d34;color:#fff;border-radius:12px;padding:12px;font-size:15px;outline:none;min-height:44px;}
+        .act-field input:focus,.act-field select:focus,.act-field textarea:focus{border-color:#38bdf8;box-shadow:0 0 0 3px rgba(56,189,248,.18);}
+        .act-field input[disabled]{opacity:.8;background:#13243f;}
+        .act-field textarea{min-height:96px;resize:vertical;line-height:1.35;}
+        .act-wide{grid-column:1/-1;}
+        .act-section-title{display:flex;align-items:center;gap:8px;margin:4px 0 12px;font-size:18px;font-weight:900;}
+        .act-note{background:#0f2d4f;border:1px solid rgba(56,189,248,.32);padding:12px;border-radius:14px;color:#d8ecff;font-size:13px;line-height:1.35;margin:10px 0;}
+        .act-msg{margin-top:10px;font-weight:900;line-height:1.35;}
         .act-vacio{background:#20314e;padding:18px;border-radius:14px;text-align:center;color:#c9d7ef;}
-        .act-error{background:#7f1d1d;padding:14px;border-radius:14px;}
-        .act-detail{display:none;background:#0c1d34;border-radius:12px;padding:12px;margin-top:8px;}
-        .act-filter{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin:10px 0;}
-        @media(max-width:720px){.act-grid,.act-kpis,.act-filter{grid-template-columns:1fr}.act-table{font-size:11px}.act-wrap{padding:8px}}
+        .act-error{background:#7f1d1d;padding:14px;border-radius:14px;line-height:1.35;}
+        .act-ok-msg{background:#14532d;padding:14px;border-radius:14px;line-height:1.35;}
+        .act-filter{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin:10px 0;}
+        .act-kpis{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin:12px 0;}
+        .act-kpi{background:#13243f;border-radius:16px;padding:14px;text-align:center;border:1px solid rgba(255,255,255,.07);}
+        .act-kpi span{display:block;font-size:12px;color:#c9d7ef;line-height:1.2;}
+        .act-kpi b{font-size:26px;}
+        .act-table-wrap{overflow:auto;margin-top:10px;border-radius:14px;border:1px solid rgba(255,255,255,.08);}
+        .act-table{width:100%;border-collapse:collapse;font-size:12px;min-width:820px;}
+        .act-table th,.act-table td{border-bottom:1px solid rgba(255,255,255,.1);padding:10px;text-align:left;vertical-align:top;}
+        .act-table th{color:#9ec5ff;background:#172946;position:sticky;top:0;}
+        .act-links a{display:inline-block;margin:3px 5px 3px 0;color:#9ec5ff;font-weight:900;text-decoration:none;}
+        .act-detail{display:none;background:#0c1d34;border-radius:14px;padding:14px;margin-top:8px;white-space:pre-wrap;line-height:1.38;}
+        .act-mobile-card{display:none;background:#13243f;border-radius:16px;padding:14px;margin:10px 0;border:1px solid rgba(255,255,255,.08);}
+        .act-mobile-card b{color:#fff;}
+        .act-mobile-card small{color:#c9d7ef;}
+        .act-file input{padding:10px;background:#0c1d34;}
+        .act-loading-overlay{position:fixed;inset:0;background:rgba(0,0,0,.58);display:none;align-items:center;justify-content:center;z-index:9999;}
+        .act-loading-box{background:#10213b;color:white;padding:20px;border-radius:16px;text-align:center;box-shadow:0 15px 35px rgba(0,0,0,.35);}
+        .act-spinner{width:34px;height:34px;border:4px solid rgba(255,255,255,.25);border-top-color:white;border-radius:50%;animation:actSpin 1s linear infinite;margin:0 auto 10px;}
+        @keyframes actSpin{to{transform:rotate(360deg)}}
+        @media(max-width:760px){
+            .act-wrap{padding:10px 10px 90px;}
+            .act-head{padding:16px;border-radius:18px;}
+            .act-head h2{font-size:20px;}
+            .act-card{padding:14px;border-radius:16px;margin:10px 0;}
+            .act-grid,.act-grid-3,.act-filter,.act-kpis{grid-template-columns:1fr;gap:12px;}
+            .act-actions{display:grid;grid-template-columns:1fr;gap:10px;}
+            .act-btn{width:100%;font-size:14px;}
+            .act-field input,.act-field select,.act-field textarea{font-size:16px;min-height:46px;}
+            .act-table-wrap{display:none;}
+            .act-mobile-card{display:block;}
+            .act-kpi b{font-size:23px;}
+        }
     </style>`;
 }
 
 function mostrarActividadCampo(){
     const u = usuarioActualActividad();
     if(!(u.perfil === "SUPERVISOR" || esJefaturaActividad(u.perfil))){
-        mostrarPantalla(`<div class="act-wrap"><div class="act-error">No tienes permiso para acceder a Actividad en Campo.</div></div>`);
+        mostrarPantalla(`${estiloActividadCampo()}<div class="act-wrap"><div class="act-error">No tienes permiso para acceder a Actividad en Campo.</div></div>`);
         return;
     }
 
@@ -92,7 +132,7 @@ function mostrarActividadCampo(){
         <div class="act-wrap">
             <div class="act-head">
                 <h2>📍 Registro de Actividad en Campo</h2>
-                <p class="act-sub">Registro de auditorías, supervisiones y seguimiento operativo.</p>
+                <p class="act-sub">Registro de auditorías, supervisiones, seguimiento, validaciones, capacitaciones y checklist.</p>
             </div>
             <div class="act-actions">
                 <button class="act-btn ok" onclick="mostrarFormularioActividadCampo()">+ Nueva actividad</button>
@@ -122,20 +162,12 @@ function prepararFiltrosActividadCampo(){
                 <div class="act-field"><label>Tipo</label>
                     <select id="actFiltroTipo">
                         <option value="">Todos</option>
-                        <option>AUDITORIA EN FRIO</option>
-                        <option>SUPERVISION EN CALIENTE</option>
-                        <option>SEGUIMIENTO</option>
-                        <option>VALIDACION DE OBSERVACION</option>
-                        <option>CAPACITACION</option>
-                        <option>CHECKLIST</option>
+                        ${TIPOS_ACTIVIDAD_CAMPO.map(t => `<option>${t}</option>`).join("")}
                     </select>
                 </div>
                 ${esJefaturaActividad(u.perfil) ? `
                     <div class="act-field"><label>Sede</label>
-                        <select id="actFiltroSede">
-                            <option value="">Todas</option>
-                            <option>CHICLAYO</option><option>PIURA</option><option>TRUJILLO</option>
-                        </select>
+                        <select id="actFiltroSede"><option value="">Todas</option><option>CHICLAYO</option><option>PIURA</option><option>TRUJILLO</option></select>
                     </div>
                     <div class="act-field"><label>Supervisor</label><input id="actFiltroSupervisor" placeholder="Usuario supervisor"></div>
                 ` : ""}
@@ -177,14 +209,15 @@ async function cargarActividadCampo(){
         cont.innerHTML = `
             <div class="act-card">
                 <b>Registros encontrados: ${data.actividades.length}</b>
-                <div style="overflow:auto;margin-top:10px;">
+                <div class="act-table-wrap">
                     <table class="act-table">
                         <thead><tr>
-                            <th>Fecha</th><th>Supervisor</th><th>Sede</th><th>Cuadrilla</th><th>Tipo</th><th>Estado</th><th>Evidencias</th><th>Detalle</th>
+                            <th>Fecha</th><th>Supervisor</th><th>Sede</th><th>Cuadrilla</th><th>Tipo</th><th>Estado/Resultado</th><th>Evidencias</th><th>Detalle</th>
                         </tr></thead>
                         <tbody>${data.actividades.map((a,i)=>filaActividadCampo(a,i)).join("")}</tbody>
                     </table>
                 </div>
+                <div class="act-mobile-list">${data.actividades.map((a,i)=>cardMovilActividadCampo(a,i)).join("")}</div>
             </div>
         `;
     }catch(err){
@@ -203,16 +236,16 @@ async function cargarResumenActividadCampo(filtros){
     cont.innerHTML = `
         <div class="act-kpis">
             <div class="act-kpi"><span>Auditoría en Frío</span><b>${t["AUDITORIA EN FRIO"] || 0}</b></div>
-            <div class="act-kpi"><span>Supervisión</span><b>${t["SUPERVISION EN CALIENTE"] || 0}</b></div>
+            <div class="act-kpi"><span>Supervisión en Caliente</span><b>${t["SUPERVISION EN CALIENTE"] || 0}</b></div>
             <div class="act-kpi"><span>Seguimiento</span><b>${t["SEGUIMIENTO"] || 0}</b></div>
             <div class="act-kpi"><span>Total</span><b>${t.TOTAL || 0}</b></div>
         </div>
         <div class="act-card">
             <b>Resumen por supervisor</b>
-            <div style="overflow:auto;margin-top:10px;">
+            <div class="act-table-wrap">
                 <table class="act-table">
-                    <thead><tr><th>Supervisor</th><th>Auditoría</th><th>Supervisión</th><th>Seguimiento</th><th>Validación</th><th>Capacitación</th><th>Checklist</th><th>Total</th></tr></thead>
-                    <tbody>${(data.resumen || []).map(r => `
+                    <thead><tr><th>Supervisor</th><th>Aud. Frío</th><th>Sup. Caliente</th><th>Seguimiento</th><th>Val. Obs.</th><th>Capacitación</th><th>Checklist</th><th>Total</th></tr></thead>
+                    <tbody>${(data.porSupervisor || []).map(r => `
                         <tr>
                             <td>${r.supervisor || "-"}</td>
                             <td>${r["AUDITORIA EN FRIO"] || 0}</td>
@@ -230,14 +263,20 @@ async function cargarResumenActividadCampo(filtros){
     `;
 }
 
-function filaActividadCampo(a, i){
-    const idDetalle = `actDetalle_${i}`;
-    const evidencias = [
+function evidenciasActividadHtml(a){
+    return [
         a.foto1 ? `<a href="${a.foto1}" target="_blank">Foto 1</a>` : "",
         a.foto2 ? `<a href="${a.foto2}" target="_blank">Foto 2</a>` : "",
         a.fotoActa ? `<a href="${a.fotoActa}" target="_blank">Acta</a>` : ""
     ].filter(Boolean).join(" ") || "-";
+}
 
+function detalleActividadTexto(a){
+    return `Tipo: ${a.tipoActividad || "-"}\n\n${a.observaciones || "Sin detalle."}`;
+}
+
+function filaActividadCampo(a, i){
+    const idDetalle = `actDetalle_${i}`;
     return `
         <tr>
             <td>${a.fecha || "-"}<br><small>${a.hora || ""}</small></td>
@@ -246,24 +285,27 @@ function filaActividadCampo(a, i){
             <td>${a.cuadrilla || "-"}</td>
             <td>${a.tipoActividad || "-"}</td>
             <td>${a.estadoInstalacion || "-"}</td>
-            <td class="act-links">${evidencias}</td>
+            <td class="act-links">${evidenciasActividadHtml(a)}</td>
             <td><button class="act-btn sec" onclick="toggleActividadDetalle('${idDetalle}')">Ver</button></td>
         </tr>
-        <tr><td colspan="8">
-            <div id="${idDetalle}" class="act-detail">
-                <b>Detalle registrado</b><br><br>
-                Cliente presente: <b>${a.clientePresente || "-"}</b><br>
-                DNI validado: <b>${a.dniValidado || "-"}</b><br>
-                DROP metraje: <b>${a.dropMetraje || "-"}</b><br>
-                Templadores: <b>${a.templadores || "-"}</b><br>
-                Reserva cable: <b>${a.reservaCable || "-"}</b><br>
-                Potencia conforme: <b>${a.potenciaConforme || "-"}</b><br>
-                Velocidad conforme: <b>${a.velocidadConforme || "-"}</b><br>
-                Limpieza trabajo: <b>${a.limpiezaTrabajo || "-"}</b><br>
-                Cliente conforme: <b>${a.clienteConforme || "-"}</b><br><br>
-                <b>Observaciones:</b><br>${a.observaciones || "-"}
-            </div>
-        </td></tr>
+        <tr><td colspan="8"><div id="${idDetalle}" class="act-detail">${detalleActividadTexto(a)}</div></td></tr>
+    `;
+}
+
+function cardMovilActividadCampo(a, i){
+    const idDetalle = `actDetalleMovil_${i}`;
+    return `
+        <div class="act-mobile-card">
+            <b>${a.tipoActividad || "Actividad"}</b><br>
+            <small>${a.fecha || "-"} ${a.hora || ""}</small><br><br>
+            <b>Supervisor:</b> ${a.supervisor || "-"}<br>
+            <b>Sede:</b> ${a.sede || "-"}<br>
+            <b>Cuadrilla:</b> ${a.cuadrilla || "-"}<br>
+            <b>Estado/Resultado:</b> ${a.estadoInstalacion || "-"}<br>
+            <div class="act-links" style="margin-top:8px;">${evidenciasActividadHtml(a)}</div>
+            <button class="act-btn sec" style="margin-top:10px;" onclick="toggleActividadDetalle('${idDetalle}')">Ver detalle</button>
+            <div id="${idDetalle}" class="act-detail">${detalleActividadTexto(a)}</div>
+        </div>
     `;
 }
 
@@ -280,7 +322,7 @@ async function mostrarFormularioActividadCampo(){
         <div class="act-wrap">
             <div class="act-head">
                 <h2>📍 Nueva Actividad en Campo</h2>
-                <p class="act-sub">Primera etapa: Auditoría en Frío.</p>
+                <p class="act-sub">Selecciona el tipo de actividad. El formulario cambiará automáticamente.</p>
             </div>
             <div class="act-card">
                 <div class="act-grid">
@@ -288,60 +330,238 @@ async function mostrarFormularioActividadCampo(){
                     <div class="act-field"><label>Sede</label><input value="${u.sede}" disabled></div>
                     <div class="act-field"><label>Cuadrilla visitada</label><select id="actCuadrilla"><option value="">Cargando cuadrillas...</option></select></div>
                     <div class="act-field"><label>Tipo de actividad</label>
-                        <select id="actTipoActividad" onchange="validarTipoActividadCampo()">
-                            <option>AUDITORIA EN FRIO</option>
-                            <option>SUPERVISION EN CALIENTE</option>
-                            <option>SEGUIMIENTO</option>
-                            <option>VALIDACION DE OBSERVACION</option>
-                            <option>CAPACITACION</option>
-                            <option>CHECKLIST</option>
+                        <select id="actTipoActividad" onchange="renderFormularioTipoActividad()">
+                            ${TIPOS_ACTIVIDAD_CAMPO.map(t => `<option>${t}</option>`).join("")}
                         </select>
                     </div>
                 </div>
-                <div id="msgTipoActividad" class="act-msg"></div>
             </div>
-            <div class="act-card">
-                <h3>Auditoría en Frío</h3>
-                <div class="act-grid">
-                    ${selectSiNo("actClientePresente","Cliente presente")}
-                    ${selectSiNo("actDniValidado","DNI validado")}
-                    <div class="act-field"><label>Estado de instalación</label><select id="actEstadoInstalacion"><option>FINALIZADA</option><option>CANCELADA</option><option>REPROGRAMADA</option></select></div>
-                    <div class="act-field"><label>DROP / Fibra - metraje</label><input type="number" id="actDropMetraje" placeholder="Ejemplo: 120"></div>
-                    <div class="act-field"><label>Templadores</label><input type="number" id="actTempladores" placeholder="Ejemplo: 4"></div>
-                    ${selectSiNo("actReservaCable","Reserva de cable")}
-                    ${selectSiNo("actPotenciaConforme","Potencia conforme")}
-                    ${selectSiNo("actVelocidadConforme","Velocidad conforme")}
-                    ${selectSiNo("actLimpiezaTrabajo","Limpieza del trabajo")}
-                    ${selectSiNo("actClienteConforme","Cliente conforme")}
-                    <div class="act-field" style="grid-column:1/-1"><label>Observaciones</label><textarea id="actObservaciones" placeholder="Detalle de hallazgos, compromisos o comentarios."></textarea></div>
-                    <div class="act-field"><label>Foto 1</label><input type="file" id="actFoto1" accept="image/*" capture="environment"></div>
-                    <div class="act-field"><label>Foto 2</label><input type="file" id="actFoto2" accept="image/*" capture="environment"></div>
-                    <div class="act-field"><label>Foto Acta</label><input type="file" id="actFotoActa" accept="image/*" capture="environment"></div>
+            <form id="formActividadCampo" onsubmit="event.preventDefault(); guardarActividadCampo(this.querySelector('[data-guardar]'));">
+                <div id="camposTipoActividad"></div>
+                <div class="act-card">
+                    <div class="act-section-title">📝 Cierre de actividad</div>
+                    <div class="act-grid">
+                        <div class="act-field act-wide"><label>Observaciones generales</label><textarea id="actObservacionesGenerales" placeholder="Resumen general, hallazgos o comentarios finales."></textarea></div>
+                        <div class="act-field act-wide"><label>Conclusión</label><textarea id="actConclusion" placeholder="Conclusión de la actividad y próximos pasos."></textarea></div>
+                        <div class="act-field act-file"><label>Foto 1</label><input type="file" id="actFoto1" accept="image/*" capture="environment"></div>
+                        <div class="act-field act-file"><label>Foto 2</label><input type="file" id="actFoto2" accept="image/*" capture="environment"></div>
+                        <div id="contenedorFotoActa" class="act-field act-file"><label>Foto Acta</label><input type="file" id="actFotoActa" accept="image/*" capture="environment"></div>
+                    </div>
+                    <div class="act-note">La firma digital queda para la segunda etapa. Por ahora el respaldo será con evidencias fotográficas.</div>
+                    <div class="act-actions">
+                        <button type="submit" data-guardar class="act-btn ok">💾 Guardar actividad</button>
+                        <button type="button" class="act-btn sec" onclick="mostrarActividadCampo()">Cancelar</button>
+                    </div>
+                    <div id="actMsgGuardar" class="act-msg"></div>
                 </div>
-                <div class="act-actions">
-                    <button class="act-btn ok" onclick="guardarActividadCampo(this)">💾 Guardar actividad</button>
-                    <button class="act-btn sec" onclick="mostrarActividadCampo()">Cancelar</button>
-                </div>
-                <div id="actMsgGuardar" class="act-msg"></div>
-            </div>
+            </form>
         </div>
     `);
     await cargarCuadrillasActividadCampo();
+    renderFormularioTipoActividad();
 }
 
 function selectSiNo(id, label){
     return `<div class="act-field"><label>${label}</label><select id="${id}"><option>SI</option><option>NO</option><option>NO APLICA</option></select></div>`;
 }
 
-function validarTipoActividadCampo(){
-    const tipo = document.getElementById("actTipoActividad")?.value || "";
-    const msg = document.getElementById("msgTipoActividad");
-    if(!msg) return;
-    if(tipo !== "AUDITORIA EN FRIO"){
-        msg.innerHTML = "⚠️ En v45 solo está habilitado el formulario de AUDITORIA EN FRIO. Los demás tipos quedarán para la siguiente versión.";
-    }else{
-        msg.innerHTML = "";
+function campoTexto(id, label, placeholder=""){
+    return `<div class="act-field"><label>${label}</label><input id="${id}" placeholder="${placeholder}"></div>`;
+}
+
+function campoNumero(id, label, placeholder=""){
+    return `<div class="act-field"><label>${label}</label><input type="number" id="${id}" placeholder="${placeholder}"></div>`;
+}
+
+function campoFecha(id, label){
+    return `<div class="act-field"><label>${label}</label><input type="date" id="${id}"></div>`;
+}
+
+function campoArea(id, label, placeholder=""){
+    return `<div class="act-field act-wide"><label>${label}</label><textarea id="${id}" placeholder="${placeholder}"></textarea></div>`;
+}
+
+function renderFormularioTipoActividad(){
+    const tipo = document.getElementById("actTipoActividad")?.value || "AUDITORIA EN FRIO";
+    const cont = document.getElementById("camposTipoActividad");
+    const fotoActa = document.getElementById("contenedorFotoActa");
+    if(fotoActa) fotoActa.style.display = tipo === "AUDITORIA EN FRIO" ? "flex" : "none";
+    if(!cont) return;
+
+    const formularios = {
+        "AUDITORIA EN FRIO": formularioAuditoriaFrio(),
+        "SUPERVISION EN CALIENTE": formularioSupervisionCaliente(),
+        "SEGUIMIENTO": formularioSeguimiento(),
+        "VALIDACION DE OBSERVACION": formularioValidacionObservacion(),
+        "CAPACITACION": formularioCapacitacion(),
+        "CHECKLIST": formularioChecklist()
+    };
+    cont.innerHTML = formularios[tipo] || formularioAuditoriaFrio();
+}
+
+function formularioAuditoriaFrio(){
+    return `<div class="act-card">
+        <div class="act-section-title">🔎 Auditoría en Frío</div>
+        <div class="act-grid">
+            ${selectSiNo("actClientePresente","Cliente presente")}
+            ${selectSiNo("actDniValidado","DNI validado")}
+            <div class="act-field"><label>Estado de instalación</label><select id="actEstadoInstalacion"><option>FINALIZADA</option><option>CANCELADA</option><option>REPROGRAMADA</option></select></div>
+            ${campoNumero("actDropMetraje","DROP / Fibra - metraje","Ejemplo: 120")}
+            ${campoNumero("actTempladores","Templadores","Ejemplo: 4")}
+            ${selectSiNo("actReservaCable","Reserva de cable")}
+            ${selectSiNo("actPotenciaConforme","Potencia conforme")}
+            ${selectSiNo("actVelocidadConforme","Velocidad conforme")}
+            ${selectSiNo("actLimpiezaTrabajo","Limpieza del trabajo")}
+            ${selectSiNo("actClienteConforme","Cliente conforme")}
+        </div>
+    </div>`;
+}
+
+function formularioSupervisionCaliente(){
+    return `<div class="act-card">
+        <div class="act-section-title">🔥 Supervisión en Caliente</div>
+        <div class="act-grid">
+            ${selectSiNo("supLlegadaHora","Técnico llegó a la hora")}
+            ${selectSiNo("supUsoEpp","Uso de EPP")}
+            ${selectSiNo("supUniforme","Uniforme completo")}
+            ${selectSiNo("supIdentificacion","Identificación visible")}
+            ${selectSiNo("supExplicoTrabajo","Explicó el trabajo al cliente")}
+            ${selectSiNo("supProcedimiento","Procedimiento correcto")}
+            ${selectSiNo("supMateriales","Uso correcto de materiales")}
+            ${selectSiNo("supPruebas","Pruebas realizadas")}
+            ${selectSiNo("supClienteConforme","Cliente conforme")}
+        </div>
+    </div>`;
+}
+
+function formularioSeguimiento(){
+    return `<div class="act-card">
+        <div class="act-section-title">📌 Seguimiento</div>
+        <div class="act-grid">
+            <div class="act-field"><label>Motivo del seguimiento</label><select id="segMotivo"><option>BAJA PRODUCCION</option><option>BAJA EFECTIVIDAD</option><option>ALTO RECABLEADO</option><option>ALTO VTR/GAR</option><option>OBSERVACIONES RECURRENTES</option><option>REINCORPORACION</option><option>OTRO</option></select></div>
+            ${campoFecha("segFechaSeguimiento","Fecha de seguimiento")}
+            ${campoArea("segCompromisos","Compromisos","Compromisos asumidos por la cuadrilla.")}
+            ${campoArea("segPlanAccion","Plan de acción","Acciones, responsables y plazos.")}
+            ${campoArea("segResultado","Resultado","Resultado del seguimiento realizado.")}
+        </div>
+    </div>`;
+}
+
+function formularioValidacionObservacion(){
+    return `<div class="act-card">
+        <div class="act-section-title">✅ Validación de Observación</div>
+        <div class="act-grid">
+            ${campoTexto("valCodigo","Código de observación","Ejemplo: 3030002")}
+            ${campoTexto("valTipo","Tipo de observación","Seguridad, implementación, gestión técnica...")}
+            ${selectSiNo("valCorregida","Observación corregida")}
+            ${selectSiNo("valEvidencia","Evidencia encontrada")}
+            ${selectSiNo("valCumple","Cumple subsanación")}
+            ${selectSiNo("valNuevaVisita","Requiere nueva visita")}
+            ${campoArea("valComentarios","Comentarios","Detalle de la validación realizada.")}
+        </div>
+    </div>`;
+}
+
+function formularioCapacitacion(){
+    return `<div class="act-card">
+        <div class="act-section-title">🎓 Capacitación</div>
+        <div class="act-grid">
+            <div class="act-field"><label>Tema</label><select id="capTema"><option>INSTALACION</option><option>AVERIAS</option><option>RECABLEADO</option><option>ATENCION AL CLIENTE</option><option>SEGURIDAD</option><option>MATERIALES</option><option>PROCEDIMIENTOS WIN</option><option>OTRO</option></select></div>
+            ${campoTexto("capTiempo","Tiempo","Ejemplo: 30 minutos")}
+            ${campoArea("capParticipantes","Participantes","Nombres o cantidad de participantes.")}
+            ${campoArea("capEvaluacion","Evaluación","Resultado o evaluación de la capacitación.")}
+            ${campoArea("capCompromisos","Compromisos","Compromisos posteriores a la capacitación.")}
+        </div>
+    </div>`;
+}
+
+function formularioChecklist(){
+    return `<div class="act-card">
+        <div class="act-section-title">📋 Checklist</div>
+        <div class="act-grid">
+            <div class="act-field"><label>Tipo de Checklist</label><select id="chkTipo" onchange="renderItemsChecklist()"><option>VEHICULO</option><option>HERRAMIENTAS</option><option>EPP</option><option>MATERIALES</option><option>ALMACEN MOVIL</option><option>DOCUMENTACION</option></select></div>
+        </div>
+        <div id="itemsChecklist" style="margin-top:12px;"></div>
+    </div>`;
+}
+
+function renderItemsChecklist(){
+    const tipo = document.getElementById("chkTipo")?.value || "VEHICULO";
+    const itemsPorTipo = {
+        "VEHICULO":["SOAT vigente","Revisión técnica","Extintor","Triángulos","Llanta de repuesto","Botiquín","Limpieza"],
+        "HERRAMIENTAS":["Taladro","Escalera","Fusionadora","Power meter","Cortadora","Peladora","Herramientas completas"],
+        "EPP":["Casco","Chaleco","Botas","Guantes","Lentes","Arnés","Conos de seguridad"],
+        "MATERIALES":["Drop/Fibra","Conectores","Templadores","Cintillos","Cinta aislante","Rosetas","Patch cord"],
+        "ALMACEN MOVIL":["Orden de maletera","Stock mínimo","Material identificado","Equipos separados","Devoluciones pendientes"],
+        "DOCUMENTACION":["Actas","OT/Orden","DNI validado","Checklist firmado","Evidencias cargadas"]
+    };
+    const cont = document.getElementById("itemsChecklist");
+    if(!cont) return;
+    cont.innerHTML = `<div class="act-grid-3">${(itemsPorTipo[tipo] || []).map((item, i) => `
+        <div class="act-field"><label>${item}</label><select id="chkItem_${i}" data-checkitem="${item}"><option>SI</option><option>NO</option><option>NO APLICA</option></select></div>
+    `).join("")}</div>`;
+}
+
+function obtenerValor(id){ return document.getElementById(id)?.value || ""; }
+
+function armarDetalleActividad(tipo){
+    const lineas = [];
+    lineas.push(`TIPO DE ACTIVIDAD: ${tipo}`);
+
+    if(tipo === "AUDITORIA EN FRIO"){
+        lineas.push(`CLIENTE PRESENTE: ${obtenerValor("actClientePresente")}`);
+        lineas.push(`DNI VALIDADO: ${obtenerValor("actDniValidado")}`);
+        lineas.push(`ESTADO INSTALACION: ${obtenerValor("actEstadoInstalacion")}`);
+        lineas.push(`DROP METRAJE: ${obtenerValor("actDropMetraje")}`);
+        lineas.push(`TEMPLADORES: ${obtenerValor("actTempladores")}`);
+        lineas.push(`RESERVA CABLE: ${obtenerValor("actReservaCable")}`);
+        lineas.push(`POTENCIA CONFORME: ${obtenerValor("actPotenciaConforme")}`);
+        lineas.push(`VELOCIDAD CONFORME: ${obtenerValor("actVelocidadConforme")}`);
+        lineas.push(`LIMPIEZA TRABAJO: ${obtenerValor("actLimpiezaTrabajo")}`);
+        lineas.push(`CLIENTE CONFORME: ${obtenerValor("actClienteConforme")}`);
     }
+    if(tipo === "SUPERVISION EN CALIENTE"){
+        lineas.push(`TECNICO LLEGO A LA HORA: ${obtenerValor("supLlegadaHora")}`);
+        lineas.push(`USO DE EPP: ${obtenerValor("supUsoEpp")}`);
+        lineas.push(`UNIFORME COMPLETO: ${obtenerValor("supUniforme")}`);
+        lineas.push(`IDENTIFICACION VISIBLE: ${obtenerValor("supIdentificacion")}`);
+        lineas.push(`EXPLICO EL TRABAJO AL CLIENTE: ${obtenerValor("supExplicoTrabajo")}`);
+        lineas.push(`PROCEDIMIENTO CORRECTO: ${obtenerValor("supProcedimiento")}`);
+        lineas.push(`USO CORRECTO DE MATERIALES: ${obtenerValor("supMateriales")}`);
+        lineas.push(`PRUEBAS REALIZADAS: ${obtenerValor("supPruebas")}`);
+        lineas.push(`CLIENTE CONFORME: ${obtenerValor("supClienteConforme")}`);
+    }
+    if(tipo === "SEGUIMIENTO"){
+        lineas.push(`MOTIVO: ${obtenerValor("segMotivo")}`);
+        lineas.push(`COMPROMISOS: ${obtenerValor("segCompromisos")}`);
+        lineas.push(`PLAN DE ACCION: ${obtenerValor("segPlanAccion")}`);
+        lineas.push(`FECHA DE SEGUIMIENTO: ${obtenerValor("segFechaSeguimiento")}`);
+        lineas.push(`RESULTADO: ${obtenerValor("segResultado")}`);
+    }
+    if(tipo === "VALIDACION DE OBSERVACION"){
+        lineas.push(`CODIGO DE OBSERVACION: ${obtenerValor("valCodigo")}`);
+        lineas.push(`TIPO DE OBSERVACION: ${obtenerValor("valTipo")}`);
+        lineas.push(`OBSERVACION CORREGIDA: ${obtenerValor("valCorregida")}`);
+        lineas.push(`EVIDENCIA ENCONTRADA: ${obtenerValor("valEvidencia")}`);
+        lineas.push(`CUMPLE SUBSANACION: ${obtenerValor("valCumple")}`);
+        lineas.push(`REQUIERE NUEVA VISITA: ${obtenerValor("valNuevaVisita")}`);
+        lineas.push(`COMENTARIOS: ${obtenerValor("valComentarios")}`);
+    }
+    if(tipo === "CAPACITACION"){
+        lineas.push(`TEMA: ${obtenerValor("capTema")}`);
+        lineas.push(`PARTICIPANTES: ${obtenerValor("capParticipantes")}`);
+        lineas.push(`TIEMPO: ${obtenerValor("capTiempo")}`);
+        lineas.push(`EVALUACION: ${obtenerValor("capEvaluacion")}`);
+        lineas.push(`COMPROMISOS: ${obtenerValor("capCompromisos")}`);
+    }
+    if(tipo === "CHECKLIST"){
+        lineas.push(`TIPO DE CHECKLIST: ${obtenerValor("chkTipo")}`);
+        document.querySelectorAll("[data-checkitem]").forEach(el => lineas.push(`${el.getAttribute("data-checkitem").toUpperCase()}: ${el.value}`));
+    }
+
+    lineas.push(`OBSERVACIONES GENERALES: ${obtenerValor("actObservacionesGenerales")}`);
+    lineas.push(`CONCLUSION: ${obtenerValor("actConclusion")}`);
+    return lineas.join("\n");
 }
 
 async function cargarCuadrillasActividadCampo(){
@@ -383,56 +603,69 @@ async function guardarActividadCampo(btn){
     if(msg) msg.innerHTML = "";
 
     const tipo = document.getElementById("actTipoActividad")?.value || "AUDITORIA EN FRIO";
-    if(tipo !== "AUDITORIA EN FRIO"){
-        if(msg) msg.innerHTML = "❌ Por ahora solo se puede registrar AUDITORIA EN FRIO.";
-        return;
-    }
-
     const cuadrilla = document.getElementById("actCuadrilla")?.value || "";
     if(!cuadrilla){
-        if(msg) msg.innerHTML = "❌ Selecciona una cuadrilla.";
+        if(msg) msg.innerHTML = `<div class="act-error">❌ Selecciona una cuadrilla.</div>`;
         return;
     }
 
-    btn.disabled = true;
-    const original = btn.innerHTML;
-    btn.innerHTML = "Guardando...";
+    if(btn){ btn.disabled = true; btn.innerHTML = "Guardando..."; }
     mostrarCargandoActividad("Subiendo evidencias y guardando registro...");
 
     try{
         const foto1 = await leerArchivoActividad(document.getElementById("actFoto1")?.files[0]);
         const foto2 = await leerArchivoActividad(document.getElementById("actFoto2")?.files[0]);
-        const fotoActa = await leerArchivoActividad(document.getElementById("actFotoActa")?.files[0]);
+        const fotoActa = tipo === "AUDITORIA EN FRIO" ? await leerArchivoActividad(document.getElementById("actFotoActa")?.files[0]) : null;
 
-        const data = await apiActividadCampo({
+        const payload = {
             accion: "registrarActividadCampo",
             usuario: u.usuario,
             cuadrilla,
             tipoActividad: tipo,
-            clientePresente: document.getElementById("actClientePresente")?.value || "",
-            dniValidado: document.getElementById("actDniValidado")?.value || "",
-            estadoInstalacion: document.getElementById("actEstadoInstalacion")?.value || "",
-            dropMetraje: document.getElementById("actDropMetraje")?.value || "",
-            templadores: document.getElementById("actTempladores")?.value || "",
-            reservaCable: document.getElementById("actReservaCable")?.value || "",
-            potenciaConforme: document.getElementById("actPotenciaConforme")?.value || "",
-            velocidadConforme: document.getElementById("actVelocidadConforme")?.value || "",
-            limpiezaTrabajo: document.getElementById("actLimpiezaTrabajo")?.value || "",
-            clienteConforme: document.getElementById("actClienteConforme")?.value || "",
-            observaciones: document.getElementById("actObservaciones")?.value || "",
+            clientePresente: tipo === "AUDITORIA EN FRIO" ? obtenerValor("actClientePresente") : "",
+            dniValidado: tipo === "AUDITORIA EN FRIO" ? obtenerValor("actDniValidado") : "",
+            estadoInstalacion: tipo === "AUDITORIA EN FRIO" ? obtenerValor("actEstadoInstalacion") : obtenerEstadoResumenActividad(tipo),
+            dropMetraje: tipo === "AUDITORIA EN FRIO" ? obtenerValor("actDropMetraje") : "",
+            templadores: tipo === "AUDITORIA EN FRIO" ? obtenerValor("actTempladores") : "",
+            reservaCable: tipo === "AUDITORIA EN FRIO" ? obtenerValor("actReservaCable") : "",
+            potenciaConforme: tipo === "AUDITORIA EN FRIO" ? obtenerValor("actPotenciaConforme") : "",
+            velocidadConforme: tipo === "AUDITORIA EN FRIO" ? obtenerValor("actVelocidadConforme") : "",
+            limpiezaTrabajo: tipo === "AUDITORIA EN FRIO" ? obtenerValor("actLimpiezaTrabajo") : "",
+            clienteConforme: tipo === "AUDITORIA EN FRIO" ? obtenerValor("actClienteConforme") : obtenerClienteConformeGenerico(tipo),
+            observaciones: armarDetalleActividad(tipo),
             foto1,
             foto2,
             fotoActa
-        });
+        };
 
+        const data = await apiActividadCampo(payload);
         if(!data.ok) throw new Error(data.error || "Error al guardar actividad");
-        if(msg) msg.innerHTML = `✅ Actividad registrada correctamente. ID: ${data.id}`;
-        setTimeout(mostrarActividadCampo, 900);
+        if(msg) msg.innerHTML = `<div class="act-ok-msg">✅ Actividad registrada correctamente.<br>ID: ${data.id}</div>`;
+        setTimeout(mostrarActividadCampo, 1000);
     }catch(err){
-        if(msg) msg.innerHTML = `❌ ${err.message}`;
+        if(msg) msg.innerHTML = `<div class="act-error">❌ ${err.message}</div>`;
     }finally{
         ocultarCargandoActividad();
-        btn.disabled = false;
-        btn.innerHTML = original;
+        if(btn){ btn.disabled = false; btn.innerHTML = "💾 Guardar actividad"; }
     }
 }
+
+function obtenerEstadoResumenActividad(tipo){
+    if(tipo === "SEGUIMIENTO") return obtenerValor("segMotivo") || "REGISTRADO";
+    if(tipo === "VALIDACION DE OBSERVACION") return obtenerValor("valCumple") === "SI" ? "CUMPLE" : "REVISAR";
+    if(tipo === "CAPACITACION") return obtenerValor("capTema") || "REGISTRADO";
+    if(tipo === "CHECKLIST") return obtenerValor("chkTipo") || "REGISTRADO";
+    return "REGISTRADO";
+}
+
+function obtenerClienteConformeGenerico(tipo){
+    if(tipo === "SUPERVISION EN CALIENTE") return obtenerValor("supClienteConforme");
+    return "";
+}
+
+// Si se abre directamente el formulario Checklist, cargar sus items luego del render.
+setInterval(() => {
+    const chk = document.getElementById("chkTipo");
+    const items = document.getElementById("itemsChecklist");
+    if(chk && items && !items.innerHTML.trim()) renderItemsChecklist();
+}, 600);

@@ -89,39 +89,11 @@ function mostrarCardSeguro(id, visible){
     }
 }
 
-
-function asegurarCardActividadCampo(){
-    const menu = document.getElementById("menuPrincipal");
-    if(!menu) return;
-    if(document.getElementById("cardActividadCampo")) return;
-
-    const card = document.createElement("div");
-    card.id = "cardActividadCampo";
-    card.className = "card card-dash";
-    card.setAttribute("onclick", "mostrarActividadCampo()");
-    card.innerHTML = "<span>📍</span><b>Actividad en Campo</b>";
-
-    const dashboardSupervisor = document.getElementById("cardDashboardSupervisor");
-    const dashboardJefatura = document.getElementById("cardDashboardJefatura");
-    const administracion = document.getElementById("cardAdministracion");
-
-    if(administracion){
-        menu.insertBefore(card, administracion);
-    }else if(dashboardJefatura && dashboardJefatura.nextSibling){
-        menu.insertBefore(card, dashboardJefatura.nextSibling);
-    }else if(dashboardSupervisor && dashboardSupervisor.nextSibling){
-        menu.insertBefore(card, dashboardSupervisor.nextSibling);
-    }else{
-        menu.appendChild(card);
-    }
-}
-
 function configurarMenu(){
 
     console.log("CONFIGURAR MENU DESDE APP.JS");
 
     const perfil = normalizarPerfilApp(localStorage.getItem("perfil"));
-    asegurarCardActividadCampo();
 
     const menu = document.getElementById("menuPrincipal");
     const pantalla = document.getElementById("pantalla");
@@ -205,10 +177,6 @@ function configurarMenu(){
 
     const opciones = permisos[perfil] || [];
     opciones.forEach(id => mostrarCardSeguro(id, true));
-
-    if((perfil === "SUPERVISOR" || perfil === "JEFATURA" || perfil === "ADMIN" || perfil === "ADMINISTRADOR") && typeof mostrarActividadCampo === "function"){
-        mostrarCardSeguro("cardActividadCampo", true);
-    }
 }
 
 window.addEventListener("load", function () {
