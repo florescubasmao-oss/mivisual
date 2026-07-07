@@ -5,6 +5,7 @@ const HOJA_VTRGAR = "POR VTR/GAR";
 const HOJA_USUARIOS = "USUARIOS";
 const HOJA_RANKING = "RANKING";
 const HOJA_OBSERVACIONES = "OBSERVACIONES";
+const HOJA_RESUMEN_OBSERVACIONES = "RESUMEN_OBSERVACIONES";
 const CARPETA_EVIDENCIAS_OBSERVACIONES = "1W23rJjyUgmYGTlG2NzrpvasIWbwKBV6h";
 
 function doGet() {
@@ -842,7 +843,7 @@ function registrarObservacion(data) {
 
   if (!["WIN", "VISUAL"].includes(fuente)) throw new Error("Fuente no válida. Usa WIN o VISUAL");
   if (!["SEGURIDAD", "IMPLEMENTACION", "IMPLEMENTACIÓN", "GESTION TECNICA", "GESTIÓN TÉCNICA"].includes(tipo)) throw new Error("Tipo de observación no válido");
-  if (!["DERIVADO", "EN PROCESO", "PENALIZADO", "APELADO", "SUBSANADO"].includes(estado)) throw new Error("Estado no válido");
+  if (!["DERIVADO", "EN PROCESO", "PENALIZADO", "APELADO", "SUBSANADO", "ANULADO"].includes(estado)) throw new Error("Estado no válido");
 
   const ahora = new Date();
   const plazo = new Date(ahora.getTime() + (24 * 60 * 60 * 1000));
@@ -875,6 +876,9 @@ function registrarObservacion(data) {
   hoja.getRange(fila, 2).setNumberFormat("dd/mm/yyyy hh:mm");
   hoja.getRange(fila, 15).setNumberFormat('"S/ "0.00');
   hoja.getRange(fila, 20).setNumberFormat("dd/mm/yyyy hh:mm");
+
+  actualizarResumenObservaciones();
+  actualizarRanking();
 
   return { ok: true, modulo: "OBSERVACIONES", accion: "REGISTRAR", id };
 }
@@ -979,7 +983,7 @@ function actualizarEstadoObservacion(data) {
   const usuario = obtenerUsuarioApp(data.usuario);
   const nuevoEstado = normalizarTexto(data.estado);
 
-  if (!["DERIVADO", "EN PROCESO", "PENALIZADO", "APELADO", "SUBSANADO"].includes(nuevoEstado)) throw new Error("Estado no válido");
+  if (!["DERIVADO", "EN PROCESO", "PENALIZADO", "APELADO", "SUBSANADO", "ANULADO"].includes(nuevoEstado)) throw new Error("Estado no válido");
 
   const registradoPor = normalizarUsuario(obs[3]);
   const perfilRegistro = normalizarTexto(obs[4]);
@@ -1000,7 +1004,110 @@ function actualizarEstadoObservacion(data) {
   hoja.getRange(fila, 19).setValue(ahora);
   hoja.getRange(fila, 19).setNumberFormat("dd/mm/yyyy hh:mm");
 
+  actualizarResumenObservaciones();
+  actualizarRanking();
+
   return { ok: true, modulo: "OBSERVACIONES", accion: "CAMBIAR_ESTADO", id: data.id, estado: nuevoEstado };
+}
+
+
+/* =========================
+   RESUMEN OBSERVACIONES
+========================= */
+
+function factorEstadoObservacion(estado) {
+  const e = normalizarTexto(estado);
+
+  if (e === "PENALIZADO") return 1;
+  if (e === "EN PROCESO") return 1;
+  if (e === "APELADO") return 1;
+  if (e === "SUBSANADO") return 0.20;
+  if (e === "ANULADO") return 0.20;
+
+  return 1;
+}
+
+function actualizarResumenObservaciones() {
+  const hojaObs = obtenerHoja(HOJA_OBSERVACIONES);
+  const hojaResumen = obtenerHoja(HOJA_RESUMEN_OBSERVACIONES);
+
+  const datos = hojaObs.getDataRange().getValues();
+  const mapa = {};
+
+  for (let i = 1; i < datos.length; i++) {
+    const fila = datos[i];
+
+    const cuadrilla = normalizarCuadrilla(fila[8]);
+    const estado = normalizarTexto(fila[13]);
+    const monto = Number(fila[14]) || 0;
+
+    if (!cuadrilla) continue;
+
+    if (!mapa[cuadrilla]) {
+      mapa[cuadrilla] = {
+        cuadrilla,
+        observaciones: 0,
+        montoTotal: 0,
+        montoAfectado: 0
+      };
+    }
+
+    mapa[cuadrilla].observaciones++;
+    mapa[cuadrilla].montoTotal += monto;
+    mapa[cuadrilla].montoAfectado += monto * factorEstadoObservacion(estado);
+  }
+
+  const salida = [[
+    "Cuadrilla",
+    "Observaciones",
+    "Monto Total",
+    "Monto Afectado"
+  ]];
+
+  Object.keys(mapa)
+    .sort()
+    .forEach(c => {
+      const item = mapa[c];
+      salida.push([
+        item.cuadrilla,
+        item.observaciones,
+        item.montoTotal,
+        item.montoAfectado
+      ]);
+    });
+
+  hojaResumen.clearContents();
+  hojaResumen.getRange(1, 1, salida.length, salida[0].length).setValues(salida);
+
+  if (salida.length > 1) {
+    hojaResumen.getRange(2, 3, salida.length - 1, 2).setNumberFormat('"S/ "0.00');
+  }
+
+  return {
+    ok: true,
+    modulo: "RESUMEN_OBSERVACIONES",
+    registros: salida.length - 1
+  };
+}
+
+function obtenerResumenObservacionesPorCuadrilla() {
+  const hoja = obtenerHoja(HOJA_RESUMEN_OBSERVACIONES);
+  const datos = hoja.getDataRange().getValues();
+  const mapa = {};
+
+  for (let i = 1; i < datos.length; i++) {
+    const cuadrilla = normalizarCuadrilla(datos[i][0]);
+
+    if (!cuadrilla) continue;
+
+    mapa[cuadrilla] = {
+      observaciones: Number(datos[i][1]) || 0,
+      montoTotal: Number(datos[i][2]) || 0,
+      montoAfectado: Number(datos[i][3]) || 0
+    };
+  }
+
+  return mapa;
 }
 
 /* =========================
@@ -1262,11 +1369,14 @@ function actualizarRanking(periodoManual, actualizadoAlManual) {
   const periodoRanking = periodoManual || corteAutomatico.periodo || "";
   const actualizadoAlRanking = actualizadoAlManual || corteAutomatico.actualizadoAl || "";
 
+  actualizarResumenObservaciones();
+
   const mapaUsuarios = obtenerMapaUsuarios();
   const mapaProduccion = obtenerProduccionPorCuadrilla();
   const mapaEfectividad = obtenerEfectividadPorCuadrilla();
   const mapaRecableado = obtenerRecableadoPorCuadrilla();
   const mapaVtrGar = obtenerVtrGarPorCuadrilla();
+  const mapaObservaciones = obtenerResumenObservacionesPorCuadrilla();
 
   const cuadrillas = {};
 
@@ -1275,6 +1385,7 @@ function actualizarRanking(periodoManual, actualizadoAlManual) {
   Object.keys(mapaEfectividad).forEach(c => cuadrillas[c] = true);
   Object.keys(mapaRecableado).forEach(c => cuadrillas[c] = true);
   Object.keys(mapaVtrGar).forEach(c => cuadrillas[c] = true);
+  Object.keys(mapaObservaciones).forEach(c => cuadrillas[c] = true);
 
   const lista = [];
 
@@ -1284,6 +1395,7 @@ function actualizarRanking(periodoManual, actualizadoAlManual) {
     const e = mapaEfectividad[cuadrilla] || {};
     const r = mapaRecableado[cuadrilla] || {};
     const v = mapaVtrGar[cuadrilla] || {};
+    const o = mapaObservaciones[cuadrilla] || {};
 
     lista.push({
       cuadrilla,
@@ -1294,7 +1406,10 @@ function actualizarRanking(periodoManual, actualizadoAlManual) {
       produccion: Number(p.produccion) || 0,
       efectividad: Number(e.efectividad) || 0,
       recableado: Number(r.porcentajeRecableado) || 0,
-      vtrgar: Number(v.porcentajeVtrGar) || 0
+      vtrgar: Number(v.porcentajeVtrGar) || 0,
+      observaciones: Number(o.observaciones) || 0,
+      montoTotalObservaciones: Number(o.montoTotal) || 0,
+      montoAfectadoObservaciones: Number(o.montoAfectado) || 0
     });
   });
 
@@ -1305,18 +1420,21 @@ function actualizarRanking(periodoManual, actualizadoAlManual) {
   const maxProduccion = Math.max(...lista.map(x => x.produccion));
   const maxRecableado = Math.max(...lista.map(x => x.recableado));
   const maxVtrGar = Math.max(...lista.map(x => x.vtrgar));
+  const maxObservaciones = Math.max(...lista.map(x => x.montoAfectadoObservaciones));
 
   lista.forEach(item => {
     const scoreProduccion = puntajePositivo(item.produccion, maxProduccion);
     const scoreEfectividad = item.efectividad * 100;
     const scoreRecableado = puntajeNegativo(item.recableado, maxRecableado);
     const scoreVtrGar = puntajeNegativo(item.vtrgar, maxVtrGar);
+    const scoreObservaciones = puntajeNegativo(item.montoAfectadoObservaciones, maxObservaciones);
 
     item.puntajeFinal =
-      (scoreProduccion * 0.40) +
+      (scoreProduccion * 0.35) +
       (scoreEfectividad * 0.30) +
-      (scoreVtrGar * 0.15) +
-      (scoreRecableado * 0.15);
+      (scoreVtrGar * 0.125) +
+      (scoreRecableado * 0.125) +
+      (scoreObservaciones * 0.10);
   });
 
   asignarPuestos(lista, "puntajeFinal", "puestoRegion", null);
@@ -1336,6 +1454,9 @@ function actualizarRanking(periodoManual, actualizadoAlManual) {
     "Efectividad",
     "% Recableado",
     "% VTR/GAR",
+    "Observaciones",
+    "Monto Total Obs",
+    "Monto Afectado Obs",
     "Puntaje Final",
     "Puesto SEDE",
     "Mi Puesto REGION",
@@ -1357,6 +1478,9 @@ function actualizarRanking(periodoManual, actualizadoAlManual) {
       item.efectividad,
       item.recableado,
       item.vtrgar,
+      item.observaciones,
+      item.montoTotalObservaciones,
+      item.montoAfectadoObservaciones,
       item.puntajeFinal,
       item.puestoSede,
       item.puestoRegion,
@@ -1374,7 +1498,8 @@ function actualizarRanking(periodoManual, actualizadoAlManual) {
     hojaRanking.getRange(2, 8, salida.length - 1, 1).setNumberFormat("0.00%");
     hojaRanking.getRange(2, 9, salida.length - 1, 1).setNumberFormat("0.00%");
     hojaRanking.getRange(2, 10, salida.length - 1, 1).setNumberFormat("0.00%");
-    hojaRanking.getRange(2, 11, salida.length - 1, 1).setNumberFormat("0.00");
+    hojaRanking.getRange(2, 12, salida.length - 1, 2).setNumberFormat('"S/ "0.00');
+    hojaRanking.getRange(2, 14, salida.length - 1, 1).setNumberFormat("0.00");
   }
 
   return {
@@ -1483,6 +1608,12 @@ function doPost(e) {
         .setMimeType(ContentService.MimeType.JSON);
     }
 
+    if (data.accion === "actualizarResumenObservaciones") {
+      return ContentService
+        .createTextOutput(JSON.stringify(actualizarResumenObservaciones()))
+        .setMimeType(ContentService.MimeType.JSON);
+    }
+
     if (data.accion === "actualizarRanking") {
       return ContentService
         .createTextOutput(JSON.stringify(actualizarRanking(data.periodo, data.actualizadoAl)))
@@ -1503,4 +1634,20 @@ function doPost(e) {
       }))
       .setMimeType(ContentService.MimeType.JSON);
   }
+}
+
+function autorizarDriveObservaciones() {
+
+  const carpeta = DriveApp.getFolderById("1W23rJjyUgmYGTlG2NzrpvasIWbwKBV6h");
+
+  const archivoPrueba = carpeta.createFile(
+    "PRUEBA_PERMISO_MI_VISUAL.txt",
+    "Permiso Drive autorizado correctamente para MI VISUAL"
+  );
+
+  Logger.log("Archivo creado: " + archivoPrueba.getUrl());
+
+  archivoPrueba.setTrashed(true);
+
+  Logger.log("Permiso completo Drive OK");
 }

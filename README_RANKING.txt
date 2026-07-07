@@ -9,4 +9,4 @@ Incluye:
 - Jefatura/Admin: ve ranking regional con indicadores.
 
 URL API configurada:
-https://script.google.com/macros/s/AKfycbzmKi97XUtSllWxhmqwqBqkwFFl6tcnFHn5ebPrepJ_hrx_Hq1TzPWR2opWGMDirwyU/exec
+https://script.google.com/macros/s/AKfycbz3HDtjgZvWv0UzLH1fwzt8GGFtKktfU-vAcUgtu85bAjUYyxq4cOPxCHw49jBB4Azl/exec

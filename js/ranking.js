@@ -58,8 +58,18 @@ function parseCSVRanking(texto){
 }
 
 function numeroRanking(valor){
-    const n = Number((valor || "").toString().replace("%", "").replace(",", "."));
+    const n = Number((valor || "").toString()
+        .replace("%", "")
+        .replace("S/", "")
+        .replace(/,/g, ".")
+        .replace(/\s/g, "")
+    );
     return isNaN(n) ? 0 : n;
+}
+
+function formatoSolesRanking(valor){
+    const n = numeroRanking(valor);
+    return "S/ " + n.toFixed(2);
 }
 
 function formatoPorcentajeRanking(valor){
@@ -113,13 +123,16 @@ function filaRanking(datos){
         efectividad: numeroRanking(datos[7]),
         recableado: numeroRanking(datos[8]),
         vtrgar: numeroRanking(datos[9]),
-        puntaje: numeroRanking(datos[10]),
-        puestoSede: Number(datos[11]) || 0,
-        puestoRegion: Number(datos[12]) || 0,
-        puestoPlataforma: Number(datos[13]) || 0,
-        medallaRegion: datos[14] || "",
-        medallaSede: datos[15] || "",
-        medallaPlataforma: datos[16] || ""
+        observaciones: numeroRanking(datos[10]),
+        montoTotalObs: numeroRanking(datos[11]),
+        montoAfectadoObs: numeroRanking(datos[12]),
+        puntaje: numeroRanking(datos[13]),
+        puestoSede: Number(datos[14]) || 0,
+        puestoRegion: Number(datos[15]) || 0,
+        puestoPlataforma: Number(datos[16]) || 0,
+        medallaRegion: datos[17] || "",
+        medallaSede: datos[18] || "",
+        medallaPlataforma: datos[19] || ""
     };
 }
 
@@ -259,6 +272,8 @@ function tarjetaCuadrillaRanking(r, tipoPuesto){
                 ${indicadorMiniRanking("Efectividad", formatoPorcentajeRanking(r.efectividad), colorSemaforoRanking("efectividad", r.efectividad))}
                 ${indicadorMiniRanking("% Recableado", formatoPorcentajeRanking(r.recableado), colorSemaforoRanking("recableado", r.recableado))}
                 ${indicadorMiniRanking("% VTR/GAR", formatoPorcentajeRanking(r.vtrgar), colorSemaforoRanking("vtrgar", r.vtrgar))}
+                ${indicadorMiniRanking("Observaciones", r.observaciones || 0, "")}
+                ${indicadorMiniRanking("Monto Afectado", formatoSolesRanking(r.montoAfectadoObs), "")}
             </div>
         </div>
     `;
@@ -378,7 +393,7 @@ async function mostrarRanking(){
                     font-size:14px;
                     line-height:1.4;
                 ">
-                    Indicadores por cuadrilla. El puntaje interno no se muestra.
+                    Indicadores por cuadrilla. Observaciones ya afecta el ranking como indicador negativo.
                 </div>
 
                 ${listaTarjetasRanking(listaFiltrada, tipoPuesto)}

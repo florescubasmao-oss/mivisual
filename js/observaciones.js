@@ -1,6 +1,6 @@
 // MI VISUAL - Módulo Observaciones
 
-const API_OBSERVACIONES = "https://script.google.com/macros/s/AKfycbzmKi97XUtSllWxhmqwqBqkwFFl6tcnFHn5ebPrepJ_hrx_Hq1TzPWR2opWGMDirwyU/exec";
+const API_OBSERVACIONES = "https://script.google.com/macros/s/AKfycbz3HDtjgZvWv0UzLH1fwzt8GGFtKktfU-vAcUgtu85bAjUYyxq4cOPxCHw49jBB4Azl/exec";
 
 function usuarioActualObs(){
     return {
