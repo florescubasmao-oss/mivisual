@@ -119,13 +119,13 @@ for(let j = 5; j < datos.length; j++){
 
   totalPuntos += puntosDia;
 
-  let semaforo = "🔴";
+  let semaforo = "🔴 SIN BONO";
 
 if(puntosDia >= 4.5){
-   semaforo = "🟢";
+   semaforo = "🟢 BONO GANADO";
 }
 else if(puntosDia == 4){
-   semaforo = "🟡";
+   semaforo = "🟡 CERCA AL BONO";
 }
 
 resultado += `
@@ -358,142 +358,141 @@ renderDashboardProduccion(dashboard);
 function renderDashboardProduccion(data){
 
     const totalPuntos = Number(data.resumen.totalPuntos || 0);
+    let estadoBono = "🔴 SIN BONO";
+    let estadoColor = "#991b1b";
 
-    const gruposPorFecha = {};
+    if(totalPuntos >= 4.5){
+        estadoBono = "🟢 BONO GANADO";
+        estadoColor = "#15803d";
+    }else if(totalPuntos >= 4){
+        estadoBono = "🟡 CERCA AL BONO";
+        estadoColor = "#b45309";
+    }
 
-    (data.detalle || []).forEach(r => {
-        const fecha = (r.fecha || "SIN FECHA").trim();
-        const cantidad = Number(r.cantidad) || 0;
-        const puntaje = Number(r.puntaje) || 0;
-        const puntos = cantidad * puntaje;
-        const tipo = (r.tipo || "Trabajo registrado").trim();
+    let html = `
+    <div style="padding:16px;max-width:920px;margin:auto;">
 
-        if(!gruposPorFecha[fecha]){
-            gruposPorFecha[fecha] = {
-                fecha,
-                puntos: 0,
-                trabajos: {}
-            };
-        }
+        <h2 style="text-align:center;margin-bottom:14px;">📊 MI PRODUCCIÓN</h2>
 
-        gruposPorFecha[fecha].puntos += puntos;
+        <div style="
+            background:linear-gradient(135deg,#123c69,#0f766e);
+            color:white;
+            border-radius:20px;
+            padding:22px;
+            margin-bottom:16px;
+            box-shadow:0 8px 18px rgba(0,0,0,.25);
+        ">
+            <div style="font-size:13px;opacity:.85;letter-spacing:.5px;">PUNTOS ACUMULADOS</div>
+            <div style="font-size:42px;font-weight:900;line-height:1;margin:8px 0;">${totalPuntos.toFixed(1)}</div>
+            <div style="display:inline-block;background:${estadoColor};padding:8px 12px;border-radius:999px;font-weight:bold;font-size:13px;">
+                ${estadoBono}
+            </div>
+        </div>
 
-        if(!gruposPorFecha[fecha].trabajos[tipo]){
-            gruposPorFecha[fecha].trabajos[tipo] = {
-                tipo,
-                cantidad: 0,
-                puntos: 0
-            };
-        }
+        <div style="
+            display:grid;
+            grid-template-columns:repeat(2,minmax(0,1fr));
+            gap:10px;
+            margin-bottom:18px;
+        ">
+            ${kpiProduccionTecnico("📦", "Total", data.resumen.totalProduccion)}
+            ${kpiProduccionTecnico("🏠", "Instalaciones", data.resumen.totalInstalaciones)}
+            ${kpiProduccionTecnico("🔧", "Última Milla", data.resumen.totalUltimaMilla)}
+            ${kpiProduccionTecnico("📡", "Recableado VT", data.resumen.totalRecableadoVT)}
+            ${kpiProduccionTecnico("🔄", "Recableado Post", data.resumen.totalRecableadoPost)}
+            ${kpiProduccionTecnico("🚚", "Traslados", data.resumen.totalTraslados)}
+        </div>
 
-        gruposPorFecha[fecha].trabajos[tipo].cantidad += cantidad;
-        gruposPorFecha[fecha].trabajos[tipo].puntos += puntos;
-    });
+        <div style="text-align:center;margin:18px 0;">
+            <button class="button_1" onclick="volverInicio()">🏠 Volver al Menú</button>
+        </div>
 
-    const fechasOrdenadas = Object.values(gruposPorFecha).sort((a, b) => {
+        <h2 style="margin-top:20px;">📅 Historial de Producción</h2>
+    `;
+
+    if(!data.detalle || data.detalle.length === 0){
+        html += `
+            <div style="background:#1f2d48;color:white;border-radius:14px;padding:16px;margin-top:12px;">
+                No hay producción registrada para tu cuadrilla.
+            </div>
+        `;
+        html += `</div>`;
+        mostrarPantalla(html);
+        return;
+    }
+
+    let fechaActual = "";
+
+    data.detalle.sort((a, b) => {
         const fa = (a.fecha || "").split("/").reverse().join("");
         const fb = (b.fecha || "").split("/").reverse().join("");
         return fb.localeCompare(fa);
     });
 
-    let html = `
-    <div class="prod-telco">
-
-        <div class="prod-topbar">
-            <div class="prod-eyebrow">APP OPERACIONES TELECOM</div>
-            <h2>📊 MI PRODUCCIÓN</h2>
-        </div>
-
-        <div class="prod-hero-card">
-            <div class="prod-hero-label">PUNTOS ACUMULADOS DEL MES</div>
-            <div class="prod-hero-value">${totalPuntos.toFixed(1)}</div>
-        </div>
-
-        <div class="prod-kpi-grid">
-            ${kpiProduccionTecnico("📦", "Total", data.resumen.totalProduccion)}
-            ${kpiProduccionTecnico("🏠", "Instalaciones", data.resumen.totalInstalaciones)}
-            ${kpiProduccionTecnico("🛠", "Última Milla", data.resumen.totalUltimaMilla)}
-            ${kpiProduccionTecnico("🔧", "Recableado VT", data.resumen.totalRecableadoVT)}
-            ${kpiProduccionTecnico("🧰", "Recableado Post", data.resumen.totalRecableadoPost)}
-            ${kpiProduccionTecnico("🚚", "Traslados", data.resumen.totalTraslados)}
-        </div>
-
-        <div class="prod-section-title">📅 HISTORIAL DIARIO</div>
-    `;
-
-    if(!data.detalle || data.detalle.length === 0){
-        html += `
-            <div class="prod-empty-card">
-                No hay producción registrada para tu cuadrilla.
-            </div>
-        `;
-        html += `
-            <div class="prod-actions">
-                <button class="button_1" onclick="volverInicio()">🏠 Volver al Menú</button>
-            </div>
-        </div>`;
-        mostrarPantalla(html);
-        return;
-    }
-
-    fechasOrdenadas.forEach(dia => {
-        const puntosDia = Number(dia.puntos || 0);
-        const semaforo = semaforoProduccionDia(puntosDia);
-        const trabajos = Object.values(dia.trabajos).sort((a,b) => a.tipo.localeCompare(b.tipo));
-
-        html += `
-            <div class="prod-day-card ${semaforo.clase}">
-                <div class="prod-day-head">
-                    <div class="prod-day-date">📅 ${dia.fecha}</div>
-                    <div class="prod-day-score">${semaforo.icono} ${puntosDia.toFixed(1)} pts</div>
-                </div>
-
-                <div class="prod-day-list">
-        `;
-
-        trabajos.forEach(t => {
+    data.detalle.forEach(r => {
+        if (r.fecha !== fechaActual) {
+            fechaActual = r.fecha;
             html += `
-                <div class="prod-day-row">
-                    <div class="prod-day-work">${t.tipo}</div>
-                    <div class="prod-day-qty">${t.cantidad}</div>
+                <div style="
+                    margin-top:18px;
+                    margin-bottom:8px;
+                    padding:10px 14px;
+                    border-radius:12px;
+                    background:#1e3a8a;
+                    color:white;
+                    font-weight:bold;
+                ">
+                    📅 ${fechaActual}
                 </div>
             `;
-        });
+        }
+
+        const puntos = (Number(r.puntaje) || 0) * (Number(r.cantidad) || 0);
 
         html += `
+            <div style="
+                background:#1f2d48;
+                border-left:5px solid #16a34a;
+                border-radius:16px;
+                padding:15px;
+                margin:10px 0;
+                color:white;
+                box-shadow:0 4px 12px rgba(0,0,0,.18);
+            ">
+                <div style="font-size:16px;font-weight:800;line-height:1.35;margin-bottom:10px;">
+                    ${r.tipo || "Trabajo registrado"}
+                </div>
+
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+                    <div style="background:#0f172a;border-radius:12px;padding:10px;">
+                        <div style="font-size:11px;color:#9fb7d8;">CANTIDAD</div>
+                        <div style="font-size:22px;font-weight:900;">${r.cantidad}</div>
+                    </div>
+                    <div style="background:#0f172a;border-radius:12px;padding:10px;">
+                        <div style="font-size:11px;color:#9fb7d8;">PUNTOS</div>
+                        <div style="font-size:22px;font-weight:900;color:#facc15;">${puntos.toFixed(1)}</div>
+                    </div>
                 </div>
             </div>
         `;
     });
 
-    html += `
-        <div class="prod-actions">
-            <button class="button_1" onclick="volverInicio()">🏠 Volver al Menú</button>
-        </div>
-    </div>`;
-
+    html += `</div>`;
     mostrarPantalla(html);
-}
-
-function semaforoProduccionDia(puntos){
-    const p = Number(puntos) || 0;
-
-    if(p > 4.5){
-        return { icono: "🟢", clase: "prod-green" };
-    }
-
-    if(p >= 4){
-        return { icono: "🟡", clase: "prod-yellow" };
-    }
-
-    return { icono: "🔴", clase: "prod-red" };
 }
 
 function kpiProduccionTecnico(icono, titulo, valor){
     return `
-        <div class="prod-kpi-card">
-            <div class="prod-kpi-label">${icono} ${titulo}</div>
-            <div class="prod-kpi-value">${valor || 0}</div>
+        <div style="
+            background:#1f2d48;
+            color:white;
+            border-radius:16px;
+            padding:14px;
+            min-height:78px;
+            box-shadow:0 4px 12px rgba(0,0,0,.18);
+        ">
+            <div style="font-size:12px;color:#9fb7d8;line-height:1.2;">${icono} ${titulo}</div>
+            <div style="font-size:26px;font-weight:900;margin-top:6px;">${valor || 0}</div>
         </div>
     `;
 }
@@ -1624,523 +1623,154 @@ function mostrarAdministracion(){
 
 }
 
+/* =====================================================
+   MI VISUAL v4.0 - DASHBOARDS METAS Y PRODUCCIÓN TELCO
+   Overrides finales para diseño móvil corporativo
+===================================================== */
 
-/* =========================================================
-   MI VISUAL v3.2 - DASHBOARD SUPERVISOR / JEFATURA METAS
-   Diseño móvil tipo telecomunicaciones
-========================================================= */
+const META_PRODUCCION_CUADRILLA = 120;
+const META_EFECTIVIDAD = 70;
+const META_RECABLEADO = 42;
+const META_VTRGAR = 3;
+const META_OBSERVACIONES = 200;
+const URL_RANKING_MI_VISUAL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRpVkCmSvopgPByWsEX6nkuAT6mf3yD2_Cywpl9pFSZEqYpxmprDePPeV0KNgT14YpEP6gkVlvOAtZy/pub?gid=1269910675&single=true&output=csv";
 
-const URL_RANKING_DASHBOARD = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRpVkCmSvopgPByWsEX6nkuAT6mf3yD2_Cywpl9pFSZEqYpxmprDePPeV0KNgT14YpEP6gkVlvOAtZy/pub?gid=1269910675&single=true&output=csv";
-
-const METAS_DASHBOARD = {
-    produccionPorCuadrilla: 120,
-    efectividad: 70,
-    recableado: 42,
-    vtrgar: 3,
-    observacionesMonto: 200
-};
-
-function mvParseCSV(texto){
-    const filas = [];
-    let fila = [];
-    let celda = "";
-    let comillas = false;
-
-    for(let i = 0; i < texto.length; i++){
-        const ch = texto[i];
-        const next = texto[i + 1];
-
-        if(ch === '"'){
-            if(comillas && next === '"'){
-                celda += '"';
-                i++;
-            }else{
-                comillas = !comillas;
-            }
-        }else if(ch === ',' && !comillas){
-            fila.push(celda.trim());
-            celda = "";
-        }else if((ch === '\n' || ch === '\r') && !comillas){
-            if(ch === '\r' && next === '\n') i++;
-            fila.push(celda.trim());
-            if(fila.some(x => x !== "")) filas.push(fila);
-            fila = [];
-            celda = "";
-        }else{
-            celda += ch;
-        }
-    }
-
-    if(celda || fila.length){
-        fila.push(celda.trim());
-        if(fila.some(x => x !== "")) filas.push(fila);
-    }
-
-    return filas;
-}
-
-function mvNormalizar(txt){
-    return (txt || "")
-        .toString()
-        .toUpperCase()
-        .normalize("NFD")
-        .replace(/[\u0300-\u036f]/g, "")
-        .replace(/\s+/g, " ")
-        .trim();
-}
-
-function mvNumero(valor){
-    const n = Number((valor || "")
-        .toString()
-        .replace("%", "")
-        .replace("S/", "")
-        .replace(/,/g, ".")
-        .replace(/\s/g, "")
-    );
+function mv4Num(valor){
+    const n = Number((valor || "").toString().replace("%", "").replace("S/", "").replace(/,/g, ".").replace(/\s/g, ""));
     return isNaN(n) ? 0 : n;
 }
-
-function mvPct(valor){
-    const n = mvNumero(valor);
+function mv4Pct(valor){
+    const n = mv4Num(valor);
     return n <= 1 ? n * 100 : n;
 }
-
-function mvSoles(valor){
-    return "S/ " + (Number(valor) || 0).toFixed(2);
+function mv4Money(n){ return "S/ " + (Number(n) || 0).toFixed(2); }
+function mv4Per(n){ return (Number(n) || 0).toFixed(2) + "%"; }
+function mv4Norm(txt){
+    return (txt || "").toString().toUpperCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/\s+/g, " ").trim();
 }
-
-function mvSemaforoPositivo(valor, meta){
-    if(valor >= meta) return "🟢";
-    if(valor >= meta * 0.90) return "🟡";
-    return "🔴";
+function mv4CSV(texto){
+    if(typeof parseCSVRanking === "function") return parseCSVRanking(texto);
+    return texto.trim().split(/\r?\n/).map(l => l.split(",").map(x => x.replace(/^"|"$/g, "").trim()));
 }
-
-function mvSemaforoMayorIgual(valor, meta, margen){
-    if(valor >= meta) return "🟢";
-    if(valor >= (meta - (margen || 5))) return "🟡";
-    return "🔴";
-}
-
-function mvSemaforoMenorIgual(valor, meta, margen){
-    if(valor <= meta) return "🟢";
-    if(valor <= (meta + (margen || 5))) return "🟡";
-    return "🔴";
-}
-
-function mvColorSemaforo(semaforo){
-    if(semaforo === "🟢") return "#16a34a";
-    if(semaforo === "🟡") return "#facc15";
-    return "#ef4444";
-}
-
-function mvFilaRankingDashboard(f){
+function mv4FilaRanking(datos){
+    if(typeof filaRanking === "function") return filaRanking(datos);
     return {
-        id: f[0] || "",
-        cuadrilla: (f[1] || "").replace(/^P\s+(\d+)/i, "P$1").replace(/\s+/g, " ").trim(),
-        actualizacion: f[2] || "",
-        usuario: f[3] || "",
-        sede: mvNormalizar(f[4] || ""),
-        plataforma: mvNormalizar(f[5] || ""),
-        produccion: mvNumero(f[6]),
-        efectividad: mvPct(f[7]),
-        recableado: mvPct(f[8]),
-        vtrgar: mvPct(f[9]),
-        observaciones: mvNumero(f[10]),
-        montoTotalObs: mvNumero(f[11]),
-        montoAfectadoObs: mvNumero(f[12]),
-        puntaje: mvNumero(f[13]),
-        puestoSede: Number(f[14]) || 0,
-        puestoRegion: Number(f[15]) || 0,
-        puestoPlataforma: Number(f[16]) || 0,
-        medallaRegion: f[17] || "",
-        medallaSede: f[18] || "",
-        medallaPlataforma: f[19] || ""
+        id: datos[0] || "",
+        cuadrilla: datos[1] || "",
+        actualizacion: datos[2] || "",
+        usuario: datos[3] || "",
+        sede: mv4Norm(datos[4] || ""),
+        plataforma: mv4Norm(datos[5] || ""),
+        produccion: mv4Num(datos[6]),
+        efectividad: mv4Pct(datos[7]),
+        recableado: mv4Pct(datos[8]),
+        vtrgar: mv4Pct(datos[9]),
+        observaciones: mv4Num(datos[10]),
+        montoTotalObs: mv4Num(datos[11]),
+        montoAfectadoObs: mv4Num(datos[12]),
+        puntaje: mv4Num(datos[13]),
+        puestoSede: Number(datos[14]) || 0,
+        puestoRegion: Number(datos[15]) || 0,
+        puestoPlataforma: Number(datos[16]) || 0
     };
 }
-
-async function mvCargarRankingDashboard(){
-    const resp = await fetch(URL_RANKING_DASHBOARD + "&t=" + Date.now());
-    const texto = await resp.text();
-    const filas = mvParseCSV(texto);
-    return filas.slice(1).map(mvFilaRankingDashboard).filter(x => x.cuadrilla);
+async function mv4ObtenerRanking(){
+    const res = await fetch(URL_RANKING_MI_VISUAL + "&t=" + Date.now());
+    const texto = await res.text();
+    return mv4CSV(texto).slice(1).map(mv4FilaRanking).filter(x => x.cuadrilla);
 }
-
-function mvResumenLista(lista){
-    const totalCuadrillas = lista.length;
-    const produccion = lista.reduce((a, x) => a + (Number(x.produccion) || 0), 0);
-    const metaProduccion = totalCuadrillas * METAS_DASHBOARD.produccionPorCuadrilla;
-    const efectividad = totalCuadrillas ? lista.reduce((a, x) => a + x.efectividad, 0) / totalCuadrillas : 0;
-    const recableado = totalCuadrillas ? lista.reduce((a, x) => a + x.recableado, 0) / totalCuadrillas : 0;
-    const vtrgar = totalCuadrillas ? lista.reduce((a, x) => a + x.vtrgar, 0) / totalCuadrillas : 0;
-    const montoObs = lista.reduce((a, x) => a + (Number(x.montoAfectadoObs) || 0), 0);
-
-    const cumple = {
-        produccion: produccion >= metaProduccion,
-        efectividad: efectividad >= METAS_DASHBOARD.efectividad,
-        recableado: recableado <= METAS_DASHBOARD.recableado,
-        vtrgar: vtrgar <= METAS_DASHBOARD.vtrgar,
-        observaciones: montoObs <= METAS_DASHBOARD.observacionesMonto
-    };
-
-    const metasCumplidas = Object.values(cumple).filter(Boolean).length;
-
-    return {
-        totalCuadrillas,
-        produccion,
-        metaProduccion,
-        efectividad,
-        recableado,
-        vtrgar,
-        montoObs,
-        cumple,
-        metasCumplidas,
-        cumplimientoGeneral: metasCumplidas * 20,
-        actualizacion: lista[0]?.actualizacion || ""
-    };
-}
-
-function mvBarra(valor, maximo, semaforo){
-    const pct = maximo > 0 ? Math.min(100, Math.max(0, (valor / maximo) * 100)) : 0;
-    const color = mvColorSemaforo(semaforo);
-    return `
-        <div style="width:100%;height:10px;background:#17233a;border-radius:20px;overflow:hidden;margin-top:10px;">
-            <div style="width:${pct}%;height:100%;background:${color};border-radius:20px;"></div>
-        </div>
-    `;
-}
-
-function mvHeaderDashboard(titulo, subtitulo, actualizacion){
-    return `
-        <div style="
-            background:linear-gradient(135deg,#0f172a,#123c69,#0f766e);
-            color:white;
-            border-radius:22px;
-            padding:20px;
-            margin-bottom:14px;
-            box-shadow:0 12px 28px rgba(0,0,0,.26);
-        ">
-            <div style="font-size:12px;letter-spacing:1.4px;opacity:.78;">MI VISUAL · TELECOM</div>
-            <div style="font-size:28px;font-weight:900;margin-top:8px;line-height:1.05;">${titulo}</div>
-            ${subtitulo ? `<div style="font-size:16px;font-weight:800;margin-top:8px;color:#bfdbfe;">${subtitulo}</div>` : ""}
-            <div style="font-size:12px;opacity:.82;margin-top:10px;">Actualizado: <b>${actualizacion || "-"}</b></div>
-        </div>
-    `;
-}
-
-function mvTarjetaGlobal(resumen, etiqueta){
-    const sem = resumen.cumplimientoGeneral >= 80 ? "🟢" : (resumen.cumplimientoGeneral >= 60 ? "🟡" : "🔴");
-    return `
-        <div style="
-            background:#1f2d48;
-            color:white;
-            border-radius:20px;
-            padding:16px;
-            margin:12px 0;
-            box-shadow:0 8px 18px rgba(0,0,0,.20);
-        ">
-            <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;">
-                <div>
-                    <div style="font-size:13px;color:#9fb7d8;">📋 CUMPLIMIENTO ${etiqueta || "GENERAL"}</div>
-                    <div style="font-size:38px;font-weight:900;margin-top:4px;">${resumen.cumplimientoGeneral}%</div>
-                    <div style="font-size:14px;color:#bfdbfe;">${resumen.metasCumplidas} de 5 metas cumplidas</div>
-                </div>
-                <div style="font-size:42px;">${sem}</div>
-            </div>
-            ${mvBarra(resumen.cumplimientoGeneral, 100, sem)}
-        </div>
-    `;
-}
-
-function mvFilaCuadrillaResumen(r, tipo){
-    const sp = mvSemaforoPositivo(r.produccion, METAS_DASHBOARD.produccionPorCuadrilla);
-    const se = mvSemaforoMayorIgual(r.efectividad, METAS_DASHBOARD.efectividad, 5);
-    const sr = mvSemaforoMenorIgual(r.recableado, METAS_DASHBOARD.recableado, 8);
-    const sv = mvSemaforoMenorIgual(r.vtrgar, METAS_DASHBOARD.vtrgar, 1);
-    const so = mvSemaforoMenorIgual(r.montoAfectadoObs, METAS_DASHBOARD.observacionesMonto, 100);
-
-    let valorPrincipal = "";
-    if(tipo === "produccion") valorPrincipal = `${r.produccion.toFixed(1)} / ${METAS_DASHBOARD.produccionPorCuadrilla} pts ${sp}`;
-    if(tipo === "efectividad") valorPrincipal = `${r.efectividad.toFixed(2)}% / Meta ≥ ${METAS_DASHBOARD.efectividad}% ${se}`;
-    if(tipo === "recableado") valorPrincipal = `${r.recableado.toFixed(2)}% / Meta ≤ ${METAS_DASHBOARD.recableado}% ${sr}`;
-    if(tipo === "vtrgar") valorPrincipal = `${r.vtrgar.toFixed(2)}% / Meta ≤ ${METAS_DASHBOARD.vtrgar}% ${sv}`;
-    if(tipo === "observaciones") valorPrincipal = `${mvSoles(r.montoAfectadoObs)} / Meta ≤ ${mvSoles(METAS_DASHBOARD.observacionesMonto)} ${so}`;
-
-    return `
-        <div style="
-            background:#0f172a;
-            border:1px solid rgba(255,255,255,.08);
-            border-radius:16px;
-            padding:12px;
-            margin-top:10px;
-        ">
-            <div style="font-size:13px;font-weight:900;line-height:1.25;color:white;">${r.cuadrilla}</div>
-            <div style="font-size:13px;font-weight:800;color:#facc15;margin-top:6px;">${valorPrincipal}</div>
-            <div style="font-size:11px;color:#9fb7d8;margin-top:7px;line-height:1.45;">
-                Prod: ${r.produccion.toFixed(1)} ${sp} · Efec: ${r.efectividad.toFixed(1)}% ${se}<br>
-                Rec: ${r.recableado.toFixed(1)}% ${sr} · VTR/GAR: ${r.vtrgar.toFixed(1)}% ${sv}<br>
-                Obs: ${mvSoles(r.montoAfectadoObs)} ${so}
-            </div>
-        </div>
-    `;
-}
-
-function mvKpiAccordion(id, icono, titulo, actual, metaTexto, semaforo, barraValor, barraMeta, lista, tipo){
-    const color = mvColorSemaforo(semaforo);
-    return `
-        <div style="
-            background:#1f2d48;
-            color:white;
-            border-radius:20px;
-            padding:16px;
-            margin:12px 0;
-            box-shadow:0 8px 18px rgba(0,0,0,.20);
-            border-top:4px solid ${color};
-        ">
-            <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:10px;">
-                <div style="flex:1;">
-                    <div style="font-size:13px;color:#9fb7d8;font-weight:800;">${icono} ${titulo}</div>
-                    <div style="font-size:25px;font-weight:900;margin-top:5px;line-height:1.15;">${actual}</div>
-                    <div style="font-size:12px;color:#bfdbfe;margin-top:5px;">Meta: <b>${metaTexto}</b></div>
-                </div>
-                <div style="font-size:32px;line-height:1;">${semaforo}</div>
-            </div>
-
-            ${mvBarra(barraValor, barraMeta, semaforo)}
-
-            <button onclick="mvToggleDash('${id}', this)" style="
-                width:100%;
-                margin-top:12px;
-                padding:11px;
-                background:#123c69;
-                color:white;
-                border:none;
-                border-radius:14px;
-                font-weight:900;
-                letter-spacing:.2px;
-            ">▼ Ver cuadrillas</button>
-
-            <div id="${id}" style="display:none;margin-top:12px;">
-                ${lista.map(r => mvFilaCuadrillaResumen(r, tipo)).join("") || `<div style="font-size:13px;color:#bfdbfe;">Sin cuadrillas.</div>`}
-            </div>
-        </div>
-    `;
-}
-
-function mvToggleDash(id, btn){
-    const el = document.getElementById(id);
-    if(!el) return;
-    const abierto = el.style.display !== "none";
-    el.style.display = abierto ? "none" : "block";
-    if(btn) btn.textContent = abierto ? "▼ Ver cuadrillas" : "▲ Ocultar cuadrillas";
-}
-
-function mvDashboardSupervisorHTML(lista, sede){
-    const resumen = mvResumenLista(lista);
-    const semProd = mvSemaforoPositivo(resumen.produccion, resumen.metaProduccion);
-    const semEf = mvSemaforoMayorIgual(resumen.efectividad, METAS_DASHBOARD.efectividad, 5);
-    const semRec = mvSemaforoMenorIgual(resumen.recableado, METAS_DASHBOARD.recableado, 8);
-    const semVtr = mvSemaforoMenorIgual(resumen.vtrgar, METAS_DASHBOARD.vtrgar, 1);
-    const semObs = mvSemaforoMenorIgual(resumen.montoObs, METAS_DASHBOARD.observacionesMonto, 100);
-
-    return `
-        <div style="padding:16px;max-width:980px;margin:auto;">
-            ${mvHeaderDashboard("SUPERVISOR", sede || "SEDE", resumen.actualizacion)}
-            ${mvTarjetaGlobal(resumen, "SUPERVISOR")}
-
-            ${mvKpiAccordion("sup_prod", "📈", "PRODUCCIÓN", `${resumen.produccion.toFixed(1)} / ${resumen.metaProduccion} pts`, `120 pts x ${resumen.totalCuadrillas} cuadrillas`, semProd, resumen.produccion, resumen.metaProduccion, lista, "produccion")}
-            ${mvKpiAccordion("sup_efec", "📊", "EFECTIVIDAD", `${resumen.efectividad.toFixed(2)}%`, `≥ ${METAS_DASHBOARD.efectividad}%`, semEf, resumen.efectividad, 100, lista, "efectividad")}
-            ${mvKpiAccordion("sup_rec", "🔧", "RECABLEADO", `${resumen.recableado.toFixed(2)}%`, `≤ ${METAS_DASHBOARD.recableado}%`, semRec, METAS_DASHBOARD.recableado, Math.max(resumen.recableado, METAS_DASHBOARD.recableado), lista, "recableado")}
-            ${mvKpiAccordion("sup_vtr", "⚠️", "VTR / GAR", `${resumen.vtrgar.toFixed(2)}%`, `≤ ${METAS_DASHBOARD.vtrgar}%`, semVtr, METAS_DASHBOARD.vtrgar, Math.max(resumen.vtrgar, METAS_DASHBOARD.vtrgar), lista, "vtrgar")}
-            ${mvKpiAccordion("sup_obs", "🚨", "OBSERVACIONES", `${mvSoles(resumen.montoObs)}`, `≤ ${mvSoles(METAS_DASHBOARD.observacionesMonto)}`, semObs, METAS_DASHBOARD.observacionesMonto, Math.max(resumen.montoObs, METAS_DASHBOARD.observacionesMonto), lista, "observaciones")}
-
-            <br>
-            <button class="button_1" onclick="volverInicio()">🏠 VOLVER</button>
-        </div>
-    `;
-}
-
-function mvSedeCard(sede, lista, index){
-    const resumen = mvResumenLista(lista);
-    const semProd = mvSemaforoPositivo(resumen.produccion, resumen.metaProduccion);
-    const semEf = mvSemaforoMayorIgual(resumen.efectividad, METAS_DASHBOARD.efectividad, 5);
-    const semRec = mvSemaforoMenorIgual(resumen.recableado, METAS_DASHBOARD.recableado, 8);
-    const semVtr = mvSemaforoMenorIgual(resumen.vtrgar, METAS_DASHBOARD.vtrgar, 1);
-    const semObs = mvSemaforoMenorIgual(resumen.montoObs, METAS_DASHBOARD.observacionesMonto, 100);
-    const semGlobal = resumen.cumplimientoGeneral >= 80 ? "🟢" : (resumen.cumplimientoGeneral >= 60 ? "🟡" : "🔴");
-
-    return `
-        <div style="
-            background:#1f2d48;
-            color:white;
-            border-radius:22px;
-            padding:16px;
-            margin:14px 0;
-            box-shadow:0 10px 22px rgba(0,0,0,.24);
-            border-top:4px solid ${mvColorSemaforo(semGlobal)};
-        ">
-            <div style="display:flex;justify-content:space-between;gap:10px;align-items:flex-start;">
-                <div>
-                    <div style="font-size:22px;font-weight:900;">🏢 ${sede}</div>
-                    <div style="font-size:12px;color:#9fb7d8;margin-top:4px;">${resumen.totalCuadrillas} cuadrillas · ${resumen.metasCumplidas}/5 metas</div>
-                </div>
-                <div style="font-size:34px;">${semGlobal}</div>
-            </div>
-
-            <div style="display:grid;grid-template-columns:1fr;gap:9px;margin-top:14px;">
-                <div>📈 Producción: <b>${resumen.produccion.toFixed(1)} / ${resumen.metaProduccion} pts</b> <span style="float:right;">${semProd}</span><br><small style="color:#bfdbfe;">Meta: 120 pts x cuadrilla</small></div>
-                <div>📊 Efectividad: <b>${resumen.efectividad.toFixed(2)}%</b> <span style="float:right;">${semEf}</span><br><small style="color:#bfdbfe;">Meta ≥ ${METAS_DASHBOARD.efectividad}%</small></div>
-                <div>🔧 Recableado: <b>${resumen.recableado.toFixed(2)}%</b> <span style="float:right;">${semRec}</span><br><small style="color:#bfdbfe;">Meta ≤ ${METAS_DASHBOARD.recableado}%</small></div>
-                <div>⚠️ VTR/GAR: <b>${resumen.vtrgar.toFixed(2)}%</b> <span style="float:right;">${semVtr}</span><br><small style="color:#bfdbfe;">Meta ≤ ${METAS_DASHBOARD.vtrgar}%</small></div>
-                <div>🚨 Observaciones: <b>${mvSoles(resumen.montoObs)}</b> <span style="float:right;">${semObs}</span><br><small style="color:#bfdbfe;">Meta ≤ ${mvSoles(METAS_DASHBOARD.observacionesMonto)}</small></div>
-            </div>
-
-            <button onclick="mvToggleDash('sede_${index}', this)" style="
-                width:100%;
-                margin-top:14px;
-                padding:11px;
-                background:#123c69;
-                color:white;
-                border:none;
-                border-radius:14px;
-                font-weight:900;
-            ">▼ Ver cuadrillas</button>
-
-            <div id="sede_${index}" style="display:none;margin-top:12px;">
-                ${lista.map(r => mvFilaCuadrillaResumen(r, "produccion")).join("")}
-            </div>
-        </div>
-    `;
-}
-
-function mvDashboardJefaturaHTML(lista){
-    const resumen = mvResumenLista(lista);
-    const sedes = {};
-    lista.forEach(r => {
-        const sede = r.sede || "SIN SEDE";
-        if(!sedes[sede]) sedes[sede] = [];
-        sedes[sede].push(r);
-    });
-
-    const ordenSedes = ["CHICLAYO", "PIURA", "TRUJILLO"];
-    const sedesOrdenadas = Object.keys(sedes).sort((a,b) => {
-        const ia = ordenSedes.indexOf(a);
-        const ib = ordenSedes.indexOf(b);
-        if(ia >= 0 && ib >= 0) return ia - ib;
-        if(ia >= 0) return -1;
-        if(ib >= 0) return 1;
-        return a.localeCompare(b);
-    });
-
-    return `
-        <div style="padding:16px;max-width:980px;margin:auto;">
-            ${mvHeaderDashboard("JEFATURA", "ZONA NORTE", resumen.actualizacion)}
-            ${mvTarjetaGlobal(resumen, "ZONA NORTE")}
-
-            ${sedesOrdenadas.map((sede, i) => mvSedeCard(sede, sedes[sede], i)).join("")}
-
-            <br>
-            <button class="button_1" onclick="volverInicio()">🏠 VOLVER</button>
-        </div>
-    `;
-}
-
-async function mostrarDashboardSupervisor(){
-    const sede = mvNormalizar(localStorage.getItem("sede"));
-    mostrarPantalla(`<div style="padding:20px;max-width:900px;margin:auto;"><h2>📊 SUPERVISOR</h2>Cargando indicadores...</div>`);
-
-    try{
-        const lista = (await mvCargarRankingDashboard())
-            .filter(x => x.sede === sede)
-            .sort((a, b) => b.produccion - a.produccion);
-
-        if(lista.length === 0){
-            mostrarPantalla(`<div style="padding:20px;"><h2>📊 SUPERVISOR</h2>No hay cuadrillas para la sede ${sede}.<br><br><button class="button_1" onclick="volverInicio()">🏠 VOLVER</button></div>`);
-            return;
-        }
-
-        mostrarPantalla(mvDashboardSupervisorHTML(lista, sede));
-    }catch(err){
-        console.error(err);
-        mostrarPantalla(`<div style="padding:20px;"><h2>📊 SUPERVISOR</h2>❌ Error al cargar dashboard.<br><br><button class="button_1" onclick="volverInicio()">🏠 VOLVER</button></div>`);
-    }
-}
-
-async function mostrarDashboardJefatura(){
-    mostrarPantalla(`<div style="padding:20px;max-width:900px;margin:auto;"><h2>🌎 JEFATURA</h2>Cargando indicadores...</div>`);
-
-    try{
-        const lista = (await mvCargarRankingDashboard())
-            .sort((a, b) => a.sede.localeCompare(b.sede) || b.produccion - a.produccion);
-
-        if(lista.length === 0){
-            mostrarPantalla(`<div style="padding:20px;"><h2>🌎 JEFATURA</h2>No hay información disponible.<br><br><button class="button_1" onclick="volverInicio()">🏠 VOLVER</button></div>`);
-            return;
-        }
-
-        mostrarPantalla(mvDashboardJefaturaHTML(lista));
-    }catch(err){
-        console.error(err);
-        mostrarPantalla(`<div style="padding:20px;"><h2>🌎 JEFATURA</h2>❌ Error al cargar dashboard.<br><br><button class="button_1" onclick="volverInicio()">🏠 VOLVER</button></div>`);
-    }
-}
-
-/* =========================================================
-   MI VISUAL v3.2 - PRODUCCIÓN TÉCNICO LIMPIA
-   Quita BONO y agrupa historial por día con semáforo de puntos
-========================================================= */
-
-function mvSemaforoProduccionDia(puntos){
-    if(puntos > 4.5) return "🟢";
-    if(puntos >= 4) return "🟡";
+function mv4Estado(tipo, valor, meta){
+    const v = Number(valor) || 0;
+    if(tipo === "mayor") return v >= meta ? "🟢" : "🔴";
+    if(tipo === "menor") return v <= meta ? "🟢" : "🔴";
     return "🔴";
+}
+function mv4Prom(lista, campo){
+    if(!lista.length) return 0;
+    return lista.reduce((s,x)=>s+(Number(x[campo])||0),0) / lista.length;
+}
+function mv4Resumen(lista){
+    const cuadrillas = lista.length;
+    const produccion = lista.reduce((s,x)=>s+(Number(x.produccion)||0),0);
+    const metaProduccion = cuadrillas * META_PRODUCCION_CUADRILLA;
+    const efectividad = mv4Prom(lista, "efectividad");
+    const recableado = mv4Prom(lista, "recableado");
+    const vtrgar = mv4Prom(lista, "vtrgar");
+    const obs = lista.reduce((s,x)=>s+(Number(x.montoAfectadoObs)||0),0);
+    const ok = [
+        produccion >= metaProduccion,
+        efectividad >= META_EFECTIVIDAD,
+        recableado <= META_RECABLEADO,
+        vtrgar <= META_VTRGAR,
+        obs <= META_OBSERVACIONES
+    ].filter(Boolean).length;
+    return { cuadrillas, produccion, metaProduccion, efectividad, recableado, vtrgar, obs, ok, cumplimiento: ok * 20 };
+}
+function mv4KpiCard({icono,titulo,valor,meta,estado,detalle}){
+    const id = "kpi_" + Math.random().toString(36).slice(2);
+    return `
+    <div class="mv4-kpi-card">
+        <div class="mv4-kpi-head">
+            <div><span>${icono}</span> <b>${titulo}</b></div>
+            <div class="mv4-kpi-status">${estado}</div>
+        </div>
+        <div class="mv4-kpi-value">${valor}</div>
+        <div class="mv4-kpi-meta">Meta: ${meta}</div>
+        <button class="mv4-link-btn" onclick="toggleDetalle('${id}', this)">▼ Ver cuadrillas</button>
+        <div id="${id}" class="mv4-kpi-detail" style="display:none;">${detalle}</div>
+    </div>`;
+}
+function mv4LineaCuadrilla(nombre, valor, meta, estado){
+    return `
+    <div class="mv4-linea-cuadrilla">
+        <div class="mv4-linea-nombre">${nombre}</div>
+        <div class="mv4-linea-valores">
+            <span>${valor}</span>
+            <small>${meta}</small>
+            <b>${estado}</b>
+        </div>
+    </div>`;
+}
+function mv4DetalleKpi(lista, tipo){
+    return lista.slice().sort((a,b)=>a.cuadrilla.localeCompare(b.cuadrilla)).map(x => {
+        if(tipo === "produccion") return mv4LineaCuadrilla(x.cuadrilla, `${(x.produccion||0).toFixed(1)} / ${META_PRODUCCION_CUADRILLA} pts`, `Meta ${META_PRODUCCION_CUADRILLA}`, mv4Estado("mayor", x.produccion, META_PRODUCCION_CUADRILLA));
+        if(tipo === "efectividad") return mv4LineaCuadrilla(x.cuadrilla, mv4Per(x.efectividad), `Meta ≥ ${META_EFECTIVIDAD}%`, mv4Estado("mayor", x.efectividad, META_EFECTIVIDAD));
+        if(tipo === "recableado") return mv4LineaCuadrilla(x.cuadrilla, mv4Per(x.recableado), `Meta ≤ ${META_RECABLEADO}%`, mv4Estado("menor", x.recableado, META_RECABLEADO));
+        if(tipo === "vtrgar") return mv4LineaCuadrilla(x.cuadrilla, mv4Per(x.vtrgar), `Meta ≤ ${META_VTRGAR}%`, mv4Estado("menor", x.vtrgar, META_VTRGAR));
+        if(tipo === "obs") return mv4LineaCuadrilla(x.cuadrilla, mv4Money(x.montoAfectadoObs), `Meta ≤ S/ ${META_OBSERVACIONES}`, mv4Estado("menor", x.montoAfectadoObs, META_OBSERVACIONES));
+        return "";
+    }).join("");
+}
+function mv4DashboardKpis(lista){
+    const r = mv4Resumen(lista);
+    const produccionPct = r.metaProduccion > 0 ? (r.produccion / r.metaProduccion * 100) : 0;
+    return `
+        <div class="mv4-general-card">
+            <div class="mv4-general-title">📋 CUMPLIMIENTO GENERAL</div>
+            <div class="mv4-general-value">${r.cumplimiento}%</div>
+            <div class="mv4-progress"><span style="width:${r.cumplimiento}%"></span></div>
+            <div class="mv4-general-sub">${r.ok} de 5 metas cumplidas</div>
+        </div>
+        ${mv4KpiCard({icono:"📈",titulo:"Producción",valor:`${r.produccion.toFixed(1)} / ${r.metaProduccion} pts`,meta:`${META_PRODUCCION_CUADRILLA} pts x ${r.cuadrillas} cuadrillas`,estado:mv4Estado("mayor", r.produccion, r.metaProduccion),detalle:mv4DetalleKpi(lista,"produccion")})}
+        ${mv4KpiCard({icono:"🎯",titulo:"Efectividad",valor:mv4Per(r.efectividad),meta:`≥ ${META_EFECTIVIDAD}%`,estado:mv4Estado("mayor", r.efectividad, META_EFECTIVIDAD),detalle:mv4DetalleKpi(lista,"efectividad")})}
+        ${mv4KpiCard({icono:"🔧",titulo:"Recableado",valor:mv4Per(r.recableado),meta:`≤ ${META_RECABLEADO}%`,estado:mv4Estado("menor", r.recableado, META_RECABLEADO),detalle:mv4DetalleKpi(lista,"recableado")})}
+        ${mv4KpiCard({icono:"📡",titulo:"VTR / GAR",valor:mv4Per(r.vtrgar),meta:`≤ ${META_VTRGAR}%`,estado:mv4Estado("menor", r.vtrgar, META_VTRGAR),detalle:mv4DetalleKpi(lista,"vtrgar")})}
+        ${mv4KpiCard({icono:"🚨",titulo:"Observaciones",valor:mv4Money(r.obs),meta:`≤ S/ ${META_OBSERVACIONES}`,estado:mv4Estado("menor", r.obs, META_OBSERVACIONES),detalle:mv4DetalleKpi(lista,"obs")})}
+    `;
 }
 
 function renderDashboardProduccion(data){
     const totalPuntos = Number(data.resumen.totalPuntos || 0);
-
-    const dias = {};
-    (data.detalle || []).forEach(r => {
-        const fecha = r.fecha || "SIN FECHA";
-        if(!dias[fecha]) dias[fecha] = { fecha, puntos:0, items:[] };
-        const puntos = (Number(r.puntaje) || 0) * (Number(r.cantidad) || 0);
-        dias[fecha].puntos += puntos;
-        dias[fecha].items.push({
-            tipo: r.tipo || "Trabajo registrado",
-            cantidad: Number(r.cantidad) || 0,
-            puntos
-        });
-    });
-
-    const listaDias = Object.values(dias).sort((a, b) => {
-        const fa = (a.fecha || "").split("/").reverse().join("");
-        const fb = (b.fecha || "").split("/").reverse().join("");
-        return fb.localeCompare(fa);
-    });
-
+    const meta = META_PRODUCCION_CUADRILLA;
     let html = `
-    <div style="padding:16px;max-width:920px;margin:auto;">
-
-        <div style="
-            background:linear-gradient(135deg,#0f172a,#123c69,#0f766e);
-            color:white;
-            border-radius:22px;
-            padding:20px;
-            margin-bottom:16px;
-            box-shadow:0 12px 28px rgba(0,0,0,.26);
-            text-align:center;
-        ">
-            <div style="font-size:12px;letter-spacing:1.5px;opacity:.78;">MI VISUAL · TELECOM</div>
-            <div style="font-size:24px;font-weight:900;margin-top:8px;">📊 MI PRODUCCIÓN</div>
-            <div style="font-size:12px;opacity:.85;margin-top:16px;letter-spacing:.6px;">PUNTOS ACUMULADOS DEL MES</div>
-            <div style="font-size:48px;font-weight:900;line-height:1;margin-top:8px;">${totalPuntos.toFixed(1)}</div>
+    <div class="mv4-page">
+        <h2 class="mv4-title">📊 MI PRODUCCIÓN</h2>
+        <div class="mv4-hero-card">
+            <div class="mv4-hero-label">PUNTOS ACUMULADOS DEL MES</div>
+            <div class="mv4-hero-value">${totalPuntos.toFixed(1)}</div>
+            <div class="mv4-hero-meta">🎯 Meta: ${meta} pts</div>
         </div>
-
-        <div style="
-            display:grid;
-            grid-template-columns:repeat(2,minmax(0,1fr));
-            gap:10px;
-            margin-bottom:18px;
-        ">
+        <div class="mv4-kpi-grid">
             ${kpiProduccionTecnico("📦", "Total", data.resumen.totalProduccion)}
             ${kpiProduccionTecnico("🏠", "Instalaciones", data.resumen.totalInstalaciones)}
             ${kpiProduccionTecnico("🔧", "Última Milla", data.resumen.totalUltimaMilla)}
@@ -2148,51 +1778,80 @@ function renderDashboardProduccion(data){
             ${kpiProduccionTecnico("🔄", "Recableado Post", data.resumen.totalRecableadoPost)}
             ${kpiProduccionTecnico("🚚", "Traslados", data.resumen.totalTraslados)}
         </div>
+        <h2 class="mv4-section-title">📅 Historial Diario</h2>`;
 
-        <h2 style="margin-top:18px;">📅 Historial diario</h2>
-    `;
-
-    if(listaDias.length === 0){
-        html += `
-            <div style="background:#1f2d48;color:white;border-radius:16px;padding:16px;margin-top:12px;">
-                No hay producción registrada para tu cuadrilla.
-            </div>
-        `;
-    }else{
-        listaDias.forEach(dia => {
-            const sem = mvSemaforoProduccionDia(dia.puntos);
-            html += `
-                <div style="
-                    background:#1f2d48;
-                    color:white;
-                    border-radius:18px;
-                    padding:15px;
-                    margin:12px 0;
-                    box-shadow:0 6px 16px rgba(0,0,0,.18);
-                    border-left:5px solid ${mvColorSemaforo(sem)};
-                ">
-                    <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;">
-                        <div style="font-size:16px;font-weight:900;">📅 ${dia.fecha}</div>
-                        <div style="font-size:16px;font-weight:900;color:#facc15;">${sem} ${dia.puntos.toFixed(1)} pts</div>
-                    </div>
-                    <div style="margin-top:10px;border-top:1px solid rgba(255,255,255,.10);padding-top:8px;">
-                        ${dia.items.map(item => `
-                            <div style="display:flex;justify-content:space-between;gap:12px;padding:7px 0;border-bottom:1px solid rgba(255,255,255,.06);">
-                                <div style="font-size:13px;line-height:1.25;color:#e5f0ff;">${item.tipo}</div>
-                                <div style="font-size:13px;font-weight:900;white-space:nowrap;">${item.cantidad}</div>
-                            </div>
-                        `).join("")}
-                    </div>
-                </div>
-            `;
-        });
+    if(!data.detalle || !data.detalle.length){
+        html += `<div class="mv4-empty">No hay producción registrada para tu cuadrilla.</div><button class="button_1" onclick="volverInicio()">🏠 Volver</button></div>`;
+        mostrarPantalla(html); return;
     }
-
-    html += `
-        <div style="text-align:center;margin:20px 0;">
-            <button class="button_1" onclick="volverInicio()">🏠 Volver al Menú</button>
-        </div>
-    </div>`;
-
+    const porDia = {};
+    data.detalle.forEach(r => {
+        const f = r.fecha || "SIN FECHA";
+        if(!porDia[f]) porDia[f] = { puntos:0, items:[] };
+        const pts = (Number(r.puntaje)||0) * (Number(r.cantidad)||0);
+        porDia[f].puntos += pts;
+        porDia[f].items.push(r);
+    });
+    Object.keys(porDia).sort((a,b)=>b.split('/').reverse().join('').localeCompare(a.split('/').reverse().join(''))).forEach(fecha => {
+        const d = porDia[fecha];
+        const sem = d.puntos > 4.5 ? "🟢" : (d.puntos >= 4 ? "🟡" : "🔴");
+        html += `<div class="mv4-day-card"><div class="mv4-day-head"><b>📅 ${fecha}</b><span>${sem} ${d.puntos.toFixed(1)} pts</span></div>`;
+        d.items.forEach(r => {
+            html += `<div class="mv4-day-row"><span>${r.tipo || "Trabajo registrado"}</span><b>${r.cantidad || 0}</b></div>`;
+        });
+        html += `</div>`;
+    });
+    html += `<button class="button_1" onclick="volverInicio()">🏠 Volver</button></div>`;
     mostrarPantalla(html);
+}
+
+async function mostrarDashboardSupervisor(){
+    const sede = mv4Norm(localStorage.getItem("sede"));
+    mostrarPantalla(`<div class="mv4-page"><h2 class="mv4-title">👷 SUPERVISOR</h2><div class="mv4-loading">Cargando dashboard...</div></div>`);
+    try{
+        const lista = (await mv4ObtenerRanking()).filter(x => mv4Norm(x.sede) === sede);
+        const actualizacion = lista[0]?.actualizacion || "-";
+        mostrarPantalla(`
+            <div class="mv4-page">
+                <div class="mv4-top-card"><div class="mv4-top-role">👷 SUPERVISOR</div><div class="mv4-top-sede">${sede || "SEDE"}</div><div class="mv4-top-sub">Actualizado: ${actualizacion}</div></div>
+                ${mv4DashboardKpis(lista)}
+                <button class="button_1" onclick="volverInicio()">🏠 Volver</button>
+            </div>`);
+    }catch(e){ mostrarPantalla(`<div class="mv4-page"><h2>👷 Supervisor</h2><div class="mv4-error">${e.message}</div></div>`); }
+}
+
+function mv4AgruparPorSede(lista){
+    const grupos = {};
+    lista.forEach(x => { const s = mv4Norm(x.sede || "SIN SEDE"); if(!grupos[s]) grupos[s]=[]; grupos[s].push(x); });
+    return grupos;
+}
+function mv4SedeCard(sede, lista){
+    const r = mv4Resumen(lista);
+    const id = "sede_" + sede.replace(/\W/g, "_") + "_" + Math.random().toString(36).slice(2);
+    return `
+    <div class="mv4-sede-card">
+        <div class="mv4-kpi-head"><div><b>🏢 ${sede}</b></div><div class="mv4-kpi-status">${r.cumplimiento >= 80 ? "🟢" : (r.cumplimiento >= 60 ? "🟡" : "🔴")}</div></div>
+        <div class="mv4-sede-grid">
+            <span>Prod: <b>${r.produccion.toFixed(1)} / ${r.metaProduccion}</b></span>
+            <span>Efect: <b>${mv4Per(r.efectividad)}</b></span>
+            <span>Rec: <b>${mv4Per(r.recableado)}</b></span>
+            <span>VTR/GAR: <b>${mv4Per(r.vtrgar)}</b></span>
+            <span>Obs: <b>${mv4Money(r.obs)}</b></span>
+            <span>Metas: <b>${r.ok}/5</b></span>
+        </div>
+        <button class="mv4-link-btn" onclick="toggleDetalle('${id}', this)">▼ Ver indicadores y cuadrillas</button>
+        <div id="${id}" style="display:none;">${mv4DashboardKpis(lista)}</div>
+    </div>`;
+}
+async function mostrarDashboardJefatura(){
+    mostrarPantalla(`<div class="mv4-page"><h2 class="mv4-title">👔 JEFATURA</h2><div class="mv4-loading">Cargando Zona Norte...</div></div>`);
+    try{
+        const lista = await mv4ObtenerRanking();
+        const grupos = mv4AgruparPorSede(lista);
+        const general = mv4Resumen(lista);
+        let html = `<div class="mv4-page"><div class="mv4-top-card"><div class="mv4-top-role">👔 JEFATURA</div><div class="mv4-top-sede">ZONA NORTE</div><div class="mv4-top-sub">${lista.length} cuadrillas</div></div><div class="mv4-general-card"><div class="mv4-general-title">📋 CUMPLIMIENTO ZONA NORTE</div><div class="mv4-general-value">${general.cumplimiento}%</div><div class="mv4-progress"><span style="width:${general.cumplimiento}%"></span></div><div class="mv4-general-sub">${general.ok} de 5 metas cumplidas</div></div>`;
+        Object.keys(grupos).sort().forEach(s => html += mv4SedeCard(s, grupos[s]));
+        html += `<button class="button_1" onclick="volverInicio()">🏠 Volver</button></div>`;
+        mostrarPantalla(html);
+    }catch(e){ mostrarPantalla(`<div class="mv4-page"><h2>👔 Jefatura</h2><div class="mv4-error">${e.message}</div></div>`); }
 }
