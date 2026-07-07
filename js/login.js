@@ -1,46 +1,42 @@
-// MI VISUAL - Login v4.0 Corporate
-
-function togglePasswordLogin(){
-    const clave = document.getElementById("clave");
-    if(!clave) return;
-    clave.type = clave.type === "password" ? "text" : "password";
-}
+// MI VISUAL - archivo modularizado
 
 async function login() {
 
     const correo = document.getElementById("correo").value.trim();
     const clave = document.getElementById("clave").value.trim();
-    const btn = document.getElementById("btnLogin");
-    const msg = document.getElementById("loginMensaje");
-
-    if(!correo || !clave){
-        if(msg){ msg.innerHTML = "⚠ Ingresa usuario y contraseña."; msg.style.color = "#dc2626"; }
-        return;
-    }
-
-    if(btn){ btn.disabled = true; btn.innerHTML = "Conectando..."; }
-    if(msg){ msg.innerHTML = "Validando credenciales..."; msg.style.color = "#2563eb"; }
 
     const url = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRpVkCmSvopgPByWsEX6nkuAT6mf3yD2_Cywpl9pFSZEqYpxmprDePPeV0KNgT14YpEP6gkVlvOAtZy/pub?gid=0&single=true&output=csv";
 
     try {
-        const respuesta = await fetch(url + "&t=" + Date.now());
+
+        console.log("Consultando Google Sheets...");
+
+        const respuesta = await fetch(url);
+
+        console.log("Estado:", respuesta.status);
+
         const texto = await respuesta.text();
+
+        console.log(texto);
+
         const filas = texto.split("\n");
 
         for (let i = 1; i < filas.length; i++) {
+
             const datos = filas[i].split(",");
+
             const correoSheet = datos[1]?.replace(/"/g, "").trim();
             const claveSheet = datos[2]?.replace(/"/g, "").trim();
 
             if (correo === correoSheet && clave === claveSheet) {
-                const usuario = datos[0]?.replace(/"/g, "").trim();
-                const cuadrilla = datos[3]?.replace(/"/g, "").trim();
-                const sede = datos[4]?.replace(/"/g, "").trim();
-                const plataforma = datos[5]?.replace(/"/g, "").trim();
-                const perfil = datos[6]?.replace(/"/g, "").trim();
-                const nivel = datos[7]?.replace(/"/g, "").trim();
-                const estado = datos[8]?.replace(/"/g, "").trim();
+
+                const usuario = datos[0];
+                const cuadrilla = datos[3];
+                const sede = datos[4];
+                const plataforma = datos[5];
+                const perfil = datos[6];
+                const nivel = datos[7];
+                const estado = datos[8];
 
                 localStorage.setItem("usuario", usuario);
                 localStorage.setItem("cuadrilla", cuadrilla);
@@ -51,23 +47,36 @@ async function login() {
                 localStorage.setItem("estado", estado);
                 localStorage.setItem("correo", correo);
 
-                document.getElementById("usuarioInfo").innerHTML = construirInfoUsuarioLogin({ cuadrilla, sede, plataforma, perfil });
+                document.getElementById("usuarioInfo").innerHTML = construirInfoUsuarioLogin({
+                    cuadrilla,
+                    sede,
+                    plataforma,
+                    perfil
+                });
+
                 document.getElementById("panelLogin").style.display = "none";
                 document.getElementById("btnInicio").style.display = "inline-block";
                 document.getElementById("menuPrincipal").style.display = "grid";
 
-                if(msg) msg.innerHTML = "";
                 configurarMenu();
+
                 return;
             }
+
         }
-        if(msg){ msg.innerHTML = "⚠ Usuario o contraseña incorrectos."; msg.style.color = "#dc2626"; }
+
+        document.getElementById("usuarioInfo").innerHTML =
+            "❌ Correo o clave incorrecta";
+
     } catch (error) {
+
         console.error(error);
-        if(msg){ msg.innerHTML = "❌ Error al conectar con Google Sheets."; msg.style.color = "#dc2626"; }
-    } finally {
-        if(btn){ btn.disabled = false; btn.innerHTML = "INICIAR SESIÓN"; }
+
+        document.getElementById("usuarioInfo").innerHTML =
+            "❌ Error al conectar con Google Sheets";
+
     }
+
 }
 
 function construirInfoUsuarioLogin(data){
@@ -77,11 +86,12 @@ function construirInfoUsuarioLogin(data){
     const cuadrilla = (data.cuadrilla || "").trim();
 
     if(perfil === "JEFATURA" || perfil === "ADMIN" || perfil === "ADMINISTRADOR"){
-        return "👔 <b>JEFATURA</b><br><span>Zona Norte</span>";
+        return "👤 <b>JEFATURA</b>";
     }
 
     if(perfil === "SUPERVISOR"){
-        return "👷 <b>SUPERVISOR</b><br>🏢 " + sede;
+        return "🏢 <b>" + sede + "</b>" +
+               "<br>👤 <b>SUPERVISOR</b>";
     }
 
     return "✅ <b>" + cuadrilla + "</b>" +
