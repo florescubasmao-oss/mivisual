@@ -37,13 +37,6 @@ function leerFilaCSV(linea){
   return resultado.map(x => x.trim());
 }
 
-function listaPermisosAcceso(valor){
-  return normalizarDestinoAcceso(valor)
-    .split(",")
-    .map(x => x.trim())
-    .filter(Boolean);
-}
-
 function accesoVisiblePorDestino(destino, sede, cuadrilla){
   const destinoNormalizado = normalizarDestinoAcceso(destino);
   const sedeNormalizada = normalizarDestinoAcceso(sede);
@@ -52,79 +45,53 @@ function accesoVisiblePorDestino(destino, sede, cuadrilla){
   if(!destinoNormalizado) return false;
   if(destinoNormalizado === "TODOS") return true;
 
-  const destinosPermitidos = listaPermisosAcceso(destinoNormalizado);
+  const destinosPermitidos = destinoNormalizado
+    .split(",")
+    .map(x => x.trim())
+    .filter(Boolean);
 
   return destinosPermitidos.includes(sedeNormalizada) ||
          destinosPermitidos.includes(cuadrillaNormalizada);
-}
-
-function accesoVisiblePorPerfil(perfilAcceso, perfilUsuario){
-  const perfilAccesoNormalizado = normalizarDestinoAcceso(perfilAcceso || "TODOS");
-  const perfilUsuarioNormalizado = normalizarDestinoAcceso(perfilUsuario);
-
-  if(!perfilAccesoNormalizado) return true;
-  if(perfilAccesoNormalizado === "TODOS") return true;
-
-  const perfilesPermitidos = listaPermisosAcceso(perfilAccesoNormalizado);
-
-  return perfilesPermitidos.includes(perfilUsuarioNormalizado) ||
-         (perfilUsuarioNormalizado === "ADMIN" && perfilesPermitidos.includes("JEFATURA"));
 }
 
 async function mostrarAccesos(){
 
 const cuadrilla = localStorage.getItem("cuadrilla");
 const sede = localStorage.getItem("sede");
-const perfilUsuario = localStorage.getItem("perfil");
 
-const url = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRpVkCmSvopgPByWsEX6nkuAT6mf3yD2_Cywpl9pFSZEqYpxmprDePPeV0KNgT14YpEP6gkVlvOAtZy/pub?gid=177192408&single=true&output=csv&t=" + Date.now();
+const url = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRpVkCmSvopgPByWsEX6nkuAT6mf3yD2_Cywpl9pFSZEqYpxmprDePPeV0KNgT14YpEP6gkVlvOAtZy/pub?gid=177192408&single=true&output=csv";
 
-const respuesta = await fetch(url, { cache: "no-store" });
+const respuesta = await fetch(url);
 const texto = await respuesta.text();
 
-const filas = texto.split(/\r?\n/).filter(x => x.trim() !== "");
+const filas = texto.split("\n");
 
 let resultado = "<h3>🚀 ACCESOS</h3>";
-
-if(filas.length <= 1){
-  document.getElementById("resultadoProduccion").innerHTML = resultado + "<p>No hay accesos registrados.</p>";
-  return;
-}
-
-const encabezados = leerFilaCSV(filas[0]).map(x => normalizarDestinoAcceso(x));
-
-const idxDestino = encabezados.indexOf("DESTINO");
-const idxPerfil = encabezados.indexOf("PERFIL");
-const idxNombre = encabezados.indexOf("NOMBRE");
-const idxLink = encabezados.indexOf("LINK");
 
 for(let i=1; i<filas.length; i++){
 
 const datos = leerFilaCSV(filas[i]);
 
-let destino = idxDestino >= 0 ? datos[idxDestino]?.trim() : datos[1]?.trim();
-let perfilAcceso = idxPerfil >= 0 ? (datos[idxPerfil]?.trim() || "TODOS") : "TODOS";
-let nombre = idxNombre >= 0 ? datos[idxNombre]?.trim() : datos[2]?.trim();
-let link = idxLink >= 0 ? datos[idxLink]?.trim() : datos[3]?.trim();
+let destino = datos[1]?.trim();
+let nombre = datos[2]?.trim();
+let link = datos[3]?.trim();
 let icono = "🔗";
 
 if(!nombre || !link) continue;
 
-const nombreNormalizado = normalizarDestinoAcceso(nombre);
+if(nombre.includes("Asistencia")) icono = "📅";
 
-if(nombreNormalizado.includes("ASISTENCIA")) icono = "📅";
+else if(nombre.includes("Reunión")) icono = "🎥";
 
-else if(nombreNormalizado.includes("REUNION")) icono = "🎥";
+else if(nombre.includes("Liquidación")) icono = "💰";
 
-else if(nombreNormalizado.includes("LIQUIDACION")) icono = "💰";
+else if(nombre.includes("VALIDACION")) icono = "📋";
 
-else if(nombreNormalizado.includes("VALIDACION")) icono = "📋";
+else if(nombre.includes("BOT")) icono = "🤖";
 
-else if(nombreNormalizado.includes("BOT")) icono = "🤖";
-
-else if(nombreNormalizado.includes("GRUPO")) icono = "📢";
+else if(nombre.includes("Grupo")) icono = "📢";
   
-if(accesoVisiblePorDestino(destino, sede, cuadrilla) && accesoVisiblePorPerfil(perfilAcceso, perfilUsuario)){
+if(accesoVisiblePorDestino(destino, sede, cuadrilla)){
 
 resultado += `
 <div style="
@@ -155,10 +122,11 @@ ${icono} ${nombre}
 
 }
 
-document.getElementById("resultadoProduccion").innerHTML = resultado;
+mostrarPantalla(resultado);
+
 }
 
-function mostrarBiblioteca(){
+async function mostrarBiblioteca(){
 
 const url = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRpVkCmSvopgPByWsEX6nkuAT6mf3yD2_Cywpl9pFSZEqYpxmprDePPeV0KNgT14YpEP6gkVlvOAtZy/pub?gid=1577462287&single=true&output=csv";
 
