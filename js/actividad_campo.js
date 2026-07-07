@@ -93,7 +93,9 @@ function estiloActividadCampo(){
         .act-table{width:100%;border-collapse:collapse;font-size:12px;min-width:820px;}
         .act-table th,.act-table td{border-bottom:1px solid rgba(255,255,255,.1);padding:10px;text-align:left;vertical-align:top;}
         .act-table th{color:#9ec5ff;background:#172946;position:sticky;top:0;}
-        .act-links a{display:inline-block;margin:3px 5px 3px 0;color:#9ec5ff;font-weight:900;text-decoration:none;}
+        .act-links a{display:inline-block;margin:3px 5px 3px 0;color:#fff;background:#0d6efd;border-radius:10px;padding:8px 10px;font-weight:900;text-decoration:none;}
+        .act-links a:hover{filter:brightness(1.12);}
+        .act-note strong{color:#fff;}
         .act-detail{display:none;background:#0c1d34;border-radius:14px;padding:14px;margin-top:8px;white-space:pre-wrap;line-height:1.38;}
         .act-mobile-card{display:none;background:#13243f;border-radius:16px;padding:14px;margin:10px 0;border:1px solid rgba(255,255,255,.08);}
         .act-mobile-card b{color:#fff;}
@@ -136,9 +138,10 @@ function mostrarActividadCampo(){
                 <p class="act-sub">Registro de auditorías, supervisiones, seguimiento, validaciones, capacitaciones y checklist.</p>
             </div>
             <div class="act-actions">
-                <button class="act-btn ok" onclick="mostrarFormularioActividadCampo()">+ Nueva actividad</button>
+                ${u.perfil === "SUPERVISOR" ? `<button class="act-btn ok" onclick="mostrarFormularioActividadCampo()">+ Nueva actividad</button>` : ""}
                 <button class="act-btn sec" onclick="cargarActividadCampo()">🔄 Actualizar lista</button>
             </div>
+            ${esJefaturaActividad(u.perfil) ? `<div class="act-note">Vista Jefatura: consulta y validación visual de registros realizados por supervisores. El registro de nuevas actividades queda habilitado solo para Supervisores.</div>` : ""}
             ${esJefaturaActividad(u.perfil) ? `<div id="resumenActividadCampo"></div>` : ""}
             <div id="filtrosActividadCampo"></div>
             <div id="listaActividadCampo">Cargando...</div>
@@ -318,6 +321,10 @@ function toggleActividadDetalle(id){
 
 async function mostrarFormularioActividadCampo(){
     const u = usuarioActualActividad();
+    if(u.perfil !== "SUPERVISOR"){
+        mostrarPantalla(`${estiloActividadCampo()}<div class="act-wrap"><div class="act-error">El registro de nuevas actividades está habilitado solo para Supervisores. Jefatura puede revisar los registros desde la vista principal.</div><button class="act-btn sec" onclick="mostrarActividadCampo()">Volver</button></div>`);
+        return;
+    }
     mostrarPantalla(`
         ${estiloActividadCampo()}
         <div class="act-wrap">
@@ -584,15 +591,48 @@ async function cargarCuadrillasActividadCampo(){
 function leerArchivoActividad(file){
     return new Promise((resolve, reject) => {
         if(!file) return resolve(null);
+
+        if(!file.type || !file.type.startsWith("image/")){
+            return reject(new Error("Solo se permiten imágenes como evidencia"));
+        }
+
         const reader = new FileReader();
+
         reader.onload = e => {
-            const result = e.target.result || "";
-            resolve({
-                base64: result.toString().split(",")[1] || "",
-                nombre: file.name || "evidencia.jpg",
-                mime: file.type || "image/jpeg"
-            });
+            const img = new Image();
+
+            img.onload = () => {
+                const maxLado = 1280;
+                let { width, height } = img;
+
+                if(width > height && width > maxLado){
+                    height = Math.round(height * (maxLado / width));
+                    width = maxLado;
+                }else if(height >= width && height > maxLado){
+                    width = Math.round(width * (maxLado / height));
+                    height = maxLado;
+                }
+
+                const canvas = document.createElement("canvas");
+                canvas.width = width;
+                canvas.height = height;
+
+                const ctx = canvas.getContext("2d");
+                ctx.drawImage(img, 0, 0, width, height);
+
+                const dataUrl = canvas.toDataURL("image/jpeg", 0.72);
+
+                resolve({
+                    base64: dataUrl.split(",")[1] || "",
+                    nombre: (file.name || "evidencia.jpg").replace(/\.[^.]+$/, "") + ".jpg",
+                    mime: "image/jpeg"
+                });
+            };
+
+            img.onerror = () => reject(new Error("No se pudo procesar la imagen seleccionada"));
+            img.src = e.target.result;
         };
+
         reader.onerror = () => reject(new Error("No se pudo leer el archivo"));
         reader.readAsDataURL(file);
     });
