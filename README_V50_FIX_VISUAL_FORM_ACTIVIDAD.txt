@@ -1,0 +1,1 @@
+V50: mejora visual del formulario Actividad en Campo. Campos amplios, tarjetas, responsive mobile, textareas grandes para observaciones y conclusión. Mantiene Apps Script URL y lógica anterior.
