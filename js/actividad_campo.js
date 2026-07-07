@@ -1,4 +1,4 @@
-// MI VISUAL - Módulo Actividad en Campo v47
+// MI VISUAL - Módulo Actividad en Campo v49 visual mobile fix
 
 const API_ACTIVIDAD_CAMPO = "https://script.google.com/macros/s/AKfycbz3HDtjgZvWv0UzLH1fwzt8GGFtKktfU-vAcUgtu85bAjUYyxq4cOPxCHw49jBB4Azl/exec";
 
@@ -55,10 +55,9 @@ function ocultarCargandoActividad(){
 }
 
 function estiloActividadCampo(){
-    if(document.getElementById("styleActividadCampo")) return "";
     return `<style id="styleActividadCampo">
-        .act-wrap{max-width:1120px;margin:0 auto;padding:14px;color:#fff;box-sizing:border-box;}
-        .act-head{background:linear-gradient(135deg,#172946,#203a63);border-radius:20px;padding:18px;margin-bottom:14px;box-shadow:0 12px 28px rgba(0,0,0,.28);border:1px solid rgba(255,255,255,.08);}
+        .act-wrap{width:100%;max-width:760px;margin:0 auto;padding:14px 14px 96px;color:#fff;box-sizing:border-box;overflow-x:hidden;text-align:left;}
+        .act-head{background:linear-gradient(135deg,#172946,#203a63);border-radius:20px;padding:18px;margin-bottom:14px;box-shadow:0 12px 28px rgba(0,0,0,.28);border:1px solid rgba(255,255,255,.08);text-align:left;}
         .act-head h2{margin:0 0 7px;font-size:24px;line-height:1.15;}
         .act-sub{margin:0;color:#c9d7ef;font-size:13px;line-height:1.35;}
         .act-actions{display:flex;gap:10px;flex-wrap:wrap;margin:14px 0;}
@@ -70,11 +69,11 @@ function estiloActividadCampo(){
         .act-btn.danger{background:#dc3545;}
         .act-card{background:#20314e;border-radius:18px;padding:16px;margin:12px 0;border:1px solid rgba(255,255,255,.08);box-shadow:0 8px 22px rgba(0,0,0,.18);}
         .act-card h3{margin:0 0 12px;font-size:18px;}
-        .act-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px;align-items:end;}
-        .act-grid-3{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px;align-items:end;}
+        .act-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px;align-items:end;width:100%;}
+        .act-grid-3{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px;align-items:end;width:100%;}
         .act-field{display:flex;flex-direction:column;gap:7px;min-width:0;}
         .act-field label{font-size:12px;font-weight:900;color:#d9e7ff;line-height:1.25;text-transform:uppercase;letter-spacing:.2px;}
-        .act-field input,.act-field select,.act-field textarea{width:100%;box-sizing:border-box;border:1px solid #3c5d81;background:#0c1d34;color:#fff;border-radius:12px;padding:12px;font-size:15px;outline:none;min-height:44px;}
+        .act-field input,.act-field select,.act-field textarea{width:100%!important;box-sizing:border-box;border:1px solid #3c5d81;background:#0c1d34;color:#fff;border-radius:12px;padding:12px;font-size:15px;outline:none;min-height:44px;margin:0!important;}
         .act-field input:focus,.act-field select:focus,.act-field textarea:focus{border-color:#38bdf8;box-shadow:0 0 0 3px rgba(56,189,248,.18);}
         .act-field input[disabled]{opacity:.8;background:#13243f;}
         .act-field textarea{min-height:96px;resize:vertical;line-height:1.35;}
@@ -99,20 +98,22 @@ function estiloActividadCampo(){
         .act-mobile-card{display:none;background:#13243f;border-radius:16px;padding:14px;margin:10px 0;border:1px solid rgba(255,255,255,.08);}
         .act-mobile-card b{color:#fff;}
         .act-mobile-card small{color:#c9d7ef;}
-        .act-file input{padding:10px;background:#0c1d34;}
+        .act-file input{padding:10px;background:#0c1d34;color:#dbeafe;}
         .act-loading-overlay{position:fixed;inset:0;background:rgba(0,0,0,.58);display:none;align-items:center;justify-content:center;z-index:9999;}
         .act-loading-box{background:#10213b;color:white;padding:20px;border-radius:16px;text-align:center;box-shadow:0 15px 35px rgba(0,0,0,.35);}
         .act-spinner{width:34px;height:34px;border:4px solid rgba(255,255,255,.25);border-top-color:white;border-radius:50%;animation:actSpin 1s linear infinite;margin:0 auto 10px;}
         @keyframes actSpin{to{transform:rotate(360deg)}}
         @media(max-width:760px){
-            .act-wrap{padding:10px 10px 90px;}
+            .act-wrap{width:100vw;max-width:100vw;padding:10px 12px 100px;margin:0;overflow-x:hidden;}
+            #pantalla{width:100%;overflow-x:hidden;}
             .act-head{padding:16px;border-radius:18px;}
             .act-head h2{font-size:20px;}
-            .act-card{padding:14px;border-radius:16px;margin:10px 0;}
+            .act-sub{font-size:12px;}
+            .act-card{padding:14px;border-radius:16px;margin:10px 0;width:100%;box-sizing:border-box;}
             .act-grid,.act-grid-3,.act-filter,.act-kpis{grid-template-columns:1fr;gap:12px;}
             .act-actions{display:grid;grid-template-columns:1fr;gap:10px;}
             .act-btn{width:100%;font-size:14px;}
-            .act-field input,.act-field select,.act-field textarea{font-size:16px;min-height:46px;}
+            .act-field input,.act-field select,.act-field textarea{font-size:16px;min-height:46px;width:100%!important;max-width:100%;}
             .act-table-wrap{display:none;}
             .act-mobile-card{display:block;}
             .act-kpi b{font-size:23px;}
