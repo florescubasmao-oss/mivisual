@@ -119,13 +119,13 @@ for(let j = 5; j < datos.length; j++){
 
   totalPuntos += puntosDia;
 
-  let semaforo = "🔴 SIN BONO";
+  let semaforo = "🔴";
 
 if(puntosDia >= 4.5){
-   semaforo = "🟢 BONO GANADO";
+   semaforo = "🟢";
 }
 else if(puntosDia == 4){
-   semaforo = "🟡 CERCA AL BONO";
+   semaforo = "🟡";
 }
 
 resultado += `
@@ -358,141 +358,142 @@ renderDashboardProduccion(dashboard);
 function renderDashboardProduccion(data){
 
     const totalPuntos = Number(data.resumen.totalPuntos || 0);
-    let estadoBono = "🔴 SIN BONO";
-    let estadoColor = "#991b1b";
 
-    if(totalPuntos >= 4.5){
-        estadoBono = "🟢 BONO GANADO";
-        estadoColor = "#15803d";
-    }else if(totalPuntos >= 4){
-        estadoBono = "🟡 CERCA AL BONO";
-        estadoColor = "#b45309";
-    }
+    const gruposPorFecha = {};
 
-    let html = `
-    <div style="padding:16px;max-width:920px;margin:auto;">
+    (data.detalle || []).forEach(r => {
+        const fecha = (r.fecha || "SIN FECHA").trim();
+        const cantidad = Number(r.cantidad) || 0;
+        const puntaje = Number(r.puntaje) || 0;
+        const puntos = cantidad * puntaje;
+        const tipo = (r.tipo || "Trabajo registrado").trim();
 
-        <h2 style="text-align:center;margin-bottom:14px;">📊 MI PRODUCCIÓN</h2>
+        if(!gruposPorFecha[fecha]){
+            gruposPorFecha[fecha] = {
+                fecha,
+                puntos: 0,
+                trabajos: {}
+            };
+        }
 
-        <div style="
-            background:linear-gradient(135deg,#123c69,#0f766e);
-            color:white;
-            border-radius:20px;
-            padding:22px;
-            margin-bottom:16px;
-            box-shadow:0 8px 18px rgba(0,0,0,.25);
-        ">
-            <div style="font-size:13px;opacity:.85;letter-spacing:.5px;">PUNTOS ACUMULADOS</div>
-            <div style="font-size:42px;font-weight:900;line-height:1;margin:8px 0;">${totalPuntos.toFixed(1)}</div>
-            <div style="display:inline-block;background:${estadoColor};padding:8px 12px;border-radius:999px;font-weight:bold;font-size:13px;">
-                ${estadoBono}
-            </div>
-        </div>
+        gruposPorFecha[fecha].puntos += puntos;
 
-        <div style="
-            display:grid;
-            grid-template-columns:repeat(2,minmax(0,1fr));
-            gap:10px;
-            margin-bottom:18px;
-        ">
-            ${kpiProduccionTecnico("📦", "Total", data.resumen.totalProduccion)}
-            ${kpiProduccionTecnico("🏠", "Instalaciones", data.resumen.totalInstalaciones)}
-            ${kpiProduccionTecnico("🔧", "Última Milla", data.resumen.totalUltimaMilla)}
-            ${kpiProduccionTecnico("📡", "Recableado VT", data.resumen.totalRecableadoVT)}
-            ${kpiProduccionTecnico("🔄", "Recableado Post", data.resumen.totalRecableadoPost)}
-            ${kpiProduccionTecnico("🚚", "Traslados", data.resumen.totalTraslados)}
-        </div>
+        if(!gruposPorFecha[fecha].trabajos[tipo]){
+            gruposPorFecha[fecha].trabajos[tipo] = {
+                tipo,
+                cantidad: 0,
+                puntos: 0
+            };
+        }
 
-        <div style="text-align:center;margin:18px 0;">
-            <button class="button_1" onclick="volverInicio()">🏠 Volver al Menú</button>
-        </div>
+        gruposPorFecha[fecha].trabajos[tipo].cantidad += cantidad;
+        gruposPorFecha[fecha].trabajos[tipo].puntos += puntos;
+    });
 
-        <h2 style="margin-top:20px;">📅 Historial de Producción</h2>
-    `;
-
-    if(!data.detalle || data.detalle.length === 0){
-        html += `
-            <div style="background:#1f2d48;color:white;border-radius:14px;padding:16px;margin-top:12px;">
-                No hay producción registrada para tu cuadrilla.
-            </div>
-        `;
-        html += `</div>`;
-        mostrarPantalla(html);
-        return;
-    }
-
-    let fechaActual = "";
-
-    data.detalle.sort((a, b) => {
+    const fechasOrdenadas = Object.values(gruposPorFecha).sort((a, b) => {
         const fa = (a.fecha || "").split("/").reverse().join("");
         const fb = (b.fecha || "").split("/").reverse().join("");
         return fb.localeCompare(fa);
     });
 
-    data.detalle.forEach(r => {
-        if (r.fecha !== fechaActual) {
-            fechaActual = r.fecha;
-            html += `
-                <div style="
-                    margin-top:18px;
-                    margin-bottom:8px;
-                    padding:10px 14px;
-                    border-radius:12px;
-                    background:#1e3a8a;
-                    color:white;
-                    font-weight:bold;
-                ">
-                    📅 ${fechaActual}
-                </div>
-            `;
-        }
+    let html = `
+    <div class="prod-telco">
 
-        const puntos = (Number(r.puntaje) || 0) * (Number(r.cantidad) || 0);
+        <div class="prod-topbar">
+            <div class="prod-eyebrow">APP OPERACIONES TELECOM</div>
+            <h2>📊 MI PRODUCCIÓN</h2>
+        </div>
+
+        <div class="prod-hero-card">
+            <div class="prod-hero-label">PUNTOS ACUMULADOS DEL MES</div>
+            <div class="prod-hero-value">${totalPuntos.toFixed(1)}</div>
+        </div>
+
+        <div class="prod-kpi-grid">
+            ${kpiProduccionTecnico("📦", "Total", data.resumen.totalProduccion)}
+            ${kpiProduccionTecnico("🏠", "Instalaciones", data.resumen.totalInstalaciones)}
+            ${kpiProduccionTecnico("🛠", "Última Milla", data.resumen.totalUltimaMilla)}
+            ${kpiProduccionTecnico("🔧", "Recableado VT", data.resumen.totalRecableadoVT)}
+            ${kpiProduccionTecnico("🧰", "Recableado Post", data.resumen.totalRecableadoPost)}
+            ${kpiProduccionTecnico("🚚", "Traslados", data.resumen.totalTraslados)}
+        </div>
+
+        <div class="prod-section-title">📅 HISTORIAL DIARIO</div>
+    `;
+
+    if(!data.detalle || data.detalle.length === 0){
+        html += `
+            <div class="prod-empty-card">
+                No hay producción registrada para tu cuadrilla.
+            </div>
+        `;
+        html += `
+            <div class="prod-actions">
+                <button class="button_1" onclick="volverInicio()">🏠 Volver al Menú</button>
+            </div>
+        </div>`;
+        mostrarPantalla(html);
+        return;
+    }
+
+    fechasOrdenadas.forEach(dia => {
+        const puntosDia = Number(dia.puntos || 0);
+        const semaforo = semaforoProduccionDia(puntosDia);
+        const trabajos = Object.values(dia.trabajos).sort((a,b) => a.tipo.localeCompare(b.tipo));
 
         html += `
-            <div style="
-                background:#1f2d48;
-                border-left:5px solid #16a34a;
-                border-radius:16px;
-                padding:15px;
-                margin:10px 0;
-                color:white;
-                box-shadow:0 4px 12px rgba(0,0,0,.18);
-            ">
-                <div style="font-size:16px;font-weight:800;line-height:1.35;margin-bottom:10px;">
-                    ${r.tipo || "Trabajo registrado"}
+            <div class="prod-day-card ${semaforo.clase}">
+                <div class="prod-day-head">
+                    <div class="prod-day-date">📅 ${dia.fecha}</div>
+                    <div class="prod-day-score">${semaforo.icono} ${puntosDia.toFixed(1)} pts</div>
                 </div>
 
-                <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
-                    <div style="background:#0f172a;border-radius:12px;padding:10px;">
-                        <div style="font-size:11px;color:#9fb7d8;">CANTIDAD</div>
-                        <div style="font-size:22px;font-weight:900;">${r.cantidad}</div>
-                    </div>
-                    <div style="background:#0f172a;border-radius:12px;padding:10px;">
-                        <div style="font-size:11px;color:#9fb7d8;">PUNTOS</div>
-                        <div style="font-size:22px;font-weight:900;color:#facc15;">${puntos.toFixed(1)}</div>
-                    </div>
+                <div class="prod-day-list">
+        `;
+
+        trabajos.forEach(t => {
+            html += `
+                <div class="prod-day-row">
+                    <div class="prod-day-work">${t.tipo}</div>
+                    <div class="prod-day-qty">${t.cantidad}</div>
+                </div>
+            `;
+        });
+
+        html += `
                 </div>
             </div>
         `;
     });
 
-    html += `</div>`;
+    html += `
+        <div class="prod-actions">
+            <button class="button_1" onclick="volverInicio()">🏠 Volver al Menú</button>
+        </div>
+    </div>`;
+
     mostrarPantalla(html);
+}
+
+function semaforoProduccionDia(puntos){
+    const p = Number(puntos) || 0;
+
+    if(p > 4.5){
+        return { icono: "🟢", clase: "prod-green" };
+    }
+
+    if(p >= 4){
+        return { icono: "🟡", clase: "prod-yellow" };
+    }
+
+    return { icono: "🔴", clase: "prod-red" };
 }
 
 function kpiProduccionTecnico(icono, titulo, valor){
     return `
-        <div style="
-            background:#1f2d48;
-            color:white;
-            border-radius:16px;
-            padding:14px;
-            min-height:78px;
-            box-shadow:0 4px 12px rgba(0,0,0,.18);
-        ">
-            <div style="font-size:12px;color:#9fb7d8;line-height:1.2;">${icono} ${titulo}</div>
-            <div style="font-size:26px;font-weight:900;margin-top:6px;">${valor || 0}</div>
+        <div class="prod-kpi-card">
+            <div class="prod-kpi-label">${icono} ${titulo}</div>
+            <div class="prod-kpi-value">${valor || 0}</div>
         </div>
     `;
 }

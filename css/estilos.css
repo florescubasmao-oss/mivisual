@@ -142,3 +142,202 @@ font-size:12px;
 .obs-spinner{width:28px;height:28px;border-radius:50%;border:4px solid #cbd5e1;border-top-color:#0f766e;animation:obsSpin .8s linear infinite;}
 @keyframes obsSpin{to{transform:rotate(360deg)}}
 .obs-contenedor button:disabled{opacity:.65;cursor:not-allowed;}
+
+/* =========================
+   PRODUCCIÓN TÉCNICO - TELCO MOBILE
+========================= */
+.prod-telco{
+    max-width:760px;
+    margin:0 auto;
+    padding:16px 14px 88px;
+    color:#ffffff;
+    animation:prodFade .22s ease-out;
+}
+
+@keyframes prodFade{
+    from{opacity:0;transform:translateY(8px)}
+    to{opacity:1;transform:translateY(0)}
+}
+
+.prod-topbar{
+    background:linear-gradient(135deg,#0b1b34,#123c69 58%,#075985);
+    border:1px solid rgba(148,163,184,.18);
+    border-radius:22px;
+    padding:18px 16px;
+    margin-bottom:14px;
+    box-shadow:0 18px 38px rgba(0,0,0,.28);
+}
+
+.prod-topbar h2{
+    margin:4px 0 0;
+    font-size:24px;
+    text-align:left;
+    letter-spacing:.3px;
+}
+
+.prod-eyebrow{
+    color:#93c5fd;
+    font-size:11px;
+    font-weight:800;
+    letter-spacing:1.2px;
+}
+
+.prod-hero-card{
+    background:linear-gradient(135deg,#0f766e,#0284c7);
+    border-radius:24px;
+    padding:22px 18px;
+    margin-bottom:14px;
+    box-shadow:0 18px 36px rgba(2,132,199,.24);
+    border:1px solid rgba(255,255,255,.12);
+}
+
+.prod-hero-label{
+    font-size:12px;
+    color:#dbeafe;
+    font-weight:900;
+    letter-spacing:.7px;
+}
+
+.prod-hero-value{
+    font-size:52px;
+    line-height:1;
+    margin-top:10px;
+    font-weight:950;
+    color:#ffffff;
+}
+
+.prod-kpi-grid{
+    display:grid;
+    grid-template-columns:repeat(2,minmax(0,1fr));
+    gap:10px;
+    margin:12px 0 20px;
+}
+
+.prod-kpi-card{
+    background:linear-gradient(180deg,#1e293b,#111827);
+    border:1px solid rgba(148,163,184,.16);
+    border-radius:18px;
+    padding:14px;
+    min-height:78px;
+    box-shadow:0 10px 20px rgba(0,0,0,.18);
+}
+
+.prod-kpi-label{
+    color:#bfdbfe;
+    font-size:12px;
+    line-height:1.2;
+    font-weight:800;
+}
+
+.prod-kpi-value{
+    color:white;
+    font-size:29px;
+    font-weight:950;
+    margin-top:8px;
+}
+
+.prod-section-title{
+    margin:22px 2px 10px;
+    color:#e0f2fe;
+    font-size:14px;
+    font-weight:900;
+    letter-spacing:.5px;
+}
+
+.prod-day-card{
+    background:#f8fafc;
+    color:#0f172a;
+    border-radius:20px;
+    padding:14px;
+    margin:12px 0;
+    box-shadow:0 12px 28px rgba(0,0,0,.23);
+    border-left:7px solid #64748b;
+}
+
+.prod-day-card.prod-green{border-left-color:#16a34a;}
+.prod-day-card.prod-yellow{border-left-color:#eab308;}
+.prod-day-card.prod-red{border-left-color:#dc2626;}
+
+.prod-day-head{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:10px;
+    padding-bottom:10px;
+    border-bottom:1px solid #e2e8f0;
+}
+
+.prod-day-date{
+    font-size:14px;
+    font-weight:900;
+    color:#0f172a;
+}
+
+.prod-day-score{
+    background:#0f172a;
+    color:#ffffff;
+    border-radius:999px;
+    padding:7px 10px;
+    font-size:13px;
+    font-weight:900;
+    white-space:nowrap;
+}
+
+.prod-day-list{
+    padding-top:8px;
+}
+
+.prod-day-row{
+    display:grid;
+    grid-template-columns:1fr auto;
+    gap:10px;
+    align-items:center;
+    padding:10px 0;
+    border-bottom:1px dashed #cbd5e1;
+}
+
+.prod-day-row:last-child{
+    border-bottom:0;
+}
+
+.prod-day-work{
+    font-size:13px;
+    line-height:1.25;
+    font-weight:800;
+    color:#1e293b;
+}
+
+.prod-day-qty{
+    min-width:34px;
+    height:34px;
+    border-radius:12px;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    background:#e0f2fe;
+    color:#075985;
+    font-size:16px;
+    font-weight:950;
+}
+
+.prod-empty-card{
+    background:#1f2d48;
+    border-radius:16px;
+    padding:16px;
+    color:#ffffff;
+}
+
+.prod-actions{
+    text-align:center;
+    margin:20px 0 6px;
+}
+
+@media(max-width:420px){
+    .prod-telco{padding-left:10px;padding-right:10px;}
+    .prod-hero-value{font-size:46px;}
+    .prod-kpi-card{padding:12px;min-height:72px;}
+    .prod-kpi-value{font-size:25px;}
+    .prod-day-card{border-radius:17px;padding:12px;}
+    .prod-day-head{align-items:flex-start;flex-direction:column;}
+    .prod-day-score{align-self:flex-start;}
+}
