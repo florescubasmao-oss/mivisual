@@ -10,65 +10,108 @@ function volverInicio(){
     }, 300);
 }
 
+function normalizarPerfilApp(valor){
+    return (valor || "")
+        .toString()
+        .toUpperCase()
+        .normalize("NFD")
+        .replace(/[\u0300-\u036f]/g, "")
+        .replace(/\s+/g, " ")
+        .trim();
+}
+
+function mostrarCardSeguro(id, visible){
+    const el = document.getElementById(id);
+    if (!el) return;
+    if (visible) {
+        el.style.setProperty("display", "flex", "important");
+    } else {
+        el.style.setProperty("display", "none", "important");
+    }
+}
+
 function configurarMenu(){
 
     console.log("CONFIGURAR MENU DESDE APP.JS");
 
-    const perfil = localStorage.getItem("perfil");
+    const perfil = normalizarPerfilApp(localStorage.getItem("perfil"));
 
     const menu = document.getElementById("menuPrincipal");
     const pantalla = document.getElementById("pantalla");
     const resultado = document.getElementById("resultadoProduccion");
 
     if (pantalla) pantalla.innerHTML = "";
-    if (resultado) resultado.innerHTML = ""; 
+    if (resultado) resultado.innerHTML = "";
     if (menu) menu.style.display = "grid";
 
-    // ocultar todo primero
-    mostrarCard("cardProduccion", "none");
-    mostrarCard("cardEfectividad", "none");
-    mostrarCard("cardRecableado", "none");
-    mostrarCard("cardVTRGAR", "none");
-    mostrarCard("cardRanking", "none");
-    mostrarCard("cardObservaciones", "none");
-    mostrarCard("cardAccesos", "none");
-    mostrarCard("cardBiblioteca", "none");
-    mostrarCard("cardCapacitacion", "none");
-    mostrarCard("cardDashboardSupervisor", "none");
-    mostrarCard("cardDashboardJefatura", "none");
-    mostrarCard("cardAdministracion", "none");
+    const todasLasCards = [
+        "cardProduccion",
+        "cardEfectividad",
+        "cardRecableado",
+        "cardVTRGAR",
+        "cardRanking",
+        "cardObservaciones",
+        "cardAccesos",
+        "cardBiblioteca",
+        "cardCapacitacion",
+        "cardDashboardSupervisor",
+        "cardDashboardJefatura",
+        "cardAdministracion"
+    ];
 
-    if (perfil == "TECNICO") {
-        mostrarCard("cardProduccion", "block");
-        mostrarCard("cardEfectividad", "block");
-        mostrarCard("cardRecableado", "block");
-        mostrarCard("cardVTRGAR", "block");
-        mostrarCard("cardRanking", "block");
-        mostrarCard("cardObservaciones", "block");
-        mostrarCard("cardAccesos", "block");
-        mostrarCard("cardBiblioteca", "block");
-        mostrarCard("cardCapacitacion", "block");
-    }
+    todasLasCards.forEach(id => mostrarCardSeguro(id, false));
 
-    if (perfil == "SUPERVISOR") {
-        mostrarCard("cardRanking", "block");
-        mostrarCard("cardObservaciones", "block");
-        mostrarCard("cardAccesos", "block");
-        mostrarCard("cardBiblioteca", "block");
-        mostrarCard("cardCapacitacion", "block");
-        mostrarCard("cardDashboardSupervisor", "block");
-    }
+    const permisos = {
+        TECNICO: [
+            "cardProduccion",
+            "cardEfectividad",
+            "cardRecableado",
+            "cardVTRGAR",
+            "cardRanking",
+            "cardObservaciones",
+            "cardAccesos",
+            "cardBiblioteca",
+            "cardCapacitacion"
+        ],
+        SUPERVISOR: [
+            "cardRanking",
+            "cardObservaciones",
+            "cardAccesos",
+            "cardBiblioteca",
+            "cardCapacitacion",
+            "cardDashboardSupervisor"
+        ],
+        JEFATURA: [
+            "cardRanking",
+            "cardObservaciones",
+            "cardAccesos",
+            "cardBiblioteca",
+            "cardCapacitacion",
+            "cardDashboardJefatura",
+            "cardAdministracion"
+        ],
+        ADMIN: [
+            "cardRanking",
+            "cardObservaciones",
+            "cardAccesos",
+            "cardBiblioteca",
+            "cardCapacitacion",
+            "cardDashboardJefatura",
+            "cardAdministracion"
+        ],
+        ADMINISTRADOR: [
+            "cardRanking",
+            "cardObservaciones",
+            "cardAccesos",
+            "cardBiblioteca",
+            "cardCapacitacion",
+            "cardDashboardJefatura",
+            "cardAdministracion"
+        ]
+    };
 
-    if (perfil == "JEFATURA") {
-        mostrarCard("cardRanking", "block");
-        mostrarCard("cardObservaciones", "block");
-        mostrarCard("cardAccesos", "block");
-        mostrarCard("cardBiblioteca", "block");
-        mostrarCard("cardCapacitacion", "block");
-        mostrarCard("cardDashboardSupervisor", "block");
-        mostrarCard("cardDashboardJefatura", "block");
-        mostrarCard("cardAdministracion", "block");
-    }
+    const opciones = permisos[perfil] || [];
+    opciones.forEach(id => mostrarCardSeguro(id, true));
 }
 
 window.addEventListener("load", function () {
