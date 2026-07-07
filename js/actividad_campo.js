@@ -1,4 +1,4 @@
-// MI VISUAL - Módulo Actividad en Campo v49 visual mobile fix
+// MI VISUAL - Módulo Actividad en Campo v52 ajustes operativos
 
 const API_ACTIVIDAD_CAMPO = "https://script.google.com/macros/s/AKfycbz3HDtjgZvWv0UzLH1fwzt8GGFtKktfU-vAcUgtu85bAjUYyxq4cOPxCHw49jBB4Azl/exec";
 
@@ -142,7 +142,7 @@ function mostrarActividadCampo(){
                 <button class="act-btn sec" onclick="cargarActividadCampo()">🔄 Actualizar lista</button>
             </div>
             ${esJefaturaActividad(u.perfil) ? `<div class="act-note">Vista Jefatura: consulta y validación visual de registros realizados por supervisores. El registro de nuevas actividades queda habilitado solo para Supervisores.</div>` : ""}
-            ${esJefaturaActividad(u.perfil) ? `<div id="resumenActividadCampo"></div>` : ""}
+            <div id="resumenActividadCampo"></div>
             <div id="filtrosActividadCampo"></div>
             <div id="listaActividadCampo">Cargando...</div>
         </div>
@@ -200,7 +200,7 @@ async function cargarActividadCampo(){
             cuadrilla: document.getElementById("actFiltroCuadrilla")?.value || ""
         };
 
-        if(esJefaturaActividad(u.perfil)) await cargarResumenActividadCampo(filtros);
+        await cargarResumenActividadCampo(filtros);
 
         const data = await apiActividadCampo(filtros);
         if(!data.ok) throw new Error(data.error || "Error al listar actividades");
@@ -249,7 +249,7 @@ async function cargarResumenActividadCampo(filtros){
             <div class="act-table-wrap">
                 <table class="act-table">
                     <thead><tr><th>Supervisor</th><th>Aud. Frío</th><th>Sup. Caliente</th><th>Seguimiento</th><th>Val. Obs.</th><th>Capacitación</th><th>Checklist</th><th>Total</th></tr></thead>
-                    <tbody>${(data.porSupervisor || []).map(r => `
+                    <tbody>${(data.resumen || data.porSupervisor || []).map(r => `
                         <tr>
                             <td>${r.supervisor || "-"}</td>
                             <td>${r["AUDITORIA EN FRIO"] || 0}</td>
@@ -348,9 +348,8 @@ async function mostrarFormularioActividadCampo(){
                 <div id="camposTipoActividad"></div>
                 <div class="act-card">
                     <div class="act-section-title">📝 Cierre de actividad</div>
-                    <div class="act-grid">
-                        <div class="act-field act-wide"><label>Observaciones generales</label><textarea id="actObservacionesGenerales" placeholder="Resumen general, hallazgos o comentarios finales."></textarea></div>
-                        <div class="act-field act-wide"><label>Conclusión</label><textarea id="actConclusion" placeholder="Conclusión de la actividad y próximos pasos."></textarea></div>
+                    <div id="camposCierreActividad" class="act-grid"></div>
+                    <div class="act-grid" style="margin-top:12px;">
                         <div class="act-field act-file"><label>Foto 1</label><input type="file" id="actFoto1" accept="image/*" capture="environment"></div>
                         <div class="act-field act-file"><label>Foto 2</label><input type="file" id="actFoto2" accept="image/*" capture="environment"></div>
                         <div id="contenedorFotoActa" class="act-field act-file"><label>Foto Acta</label><input type="file" id="actFotoActa" accept="image/*" capture="environment"></div>
@@ -389,6 +388,26 @@ function campoArea(id, label, placeholder=""){
     return `<div class="act-field act-wide"><label>${label}</label><textarea id="${id}" placeholder="${placeholder}"></textarea></div>`;
 }
 
+function renderCierreActividad(tipo){
+    const cont = document.getElementById("camposCierreActividad");
+    if(!cont) return;
+
+    if(tipo === "VALIDACION DE OBSERVACION"){
+        cont.innerHTML = `<div class="act-note act-wide">Para Validación de Observación se registran únicamente los datos propios de la validación y sus evidencias.</div>`;
+        return;
+    }
+
+    if(tipo === "CAPACITACION"){
+        cont.innerHTML = `${campoArea("actConclusion","Comentario final","Comentario final de la capacitación realizada.")}`;
+        return;
+    }
+
+    cont.innerHTML = `
+        ${campoArea("actObservacionesGenerales","Observaciones generales","Resumen general, hallazgos o comentarios finales.")}
+        ${campoArea("actConclusion","Conclusión","Conclusión de la actividad y próximos pasos.")}
+    `;
+}
+
 function renderFormularioTipoActividad(){
     const tipo = document.getElementById("actTipoActividad")?.value || "AUDITORIA EN FRIO";
     const cont = document.getElementById("camposTipoActividad");
@@ -405,6 +424,7 @@ function renderFormularioTipoActividad(){
         "CHECKLIST": formularioChecklist()
     };
     cont.innerHTML = formularios[tipo] || formularioAuditoriaFrio();
+    renderCierreActividad(tipo);
 }
 
 function formularioAuditoriaFrio(){
@@ -448,9 +468,6 @@ function formularioSeguimiento(){
         <div class="act-grid">
             <div class="act-field"><label>Motivo del seguimiento</label><select id="segMotivo"><option>BAJA PRODUCCION</option><option>BAJA EFECTIVIDAD</option><option>ALTO RECABLEADO</option><option>ALTO VTR/GAR</option><option>OBSERVACIONES RECURRENTES</option><option>REINCORPORACION</option><option>OTRO</option></select></div>
             ${campoFecha("segFechaSeguimiento","Fecha de seguimiento")}
-            ${campoArea("segCompromisos","Compromisos","Compromisos asumidos por la cuadrilla.")}
-            ${campoArea("segPlanAccion","Plan de acción","Acciones, responsables y plazos.")}
-            ${campoArea("segResultado","Resultado","Resultado del seguimiento realizado.")}
         </div>
     </div>`;
 }
@@ -477,8 +494,6 @@ function formularioCapacitacion(){
             <div class="act-field"><label>Tema</label><select id="capTema"><option>INSTALACION</option><option>AVERIAS</option><option>RECABLEADO</option><option>ATENCION AL CLIENTE</option><option>SEGURIDAD</option><option>MATERIALES</option><option>PROCEDIMIENTOS WIN</option><option>OTRO</option></select></div>
             ${campoTexto("capTiempo","Tiempo","Ejemplo: 30 minutos")}
             ${campoArea("capParticipantes","Participantes","Nombres o cantidad de participantes.")}
-            ${campoArea("capEvaluacion","Evaluación","Resultado o evaluación de la capacitación.")}
-            ${campoArea("capCompromisos","Compromisos","Compromisos posteriores a la capacitación.")}
         </div>
     </div>`;
 }
@@ -541,10 +556,7 @@ function armarDetalleActividad(tipo){
     }
     if(tipo === "SEGUIMIENTO"){
         lineas.push(`MOTIVO: ${obtenerValor("segMotivo")}`);
-        lineas.push(`COMPROMISOS: ${obtenerValor("segCompromisos")}`);
-        lineas.push(`PLAN DE ACCION: ${obtenerValor("segPlanAccion")}`);
         lineas.push(`FECHA DE SEGUIMIENTO: ${obtenerValor("segFechaSeguimiento")}`);
-        lineas.push(`RESULTADO: ${obtenerValor("segResultado")}`);
     }
     if(tipo === "VALIDACION DE OBSERVACION"){
         lineas.push(`CODIGO DE OBSERVACION: ${obtenerValor("valCodigo")}`);
@@ -559,16 +571,21 @@ function armarDetalleActividad(tipo){
         lineas.push(`TEMA: ${obtenerValor("capTema")}`);
         lineas.push(`PARTICIPANTES: ${obtenerValor("capParticipantes")}`);
         lineas.push(`TIEMPO: ${obtenerValor("capTiempo")}`);
-        lineas.push(`EVALUACION: ${obtenerValor("capEvaluacion")}`);
-        lineas.push(`COMPROMISOS: ${obtenerValor("capCompromisos")}`);
     }
     if(tipo === "CHECKLIST"){
         lineas.push(`TIPO DE CHECKLIST: ${obtenerValor("chkTipo")}`);
         document.querySelectorAll("[data-checkitem]").forEach(el => lineas.push(`${el.getAttribute("data-checkitem").toUpperCase()}: ${el.value}`));
     }
 
-    lineas.push(`OBSERVACIONES GENERALES: ${obtenerValor("actObservacionesGenerales")}`);
-    lineas.push(`CONCLUSION: ${obtenerValor("actConclusion")}`);
+    if(tipo !== "VALIDACION DE OBSERVACION" && tipo !== "CAPACITACION"){
+        lineas.push(`OBSERVACIONES GENERALES: ${obtenerValor("actObservacionesGenerales")}`);
+        lineas.push(`CONCLUSION: ${obtenerValor("actConclusion")}`);
+    }
+
+    if(tipo === "CAPACITACION"){
+        lineas.push(`COMENTARIO FINAL: ${obtenerValor("actConclusion")}`);
+    }
+
     return lineas.join("\n");
 }
 
