@@ -166,14 +166,46 @@ async function cargarCuadrillasObservacion(){
     sel.innerHTML = `<option value="">Cargando cuadrillas...</option>`;
 
     try{
+        let cuadrillas = [];
+
+        // 1) Intenta cargar desde la nueva función del Apps Script.
         const data = await apiObservaciones({
             accion: "listarCuadrillasObservacion",
             usuario: u.usuario
         });
 
-        if(!data.ok) throw new Error(data.error || "No se pudo cargar cuadrillas");
+        if(data.ok && Array.isArray(data.cuadrillas)){
+            cuadrillas = data.cuadrillas;
+        }
 
-        const cuadrillas = data.cuadrillas || [];
+        // 2) Si el Apps Script aún no fue redeployado, usa listarUsuarios como respaldo.
+        if(cuadrillas.length === 0){
+            const respaldo = await apiObservaciones({ accion: "listarUsuarios" });
+            if(!respaldo.ok) throw new Error(respaldo.error || data.error || "No se pudo cargar usuarios");
+
+            const vistos = {};
+            (respaldo.usuarios || []).forEach(x => {
+                const cuadrilla = (x.cuadrilla || "").trim();
+                const sede = (x.sede || "").toUpperCase().trim();
+                const estado = (x.estado || "ACTIVO").toUpperCase().trim();
+                const perfil = (x.perfil || "").toUpperCase().trim();
+
+                if(!cuadrilla || vistos[cuadrilla]) return;
+                if(estado && estado !== "ACTIVO") return;
+                if(perfil && perfil !== "TECNICO") return;
+                if(u.perfil === "SUPERVISOR" && sede !== (u.sede || "").toUpperCase().trim()) return;
+
+                vistos[cuadrilla] = true;
+                cuadrillas.push({
+                    cuadrilla,
+                    sede,
+                    plataforma: x.plataforma || "",
+                    supervisor: x.usuarioSupervisor || ""
+                });
+            });
+        }
+
+        cuadrillas.sort((a,b) => (a.cuadrilla || "").localeCompare(b.cuadrilla || ""));
 
         if(cuadrillas.length === 0){
             sel.innerHTML = `<option value="">No hay cuadrillas disponibles</option>`;
