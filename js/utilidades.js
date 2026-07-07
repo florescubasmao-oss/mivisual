@@ -13,6 +13,7 @@ function mostrarPantalla(html){
     if (resultado) resultado.innerHTML = "";
     if (menu) menu.style.display = "none";
     if (pantalla) pantalla.innerHTML = html;
+    if (typeof setBotonNavegacion === "function") setBotonNavegacion("modulo");
 
     setTimeout(() => {
         window.scrollTo({ top: 0, behavior: "smooth" });

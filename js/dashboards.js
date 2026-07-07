@@ -404,7 +404,7 @@ function renderDashboardProduccion(data){
         </div>
 
         <div style="text-align:center;margin:18px 0;">
-            <button class="button_1" onclick="volverInicio()">🏠 Volver al Menú</button>
+            <button class="button_1" onclick="volverInicio()">⬅️ Volver al menú</button>
         </div>
 
         <h2 style="margin-top:20px;">📅 Historial de Producción</h2>
@@ -1611,7 +1611,7 @@ function mostrarAdministracion(){
         class="button_1"
         onclick="volverInicio()">
 
-        🏠 VOLVER
+        ⬅️ Volver al menú
 
         </button>
 
@@ -1781,7 +1781,7 @@ function renderDashboardProduccion(data){
         <h2 class="mv4-section-title">📅 Historial Diario</h2>`;
 
     if(!data.detalle || !data.detalle.length){
-        html += `<div class="mv4-empty">No hay producción registrada para tu cuadrilla.</div><button class="button_1" onclick="volverInicio()">🏠 Volver</button></div>`;
+        html += `<div class="mv4-empty">No hay producción registrada para tu cuadrilla.</div><button class="button_1" onclick="volverInicio()">⬅️ Volver al menú</button></div>`;
         mostrarPantalla(html); return;
     }
     const porDia = {};
@@ -1801,7 +1801,7 @@ function renderDashboardProduccion(data){
         });
         html += `</div>`;
     });
-    html += `<button class="button_1" onclick="volverInicio()">🏠 Volver</button></div>`;
+    html += `<button class="button_1" onclick="volverInicio()">⬅️ Volver al menú</button></div>`;
     mostrarPantalla(html);
 }
 
@@ -1815,7 +1815,7 @@ async function mostrarDashboardSupervisor(){
             <div class="mv4-page">
                 <div class="mv4-top-card"><div class="mv4-top-role">👷 SUPERVISOR</div><div class="mv4-top-sede">${sede || "SEDE"}</div><div class="mv4-top-sub">Actualizado: ${actualizacion}</div></div>
                 ${mv4DashboardKpis(lista)}
-                <button class="button_1" onclick="volverInicio()">🏠 Volver</button>
+                <button class="button_1" onclick="volverInicio()">⬅️ Volver al menú</button>
             </div>`);
     }catch(e){ mostrarPantalla(`<div class="mv4-page"><h2>👷 Supervisor</h2><div class="mv4-error">${e.message}</div></div>`); }
 }
@@ -1851,7 +1851,7 @@ async function mostrarDashboardJefatura(){
         const general = mv4Resumen(lista);
         let html = `<div class="mv4-page"><div class="mv4-top-card"><div class="mv4-top-role">👔 JEFATURA</div><div class="mv4-top-sede">ZONA NORTE</div><div class="mv4-top-sub">${lista.length} cuadrillas</div></div><div class="mv4-general-card"><div class="mv4-general-title">📋 CUMPLIMIENTO ZONA NORTE</div><div class="mv4-general-value">${general.cumplimiento}%</div><div class="mv4-progress"><span style="width:${general.cumplimiento}%"></span></div><div class="mv4-general-sub">${general.ok} de 5 metas cumplidas</div></div>`;
         Object.keys(grupos).sort().forEach(s => html += mv4SedeCard(s, grupos[s]));
-        html += `<button class="button_1" onclick="volverInicio()">🏠 Volver</button></div>`;
+        html += `<button class="button_1" onclick="volverInicio()">⬅️ Volver al menú</button></div>`;
         mostrarPantalla(html);
     }catch(e){ mostrarPantalla(`<div class="mv4-page"><h2>👔 Jefatura</h2><div class="mv4-error">${e.message}</div></div>`); }
 }

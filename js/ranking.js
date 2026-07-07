@@ -319,7 +319,7 @@ function vistaTecnicoRanking(item){
             </div>
 
             <br>
-            <button class="button_1" onclick="volverInicio()">🏠 VOLVER</button>
+            <button class="button_1" onclick="volverInicio()">⬅️ Volver al menú</button>
         </div>
     `;
 }
@@ -358,7 +358,7 @@ async function mostrarRanking(){
             const item = lista.find(x => normalizarCuadrillaRanking(x.cuadrilla) === cuadrillaUsuario);
 
             if(!item){
-                mostrarPantalla(`<div style="padding:20px;"><h2>🏆 MI RANKING</h2>No se encontró ranking para tu cuadrilla.<br><br><button class="button_1" onclick="volverInicio()">🏠 VOLVER</button></div>`);
+                mostrarPantalla(`<div style="padding:20px;"><h2>🏆 MI RANKING</h2>No se encontró ranking para tu cuadrilla.<br><br><button class="button_1" onclick="volverInicio()">⬅️ Volver al menú</button></div>`);
                 return;
             }
 
@@ -387,7 +387,7 @@ async function mostrarRanking(){
                 ${listaTarjetasRanking(listaFiltrada, tipoPuesto)}
 
                 <br>
-                <button class="button_1" onclick="volverInicio()">🏠 VOLVER</button>
+                <button class="button_1" onclick="volverInicio()">⬅️ Volver al menú</button>
             </div>
         `;
 
@@ -395,6 +395,6 @@ async function mostrarRanking(){
 
     }catch(err){
         console.error(err);
-        mostrarPantalla(`<div style="padding:20px;"><h2>🏆 RANKING</h2>❌ Error al cargar ranking.<br><br><button class="button_1" onclick="volverInicio()">🏠 VOLVER</button></div>`);
+        mostrarPantalla(`<div style="padding:20px;"><h2>🏆 RANKING</h2>❌ Error al cargar ranking.<br><br><button class="button_1" onclick="volverInicio()">⬅️ Volver al menú</button></div>`);
     }
 }

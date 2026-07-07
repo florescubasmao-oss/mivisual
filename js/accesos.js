@@ -208,7 +208,7 @@ style="width:100%;height:300px;border-radius:8px;padding:10px;">
 &nbsp;
 
 <button class="button_1" onclick="mostrarAdministracion()">
-🏠 VOLVER
+⬅️ Volver al menú
 </button>
 
 <br><br>
@@ -490,7 +490,7 @@ function mostrarImportarEfectividad(){
                 &nbsp;
 
                 <button class="button_1" onclick="mostrarAdministracion()">
-                    🏠 VOLVER
+                    ⬅️ Volver al menú
                 </button>
 
                 <br><br>
@@ -768,7 +768,7 @@ function mostrarImportarRecableado(){
                 &nbsp;
 
                 <button class="button_1" onclick="mostrarAdministracion()">
-                    🏠 VOLVER
+                    ⬅️ Volver al menú
                 </button>
 
                 <br><br>
@@ -1041,7 +1041,7 @@ function mostrarImportarVtrGar(){
                 &nbsp;
 
                 <button class="button_1" onclick="mostrarAdministracion()">
-                    🏠 VOLVER
+                    ⬅️ Volver al menú
                 </button>
 
                 <br><br>
@@ -1291,7 +1291,7 @@ function mostrarImportarUsuarios(){
                 &nbsp;
 
                 <button class="button_1" onclick="mostrarAdministracion()">
-                    🏠 VOLVER
+                    ⬅️ Volver al menú
                 </button>
 
                 <br><br>
@@ -1697,7 +1697,7 @@ function mostrarImportarRanking(){
                 &nbsp;
 
                 <button class="button_1" onclick="mostrarAdministracion()">
-                    🏠 VOLVER
+                    ⬅️ Volver al menú
                 </button>
 
                 <br><br>

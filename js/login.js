@@ -53,7 +53,8 @@ async function login() {
 
                 document.getElementById("usuarioInfo").innerHTML = construirInfoUsuarioLogin({ cuadrilla, sede, plataforma, perfil });
                 document.getElementById("panelLogin").style.display = "none";
-                document.getElementById("btnInicio").style.display = "inline-block";
+                if (typeof setBotonNavegacion === "function") setBotonNavegacion("menu");
+                else document.getElementById("btnInicio").style.display = "inline-block";
                 document.getElementById("menuPrincipal").style.display = "grid";
 
                 if(msg) msg.innerHTML = "";

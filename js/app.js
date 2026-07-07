@@ -2,9 +2,68 @@
 
 console.log("APP.JS CARGADO");
 
+function setBotonNavegacion(modo){
+    const btn = document.getElementById("btnInicio");
+    if(!btn) return;
+
+    btn.style.display = localStorage.getItem("usuario") ? "inline-block" : "none";
+
+    if(modo === "modulo"){
+        btn.innerHTML = "⬅️ Volver al menú";
+        btn.dataset.modo = "modulo";
+        btn.style.background = "#0d6efd";
+    }else{
+        btn.innerHTML = "🚪 Cerrar sesión";
+        btn.dataset.modo = "menu";
+        btn.style.background = "#dc3545";
+    }
+}
+
+function accionBotonNavegacion(){
+    const btn = document.getElementById("btnInicio");
+    const modo = btn ? btn.dataset.modo : "menu";
+
+    if(modo === "modulo"){
+        volverInicio();
+        return;
+    }
+
+    cerrarSesion();
+}
+
+function cerrarSesion(){
+    localStorage.clear();
+
+    const panelLogin = document.getElementById("panelLogin");
+    const usuarioInfo = document.getElementById("usuarioInfo");
+    const menu = document.getElementById("menuPrincipal");
+    const pantalla = document.getElementById("pantalla");
+    const resultado = document.getElementById("resultadoProduccion");
+    const btn = document.getElementById("btnInicio");
+
+    if(panelLogin) panelLogin.style.display = "block";
+    if(usuarioInfo) usuarioInfo.innerHTML = "";
+    if(menu) menu.style.display = "none";
+    if(pantalla) pantalla.innerHTML = "";
+    if(resultado) resultado.innerHTML = "";
+    if(btn) btn.style.display = "none";
+
+    const correo = document.getElementById("correo");
+    const clave = document.getElementById("clave");
+    const msg = document.getElementById("loginMensaje");
+    if(correo) correo.value = "";
+    if(clave) clave.value = "";
+    if(msg) msg.innerHTML = "";
+
+    setTimeout(() => {
+        window.scrollTo({ top: 0, behavior: "smooth" });
+    }, 100);
+}
+
 function volverInicio(){
     limpiarPantalla();
     configurarMenu();
+    setBotonNavegacion("menu");
     setTimeout(() => {
         window.scrollTo({ top: 0, behavior: "smooth" });
     }, 300);
@@ -43,6 +102,7 @@ function configurarMenu(){
     if (pantalla) pantalla.innerHTML = "";
     if (resultado) resultado.innerHTML = "";
     if (menu) menu.style.display = "grid";
+    setBotonNavegacion("menu");
 
     const todasLasCards = [
         "cardProduccion",

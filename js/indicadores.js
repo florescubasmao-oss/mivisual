@@ -422,7 +422,7 @@ async function mostrarEfectividad(){
             <div class="mv4-day-row"><span>Finalizadas</span><b>${r.finalizadas}</b></div>
             <div class="mv4-day-row"><span>Total general</span><b>${r.total}</b></div>`);
     });
-    html += `<button class="button_1" onclick="volverInicio()">🏠 Volver</button></div>`;
+    html += `<button class="button_1" onclick="volverInicio()">⬅️ Volver al menú</button></div>`;
     mostrarPantalla(html);
 }
 
@@ -453,7 +453,7 @@ async function mostrarRecableado(){
             <div class="mv4-day-row"><span>Los Rojos</span><b>${r.rojos}</b></div>
             <div class="mv4-day-row"><span>Recableados</span><b>${r.rec}</b></div>`);
     });
-    html += `<button class="button_1" onclick="volverInicio()">🏠 Volver</button></div>`;
+    html += `<button class="button_1" onclick="volverInicio()">⬅️ Volver al menú</button></div>`;
     mostrarPantalla(html);
 }
 
@@ -486,6 +486,6 @@ async function mostrarVTRGAR(){
             <div class="mv4-day-row"><span>VTR</span><b>${r.vtr}</b></div>
             <div class="mv4-day-row"><span>Finalizadas</span><b>${r.ordenes}</b></div>`);
     });
-    html += `<button class="button_1" onclick="volverInicio()">🏠 Volver</button></div>`;
+    html += `<button class="button_1" onclick="volverInicio()">⬅️ Volver al menú</button></div>`;
     mostrarPantalla(html);
 }
