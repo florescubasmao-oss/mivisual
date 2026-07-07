@@ -384,18 +384,6 @@ async function mostrarRanking(){
 
                 ${encabezadoPeriodoRanking(referencia)}
 
-                <div style="
-                    background:#1f2d48;
-                    border-radius:16px;
-                    padding:14px;
-                    color:white;
-                    margin-bottom:12px;
-                    font-size:14px;
-                    line-height:1.4;
-                ">
-                    Indicadores por cuadrilla. Observaciones ya afecta el ranking como indicador negativo.
-                </div>
-
                 ${listaTarjetasRanking(listaFiltrada, tipoPuesto)}
 
                 <br>

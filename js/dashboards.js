@@ -357,114 +357,144 @@ renderDashboardProduccion(dashboard);
 
 function renderDashboardProduccion(data){
 
+    const totalPuntos = Number(data.resumen.totalPuntos || 0);
+    let estadoBono = "🔴 SIN BONO";
+    let estadoColor = "#991b1b";
+
+    if(totalPuntos >= 4.5){
+        estadoBono = "🟢 BONO GANADO";
+        estadoColor = "#15803d";
+    }else if(totalPuntos >= 4){
+        estadoBono = "🟡 CERCA AL BONO";
+        estadoColor = "#b45309";
+    }
+
     let html = `
+    <div style="padding:16px;max-width:920px;margin:auto;">
 
-    <div class="card">
+        <h2 style="text-align:center;margin-bottom:14px;">📊 MI PRODUCCIÓN</h2>
 
-        <h2>📊 Producción</h2>
-
-        <div style="margin-top:15px">
-
-            <p><b>Producción Total:</b> ${data.resumen.totalProduccion}</p>
-
-            <p><b>Última Milla:</b> ${data.resumen.totalUltimaMilla}</p>
-
-            <p><b>Instalaciones:</b> ${data.resumen.totalInstalaciones}</p>
-
-            <p><b>Recableado VT:</b> ${data.resumen.totalRecableadoVT}</p>
-
-            <p><b>Recableado Postventa:</b> ${data.resumen.totalRecableadoPost}</p>
-
-            <p><b>Traslados:</b> ${data.resumen.totalTraslados}</p>
-
-            <hr>
-
-            <h3>⭐ Puntos: ${data.resumen.totalPuntos}</h3>
-
+        <div style="
+            background:linear-gradient(135deg,#123c69,#0f766e);
+            color:white;
+            border-radius:20px;
+            padding:22px;
+            margin-bottom:16px;
+            box-shadow:0 8px 18px rgba(0,0,0,.25);
+        ">
+            <div style="font-size:13px;opacity:.85;letter-spacing:.5px;">PUNTOS ACUMULADOS</div>
+            <div style="font-size:42px;font-weight:900;line-height:1;margin:8px 0;">${totalPuntos.toFixed(1)}</div>
+            <div style="display:inline-block;background:${estadoColor};padding:8px 12px;border-radius:999px;font-weight:bold;font-size:13px;">
+                ${estadoBono}
+            </div>
         </div>
 
-    </div>
-
-    `;
-
-html += `
-<div style="text-align:center;margin:25px 0;">
-    <button
-        onclick="volverInicio()"
-        style="
-            background:#16a34a;
-            color:white;
-            border:none;
-            padding:12px 30px;
-            border-radius:10px;
-            font-size:16px;
-            font-weight:bold;
-            cursor:pointer;
+        <div style="
+            display:grid;
+            grid-template-columns:repeat(2,minmax(0,1fr));
+            gap:10px;
+            margin-bottom:18px;
         ">
-        🏠 Volver al Menú
-    </button>
-</div>
-`;
+            ${kpiProduccionTecnico("📦", "Total", data.resumen.totalProduccion)}
+            ${kpiProduccionTecnico("🏠", "Instalaciones", data.resumen.totalInstalaciones)}
+            ${kpiProduccionTecnico("🔧", "Última Milla", data.resumen.totalUltimaMilla)}
+            ${kpiProduccionTecnico("📡", "Recableado VT", data.resumen.totalRecableadoVT)}
+            ${kpiProduccionTecnico("🔄", "Recableado Post", data.resumen.totalRecableadoPost)}
+            ${kpiProduccionTecnico("🚚", "Traslados", data.resumen.totalTraslados)}
+        </div>
 
-    html += `<hr style="margin:25px 0;">`;
+        <div style="text-align:center;margin:18px 0;">
+            <button class="button_1" onclick="volverInicio()">🏠 Volver al Menú</button>
+        </div>
 
-html += `<h2>📅 Historial de Producción</h2>`;
-
-let fechaActual = "";
-
-data.detalle.sort((a, b) => {
-
-    const fa = a.fecha.split("/").reverse().join("");
-    const fb = b.fecha.split("/").reverse().join("");
-
-    return fb.localeCompare(fa);
-
-});
-
-data.detalle.forEach(r => {
-
-    if (r.fecha !== fechaActual) {
-
-    fechaActual = r.fecha;
-
-    html += `
-        <h3 style="margin-top:25px;">
-            📅 ${fechaActual}
-        </h3>
+        <h2 style="margin-top:20px;">📅 Historial de Producción</h2>
     `;
 
+    if(!data.detalle || data.detalle.length === 0){
+        html += `
+            <div style="background:#1f2d48;color:white;border-radius:14px;padding:16px;margin-top:12px;">
+                No hay producción registrada para tu cuadrilla.
+            </div>
+        `;
+        html += `</div>`;
+        mostrarPantalla(html);
+        return;
+    }
+
+    let fechaActual = "";
+
+    data.detalle.sort((a, b) => {
+        const fa = (a.fecha || "").split("/").reverse().join("");
+        const fb = (b.fecha || "").split("/").reverse().join("");
+        return fb.localeCompare(fa);
+    });
+
+    data.detalle.forEach(r => {
+        if (r.fecha !== fechaActual) {
+            fechaActual = r.fecha;
+            html += `
+                <div style="
+                    margin-top:18px;
+                    margin-bottom:8px;
+                    padding:10px 14px;
+                    border-radius:12px;
+                    background:#1e3a8a;
+                    color:white;
+                    font-weight:bold;
+                ">
+                    📅 ${fechaActual}
+                </div>
+            `;
+        }
+
+        const puntos = (Number(r.puntaje) || 0) * (Number(r.cantidad) || 0);
+
+        html += `
+            <div style="
+                background:#1f2d48;
+                border-left:5px solid #16a34a;
+                border-radius:16px;
+                padding:15px;
+                margin:10px 0;
+                color:white;
+                box-shadow:0 4px 12px rgba(0,0,0,.18);
+            ">
+                <div style="font-size:16px;font-weight:800;line-height:1.35;margin-bottom:10px;">
+                    ${r.tipo || "Trabajo registrado"}
+                </div>
+
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+                    <div style="background:#0f172a;border-radius:12px;padding:10px;">
+                        <div style="font-size:11px;color:#9fb7d8;">CANTIDAD</div>
+                        <div style="font-size:22px;font-weight:900;">${r.cantidad}</div>
+                    </div>
+                    <div style="background:#0f172a;border-radius:12px;padding:10px;">
+                        <div style="font-size:11px;color:#9fb7d8;">PUNTOS</div>
+                        <div style="font-size:22px;font-weight:900;color:#facc15;">${puntos.toFixed(1)}</div>
+                    </div>
+                </div>
+            </div>
+        `;
+    });
+
+    html += `</div>`;
+    mostrarPantalla(html);
 }
 
-    html += `
-
-    <div class="card" style="margin-top:15px; padding:15px;">
-
-        <h3 style="
-    margin:10px 0;
-    color:#ffffff;
-    font-size:18px;
-    line-height:1.4;
-">
-    ${r.tipo}
-</h3>
-
-        <p style="font-size:17px;">
-    📦 <b>Cantidad:</b> ${r.cantidad}
-</p>
-
-       <p style="font-size:17px;color:#FFD700;">
-    ⭐ <b>Puntos:</b> ${r.puntaje * r.cantidad}
-</p>
-
-    </div>
-
+function kpiProduccionTecnico(icono, titulo, valor){
+    return `
+        <div style="
+            background:#1f2d48;
+            color:white;
+            border-radius:16px;
+            padding:14px;
+            min-height:78px;
+            box-shadow:0 4px 12px rgba(0,0,0,.18);
+        ">
+            <div style="font-size:12px;color:#9fb7d8;line-height:1.2;">${icono} ${titulo}</div>
+            <div style="font-size:26px;font-weight:900;margin-top:6px;">${valor || 0}</div>
+        </div>
     `;
-
-});
-
-
-    mostrarPantalla(html);
-
 }
 
 function mostrarDashboardSupervisor(){

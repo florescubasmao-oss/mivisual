@@ -47,11 +47,12 @@ async function login() {
                 localStorage.setItem("estado", estado);
                 localStorage.setItem("correo", correo);
 
-                document.getElementById("usuarioInfo").innerHTML =
-                    "✅ <b>" + cuadrilla + "</b>" +
-                    "<br>🏢 " + sede +
-                    "<br>📚 " + plataforma +
-                    "<br>👤 " + perfil;
+                document.getElementById("usuarioInfo").innerHTML = construirInfoUsuarioLogin({
+                    cuadrilla,
+                    sede,
+                    plataforma,
+                    perfil
+                });
 
                 document.getElementById("panelLogin").style.display = "none";
                 document.getElementById("btnInicio").style.display = "inline-block";
@@ -76,4 +77,25 @@ async function login() {
 
     }
 
+}
+
+function construirInfoUsuarioLogin(data){
+    const perfil = (data.perfil || "").toUpperCase().trim();
+    const sede = (data.sede || "").toUpperCase().trim();
+    const plataforma = (data.plataforma || "").toUpperCase().trim();
+    const cuadrilla = (data.cuadrilla || "").trim();
+
+    if(perfil === "JEFATURA" || perfil === "ADMIN" || perfil === "ADMINISTRADOR"){
+        return "👤 <b>JEFATURA</b>";
+    }
+
+    if(perfil === "SUPERVISOR"){
+        return "🏢 <b>" + sede + "</b>" +
+               "<br>👤 <b>SUPERVISOR</b>";
+    }
+
+    return "✅ <b>" + cuadrilla + "</b>" +
+           "<br>🏢 " + sede +
+           "<br>📚 " + plataforma +
+           "<br>👤 " + perfil;
 }
