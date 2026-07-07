@@ -2,8 +2,7 @@
 
 function mostrarCard(id, estado){
     const el = document.getElementById(id);
-    if (!el) return;
-    el.style.setProperty("display", estado, "important");
+    if (el) el.style.display = estado;
 }
 
 function mostrarPantalla(html){

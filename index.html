@@ -26,22 +26,28 @@
 
 <div style="margin-top:5px;">
 
-<div class="header">
-MI VISUAL
+<div class="header mv4-main-header">
+  <div class="mv4-logo-wrap"><img src="img/logo.png" alt="MI VISUAL" onerror="this.style.display='none'"></div>
+  <div class="mv4-app-name">MI VISUAL</div>
+  <div class="mv4-app-sub">Sistema de Gestión Operativa</div>
+  <div class="mv4-app-company">Visual Connections SAC · Zona Norte</div>
 </div>
 
-<div class="subtitulo">
-Plataforma Operativa Zona Norte
-  
-</div>
 <div class="login-box">
 
-<div id="panelLogin">
+<div id="panelLogin" class="mv4-login-card">
+  <h2>Bienvenido</h2>
+  <p>Ingresa tus credenciales para continuar</p>
 
-<input type="email" id="correo" placeholder="Correo">
-<input type="password" id="clave" placeholder="Clave">
-<button onclick="login()">Ingresar</button>
+  <label for="correo">👤 Usuario / Correo</label>
+  <input type="email" id="correo" placeholder="usuario@visual.pe" autocomplete="username">
 
+  <label for="clave">🔒 Contraseña</label>
+  <input type="password" id="clave" placeholder="Contraseña" autocomplete="current-password">
+
+  <button type="button" class="mv4-show-pass" onclick="togglePasswordLogin()">👁 Mostrar contraseña</button>
+  <button id="btnLogin" class="mv4-login-btn" onclick="login()">INICIAR SESIÓN</button>
+  <div id="loginMensaje" class="mv4-login-msg"></div>
 </div>
 
 <button id="btnInicio"
@@ -64,53 +70,29 @@ cursor:pointer;
 </div>
 <div class="menu" id="menuPrincipal" style="display:none;">
 
-<div id="cardProduccion" class="card" onclick="mostrarProduccionV2()">
-📊 PRODUCCIÓN
-</div>
+<div id="cardProduccion" class="card card-prod" onclick="mostrarProduccionV2()"><span>📊</span><b>Producción</b></div>
 
-<div id="cardEfectividad" class="card" onclick="mostrarEfectividad()">
-🎯 EFECTIVIDAD
-</div>
+<div id="cardEfectividad" class="card card-efe" onclick="mostrarEfectividad()"><span>🎯</span><b>Efectividad</b></div>
 
-<div id="cardRecableado" class="card" onclick="mostrarRecableado()">
-🔧 % RECABLEADO
-</div>
+<div id="cardRecableado" class="card card-rec" onclick="mostrarRecableado()"><span>🔧</span><b>% Recableado</b></div>
 
-<div id="cardVTRGAR" class="card" onclick="mostrarVTRGAR()">
-📈 % VTR / GAR
-</div>
+<div id="cardVTRGAR" class="card card-vtr" onclick="mostrarVTRGAR()"><span>📡</span><b>% VTR / GAR</b></div>
 
-<div id="cardRanking" class="card" onclick="mostrarRanking()">
-🏆 RANKING
-</div>
+<div id="cardRanking" class="card card-rank" onclick="mostrarRanking()"><span>🏆</span><b>Ranking</b></div>
 
-<div id="cardObservaciones" class="card" onclick="mostrarObservaciones()">
-📝 OBSERVACIONES
-</div>
+<div id="cardObservaciones" class="card card-obs" onclick="mostrarObservaciones()"><span>🚨</span><b>Observaciones</b></div>
 
-<div id="cardAccesos" class="card" onclick="mostrarAccesos()">
-🚀 ACCESOS
-</div>
+<div id="cardAccesos" class="card card-acc" onclick="mostrarAccesos()"><span>🚀</span><b>Accesos</b></div>
 
-<div id="cardBiblioteca" class="card" onclick="mostrarBiblioteca()">
-📚 BIBLIOTECA
-</div>
+<div id="cardBiblioteca" class="card card-bib" onclick="mostrarBiblioteca()"><span>📚</span><b>Biblioteca</b></div>
 
-<div id="cardCapacitacion" class="card" onclick="mostrarCapacitacion()">
-🎓 CAPACITACIÓN
-</div>
+<div id="cardCapacitacion" class="card card-cap" onclick="mostrarCapacitacion()"><span>🎓</span><b>Capacitación</b></div>
 
-<div id="cardDashboardSupervisor" class="card" onclick="mostrarDashboardSupervisor()">
-📊 DASHBOARD SUPERVISOR
-</div>
+<div id="cardDashboardSupervisor" class="card card-dash" onclick="mostrarDashboardSupervisor()"><span>👷</span><b>Dashboard Supervisor</b></div>
 
-<div id="cardDashboardJefatura" class="card" onclick="mostrarDashboardJefatura()">
-🌎 DASHBOARD JEFATURA
-</div>
+<div id="cardDashboardJefatura" class="card card-jef" onclick="mostrarDashboardJefatura()"><span>👔</span><b>Dashboard Jefatura</b></div>
 
-<div id="cardAdministracion" class="card" onclick="mostrarAdministracion()">
-⚙️ ADMINISTRACIÓN
-</div>
+<div id="cardAdministracion" class="card card-adm" onclick="mostrarAdministracion()"><span>⚙️</span><b>Administración</b></div>
 
 </div>
 
@@ -122,36 +104,23 @@ Visual Connections SAC - Zona Norte
 
 </div>
 
-<script src="./js/utilidades.js?v=fix14"></script>
-<script src="./js/dashboards.js?v=fix14"></script>
-<script src="./js/indicadores.js?v=fix14"></script>
-<script src="./js/ranking.js?v=fix14"></script>
-<script src="./js/observaciones.js?v=fix14"></script>
-<script src="./js/accesos.js?v=fix14"></script>
-<script src="./js/app.js?v=fix14"></script>
-
-
-
 <script>
-// FIX 14: refrescar service worker y limpiar caché del navegador
 if ("serviceWorker" in navigator) {
-  navigator.serviceWorker.getRegistrations()
-    .then(regs => regs.forEach(reg => reg.unregister()))
-    .catch(err => console.log(err));
-}
-if (window.caches) {
-  caches.keys().then(keys => keys.forEach(key => caches.delete(key)));
+    navigator.serviceWorker
+      .register("./sw.js")
+      .then(()=>console.log("SW OK"))
+      .catch(err=>console.log(err));
 }
 </script>
 
-<script src="./js/utilidades.js?v=fix14"></script>
-<script src="./js/login.js?v=fix14"></script>
-<script src="./js/dashboards.js?v=fix14"></script>
-<script src="./js/indicadores.js?v=fix14"></script>
-<script src="./js/ranking.js?v=fix14"></script>
-<script src="./js/observaciones.js?v=fix14"></script>
-<script src="./js/accesos.js?v=fix14"></script>
-<script src="./js/app.js?v=fix14"></script>
+<script src="./js/utilidades.js"></script>
+<script src="./js/login.js"></script>
+<script src="./js/dashboards.js"></script>
+<script src="./js/indicadores.js"></script>
+<script src="./js/ranking.js"></script>
+<script src="./js/observaciones.js"></script>
+<script src="./js/accesos.js"></script>
+<script src="./js/app.js"></script>
 
 </body>
 </html>
