@@ -54,14 +54,30 @@ function accesoVisiblePorDestino(destino, sede, cuadrilla){
          destinosPermitidos.includes(cuadrillaNormalizada);
 }
 
+function accesoVisiblePorPerfil(perfilDestino, perfilUsuario){
+  const perfilDestinoNormalizado = normalizarDestinoAcceso(perfilDestino);
+  const perfilUsuarioNormalizado = normalizarDestinoAcceso(perfilUsuario);
+
+  if(!perfilDestinoNormalizado) return false;
+  if(perfilDestinoNormalizado === "TODOS") return true;
+
+  const perfilesPermitidos = perfilDestinoNormalizado
+    .split(",")
+    .map(x => x.trim())
+    .filter(Boolean);
+
+  return perfilesPermitidos.includes(perfilUsuarioNormalizado);
+}
+
 async function mostrarAccesos(){
 
 const cuadrilla = localStorage.getItem("cuadrilla");
 const sede = localStorage.getItem("sede");
+const perfilUsuario = localStorage.getItem("perfil");
 
 const url = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRpVkCmSvopgPByWsEX6nkuAT6mf3yD2_Cywpl9pFSZEqYpxmprDePPeV0KNgT14YpEP6gkVlvOAtZy/pub?gid=177192408&single=true&output=csv";
 
-const respuesta = await fetch(url);
+const respuesta = await fetch(url + "&v=" + Date.now());
 const texto = await respuesta.text();
 
 const filas = texto.split("\n");
@@ -73,8 +89,9 @@ for(let i=1; i<filas.length; i++){
 const datos = leerFilaCSV(filas[i]);
 
 let destino = datos[1]?.trim();
-let nombre = datos[2]?.trim();
-let link = datos[3]?.trim();
+let perfilDestino = datos[2]?.trim();
+let nombre = datos[3]?.trim();
+let link = datos[4]?.trim();
 let icono = "🔗";
 
 if(!nombre || !link) continue;
@@ -91,7 +108,10 @@ else if(nombre.includes("BOT")) icono = "🤖";
 
 else if(nombre.includes("Grupo")) icono = "📢";
   
-if(accesoVisiblePorDestino(destino, sede, cuadrilla)){
+if(
+  accesoVisiblePorDestino(destino, sede, cuadrilla) &&
+  accesoVisiblePorPerfil(perfilDestino, perfilUsuario)
+){
 
 resultado += `
 <div style="
