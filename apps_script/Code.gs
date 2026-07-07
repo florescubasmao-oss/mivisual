@@ -7,6 +7,8 @@ const HOJA_RANKING = "RANKING";
 const HOJA_OBSERVACIONES = "OBSERVACIONES";
 const HOJA_RESUMEN_OBSERVACIONES = "RESUMEN_OBSERVACIONES";
 const CARPETA_EVIDENCIAS_OBSERVACIONES = "1W23rJjyUgmYGTlG2NzrpvasIWbwKBV6h";
+const HOJA_ACTIVIDAD_CAMPO = "ACTIVIDAD_CAMPO";
+const CARPETA_ACTIVIDAD_CAMPO = "1tu6DWyOkM0b-W1nI_MIXGuTmlZypjsBV";
 
 function doGet() {
   return ContentService
@@ -1512,6 +1514,371 @@ function actualizarRanking(periodoManual, actualizadoAlManual) {
   };
 }
 
+
+
+/* =========================
+   ACTIVIDAD EN CAMPO
+========================= */
+
+function encabezadoActividadCampo() {
+  return [[
+    "ID",
+    "FECHA",
+    "HORA",
+    "SEDE",
+    "SUPERVISOR",
+    "CUADRILLA",
+    "TIPO_ACTIVIDAD",
+    "CLIENTE_PRESENTE",
+    "DNI_VALIDADO",
+    "ESTADO_INSTALACION",
+    "DROP_METRAJE",
+    "TEMPLADORES",
+    "RESERVA_CABLE",
+    "POTENCIA_CONFORME",
+    "VELOCIDAD_CONFORME",
+    "LIMPIEZA_TRABAJO",
+    "CLIENTE_CONFORME",
+    "OBSERVACIONES",
+    "FOTO_1",
+    "FOTO_2",
+    "FOTO ACTA"
+  ]];
+}
+
+function asegurarHojaActividadCampo() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  let hoja = ss.getSheetByName(HOJA_ACTIVIDAD_CAMPO);
+
+  if (!hoja) {
+    hoja = ss.insertSheet(HOJA_ACTIVIDAD_CAMPO);
+  }
+
+  if (hoja.getLastRow() === 0) {
+    hoja.getRange(1, 1, 1, 21).setValues(encabezadoActividadCampo());
+  } else {
+    const encabezados = hoja.getRange(1, 1, 1, Math.max(hoja.getLastColumn(), 21)).getValues()[0];
+    const primero = (encabezados[0] || "").toString().trim();
+    if (!primero) {
+      hoja.getRange(1, 1, 1, 21).setValues(encabezadoActividadCampo());
+    }
+  }
+
+  return hoja;
+}
+
+function generarIdActividadCampo() {
+  return "ACT-" + Utilities.formatDate(new Date(), Session.getScriptTimeZone(), "yyyyMMddHHmmss");
+}
+
+function normalizarNombreCarpetaActividad(txt) {
+  return (txt || "")
+    .toString()
+    .toUpperCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^A-Z0-9]+/g, "_")
+    .replace(/^_+|_+$/g, "")
+    .substring(0, 80);
+}
+
+function obtenerOCrearSubcarpetaActividad(carpetaPadre, nombreSubcarpeta) {
+  const carpetas = carpetaPadre.getFoldersByName(nombreSubcarpeta);
+  if (carpetas.hasNext()) return carpetas.next();
+  return carpetaPadre.createFolder(nombreSubcarpeta);
+}
+
+function guardarArchivoActividadCampo(carpeta, cuadrilla, fechaArchivo, tipoArchivo, evidencia) {
+  if (!evidencia || !evidencia.base64) return "";
+
+  const nombreOriginal = evidencia.nombre || (tipoArchivo + ".jpg");
+  const extension = nombreOriginal.indexOf(".") >= 0
+    ? nombreOriginal.split(".").pop().toLowerCase()
+    : "jpg";
+
+  const nombreArchivo = normalizarNombreCarpetaActividad(cuadrilla) + "_" +
+    fechaArchivo + "_" + tipoArchivo + "." + extension;
+
+  const bytes = Utilities.base64Decode(evidencia.base64);
+  const blob = Utilities.newBlob(bytes, evidencia.mime || "image/jpeg", nombreArchivo);
+  const archivo = carpeta.createFile(blob);
+  archivo.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
+  return archivo.getUrl();
+}
+
+function guardarEvidenciasActividadCampo(data, cuadrilla, idRegistro) {
+  const carpetaPadre = DriveApp.getFolderById(CARPETA_ACTIVIDAD_CAMPO);
+  const ahora = new Date();
+  const fechaArchivo = Utilities.formatDate(ahora, Session.getScriptTimeZone(), "yyyyMMdd");
+  const fechaCarpeta = Utilities.formatDate(ahora, Session.getScriptTimeZone(), "yyyy-MM-dd");
+  const nombreSubcarpeta = fechaCarpeta + "_" + normalizarNombreCarpetaActividad(cuadrilla) + "_" + idRegistro;
+  const carpetaRegistro = obtenerOCrearSubcarpetaActividad(carpetaPadre, nombreSubcarpeta);
+
+  const foto1 = data.foto1 || data.FOTO_1 || null;
+  const foto2 = data.foto2 || data.FOTO_2 || null;
+  const fotoActa = data.fotoActa || data.foto_acta || data.FOTO_ACTA || data["FOTO ACTA"] || null;
+
+  return {
+    foto1: guardarArchivoActividadCampo(carpetaRegistro, cuadrilla, fechaArchivo, "FOTO1", foto1),
+    foto2: guardarArchivoActividadCampo(carpetaRegistro, cuadrilla, fechaArchivo, "FOTO2", foto2),
+    fotoActa: guardarArchivoActividadCampo(carpetaRegistro, cuadrilla, fechaArchivo, "ACTA", fotoActa),
+    carpeta: carpetaRegistro.getUrl()
+  };
+}
+
+function validarSiNoActividad(valor, campo) {
+  const v = normalizarTexto(valor);
+  if (!v) return "";
+  if (["SI", "NO", "NO APLICA", "NA", "N/A"].includes(v)) return v;
+  throw new Error(campo + " no válido. Usa SI, NO o NO APLICA");
+}
+
+function registrarActividadCampo(data) {
+  const hoja = asegurarHojaActividadCampo();
+  const usuarioRegistro = obtenerUsuarioApp(data.usuario);
+
+  if (!(usuarioRegistro.perfil === "SUPERVISOR" || esPerfilJefatura(usuarioRegistro.perfil))) {
+    throw new Error("Solo Supervisor o Jefatura pueden registrar actividad en campo");
+  }
+
+  const cuadrilla = normalizarCuadrilla(data.cuadrilla);
+  if (!cuadrilla) throw new Error("Debe seleccionar una cuadrilla");
+
+  const datosCuadrilla = obtenerDatosCuadrillaApp(cuadrilla);
+
+  if (usuarioRegistro.perfil === "SUPERVISOR" && normalizarTexto(usuarioRegistro.sede) !== normalizarTexto(datosCuadrilla.sede)) {
+    throw new Error("Supervisor solo puede registrar actividades de su sede");
+  }
+
+  const tipoActividad = normalizarTexto(data.tipoActividad || data.tipo_actividad || data.tipo || "AUDITORIA EN FRIO");
+  const tiposPermitidos = [
+    "AUDITORIA EN FRIO",
+    "SUPERVISION EN CALIENTE",
+    "SEGUIMIENTO",
+    "VALIDACION DE OBSERVACION",
+    "CAPACITACION",
+    "CHECKLIST"
+  ];
+
+  if (!tiposPermitidos.includes(tipoActividad)) {
+    throw new Error("Tipo de actividad no válido");
+  }
+
+  const estadoInstalacion = normalizarTexto(data.estadoInstalacion || data.estado_instalacion);
+  if (tipoActividad === "AUDITORIA EN FRIO" && !["FINALIZADA", "CANCELADA", "REPROGRAMADA"].includes(estadoInstalacion)) {
+    throw new Error("Estado de instalación no válido. Usa FINALIZADA, CANCELADA o REPROGRAMADA");
+  }
+
+  const id = generarIdActividadCampo();
+  const ahora = new Date();
+  const fecha = Utilities.formatDate(ahora, Session.getScriptTimeZone(), "dd/MM/yyyy");
+  const hora = Utilities.formatDate(ahora, Session.getScriptTimeZone(), "HH:mm:ss");
+
+  const evidencias = guardarEvidenciasActividadCampo(data, cuadrilla, id);
+
+  hoja.appendRow([
+    id,
+    fecha,
+    hora,
+    datosCuadrilla.sede || usuarioRegistro.sede,
+    usuarioRegistro.usuario,
+    cuadrilla,
+    tipoActividad,
+    validarSiNoActividad(data.clientePresente || data.cliente_presente, "Cliente presente"),
+    validarSiNoActividad(data.dniValidado || data.dni_validado, "DNI validado"),
+    estadoInstalacion,
+    data.dropMetraje || data.drop_metraje || "",
+    data.templadores || "",
+    validarSiNoActividad(data.reservaCable || data.reserva_cable, "Reserva de cable"),
+    validarSiNoActividad(data.potenciaConforme || data.potencia_conforme, "Potencia conforme"),
+    validarSiNoActividad(data.velocidadConforme || data.velocidad_conforme, "Velocidad conforme"),
+    validarSiNoActividad(data.limpiezaTrabajo || data.limpieza_trabajo, "Limpieza del trabajo"),
+    validarSiNoActividad(data.clienteConforme || data.cliente_conforme, "Cliente conforme"),
+    data.observaciones || "",
+    evidencias.foto1,
+    evidencias.foto2,
+    evidencias.fotoActa
+  ]);
+
+  return {
+    ok: true,
+    modulo: "ACTIVIDAD_CAMPO",
+    accion: "REGISTRAR",
+    id,
+    carpeta: evidencias.carpeta
+  };
+}
+
+function filaActividadCampoAObjeto(fila) {
+  return {
+    id: fila[0],
+    fecha: fila[1],
+    hora: fila[2],
+    sede: fila[3],
+    supervisor: fila[4],
+    cuadrilla: fila[5],
+    tipoActividad: fila[6],
+    clientePresente: fila[7],
+    dniValidado: fila[8],
+    estadoInstalacion: fila[9],
+    dropMetraje: fila[10],
+    templadores: fila[11],
+    reservaCable: fila[12],
+    potenciaConforme: fila[13],
+    velocidadConforme: fila[14],
+    limpiezaTrabajo: fila[15],
+    clienteConforme: fila[16],
+    observaciones: fila[17],
+    foto1: fila[18],
+    foto2: fila[19],
+    fotoActa: fila[20]
+  };
+}
+
+function fechaActividadComparable(valor) {
+  if (valor instanceof Date && !isNaN(valor.getTime())) return valor;
+  if (!valor) return null;
+
+  const texto = valor.toString().trim();
+  let partes = texto.split("/");
+  if (partes.length === 3) {
+    const fecha = new Date(Number(partes[2]), Number(partes[1]) - 1, Number(partes[0]));
+    if (!isNaN(fecha.getTime())) return fecha;
+  }
+
+  partes = texto.split("-");
+  if (partes.length === 3) {
+    const fecha = new Date(Number(partes[0]), Number(partes[1]) - 1, Number(partes[2]));
+    if (!isNaN(fecha.getTime())) return fecha;
+  }
+
+  return null;
+}
+
+function cumpleRangoFechaActividad(fechaRegistro, desde, hasta) {
+  const fecha = fechaActividadComparable(fechaRegistro);
+  if (!fecha) return true;
+
+  if (desde) {
+    const fDesde = fechaActividadComparable(desde);
+    if (fDesde && fecha < fDesde) return false;
+  }
+
+  if (hasta) {
+    const fHasta = fechaActividadComparable(hasta);
+    if (fHasta && fecha > fHasta) return false;
+  }
+
+  return true;
+}
+
+function listarActividadCampo(data) {
+  const hoja = asegurarHojaActividadCampo();
+  const datos = hoja.getDataRange().getValues();
+  const usuario = obtenerUsuarioApp(data.usuario);
+  const lista = [];
+
+  if (!(usuario.perfil === "SUPERVISOR" || esPerfilJefatura(usuario.perfil))) {
+    throw new Error("No tienes permiso para ver actividad en campo");
+  }
+
+  for (let i = 1; i < datos.length; i++) {
+    const item = filaActividadCampoAObjeto(datos[i]);
+
+    let permitir = false;
+    if (usuario.perfil === "SUPERVISOR") {
+      permitir = normalizarUsuario(item.supervisor) === normalizarUsuario(usuario.usuario);
+    }
+    if (esPerfilJefatura(usuario.perfil)) permitir = true;
+    if (!permitir) continue;
+
+    if (data.sede && normalizarTexto(data.sede) !== normalizarTexto(item.sede)) continue;
+    if (data.supervisor && normalizarUsuario(data.supervisor) !== normalizarUsuario(item.supervisor)) continue;
+    if (data.cuadrilla && normalizarCuadrilla(data.cuadrilla) !== normalizarCuadrilla(item.cuadrilla)) continue;
+    if (data.tipoActividad && normalizarTexto(data.tipoActividad) !== normalizarTexto(item.tipoActividad)) continue;
+    if (!cumpleRangoFechaActividad(item.fecha, data.fechaDesde, data.fechaHasta)) continue;
+
+    lista.push(item);
+  }
+
+  return {
+    ok: true,
+    modulo: "ACTIVIDAD_CAMPO",
+    accion: "LISTAR",
+    perfil: usuario.perfil,
+    registros: lista.length,
+    actividades: lista
+  };
+}
+
+function obtenerResumenActividadCampo(data) {
+  const listado = listarActividadCampo(data);
+  const tipos = [
+    "AUDITORIA EN FRIO",
+    "SUPERVISION EN CALIENTE",
+    "SEGUIMIENTO",
+    "VALIDACION DE OBSERVACION",
+    "CAPACITACION",
+    "CHECKLIST"
+  ];
+
+  const resumen = {};
+  const totales = {};
+  tipos.forEach(t => totales[t] = 0);
+  totales.TOTAL = 0;
+
+  listado.actividades.forEach(item => {
+    const supervisor = normalizarUsuario(item.supervisor) || "SIN_SUPERVISOR";
+    const tipo = normalizarTexto(item.tipoActividad);
+
+    if (!resumen[supervisor]) {
+      resumen[supervisor] = { supervisor };
+      tipos.forEach(t => resumen[supervisor][t] = 0);
+      resumen[supervisor].TOTAL = 0;
+    }
+
+    if (resumen[supervisor][tipo] === undefined) resumen[supervisor][tipo] = 0;
+    if (totales[tipo] === undefined) totales[tipo] = 0;
+
+    resumen[supervisor][tipo]++;
+    resumen[supervisor].TOTAL++;
+    totales[tipo]++;
+    totales.TOTAL++;
+  });
+
+  return {
+    ok: true,
+    modulo: "ACTIVIDAD_CAMPO",
+    accion: "RESUMEN",
+    registros: listado.registros,
+    totales,
+    resumen: Object.keys(resumen).map(k => resumen[k])
+  };
+}
+
+function listarCuadrillasActividadCampo(data) {
+  return listarCuadrillasObservacion(data);
+}
+
+function autorizarDriveActividadCampo() {
+  const carpeta = DriveApp.getFolderById(CARPETA_ACTIVIDAD_CAMPO);
+  const archivoPrueba = carpeta.createFile(
+    "PRUEBA_PERMISO_ACTIVIDAD_CAMPO.txt",
+    "Permiso Drive autorizado correctamente para Actividad en Campo"
+  );
+  const url = archivoPrueba.getUrl();
+  archivoPrueba.setTrashed(true);
+
+  return {
+    ok: true,
+    modulo: "ACTIVIDAD_CAMPO",
+    carpeta: carpeta.getName(),
+    url: carpeta.getUrl(),
+    prueba: url
+  };
+}
+
+
 /* =========================
    API PRINCIPAL
 ========================= */
@@ -1519,6 +1886,36 @@ function actualizarRanking(periodoManual, actualizadoAlManual) {
 function doPost(e) {
   try {
     const data = JSON.parse(e.postData.contents);
+
+    if (data.accion === "registrarActividadCampo") {
+      return ContentService
+        .createTextOutput(JSON.stringify(registrarActividadCampo(data)))
+        .setMimeType(ContentService.MimeType.JSON);
+    }
+
+    if (data.accion === "listarActividadCampo") {
+      return ContentService
+        .createTextOutput(JSON.stringify(listarActividadCampo(data)))
+        .setMimeType(ContentService.MimeType.JSON);
+    }
+
+    if (data.accion === "obtenerResumenActividadCampo") {
+      return ContentService
+        .createTextOutput(JSON.stringify(obtenerResumenActividadCampo(data)))
+        .setMimeType(ContentService.MimeType.JSON);
+    }
+
+    if (data.accion === "listarCuadrillasActividadCampo") {
+      return ContentService
+        .createTextOutput(JSON.stringify(listarCuadrillasActividadCampo(data)))
+        .setMimeType(ContentService.MimeType.JSON);
+    }
+
+    if (data.accion === "autorizarDriveActividadCampo") {
+      return ContentService
+        .createTextOutput(JSON.stringify(autorizarDriveActividadCampo()))
+        .setMimeType(ContentService.MimeType.JSON);
+    }
 
     if (data.accion === "registrarObservacion") {
       return ContentService

@@ -116,7 +116,8 @@ function configurarMenu(){
         "cardCapacitacion",
         "cardDashboardSupervisor",
         "cardDashboardJefatura",
-        "cardAdministracion"
+        "cardAdministracion",
+        "cardActividadCampo"
     ];
 
     todasLasCards.forEach(id => mostrarCardSeguro(id, false));
@@ -139,7 +140,8 @@ function configurarMenu(){
             "cardAccesos",
             "cardBiblioteca",
             "cardCapacitacion",
-            "cardDashboardSupervisor"
+            "cardDashboardSupervisor",
+            "cardActividadCampo"
         ],
         JEFATURA: [
             "cardRanking",
@@ -148,7 +150,8 @@ function configurarMenu(){
             "cardBiblioteca",
             "cardCapacitacion",
             "cardDashboardJefatura",
-            "cardAdministracion"
+            "cardAdministracion",
+            "cardActividadCampo"
         ],
         ADMIN: [
             "cardRanking",
@@ -157,7 +160,8 @@ function configurarMenu(){
             "cardBiblioteca",
             "cardCapacitacion",
             "cardDashboardJefatura",
-            "cardAdministracion"
+            "cardAdministracion",
+            "cardActividadCampo"
         ],
         ADMINISTRADOR: [
             "cardRanking",
@@ -166,7 +170,8 @@ function configurarMenu(){
             "cardBiblioteca",
             "cardCapacitacion",
             "cardDashboardJefatura",
-            "cardAdministracion"
+            "cardAdministracion",
+            "cardActividadCampo"
         ]
     };
 
