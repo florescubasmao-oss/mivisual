@@ -37,6 +37,13 @@ function leerFilaCSV(linea){
   return resultado.map(x => x.trim());
 }
 
+function listaPermisosAcceso(valor){
+  return normalizarDestinoAcceso(valor)
+    .split(",")
+    .map(x => x.trim())
+    .filter(Boolean);
+}
+
 function accesoVisiblePorDestino(destino, sede, cuadrilla){
   const destinoNormalizado = normalizarDestinoAcceso(destino);
   const sedeNormalizada = normalizarDestinoAcceso(sede);
@@ -45,19 +52,30 @@ function accesoVisiblePorDestino(destino, sede, cuadrilla){
   if(!destinoNormalizado) return false;
   if(destinoNormalizado === "TODOS") return true;
 
-  const destinosPermitidos = destinoNormalizado
-    .split(",")
-    .map(x => x.trim())
-    .filter(Boolean);
+  const destinosPermitidos = listaPermisosAcceso(destinoNormalizado);
 
   return destinosPermitidos.includes(sedeNormalizada) ||
          destinosPermitidos.includes(cuadrillaNormalizada);
+}
+
+function accesoVisiblePorPerfil(perfilAcceso, perfilUsuario){
+  const perfilAccesoNormalizado = normalizarDestinoAcceso(perfilAcceso || "TODOS");
+  const perfilUsuarioNormalizado = normalizarDestinoAcceso(perfilUsuario);
+
+  if(!perfilAccesoNormalizado) return true;
+  if(perfilAccesoNormalizado === "TODOS") return true;
+
+  const perfilesPermitidos = listaPermisosAcceso(perfilAccesoNormalizado);
+
+  return perfilesPermitidos.includes(perfilUsuarioNormalizado) ||
+         (perfilUsuarioNormalizado === "ADMIN" && perfilesPermitidos.includes("JEFATURA"));
 }
 
 async function mostrarAccesos(){
 
 const cuadrilla = localStorage.getItem("cuadrilla");
 const sede = localStorage.getItem("sede");
+const perfilUsuario = localStorage.getItem("perfil");
 
 const url = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRpVkCmSvopgPByWsEX6nkuAT6mf3yD2_Cywpl9pFSZEqYpxmprDePPeV0KNgT14YpEP6gkVlvOAtZy/pub?gid=177192408&single=true&output=csv";
 
@@ -73,8 +91,9 @@ for(let i=1; i<filas.length; i++){
 const datos = leerFilaCSV(filas[i]);
 
 let destino = datos[1]?.trim();
-let nombre = datos[2]?.trim();
-let link = datos[3]?.trim();
+let perfilAcceso = datos[2]?.trim() || "TODOS";
+let nombre = datos[3]?.trim();
+let link = datos[4]?.trim();
 let icono = "🔗";
 
 if(!nombre || !link) continue;
@@ -91,7 +110,7 @@ else if(nombre.includes("BOT")) icono = "🤖";
 
 else if(nombre.includes("Grupo")) icono = "📢";
   
-if(accesoVisiblePorDestino(destino, sede, cuadrilla)){
+if(accesoVisiblePorDestino(destino, sede, cuadrilla) && accesoVisiblePorPerfil(perfilAcceso, perfilUsuario)){
 
 resultado += `
 <div style="
