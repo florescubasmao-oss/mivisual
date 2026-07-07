@@ -57,6 +57,7 @@ function configurarMenu(){
         mostrarCard("cardBiblioteca", "block");
         mostrarCard("cardCapacitacion", "block");
         mostrarCard("cardDashboardSupervisor", "block");
+        // Supervisor NO ve Dashboard Jefatura ni Administración
     }
 
     if (perfil == "JEFATURA") {
@@ -65,9 +66,9 @@ function configurarMenu(){
         mostrarCard("cardAccesos", "block");
         mostrarCard("cardBiblioteca", "block");
         mostrarCard("cardCapacitacion", "block");
-        mostrarCard("cardDashboardSupervisor", "block");
         mostrarCard("cardDashboardJefatura", "block");
         mostrarCard("cardAdministracion", "block");
+        // Jefatura NO ve Dashboard Supervisor
     }
 }
 
