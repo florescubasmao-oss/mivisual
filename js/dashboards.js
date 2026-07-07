@@ -119,13 +119,13 @@ for(let j = 5; j < datos.length; j++){
 
   totalPuntos += puntosDia;
 
-  let semaforo = "🔴 SIN BONO";
+  let semaforo = "🔴";
 
 if(puntosDia >= 4.5){
-   semaforo = "🟢 BONO GANADO";
+   semaforo = "🟢";
 }
 else if(puntosDia == 4){
-   semaforo = "🟡 CERCA AL BONO";
+   semaforo = "🟡";
 }
 
 resultado += `
@@ -358,141 +358,142 @@ renderDashboardProduccion(dashboard);
 function renderDashboardProduccion(data){
 
     const totalPuntos = Number(data.resumen.totalPuntos || 0);
-    let estadoBono = "🔴 SIN BONO";
-    let estadoColor = "#991b1b";
 
-    if(totalPuntos >= 4.5){
-        estadoBono = "🟢 BONO GANADO";
-        estadoColor = "#15803d";
-    }else if(totalPuntos >= 4){
-        estadoBono = "🟡 CERCA AL BONO";
-        estadoColor = "#b45309";
-    }
+    const gruposPorFecha = {};
 
-    let html = `
-    <div style="padding:16px;max-width:920px;margin:auto;">
+    (data.detalle || []).forEach(r => {
+        const fecha = (r.fecha || "SIN FECHA").trim();
+        const cantidad = Number(r.cantidad) || 0;
+        const puntaje = Number(r.puntaje) || 0;
+        const puntos = cantidad * puntaje;
+        const tipo = (r.tipo || "Trabajo registrado").trim();
 
-        <h2 style="text-align:center;margin-bottom:14px;">📊 MI PRODUCCIÓN</h2>
+        if(!gruposPorFecha[fecha]){
+            gruposPorFecha[fecha] = {
+                fecha,
+                puntos: 0,
+                trabajos: {}
+            };
+        }
 
-        <div style="
-            background:linear-gradient(135deg,#123c69,#0f766e);
-            color:white;
-            border-radius:20px;
-            padding:22px;
-            margin-bottom:16px;
-            box-shadow:0 8px 18px rgba(0,0,0,.25);
-        ">
-            <div style="font-size:13px;opacity:.85;letter-spacing:.5px;">PUNTOS ACUMULADOS</div>
-            <div style="font-size:42px;font-weight:900;line-height:1;margin:8px 0;">${totalPuntos.toFixed(1)}</div>
-            <div style="display:inline-block;background:${estadoColor};padding:8px 12px;border-radius:999px;font-weight:bold;font-size:13px;">
-                ${estadoBono}
-            </div>
-        </div>
+        gruposPorFecha[fecha].puntos += puntos;
 
-        <div style="
-            display:grid;
-            grid-template-columns:repeat(2,minmax(0,1fr));
-            gap:10px;
-            margin-bottom:18px;
-        ">
-            ${kpiProduccionTecnico("📦", "Total", data.resumen.totalProduccion)}
-            ${kpiProduccionTecnico("🏠", "Instalaciones", data.resumen.totalInstalaciones)}
-            ${kpiProduccionTecnico("🔧", "Última Milla", data.resumen.totalUltimaMilla)}
-            ${kpiProduccionTecnico("📡", "Recableado VT", data.resumen.totalRecableadoVT)}
-            ${kpiProduccionTecnico("🔄", "Recableado Post", data.resumen.totalRecableadoPost)}
-            ${kpiProduccionTecnico("🚚", "Traslados", data.resumen.totalTraslados)}
-        </div>
+        if(!gruposPorFecha[fecha].trabajos[tipo]){
+            gruposPorFecha[fecha].trabajos[tipo] = {
+                tipo,
+                cantidad: 0,
+                puntos: 0
+            };
+        }
 
-        <div style="text-align:center;margin:18px 0;">
-            <button class="button_1" onclick="volverInicio()">🏠 Volver al Menú</button>
-        </div>
+        gruposPorFecha[fecha].trabajos[tipo].cantidad += cantidad;
+        gruposPorFecha[fecha].trabajos[tipo].puntos += puntos;
+    });
 
-        <h2 style="margin-top:20px;">📅 Historial de Producción</h2>
-    `;
-
-    if(!data.detalle || data.detalle.length === 0){
-        html += `
-            <div style="background:#1f2d48;color:white;border-radius:14px;padding:16px;margin-top:12px;">
-                No hay producción registrada para tu cuadrilla.
-            </div>
-        `;
-        html += `</div>`;
-        mostrarPantalla(html);
-        return;
-    }
-
-    let fechaActual = "";
-
-    data.detalle.sort((a, b) => {
+    const fechasOrdenadas = Object.values(gruposPorFecha).sort((a, b) => {
         const fa = (a.fecha || "").split("/").reverse().join("");
         const fb = (b.fecha || "").split("/").reverse().join("");
         return fb.localeCompare(fa);
     });
 
-    data.detalle.forEach(r => {
-        if (r.fecha !== fechaActual) {
-            fechaActual = r.fecha;
-            html += `
-                <div style="
-                    margin-top:18px;
-                    margin-bottom:8px;
-                    padding:10px 14px;
-                    border-radius:12px;
-                    background:#1e3a8a;
-                    color:white;
-                    font-weight:bold;
-                ">
-                    📅 ${fechaActual}
-                </div>
-            `;
-        }
+    let html = `
+    <div class="prod-telco">
 
-        const puntos = (Number(r.puntaje) || 0) * (Number(r.cantidad) || 0);
+        <div class="prod-topbar">
+            <div class="prod-eyebrow">APP OPERACIONES TELECOM</div>
+            <h2>📊 MI PRODUCCIÓN</h2>
+        </div>
+
+        <div class="prod-hero-card">
+            <div class="prod-hero-label">PUNTOS ACUMULADOS DEL MES</div>
+            <div class="prod-hero-value">${totalPuntos.toFixed(1)}</div>
+        </div>
+
+        <div class="prod-kpi-grid">
+            ${kpiProduccionTecnico("📦", "Total", data.resumen.totalProduccion)}
+            ${kpiProduccionTecnico("🏠", "Instalaciones", data.resumen.totalInstalaciones)}
+            ${kpiProduccionTecnico("🛠", "Última Milla", data.resumen.totalUltimaMilla)}
+            ${kpiProduccionTecnico("🔧", "Recableado VT", data.resumen.totalRecableadoVT)}
+            ${kpiProduccionTecnico("🧰", "Recableado Post", data.resumen.totalRecableadoPost)}
+            ${kpiProduccionTecnico("🚚", "Traslados", data.resumen.totalTraslados)}
+        </div>
+
+        <div class="prod-section-title">📅 HISTORIAL DIARIO</div>
+    `;
+
+    if(!data.detalle || data.detalle.length === 0){
+        html += `
+            <div class="prod-empty-card">
+                No hay producción registrada para tu cuadrilla.
+            </div>
+        `;
+        html += `
+            <div class="prod-actions">
+                <button class="button_1" onclick="volverInicio()">🏠 Volver al Menú</button>
+            </div>
+        </div>`;
+        mostrarPantalla(html);
+        return;
+    }
+
+    fechasOrdenadas.forEach(dia => {
+        const puntosDia = Number(dia.puntos || 0);
+        const semaforo = semaforoProduccionDia(puntosDia);
+        const trabajos = Object.values(dia.trabajos).sort((a,b) => a.tipo.localeCompare(b.tipo));
 
         html += `
-            <div style="
-                background:#1f2d48;
-                border-left:5px solid #16a34a;
-                border-radius:16px;
-                padding:15px;
-                margin:10px 0;
-                color:white;
-                box-shadow:0 4px 12px rgba(0,0,0,.18);
-            ">
-                <div style="font-size:16px;font-weight:800;line-height:1.35;margin-bottom:10px;">
-                    ${r.tipo || "Trabajo registrado"}
+            <div class="prod-day-card ${semaforo.clase}">
+                <div class="prod-day-head">
+                    <div class="prod-day-date">📅 ${dia.fecha}</div>
+                    <div class="prod-day-score">${semaforo.icono} ${puntosDia.toFixed(1)} pts</div>
                 </div>
 
-                <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
-                    <div style="background:#0f172a;border-radius:12px;padding:10px;">
-                        <div style="font-size:11px;color:#9fb7d8;">CANTIDAD</div>
-                        <div style="font-size:22px;font-weight:900;">${r.cantidad}</div>
-                    </div>
-                    <div style="background:#0f172a;border-radius:12px;padding:10px;">
-                        <div style="font-size:11px;color:#9fb7d8;">PUNTOS</div>
-                        <div style="font-size:22px;font-weight:900;color:#facc15;">${puntos.toFixed(1)}</div>
-                    </div>
+                <div class="prod-day-list">
+        `;
+
+        trabajos.forEach(t => {
+            html += `
+                <div class="prod-day-row">
+                    <div class="prod-day-work">${t.tipo}</div>
+                    <div class="prod-day-qty">${t.cantidad}</div>
+                </div>
+            `;
+        });
+
+        html += `
                 </div>
             </div>
         `;
     });
 
-    html += `</div>`;
+    html += `
+        <div class="prod-actions">
+            <button class="button_1" onclick="volverInicio()">🏠 Volver al Menú</button>
+        </div>
+    </div>`;
+
     mostrarPantalla(html);
+}
+
+function semaforoProduccionDia(puntos){
+    const p = Number(puntos) || 0;
+
+    if(p > 4.5){
+        return { icono: "🟢", clase: "prod-green" };
+    }
+
+    if(p >= 4){
+        return { icono: "🟡", clase: "prod-yellow" };
+    }
+
+    return { icono: "🔴", clase: "prod-red" };
 }
 
 function kpiProduccionTecnico(icono, titulo, valor){
     return `
-        <div style="
-            background:#1f2d48;
-            color:white;
-            border-radius:16px;
-            padding:14px;
-            min-height:78px;
-            box-shadow:0 4px 12px rgba(0,0,0,.18);
-        ">
-            <div style="font-size:12px;color:#9fb7d8;line-height:1.2;">${icono} ${titulo}</div>
-            <div style="font-size:26px;font-weight:900;margin-top:6px;">${valor || 0}</div>
+        <div class="prod-kpi-card">
+            <div class="prod-kpi-label">${icono} ${titulo}</div>
+            <div class="prod-kpi-value">${valor || 0}</div>
         </div>
     `;
 }
@@ -1621,237 +1622,4 @@ function mostrarAdministracion(){
 
     mostrarPantalla(html);
 
-}
-
-/* =====================================================
-   MI VISUAL v4.0 - DASHBOARDS METAS Y PRODUCCIÓN TELCO
-   Overrides finales para diseño móvil corporativo
-===================================================== */
-
-const META_PRODUCCION_CUADRILLA = 120;
-const META_EFECTIVIDAD = 70;
-const META_RECABLEADO = 42;
-const META_VTRGAR = 3;
-const META_OBSERVACIONES = 200;
-const URL_RANKING_MI_VISUAL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRpVkCmSvopgPByWsEX6nkuAT6mf3yD2_Cywpl9pFSZEqYpxmprDePPeV0KNgT14YpEP6gkVlvOAtZy/pub?gid=1269910675&single=true&output=csv";
-
-function mv4Num(valor){
-    const n = Number((valor || "").toString().replace("%", "").replace("S/", "").replace(/,/g, ".").replace(/\s/g, ""));
-    return isNaN(n) ? 0 : n;
-}
-function mv4Pct(valor){
-    const n = mv4Num(valor);
-    return n <= 1 ? n * 100 : n;
-}
-function mv4Money(n){ return "S/ " + (Number(n) || 0).toFixed(2); }
-function mv4Per(n){ return (Number(n) || 0).toFixed(2) + "%"; }
-function mv4Norm(txt){
-    return (txt || "").toString().toUpperCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/\s+/g, " ").trim();
-}
-function mv4CSV(texto){
-    if(typeof parseCSVRanking === "function") return parseCSVRanking(texto);
-    return texto.trim().split(/\r?\n/).map(l => l.split(",").map(x => x.replace(/^"|"$/g, "").trim()));
-}
-function mv4FilaRanking(datos){
-    if(typeof filaRanking === "function") return filaRanking(datos);
-    return {
-        id: datos[0] || "",
-        cuadrilla: datos[1] || "",
-        actualizacion: datos[2] || "",
-        usuario: datos[3] || "",
-        sede: mv4Norm(datos[4] || ""),
-        plataforma: mv4Norm(datos[5] || ""),
-        produccion: mv4Num(datos[6]),
-        efectividad: mv4Pct(datos[7]),
-        recableado: mv4Pct(datos[8]),
-        vtrgar: mv4Pct(datos[9]),
-        observaciones: mv4Num(datos[10]),
-        montoTotalObs: mv4Num(datos[11]),
-        montoAfectadoObs: mv4Num(datos[12]),
-        puntaje: mv4Num(datos[13]),
-        puestoSede: Number(datos[14]) || 0,
-        puestoRegion: Number(datos[15]) || 0,
-        puestoPlataforma: Number(datos[16]) || 0
-    };
-}
-async function mv4ObtenerRanking(){
-    const res = await fetch(URL_RANKING_MI_VISUAL + "&t=" + Date.now());
-    const texto = await res.text();
-    return mv4CSV(texto).slice(1).map(mv4FilaRanking).filter(x => x.cuadrilla);
-}
-function mv4Estado(tipo, valor, meta){
-    const v = Number(valor) || 0;
-    if(tipo === "mayor") return v >= meta ? "🟢" : "🔴";
-    if(tipo === "menor") return v <= meta ? "🟢" : "🔴";
-    return "🔴";
-}
-function mv4Prom(lista, campo){
-    if(!lista.length) return 0;
-    return lista.reduce((s,x)=>s+(Number(x[campo])||0),0) / lista.length;
-}
-function mv4Resumen(lista){
-    const cuadrillas = lista.length;
-    const produccion = lista.reduce((s,x)=>s+(Number(x.produccion)||0),0);
-    const metaProduccion = cuadrillas * META_PRODUCCION_CUADRILLA;
-    const efectividad = mv4Prom(lista, "efectividad");
-    const recableado = mv4Prom(lista, "recableado");
-    const vtrgar = mv4Prom(lista, "vtrgar");
-    const obs = lista.reduce((s,x)=>s+(Number(x.montoAfectadoObs)||0),0);
-    const ok = [
-        produccion >= metaProduccion,
-        efectividad >= META_EFECTIVIDAD,
-        recableado <= META_RECABLEADO,
-        vtrgar <= META_VTRGAR,
-        obs <= META_OBSERVACIONES
-    ].filter(Boolean).length;
-    return { cuadrillas, produccion, metaProduccion, efectividad, recableado, vtrgar, obs, ok, cumplimiento: ok * 20 };
-}
-function mv4KpiCard({icono,titulo,valor,meta,estado,detalle}){
-    const id = "kpi_" + Math.random().toString(36).slice(2);
-    return `
-    <div class="mv4-kpi-card">
-        <div class="mv4-kpi-head">
-            <div><span>${icono}</span> <b>${titulo}</b></div>
-            <div class="mv4-kpi-status">${estado}</div>
-        </div>
-        <div class="mv4-kpi-value">${valor}</div>
-        <div class="mv4-kpi-meta">Meta: ${meta}</div>
-        <button class="mv4-link-btn" onclick="toggleDetalle('${id}', this)">▼ Ver cuadrillas</button>
-        <div id="${id}" class="mv4-kpi-detail" style="display:none;">${detalle}</div>
-    </div>`;
-}
-function mv4LineaCuadrilla(nombre, valor, meta, estado){
-    return `
-    <div class="mv4-linea-cuadrilla">
-        <div class="mv4-linea-nombre">${nombre}</div>
-        <div class="mv4-linea-valores">
-            <span>${valor}</span>
-            <small>${meta}</small>
-            <b>${estado}</b>
-        </div>
-    </div>`;
-}
-function mv4DetalleKpi(lista, tipo){
-    return lista.slice().sort((a,b)=>a.cuadrilla.localeCompare(b.cuadrilla)).map(x => {
-        if(tipo === "produccion") return mv4LineaCuadrilla(x.cuadrilla, `${(x.produccion||0).toFixed(1)} / ${META_PRODUCCION_CUADRILLA} pts`, `Meta ${META_PRODUCCION_CUADRILLA}`, mv4Estado("mayor", x.produccion, META_PRODUCCION_CUADRILLA));
-        if(tipo === "efectividad") return mv4LineaCuadrilla(x.cuadrilla, mv4Per(x.efectividad), `Meta ≥ ${META_EFECTIVIDAD}%`, mv4Estado("mayor", x.efectividad, META_EFECTIVIDAD));
-        if(tipo === "recableado") return mv4LineaCuadrilla(x.cuadrilla, mv4Per(x.recableado), `Meta ≤ ${META_RECABLEADO}%`, mv4Estado("menor", x.recableado, META_RECABLEADO));
-        if(tipo === "vtrgar") return mv4LineaCuadrilla(x.cuadrilla, mv4Per(x.vtrgar), `Meta ≤ ${META_VTRGAR}%`, mv4Estado("menor", x.vtrgar, META_VTRGAR));
-        if(tipo === "obs") return mv4LineaCuadrilla(x.cuadrilla, mv4Money(x.montoAfectadoObs), `Meta ≤ S/ ${META_OBSERVACIONES}`, mv4Estado("menor", x.montoAfectadoObs, META_OBSERVACIONES));
-        return "";
-    }).join("");
-}
-function mv4DashboardKpis(lista){
-    const r = mv4Resumen(lista);
-    const produccionPct = r.metaProduccion > 0 ? (r.produccion / r.metaProduccion * 100) : 0;
-    return `
-        <div class="mv4-general-card">
-            <div class="mv4-general-title">📋 CUMPLIMIENTO GENERAL</div>
-            <div class="mv4-general-value">${r.cumplimiento}%</div>
-            <div class="mv4-progress"><span style="width:${r.cumplimiento}%"></span></div>
-            <div class="mv4-general-sub">${r.ok} de 5 metas cumplidas</div>
-        </div>
-        ${mv4KpiCard({icono:"📈",titulo:"Producción",valor:`${r.produccion.toFixed(1)} / ${r.metaProduccion} pts`,meta:`${META_PRODUCCION_CUADRILLA} pts x ${r.cuadrillas} cuadrillas`,estado:mv4Estado("mayor", r.produccion, r.metaProduccion),detalle:mv4DetalleKpi(lista,"produccion")})}
-        ${mv4KpiCard({icono:"🎯",titulo:"Efectividad",valor:mv4Per(r.efectividad),meta:`≥ ${META_EFECTIVIDAD}%`,estado:mv4Estado("mayor", r.efectividad, META_EFECTIVIDAD),detalle:mv4DetalleKpi(lista,"efectividad")})}
-        ${mv4KpiCard({icono:"🔧",titulo:"Recableado",valor:mv4Per(r.recableado),meta:`≤ ${META_RECABLEADO}%`,estado:mv4Estado("menor", r.recableado, META_RECABLEADO),detalle:mv4DetalleKpi(lista,"recableado")})}
-        ${mv4KpiCard({icono:"📡",titulo:"VTR / GAR",valor:mv4Per(r.vtrgar),meta:`≤ ${META_VTRGAR}%`,estado:mv4Estado("menor", r.vtrgar, META_VTRGAR),detalle:mv4DetalleKpi(lista,"vtrgar")})}
-        ${mv4KpiCard({icono:"🚨",titulo:"Observaciones",valor:mv4Money(r.obs),meta:`≤ S/ ${META_OBSERVACIONES}`,estado:mv4Estado("menor", r.obs, META_OBSERVACIONES),detalle:mv4DetalleKpi(lista,"obs")})}
-    `;
-}
-
-function renderDashboardProduccion(data){
-    const totalPuntos = Number(data.resumen.totalPuntos || 0);
-    const meta = META_PRODUCCION_CUADRILLA;
-    let html = `
-    <div class="mv4-page">
-        <h2 class="mv4-title">📊 MI PRODUCCIÓN</h2>
-        <div class="mv4-hero-card">
-            <div class="mv4-hero-label">PUNTOS ACUMULADOS DEL MES</div>
-            <div class="mv4-hero-value">${totalPuntos.toFixed(1)}</div>
-            <div class="mv4-hero-meta">🎯 Meta: ${meta} pts</div>
-        </div>
-        <div class="mv4-kpi-grid">
-            ${kpiProduccionTecnico("📦", "Total", data.resumen.totalProduccion)}
-            ${kpiProduccionTecnico("🏠", "Instalaciones", data.resumen.totalInstalaciones)}
-            ${kpiProduccionTecnico("🔧", "Última Milla", data.resumen.totalUltimaMilla)}
-            ${kpiProduccionTecnico("📡", "Recableado VT", data.resumen.totalRecableadoVT)}
-            ${kpiProduccionTecnico("🔄", "Recableado Post", data.resumen.totalRecableadoPost)}
-            ${kpiProduccionTecnico("🚚", "Traslados", data.resumen.totalTraslados)}
-        </div>
-        <h2 class="mv4-section-title">📅 Historial Diario</h2>`;
-
-    if(!data.detalle || !data.detalle.length){
-        html += `<div class="mv4-empty">No hay producción registrada para tu cuadrilla.</div><button class="button_1" onclick="volverInicio()">🏠 Volver</button></div>`;
-        mostrarPantalla(html); return;
-    }
-    const porDia = {};
-    data.detalle.forEach(r => {
-        const f = r.fecha || "SIN FECHA";
-        if(!porDia[f]) porDia[f] = { puntos:0, items:[] };
-        const pts = (Number(r.puntaje)||0) * (Number(r.cantidad)||0);
-        porDia[f].puntos += pts;
-        porDia[f].items.push(r);
-    });
-    Object.keys(porDia).sort((a,b)=>b.split('/').reverse().join('').localeCompare(a.split('/').reverse().join(''))).forEach(fecha => {
-        const d = porDia[fecha];
-        const sem = d.puntos > 4.5 ? "🟢" : (d.puntos >= 4 ? "🟡" : "🔴");
-        html += `<div class="mv4-day-card"><div class="mv4-day-head"><b>📅 ${fecha}</b><span>${sem} ${d.puntos.toFixed(1)} pts</span></div>`;
-        d.items.forEach(r => {
-            html += `<div class="mv4-day-row"><span>${r.tipo || "Trabajo registrado"}</span><b>${r.cantidad || 0}</b></div>`;
-        });
-        html += `</div>`;
-    });
-    html += `<button class="button_1" onclick="volverInicio()">🏠 Volver</button></div>`;
-    mostrarPantalla(html);
-}
-
-async function mostrarDashboardSupervisor(){
-    const sede = mv4Norm(localStorage.getItem("sede"));
-    mostrarPantalla(`<div class="mv4-page"><h2 class="mv4-title">👷 SUPERVISOR</h2><div class="mv4-loading">Cargando dashboard...</div></div>`);
-    try{
-        const lista = (await mv4ObtenerRanking()).filter(x => mv4Norm(x.sede) === sede);
-        const actualizacion = lista[0]?.actualizacion || "-";
-        mostrarPantalla(`
-            <div class="mv4-page">
-                <div class="mv4-top-card"><div class="mv4-top-role">👷 SUPERVISOR</div><div class="mv4-top-sede">${sede || "SEDE"}</div><div class="mv4-top-sub">Actualizado: ${actualizacion}</div></div>
-                ${mv4DashboardKpis(lista)}
-                <button class="button_1" onclick="volverInicio()">🏠 Volver</button>
-            </div>`);
-    }catch(e){ mostrarPantalla(`<div class="mv4-page"><h2>👷 Supervisor</h2><div class="mv4-error">${e.message}</div></div>`); }
-}
-
-function mv4AgruparPorSede(lista){
-    const grupos = {};
-    lista.forEach(x => { const s = mv4Norm(x.sede || "SIN SEDE"); if(!grupos[s]) grupos[s]=[]; grupos[s].push(x); });
-    return grupos;
-}
-function mv4SedeCard(sede, lista){
-    const r = mv4Resumen(lista);
-    const id = "sede_" + sede.replace(/\W/g, "_") + "_" + Math.random().toString(36).slice(2);
-    return `
-    <div class="mv4-sede-card">
-        <div class="mv4-kpi-head"><div><b>🏢 ${sede}</b></div><div class="mv4-kpi-status">${r.cumplimiento >= 80 ? "🟢" : (r.cumplimiento >= 60 ? "🟡" : "🔴")}</div></div>
-        <div class="mv4-sede-grid">
-            <span>Prod: <b>${r.produccion.toFixed(1)} / ${r.metaProduccion}</b></span>
-            <span>Efect: <b>${mv4Per(r.efectividad)}</b></span>
-            <span>Rec: <b>${mv4Per(r.recableado)}</b></span>
-            <span>VTR/GAR: <b>${mv4Per(r.vtrgar)}</b></span>
-            <span>Obs: <b>${mv4Money(r.obs)}</b></span>
-            <span>Metas: <b>${r.ok}/5</b></span>
-        </div>
-        <button class="mv4-link-btn" onclick="toggleDetalle('${id}', this)">▼ Ver indicadores y cuadrillas</button>
-        <div id="${id}" style="display:none;">${mv4DashboardKpis(lista)}</div>
-    </div>`;
-}
-async function mostrarDashboardJefatura(){
-    mostrarPantalla(`<div class="mv4-page"><h2 class="mv4-title">👔 JEFATURA</h2><div class="mv4-loading">Cargando Zona Norte...</div></div>`);
-    try{
-        const lista = await mv4ObtenerRanking();
-        const grupos = mv4AgruparPorSede(lista);
-        const general = mv4Resumen(lista);
-        let html = `<div class="mv4-page"><div class="mv4-top-card"><div class="mv4-top-role">👔 JEFATURA</div><div class="mv4-top-sede">ZONA NORTE</div><div class="mv4-top-sub">${lista.length} cuadrillas</div></div><div class="mv4-general-card"><div class="mv4-general-title">📋 CUMPLIMIENTO ZONA NORTE</div><div class="mv4-general-value">${general.cumplimiento}%</div><div class="mv4-progress"><span style="width:${general.cumplimiento}%"></span></div><div class="mv4-general-sub">${general.ok} de 5 metas cumplidas</div></div>`;
-        Object.keys(grupos).sort().forEach(s => html += mv4SedeCard(s, grupos[s]));
-        html += `<button class="button_1" onclick="volverInicio()">🏠 Volver</button></div>`;
-        mostrarPantalla(html);
-    }catch(e){ mostrarPantalla(`<div class="mv4-page"><h2>👔 Jefatura</h2><div class="mv4-error">${e.message}</div></div>`); }
 }
