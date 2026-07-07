@@ -1,5 +1,59 @@
 // MI VISUAL - archivo modularizado
 
+function normalizarDestinoAcceso(valor){
+  return (valor || "")
+    .toString()
+    .toUpperCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+
+function leerFilaCSV(linea){
+  const resultado = [];
+  let actual = "";
+  let entreComillas = false;
+
+  for(let i = 0; i < linea.length; i++){
+    const caracter = linea[i];
+    const siguiente = linea[i + 1];
+
+    if(caracter === '"' && entreComillas && siguiente === '"'){
+      actual += '"';
+      i++;
+    } else if(caracter === '"'){
+      entreComillas = !entreComillas;
+    } else if(caracter === ',' && !entreComillas){
+      resultado.push(actual);
+      actual = "";
+    } else {
+      actual += caracter;
+    }
+  }
+
+  resultado.push(actual);
+  return resultado.map(x => x.trim());
+}
+
+function accesoVisiblePorDestino(destino, sede, cuadrilla){
+  const destinoNormalizado = normalizarDestinoAcceso(destino);
+  const sedeNormalizada = normalizarDestinoAcceso(sede);
+  const cuadrillaNormalizada = normalizarDestinoAcceso(cuadrilla);
+
+  if(!destinoNormalizado) return false;
+  if(destinoNormalizado === "TODOS") return true;
+
+  const destinosPermitidos = destinoNormalizado
+    .split(",")
+    .map(x => x.trim())
+    .filter(Boolean);
+
+  return destinosPermitidos.includes(sedeNormalizada) ||
+         destinosPermitidos.includes(cuadrillaNormalizada);
+}
+
 async function mostrarAccesos(){
 
 const cuadrilla = localStorage.getItem("cuadrilla");
@@ -16,12 +70,14 @@ let resultado = "<h3>🚀 ACCESOS</h3>";
 
 for(let i=1; i<filas.length; i++){
 
-const datos = filas[i].split(",");
+const datos = leerFilaCSV(filas[i]);
 
 let destino = datos[1]?.trim();
 let nombre = datos[2]?.trim();
 let link = datos[3]?.trim();
 let icono = "🔗";
+
+if(!nombre || !link) continue;
 
 if(nombre.includes("Asistencia")) icono = "📅";
 
@@ -35,11 +91,7 @@ else if(nombre.includes("BOT")) icono = "🤖";
 
 else if(nombre.includes("Grupo")) icono = "📢";
   
-if(
-destino == "TODOS" ||
-destino == sede ||
-destino == cuadrilla
-){
+if(accesoVisiblePorDestino(destino, sede, cuadrilla)){
 
 resultado += `
 <div style="
@@ -87,7 +139,7 @@ let resultado = "<h3>📚 BIBLIOTECA</h3>";
 
 for(let i=1; i<filas.length; i++){
 
-const datos = filas[i].split(",");
+const datos = leerFilaCSV(filas[i]);
 
 let nombre = datos[1]?.trim();
 let link = datos[2]?.trim();
@@ -140,7 +192,7 @@ let resultado = `
 
 for(let i=1; i<filas.length; i++){
 
-const datos = filas[i].split(",");
+const datos = leerFilaCSV(filas[i]);
 
 let nombre = datos[1]?.replace(/"/g,"").trim();
 let tipo = datos[2]?.replace(/"/g,"").trim();
