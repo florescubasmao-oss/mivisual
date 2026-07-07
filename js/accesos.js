@@ -77,38 +77,52 @@ const cuadrilla = localStorage.getItem("cuadrilla");
 const sede = localStorage.getItem("sede");
 const perfilUsuario = localStorage.getItem("perfil");
 
-const url = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRpVkCmSvopgPByWsEX6nkuAT6mf3yD2_Cywpl9pFSZEqYpxmprDePPeV0KNgT14YpEP6gkVlvOAtZy/pub?gid=177192408&single=true&output=csv";
+const url = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRpVkCmSvopgPByWsEX6nkuAT6mf3yD2_Cywpl9pFSZEqYpxmprDePPeV0KNgT14YpEP6gkVlvOAtZy/pub?gid=177192408&single=true&output=csv&t=" + Date.now();
 
-const respuesta = await fetch(url);
+const respuesta = await fetch(url, { cache: "no-store" });
 const texto = await respuesta.text();
 
-const filas = texto.split("\n");
+const filas = texto.split(/\r?\n/).filter(x => x.trim() !== "");
 
 let resultado = "<h3>🚀 ACCESOS</h3>";
+
+if(filas.length <= 1){
+  document.getElementById("resultadoProduccion").innerHTML = resultado + "<p>No hay accesos registrados.</p>";
+  return;
+}
+
+const encabezados = leerFilaCSV(filas[0]).map(x => normalizarDestinoAcceso(x));
+
+const idxDestino = encabezados.indexOf("DESTINO");
+const idxPerfil = encabezados.indexOf("PERFIL");
+const idxNombre = encabezados.indexOf("NOMBRE");
+const idxLink = encabezados.indexOf("LINK");
 
 for(let i=1; i<filas.length; i++){
 
 const datos = leerFilaCSV(filas[i]);
 
-let destino = datos[1]?.trim();
-let perfilAcceso = datos[2]?.trim() || "TODOS";
-let nombre = datos[3]?.trim();
-let link = datos[4]?.trim();
+let destino = idxDestino >= 0 ? datos[idxDestino]?.trim() : datos[1]?.trim();
+let perfilAcceso = idxPerfil >= 0 ? (datos[idxPerfil]?.trim() || "TODOS") : "TODOS";
+let nombre = idxNombre >= 0 ? datos[idxNombre]?.trim() : datos[2]?.trim();
+let link = idxLink >= 0 ? datos[idxLink]?.trim() : datos[3]?.trim();
 let icono = "🔗";
 
 if(!nombre || !link) continue;
 
-if(nombre.includes("Asistencia")) icono = "📅";
+const nombreNormalizado = normalizarDestinoAcceso(nombre);
 
-else if(nombre.includes("Reunión")) icono = "🎥";
+if(nombreNormalizado.includes("ASISTENCIA")) icono = "📅";
 
-else if(nombre.includes("Liquidación")) icono = "💰";
+else if(nombreNormalizado.includes("REUNION")) icono = "🎥";
 
-else if(nombre.includes("VALIDACION")) icono = "📋";
+else if(nombreNormalizado.includes("LIQUIDACION")) icono = "💰";
 
-else if(nombre.includes("BOT")) icono = "🤖";
+else if(nombreNormalizado.includes("VALIDACION")) icono = "📋";
 
-else if(nombre.includes("Grupo")) icono = "📢";
+else if(nombreNormalizado.includes("BOT")) icono = "🤖";
+
+else if(nombreNormalizado.includes("GRUPO")) icono = "📢";
   
 if(accesoVisiblePorDestino(destino, sede, cuadrilla) && accesoVisiblePorPerfil(perfilAcceso, perfilUsuario)){
 
@@ -141,11 +155,10 @@ ${icono} ${nombre}
 
 }
 
-mostrarPantalla(resultado);
-
+document.getElementById("resultadoProduccion").innerHTML = resultado;
 }
 
-async function mostrarBiblioteca(){
+function mostrarBiblioteca(){
 
 const url = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRpVkCmSvopgPByWsEX6nkuAT6mf3yD2_Cywpl9pFSZEqYpxmprDePPeV0KNgT14YpEP6gkVlvOAtZy/pub?gid=1577462287&single=true&output=csv";
 
