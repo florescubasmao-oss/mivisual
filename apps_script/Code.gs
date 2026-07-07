@@ -771,6 +771,16 @@ function obtenerDatosCuadrillaApp(cuadrillaBuscar) {
   return mapa[cuadrilla];
 }
 
+
+function autorizarDriveObservaciones() {
+  const carpeta = DriveApp.getFolderById(CARPETA_EVIDENCIAS_OBSERVACIONES);
+  return {
+    ok: true,
+    carpeta: carpeta.getName(),
+    url: carpeta.getUrl()
+  };
+}
+
 function guardarEvidenciaObservacion(cuadrilla, codigo, evidenciaBase64, evidenciaNombre, evidenciaMimeType, indice) {
   if (!evidenciaBase64) return "";
 

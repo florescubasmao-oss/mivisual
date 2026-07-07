@@ -1,6 +1,6 @@
 // MI VISUAL - Módulo Observaciones
 
-const API_OBSERVACIONES = "https://script.google.com/macros/s/AKfycbykWyLiVHlNhwf6TbnDThP-KFWU6LRUflqI-9-jltTFhWoEw-7SexBGTjTdJnpFo8Rm/exec";
+const API_OBSERVACIONES = "https://script.google.com/macros/s/AKfycbzmKi97XUtSllWxhmqwqBqkwFFl6tcnFHn5ebPrepJ_hrx_Hq1TzPWR2opWGMDirwyU/exec";
 
 function usuarioActualObs(){
     return {
@@ -19,6 +19,38 @@ async function apiObservaciones(payload){
     });
     const txt = await res.text();
     try { return JSON.parse(txt); } catch(e){ throw new Error(txt); }
+}
+
+function mostrarCargandoObs(texto){
+    let overlay = document.getElementById("obsLoadingOverlay");
+    if(!overlay){
+        overlay = document.createElement("div");
+        overlay.id = "obsLoadingOverlay";
+        overlay.className = "obs-loading-overlay";
+        overlay.innerHTML = `<div class="obs-loading-box"><div class="obs-spinner"></div><b id="obsLoadingTexto">Cargando...</b></div>`;
+        document.body.appendChild(overlay);
+    }
+    const t = document.getElementById("obsLoadingTexto");
+    if(t) t.textContent = texto || "Cargando...";
+    overlay.style.display = "flex";
+}
+
+function ocultarCargandoObs(){
+    const overlay = document.getElementById("obsLoadingOverlay");
+    if(overlay) overlay.style.display = "none";
+}
+
+function bloquearBotonObs(btn, texto){
+    if(!btn) return;
+    btn.dataset.textoOriginal = btn.innerHTML;
+    btn.disabled = true;
+    btn.innerHTML = texto || "Procesando...";
+}
+
+function liberarBotonObs(btn){
+    if(!btn) return;
+    btn.disabled = false;
+    if(btn.dataset.textoOriginal) btn.innerHTML = btn.dataset.textoOriginal;
 }
 
 function formatoFechaObs(valor){
@@ -153,7 +185,7 @@ function mostrarFormularioObservacion(){
             <input id="obsMonto" type="number" step="0.01" placeholder="0.00">
             <label>Descripción</label>
             <textarea id="obsDescripcion" rows="5" placeholder="Describe la observación..."></textarea>
-            <button class="btnObsPrincipal" onclick="guardarObservacion()">Guardar Observación</button>
+            <button class="btnObsPrincipal" onclick="guardarObservacion(this)">Guardar Observación</button>
             <button onclick="mostrarObservaciones()">Volver</button>
             <div id="obsMensaje"></div>
         </div>
@@ -224,10 +256,12 @@ async function cargarCuadrillasObservacion(){
     }
 }
 
-async function guardarObservacion(){
+async function guardarObservacion(btn){
     const u = usuarioActualObs();
     const msg = document.getElementById("obsMensaje");
-    msg.innerHTML = "Guardando...";
+    msg.innerHTML = "Guardando observación...";
+    bloquearBotonObs(btn, "Guardando...");
+    mostrarCargandoObs("Guardando observación...");
 
     try{
         const data = await apiObservaciones({
@@ -246,6 +280,9 @@ async function guardarObservacion(){
         setTimeout(mostrarObservaciones, 800);
     }catch(err){
         msg.innerHTML = `❌ ${err.message}`;
+    }finally{
+        ocultarCargandoObs();
+        liberarBotonObs(btn);
     }
 }
 
@@ -256,7 +293,7 @@ function mostrarDescargoObservacion(id){
             <textarea id="descargoTexto" rows="6" placeholder="Escribe tu descargo..."></textarea>
             <label>Evidencia imagen (máximo 5 fotos)</label>
             <input id="descargoArchivo" type="file" accept="image/*" multiple>
-            <button class="btnObsPrincipal" onclick="guardarDescargoObservacion('${id}')">Enviar Descargo</button>
+            <button class="btnObsPrincipal" onclick="guardarDescargoObservacion('${id}', this)">Enviar Descargo</button>
             <button onclick="mostrarObservaciones()">Volver</button>
             <div id="descargoMensaje"></div>
         </div>
@@ -277,10 +314,12 @@ function leerArchivoBase64(file){
     });
 }
 
-async function guardarDescargoObservacion(id){
+async function guardarDescargoObservacion(id, btn){
     const u = usuarioActualObs();
     const msg = document.getElementById("descargoMensaje");
-    msg.innerHTML = "Enviando...";
+    msg.innerHTML = "Enviando descargo...";
+    bloquearBotonObs(btn, "Enviando...");
+    mostrarCargandoObs("Subiendo evidencia y enviando descargo...");
 
     try{
         const files = Array.from(document.getElementById("descargoArchivo").files || []);
@@ -310,6 +349,9 @@ async function guardarDescargoObservacion(id){
         setTimeout(mostrarObservaciones, 800);
     }catch(err){
         msg.innerHTML = `❌ ${err.message}`;
+    }finally{
+        ocultarCargandoObs();
+        liberarBotonObs(btn);
     }
 }
 
@@ -327,17 +369,19 @@ function mostrarCambioEstadoObservacion(id, estado, monto){
             </select>
             <label>Monto</label>
             <input id="nuevoMontoObs" type="number" step="0.01" value="${monto || 0}">
-            <button class="btnObsPrincipal" onclick="guardarCambioEstadoObservacion('${id}')">Guardar Cambio</button>
+            <button class="btnObsPrincipal" onclick="guardarCambioEstadoObservacion('${id}', this)">Guardar Cambio</button>
             <button onclick="mostrarObservaciones()">Volver</button>
             <div id="estadoMensaje"></div>
         </div>
     `);
 }
 
-async function guardarCambioEstadoObservacion(id){
+async function guardarCambioEstadoObservacion(id, btn){
     const u = usuarioActualObs();
     const msg = document.getElementById("estadoMensaje");
-    msg.innerHTML = "Guardando...";
+    msg.innerHTML = "Guardando cambio...";
+    bloquearBotonObs(btn, "Guardando...");
+    mostrarCargandoObs("Actualizando estado...");
     try{
         const data = await apiObservaciones({
             accion: "actualizarEstadoObservacion",
@@ -351,5 +395,8 @@ async function guardarCambioEstadoObservacion(id){
         setTimeout(mostrarObservaciones, 800);
     }catch(err){
         msg.innerHTML = `❌ ${err.message}`;
+    }finally{
+        ocultarCargandoObs();
+        liberarBotonObs(btn);
     }
 }

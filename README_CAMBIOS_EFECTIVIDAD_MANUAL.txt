@@ -17,7 +17,7 @@ CAMBIOS APLICADOS - EFECTIVIDAD CON PERIODO MANUAL
    - Devuelve mensaje final con periodo y actualizadoAl.
 
 4. URL de Apps Script usada en accesos.js:
-   https://script.google.com/macros/s/AKfycbykWyLiVHlNhwf6TbnDThP-KFWU6LRUflqI-9-jltTFhWoEw-7SexBGTjTdJnpFo8Rm/exec
+   https://script.google.com/macros/s/AKfycbzmKi97XUtSllWxhmqwqBqkwFFl6tcnFHn5ebPrepJ_hrx_Hq1TzPWR2opWGMDirwyU/exec
 
 PASOS:
 1. Reemplazar archivos del proyecto por los del ZIP.

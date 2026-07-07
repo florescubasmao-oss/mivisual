@@ -136,3 +136,9 @@ font-size:12px;
 .obs-vacio,.obs-error{background:#f8fafc;border-radius:12px;padding:16px;margin-top:12px;}
 .obs-error{color:#b91c1c;background:#fee2e2;}
 @media(max-width:520px){.obs-filtros,.obs-grid{grid-template-columns:1fr}.obs-card{border-radius:14px;padding:12px}.obs-contenedor{padding:10px}.obs-card-head{flex-direction:column}.obs-badge{align-self:flex-start}}
+
+.obs-loading-overlay{position:fixed;inset:0;background:rgba(15,23,42,.72);z-index:99999;display:none;align-items:center;justify-content:center;padding:20px;}
+.obs-loading-box{background:#fff;color:#0f172a;border-radius:18px;padding:22px 26px;box-shadow:0 20px 50px rgba(0,0,0,.35);display:flex;gap:14px;align-items:center;font-size:16px;max-width:90%;}
+.obs-spinner{width:28px;height:28px;border-radius:50%;border:4px solid #cbd5e1;border-top-color:#0f766e;animation:obsSpin .8s linear infinite;}
+@keyframes obsSpin{to{transform:rotate(360deg)}}
+.obs-contenedor button:disabled{opacity:.65;cursor:not-allowed;}
