@@ -163,29 +163,28 @@ async function cargarCuadrillasObservacion(){
     const sel = document.getElementById("obsCuadrilla");
     if(!sel) return;
 
+    sel.innerHTML = `<option value="">Cargando cuadrillas...</option>`;
+
     try{
-        const data = await apiObservaciones({ accion: "listarUsuarios" });
-        if(!data.ok) throw new Error(data.error || "No se pudo cargar usuarios");
-
-        let usuarios = data.usuarios || [];
-        usuarios = usuarios.filter(x => (x.cuadrilla || "").trim() !== "");
-
-        if(u.perfil === "SUPERVISOR"){
-            usuarios = usuarios.filter(x => (x.sede || "").toUpperCase() === (u.sede || "").toUpperCase());
-        }
-
-        const vistos = new Set();
-        const opciones = [];
-        usuarios.forEach(x => {
-            const c = (x.cuadrilla || "").trim();
-            if(c && !vistos.has(c)){
-                vistos.add(c);
-                opciones.push(c);
-            }
+        const data = await apiObservaciones({
+            accion: "listarCuadrillasObservacion",
+            usuario: u.usuario
         });
 
-        sel.innerHTML = '<option value="">Seleccione cuadrilla</option>' + opciones.map(c => `<option value="${c}">${c}</option>`).join("");
+        if(!data.ok) throw new Error(data.error || "No se pudo cargar cuadrillas");
+
+        const cuadrillas = data.cuadrillas || [];
+
+        if(cuadrillas.length === 0){
+            sel.innerHTML = `<option value="">No hay cuadrillas disponibles</option>`;
+            return;
+        }
+
+        sel.innerHTML = '<option value="">Seleccione cuadrilla</option>' +
+            cuadrillas.map(c => `<option value="${c.cuadrilla}">${c.cuadrilla}</option>`).join("");
+
     }catch(err){
+        console.error("Error cargando cuadrillas:", err);
         sel.innerHTML = `<option value="">Error al cargar cuadrillas</option>`;
     }
 }

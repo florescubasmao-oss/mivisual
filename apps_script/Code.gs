@@ -631,6 +631,51 @@ function listarUsuarios() {
   };
 }
 
+function listarCuadrillasObservacion(data) {
+  const usuario = obtenerUsuarioActual(data.usuario);
+  const mapaUsuarios = obtenerMapaUsuarios();
+  const lista = [];
+  const vistos = {};
+
+  Object.keys(mapaUsuarios).forEach(cuadrilla => {
+    const item = mapaUsuarios[cuadrilla];
+    if (!cuadrilla || vistos[cuadrilla]) return;
+    if (item.estado && item.estado !== "ACTIVO") return;
+
+    if (usuario.perfil === "SUPERVISOR" && normalizarTexto(item.sede) !== normalizarTexto(usuario.sede)) {
+      return;
+    }
+
+    if (usuario.perfil === "TECNICO" && normalizarCuadrilla(usuario.cuadrilla) !== normalizarCuadrilla(cuadrilla)) {
+      return;
+    }
+
+    lista.push({
+      cuadrilla: cuadrilla,
+      sede: item.sede,
+      plataforma: item.plataforma,
+      supervisor: item.usuarioSupervisor
+    });
+
+    vistos[cuadrilla] = true;
+  });
+
+  lista.sort((a, b) => {
+    const sedeA = (a.sede || "").localeCompare(b.sede || "");
+    if (sedeA !== 0) return sedeA;
+    return (a.cuadrilla || "").localeCompare(b.cuadrilla || "");
+  });
+
+  return {
+    ok: true,
+    modulo: "OBSERVACIONES",
+    accion: "LISTAR_CUADRILLAS",
+    registros: lista.length,
+    cuadrillas: lista
+  };
+}
+
+
 
 /* =========================
    OBSERVACIONES
@@ -1349,6 +1394,12 @@ function doPost(e) {
     if (data.accion === "procesarUsuarios") {
       return ContentService
         .createTextOutput(JSON.stringify(procesarUsuarios(data.registros)))
+        .setMimeType(ContentService.MimeType.JSON);
+    }
+
+    if (data.accion === "listarCuadrillasObservacion") {
+      return ContentService
+        .createTextOutput(JSON.stringify(listarCuadrillasObservacion(data)))
         .setMimeType(ContentService.MimeType.JSON);
     }
 
