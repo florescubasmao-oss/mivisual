@@ -632,32 +632,35 @@ function listarUsuarios() {
 }
 
 function listarCuadrillasObservacion(data) {
-  const usuario = obtenerUsuarioActual(data.usuario);
+  const usuario = obtenerUsuarioApp(data.usuario);
   const mapaUsuarios = obtenerMapaUsuarios();
   const lista = [];
   const vistos = {};
 
   Object.keys(mapaUsuarios).forEach(cuadrilla => {
     const item = mapaUsuarios[cuadrilla];
-    if (!cuadrilla || vistos[cuadrilla]) return;
-    if (item.estado && item.estado !== "ACTIVO") return;
+    const cuad = normalizarCuadrilla(cuadrilla);
+    if (!cuad || vistos[cuad]) return;
 
-    if (usuario.perfil === "SUPERVISOR" && normalizarTexto(item.sede) !== normalizarTexto(usuario.sede)) {
-      return;
-    }
+    const estado = normalizarTexto(item.estado || "ACTIVO");
+    if (estado && estado !== "ACTIVO") return;
 
-    if (usuario.perfil === "TECNICO" && normalizarCuadrilla(usuario.cuadrilla) !== normalizarCuadrilla(cuadrilla)) {
+    if (usuario.perfil === "SUPERVISOR") {
+      if (normalizarTexto(item.sede) !== normalizarTexto(usuario.sede)) return;
+    } else if (usuario.perfil === "TECNICO") {
+      if (normalizarCuadrilla(usuario.cuadrilla) !== cuad) return;
+    } else if (!esPerfilJefatura(usuario.perfil)) {
       return;
     }
 
     lista.push({
-      cuadrilla: cuadrilla,
+      cuadrilla: cuad,
       sede: item.sede,
       plataforma: item.plataforma,
       supervisor: item.usuarioSupervisor
     });
 
-    vistos[cuadrilla] = true;
+    vistos[cuad] = true;
   });
 
   lista.sort((a, b) => {
@@ -670,10 +673,13 @@ function listarCuadrillasObservacion(data) {
     ok: true,
     modulo: "OBSERVACIONES",
     accion: "LISTAR_CUADRILLAS",
+    perfil: usuario.perfil,
+    sede: usuario.sede,
     registros: lista.length,
     cuadrillas: lista
   };
 }
+
 
 
 

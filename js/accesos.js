@@ -396,7 +396,7 @@ html += "</table>";
 
 document.getElementById("vistaPrevia").innerHTML = html;
 
-const url = "https://script.google.com/macros/s/AKfycby16xG8tgkMAY8uS7aEbng2OaAQOVTQGf-RKKTqP03ywz20twrSf5dtlSIbuuxA0_sU/exec";
+const url = "https://script.google.com/macros/s/AKfycbyhNI7z2tSw_aZzt187FGnwBbpe7vfQDpe1dt-LCVFmDpNXsin4TZZPriG0wvOxRfSU/exec";
 
 fetch(url, {
     method: "POST",
@@ -672,7 +672,7 @@ async function procesarEfectividad(){
 
     document.getElementById("vistaPreviaEfectividad").innerHTML = html;
 
-    const url = "https://script.google.com/macros/s/AKfycby16xG8tgkMAY8uS7aEbng2OaAQOVTQGf-RKKTqP03ywz20twrSf5dtlSIbuuxA0_sU/exec";
+    const url = "https://script.google.com/macros/s/AKfycbyhNI7z2tSw_aZzt187FGnwBbpe7vfQDpe1dt-LCVFmDpNXsin4TZZPriG0wvOxRfSU/exec";
 
     try{
 
@@ -946,7 +946,7 @@ async function procesarRecableado(){
 
     document.getElementById("vistaPreviaRecableado").innerHTML = html;
 
-    const url = "https://script.google.com/macros/s/AKfycby16xG8tgkMAY8uS7aEbng2OaAQOVTQGf-RKKTqP03ywz20twrSf5dtlSIbuuxA0_sU/exec";
+    const url = "https://script.google.com/macros/s/AKfycbyhNI7z2tSw_aZzt187FGnwBbpe7vfQDpe1dt-LCVFmDpNXsin4TZZPriG0wvOxRfSU/exec";
 
     try{
 
@@ -1214,7 +1214,7 @@ async function procesarVtrGar(){
 
     document.getElementById("vistaPreviaVtrGar").innerHTML = html;
 
-    const url = "https://script.google.com/macros/s/AKfycby16xG8tgkMAY8uS7aEbng2OaAQOVTQGf-RKKTqP03ywz20twrSf5dtlSIbuuxA0_sU/exec";
+    const url = "https://script.google.com/macros/s/AKfycbyhNI7z2tSw_aZzt187FGnwBbpe7vfQDpe1dt-LCVFmDpNXsin4TZZPriG0wvOxRfSU/exec";
 
     try{
 
@@ -1470,7 +1470,7 @@ async function procesarUsuarios(){
         html += `</table>`;
         document.getElementById("vistaPreviaUsuarios").innerHTML = html;
 
-        const url = "https://script.google.com/macros/s/AKfycby16xG8tgkMAY8uS7aEbng2OaAQOVTQGf-RKKTqP03ywz20twrSf5dtlSIbuuxA0_sU/exec";
+        const url = "https://script.google.com/macros/s/AKfycbyhNI7z2tSw_aZzt187FGnwBbpe7vfQDpe1dt-LCVFmDpNXsin4TZZPriG0wvOxRfSU/exec";
 
         const respuesta = await fetch(url, {
             method: "POST",
@@ -1495,7 +1495,7 @@ async function procesarUsuarios(){
 }
 
 async function enviarAccionUsuario(payload, mensajeOk){
-    const url = "https://script.google.com/macros/s/AKfycby16xG8tgkMAY8uS7aEbng2OaAQOVTQGf-RKKTqP03ywz20twrSf5dtlSIbuuxA0_sU/exec";
+    const url = "https://script.google.com/macros/s/AKfycbyhNI7z2tSw_aZzt187FGnwBbpe7vfQDpe1dt-LCVFmDpNXsin4TZZPriG0wvOxRfSU/exec";
 
     try{
         const respuesta = await fetch(url, {
@@ -1596,7 +1596,7 @@ function editarUsuarioApp(){
 }
 
 async function listarUsuariosApp(){
-    const url = "https://script.google.com/macros/s/AKfycby16xG8tgkMAY8uS7aEbng2OaAQOVTQGf-RKKTqP03ywz20twrSf5dtlSIbuuxA0_sU/exec";
+    const url = "https://script.google.com/macros/s/AKfycbyhNI7z2tSw_aZzt187FGnwBbpe7vfQDpe1dt-LCVFmDpNXsin4TZZPriG0wvOxRfSU/exec";
 
     try{
         const respuesta = await fetch(url, {
@@ -1710,7 +1710,7 @@ function mostrarImportarRanking(){
 
 async function procesarRanking(){
 
-    const url = "https://script.google.com/macros/s/AKfycby16xG8tgkMAY8uS7aEbng2OaAQOVTQGf-RKKTqP03ywz20twrSf5dtlSIbuuxA0_sU/exec";
+    const url = "https://script.google.com/macros/s/AKfycbyhNI7z2tSw_aZzt187FGnwBbpe7vfQDpe1dt-LCVFmDpNXsin4TZZPriG0wvOxRfSU/exec";
 
     try{
         const contenedor = document.getElementById("resultadoRankingAdmin");
