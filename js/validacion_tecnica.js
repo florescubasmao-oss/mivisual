@@ -253,30 +253,68 @@ async function guardarValidacionTecnica(btn){
     }
 }
 
+function safeValidacion(v){
+    return (v === undefined || v === null || v === "") ? "-" : String(v)
+        .replace(/&/g,"&amp;")
+        .replace(/</g,"&lt;")
+        .replace(/>/g,"&gt;")
+        .replace(/"/g,"&quot;")
+        .replace(/'/g,"&#039;");
+}
+
+function filaResumenValidacion(label, valor){
+    return `<div class="vt-resumen-row"><span>${label}</span><b>${safeValidacion(valor)}</b></div>`;
+}
+
 function mostrarConfirmacionValidacionTecnica(r){
+    const linkTelegram = r.linkTelegram || "";
+    const sede = (r.sede || "").toString().toUpperCase();
     const html = `
     ${estiloValidacionTecnica()}
+    <style>
+        .vt-confirm{max-width:760px;margin:0 auto;color:#0f172a}
+        .vt-confirm-title{font-size:22px}
+        .vt-confirm-id{font-size:24px;margin-bottom:10px}
+        .vt-resumen{background:#f8fafc;border:1px solid #dbeafe;border-radius:16px;padding:12px;margin-top:12px}
+        .vt-resumen-row{display:grid;grid-template-columns:165px 1fr;gap:10px;padding:8px 0;border-bottom:1px solid #e2e8f0;font-size:14px}
+        .vt-resumen-row:last-child{border-bottom:0}
+        .vt-resumen-row span{font-weight:900;color:#475569;text-transform:uppercase;font-size:11px;letter-spacing:.03em}
+        .vt-resumen-row b{color:#0f172a;word-break:break-word;line-height:1.35}
+        .vt-motivo-box{background:#fff;border:1px solid #e2e8f0;border-radius:14px;padding:12px;margin-top:10px;color:#0f172a;line-height:1.45;white-space:pre-wrap}
+        .vt-estado-final{background:#fef3c7;border:1px solid #fde68a;color:#92400e;border-radius:14px;padding:12px;margin:12px 0;font-weight:900}
+        .vt-telegram-box{background:#eff6ff;border:1px solid #bfdbfe;color:#1e3a8a;border-radius:14px;padding:12px;font-size:13px;margin:12px 0;line-height:1.45}
+        .vt-telegram-link{display:block;margin-top:8px;font-weight:900;color:#1d4ed8;word-break:break-all}
+        @media(max-width:640px){.vt-resumen-row{grid-template-columns:1fr;gap:3px}}
+    </style>
     <div class="vt-wrap">
         <div class="vt-confirm">
             <div class="vt-confirm-title">VALIDACIÓN TÉCNICA</div>
-            <div class="vt-confirm-id">${r.id}</div>
-            <div class="vt-grid">
-                <div><b>Fecha:</b><br>${r.fecha || "-"}</div>
-                <div><b>Hora:</b><br>${r.hora || "-"}</div>
-                <div><b>Técnico:</b><br>${r.tecnico || "-"}</div>
-                <div><b>Cuadrilla:</b><br>${r.cuadrilla || "-"}</div>
-                <div><b>Código:</b><br>${r.codigo || "-"}</div>
-                <div><b>Ticket:</b><br>${r.ticketFinal || "-"}</div>
-                <div><b>DNI:</b><br>${r.dniCliente || "-"}</div>
-                <div><b>Tipo:</b><br>${r.tipoValidacion || "-"}</div>
+            <div class="vt-confirm-id">${safeValidacion(r.id)}</div>
+
+            <div class="vt-resumen">
+                ${filaResumenValidacion("Fecha registro", r.fecha)}
+                ${filaResumenValidacion("Hora registro", r.hora)}
+                ${filaResumenValidacion("Técnico", r.tecnico)}
+                ${filaResumenValidacion("Sede", r.sede)}
+                ${filaResumenValidacion("Cuadrilla", r.cuadrilla)}
+                ${filaResumenValidacion("Tipo validación", r.tipoValidacion)}
+                ${filaResumenValidacion("Código", r.codigo)}
+                ${filaResumenValidacion("Ticket", r.ticketFinal)}
+                ${filaResumenValidacion("DNI cliente", r.dniCliente)}
             </div>
-            <div style="margin-top:12px"><b>Motivo:</b><br>${r.motivoTecnico || "-"}</div>
-            <div class="vt-note"><b>Estado:</b> 🟡 PENDIENTE</div>
-            <div class="vt-note">
-                📲 Tome un pantallazo de este registro y envíelo junto con el video al grupo oficial de Telegram.
+
+            <div style="margin-top:12px;font-weight:900;color:#475569;text-transform:uppercase;font-size:11px;letter-spacing:.03em">Motivo técnico</div>
+            <div class="vt-motivo-box">${safeValidacion(r.motivoTecnico)}</div>
+
+            <div class="vt-estado-final">Estado: 🟡 PENDIENTE</div>
+
+            <div class="vt-telegram-box">
+                📲 Tome un pantallazo de este registro y envíelo junto con el video al grupo oficial de Telegram de ${safeValidacion(sede)}.
+                ${linkTelegram ? `<span class="vt-telegram-link">${safeValidacion(linkTelegram)}</span>` : ""}
             </div>
+
             <div class="vt-actions">
-                ${r.linkTelegram ? `<button class="vt-btn money" onclick="window.open('${r.linkTelegram}','_blank')">📨 Abrir Grupo Telegram</button>` : ""}
+                ${linkTelegram ? `<button class="vt-btn money" onclick="window.open('${linkTelegram}','_blank')">📨 Abrir Grupo Telegram</button>` : ""}
                 <button class="vt-btn secondary" onclick="mostrarValidacionTecnica()">Finalizar</button>
             </div>
         </div>
