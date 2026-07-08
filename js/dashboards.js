@@ -1705,10 +1705,228 @@ function mv4FilaRanking(datos){
         puestoPlataforma: Number(datos[16]) || 0
     };
 }
+
+/* =====================================================
+   MI VISUAL v58 - Detalle analítico por cuadrilla
+   Supervisor/Jefatura: acordeón por KPI con detalle operativo
+===================================================== */
+const MV58_URL_PRODUCCION = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRpVkCmSvopgPByWsEX6nkuAT6mf3yD2_Cywpl9pFSZEqYpxmprDePPeV0KNgT14YpEP6gkVlvOAtZy/pub?gid=1814992325&single=true&output=csv";
+const MV58_URL_CATALOGO = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRpVkCmSvopgPByWsEX6nkuAT6mf3yD2_Cywpl9pFSZEqYpxmprDePPeV0KNgT14YpEP6gkVlvOAtZy/pub?gid=2013842388&single=true&output=csv";
+const MV58_URL_EFECTIVIDAD = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRpVkCmSvopgPByWsEX6nkuAT6mf3yD2_Cywpl9pFSZEqYpxmprDePPeV0KNgT14YpEP6gkVlvOAtZy/pub?gid=1731471693&single=true&output=csv";
+const MV58_URL_RECABLEADO = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRpVkCmSvopgPByWsEX6nkuAT6mf3yD2_Cywpl9pFSZEqYpxmprDePPeV0KNgT14YpEP6gkVlvOAtZy/pub?gid=317412212&single=true&output=csv";
+const MV58_URL_VTRGAR = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRpVkCmSvopgPByWsEX6nkuAT6mf3yD2_Cywpl9pFSZEqYpxmprDePPeV0KNgT14YpEP6gkVlvOAtZy/pub?gid=1778246699&single=true&output=csv";
+const MV58_API = "https://script.google.com/macros/s/AKfycbyeehN6RJgZZPjYYK3VvJSIk68wHdq6Q37OS40TgIuOB_duhtr7nhhptTSWZp36qbN3/exec";
+
+function mv58Key(txt){ return mv4Norm(txt).replace(/^P\s+(\d+)/, "P$1"); }
+function mv58IdSeguro(txt){ return mv58Key(txt).replace(/[^A-Z0-9]+/g, "_"); }
+function mv58Filas(texto){ return mv4CSV(texto || "").filter(r => r.some(c => (c || "").toString().trim() !== "")); }
+async function mv58GetCSV(url){
+    const r = await fetch(url + (url.includes("?") ? "&" : "?") + "t=" + Date.now());
+    return mv58Filas(await r.text());
+}
+function mv58Valor(n){ return Number(n || 0).toFixed(1).replace(".0", ""); }
+function mv58KpiMini(titulo, valor){
+    return `<div style="background:#0f1f35;border-radius:12px;padding:10px;min-height:58px;"><div style="font-size:11px;color:#9fb7d8;font-weight:800;text-transform:uppercase;">${titulo}</div><div style="font-size:20px;font-weight:900;margin-top:4px;">${valor}</div></div>`;
+}
+function mv58EstadoProduccion(v){
+    const p = Number(v) || 0;
+    if(p >= META_PRODUCCION_CUADRILLA) return {txt:"🟢 Meta cumplida", color:"#22c55e"};
+    if(p >= META_PRODUCCION_CUADRILLA * 0.8) return {txt:"🟡 En avance", color:"#facc15"};
+    return {txt:"🔴 Bajo meta", color:"#ef4444"};
+}
+function mv58EstadoMayor(v, meta){
+    const n = Number(v) || 0;
+    if(n >= meta) return {txt:"🟢 Conforme", color:"#22c55e"};
+    if(n >= meta * 0.9) return {txt:"🟡 Cerca", color:"#facc15"};
+    return {txt:"🔴 Bajo", color:"#ef4444"};
+}
+function mv58EstadoMenor(v, meta){
+    const n = Number(v) || 0;
+    if(n <= meta) return {txt:"🟢 Conforme", color:"#22c55e"};
+    if(n <= meta * 1.25) return {txt:"🟡 Atento", color:"#facc15"};
+    return {txt:"🔴 Crítico", color:"#ef4444"};
+}
+async function mv58EnriquecerRanking(lista){
+    try{
+        const [prod, cat, ef, rec, vtr] = await Promise.all([
+            mv58GetCSV(MV58_URL_PRODUCCION),
+            mv58GetCSV(MV58_URL_CATALOGO),
+            mv58GetCSV(MV58_URL_EFECTIVIDAD),
+            mv58GetCSV(MV58_URL_RECABLEADO),
+            mv58GetCSV(MV58_URL_VTRGAR)
+        ]);
+
+        const catalogo = {};
+        cat.slice(1).forEach(r => {
+            const codigo = (r[0] || "").toString().trim();
+            if(!codigo) return;
+            catalogo[codigo] = { tipo:r[1] || codigo, plataforma:r[2] || "", puntaje:mv4Num(r[3]), grupo:r[4] || "OTROS" };
+        });
+
+        const prodMap = {};
+        prod.slice(1).forEach(r => {
+            const cuadrilla = mv58Key(r[1]);
+            if(!cuadrilla) return;
+            const codigo = (r[3] || "").toString().trim();
+            const cantidad = mv4Num(r[4]);
+            const c = catalogo[codigo] || { tipo: codigo || "Trabajo registrado", puntaje: 1, grupo:"OTROS" };
+            const puntos = cantidad * (Number(c.puntaje) || 0);
+            if(!prodMap[cuadrilla]) prodMap[cuadrilla] = { totalOrdenes:0, totalPuntos:0, grupos:{}, tipos:{}, fechas:{} };
+            const m = prodMap[cuadrilla];
+            m.totalOrdenes += cantidad;
+            m.totalPuntos += puntos;
+            const grupo = c.grupo || "OTROS";
+            if(!m.grupos[grupo]) m.grupos[grupo] = { cantidad:0, puntos:0 };
+            m.grupos[grupo].cantidad += cantidad; m.grupos[grupo].puntos += puntos;
+            const tipo = c.tipo || codigo || "Trabajo registrado";
+            if(!m.tipos[tipo]) m.tipos[tipo] = { cantidad:0, puntos:0, puntaje:c.puntaje || 0 };
+            m.tipos[tipo].cantidad += cantidad; m.tipos[tipo].puntos += puntos;
+            const fecha = r[2] || "SIN FECHA";
+            if(!m.fechas[fecha]) m.fechas[fecha] = { cantidad:0, puntos:0 };
+            m.fechas[fecha].cantidad += cantidad; m.fechas[fecha].puntos += puntos;
+        });
+
+        const efMap = {};
+        ef.slice(1).forEach(r => {
+            const cuadrilla = mv58Key(r[2]); if(!cuadrilla) return;
+            efMap[cuadrilla] = {
+                finalizadas:mv4Num(r[4]), canceladas:mv4Num(r[5]), regestion:mv4Num(r[6]), reprogramadas:mv4Num(r[7]), total:mv4Num(r[8]), efectividad:mv4Pct(r[9])
+            };
+        });
+
+        const recMap = {};
+        rec.slice(1).forEach(r => {
+            const cuadrilla = mv58Key(r[2]); if(!cuadrilla) return;
+            recMap[cuadrilla] = { los:mv4Num(r[4]), recableados:mv4Num(r[5]), porcentaje:mv4Pct(r[6]) };
+        });
+
+        const vtrMap = {};
+        vtr.slice(1).forEach(r => {
+            const cuadrilla = mv58Key(r[2]); if(!cuadrilla) return;
+            vtrMap[cuadrilla] = { finalizadas:mv4Num(r[4]), gar:mv4Num(r[5]), vtr:mv4Num(r[6]), total:mv4Num(r[7]), porcentaje:mv4Pct(r[8]) };
+        });
+
+        const obsMap = await mv58ObtenerObservacionesMap();
+
+        lista.forEach(x => {
+            const k = mv58Key(x.cuadrilla);
+            x.detProduccion = prodMap[k] || { totalOrdenes:0, totalPuntos:Number(x.produccion)||0, grupos:{}, tipos:{}, fechas:{} };
+            x.detEfectividad = efMap[k] || { finalizadas:0, canceladas:0, regestion:0, reprogramadas:0, total:0, efectividad:Number(x.efectividad)||0 };
+            x.detRecableado = recMap[k] || { los:0, recableados:0, porcentaje:Number(x.recableado)||0 };
+            x.detVtrGar = vtrMap[k] || { finalizadas:0, gar:0, vtr:0, total:0, porcentaje:Number(x.vtrgar)||0 };
+            x.detObservaciones = obsMap[k] || { total: Number(x.observaciones)||0, pendientes:0, montoTotal:Number(x.montoTotalObs)||0, montoPendiente:Number(x.montoAfectadoObs)||0, estados:{} };
+        });
+    }catch(e){
+        console.warn("v58 detalle no disponible", e);
+    }
+    return lista;
+}
+async function mv58ObtenerObservacionesMap(){
+    const mapa = {};
+    try{
+        const usuario = localStorage.getItem("usuario") || "";
+        const res = await fetch(MV58_API, { method:"POST", body:JSON.stringify({accion:"listarObservaciones", usuario}) });
+        const data = await res.json();
+        const lista = data.observaciones || [];
+        const pendientes = ["DERIVADO", "EN PROCESO", "PENALIZADO", "APELADO"];
+        lista.forEach(o => {
+            const k = mv58Key(o.cuadrilla); if(!k) return;
+            if(!mapa[k]) mapa[k] = { total:0, pendientes:0, montoTotal:0, montoPendiente:0, estados:{} };
+            const estado = mv4Norm(o.estado || "SIN ESTADO");
+            const monto = Number(o.monto) || 0;
+            mapa[k].total++;
+            mapa[k].montoTotal += monto;
+            mapa[k].estados[estado] = (mapa[k].estados[estado] || 0) + 1;
+            if(pendientes.includes(estado)){ mapa[k].pendientes++; mapa[k].montoPendiente += monto; }
+        });
+    }catch(e){ console.warn("No se pudo obtener observaciones v58", e); }
+    return mapa;
+}
+function mv58CuadrillaAnalitica(x, tipo, puesto){
+    const id = `v58_${tipo}_${puesto}_${mv58IdSeguro(x.cuadrilla)}`;
+    const cab = mv58CabeceraCuadrilla(x, tipo, puesto);
+    const detalle = mv58DetalleCuadrilla(x, tipo);
+    return `
+    <div style="background:#142844;border:1px solid rgba(255,255,255,.08);border-radius:16px;padding:12px;margin:10px 0;color:white;">
+        ${cab}
+        <button class="mv4-link-btn" onclick="toggleDetalle('${id}', this)">▼ Ver detalle</button>
+        <div id="${id}" style="display:none;margin-top:10px;">${detalle}</div>
+    </div>`;
+}
+function mv58CabeceraCuadrilla(x, tipo, puesto){
+    let valor = ""; let estado = {txt:"", color:"#9fb7d8"};
+    if(tipo === "produccion"){ valor = `${mv58Valor(x.produccion)} / ${META_PRODUCCION_CUADRILLA} pts`; estado = mv58EstadoProduccion(x.produccion); }
+    if(tipo === "efectividad"){ valor = mv4Per(x.efectividad); estado = mv58EstadoMayor(x.efectividad, META_EFECTIVIDAD); }
+    if(tipo === "recableado"){ valor = mv4Per(x.recableado); estado = mv58EstadoMenor(x.recableado, META_RECABLEADO); }
+    if(tipo === "vtrgar"){ valor = mv4Per(x.vtrgar); estado = mv58EstadoMenor(x.vtrgar, META_VTRGAR); }
+    if(tipo === "obs"){ valor = mv4Money(x.montoAfectadoObs); estado = mv58EstadoMenor(x.montoAfectadoObs, META_OBSERVACIONES); }
+    return `
+        <div style="display:flex;gap:10px;align-items:flex-start;justify-content:space-between;">
+            <div style="min-width:0;">
+                <div style="font-size:12px;color:#facc15;font-weight:900;">${puesto}°</div>
+                <div style="font-size:14px;font-weight:900;line-height:1.25;">${x.cuadrilla}</div>
+                <div style="font-size:18px;font-weight:900;margin-top:6px;">${valor}</div>
+            </div>
+            <div style="white-space:nowrap;color:${estado.color};font-weight:900;font-size:12px;">${estado.txt}</div>
+        </div>`;
+}
+function mv58DetalleCuadrilla(x, tipo){
+    if(tipo === "produccion") return mv58DetalleProduccion(x.detProduccion || {});
+    if(tipo === "efectividad") return mv58DetalleEfectividad(x.detEfectividad || {});
+    if(tipo === "recableado") return mv58DetalleRecableado(x.detRecableado || {});
+    if(tipo === "vtrgar") return mv58DetalleVtrGar(x.detVtrGar || {});
+    if(tipo === "obs") return mv58DetalleObs(x.detObservaciones || {});
+    return "";
+}
+function mv58DetalleProduccion(d){
+    const grupos = d.grupos || {}; const tipos = d.tipos || {};
+    const grupoNombre = {ULTIMA_MILLA:"Última Milla", INSTALACION:"Instalaciones", RECABLEADO_VT:"Recableado VT", RECABLEADO_POST:"Recableado Post", TRASLADO:"Traslados", OTROS:"Otros"};
+    let html = `<div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;">${mv58KpiMini("Órdenes", mv58Valor(d.totalOrdenes))}${mv58KpiMini("Puntos", mv58Valor(d.totalPuntos))}</div>`;
+    html += `<div style="margin-top:10px;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;">`;
+    Object.keys(grupos).sort().forEach(g => html += mv58KpiMini(grupoNombre[g] || g, `${mv58Valor(grupos[g].cantidad)} / ${mv58Valor(grupos[g].puntos)} pts`));
+    html += `</div><div style="margin-top:12px;font-weight:900;color:#9fb7d8;">Detalle por tipo de trabajo</div>`;
+    Object.keys(tipos).sort((a,b)=>tipos[b].puntos-tipos[a].puntos).forEach(t => {
+        const it = tipos[t];
+        html += `<div style="background:#0f1f35;border-radius:10px;padding:9px;margin-top:7px;"><div style="font-size:12px;font-weight:800;">${t}</div><div style="font-size:12px;color:#9fb7d8;">${mv58Valor(it.cantidad)} órdenes × ${mv58Valor(it.puntaje)} = <b>${mv58Valor(it.puntos)} pts</b></div></div>`;
+    });
+    return html;
+}
+function mv58DetalleEfectividad(d){
+    return `<div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;">
+        ${mv58KpiMini("Finalizadas", mv58Valor(d.finalizadas))}${mv58KpiMini("Canceladas", mv58Valor(d.canceladas))}
+        ${mv58KpiMini("Reprogramadas", mv58Valor(d.reprogramadas))}${mv58KpiMini("Regestión", mv58Valor(d.regestion))}
+        ${mv58KpiMini("Total", mv58Valor(d.total))}${mv58KpiMini("Efectividad", mv4Per(d.efectividad || 0))}
+    </div>`;
+}
+function mv58DetalleRecableado(d){
+    return `<div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;">
+        ${mv58KpiMini("LOS rojo", mv58Valor(d.los))}${mv58KpiMini("Recableados", mv58Valor(d.recableados))}
+        ${mv58KpiMini("% Recableado", mv4Per(d.porcentaje || 0))}${mv58KpiMini("Semáforo", mv58EstadoMenor(d.porcentaje || 0, META_RECABLEADO).txt)}
+    </div>`;
+}
+function mv58DetalleVtrGar(d){
+    return `<div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;">
+        ${mv58KpiMini("Finalizadas", mv58Valor(d.finalizadas))}${mv58KpiMini("GAR", mv58Valor(d.gar))}
+        ${mv58KpiMini("VTR", mv58Valor(d.vtr))}${mv58KpiMini("Total", mv58Valor(d.total))}
+        ${mv58KpiMini("% VTR/GAR", mv4Per(d.porcentaje || 0))}${mv58KpiMini("Semáforo", mv58EstadoMenor(d.porcentaje || 0, META_VTRGAR).txt)}
+    </div>`;
+}
+function mv58DetalleObs(d){
+    const e = d.estados || {};
+    return `<div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;">
+        ${mv58KpiMini("Pendientes", mv58Valor(d.pendientes))}${mv58KpiMini("Monto pendiente", mv4Money(d.montoPendiente || 0))}
+        ${mv58KpiMini("Derivadas", mv58Valor(e.DERIVADO))}${mv58KpiMini("En proceso", mv58Valor(e["EN PROCESO"]))}
+        ${mv58KpiMini("Penalizadas", mv58Valor(e.PENALIZADO))}${mv58KpiMini("Apeladas", mv58Valor(e.APELADO))}
+        ${mv58KpiMini("Subsanadas", mv58Valor(e.SUBSANADO))}${mv58KpiMini("Anuladas", mv58Valor(e.ANULADO))}
+        ${mv58KpiMini("Total obs.", mv58Valor(d.total))}${mv58KpiMini("Monto total", mv4Money(d.montoTotal || 0))}
+    </div>`;
+}
+
 async function mv4ObtenerRanking(){
     const res = await fetch(URL_RANKING_MI_VISUAL + "&t=" + Date.now());
     const texto = await res.text();
-    return mv4CSV(texto).slice(1).map(mv4FilaRanking).filter(x => x.cuadrilla);
+    const lista = mv4CSV(texto).slice(1).map(mv4FilaRanking).filter(x => x.cuadrilla);
+    return await mv58EnriquecerRanking(lista);
 }
 function mv4Estado(tipo, valor, meta){
     const v = Number(valor) || 0;
@@ -1763,14 +1981,16 @@ function mv4LineaCuadrilla(nombre, valor, meta, estado){
     </div>`;
 }
 function mv4DetalleKpi(lista, tipo){
-    return lista.slice().sort((a,b)=>a.cuadrilla.localeCompare(b.cuadrilla)).map(x => {
-        if(tipo === "produccion") return mv4LineaCuadrilla(x.cuadrilla, `${(x.produccion||0).toFixed(1)} / ${META_PRODUCCION_CUADRILLA} pts`, `Meta ${META_PRODUCCION_CUADRILLA}`, mv4Estado("mayor", x.produccion, META_PRODUCCION_CUADRILLA));
-        if(tipo === "efectividad") return mv4LineaCuadrilla(x.cuadrilla, mv4Per(x.efectividad), `Meta ≥ ${META_EFECTIVIDAD}%`, mv4Estado("mayor", x.efectividad, META_EFECTIVIDAD));
-        if(tipo === "recableado") return mv4LineaCuadrilla(x.cuadrilla, mv4Per(x.recableado), `Meta ≤ ${META_RECABLEADO}%`, mv4Estado("menor", x.recableado, META_RECABLEADO));
-        if(tipo === "vtrgar") return mv4LineaCuadrilla(x.cuadrilla, mv4Per(x.vtrgar), `Meta ≤ ${META_VTRGAR}%`, mv4Estado("menor", x.vtrgar, META_VTRGAR));
-        if(tipo === "obs") return mv4LineaCuadrilla(x.cuadrilla, mv4Money(x.montoAfectadoObs), `Meta ≤ S/ ${META_OBSERVACIONES}`, mv4Estado("menor", x.montoAfectadoObs, META_OBSERVACIONES));
-        return "";
-    }).join("");
+    const ordenada = lista.slice().sort((a,b)=>{
+        if(tipo === "produccion") return (Number(b.produccion)||0) - (Number(a.produccion)||0);
+        if(tipo === "efectividad") return (Number(b.efectividad)||0) - (Number(a.efectividad)||0);
+        if(tipo === "recableado") return (Number(a.recableado)||0) - (Number(b.recableado)||0);
+        if(tipo === "vtrgar") return (Number(a.vtrgar)||0) - (Number(b.vtrgar)||0);
+        if(tipo === "obs") return (Number(b.montoAfectadoObs)||0) - (Number(a.montoAfectadoObs)||0);
+        return (a.cuadrilla || "").localeCompare(b.cuadrilla || "");
+    });
+
+    return ordenada.map((x, i) => mv58CuadrillaAnalitica(x, tipo, i + 1)).join("");
 }
 function mv4DashboardKpis(lista){
     const r = mv4Resumen(lista);
