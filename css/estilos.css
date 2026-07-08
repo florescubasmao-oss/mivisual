@@ -512,3 +512,73 @@ body{background:linear-gradient(180deg,var(--mv4-bg),var(--mv4-bg2));font-family
 .obs-resumen-error{grid-column:1/-1;margin:0;}
 @media(max-width:760px){.obs-resumen-kpis{grid-template-columns:repeat(2,1fr);gap:8px}.obs-kpi{min-height:64px;padding:11px 8px}.obs-kpi b{font-size:20px}.obs-kpi span{font-size:10px}}
 @media(max-width:390px){.obs-resumen-kpis{grid-template-columns:1fr 1fr}.obs-kpi b{font-size:18px}}
+
+/* v59 - Producción técnico: resumen lineal y detalle desplegable */
+.mv59-produccion-page{
+  max-width: 920px;
+  margin: 0 auto;
+}
+.mv59-prod-hero{
+  margin-bottom: 14px;
+}
+.mv59-prod-progress{
+  margin-top: 12px;
+  height: 9px;
+  background: rgba(255,255,255,.20);
+}
+.mv59-prod-progress span{
+  display:block;
+  height:100%;
+  border-radius:999px;
+  background: linear-gradient(90deg,#22c55e,#facc15);
+}
+.mv59-prod-percent{
+  margin-top: 7px;
+  font-size: 12px;
+  font-weight: 800;
+  opacity: .9;
+}
+.mv59-prod-summary{
+  background:#1f2d48;
+  border:1px solid rgba(255,255,255,.12);
+  border-radius:18px;
+  padding:12px;
+  margin: 12px 0 14px;
+  box-shadow:0 8px 18px rgba(0,0,0,.18);
+}
+.mv59-prod-line{
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  gap:12px;
+  padding:11px 10px;
+  border-bottom:1px solid rgba(255,255,255,.08);
+  color:white;
+}
+.mv59-prod-line:last-child{border-bottom:none;}
+.mv59-prod-name{
+  font-weight:900;
+  font-size:14px;
+}
+.mv59-prod-value{
+  font-weight:900;
+  font-size:14px;
+  color:#dbeafe;
+  text-align:right;
+  white-space:nowrap;
+}
+.mv59-detail-btn{
+  width:100%;
+  margin: 6px 0 12px;
+}
+@media(max-width:600px){
+  .mv59-prod-line{
+    align-items:flex-start;
+    flex-direction:column;
+    gap:4px;
+  }
+  .mv59-prod-value{
+    text-align:left;
+    white-space:normal;
+  }
+}

@@ -2010,49 +2010,114 @@ function mv4DashboardKpis(lista){
     `;
 }
 
+function mv59PeriodoProduccion(detalle){
+    const meses = ["ENERO","FEBRERO","MARZO","ABRIL","MAYO","JUNIO","JULIO","AGOSTO","SEPTIEMBRE","OCTUBRE","NOVIEMBRE","DICIEMBRE"];
+    let fechaMax = null;
+    (detalle || []).forEach(r => {
+        const texto = (r.fecha || "").toString().trim();
+        const p = texto.split("/");
+        if(p.length === 3){
+            const f = new Date(Number(p[2]), Number(p[1]) - 1, Number(p[0]));
+            if(!isNaN(f.getTime()) && (!fechaMax || f > fechaMax)) fechaMax = f;
+        }
+    });
+    if(!fechaMax) return "PERÍODO ACTUAL";
+    return `${meses[fechaMax.getMonth()]} ${fechaMax.getFullYear()}`;
+}
+
+function mv59GrupoProduccion(data, grupo){
+    const lista = (data.detalle || []).filter(r => (r.grupo || "").toString().trim().toUpperCase() === grupo);
+    const ordenes = lista.reduce((s, r) => s + numeroMiVisual(r.cantidad), 0);
+    const puntos = lista.reduce((s, r) => s + (numeroMiVisual(r.cantidad) * numeroMiVisual(r.puntaje)), 0);
+    return { ordenes, puntos };
+}
+
+function mv59PluralOrdenes(n){
+    return Number(n) === 1 ? "orden" : "órdenes";
+}
+
+function mv59LineaResumen(icono, titulo, ordenes, puntos){
+    return `
+        <div class="mv59-prod-line">
+            <div class="mv59-prod-name">${icono} ${titulo}</div>
+            <div class="mv59-prod-value">${mv58Valor(ordenes)} ${mv59PluralOrdenes(ordenes)} • ${mv58Valor(puntos)} pts</div>
+        </div>`;
+}
+
 function renderDashboardProduccion(data){
     const totalPuntos = Number(data.resumen.totalPuntos || 0);
+    const totalOrdenes = Number(data.resumen.totalProduccion || 0);
     const meta = META_PRODUCCION_CUADRILLA;
+    const periodo = mv59PeriodoProduccion(data.detalle || []);
+    const avance = meta > 0 ? Math.min(100, Math.round((totalPuntos / meta) * 100)) : 0;
+    const grupos = {
+        instalaciones: mv59GrupoProduccion(data, "INSTALACION"),
+        ultimaMilla: mv59GrupoProduccion(data, "ULTIMA_MILLA"),
+        recableadoVT: mv59GrupoProduccion(data, "RECABLEADO_VT"),
+        recableadoPost: mv59GrupoProduccion(data, "RECABLEADO_POST"),
+        traslados: mv59GrupoProduccion(data, "TRASLADO"),
+        cambioEquipo: mv59GrupoProduccion(data, "CAMBIO_EQUIPO"),
+        entregaEquipo: mv59GrupoProduccion(data, "ENTREGA_EQUIPO"),
+        pruebaServicio: mv59GrupoProduccion(data, "PRUEBA_SERVICIO"),
+        otros: mv59GrupoProduccion(data, "OTROS")
+    };
+
     let html = `
-    <div class="mv4-page">
+    <div class="mv4-page mv59-produccion-page">
         <h2 class="mv4-title">📊 MI PRODUCCIÓN</h2>
-        <div class="mv4-hero-card">
-            <div class="mv4-hero-label">PUNTOS ACUMULADOS DEL MES</div>
+        <div class="mv4-hero-card mv59-prod-hero">
+            <div class="mv4-hero-label">MI PUNTAJE DEL PERÍODO</div>
             <div class="mv4-hero-value">${totalPuntos.toFixed(1)}</div>
+            <div class="mv4-hero-meta">📅 ${periodo}</div>
             <div class="mv4-hero-meta">🎯 Meta: ${meta} pts</div>
+            <div class="mv4-hero-meta">📦 Total órdenes: ${mv58Valor(totalOrdenes)}</div>
+            <div class="mv4-progress mv59-prod-progress"><span style="width:${avance}%"></span></div>
+            <div class="mv59-prod-percent">${avance}% de avance</div>
         </div>
-        <div class="mv4-kpi-grid">
-            ${kpiProduccionTecnico("📦", "Total", data.resumen.totalProduccion)}
-            ${kpiProduccionTecnico("🏠", "Instalaciones", data.resumen.totalInstalaciones)}
-            ${kpiProduccionTecnico("🔧", "Última Milla", data.resumen.totalUltimaMilla)}
-            ${kpiProduccionTecnico("📡", "Recableado VT", data.resumen.totalRecableadoVT)}
-            ${kpiProduccionTecnico("🔄", "Recableado Post", data.resumen.totalRecableadoPost)}
-            ${kpiProduccionTecnico("🚚", "Traslados", data.resumen.totalTraslados)}
-        </div>
-        <h2 class="mv4-section-title">📅 Historial Diario</h2>`;
+
+        <div class="mv59-prod-summary">
+            ${mv59LineaResumen("🏠", "Instalaciones", grupos.instalaciones.ordenes, grupos.instalaciones.puntos)}
+            ${mv59LineaResumen("🔧", "Última Milla", grupos.ultimaMilla.ordenes, grupos.ultimaMilla.puntos)}
+            ${mv59LineaResumen("📡", "Recableado VT", grupos.recableadoVT.ordenes, grupos.recableadoVT.puntos)}
+            ${mv59LineaResumen("🔄", "Recableado Post", grupos.recableadoPost.ordenes, grupos.recableadoPost.puntos)}
+            ${mv59LineaResumen("🚚", "Traslados", grupos.traslados.ordenes, grupos.traslados.puntos)}
+            ${grupos.cambioEquipo.ordenes > 0 ? mv59LineaResumen("🧰", "Cambio de equipo", grupos.cambioEquipo.ordenes, grupos.cambioEquipo.puntos) : ""}
+            ${grupos.entregaEquipo.ordenes > 0 ? mv59LineaResumen("📦", "Entrega de equipo", grupos.entregaEquipo.ordenes, grupos.entregaEquipo.puntos) : ""}
+            ${grupos.pruebaServicio.ordenes > 0 ? mv59LineaResumen("🔎", "Prueba de servicio", grupos.pruebaServicio.ordenes, grupos.pruebaServicio.puntos) : ""}
+            ${grupos.otros.ordenes > 0 ? mv59LineaResumen("📌", "Otros", grupos.otros.ordenes, grupos.otros.puntos) : ""}
+        </div>`;
 
     if(!data.detalle || !data.detalle.length){
         html += `<div class="mv4-empty">No hay producción registrada para tu cuadrilla.</div><button class="button_1" onclick="volverInicio()">⬅️ Volver al menú</button></div>`;
         mostrarPantalla(html); return;
     }
+
+    html += `
+        <button class="mv4-link-btn mv59-detail-btn" onclick="toggleDetalle('mv59_detalle_diario', this)">▼ Ver detalle diario</button>
+        <div id="mv59_detalle_diario" class="mv4-kpi-detail" style="display:none;">`;
+
     const porDia = {};
     data.detalle.forEach(r => {
         const f = r.fecha || "SIN FECHA";
-        if(!porDia[f]) porDia[f] = { puntos:0, items:[] };
+        if(!porDia[f]) porDia[f] = { puntos:0, ordenes:0, items:[] };
         const pts = numeroMiVisual(r.puntaje) * numeroMiVisual(r.cantidad);
         porDia[f].puntos += pts;
+        porDia[f].ordenes += numeroMiVisual(r.cantidad);
         porDia[f].items.push(r);
     });
+
     Object.keys(porDia).sort((a,b)=>b.split('/').reverse().join('').localeCompare(a.split('/').reverse().join(''))).forEach(fecha => {
         const d = porDia[fecha];
         const sem = d.puntos > 4.5 ? "🟢" : (d.puntos >= 4 ? "🟡" : "🔴");
         html += `<div class="mv4-day-card"><div class="mv4-day-head"><b>📅 ${fecha}</b><span>${sem} ${d.puntos.toFixed(1)} pts</span></div>`;
         d.items.forEach(r => {
-            html += `<div class="mv4-day-row"><span>${r.tipo || "Trabajo registrado"}</span><b>${r.cantidad || 0}</b></div>`;
+            const cantidad = numeroMiVisual(r.cantidad);
+            const pts = cantidad * numeroMiVisual(r.puntaje);
+            html += `<div class="mv4-day-row"><span>${r.tipo || "Trabajo registrado"}</span><b>${mv58Valor(cantidad)} ${mv59PluralOrdenes(cantidad)} • ${mv58Valor(pts)} pts</b></div>`;
         });
         html += `</div>`;
     });
-    html += `<button class="button_1" onclick="volverInicio()">⬅️ Volver al menú</button></div>`;
+    html += `</div><button class="button_1" onclick="volverInicio()">⬅️ Volver al menú</button></div>`;
     mostrarPantalla(html);
 }
 
