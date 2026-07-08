@@ -85,6 +85,15 @@ function mostrarObservaciones(){
             <h2>📝 Observaciones</h2>
             <p class="obs-sub">Control de observaciones, descargos y evidencias.</p>
             ${acciones}
+            <div id="resumenObservaciones" class="obs-resumen-kpis">
+                <div class="obs-kpi obs-total"><b>-</b><span>Total</span></div>
+                <div class="obs-kpi obs-der"><b>-</b><span>Derivadas</span></div>
+                <div class="obs-kpi obs-pro"><b>-</b><span>En proceso</span></div>
+                <div class="obs-kpi obs-pen"><b>-</b><span>Penalizadas</span></div>
+                <div class="obs-kpi obs-ape"><b>-</b><span>Apeladas</span></div>
+                <div class="obs-kpi obs-subsa"><b>-</b><span>Subsanadas</span></div>
+                <div class="obs-kpi obs-money"><b>S/ 0.00</b><span>Impacto</span></div>
+            </div>
             <div class="obs-filtros">
                 <select id="filtroEstadoObs" onchange="cargarObservaciones()">
                     <option value="">Todos los estados</option>
@@ -104,7 +113,72 @@ function mostrarObservaciones(){
         </div>
     `);
 
+    cargarResumenObservaciones();
     cargarObservaciones();
+}
+
+function estadoClaveObs(estado){
+    const e = (estado || "").toString().toUpperCase().trim();
+    if(e === "DERIVADO") return "derivadas";
+    if(e === "EN PROCESO") return "proceso";
+    if(e === "PENALIZADO") return "penalizadas";
+    if(e === "APELADO") return "apeladas";
+    if(e === "SUBSANADO") return "subsanadas";
+    if(e === "ANULADO") return "anuladas";
+    return "otros";
+}
+
+function factorImpactoObs(estado){
+    const e = (estado || "").toString().toUpperCase().trim();
+    if(e === "SUBSANADO" || e === "ANULADO") return 0.20;
+    return 1;
+}
+
+function pintarResumenObservaciones(lista){
+    const cont = document.getElementById("resumenObservaciones");
+    if(!cont) return;
+
+    const r = {
+        total: 0,
+        derivadas: 0,
+        proceso: 0,
+        penalizadas: 0,
+        apeladas: 0,
+        subsanadas: 0,
+        impacto: 0
+    };
+
+    (lista || []).forEach(o => {
+        r.total++;
+        const clave = estadoClaveObs(o.estado);
+        if(r[clave] !== undefined) r[clave]++;
+        r.impacto += (Number(o.monto) || 0) * factorImpactoObs(o.estado);
+    });
+
+    cont.innerHTML = `
+        <div class="obs-kpi obs-total"><b>${r.total}</b><span>Total</span></div>
+        <div class="obs-kpi obs-der"><b>${r.derivadas}</b><span>Derivadas</span></div>
+        <div class="obs-kpi obs-pro"><b>${r.proceso}</b><span>En proceso</span></div>
+        <div class="obs-kpi obs-pen"><b>${r.penalizadas}</b><span>Penalizadas</span></div>
+        <div class="obs-kpi obs-ape"><b>${r.apeladas}</b><span>Apeladas</span></div>
+        <div class="obs-kpi obs-subsa"><b>${r.subsanadas}</b><span>Subsanadas</span></div>
+        <div class="obs-kpi obs-money"><b>S/ ${r.impacto.toFixed(2)}</b><span>Impacto</span></div>
+    `;
+}
+
+async function cargarResumenObservaciones(){
+    const u = usuarioActualObs();
+    try{
+        const data = await apiObservaciones({
+            accion: "listarObservaciones",
+            usuario: u.usuario
+        });
+        if(!data.ok) throw new Error(data.error || "Error al cargar resumen");
+        pintarResumenObservaciones(data.observaciones || []);
+    }catch(err){
+        const cont = document.getElementById("resumenObservaciones");
+        if(cont) cont.innerHTML = `<div class="obs-error obs-resumen-error">No se pudo cargar el resumen.</div>`;
+    }
 }
 
 async function cargarObservaciones(){
