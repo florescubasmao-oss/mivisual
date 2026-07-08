@@ -1,4 +1,4 @@
-// MI VISUAL - archivo modularizado
+// MI VISUAL - Accesos v53 fix Jefatura
 
 function normalizarDestinoAcceso(valor){
   return (valor || "")
@@ -37,17 +37,28 @@ function leerFilaCSV(linea){
   return resultado.map(x => x.trim());
 }
 
-function esPerfilJefaturaAcceso(perfil){
+function esPerfilJefaturaAcceso(perfil, usuario){
   const p = normalizarDestinoAcceso(perfil);
-  return p === "JEFATURA" || p === "ADMIN" || p === "ADMINISTRADOR";
+  const u = normalizarDestinoAcceso(usuario);
+  return p.includes("JEFATURA") ||
+         p.includes("ADMIN") ||
+         p.includes("ADMINISTRADOR") ||
+         u.startsWith("JEF");
 }
 
-function accesoVisiblePorDestino(destino, sede, cuadrilla, perfilUsuario){
+function accesoVisiblePorDestino(destino, sede, cuadrilla, perfilUsuario, usuarioApp){
   const destinoNormalizado = normalizarDestinoAcceso(destino);
   const sedeNormalizada = normalizarDestinoAcceso(sede);
   const cuadrillaNormalizada = normalizarDestinoAcceso(cuadrilla);
 
   if(!destinoNormalizado) return false;
+
+  // Jefatura/Admin tiene alcance Zona Norte.
+  // No debe bloquearse por sede "TODAS" frente a destinos CHICLAYO,PIURA,TRUJILLO.
+  if(esPerfilJefaturaAcceso(perfilUsuario, usuarioApp)){
+    return true;
+  }
+
   if(destinoNormalizado === "TODOS") return true;
 
   const destinosPermitidos = destinoNormalizado
@@ -55,21 +66,11 @@ function accesoVisiblePorDestino(destino, sede, cuadrilla, perfilUsuario){
     .map(x => x.trim())
     .filter(Boolean);
 
-  /*
-    Regla MI VISUAL:
-    Jefatura/Admin consulta accesos por PERFIL.
-    Como su sede en USUARIOS suele ser "TODAS", no debe bloquearse
-    por DESTINO cuando el enlace ya tiene perfil JEFATURA/ADMIN permitido.
-  */
-  if(esPerfilJefaturaAcceso(perfilUsuario)){
-    return true;
-  }
-
   return destinosPermitidos.includes(sedeNormalizada) ||
          destinosPermitidos.includes(cuadrillaNormalizada);
 }
 
-function accesoVisiblePorPerfil(perfilDestino, perfilUsuario){
+function accesoVisiblePorPerfil(perfilDestino, perfilUsuario, usuarioApp){
   const perfilDestinoNormalizado = normalizarDestinoAcceso(perfilDestino);
   const perfilUsuarioNormalizado = normalizarDestinoAcceso(perfilUsuario);
 
@@ -81,6 +82,15 @@ function accesoVisiblePorPerfil(perfilDestino, perfilUsuario){
     .map(x => x.trim())
     .filter(Boolean);
 
+  // Regla especial: usuario Jefatura/Admin.
+  // Debe ver accesos con perfil JEFATURA/ADMIN y también los que indiquen SUPERVISOR,JEFATURA.
+  if(esPerfilJefaturaAcceso(perfilUsuarioNormalizado, usuarioApp)){
+    return perfilesPermitidos.includes("JEFATURA") ||
+           perfilesPermitidos.includes("ADMIN") ||
+           perfilesPermitidos.includes("ADMINISTRADOR") ||
+           perfilDestinoNormalizado.includes("JEFATURA");
+  }
+
   return perfilesPermitidos.includes(perfilUsuarioNormalizado);
 }
 
@@ -89,6 +99,7 @@ async function mostrarAccesos(){
 const cuadrilla = localStorage.getItem("cuadrilla");
 const sede = localStorage.getItem("sede");
 const perfilUsuario = localStorage.getItem("perfil");
+const usuarioApp = localStorage.getItem("usuario");
 
 const url = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRpVkCmSvopgPByWsEX6nkuAT6mf3yD2_Cywpl9pFSZEqYpxmprDePPeV0KNgT14YpEP6gkVlvOAtZy/pub?gid=177192408&single=true&output=csv";
 
@@ -124,8 +135,8 @@ else if(nombre.includes("BOT")) icono = "🤖";
 else if(nombre.includes("Grupo")) icono = "📢";
   
 if(
-  accesoVisiblePorDestino(destino, sede, cuadrilla, perfilUsuario) &&
-  accesoVisiblePorPerfil(perfilDestino, perfilUsuario)
+  accesoVisiblePorDestino(destino, sede, cuadrilla, perfilUsuario, usuarioApp) &&
+  accesoVisiblePorPerfil(perfilDestino, perfilUsuario, usuarioApp)
 ){
 
 resultado += `
