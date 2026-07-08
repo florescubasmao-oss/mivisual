@@ -94,192 +94,185 @@ function accesoVisiblePorPerfil(perfilDestino, perfilUsuario, usuarioApp){
   return perfilesPermitidos.includes(perfilUsuarioNormalizado);
 }
 
+
+function iconoRecursoPorNombre(nombre, tipo){
+  const n = normalizarDestinoAcceso(nombre);
+  const t = normalizarDestinoAcceso(tipo);
+  if(n.includes("ASISTENCIA")) return "🗓️";
+  if(n.includes("CHECK")) return "✅";
+  if(n.includes("REUNION")) return "🎥";
+  if(n.includes("BOT")) return "🤖";
+  if(n.includes("GRUPO")) return "💬";
+  if(n.includes("LIQUID")) return "💰";
+  if(n.includes("EXAMEN")) return "📝";
+  if(n.includes("RESULT")) return "📊";
+  if(n.includes("CERTIFIC")) return "🏆";
+  if(t.includes("VIDEO")) return "🎥";
+  if(t.includes("PDF")) return "📄";
+  if(t.includes("PPT")) return "📊";
+  return "🔗";
+}
+
+function categoriaAcceso(nombre){
+  const n = normalizarDestinoAcceso(nombre);
+  if(n.includes("REUNION")) return "📅 Reuniones";
+  if(n.includes("BOT")) return "🤖 Bots Operativos";
+  if(n.includes("GRUPO")) return "💬 Grupos de Trabajo";
+  if(n.includes("ASISTENCIA") || n.includes("CHECK") || n.includes("LIQUID") || n.includes("VALIDACION") || n.includes("EXAMEN") || n.includes("RESULT")) return "📋 Herramientas";
+  return "🔗 Otros accesos";
+}
+
+function categoriaBiblioteca(nombre){
+  const n = normalizarDestinoAcceso(nombre);
+  if(n.includes("MANUAL") || n.includes("PROCED")) return "📖 Manuales y Procedimientos";
+  if(n.includes("VIDEO") || n.includes("TUTORIAL")) return "🎥 Videos y Tutoriales";
+  if(n.includes("SEGUR") || n.includes("EPP") || n.includes("ATS")) return "🛡️ Seguridad";
+  return "📚 Documentos";
+}
+
+function categoriaCapacitacion(nombre, tipo){
+  const n = normalizarDestinoAcceso(nombre);
+  const t = normalizarDestinoAcceso(tipo);
+  if(n.includes("EVALU") || n.includes("EXAMEN")) return "📝 Evaluaciones";
+  if(n.includes("CERTIFIC") || n.includes("RESULT")) return "🏆 Certificaciones";
+  if(t.includes("VIDEO")) return "🎥 Videos";
+  if(t.includes("PDF") || t.includes("PPT")) return "📚 Cursos y Materiales";
+  return "🎓 Capacitaciones";
+}
+
+function renderCentroRecursos(titulo, subtitulo, recursos){
+  const idBusqueda = "buscarRecursos_" + Date.now();
+  const grupos = {};
+  recursos.forEach(r => {
+    if(!grupos[r.categoria]) grupos[r.categoria] = [];
+    grupos[r.categoria].push(r);
+  });
+
+  let html = `
+  <div class="mv55-resource-page">
+    <div class="mv55-resource-head">
+      <h2>${titulo}</h2>
+      <p>${subtitulo}</p>
+      <input id="${idBusqueda}" class="mv55-resource-search" type="text" placeholder="🔍 Buscar recurso..." oninput="filtrarRecursosVisual('${idBusqueda}')">
+    </div>
+  `;
+
+  Object.keys(grupos).forEach(cat => {
+    html += `<section class="mv55-resource-group" data-resource-group>
+      <h3>${cat}</h3>
+      <div class="mv55-resource-grid">`;
+    grupos[cat].forEach(r => {
+      const dataSearch = `${r.nombre} ${r.categoria}`.replace(/"/g, "");
+      html += `
+        <a class="mv55-resource-item" data-resource-item data-search="${dataSearch.toUpperCase()}" href="${r.link}" target="_blank" rel="noopener">
+          <span>${r.icono}</span>
+          <b>${r.nombre}</b>
+          <small>Abrir enlace</small>
+        </a>`;
+    });
+    html += `</div></section>`;
+  });
+
+  if(recursos.length === 0){
+    html += `<div class="mv55-resource-empty">No hay recursos disponibles para tu perfil.</div>`;
+  }
+
+  html += `</div>`;
+  mostrarPantalla(html);
+}
+
+function filtrarRecursosVisual(inputId){
+  const input = document.getElementById(inputId);
+  const texto = normalizarDestinoAcceso(input ? input.value : "");
+  const items = document.querySelectorAll('[data-resource-item]');
+  items.forEach(item => {
+    const search = normalizarDestinoAcceso(item.getAttribute('data-search') || '');
+    item.style.display = (!texto || search.includes(texto)) ? 'flex' : 'none';
+  });
+  document.querySelectorAll('[data-resource-group]').forEach(group => {
+    const visibles = Array.from(group.querySelectorAll('[data-resource-item]')).some(x => x.style.display !== 'none');
+    group.style.display = visibles ? 'block' : 'none';
+  });
+}
+
 async function mostrarAccesos(){
+  const cuadrilla = localStorage.getItem("cuadrilla");
+  const sede = localStorage.getItem("sede");
+  const perfilUsuario = localStorage.getItem("perfil");
+  const usuarioApp = localStorage.getItem("usuario");
 
-const cuadrilla = localStorage.getItem("cuadrilla");
-const sede = localStorage.getItem("sede");
-const perfilUsuario = localStorage.getItem("perfil");
-const usuarioApp = localStorage.getItem("usuario");
+  const url = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRpVkCmSvopgPByWsEX6nkuAT6mf3yD2_Cywpl9pFSZEqYpxmprDePPeV0KNgT14YpEP6gkVlvOAtZy/pub?gid=177192408&single=true&output=csv";
+  const respuesta = await fetch(url + "&v=" + Date.now());
+  const texto = await respuesta.text();
+  const filas = texto.split("\n");
+  const recursos = [];
 
-const url = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRpVkCmSvopgPByWsEX6nkuAT6mf3yD2_Cywpl9pFSZEqYpxmprDePPeV0KNgT14YpEP6gkVlvOAtZy/pub?gid=177192408&single=true&output=csv";
+  for(let i=1; i<filas.length; i++){
+    const datos = leerFilaCSV(filas[i]);
+    const destino = datos[1]?.trim();
+    const perfilDestino = datos[2]?.trim();
+    const nombre = datos[3]?.trim();
+    const link = datos[4]?.trim();
+    if(!nombre || !link) continue;
 
-const respuesta = await fetch(url + "&v=" + Date.now());
-const texto = await respuesta.text();
+    if(accesoVisiblePorDestino(destino, sede, cuadrilla, perfilUsuario, usuarioApp) && accesoVisiblePorPerfil(perfilDestino, perfilUsuario, usuarioApp)){
+      recursos.push({
+        nombre,
+        link,
+        icono: iconoRecursoPorNombre(nombre),
+        categoria: categoriaAcceso(nombre)
+      });
+    }
+  }
 
-const filas = texto.split("\n");
-
-let resultado = "<h3>🚀 ACCESOS</h3>";
-
-for(let i=1; i<filas.length; i++){
-
-const datos = leerFilaCSV(filas[i]);
-
-let destino = datos[1]?.trim();
-let perfilDestino = datos[2]?.trim();
-let nombre = datos[3]?.trim();
-let link = datos[4]?.trim();
-let icono = "🔗";
-
-if(!nombre || !link) continue;
-
-if(nombre.includes("Asistencia")) icono = "📅";
-
-else if(nombre.includes("Reunión")) icono = "🎥";
-
-else if(nombre.includes("Liquidación")) icono = "💰";
-
-else if(nombre.includes("VALIDACION")) icono = "📋";
-
-else if(nombre.includes("BOT")) icono = "🤖";
-
-else if(nombre.includes("Grupo")) icono = "📢";
-  
-if(
-  accesoVisiblePorDestino(destino, sede, cuadrilla, perfilUsuario, usuarioApp) &&
-  accesoVisiblePorPerfil(perfilDestino, perfilUsuario, usuarioApp)
-){
-
-resultado += `
-<div style="
-background:#1f2d48;
-padding:15px;
-margin:10px 0;
-border-radius:10px;
-text-align:center;
-">
-
-<a href="${link}"
-target="_blank"
-style="
-color:white;
-font-size:18px;
-font-weight:bold;
-text-decoration:none;
-display:block;
-">
-
-${icono} ${nombre}
-
-</a>
-
-</div>
-`;
-}
-
-}
-
-mostrarPantalla(resultado);
-
+  renderCentroRecursos("🚀 Accesos", "Encuentra rápidamente reuniones, bots, grupos, formatos y herramientas.", recursos);
 }
 
 async function mostrarBiblioteca(){
+  const url = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRpVkCmSvopgPByWsEX6nkuAT6mf3yD2_Cywpl9pFSZEqYpxmprDePPeV0KNgT14YpEP6gkVlvOAtZy/pub?gid=1577462287&single=true&output=csv";
+  const respuesta = await fetch(url + "&v=" + Date.now());
+  const texto = await respuesta.text();
+  const filas = texto.split("\n");
+  const recursos = [];
 
-const url = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRpVkCmSvopgPByWsEX6nkuAT6mf3yD2_Cywpl9pFSZEqYpxmprDePPeV0KNgT14YpEP6gkVlvOAtZy/pub?gid=1577462287&single=true&output=csv";
+  for(let i=1; i<filas.length; i++){
+    const datos = leerFilaCSV(filas[i]);
+    const nombre = datos[1]?.replace(/"/g,"").trim();
+    const link = datos[2]?.replace(/"/g,"").trim();
+    if(!nombre || !link) continue;
+    recursos.push({
+      nombre,
+      link,
+      icono: iconoRecursoPorNombre(nombre),
+      categoria: categoriaBiblioteca(nombre)
+    });
+  }
 
-const respuesta = await fetch(url);
-const texto = await respuesta.text();
-
-const filas = texto.split("\n");
-
-let resultado = "<h3>📚 BIBLIOTECA</h3>";
-
-for(let i=1; i<filas.length; i++){
-
-const datos = leerFilaCSV(filas[i]);
-
-let nombre = datos[1]?.trim();
-let link = datos[2]?.trim();
-
-resultado += `
-<div style="
-background:#1f2d48;
-padding:15px;
-margin:10px 0;
-border-radius:10px;
-text-align:center;
-">
-
-<a href="${link}"
-target="_blank"
-style="
-color:white;
-font-size:18px;
-font-weight:bold;
-text-decoration:none;
-display:block;
-">
-
-📄 ${nombre}
-
-</a>
-
-</div>
-`;
-}
-
-mostrarPantalla(resultado);
-
+  renderCentroRecursos("📚 Biblioteca", "Materiales, manuales, procedimientos y documentos de consulta.", recursos);
 }
 
 async function mostrarCapacitacion(){
+  const url = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRpVkCmSvopgPByWsEX6nkuAT6mf3yD2_Cywpl9pFSZEqYpxmprDePPeV0KNgT14YpEP6gkVlvOAtZy/pub?gid=459416480&single=true&output=csv";
+  const respuesta = await fetch(url + "&v=" + Date.now());
+  const texto = await respuesta.text();
+  const filas = texto.split("\n");
+  const recursos = [];
 
-const url = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRpVkCmSvopgPByWsEX6nkuAT6mf3yD2_Cywpl9pFSZEqYpxmprDePPeV0KNgT14YpEP6gkVlvOAtZy/pub?gid=459416480&single=true&output=csv";
+  for(let i=1; i<filas.length; i++){
+    const datos = leerFilaCSV(filas[i]);
+    const nombre = datos[1]?.replace(/"/g,"").trim();
+    const tipo = datos[2]?.replace(/"/g,"").trim();
+    const link = datos[3]?.replace(/"/g,"").trim();
+    if(!nombre || !link) continue;
+    recursos.push({
+      nombre,
+      link,
+      icono: iconoRecursoPorNombre(nombre, tipo),
+      categoria: categoriaCapacitacion(nombre, tipo)
+    });
+  }
 
-const respuesta = await fetch(url);
-const texto = await respuesta.text();
-
-const filas = texto.split("\n");
-
-let resultado = `
-<h3 style="text-align:center;">
-🎓 CAPACITACIÓN
-</h3>
-`;
-
-for(let i=1; i<filas.length; i++){
-
-const datos = leerFilaCSV(filas[i]);
-
-let nombre = datos[1]?.replace(/"/g,"").trim();
-let tipo = datos[2]?.replace(/"/g,"").trim();
-let link = datos[3]?.replace(/"/g,"").trim();
-
-let icono = "📁";
-
-if(tipo == "VIDEO") icono = "🎥";
-if(tipo == "PDF") icono = "📄";
-if(tipo == "PPT") icono = "📊";
-
-resultado += `
-<div style="
-background:#1f2d48;
-padding:15px;
-margin:10px 0;
-border-radius:10px;
-">
-
-<h4>${icono} ${nombre}</h4>
-
-<a href="${link}" target="_blank"
-style="
-display:inline-block;
-margin-top:10px;
-padding:10px 15px;
-background:#16a34a;
-color:white;
-text-decoration:none;
-border-radius:8px;
-font-weight:bold;
-">
-ABRIR
-</a>
-
-</div>
-`;
-}
-
-mostrarPantalla(resultado);
-
+  renderCentroRecursos("🎓 Capacitación", "Cursos, evaluaciones, certificaciones y material de aprendizaje.", recursos);
 }
 
 function mostrarImportarProduccion(){

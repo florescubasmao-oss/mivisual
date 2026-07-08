@@ -5,7 +5,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-<link rel="stylesheet" href="css/estilos.css?v=53accesosjefatura">
+<link rel="stylesheet" href="css/estilos.css?v=55recursos">
 
 <title>MI VISUAL</title>
 
@@ -26,11 +26,19 @@
 
 <div style="margin-top:5px;">
 
-<div class="header mv4-main-header">
-  <div class="mv4-logo-wrap"><img src="img/logo.png" alt="MI VISUAL" onerror="this.style.display='none'"></div>
-  <div class="mv4-app-name">MI VISUAL</div>
-  <div class="mv4-app-sub">Sistema de Gestión Operativa</div>
-  <div class="mv4-app-company">Visual Connections SAC · Zona Norte</div>
+<div class="mv55-topbar">
+  <div class="mv55-brand">
+    <img src="img/logo.png" alt="MI VISUAL" onerror="this.style.display='none'">
+    <div>
+      <div class="mv55-brand-title">MI VISUAL</div>
+      <div class="mv55-brand-sub">Sistema de Gestión Operativa</div>
+      <div class="mv55-brand-company">Visual Connections SAC · Zona Norte</div>
+    </div>
+  </div>
+
+  <button id="btnInicio" onclick="accionBotonNavegacion()" class="mv55-nav-btn" style="display:none;">
+    🚪 Cerrar sesión
+  </button>
 </div>
 
 <div class="login-box">
@@ -50,22 +58,7 @@
   <div id="loginMensaje" class="mv4-login-msg"></div>
 </div>
 
-<button id="btnInicio"
-onclick="accionBotonNavegacion()"
-style="
-display:none;
-margin-left:10px;
-background:#dc3545;
-color:white;
-border:none;
-padding:10px 20px;
-border-radius:5px;
-cursor:pointer;
-">
-🚪 Cerrar sesión
-</button>
-
-  <div id="usuarioInfo"></div>
+  <div id="usuarioInfo" style="display:none;"></div>
   <div id="resultadoProduccion"></div>
 </div>
 <div class="menu" id="menuPrincipal" style="display:none;">
@@ -115,15 +108,15 @@ if ("serviceWorker" in navigator) {
 }
 </script>
 
-<script src="./js/utilidades.js?v=53accesosjefatura"></script>
-<script src="./js/login.js?v=53accesosjefatura"></script>
-<script src="./js/dashboards.js?v=53accesosjefatura"></script>
-<script src="./js/indicadores.js?v=53accesosjefatura"></script>
-<script src="./js/ranking.js?v=53accesosjefatura"></script>
-<script src="./js/observaciones.js?v=53accesosjefatura"></script>
-<script src="./js/accesos.js?v=53accesosjefatura"></script>
-<script src="./js/actividad_campo.js?v=53accesosjefatura"></script>
-<script src="./js/app.js?v=53accesosjefatura"></script>
+<script src="./js/utilidades.js?v=55recursos"></script>
+<script src="./js/login.js?v=55recursos"></script>
+<script src="./js/dashboards.js?v=55recursos"></script>
+<script src="./js/indicadores.js?v=55recursos"></script>
+<script src="./js/ranking.js?v=55recursos"></script>
+<script src="./js/observaciones.js?v=55recursos"></script>
+<script src="./js/accesos.js?v=55recursos"></script>
+<script src="./js/actividad_campo.js?v=55recursos"></script>
+<script src="./js/app.js?v=55recursos"></script>
 
 </body>
 </html>

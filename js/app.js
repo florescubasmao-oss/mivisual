@@ -11,11 +11,13 @@ function setBotonNavegacion(modo){
     if(modo === "modulo"){
         btn.innerHTML = "⬅️ Volver al menú";
         btn.dataset.modo = "modulo";
-        btn.style.background = "#0d6efd";
+        btn.classList.remove("mv55-logout");
+        btn.classList.add("mv55-back");
     }else{
         btn.innerHTML = "🚪 Cerrar sesión";
         btn.dataset.modo = "menu";
-        btn.style.background = "#dc3545";
+        btn.classList.remove("mv55-back");
+        btn.classList.add("mv55-logout");
     }
 }
 
@@ -89,6 +91,74 @@ function mostrarCardSeguro(id, visible){
     }
 }
 
+
+function obtenerNombrePerfilMenu(){
+    const usuario = localStorage.getItem("usuario") || "USUARIO";
+    const perfil = normalizarPerfilApp(localStorage.getItem("perfil"));
+    const sede = normalizarPerfilApp(localStorage.getItem("sede"));
+    const cuadrilla = localStorage.getItem("cuadrilla") || "";
+
+    let detalle = perfil + " • " + (sede || "ZONA NORTE");
+    if(perfil === "TECNICO" && cuadrilla){
+        detalle = "TÉCNICO • " + sede;
+    }
+    if(perfil === "SUPERVISOR"){
+        detalle = "SUPERVISOR • " + sede;
+    }
+    if(perfil === "JEFATURA" || perfil === "ADMIN" || perfil === "ADMINISTRADOR"){
+        detalle = perfil + " • TODAS";
+    }
+
+    return { usuario, detalle };
+}
+
+function prepararMenuVisual(){
+    const menu = document.getElementById("menuPrincipal");
+    if(!menu) return {};
+
+    let welcome = document.getElementById("mv55Welcome");
+    let main = document.getElementById("mv55MainModules");
+    let recursosTitle = document.getElementById("mv55RecursosTitle");
+    let recursos = document.getElementById("mv55Recursos");
+
+    if(!welcome){
+        welcome = document.createElement("div");
+        welcome.id = "mv55Welcome";
+        welcome.className = "mv55-welcome";
+        menu.prepend(welcome);
+    }
+
+    if(!main){
+        main = document.createElement("div");
+        main.id = "mv55MainModules";
+        main.className = "mv55-main-modules";
+        welcome.after(main);
+    }
+
+    if(!recursosTitle){
+        recursosTitle = document.createElement("div");
+        recursosTitle.id = "mv55RecursosTitle";
+        recursosTitle.className = "mv55-section-title";
+        recursosTitle.innerHTML = "Recursos";
+        main.after(recursosTitle);
+    }
+
+    if(!recursos){
+        recursos = document.createElement("div");
+        recursos.id = "mv55Recursos";
+        recursos.className = "mv55-recursos";
+        recursosTitle.after(recursos);
+    }
+
+    const info = obtenerNombrePerfilMenu();
+    welcome.innerHTML = `
+        <div class="mv55-welcome-hi">👋 Bienvenido, ${info.usuario}</div>
+        <div class="mv55-welcome-detail">${info.detalle}</div>
+    `;
+
+    return { menu, main, recursos, recursosTitle };
+}
+
 function configurarMenu(){
 
     console.log("CONFIGURAR MENU DESDE APP.JS");
@@ -102,6 +172,7 @@ function configurarMenu(){
     if (pantalla) pantalla.innerHTML = "";
     if (resultado) resultado.innerHTML = "";
     if (menu) menu.style.display = "grid";
+    const mv55 = prepararMenuVisual();
     setBotonNavegacion("menu");
 
     const todasLasCards = [
@@ -121,6 +192,22 @@ function configurarMenu(){
     ];
 
     todasLasCards.forEach(id => mostrarCardSeguro(id, false));
+
+    const recursosIds = ["cardAccesos", "cardBiblioteca", "cardCapacitacion"];
+    if(mv55.main && mv55.recursos){
+        todasLasCards.forEach(id => {
+            const card = document.getElementById(id);
+            if(!card) return;
+            card.classList.remove("mv55-resource-card", "mv55-main-card");
+            if(recursosIds.includes(id)){
+                card.classList.add("mv55-resource-card");
+                mv55.recursos.appendChild(card);
+            }else{
+                card.classList.add("mv55-main-card");
+                mv55.main.appendChild(card);
+            }
+        });
+    }
 
     const permisos = {
         TECNICO: [
@@ -177,6 +264,10 @@ function configurarMenu(){
 
     const opciones = permisos[perfil] || [];
     opciones.forEach(id => mostrarCardSeguro(id, true));
+
+    const tieneRecursos = recursosIds.some(id => opciones.includes(id));
+    if(mv55.recursosTitle) mv55.recursosTitle.style.display = tieneRecursos ? "flex" : "none";
+    if(mv55.recursos) mv55.recursos.style.display = tieneRecursos ? "grid" : "none";
 }
 
 window.addEventListener("load", function () {

@@ -51,7 +51,7 @@ async function login() {
                 localStorage.setItem("estado", estado);
                 localStorage.setItem("correo", correo);
 
-                document.getElementById("usuarioInfo").innerHTML = construirInfoUsuarioLogin({ cuadrilla, sede, plataforma, perfil });
+                document.getElementById("usuarioInfo").innerHTML = "";
                 document.getElementById("panelLogin").style.display = "none";
                 if (typeof setBotonNavegacion === "function") setBotonNavegacion("menu");
                 else document.getElementById("btnInicio").style.display = "inline-block";
