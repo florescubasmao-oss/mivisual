@@ -5,7 +5,7 @@ Incluye:
 - Navegación v41: cerrar sesión / volver al menú.
 - Accesos v44: filtro por DESTINO + PERFIL, columnas A-E corregidas.
 - Actividad en Campo v47: diseño mobile y formularios completos.
-- URL nueva de Apps Script: https://script.google.com/macros/s/AKfycbz3HDtjgZvWv0UzLH1fwzt8GGFtKktfU-vAcUgtu85bAjUYyxq4cOPxCHw49jBB4Azl/exec
+- URL nueva de Apps Script: https://script.google.com/macros/s/AKfycbyeehN6RJgZZPjYYK3VvJSIk68wHdq6Q37OS40TgIuOB_duhtr7nhhptTSWZp36qbN3/exec
 - Apps Script actualizado en apps_script/Code.gs.
 
 IMPORTANTE:

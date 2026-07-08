@@ -1,5 +1,36 @@
 // MI VISUAL - archivo modularizado
 
+function leerCSVLineaMiVisual(linea){
+    const resultado = [];
+    let actual = "";
+    let entreComillas = false;
+
+    for(let i = 0; i < linea.length; i++){
+        const caracter = linea[i];
+        const siguiente = linea[i + 1];
+
+        if(caracter === '"' && entreComillas && siguiente === '"'){
+            actual += '"';
+            i++;
+        } else if(caracter === '"'){
+            entreComillas = !entreComillas;
+        } else if(caracter === ',' && !entreComillas){
+            resultado.push(actual);
+            actual = "";
+        } else {
+            actual += caracter;
+        }
+    }
+
+    resultado.push(actual);
+    return resultado.map(x => (x || "").toString().trim());
+}
+
+function numeroMiVisual(valor){
+    if(typeof valor === "number") return valor;
+    return Number((valor || "").toString().replace(",", ".")) || 0;
+}
+
 async function mostrarProduccion() {
 
 const cuadrilla = localStorage.getItem("cuadrilla");
@@ -234,13 +265,13 @@ let totalPuntos = 0;
     
     for(let i=1;i<filasCatalogo.length;i++){
 
-        const d = filasCatalogo[i].split(",");
+        const d = leerCSVLineaMiVisual(filasCatalogo[i]);
 
         catalogo[d[0].trim()] = {
 
             tipo: d[1].trim(),
             plataforma: d[2].trim(),
-            puntaje: Number(d[3]),
+            puntaje: numeroMiVisual(d[3]),
             grupo: d[4].trim()
 
         };
@@ -257,7 +288,7 @@ let totalPuntos = 0;
 
     for(let i=1;i<filasProduccion.length;i++){
 
-        const d = filasProduccion[i].split(",");
+        const d = leerCSVLineaMiVisual(filasProduccion[i]);
 
 
 console.log(
@@ -282,7 +313,7 @@ console.log("COINCIDE");
             cuadrilla:d[1],
             fecha:d[2],
             codigo:d[3],
-            cantidad:Number(d[4]),
+            cantidad:numeroMiVisual(d[4]),
 
             tipo:catalogo[d[3]]?.tipo || "",
             grupo:catalogo[d[3]]?.grupo || "",
@@ -296,30 +327,30 @@ console.log("COINCIDE");
 
 registros.forEach(r=>{
 
-    totalProduccion += r.cantidad;
+    totalProduccion += numeroMiVisual(r.cantidad);
 
-    totalPuntos += r.cantidad * r.puntaje;
+    totalPuntos += numeroMiVisual(r.cantidad) * numeroMiVisual(r.puntaje);
 
     switch(r.grupo){
 
         case "ULTIMA_MILLA":
-            totalUltimaMilla += r.cantidad;
+            totalUltimaMilla += numeroMiVisual(r.cantidad);
             break;
 
         case "INSTALACION":
-            totalInstalaciones += r.cantidad;
+            totalInstalaciones += numeroMiVisual(r.cantidad);
             break;
 
         case "RECABLEADO_VT":
-            totalRecableadoVT += r.cantidad;
+            totalRecableadoVT += numeroMiVisual(r.cantidad);
             break;
 
         case "RECABLEADO_POST":
-            totalRecableadoPost += r.cantidad;
+            totalRecableadoPost += numeroMiVisual(r.cantidad);
             break;
 
         case "TRASLADO":
-            totalTraslados += r.cantidad;
+            totalTraslados += numeroMiVisual(r.cantidad);
             break;
 
     }
@@ -1788,7 +1819,7 @@ function renderDashboardProduccion(data){
     data.detalle.forEach(r => {
         const f = r.fecha || "SIN FECHA";
         if(!porDia[f]) porDia[f] = { puntos:0, items:[] };
-        const pts = (Number(r.puntaje)||0) * (Number(r.cantidad)||0);
+        const pts = numeroMiVisual(r.puntaje) * numeroMiVisual(r.cantidad);
         porDia[f].puntos += pts;
         porDia[f].items.push(r);
     });

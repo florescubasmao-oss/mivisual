@@ -1,4 +1,5 @@
 const HOJA_PRODUCCION = "PRODUCCION_APP";
+const HOJA_CATALOGO_ORDENES = "CATALOGO_ORDENES";
 const HOJA_EFECTIVIDAD = "EFECTIVIDAD";
 const HOJA_RECABLEADO = "PORCENTAJE REC";
 const HOJA_VTRGAR = "POR VTR/GAR";
@@ -1142,27 +1143,76 @@ function obtenerMapaUsuarios() {
   return mapa;
 }
 
+function numeroProduccion(valor) {
+  if (typeof valor === "number") return valor;
+  return Number((valor || "").toString().replace(",", ".")) || 0;
+}
+
+function obtenerCatalogoPuntajesProduccion() {
+  const mapa = {};
+
+  try {
+    const hoja = obtenerHoja(HOJA_CATALOGO_ORDENES);
+    const datos = hoja.getDataRange().getValues();
+
+    for (let i = 1; i < datos.length; i++) {
+      const codigo = (datos[i][0] || "").toString().trim();
+      const tipo = normalizarTexto(datos[i][1] || "");
+      const puntaje = numeroProduccion(datos[i][3]);
+
+      if (codigo) mapa[codigo] = puntaje;
+      if (tipo) mapa[tipo] = puntaje;
+    }
+  } catch (e) {
+    // Si la hoja catálogo no existe, se mantiene fallback en 1 punto para no romper ranking.
+  }
+
+  return mapa;
+}
+
+function obtenerPuntajeProduccion(codigo, catalogo) {
+  const cod = (codigo || "").toString().trim();
+  const codNorm = normalizarTexto(cod);
+
+  if (catalogo[cod] !== undefined && catalogo[cod] !== null && catalogo[cod] !== "") {
+    return numeroProduccion(catalogo[cod]);
+  }
+
+  if (catalogo[codNorm] !== undefined && catalogo[codNorm] !== null && catalogo[codNorm] !== "") {
+    return numeroProduccion(catalogo[codNorm]);
+  }
+
+  // Fallback seguro: si no encuentra el código en catálogo, cuenta 1 punto por orden.
+  return 1;
+}
+
 function obtenerProduccionPorCuadrilla() {
   const hoja = obtenerHoja(HOJA_PRODUCCION);
   const datos = hoja.getDataRange().getValues();
+  const catalogo = obtenerCatalogoPuntajesProduccion();
   const mapa = {};
 
   for (let i = 1; i < datos.length; i++) {
     const fila = datos[i];
     const usuario = fila[0] || "ADMIN";
     const cuadrilla = normalizarCuadrilla(fila[1]);
-    const cantidad = Number(fila[4]) || 0;
+    const codigo = (fila[3] || "").toString().trim();
+    const cantidad = numeroProduccion(fila[4]);
+    const puntaje = obtenerPuntajeProduccion(codigo, catalogo);
+    const puntos = cantidad * puntaje;
 
     if (!cuadrilla) continue;
 
     if (!mapa[cuadrilla]) {
       mapa[cuadrilla] = {
         usuario,
-        produccion: 0
+        produccion: 0,
+        ordenes: 0
       };
     }
 
-    mapa[cuadrilla].produccion += cantidad;
+    mapa[cuadrilla].ordenes += cantidad;
+    mapa[cuadrilla].produccion += puntos;
   }
 
   return mapa;
