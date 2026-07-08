@@ -188,7 +188,8 @@ function configurarMenu(){
         "cardDashboardSupervisor",
         "cardDashboardJefatura",
         "cardAdministracion",
-        "cardActividadCampo"
+        "cardActividadCampo",
+        "cardValidacionTecnica"
     ];
 
     todasLasCards.forEach(id => mostrarCardSeguro(id, false));
@@ -217,6 +218,7 @@ function configurarMenu(){
             "cardVTRGAR",
             "cardRanking",
             "cardObservaciones",
+            "cardValidacionTecnica",
             "cardAccesos",
             "cardBiblioteca",
             "cardCapacitacion"
@@ -228,7 +230,8 @@ function configurarMenu(){
             "cardBiblioteca",
             "cardCapacitacion",
             "cardDashboardSupervisor",
-            "cardActividadCampo"
+            "cardActividadCampo",
+            "cardValidacionTecnica"
         ],
         JEFATURA: [
             "cardRanking",
@@ -238,7 +241,8 @@ function configurarMenu(){
             "cardCapacitacion",
             "cardDashboardJefatura",
             "cardAdministracion",
-            "cardActividadCampo"
+            "cardActividadCampo",
+            "cardValidacionTecnica"
         ],
         ADMIN: [
             "cardRanking",
@@ -248,7 +252,8 @@ function configurarMenu(){
             "cardCapacitacion",
             "cardDashboardJefatura",
             "cardAdministracion",
-            "cardActividadCampo"
+            "cardActividadCampo",
+            "cardValidacionTecnica"
         ],
         ADMINISTRADOR: [
             "cardRanking",
@@ -258,7 +263,8 @@ function configurarMenu(){
             "cardCapacitacion",
             "cardDashboardJefatura",
             "cardAdministracion",
-            "cardActividadCampo"
+            "cardActividadCampo",
+            "cardValidacionTecnica"
         ]
     };
 

@@ -10,6 +10,7 @@ const HOJA_RESUMEN_OBSERVACIONES = "RESUMEN_OBSERVACIONES";
 const CARPETA_EVIDENCIAS_OBSERVACIONES = "1W23rJjyUgmYGTlG2NzrpvasIWbwKBV6h";
 const HOJA_ACTIVIDAD_CAMPO = "ACTIVIDAD_CAMPO";
 const CARPETA_ACTIVIDAD_CAMPO = "1tu6DWyOkM0b-W1nI_MIXGuTmlZypjsBV";
+const HOJA_VALIDACION_TECNICA = "VALIDACION_TECNICA";
 
 function doGet() {
   return ContentService
@@ -1929,6 +1930,482 @@ function autorizarDriveActividadCampo() {
 }
 
 
+
+/* =========================
+   VALIDACIÓN TÉCNICA
+========================= */
+
+function encabezadoValidacionTecnica() {
+  return [[
+    "ID",
+    "FECHA_REGISTRO",
+    "HORA_REGISTRO",
+    "SEDE",
+    "TECNICO",
+    "CUADRILLA",
+    "TIPO_VALIDACION",
+    "CODIGO",
+    "TIPO_TICKET",
+    "NUMERO_TICKET",
+    "TICKET_FINAL",
+    "DNI_CLIENTE",
+    "MOTIVO_TECNICO",
+    "ESTADO",
+    "RESULTADO_FINAL",
+    "VALIDADO_POR",
+    "PERFIL_VALIDADOR",
+    "FECHA_VALIDACION",
+    "HORA_VALIDACION",
+    "MOTIVO_VALIDACION",
+    "LINK_TELEGRAM",
+    "HORA_LIMITE"
+  ]];
+}
+
+function asegurarHojaValidacionTecnica() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  let hoja = ss.getSheetByName(HOJA_VALIDACION_TECNICA);
+
+  if (!hoja) {
+    hoja = ss.insertSheet(HOJA_VALIDACION_TECNICA);
+  }
+
+  if (hoja.getLastRow() === 0) {
+    hoja.getRange(1, 1, 1, 22).setValues(encabezadoValidacionTecnica());
+  } else {
+    const primero = hoja.getRange(1, 1).getValue();
+    if (!primero) hoja.getRange(1, 1, 1, 22).setValues(encabezadoValidacionTecnica());
+  }
+
+  return hoja;
+}
+
+function obtenerLinkTelegramValidacion(sede) {
+  const s = normalizarTexto(sede);
+  if (s === "CHICLAYO") return "https://t.me/+fAxAapb0OKpiNzM5";
+  if (s === "PIURA") return "https://t.me/+XZbC8DlbbC9jMmQx";
+  if (s === "TRUJILLO") return "https://t.me/+iGfBdqznjoAxMmJh";
+  return "";
+}
+
+function normalizarTipoValidacionTecnica(tipo) {
+  const t = normalizarTexto(tipo);
+  if (t === "RECABLEADO") return "RECABLEADO";
+  if (t === "GAR") return "GAR";
+  if (t === "VTR") return "VTR";
+  throw new Error("Tipo de validación no válido. Usa RECABLEADO, GAR o VTR");
+}
+
+function normalizarTipoTicketValidacion(tipoTicket) {
+  const t = (tipoTicket || "").toString().toUpperCase().trim();
+  const limpio = t.replace(/\s+/g, "");
+  if (limpio === "NOAPLICA" || limpio === "NO APLICA") return "NO APLICA";
+  if (["AT-", "VTEXT-", "GAR-", "VTR-"].includes(limpio)) return limpio;
+  throw new Error("Tipo de ticket no válido");
+}
+
+function generarIdValidacionTecnica(codigo, tipoValidacion) {
+  const cod = limpiarNombreArchivo(codigo);
+  const tipo = normalizarTipoValidacionTecnica(tipoValidacion);
+  if (!cod) throw new Error("El código es obligatorio");
+  return cod + "-" + tipo;
+}
+
+function buscarFilaValidacionTecnica(id) {
+  const hoja = asegurarHojaValidacionTecnica();
+  const datos = hoja.getDataRange().getValues();
+
+  for (let i = 1; i < datos.length; i++) {
+    if ((datos[i][0] || "").toString().trim() === id.toString().trim()) {
+      return { hoja, fila: i + 1, datos: datos[i] };
+    }
+  }
+
+  throw new Error("No se encontró la validación técnica: " + id);
+}
+
+function existeValidacionTecnica(id) {
+  const hoja = asegurarHojaValidacionTecnica();
+  const datos = hoja.getDataRange().getValues();
+
+  for (let i = 1; i < datos.length; i++) {
+    if ((datos[i][0] || "").toString().trim() === id.toString().trim()) return true;
+  }
+
+  return false;
+}
+
+function convertirFechaHoraValidacion(fechaValor, horaValor) {
+  if (fechaValor instanceof Date && !isNaN(fechaValor.getTime())) {
+    if (horaValor instanceof Date && !isNaN(horaValor.getTime())) {
+      const f = new Date(fechaValor);
+      f.setHours(horaValor.getHours(), horaValor.getMinutes(), horaValor.getSeconds(), 0);
+      return f;
+    }
+    return fechaValor;
+  }
+
+  if (horaValor instanceof Date && !isNaN(horaValor.getTime())) return horaValor;
+
+  const textoFecha = (fechaValor || "").toString().trim();
+  const textoHora = (horaValor || "").toString().trim();
+  if (!textoFecha) return null;
+
+  let dia = 0, mes = 0, anio = 0;
+  let partes = textoFecha.split("/");
+  if (partes.length === 3) {
+    dia = Number(partes[0]);
+    mes = Number(partes[1]) - 1;
+    anio = Number(partes[2]);
+  } else {
+    partes = textoFecha.split("-");
+    if (partes.length === 3) {
+      anio = Number(partes[0]);
+      mes = Number(partes[1]) - 1;
+      dia = Number(partes[2]);
+    }
+  }
+
+  if (!anio || isNaN(anio)) return null;
+
+  let h = 0, m = 0, s = 0;
+  const ph = textoHora.split(":");
+  if (ph.length >= 2) {
+    h = Number(ph[0]) || 0;
+    m = Number(ph[1]) || 0;
+    s = Number(ph[2]) || 0;
+  }
+
+  const fecha = new Date(anio, mes, dia, h, m, s);
+  if (isNaN(fecha.getTime())) return null;
+  return fecha;
+}
+
+function obtenerHoraLimiteValidacion(row) {
+  const horaLimite = row[21];
+  if (horaLimite instanceof Date && !isNaN(horaLimite.getTime())) return horaLimite;
+
+  const parsedLimite = convertirFechaHoraValidacion(row[1], horaLimite);
+  if (parsedLimite) return parsedLimite;
+
+  const registro = convertirFechaHoraValidacion(row[1], row[2]);
+  if (!registro) return null;
+
+  return new Date(registro.getTime() + 20 * 60 * 1000);
+}
+
+function procesarValidacionesTecnicasVencidas() {
+  const hoja = asegurarHojaValidacionTecnica();
+  const datos = hoja.getDataRange().getValues();
+  const ahora = new Date();
+  let actualizados = 0;
+
+  for (let i = 1; i < datos.length; i++) {
+    const fila = datos[i];
+    const tipo = normalizarTexto(fila[6]);
+    const estado = normalizarTexto(fila[13]);
+
+    if (tipo !== "RECABLEADO") continue;
+    if (estado !== "PENDIENTE") continue;
+
+    const limite = obtenerHoraLimiteValidacion(fila);
+    if (!limite) continue;
+
+    if (ahora.getTime() >= limite.getTime()) {
+      const filaHoja = i + 1;
+      hoja.getRange(filaHoja, 14).setValue("SIN RESPUESTA");
+      hoja.getRange(filaHoja, 15).setValue("APROBADO AUTOMÁTICAMENTE");
+      hoja.getRange(filaHoja, 16).setValue("SISTEMA");
+      hoja.getRange(filaHoja, 17).setValue("AUTOMÁTICO");
+      hoja.getRange(filaHoja, 18).setValue(ahora);
+      hoja.getRange(filaHoja, 19).setValue(ahora);
+      hoja.getRange(filaHoja, 20).setValue("Aprobación automática por no recibir respuesta dentro de los 20 minutos establecidos.");
+      hoja.getRange(filaHoja, 18).setNumberFormat("dd/mm/yyyy");
+      hoja.getRange(filaHoja, 19).setNumberFormat("hh:mm:ss");
+      actualizados++;
+    }
+  }
+
+  return {
+    ok: true,
+    modulo: "VALIDACION_TECNICA",
+    accion: "PROCESAR_VENCIDAS",
+    actualizados
+  };
+}
+
+function registrarValidacionTecnica(data) {
+  const hoja = asegurarHojaValidacionTecnica();
+  const usuarioRegistro = obtenerUsuarioApp(data.usuario);
+
+  if (usuarioRegistro.perfil !== "TECNICO") {
+    throw new Error("Solo el técnico puede registrar una validación técnica");
+  }
+
+  const cuadrilla = normalizarCuadrilla(usuarioRegistro.cuadrilla);
+  if (!cuadrilla) throw new Error("El usuario técnico no tiene cuadrilla asignada");
+
+  const datosCuadrilla = obtenerDatosCuadrillaApp(cuadrilla);
+  const tipoValidacion = normalizarTipoValidacionTecnica(data.tipoValidacion || data.tipo_validacion);
+  const codigo = (data.codigo || "").toString().trim();
+  const id = generarIdValidacionTecnica(codigo, tipoValidacion);
+
+  if (existeValidacionTecnica(id)) {
+    throw new Error("Ya existe una validación registrada con este código y tipo: " + id);
+  }
+
+  const tipoTicket = normalizarTipoTicketValidacion(data.tipoTicket || data.tipo_ticket);
+  const numeroTicket = tipoTicket === "NO APLICA" ? "" : (data.numeroTicket || data.numero_ticket || "").toString().trim();
+
+  if (tipoTicket !== "NO APLICA" && !numeroTicket) {
+    throw new Error("Debe ingresar el número de ticket");
+  }
+
+  const ticketFinal = tipoTicket === "NO APLICA" ? "NO APLICA" : tipoTicket + numeroTicket;
+  const dni = (data.dniCliente || data.dni_cliente || "").toString().trim();
+  if (!dni) throw new Error("Debe ingresar el DNI del cliente");
+
+  const motivo = (data.motivoTecnico || data.motivo || "").toString().trim();
+  if (!motivo) throw new Error("Debe ingresar el motivo");
+
+  const ahora = new Date();
+  const fecha = Utilities.formatDate(ahora, Session.getScriptTimeZone(), "dd/MM/yyyy");
+  const hora = Utilities.formatDate(ahora, Session.getScriptTimeZone(), "HH:mm:ss");
+  const horaLimite = tipoValidacion === "RECABLEADO"
+    ? new Date(ahora.getTime() + 20 * 60 * 1000)
+    : "";
+
+  const sede = datosCuadrilla.sede || usuarioRegistro.sede;
+  const linkTelegram = obtenerLinkTelegramValidacion(sede);
+
+  hoja.appendRow([
+    id,
+    fecha,
+    hora,
+    sede,
+    usuarioRegistro.usuario,
+    cuadrilla,
+    tipoValidacion,
+    codigo,
+    tipoTicket,
+    numeroTicket,
+    ticketFinal,
+    dni,
+    motivo,
+    "PENDIENTE",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    linkTelegram,
+    horaLimite
+  ]);
+
+  const fila = hoja.getLastRow();
+  if (tipoValidacion === "RECABLEADO") {
+    hoja.getRange(fila, 22).setNumberFormat("dd/mm/yyyy hh:mm:ss");
+  }
+
+  return {
+    ok: true,
+    modulo: "VALIDACION_TECNICA",
+    accion: "REGISTRAR",
+    id,
+    fecha,
+    hora,
+    sede,
+    tecnico: usuarioRegistro.usuario,
+    cuadrilla,
+    tipoValidacion,
+    codigo,
+    tipoTicket,
+    numeroTicket,
+    ticketFinal,
+    dniCliente: dni,
+    motivoTecnico: motivo,
+    estado: "PENDIENTE",
+    resultadoFinal: "",
+    linkTelegram,
+    horaLimite: tipoValidacion === "RECABLEADO" ? Utilities.formatDate(horaLimite, Session.getScriptTimeZone(), "dd/MM/yyyy HH:mm:ss") : ""
+  };
+}
+
+function filaValidacionTecnicaAObjeto(fila) {
+  let estadoVisibleTecnico = fila[13];
+  let resultadoVisibleTecnico = fila[14];
+
+  if (normalizarTexto(fila[13]) === "SIN RESPUESTA" && normalizarTexto(fila[14]) === "APROBADO AUTOMATICAMENTE") {
+    estadoVisibleTecnico = "APROBADO";
+    resultadoVisibleTecnico = "VALIDACIÓN AUTOMÁTICA";
+  }
+
+  return {
+    id: fila[0],
+    fechaRegistro: fila[1],
+    horaRegistro: fila[2],
+    sede: fila[3],
+    tecnico: fila[4],
+    cuadrilla: fila[5],
+    tipoValidacion: fila[6],
+    codigo: fila[7],
+    tipoTicket: fila[8],
+    numeroTicket: fila[9],
+    ticketFinal: fila[10],
+    dniCliente: fila[11],
+    motivoTecnico: fila[12],
+    estado: fila[13],
+    resultadoFinal: fila[14],
+    validadoPor: fila[15],
+    perfilValidador: fila[16],
+    fechaValidacion: fila[17],
+    horaValidacion: fila[18],
+    motivoValidacion: fila[19],
+    linkTelegram: fila[20],
+    horaLimite: fila[21],
+    estadoVisibleTecnico,
+    resultadoVisibleTecnico
+  };
+}
+
+function listarValidacionTecnica(data) {
+  procesarValidacionesTecnicasVencidas();
+
+  const hoja = asegurarHojaValidacionTecnica();
+  const datos = hoja.getDataRange().getValues();
+  const usuario = obtenerUsuarioApp(data.usuario);
+  const lista = [];
+
+  for (let i = 1; i < datos.length; i++) {
+    const item = filaValidacionTecnicaAObjeto(datos[i]);
+
+    let permitir = false;
+
+    if (usuario.perfil === "TECNICO") {
+      permitir = normalizarCuadrilla(usuario.cuadrilla) === normalizarCuadrilla(item.cuadrilla);
+    } else if (usuario.perfil === "SUPERVISOR") {
+      permitir = normalizarTexto(usuario.sede) === normalizarTexto(item.sede);
+    } else if (esPerfilJefatura(usuario.perfil)) {
+      permitir = true;
+    }
+
+    if (!permitir) continue;
+    if (data.estado && normalizarTexto(data.estado) !== normalizarTexto(item.estado)) continue;
+    if (data.tipoValidacion && normalizarTexto(data.tipoValidacion) !== normalizarTexto(item.tipoValidacion)) continue;
+    if (data.sede && normalizarTexto(data.sede) !== normalizarTexto(item.sede)) continue;
+
+    lista.push(item);
+  }
+
+  lista.sort((a, b) => {
+    const fa = convertirFechaHoraValidacion(a.fechaRegistro, a.horaRegistro);
+    const fb = convertirFechaHoraValidacion(b.fechaRegistro, b.horaRegistro);
+    return (fb ? fb.getTime() : 0) - (fa ? fa.getTime() : 0);
+  });
+
+  return {
+    ok: true,
+    modulo: "VALIDACION_TECNICA",
+    accion: "LISTAR",
+    perfil: usuario.perfil,
+    registros: lista.length,
+    validaciones: lista
+  };
+}
+
+function validarValidacionTecnica(data) {
+  procesarValidacionesTecnicasVencidas();
+
+  const id = (data.id || "").toString().trim();
+  const motivo = (data.motivoValidacion || data.motivo || "").toString().trim();
+  if (!id) throw new Error("ID obligatorio");
+  if (!motivo) throw new Error("Debe ingresar el motivo de validación");
+
+  const encontrado = buscarFilaValidacionTecnica(id);
+  const hoja = encontrado.hoja;
+  const fila = encontrado.fila;
+  const datos = encontrado.datos;
+  const usuario = obtenerUsuarioApp(data.usuario);
+  const tipo = normalizarTexto(datos[6]);
+  const sedeCaso = normalizarTexto(datos[3]);
+  const estadoActual = normalizarTexto(datos[13]);
+
+  if (estadoActual !== "PENDIENTE") {
+    throw new Error("Esta validación ya no está pendiente");
+  }
+
+  const resultado = normalizarTexto(data.resultado);
+
+  if (tipo === "RECABLEADO") {
+    if (!(usuario.perfil === "SUPERVISOR" || esPerfilJefatura(usuario.perfil))) {
+      throw new Error("Solo Supervisor o Jefatura pueden validar recableados");
+    }
+
+    if (usuario.perfil === "SUPERVISOR" && normalizarTexto(usuario.sede) !== sedeCaso) {
+      throw new Error("Supervisor solo puede validar solicitudes de su sede");
+    }
+
+    if (!["APROBADO", "RECHAZADO", "OBSERVADO"].includes(resultado)) {
+      throw new Error("Resultado no válido para Recableado");
+    }
+  } else if (tipo === "GAR" || tipo === "VTR") {
+    if (!esPerfilJefatura(usuario.perfil)) {
+      throw new Error("GAR y VTR solo pueden ser validados por Jefatura");
+    }
+
+    if (!["BONO", "NO BONO"].includes(resultado)) {
+      throw new Error("Resultado no válido para GAR/VTR");
+    }
+  } else {
+    throw new Error("Tipo de validación no reconocido");
+  }
+
+  const ahora = new Date();
+
+  hoja.getRange(fila, 14).setValue(resultado);
+  hoja.getRange(fila, 15).setValue(resultado);
+  hoja.getRange(fila, 16).setValue(usuario.usuario);
+  hoja.getRange(fila, 17).setValue(usuario.perfil);
+  hoja.getRange(fila, 18).setValue(ahora);
+  hoja.getRange(fila, 19).setValue(ahora);
+  hoja.getRange(fila, 20).setValue(motivo);
+  hoja.getRange(fila, 18).setNumberFormat("dd/mm/yyyy");
+  hoja.getRange(fila, 19).setNumberFormat("hh:mm:ss");
+
+  return {
+    ok: true,
+    modulo: "VALIDACION_TECNICA",
+    accion: "VALIDAR",
+    id,
+    resultado,
+    validadoPor: usuario.usuario,
+    perfilValidador: usuario.perfil
+  };
+}
+
+function crearTriggerValidacionTecnica() {
+  const triggers = ScriptApp.getProjectTriggers();
+  triggers.forEach(t => {
+    if (t.getHandlerFunction && t.getHandlerFunction() === "procesarValidacionesTecnicasVencidas") {
+      ScriptApp.deleteTrigger(t);
+    }
+  });
+
+  ScriptApp.newTrigger("procesarValidacionesTecnicasVencidas")
+    .timeBased()
+    .everyMinutes(5)
+    .create();
+
+  return {
+    ok: true,
+    modulo: "VALIDACION_TECNICA",
+    accion: "CREAR_TRIGGER",
+    mensaje: "Trigger creado para revisar recableados pendientes cada 5 minutos"
+  };
+}
+
+
 /* =========================
    API PRINCIPAL
 ========================= */
@@ -1936,6 +2413,38 @@ function autorizarDriveActividadCampo() {
 function doPost(e) {
   try {
     const data = JSON.parse(e.postData.contents);
+
+
+    if (data.accion === "registrarValidacionTecnica") {
+      return ContentService
+        .createTextOutput(JSON.stringify(registrarValidacionTecnica(data)))
+        .setMimeType(ContentService.MimeType.JSON);
+    }
+
+    if (data.accion === "listarValidacionTecnica") {
+      return ContentService
+        .createTextOutput(JSON.stringify(listarValidacionTecnica(data)))
+        .setMimeType(ContentService.MimeType.JSON);
+    }
+
+    if (data.accion === "validarValidacionTecnica") {
+      return ContentService
+        .createTextOutput(JSON.stringify(validarValidacionTecnica(data)))
+        .setMimeType(ContentService.MimeType.JSON);
+    }
+
+    if (data.accion === "procesarValidacionesTecnicasVencidas") {
+      return ContentService
+        .createTextOutput(JSON.stringify(procesarValidacionesTecnicasVencidas()))
+        .setMimeType(ContentService.MimeType.JSON);
+    }
+
+    if (data.accion === "crearTriggerValidacionTecnica") {
+      return ContentService
+        .createTextOutput(JSON.stringify(crearTriggerValidacionTecnica()))
+        .setMimeType(ContentService.MimeType.JSON);
+    }
+
 
     if (data.accion === "registrarActividadCampo") {
       return ContentService
