@@ -2136,11 +2136,53 @@ async function mostrarDashboardSupervisor(){
     }catch(e){ mostrarPantalla(`<div class="mv4-page"><h2>👷 Supervisor</h2><div class="mv4-error">${e.message}</div></div>`); }
 }
 
+const MV591_SEDES_OFICIALES = ["CHICLAYO", "PIURA", "TRUJILLO"];
+
+function mv591ListaZonaNorte(lista){
+    return (lista || []).filter(x => MV591_SEDES_OFICIALES.includes(mv4Norm(x.sede)));
+}
+
 function mv4AgruparPorSede(lista){
     const grupos = {};
-    lista.forEach(x => { const s = mv4Norm(x.sede || "SIN SEDE"); if(!grupos[s]) grupos[s]=[]; grupos[s].push(x); });
+    MV591_SEDES_OFICIALES.forEach(s => grupos[s] = []);
+
+    (lista || []).forEach(x => {
+        const s = mv4Norm(x.sede || "");
+        if(!MV591_SEDES_OFICIALES.includes(s)) return;
+        grupos[s].push(x);
+    });
+
     return grupos;
 }
+
+function mv591MiniResumenCard(icono, titulo, valor, sub, estado){
+    return `
+    <div style="background:#0f1f35;border:1px solid rgba(255,255,255,.08);border-radius:14px;padding:12px;min-height:78px;">
+        <div style="display:flex;align-items:center;gap:6px;font-size:11px;color:#9fb7d8;font-weight:900;text-transform:uppercase;letter-spacing:.5px;">
+            <span>${icono}</span><span>${titulo}</span>
+        </div>
+        <div style="font-size:22px;font-weight:900;margin-top:8px;color:#fff;">${valor}</div>
+        <div style="font-size:11px;color:#9fb7d8;margin-top:4px;font-weight:700;">${sub || ""} ${estado || ""}</div>
+    </div>`;
+}
+
+function mv591ResumenEjecutivoZona(lista){
+    const r = mv4Resumen(lista);
+    const prodPct = r.metaProduccion > 0 ? Math.round((r.produccion / r.metaProduccion) * 100) : 0;
+    return `
+    <div class="mv4-general-card" style="margin-top:14px;">
+        <div class="mv4-general-title">📊 RESUMEN EJECUTIVO ZONA NORTE</div>
+        <div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin-top:12px;">
+            ${mv591MiniResumenCard("📈", "Producción", `${r.produccion.toFixed(1)} pts`, `${prodPct}% de meta`, mv4Estado("mayor", r.produccion, r.metaProduccion))}
+            ${mv591MiniResumenCard("🎯", "Efectividad", mv4Per(r.efectividad), `Meta ≥ ${META_EFECTIVIDAD}%`, mv4Estado("mayor", r.efectividad, META_EFECTIVIDAD))}
+            ${mv591MiniResumenCard("🔧", "Recableado", mv4Per(r.recableado), `Meta ≤ ${META_RECABLEADO}%`, mv4Estado("menor", r.recableado, META_RECABLEADO))}
+            ${mv591MiniResumenCard("📡", "VTR/GAR", mv4Per(r.vtrgar), `Meta ≤ ${META_VTRGAR}%`, mv4Estado("menor", r.vtrgar, META_VTRGAR))}
+            ${mv591MiniResumenCard("🚨", "Observaciones", mv4Money(r.obs), `Monto afectado`, mv4Estado("menor", r.obs, META_OBSERVACIONES))}
+            ${mv591MiniResumenCard("🏆", "Metas", `${r.ok} / 5`, `${r.cumplimiento}% cumplimiento`, r.cumplimiento >= 80 ? "🟢" : (r.cumplimiento >= 60 ? "🟡" : "🔴"))}
+        </div>
+    </div>`;
+}
+
 function mv4SedeCard(sede, lista){
     const r = mv4Resumen(lista);
     const id = "sede_" + sede.replace(/\W/g, "_") + "_" + Math.random().toString(36).slice(2);
@@ -2159,14 +2201,28 @@ function mv4SedeCard(sede, lista){
         <div id="${id}" style="display:none;">${mv4DashboardKpis(lista)}</div>
     </div>`;
 }
+
 async function mostrarDashboardJefatura(){
     mostrarPantalla(`<div class="mv4-page"><h2 class="mv4-title">👔 JEFATURA</h2><div class="mv4-loading">Cargando Zona Norte...</div></div>`);
     try{
-        const lista = await mv4ObtenerRanking();
+        const listaCompleta = await mv4ObtenerRanking();
+        const lista = mv591ListaZonaNorte(listaCompleta);
         const grupos = mv4AgruparPorSede(lista);
         const general = mv4Resumen(lista);
-        let html = `<div class="mv4-page"><div class="mv4-top-card"><div class="mv4-top-role">👔 JEFATURA</div><div class="mv4-top-sede">ZONA NORTE</div><div class="mv4-top-sub">${lista.length} cuadrillas</div></div><div class="mv4-general-card"><div class="mv4-general-title">📋 CUMPLIMIENTO ZONA NORTE</div><div class="mv4-general-value">${general.cumplimiento}%</div><div class="mv4-progress"><span style="width:${general.cumplimiento}%"></span></div><div class="mv4-general-sub">${general.ok} de 5 metas cumplidas</div></div>`;
-        Object.keys(grupos).sort().forEach(s => html += mv4SedeCard(s, grupos[s]));
+        let html = `<div class="mv4-page">
+            <div class="mv4-top-card">
+                <div class="mv4-top-role">👔 JEFATURA</div>
+                <div class="mv4-top-sede">ZONA NORTE</div>
+                <div class="mv4-top-sub">${lista.length} cuadrillas</div>
+            </div>
+            ${mv591ResumenEjecutivoZona(lista)}
+            <div class="mv4-general-card">
+                <div class="mv4-general-title">📋 CUMPLIMIENTO ZONA NORTE</div>
+                <div class="mv4-general-value">${general.cumplimiento}%</div>
+                <div class="mv4-progress"><span style="width:${general.cumplimiento}%"></span></div>
+                <div class="mv4-general-sub">${general.ok} de 5 metas cumplidas</div>
+            </div>`;
+        MV591_SEDES_OFICIALES.forEach(s => html += mv4SedeCard(s, grupos[s] || []));
         html += `<button class="button_1" onclick="volverInicio()">⬅️ Volver al menú</button></div>`;
         mostrarPantalla(html);
     }catch(e){ mostrarPantalla(`<div class="mv4-page"><h2>👔 Jefatura</h2><div class="mv4-error">${e.message}</div></div>`); }
