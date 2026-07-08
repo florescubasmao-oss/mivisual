@@ -37,7 +37,12 @@ function leerFilaCSV(linea){
   return resultado.map(x => x.trim());
 }
 
-function accesoVisiblePorDestino(destino, sede, cuadrilla){
+function esPerfilJefaturaAcceso(perfil){
+  const p = normalizarDestinoAcceso(perfil);
+  return p === "JEFATURA" || p === "ADMIN" || p === "ADMINISTRADOR";
+}
+
+function accesoVisiblePorDestino(destino, sede, cuadrilla, perfilUsuario){
   const destinoNormalizado = normalizarDestinoAcceso(destino);
   const sedeNormalizada = normalizarDestinoAcceso(sede);
   const cuadrillaNormalizada = normalizarDestinoAcceso(cuadrilla);
@@ -49,6 +54,16 @@ function accesoVisiblePorDestino(destino, sede, cuadrilla){
     .split(",")
     .map(x => x.trim())
     .filter(Boolean);
+
+  /*
+    Regla MI VISUAL:
+    Jefatura/Admin consulta accesos por PERFIL.
+    Como su sede en USUARIOS suele ser "TODAS", no debe bloquearse
+    por DESTINO cuando el enlace ya tiene perfil JEFATURA/ADMIN permitido.
+  */
+  if(esPerfilJefaturaAcceso(perfilUsuario)){
+    return true;
+  }
 
   return destinosPermitidos.includes(sedeNormalizada) ||
          destinosPermitidos.includes(cuadrillaNormalizada);
@@ -109,7 +124,7 @@ else if(nombre.includes("BOT")) icono = "🤖";
 else if(nombre.includes("Grupo")) icono = "📢";
   
 if(
-  accesoVisiblePorDestino(destino, sede, cuadrilla) &&
+  accesoVisiblePorDestino(destino, sede, cuadrilla, perfilUsuario) &&
   accesoVisiblePorPerfil(perfilDestino, perfilUsuario)
 ){
 
