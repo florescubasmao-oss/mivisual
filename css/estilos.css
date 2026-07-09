@@ -622,3 +622,25 @@ body{background:linear-gradient(180deg,var(--mv4-bg),var(--mv4-bg2));font-family
   border-radius:16px;
   padding:10px;
 }
+
+/* ===== Observaciones v66: tarjetas compactas y detalle desplegable ===== */
+.obs-card-compacta{padding:12px 14px;border-left-width:5px;transition:all .18s ease;}
+.obs-card-compacta.obs-card-abierta{background:#f8fbff;border-color:#60a5fa;box-shadow:0 0 0 2px rgba(59,130,246,.18),0 10px 24px rgba(15,23,42,.12);}
+.obs-resumen-lineal{display:flex;align-items:center;justify-content:space-between;gap:12px;}
+.obs-resumen-main{display:flex;align-items:center;gap:12px;flex-wrap:wrap;color:#0f172a;line-height:1.25;}
+.obs-codigo{font-size:18px;color:#0f172a;min-width:86px;}
+.obs-estado-lineal{font-weight:800;font-size:12px;border-radius:999px;background:#eef2ff;color:#1e293b;padding:6px 10px;}
+.obs-chip-descargo{font-size:12px;font-weight:800;color:#047857;background:#d1fae5;border-radius:999px;padding:6px 10px;}
+.obs-btn-detalle{border:0;border-radius:12px;background:#0f766e;color:white;font-weight:800;padding:10px 14px;cursor:pointer;white-space:nowrap;}
+.obs-detalle-desplegable{margin-top:12px;border-top:1px solid #dbeafe;padding-top:12px;}
+.obs-head-detalle{background:#f8fafc;border-radius:12px;padding:10px;}
+.obs-descargo-badge{display:inline-flex;align-items:center;gap:6px;background:#dcfce7;color:#166534;border-radius:999px;padding:10px 12px;font-weight:800;}
+.obs-descargo-pendiente{display:inline-flex;color:#92400e;background:#fef3c7;border-radius:999px;padding:8px 10px;font-weight:800;}
+@media(max-width:620px){
+  .obs-resumen-lineal{display:block;}
+  .obs-resumen-main{display:block;}
+  .obs-codigo{display:block;font-size:17px;margin-bottom:4px;}
+  .obs-resumen-main span{display:block;margin:4px 0;}
+  .obs-estado-lineal,.obs-chip-descargo{display:inline-block!important;width:max-content;}
+  .obs-btn-detalle{width:100%;margin-top:10px;}
+}

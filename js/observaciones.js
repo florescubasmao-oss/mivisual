@@ -209,34 +209,79 @@ async function cargarObservaciones(){
     }
 }
 
+function etiquetaEstadoObs(estado){
+    const e = (estado || "-").toString().toUpperCase().trim();
+    if(e === "DERIVADO") return "🔵 DERIVADO";
+    if(e === "EN PROCESO") return "🟡 EN PROCESO";
+    if(e === "PENALIZADO") return "🔴 PENALIZADO";
+    if(e === "APELADO") return "🟣 APELADO";
+    if(e === "SUBSANADO") return "🟢 SUBSANADO";
+    return e;
+}
+
+function toggleDetalleObservacion(id){
+    const detalle = document.getElementById("obsDetalle_" + id);
+    const boton = document.getElementById("obsBtnDetalle_" + id);
+    const card = document.getElementById("obsCard_" + id);
+    if(!detalle || !boton) return;
+
+    const abierto = detalle.style.display !== "none";
+    detalle.style.display = abierto ? "none" : "block";
+    boton.innerHTML = abierto ? "▼ Ver detalle" : "▲ Ocultar detalle";
+    if(card){
+        if(abierto) card.classList.remove("obs-card-abierta");
+        else card.classList.add("obs-card-abierta");
+    }
+}
+
 function cardObservacion(o, u){
     const puedeDescargar = u.perfil === "TECNICO";
     const puedeCambiar = u.perfil === "SUPERVISOR" || u.perfil === "JEFATURA" || u.perfil === "ADMIN" || u.perfil === "ADMINISTRADOR";
+    const tieneDescargo = !!((o.descargoTecnico || "").toString().trim()) || !!((o.evidenciaTecnico || "").toString().trim());
     const evidencia = o.evidenciaTecnico
         ? o.evidenciaTecnico.toString().split("|").filter(x => x.trim()).map((url, i) => `<a href="${url.trim()}" target="_blank">📎 Evidencia ${i + 1}</a>`).join("<br>")
         : "Pendiente";
 
+    const idSeguro = (o.id || "").toString().replace(/[^A-Za-z0-9_-]/g, "_");
+    const monto = Number(o.monto || 0).toFixed(2);
+    const descargoBadge = tieneDescargo ? `<div class="obs-descargo-badge">✅ Descargo enviado</div>` : `<div class="obs-descargo-pendiente">Descargo pendiente</div>`;
+
     return `
-    <div class="obs-card ${claseEstadoObs(o.estado)}">
-        <div class="obs-card-head">
-            <div><b>${o.cuadrilla || "-"}</b><br><small>${o.periodo || ""}</small></div>
-            <span class="obs-badge">${o.estado || "-"}</span>
+    <div id="obsCard_${idSeguro}" class="obs-card obs-card-compacta ${claseEstadoObs(o.estado)}">
+        <div class="obs-resumen-lineal">
+            <div class="obs-resumen-main">
+                <b class="obs-codigo">${o.codigo || "-"}</b>
+                <span>${o.tipoObservacion || "-"} • S/ ${monto}</span>
+                <span class="obs-estado-lineal">${etiquetaEstadoObs(o.estado)}</span>
+                ${tieneDescargo ? `<span class="obs-chip-descargo">Descargo enviado</span>` : ``}
+            </div>
+            <button id="obsBtnDetalle_${idSeguro}" class="obs-btn-detalle" onclick="toggleDetalleObservacion('${idSeguro}')">▼ Ver detalle</button>
         </div>
-        <div class="obs-grid">
-            <div><span>Cuadrilla</span><b>${o.cuadrilla || "-"}</b></div>
-            <div><span>Fuente</span><b>${o.fuente || "-"}</b></div>
-            <div><span>Código/Ticket</span><b>${o.codigo || "-"}</b></div>
-            <div><span>Tipo</span><b>${o.tipoObservacion || "-"}</b></div>
-            <div><span>Monto</span><b>S/ ${Number(o.monto || 0).toFixed(2)}</b></div>
-            <div><span>Registro</span><b>${formatoFechaObs(o.fechaRegistro)}</b></div>
-            <div><span>Plazo</span><b>${formatoFechaObs(o.plazo)}</b></div>
-        </div>
-        <div class="obs-descripcion"><b>Descripción:</b><br>${o.descripcion || "-"}</div>
-        <div class="obs-descripcion"><b>Descargo:</b><br>${o.descargoTecnico || "Pendiente"}</div>
-        <div class="obs-descripcion"><b>Evidencia:</b><br>${evidencia}</div>
-        <div class="obs-acciones">
-            ${puedeDescargar ? `<button onclick="mostrarDescargoObservacion('${o.id}')">Enviar Descargo</button>` : ""}
-            ${puedeCambiar ? `<button onclick="mostrarCambioEstadoObservacion('${o.id}', '${o.estado}', '${o.monto}')">Cambiar Estado</button>` : ""}
+
+        <div id="obsDetalle_${idSeguro}" class="obs-detalle-desplegable" style="display:none;">
+            <div class="obs-card-head obs-head-detalle">
+                <div><b>${o.cuadrilla || "-"}</b><br><small>${o.periodo || ""}</small></div>
+                <span class="obs-badge">${o.estado || "-"}</span>
+            </div>
+            <div class="obs-grid">
+                <div><span>Cuadrilla</span><b>${o.cuadrilla || "-"}</b></div>
+                <div><span>Fuente</span><b>${o.fuente || "-"}</b></div>
+                <div><span>Código/Ticket</span><b>${o.codigo || "-"}</b></div>
+                <div><span>Tipo</span><b>${o.tipoObservacion || "-"}</b></div>
+                <div><span>Monto</span><b>S/ ${monto}</b></div>
+                <div><span>Estado</span><b>${etiquetaEstadoObs(o.estado)}</b></div>
+                <div><span>Registro</span><b>${formatoFechaObs(o.fechaRegistro)}</b></div>
+                <div><span>Plazo</span><b>${formatoFechaObs(o.plazo)}</b></div>
+                <div><span>Descargo</span><b>${tieneDescargo ? "✅ Enviado" : "Pendiente"}</b></div>
+            </div>
+            <div class="obs-descripcion"><b>Descripción:</b><br>${o.descripcion || "-"}</div>
+            <div class="obs-descripcion"><b>Descargo:</b><br>${o.descargoTecnico || "Pendiente"}</div>
+            <div class="obs-descripcion"><b>Evidencia:</b><br>${evidencia}</div>
+            <div class="obs-acciones">
+                ${puedeDescargar && !tieneDescargo ? `<button onclick="mostrarDescargoObservacion('${o.id}')">Enviar Descargo</button>` : ""}
+                ${puedeDescargar && tieneDescargo ? descargoBadge : ""}
+                ${puedeCambiar ? `<button onclick="mostrarCambioEstadoObservacion('${o.id}', '${o.estado}', '${o.monto}')">Cambiar Estado</button>` : ""}
+            </div>
         </div>
     </div>`;
 }
