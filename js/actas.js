@@ -1,4 +1,4 @@
-// MI VISUAL - Gestión de Actas v63 doble validación
+// MI VISUAL - Gestión de Actas v64 filtro partida y estados
 
 const API_ACTAS = "https://script.google.com/macros/s/AKfycby8MgSBvDQcFZ9YBi-UDfYYHmRD4-x1m66mfO5xb0rYXjtbplyyzFhiPc4nCti8MyXK/exec";
 
@@ -35,6 +35,37 @@ function limpiarHtmlActas(txt){
         .replace(/>/g,"&gt;")
         .replace(/"/g,"&quot;")
         .replace(/'/g,"&#039;");
+}
+
+
+const TIPOS_INSTALACION_ACTAS = [
+    "INSTALACION Y ACTIVACION DE ABONADOS EN CONDOMINIOS",
+    "INSTALACION Y ACTIVACION DE ABONADOS EN RESIDENCIALES"
+];
+
+function esPartidaInstalacionActas(tipo){
+    const t = normalizarActas(tipo);
+    return TIPOS_INSTALACION_ACTAS.includes(t);
+}
+
+function inferirTipoEjecucionActas(){
+    const u = usuarioActualActas();
+    const cuad = normalizarActas(u.cuadrilla);
+    if(cuad.includes("SGA") || cuad.includes("VISITA TECNICA") || cuad.includes("VISITA TÉCNICA")) return "VISITA TECNICA";
+    return "INSTALACION";
+}
+
+function etiquetaValidacionActas(valor, tipo){
+    const v = normalizarActas(valor);
+    if(v === "CORRECTO") return `<span class="actas-badge actas-fin">CORRECTO</span>`;
+    if(v === "OBSERVADO") return `<span class="actas-badge actas-obs">OBSERVADO</span>`;
+    return `<span class="actas-badge actas-pend">PENDIENTE</span>`;
+}
+
+function estadoGeneralActas(a){
+    if(estaFinalizadaActa(a)) return `<span class="actas-badge actas-fin">FINALIZADO</span>`;
+    if(estaObservadaActa(a)) return `<span class="actas-badge actas-obs">OBSERVADO</span>`;
+    return `<span class="actas-badge actas-pend">PENDIENTE</span>`;
 }
 
 async function apiActas(payload){
@@ -134,7 +165,14 @@ async function cargarActas(){
             lista.innerHTML = `<div class="actas-card actas-empty">No hay actas registradas.</div>`;
             return;
         }
-        lista.innerHTML = `
+        const vistaValidacion = esAlmacenActas(u.perfil) || esJefaturaAlmacenActas(u.perfil);
+        lista.innerHTML = vistaValidacion ? `
+            <table class="actas-table">
+                <thead><tr><th>Pedido</th><th>Cuadrilla</th><th>Sede</th><th>Ejecución</th><th>Estado general</th><th>Validación almacén</th><th>Validación jefatura</th><th>PDF</th><th>Acción</th></tr></thead>
+                <tbody>${data.actas.map(a => filaActaValidacionHtml(a)).join("")}</tbody>
+            </table>
+            <div class="actas-mobile">${data.actas.map(a => cardActaHtml(a)).join("")}</div>
+        ` : `
             <table class="actas-table">
                 <thead><tr><th>Pedido</th><th>Cuadrilla</th><th>Sede</th><th>Ejecución</th><th>Partida</th><th>Estado</th><th>PDF</th><th>Acción</th></tr></thead>
                 <tbody>${data.actas.map(a => filaActaHtml(a)).join("")}</tbody>
@@ -198,6 +236,23 @@ function filaActaHtml(a){
         <td>${limpiarHtmlActas(a.tipoEjecucion || "-")}</td>
         <td>${limpiarHtmlActas(a.tipoPartida || "-")}</td>
         <td>${badgeActa(a)}${motivo ? `<br><small>${limpiarHtmlActas(motivo)}</small>` : ""}</td>
+        <td>${a.linkActa ? `<a href="${a.linkActa}" target="_blank">Abrir PDF</a>` : "-"}</td>
+        <td>${botonesActa(a)}</td>
+    </tr>`;
+}
+
+
+function filaActaValidacionHtml(a){
+    const motivoAlm = a.motivoAlmacen || "";
+    const motivoJef = a.motivoJefatura || "";
+    return `<tr>
+        <td><b>${limpiarHtmlActas(a.codigoPedido || "-")}</b><br><small>Orden: ${limpiarHtmlActas(a.codigoOrden || "-")}</small></td>
+        <td>${limpiarHtmlActas(a.cuadrilla || "-")}</td>
+        <td>${limpiarHtmlActas(a.sede || "-")}</td>
+        <td>${limpiarHtmlActas(a.tipoEjecucion || "-")}<br><small>${limpiarHtmlActas(a.tipoPartida || "-")}</small></td>
+        <td>${estadoGeneralActas(a)}</td>
+        <td>${etiquetaValidacionActas(a.resultadoAlmacen)}${motivoAlm ? `<br><small>${limpiarHtmlActas(motivoAlm)}</small>` : ""}</td>
+        <td>${etiquetaValidacionActas(a.resultadoJefatura)}${motivoJef ? `<br><small>${limpiarHtmlActas(motivoJef)}</small>` : ""}</td>
         <td>${a.linkActa ? `<a href="${a.linkActa}" target="_blank">Abrir PDF</a>` : "-"}</td>
         <td>${botonesActa(a)}</td>
     </tr>`;
@@ -274,6 +329,9 @@ async function mostrarFormularioActa(codigoPedidoPrefill){
         </div>
     `);
     document.getElementById("actaFechaGestion").value = new Date().toISOString().slice(0,10);
+    const tipoDefecto = inferirTipoEjecucionActas();
+    const selTipo = document.getElementById("actaTipoEjecucion");
+    if(selTipo) selTipo.value = tipoDefecto;
     await cargarTiposPartidaActas();
 }
 
@@ -283,7 +341,17 @@ async function cargarTiposPartidaActas(){
     if(!sel) return;
     try{
         const data = await apiActas({accion:"listarTiposPartidaActas", tipoEjecucion:tipo});
-        sel.innerHTML = `<option value="">Seleccione...</option>` + (data.tipos || []).map(t => `<option value="${limpiarHtmlActas(t)}">${limpiarHtmlActas(t)}</option>`).join("");
+        let tipos = data.tipos || [];
+
+        // Seguridad adicional en frontend: si el Apps Script devuelve todo el catálogo,
+        // aquí se vuelve a filtrar para que el técnico no elija una partida incorrecta.
+        if(normalizarActas(tipo) === "INSTALACION"){
+            tipos = (data.instalaciones && data.instalaciones.length ? data.instalaciones : tipos.filter(esPartidaInstalacionActas));
+        }else{
+            tipos = (data.visitaTecnica && data.visitaTecnica.length ? data.visitaTecnica : tipos.filter(t => !esPartidaInstalacionActas(t)));
+        }
+
+        sel.innerHTML = `<option value="">Seleccione...</option>` + tipos.map(t => `<option value="${limpiarHtmlActas(t)}">${limpiarHtmlActas(t)}</option>`).join("");
     }catch(err){
         sel.innerHTML = `<option value="">Error al cargar catálogo</option>`;
     }
