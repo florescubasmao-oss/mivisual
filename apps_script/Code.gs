@@ -2422,22 +2422,73 @@ function esPerfilJefaturaAlmacen(perfil) {
   return normalizarTexto(perfil) === "JEFATURA ALMACEN";
 }
 
+function esTipoInstalacionActa(tipoPartida) {
+  const t = normalizarTexto(tipoPartida);
+  return t === "INSTALACION Y ACTIVACION DE ABONADOS EN CONDOMINIOS" ||
+         t === "INSTALACIÓN Y ACTIVACIÓN DE ABONADOS EN CONDOMINIOS" ||
+         t === "INSTALACION Y ACTIVACION DE ABONADOS EN RESIDENCIALES" ||
+         t === "INSTALACIÓN Y ACTIVACIÓN DE ABONADOS EN RESIDENCIALES";
+}
+
+function normalizarTipoEjecucionActa(tipoEjecucion, tipoPartida) {
+  let t = normalizarTexto(tipoEjecucion || "");
+  if (!t && tipoPartida) {
+    t = esTipoInstalacionActa(tipoPartida) ? "INSTALACION" : "VISITA TECNICA";
+  }
+
+  if (["INSTALACION", "INSTALACIÓN", "INSTALACIONES"].includes(t)) return "INSTALACION";
+  if (["VISITA TECNICA", "VISITA TÉCNICA", "VISITA TECNICA/POSVENTA", "VISITA TÉCNICA/POSVENTA", "POSTVENTA", "POSVENTA"].includes(t)) {
+    return "VISITA TECNICA";
+  }
+
+  throw new Error("Tipo de ejecución no válido. Usa INSTALACION o VISITA TECNICA");
+}
+
 function encabezadoActasEscaneadas() {
   return [[
-    "ID", "FECHA_REGISTRO", "HORA_REGISTRO", "SEDE", "CUADRILLA", "SUPERVISOR", "TECNICO",
-    "FECHA_GESTION", "TIPO_PARTIDA", "CODIGO_ORDEN", "CODIGO_PEDIDO", "DNI", "CLIENTE",
-    "NOMBRE_ARCHIVO", "LINK_ACTA", "ESTADO", "RESULTADO_VALIDACION", "MOTIVO_OBSERVACION",
-    "VALIDADO_POR", "FECHA_VALIDACION", "HORA_VALIDACION", "VERSION"
+    "ID",
+    "FECHA_REGISTRO",
+    "HORA_REGISTRO",
+    "SEDE",
+    "CUADRILLA",
+    "SUPERVISOR",
+    "TECNICO",
+    "FECHA_GESTION",
+    "TIPO_EJECUCION",
+    "TIPO_PARTIDA",
+    "CODIGO_ORDEN",
+    "CODIGO_PEDIDO",
+    "DNI",
+    "CLIENTE",
+    "NOMBRE_ARCHIVO",
+    "LINK_ACTA",
+    "ESTADO",
+    "RESULTADO_ALMACEN",
+    "MOTIVO_ALMACEN",
+    "VALIDADO_ALMACEN_POR",
+    "FECHA_VALIDACION_ALMACEN",
+    "HORA_VALIDACION_ALMACEN",
+    "RESULTADO_JEFATURA",
+    "MOTIVO_JEFATURA",
+    "VALIDADO_JEFATURA_POR",
+    "FECHA_VALIDACION_JEFATURA",
+    "HORA_VALIDACION_JEFATURA",
+    "VERSION"
   ]];
 }
 
 function asegurarHojaActasEscaneadas() {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
   let hoja = ss.getSheetByName(HOJA_ACTAS_ESCANEADAS);
-  if (!hoja) hoja = ss.insertSheet(HOJA_ACTAS_ESCANEADAS);
-  if (hoja.getLastRow() === 0 || !hoja.getRange(1, 1).getValue()) {
-    hoja.getRange(1, 1, 1, 22).setValues(encabezadoActasEscaneadas());
+
+  if (!hoja) {
+    hoja = ss.insertSheet(HOJA_ACTAS_ESCANEADAS);
   }
+
+  if (hoja.getLastRow() === 0 || !hoja.getRange(1, 1).getValue()) {
+    hoja.getRange(1, 1, 1, 28).setValues(encabezadoActasEscaneadas());
+  }
+
   return hoja;
 }
 
@@ -2464,11 +2515,16 @@ function fechaGestionActaTexto(valor) {
   if (valor instanceof Date && !isNaN(valor.getTime())) {
     return Utilities.formatDate(valor, Session.getScriptTimeZone(), "yyyy-MM-dd");
   }
+
   const t = (valor || "").toString().trim();
   if (!t) throw new Error("Debe ingresar la fecha de gestión");
   if (/^\d{4}-\d{2}-\d{2}$/.test(t)) return t;
+
   const p = t.split("/");
-  if (p.length === 3) return p[2] + "-" + p[1].padStart(2, "0") + "-" + p[0].padStart(2, "0");
+  if (p.length === 3) {
+    return p[2] + "-" + p[1].padStart(2, "0") + "-" + p[0].padStart(2, "0");
+  }
+
   return t;
 }
 
@@ -2478,37 +2534,100 @@ function generarIdActa(codigoPedido) {
   return "ACTA-" + pedido;
 }
 
-function obtenerTiposPartidaActas() {
+function obtenerTiposPartidaActas(data) {
   const hoja = obtenerHoja(HOJA_CATALOGO_ORDENES);
   const datos = hoja.getDataRange().getValues();
+  const tipoEjecucionFiltro = data ? normalizarTexto(data.tipoEjecucion || data.tipo_ejecucion || "") : "";
   const vistos = {};
-  const tipos = [];
+  const instalaciones = [];
+  const visitaTecnica = [];
+
   for (let i = 1; i < datos.length; i++) {
     const tipo = normalizarTexto(datos[i][1]);
     if (!tipo || vistos[tipo]) continue;
+
     vistos[tipo] = true;
-    tipos.push(tipo);
+
+    if (esTipoInstalacionActa(tipo)) {
+      instalaciones.push(tipo);
+    } else {
+      visitaTecnica.push(tipo);
+    }
   }
-  tipos.sort();
-  return { ok: true, modulo: "ACTAS", accion: "TIPOS_PARTIDA", tipos };
+
+  instalaciones.sort();
+  visitaTecnica.sort();
+
+  let tipos = instalaciones.concat(visitaTecnica);
+
+  if (["INSTALACION", "INSTALACIÓN", "INSTALACIONES"].includes(tipoEjecucionFiltro)) {
+    tipos = instalaciones;
+  }
+
+  if (["VISITA TECNICA", "VISITA TÉCNICA", "VISITA TECNICA/POSVENTA", "VISITA TÉCNICA/POSVENTA", "POSTVENTA", "POSVENTA"].includes(tipoEjecucionFiltro)) {
+    tipos = visitaTecnica;
+  }
+
+  return {
+    ok: true,
+    modulo: "ACTAS",
+    accion: "TIPOS_PARTIDA",
+    tipos,
+    instalaciones,
+    visitaTecnica
+  };
 }
 
 function buscarFilaActaPorPedido(codigoPedido) {
   const hoja = asegurarHojaActasEscaneadas();
   const datos = hoja.getDataRange().getValues();
   const pedido = limpiarNombreArchivo(codigoPedido);
+
   for (let i = 1; i < datos.length; i++) {
-    if (limpiarNombreArchivo(datos[i][10]) === pedido) {
+    if (limpiarNombreArchivo(datos[i][11]) === pedido) {
+      return { hoja, fila: i + 1, datos: datos[i] };
+    }
+
+    // Compatibilidad con estructura anterior de 22 columnas, donde CODIGO_PEDIDO estaba en columna 11.
+    if (limpiarNombreArchivo(datos[i][10]) === pedido && datos[i].length < 28) {
       return { hoja, fila: i + 1, datos: datos[i] };
     }
   }
+
   return null;
 }
 
-function guardarPdfActaDrive(data, sede, cuadrilla, tipoPartida, fechaGestion, nombreArchivo, permitirReemplazo) {
+function extraerIdArchivoDrive(url) {
+  const texto = (url || "").toString();
+  if (!texto) return "";
+
+  let m = texto.match(/\/d\/([a-zA-Z0-9_-]+)/);
+  if (m && m[1]) return m[1];
+
+  m = texto.match(/[?&]id=([a-zA-Z0-9_-]+)/);
+  if (m && m[1]) return m[1];
+
+  return "";
+}
+
+function enviarArchivoAnteriorActaPapelera(linkActa) {
+  const idArchivo = extraerIdArchivoDrive(linkActa);
+  if (!idArchivo) return false;
+
+  try {
+    DriveApp.getFileById(idArchivo).setTrashed(true);
+    return true;
+  } catch (e) {
+    return false;
+  }
+}
+
+function guardarPdfActaDrive(data, sede, cuadrilla, tipoEjecucion, fechaGestion, nombreArchivo) {
   if (!data.archivoBase64) throw new Error("Debe adjuntar el acta en PDF");
+
   const mime = (data.archivoMimeType || data.mime || "").toString().toLowerCase();
   const nombreOriginal = (data.archivoNombre || data.nombreArchivo || "").toString().toLowerCase();
+
   if (mime !== "application/pdf" && !nombreOriginal.endsWith(".pdf")) {
     throw new Error("Solo se permite subir archivos PDF");
   }
@@ -2516,30 +2635,94 @@ function guardarPdfActaDrive(data, sede, cuadrilla, tipoPartida, fechaGestion, n
   const raiz = DriveApp.getFolderById(CARPETA_ACTAS_ESCANEADAS);
   const carpetaSede = obtenerOCrearCarpetaActa(raiz, sede);
   const carpetaCuadrilla = obtenerOCrearCarpetaActa(carpetaSede, cuadrilla);
-  const carpetaTipo = obtenerOCrearCarpetaActa(carpetaCuadrilla, tipoPartida);
-  const carpetaFecha = obtenerOCrearCarpetaActa(carpetaTipo, fechaGestion);
+  const carpetaEjecucion = obtenerOCrearCarpetaActa(carpetaCuadrilla, tipoEjecucion);
+  const carpetaFecha = obtenerOCrearCarpetaActa(carpetaEjecucion, fechaGestion);
 
+  // Limpieza de cualquier duplicado con el mismo nombre dentro de la carpeta final.
   const duplicados = carpetaFecha.getFilesByName(nombreArchivo);
-  if (duplicados.hasNext()) {
-    if (!permitirReemplazo) {
-      throw new Error("Ya existe un acta PDF registrada para este Código de Pedido en la carpeta del día");
-    }
-    while (duplicados.hasNext()) {
-      duplicados.next().setTrashed(true);
-    }
+  while (duplicados.hasNext()) {
+    duplicados.next().setTrashed(true);
   }
 
   const bytes = Utilities.base64Decode(data.archivoBase64);
   const blob = Utilities.newBlob(bytes, "application/pdf", nombreArchivo);
   const archivo = carpetaFecha.createFile(blob);
   archivo.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
+
   return archivo.getUrl();
+}
+
+function obtenerValorActaCompat(fila, nombreCampo) {
+  // Estructura nueva de 28 columnas.
+  const nueva = {
+    id: 0,
+    fechaRegistro: 1,
+    horaRegistro: 2,
+    sede: 3,
+    cuadrilla: 4,
+    supervisor: 5,
+    tecnico: 6,
+    fechaGestion: 7,
+    tipoEjecucion: 8,
+    tipoPartida: 9,
+    codigoOrden: 10,
+    codigoPedido: 11,
+    dni: 12,
+    cliente: 13,
+    nombreArchivo: 14,
+    linkActa: 15,
+    estado: 16,
+    resultadoAlmacen: 17,
+    motivoAlmacen: 18,
+    validadoAlmacenPor: 19,
+    fechaValidacionAlmacen: 20,
+    horaValidacionAlmacen: 21,
+    resultadoJefatura: 22,
+    motivoJefatura: 23,
+    validadoJefaturaPor: 24,
+    fechaValidacionJefatura: 25,
+    horaValidacionJefatura: 26,
+    version: 27
+  };
+
+  // Estructura antigua de 22 columnas.
+  const antigua = {
+    id: 0,
+    fechaRegistro: 1,
+    horaRegistro: 2,
+    sede: 3,
+    cuadrilla: 4,
+    supervisor: 5,
+    tecnico: 6,
+    fechaGestion: 7,
+    tipoPartida: 8,
+    codigoOrden: 9,
+    codigoPedido: 10,
+    dni: 11,
+    cliente: 12,
+    nombreArchivo: 13,
+    linkActa: 14,
+    estado: 15,
+    resultadoJefatura: 16,
+    motivoJefatura: 17,
+    validadoJefaturaPor: 18,
+    fechaValidacionJefatura: 19,
+    horaValidacionJefatura: 20,
+    version: 21
+  };
+
+  const mapa = fila.length >= 28 ? nueva : antigua;
+  const idx = mapa[nombreCampo];
+  return idx === undefined ? "" : fila[idx];
 }
 
 function registrarActaEscaneada(data) {
   const hoja = asegurarHojaActasEscaneadas();
   const usuarioRegistro = obtenerUsuarioApp(data.usuario);
-  if (usuarioRegistro.perfil !== "TECNICO") throw new Error("Solo el técnico puede registrar actas");
+
+  if (usuarioRegistro.perfil !== "TECNICO") {
+    throw new Error("Solo el técnico puede registrar actas");
+  }
 
   const cuadrilla = normalizarCuadrilla(usuarioRegistro.cuadrilla);
   if (!cuadrilla) throw new Error("El técnico no tiene cuadrilla asignada");
@@ -2548,55 +2731,160 @@ function registrarActaEscaneada(data) {
   const sede = datosCuadrilla.sede || usuarioRegistro.sede;
   const supervisor = datosCuadrilla.usuarioSupervisor || usuarioRegistro.usuarioSupervisor || "";
   const fechaGestion = fechaGestionActaTexto(data.fechaGestion || data.fecha_gestion);
+
   const tipoPartida = normalizarTexto(data.tipoPartida || data.tipo_partida);
   if (!tipoPartida) throw new Error("Debe seleccionar el tipo de partida");
+
+  const tipoEjecucion = normalizarTipoEjecucionActa(data.tipoEjecucion || data.tipo_ejecucion, tipoPartida);
+
+  if (tipoEjecucion === "INSTALACION" && !esTipoInstalacionActa(tipoPartida)) {
+    throw new Error("Para INSTALACION solo corresponde seleccionar partidas de instalación y activación");
+  }
+
+  if (tipoEjecucion === "VISITA TECNICA" && esTipoInstalacionActa(tipoPartida)) {
+    throw new Error("Para VISITA TECNICA/POSVENTA no corresponde seleccionar partidas de instalación");
+  }
 
   const codigoOrden = (data.codigoOrden || data.codigo_orden || "").toString().trim();
   const codigoPedido = (data.codigoPedido || data.codigo_pedido || "").toString().trim();
   const dni = (data.dni || "").toString().trim();
   const cliente = (data.cliente || "").toString().trim().toUpperCase();
+
   if (!codigoOrden) throw new Error("Debe ingresar el código de orden");
   if (!codigoPedido) throw new Error("Debe ingresar el código de pedido");
   if (!dni) throw new Error("Debe ingresar el DNI");
   if (!cliente) throw new Error("Debe ingresar el cliente");
 
   const existente = buscarFilaActaPorPedido(codigoPedido);
-  if (existente && normalizarTexto(existente.datos[15]) === "FINALIZADO") {
-    throw new Error("Esta acta ya está FINALIZADA. No se puede volver a subir.");
-  }
-  if (existente && normalizarTexto(existente.datos[15]) === "PENDIENTE" && normalizarTexto(existente.datos[16]) !== "OBSERVADO") {
-    throw new Error("Ya existe un acta pendiente para este Código de Pedido.");
+
+  if (existente) {
+    const estadoActual = normalizarTexto(obtenerValorActaCompat(existente.datos, "estado"));
+    const resultadoAlmacen = normalizarTexto(obtenerValorActaCompat(existente.datos, "resultadoAlmacen"));
+    const resultadoJefatura = normalizarTexto(obtenerValorActaCompat(existente.datos, "resultadoJefatura"));
+
+    if (estadoActual === "FINALIZADO" || resultadoJefatura === "CORRECTO") {
+      throw new Error("Esta acta ya está FINALIZADA. No se puede volver a subir.");
+    }
+
+    if (!(resultadoAlmacen === "OBSERVADO" || resultadoJefatura === "OBSERVADO")) {
+      throw new Error("Ya existe un acta pendiente para este Código de Pedido. Solo se puede reemplazar cuando esté OBSERVADA.");
+    }
+
+    // Reemplazo: se elimina el PDF anterior antes de subir el nuevo.
+    enviarArchivoAnteriorActaPapelera(obtenerValorActaCompat(existente.datos, "linkActa"));
   }
 
-  const version = existente ? (Number(existente.datos[21]) || 1) + 1 : 1;
+  const versionAnterior = existente ? Number(obtenerValorActaCompat(existente.datos, "version")) || 1 : 0;
+  const version = versionAnterior + 1;
   const nombreArchivo = limpiarNombreArchivo(codigoPedido) + ".pdf";
-  const link = guardarPdfActaDrive(data, sede, cuadrilla, tipoPartida, fechaGestion, nombreArchivo, !!existente);
+  const link = guardarPdfActaDrive(data, sede, cuadrilla, tipoEjecucion, fechaGestion, nombreArchivo);
   const ahora = new Date();
   const fechaRegistro = Utilities.formatDate(ahora, Session.getScriptTimeZone(), "dd/MM/yyyy");
   const horaRegistro = Utilities.formatDate(ahora, Session.getScriptTimeZone(), "HH:mm:ss");
   const id = generarIdActa(codigoPedido);
 
   const filaValores = [
-    id, fechaRegistro, horaRegistro, sede, cuadrilla, supervisor, usuarioRegistro.usuario,
-    fechaGestion, tipoPartida, codigoOrden, codigoPedido, dni, cliente, nombreArchivo, link,
-    "PENDIENTE", "", "", "", "", "", version
+    id,
+    fechaRegistro,
+    horaRegistro,
+    sede,
+    cuadrilla,
+    supervisor,
+    usuarioRegistro.usuario,
+    fechaGestion,
+    tipoEjecucion,
+    tipoPartida,
+    codigoOrden,
+    codigoPedido,
+    dni,
+    cliente,
+    nombreArchivo,
+    link,
+    "PENDIENTE",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    version
   ];
 
   if (existente) {
-    hoja.getRange(existente.fila, 1, 1, 22).setValues([filaValores]);
+    hoja.getRange(existente.fila, 1, 1, 28).setValues([filaValores]);
   } else {
     hoja.appendRow(filaValores);
   }
 
-  return { ok: true, modulo: "ACTAS", accion: "REGISTRAR", id, estado: "PENDIENTE", version, linkActa: link, nombreArchivo };
+  return {
+    ok: true,
+    modulo: "ACTAS",
+    accion: existente ? "REEMPLAZAR" : "REGISTRAR",
+    id,
+    estado: "PENDIENTE",
+    tipoEjecucion,
+    tipoPartida,
+    version,
+    linkActa: link,
+    nombreArchivo
+  };
 }
 
 function filaActaAObjeto(fila) {
+  const tipoPartida = obtenerValorActaCompat(fila, "tipoPartida");
+  const tipoEjecucion = obtenerValorActaCompat(fila, "tipoEjecucion") || normalizarTipoEjecucionActa("", tipoPartida);
+  const resultadoAlmacen = obtenerValorActaCompat(fila, "resultadoAlmacen");
+  const resultadoJefatura = obtenerValorActaCompat(fila, "resultadoJefatura");
+  const estado = obtenerValorActaCompat(fila, "estado");
+
+  let estadoVisibleTecnico = estado;
+  if (normalizarTexto(resultadoJefatura) === "CORRECTO") {
+    estadoVisibleTecnico = "CORRECTO";
+  } else if (normalizarTexto(resultadoJefatura) === "OBSERVADO" || normalizarTexto(resultadoAlmacen) === "OBSERVADO") {
+    estadoVisibleTecnico = "OBSERVADO";
+  } else {
+    estadoVisibleTecnico = "PENDIENTE";
+  }
+
   return {
-    id: fila[0], fechaRegistro: fila[1], horaRegistro: fila[2], sede: fila[3], cuadrilla: fila[4], supervisor: fila[5], tecnico: fila[6],
-    fechaGestion: fila[7], tipoPartida: fila[8], codigoOrden: fila[9], codigoPedido: fila[10], dni: fila[11], cliente: fila[12],
-    nombreArchivo: fila[13], linkActa: fila[14], estado: fila[15], resultadoValidacion: fila[16], motivoObservacion: fila[17],
-    validadoPor: fila[18], fechaValidacion: fila[19], horaValidacion: fila[20], version: fila[21]
+    id: obtenerValorActaCompat(fila, "id"),
+    fechaRegistro: obtenerValorActaCompat(fila, "fechaRegistro"),
+    horaRegistro: obtenerValorActaCompat(fila, "horaRegistro"),
+    sede: obtenerValorActaCompat(fila, "sede"),
+    cuadrilla: obtenerValorActaCompat(fila, "cuadrilla"),
+    supervisor: obtenerValorActaCompat(fila, "supervisor"),
+    tecnico: obtenerValorActaCompat(fila, "tecnico"),
+    fechaGestion: obtenerValorActaCompat(fila, "fechaGestion"),
+    tipoEjecucion,
+    tipoPartida,
+    codigoOrden: obtenerValorActaCompat(fila, "codigoOrden"),
+    codigoPedido: obtenerValorActaCompat(fila, "codigoPedido"),
+    dni: obtenerValorActaCompat(fila, "dni"),
+    cliente: obtenerValorActaCompat(fila, "cliente"),
+    nombreArchivo: obtenerValorActaCompat(fila, "nombreArchivo"),
+    linkActa: obtenerValorActaCompat(fila, "linkActa"),
+    estado,
+    estadoVisibleTecnico,
+    resultadoAlmacen,
+    motivoAlmacen: obtenerValorActaCompat(fila, "motivoAlmacen"),
+    validadoAlmacenPor: obtenerValorActaCompat(fila, "validadoAlmacenPor"),
+    fechaValidacionAlmacen: obtenerValorActaCompat(fila, "fechaValidacionAlmacen"),
+    horaValidacionAlmacen: obtenerValorActaCompat(fila, "horaValidacionAlmacen"),
+    resultadoJefatura,
+    motivoJefatura: obtenerValorActaCompat(fila, "motivoJefatura"),
+    validadoJefaturaPor: obtenerValorActaCompat(fila, "validadoJefaturaPor"),
+    fechaValidacionJefatura: obtenerValorActaCompat(fila, "fechaValidacionJefatura"),
+    horaValidacionJefatura: obtenerValorActaCompat(fila, "horaValidacionJefatura"),
+    version: obtenerValorActaCompat(fila, "version"),
+
+    // Compatibilidad con frontend anterior.
+    resultadoValidacion: resultadoJefatura || resultadoAlmacen,
+    motivoObservacion: obtenerValorActaCompat(fila, "motivoJefatura") || obtenerValorActaCompat(fila, "motivoAlmacen"),
+    validadoPor: obtenerValorActaCompat(fila, "validadoJefaturaPor") || obtenerValorActaCompat(fila, "validadoAlmacenPor")
   };
 }
 
@@ -2609,55 +2897,135 @@ function listarActasEscaneadas(data) {
   for (let i = 1; i < datos.length; i++) {
     const item = filaActaAObjeto(datos[i]);
     let permitir = false;
-    if (usuario.perfil === "TECNICO") permitir = normalizarCuadrilla(usuario.cuadrilla) === normalizarCuadrilla(item.cuadrilla);
-    if (usuario.perfil === "SUPERVISOR") permitir = normalizarTexto(usuario.sede) === normalizarTexto(item.sede);
-    if (esPerfilAlmacen(usuario.perfil)) permitir = normalizarTexto(usuario.sede) === normalizarTexto(item.sede);
-    if (esPerfilJefatura(usuario.perfil) || esPerfilJefaturaAlmacen(usuario.perfil)) permitir = true;
+
+    if (usuario.perfil === "TECNICO") {
+      permitir = normalizarCuadrilla(usuario.cuadrilla) === normalizarCuadrilla(item.cuadrilla);
+    }
+
+    if (usuario.perfil === "SUPERVISOR") {
+      permitir = normalizarTexto(usuario.sede) === normalizarTexto(item.sede);
+    }
+
+    if (esPerfilAlmacen(usuario.perfil)) {
+      permitir = normalizarTexto(usuario.sede) === normalizarTexto(item.sede);
+    }
+
+    if (esPerfilJefatura(usuario.perfil) || esPerfilJefaturaAlmacen(usuario.perfil)) {
+      permitir = true;
+    }
+
     if (!permitir) continue;
     if (data.sede && normalizarTexto(data.sede) !== normalizarTexto(item.sede)) continue;
     if (data.cuadrilla && normalizarCuadrilla(data.cuadrilla) !== normalizarCuadrilla(item.cuadrilla)) continue;
     if (data.estado && normalizarTexto(data.estado) !== normalizarTexto(item.estado)) continue;
+    if (data.tipoEjecucion && normalizarTexto(data.tipoEjecucion) !== normalizarTexto(item.tipoEjecucion)) continue;
+
     lista.push(item);
   }
 
   lista.reverse();
-  return { ok: true, modulo: "ACTAS", accion: "LISTAR", perfil: usuario.perfil, registros: lista.length, actas: lista };
+
+  return {
+    ok: true,
+    modulo: "ACTAS",
+    accion: "LISTAR",
+    perfil: usuario.perfil,
+    registros: lista.length,
+    actas: lista
+  };
 }
 
 function validarActaEscaneada(data) {
   const usuario = obtenerUsuarioApp(data.usuario);
-  if (!esPerfilJefaturaAlmacen(usuario.perfil)) throw new Error("Solo Jefatura Almacén puede validar actas");
   const id = (data.id || "").toString().trim();
   const resultado = normalizarTexto(data.resultado);
+  const motivo = (data.motivoObservacion || data.motivo || "").toString().trim();
+
   if (!id) throw new Error("ID obligatorio");
   if (!["CORRECTO", "OBSERVADO"].includes(resultado)) throw new Error("Resultado no válido");
-  const motivo = (data.motivoObservacion || data.motivo || "").toString().trim();
   if (resultado === "OBSERVADO" && !motivo) throw new Error("Debe ingresar el motivo de observación");
+
+  if (!(esPerfilAlmacen(usuario.perfil) || esPerfilJefaturaAlmacen(usuario.perfil))) {
+    throw new Error("Solo Almacén o Jefatura Almacén pueden validar actas");
+  }
 
   const hoja = asegurarHojaActasEscaneadas();
   const datos = hoja.getDataRange().getValues();
   let fila = -1;
+  let item = null;
+
   for (let i = 1; i < datos.length; i++) {
-    if ((datos[i][0] || "").toString().trim() === id) { fila = i + 1; break; }
+    const obj = filaActaAObjeto(datos[i]);
+    if ((obj.id || "").toString().trim() === id) {
+      fila = i + 1;
+      item = obj;
+      break;
+    }
   }
+
   if (fila < 0) throw new Error("No se encontró el acta: " + id);
 
-  const ahora = new Date();
-  hoja.getRange(fila, 16).setValue(resultado === "CORRECTO" ? "FINALIZADO" : "PENDIENTE");
-  hoja.getRange(fila, 17).setValue(resultado);
-  hoja.getRange(fila, 18).setValue(resultado === "OBSERVADO" ? motivo : "");
-  hoja.getRange(fila, 19).setValue(usuario.usuario);
-  hoja.getRange(fila, 20).setValue(ahora);
-  hoja.getRange(fila, 21).setValue(ahora);
-  hoja.getRange(fila, 20).setNumberFormat("dd/mm/yyyy");
-  hoja.getRange(fila, 21).setNumberFormat("hh:mm:ss");
+  if (esPerfilAlmacen(usuario.perfil) && normalizarTexto(usuario.sede) !== normalizarTexto(item.sede)) {
+    throw new Error("Almacén solo puede validar actas de su sede");
+  }
 
-  return { ok: true, modulo: "ACTAS", accion: "VALIDAR", id, resultado, estado: resultado === "CORRECTO" ? "FINALIZADO" : "PENDIENTE" };
+  const ahora = new Date();
+
+  if (esPerfilAlmacen(usuario.perfil)) {
+    // Primera validación. No finaliza el acta aunque marque CORRECTO.
+    hoja.getRange(fila, 18).setValue(resultado);
+    hoja.getRange(fila, 19).setValue(resultado === "OBSERVADO" ? motivo : "");
+    hoja.getRange(fila, 20).setValue(usuario.usuario);
+    hoja.getRange(fila, 21).setValue(ahora);
+    hoja.getRange(fila, 22).setValue(ahora);
+    hoja.getRange(fila, 21).setNumberFormat("dd/mm/yyyy");
+    hoja.getRange(fila, 22).setNumberFormat("hh:mm:ss");
+    hoja.getRange(fila, 17).setValue("PENDIENTE");
+
+    return {
+      ok: true,
+      modulo: "ACTAS",
+      accion: "VALIDAR_ALMACEN",
+      id,
+      resultado,
+      estado: "PENDIENTE"
+    };
+  }
+
+  if (esPerfilJefaturaAlmacen(usuario.perfil)) {
+    // Validación final. Si Jefatura marca CORRECTO, finaliza aunque Almacén no haya validado.
+    hoja.getRange(fila, 23).setValue(resultado);
+    hoja.getRange(fila, 24).setValue(resultado === "OBSERVADO" ? motivo : "");
+    hoja.getRange(fila, 25).setValue(usuario.usuario);
+    hoja.getRange(fila, 26).setValue(ahora);
+    hoja.getRange(fila, 27).setValue(ahora);
+    hoja.getRange(fila, 26).setNumberFormat("dd/mm/yyyy");
+    hoja.getRange(fila, 27).setNumberFormat("hh:mm:ss");
+    hoja.getRange(fila, 17).setValue(resultado === "CORRECTO" ? "FINALIZADO" : "PENDIENTE");
+
+    return {
+      ok: true,
+      modulo: "ACTAS",
+      accion: "VALIDAR_JEFATURA",
+      id,
+      resultado,
+      estado: resultado === "CORRECTO" ? "FINALIZADO" : "PENDIENTE"
+    };
+  }
 }
 
 function resumenActasEscaneadas(data) {
   const listado = listarActasEscaneadas(data);
-  const general = { escaneadas: 0, finalizadas: 0, observadas: 0, pendientes: 0 };
+  const general = {
+    escaneadas: 0,
+    finalizadas: 0,
+    observadas: 0,
+    pendientes: 0,
+    correctasAlmacen: 0,
+    observadasAlmacen: 0,
+    correctasJefatura: 0,
+    observadasJefatura: 0
+  };
   const sedes = {};
   const cuadrillas = {};
 
@@ -2665,16 +3033,52 @@ function resumenActasEscaneadas(data) {
     const sede = normalizarTexto(a.sede) || "SIN SEDE";
     const cuad = normalizarCuadrilla(a.cuadrilla) || "SIN CUADRILLA";
     const estado = normalizarTexto(a.estado);
-    const resultado = normalizarTexto(a.resultadoValidacion);
-    function sumar(obj){
+    const resultadoAlmacen = normalizarTexto(a.resultadoAlmacen);
+    const resultadoJefatura = normalizarTexto(a.resultadoJefatura);
+    const observado = resultadoAlmacen === "OBSERVADO" || resultadoJefatura === "OBSERVADO";
+
+    function sumar(obj) {
       obj.escaneadas++;
-      if (estado === "FINALIZADO") obj.finalizadas++;
-      if (resultado === "OBSERVADO") obj.observadas++;
+      if (estado === "FINALIZADO" || resultadoJefatura === "CORRECTO") obj.finalizadas++;
+      if (observado) obj.observadas++;
       if (estado === "PENDIENTE") obj.pendientes++;
+      if (resultadoAlmacen === "CORRECTO") obj.correctasAlmacen++;
+      if (resultadoAlmacen === "OBSERVADO") obj.observadasAlmacen++;
+      if (resultadoJefatura === "CORRECTO") obj.correctasJefatura++;
+      if (resultadoJefatura === "OBSERVADO") obj.observadasJefatura++;
     }
+
     sumar(general);
-    if (!sedes[sede]) sedes[sede] = { sede, escaneadas: 0, finalizadas: 0, observadas: 0, pendientes: 0 };
-    if (!cuadrillas[cuad]) cuadrillas[cuad] = { sede, cuadrilla: cuad, escaneadas: 0, finalizadas: 0, observadas: 0, pendientes: 0 };
+
+    if (!sedes[sede]) {
+      sedes[sede] = {
+        sede,
+        escaneadas: 0,
+        finalizadas: 0,
+        observadas: 0,
+        pendientes: 0,
+        correctasAlmacen: 0,
+        observadasAlmacen: 0,
+        correctasJefatura: 0,
+        observadasJefatura: 0
+      };
+    }
+
+    if (!cuadrillas[cuad]) {
+      cuadrillas[cuad] = {
+        sede,
+        cuadrilla: cuad,
+        escaneadas: 0,
+        finalizadas: 0,
+        observadas: 0,
+        pendientes: 0,
+        correctasAlmacen: 0,
+        observadasAlmacen: 0,
+        correctasJefatura: 0,
+        observadasJefatura: 0
+      };
+    }
+
     sumar(sedes[sede]);
     sumar(cuadrillas[cuad]);
   });
@@ -2688,6 +3092,7 @@ function resumenActasEscaneadas(data) {
     cuadrillas: Object.keys(cuadrillas).sort().map(k => cuadrillas[k])
   };
 }
+
 
 
 /* =========================
@@ -2716,7 +3121,7 @@ function doPost(e) {
     }
 
     if (data.accion === "listarTiposPartidaActas") {
-      return ContentService.createTextOutput(JSON.stringify(obtenerTiposPartidaActas())).setMimeType(ContentService.MimeType.JSON);
+      return ContentService.createTextOutput(JSON.stringify(obtenerTiposPartidaActas(data))).setMimeType(ContentService.MimeType.JSON);
     }
 
     if (data.accion === "registrarValidacionTecnica") {
@@ -2910,4 +3315,26 @@ function autorizarDriveObservaciones() {
   archivoPrueba.setTrashed(true);
 
   Logger.log("Permiso completo Drive OK");
+}
+
+function autorizarDriveActasEscaneadas() {
+  const carpeta = DriveApp.getFolderById("1EZALuMsXo_ZRO93FjKyuDgRmvAe2C69L");
+
+  const archivoPrueba = carpeta.createFile(
+    "PRUEBA_PERMISO_ACTAS_MI_VISUAL.txt",
+    "Permiso Drive autorizado correctamente para Gestión de Actas - MI VISUAL"
+  );
+
+  const url = archivoPrueba.getUrl();
+  archivoPrueba.setTrashed(true);
+
+  Logger.log("Permiso Drive Actas OK: " + url);
+
+  return {
+    ok: true,
+    modulo: "ACTAS_ESCANEADAS",
+    carpeta: carpeta.getName(),
+    url: carpeta.getUrl(),
+    prueba: url
+  };
 }

@@ -7,4 +7,4 @@ Cambios:
 - Se comprimieron automáticamente las imágenes antes de enviarlas al Apps Script para evitar errores al subir evidencias.
 - Mejoras visuales en enlaces de evidencias.
 - Mantiene la URL vigente de Apps Script:
-https://script.google.com/macros/s/AKfycbxirv6JT0W68dY0SZV7_mHzR8lzizybcDTyXTqvn8BOWMWEmYaJRx01DEpgTDBvbg_x/exec
+https://script.google.com/macros/s/AKfycby8MgSBvDQcFZ9YBi-UDfYYHmRD4-x1m66mfO5xb0rYXjtbplyyzFhiPc4nCti8MyXK/exec
