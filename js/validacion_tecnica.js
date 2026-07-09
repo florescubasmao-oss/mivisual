@@ -1,4 +1,4 @@
-// MI VISUAL - Módulo Validación Técnica v60
+// MI VISUAL - Módulo Validación Técnica v60.2
 
 const API_VALIDACION_TECNICA = "https://script.google.com/macros/s/AKfycbymVVBtL_UtjoGZKUcJNNy24MC96GMAPZ_Imlbw13rZdhSBew3WozxDZnkqqLSFVnFJ/exec";
 
@@ -337,7 +337,10 @@ async function cargarValidacionesTecnicas(){
         });
         if(!r.ok) throw new Error(r.error || "No se pudo listar");
 
-        const pendientes = (r.validaciones || []).filter(x => (x.estado || "").toUpperCase() === "PENDIENTE");
+        const todas = r.validaciones || [];
+        const pendientes = todas.filter(x => (x.estado || "").toUpperCase() === "PENDIENTE");
+        const historial = todas.filter(x => (x.estado || "").toUpperCase() !== "PENDIENTE");
+
         const pendientesEl = document.getElementById("vtPendientes");
         if(pendientesEl){
             pendientesEl.innerHTML = pendientes.length ? renderListaValidaciones(pendientes, true) : `<div class="vt-sub">No hay validaciones pendientes.</div>`;
@@ -345,7 +348,7 @@ async function cargarValidacionesTecnicas(){
 
         const histEl = document.getElementById("vtHistorial");
         if(histEl){
-            histEl.innerHTML = (r.validaciones || []).length ? renderResumenValidaciones(r.validaciones) + renderListaValidaciones(r.validaciones, false) : `<div class="vt-sub">Sin registros.</div>`;
+            histEl.innerHTML = todas.length ? renderResumenValidaciones(todas) + (historial.length ? renderListaValidaciones(historial, false) : `<div class="vt-sub">No hay registros cerrados en el historial.</div>`) : `<div class="vt-sub">Sin registros.</div>`;
         }
     }catch(e){
         const histEl = document.getElementById("vtHistorial");
@@ -356,18 +359,34 @@ async function cargarValidacionesTecnicas(){
 }
 
 function renderResumenValidaciones(lista){
+    const u = usuarioActualValidacion();
     const c = {PENDIENTE:0, APROBADO:0, RECHAZADO:0, OBSERVADO:0, BONO:0, "NO BONO":0, "SIN RESPUESTA":0};
     lista.forEach(x => {
         const e = (x.estado || "").toUpperCase();
         if(c[e] !== undefined) c[e]++;
     });
+
+    const totalAprobados = c.APROBADO + c["SIN RESPUESTA"];
+    const esJefatura = esJefaturaValidacion(u.perfil);
+
+    if(esJefatura){
+        return `<div class="vt-kpis">
+            <div class="vt-kpi"><b>${lista.length}</b><span>Total</span></div>
+            <div class="vt-kpi"><b>${c.PENDIENTE}</b><span>Pendientes</span></div>
+            <div class="vt-kpi"><b>${c.BONO}</b><span>Bono</span></div>
+            <div class="vt-kpi"><b>${c["NO BONO"]}</b><span>No bono</span></div>
+            <div class="vt-kpi"><b>${totalAprobados}</b><span>Aprobados</span></div>
+            <div class="vt-kpi"><b>${c["SIN RESPUESTA"]}</b><span>Automáticos</span></div>
+        </div>`;
+    }
+
     return `<div class="vt-kpis">
         <div class="vt-kpi"><b>${lista.length}</b><span>Total</span></div>
         <div class="vt-kpi"><b>${c.PENDIENTE}</b><span>Pendientes</span></div>
-        <div class="vt-kpi"><b>${c.APROBADO + c["SIN RESPUESTA"]}</b><span>Aprobados</span></div>
-        <div class="vt-kpi"><b>${c.BONO}</b><span>Bono</span></div>
-        <div class="vt-kpi"><b>${c["NO BONO"]}</b><span>No bono</span></div>
+        <div class="vt-kpi"><b>${totalAprobados}</b><span>Aprobados</span></div>
         <div class="vt-kpi"><b>${c.OBSERVADO}</b><span>Observados</span></div>
+        <div class="vt-kpi"><b>${c.RECHAZADO}</b><span>Rechazados</span></div>
+        <div class="vt-kpi"><b>${c["SIN RESPUESTA"]}</b><span>Automáticos</span></div>
     </div>`;
 }
 
@@ -382,7 +401,7 @@ function renderItemValidacion(item, idx, u, soloPendientes){
     const resMostrar = esTecnico ? (item.resultadoVisibleTecnico || item.resultadoFinal) : item.resultadoFinal;
     const detalleId = "vtDet_" + (item.id || idx).replace(/[^A-Za-z0-9]/g,"_") + "_" + idx;
     const pendiente = (item.estado || "").toUpperCase() === "PENDIENTE";
-    const puedeValidar = puedeValidarItemValidacion(item, u) && pendiente;
+    const puedeValidar = soloPendientes && puedeValidarItemValidacion(item, u) && pendiente;
 
     return `<div class="vt-item">
         <div class="vt-item-top">
