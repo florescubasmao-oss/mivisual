@@ -11,6 +11,8 @@ const CARPETA_EVIDENCIAS_OBSERVACIONES = "1W23rJjyUgmYGTlG2NzrpvasIWbwKBV6h";
 const HOJA_ACTIVIDAD_CAMPO = "ACTIVIDAD_CAMPO";
 const CARPETA_ACTIVIDAD_CAMPO = "1tu6DWyOkM0b-W1nI_MIXGuTmlZypjsBV";
 const HOJA_VALIDACION_TECNICA = "VALIDACION_TECNICA";
+const HOJA_ACTAS_ESCANEADAS = "ACTAS_ESCANEADAS";
+const CARPETA_ACTAS_ESCANEADAS = "1EZALuMsXo_ZRO93FjKyuDgRmvAe2C69L";
 
 function doGet() {
   return ContentService
@@ -594,12 +596,12 @@ function cambiarPermisoUsuario(usuarioBuscar, perfilNuevo, nivelNuevo) {
   const perfil = normalizarTexto(perfilNuevo);
   const nivel = normalizarTexto(nivelNuevo);
 
-  if (!["TECNICO", "SUPERVISOR", "ADMIN"].includes(perfil)) {
-    throw new Error("Perfil no válido. Usa TECNICO, SUPERVISOR o ADMIN");
+  if (!["TECNICO", "SUPERVISOR", "JEFATURA", "ADMIN", "ADMINISTRADOR", "ALMACEN", "JEFATURA ALMACEN"].includes(perfil)) {
+    throw new Error("Perfil no válido");
   }
 
-  if (!["CUADRILLA", "SEDE", "ZONA", "ADMIN"].includes(nivel)) {
-    throw new Error("Nivel de acceso no válido. Usa CUADRILLA, SEDE, ZONA o ADMIN");
+  if (!["CUADRILLA", "SEDE", "ZONA", "ZONA NORTE", "ADMIN"].includes(nivel)) {
+    throw new Error("Nivel de acceso no válido");
   }
 
   return editarUsuario(usuarioBuscar, {
@@ -2406,6 +2408,288 @@ function crearTriggerValidacionTecnica() {
 }
 
 
+
+
+/* =========================
+   GESTIÓN DE ACTAS
+========================= */
+
+function esPerfilAlmacen(perfil) {
+  return normalizarTexto(perfil) === "ALMACEN";
+}
+
+function esPerfilJefaturaAlmacen(perfil) {
+  return normalizarTexto(perfil) === "JEFATURA ALMACEN";
+}
+
+function encabezadoActasEscaneadas() {
+  return [[
+    "ID", "FECHA_REGISTRO", "HORA_REGISTRO", "SEDE", "CUADRILLA", "SUPERVISOR", "TECNICO",
+    "FECHA_GESTION", "TIPO_PARTIDA", "CODIGO_ORDEN", "CODIGO_PEDIDO", "DNI", "CLIENTE",
+    "NOMBRE_ARCHIVO", "LINK_ACTA", "ESTADO", "RESULTADO_VALIDACION", "MOTIVO_OBSERVACION",
+    "VALIDADO_POR", "FECHA_VALIDACION", "HORA_VALIDACION", "VERSION"
+  ]];
+}
+
+function asegurarHojaActasEscaneadas() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  let hoja = ss.getSheetByName(HOJA_ACTAS_ESCANEADAS);
+  if (!hoja) hoja = ss.insertSheet(HOJA_ACTAS_ESCANEADAS);
+  if (hoja.getLastRow() === 0 || !hoja.getRange(1, 1).getValue()) {
+    hoja.getRange(1, 1, 1, 22).setValues(encabezadoActasEscaneadas());
+  }
+  return hoja;
+}
+
+function nombreCarpetaActa(txt) {
+  return (txt || "")
+    .toString()
+    .toUpperCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[\\/:*?"<>|#%{}~&]+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim()
+    .substring(0, 120);
+}
+
+function obtenerOCrearCarpetaActa(padre, nombre) {
+  const n = nombreCarpetaActa(nombre || "SIN_DATO");
+  const it = padre.getFoldersByName(n);
+  if (it.hasNext()) return it.next();
+  return padre.createFolder(n);
+}
+
+function fechaGestionActaTexto(valor) {
+  if (valor instanceof Date && !isNaN(valor.getTime())) {
+    return Utilities.formatDate(valor, Session.getScriptTimeZone(), "yyyy-MM-dd");
+  }
+  const t = (valor || "").toString().trim();
+  if (!t) throw new Error("Debe ingresar la fecha de gestión");
+  if (/^\d{4}-\d{2}-\d{2}$/.test(t)) return t;
+  const p = t.split("/");
+  if (p.length === 3) return p[2] + "-" + p[1].padStart(2, "0") + "-" + p[0].padStart(2, "0");
+  return t;
+}
+
+function generarIdActa(codigoPedido) {
+  const pedido = limpiarNombreArchivo(codigoPedido);
+  if (!pedido) throw new Error("El código de pedido es obligatorio");
+  return "ACTA-" + pedido;
+}
+
+function obtenerTiposPartidaActas() {
+  const hoja = obtenerHoja(HOJA_CATALOGO_ORDENES);
+  const datos = hoja.getDataRange().getValues();
+  const vistos = {};
+  const tipos = [];
+  for (let i = 1; i < datos.length; i++) {
+    const tipo = normalizarTexto(datos[i][1]);
+    if (!tipo || vistos[tipo]) continue;
+    vistos[tipo] = true;
+    tipos.push(tipo);
+  }
+  tipos.sort();
+  return { ok: true, modulo: "ACTAS", accion: "TIPOS_PARTIDA", tipos };
+}
+
+function buscarFilaActaPorPedido(codigoPedido) {
+  const hoja = asegurarHojaActasEscaneadas();
+  const datos = hoja.getDataRange().getValues();
+  const pedido = limpiarNombreArchivo(codigoPedido);
+  for (let i = 1; i < datos.length; i++) {
+    if (limpiarNombreArchivo(datos[i][10]) === pedido) {
+      return { hoja, fila: i + 1, datos: datos[i] };
+    }
+  }
+  return null;
+}
+
+function guardarPdfActaDrive(data, sede, cuadrilla, tipoPartida, fechaGestion, nombreArchivo, permitirReemplazo) {
+  if (!data.archivoBase64) throw new Error("Debe adjuntar el acta en PDF");
+  const mime = (data.archivoMimeType || data.mime || "").toString().toLowerCase();
+  const nombreOriginal = (data.archivoNombre || data.nombreArchivo || "").toString().toLowerCase();
+  if (mime !== "application/pdf" && !nombreOriginal.endsWith(".pdf")) {
+    throw new Error("Solo se permite subir archivos PDF");
+  }
+
+  const raiz = DriveApp.getFolderById(CARPETA_ACTAS_ESCANEADAS);
+  const carpetaSede = obtenerOCrearCarpetaActa(raiz, sede);
+  const carpetaCuadrilla = obtenerOCrearCarpetaActa(carpetaSede, cuadrilla);
+  const carpetaTipo = obtenerOCrearCarpetaActa(carpetaCuadrilla, tipoPartida);
+  const carpetaFecha = obtenerOCrearCarpetaActa(carpetaTipo, fechaGestion);
+
+  const duplicados = carpetaFecha.getFilesByName(nombreArchivo);
+  if (duplicados.hasNext()) {
+    if (!permitirReemplazo) {
+      throw new Error("Ya existe un acta PDF registrada para este Código de Pedido en la carpeta del día");
+    }
+    while (duplicados.hasNext()) {
+      duplicados.next().setTrashed(true);
+    }
+  }
+
+  const bytes = Utilities.base64Decode(data.archivoBase64);
+  const blob = Utilities.newBlob(bytes, "application/pdf", nombreArchivo);
+  const archivo = carpetaFecha.createFile(blob);
+  archivo.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
+  return archivo.getUrl();
+}
+
+function registrarActaEscaneada(data) {
+  const hoja = asegurarHojaActasEscaneadas();
+  const usuarioRegistro = obtenerUsuarioApp(data.usuario);
+  if (usuarioRegistro.perfil !== "TECNICO") throw new Error("Solo el técnico puede registrar actas");
+
+  const cuadrilla = normalizarCuadrilla(usuarioRegistro.cuadrilla);
+  if (!cuadrilla) throw new Error("El técnico no tiene cuadrilla asignada");
+
+  const datosCuadrilla = obtenerDatosCuadrillaApp(cuadrilla);
+  const sede = datosCuadrilla.sede || usuarioRegistro.sede;
+  const supervisor = datosCuadrilla.usuarioSupervisor || usuarioRegistro.usuarioSupervisor || "";
+  const fechaGestion = fechaGestionActaTexto(data.fechaGestion || data.fecha_gestion);
+  const tipoPartida = normalizarTexto(data.tipoPartida || data.tipo_partida);
+  if (!tipoPartida) throw new Error("Debe seleccionar el tipo de partida");
+
+  const codigoOrden = (data.codigoOrden || data.codigo_orden || "").toString().trim();
+  const codigoPedido = (data.codigoPedido || data.codigo_pedido || "").toString().trim();
+  const dni = (data.dni || "").toString().trim();
+  const cliente = (data.cliente || "").toString().trim().toUpperCase();
+  if (!codigoOrden) throw new Error("Debe ingresar el código de orden");
+  if (!codigoPedido) throw new Error("Debe ingresar el código de pedido");
+  if (!dni) throw new Error("Debe ingresar el DNI");
+  if (!cliente) throw new Error("Debe ingresar el cliente");
+
+  const existente = buscarFilaActaPorPedido(codigoPedido);
+  if (existente && normalizarTexto(existente.datos[15]) === "FINALIZADO") {
+    throw new Error("Esta acta ya está FINALIZADA. No se puede volver a subir.");
+  }
+  if (existente && normalizarTexto(existente.datos[15]) === "PENDIENTE" && normalizarTexto(existente.datos[16]) !== "OBSERVADO") {
+    throw new Error("Ya existe un acta pendiente para este Código de Pedido.");
+  }
+
+  const version = existente ? (Number(existente.datos[21]) || 1) + 1 : 1;
+  const nombreArchivo = limpiarNombreArchivo(codigoPedido) + ".pdf";
+  const link = guardarPdfActaDrive(data, sede, cuadrilla, tipoPartida, fechaGestion, nombreArchivo, !!existente);
+  const ahora = new Date();
+  const fechaRegistro = Utilities.formatDate(ahora, Session.getScriptTimeZone(), "dd/MM/yyyy");
+  const horaRegistro = Utilities.formatDate(ahora, Session.getScriptTimeZone(), "HH:mm:ss");
+  const id = generarIdActa(codigoPedido);
+
+  const filaValores = [
+    id, fechaRegistro, horaRegistro, sede, cuadrilla, supervisor, usuarioRegistro.usuario,
+    fechaGestion, tipoPartida, codigoOrden, codigoPedido, dni, cliente, nombreArchivo, link,
+    "PENDIENTE", "", "", "", "", "", version
+  ];
+
+  if (existente) {
+    hoja.getRange(existente.fila, 1, 1, 22).setValues([filaValores]);
+  } else {
+    hoja.appendRow(filaValores);
+  }
+
+  return { ok: true, modulo: "ACTAS", accion: "REGISTRAR", id, estado: "PENDIENTE", version, linkActa: link, nombreArchivo };
+}
+
+function filaActaAObjeto(fila) {
+  return {
+    id: fila[0], fechaRegistro: fila[1], horaRegistro: fila[2], sede: fila[3], cuadrilla: fila[4], supervisor: fila[5], tecnico: fila[6],
+    fechaGestion: fila[7], tipoPartida: fila[8], codigoOrden: fila[9], codigoPedido: fila[10], dni: fila[11], cliente: fila[12],
+    nombreArchivo: fila[13], linkActa: fila[14], estado: fila[15], resultadoValidacion: fila[16], motivoObservacion: fila[17],
+    validadoPor: fila[18], fechaValidacion: fila[19], horaValidacion: fila[20], version: fila[21]
+  };
+}
+
+function listarActasEscaneadas(data) {
+  const hoja = asegurarHojaActasEscaneadas();
+  const datos = hoja.getDataRange().getValues();
+  const usuario = obtenerUsuarioApp(data.usuario);
+  const lista = [];
+
+  for (let i = 1; i < datos.length; i++) {
+    const item = filaActaAObjeto(datos[i]);
+    let permitir = false;
+    if (usuario.perfil === "TECNICO") permitir = normalizarCuadrilla(usuario.cuadrilla) === normalizarCuadrilla(item.cuadrilla);
+    if (usuario.perfil === "SUPERVISOR") permitir = normalizarTexto(usuario.sede) === normalizarTexto(item.sede);
+    if (esPerfilAlmacen(usuario.perfil)) permitir = normalizarTexto(usuario.sede) === normalizarTexto(item.sede);
+    if (esPerfilJefatura(usuario.perfil) || esPerfilJefaturaAlmacen(usuario.perfil)) permitir = true;
+    if (!permitir) continue;
+    if (data.sede && normalizarTexto(data.sede) !== normalizarTexto(item.sede)) continue;
+    if (data.cuadrilla && normalizarCuadrilla(data.cuadrilla) !== normalizarCuadrilla(item.cuadrilla)) continue;
+    if (data.estado && normalizarTexto(data.estado) !== normalizarTexto(item.estado)) continue;
+    lista.push(item);
+  }
+
+  lista.reverse();
+  return { ok: true, modulo: "ACTAS", accion: "LISTAR", perfil: usuario.perfil, registros: lista.length, actas: lista };
+}
+
+function validarActaEscaneada(data) {
+  const usuario = obtenerUsuarioApp(data.usuario);
+  if (!esPerfilJefaturaAlmacen(usuario.perfil)) throw new Error("Solo Jefatura Almacén puede validar actas");
+  const id = (data.id || "").toString().trim();
+  const resultado = normalizarTexto(data.resultado);
+  if (!id) throw new Error("ID obligatorio");
+  if (!["CORRECTO", "OBSERVADO"].includes(resultado)) throw new Error("Resultado no válido");
+  const motivo = (data.motivoObservacion || data.motivo || "").toString().trim();
+  if (resultado === "OBSERVADO" && !motivo) throw new Error("Debe ingresar el motivo de observación");
+
+  const hoja = asegurarHojaActasEscaneadas();
+  const datos = hoja.getDataRange().getValues();
+  let fila = -1;
+  for (let i = 1; i < datos.length; i++) {
+    if ((datos[i][0] || "").toString().trim() === id) { fila = i + 1; break; }
+  }
+  if (fila < 0) throw new Error("No se encontró el acta: " + id);
+
+  const ahora = new Date();
+  hoja.getRange(fila, 16).setValue(resultado === "CORRECTO" ? "FINALIZADO" : "PENDIENTE");
+  hoja.getRange(fila, 17).setValue(resultado);
+  hoja.getRange(fila, 18).setValue(resultado === "OBSERVADO" ? motivo : "");
+  hoja.getRange(fila, 19).setValue(usuario.usuario);
+  hoja.getRange(fila, 20).setValue(ahora);
+  hoja.getRange(fila, 21).setValue(ahora);
+  hoja.getRange(fila, 20).setNumberFormat("dd/mm/yyyy");
+  hoja.getRange(fila, 21).setNumberFormat("hh:mm:ss");
+
+  return { ok: true, modulo: "ACTAS", accion: "VALIDAR", id, resultado, estado: resultado === "CORRECTO" ? "FINALIZADO" : "PENDIENTE" };
+}
+
+function resumenActasEscaneadas(data) {
+  const listado = listarActasEscaneadas(data);
+  const general = { escaneadas: 0, finalizadas: 0, observadas: 0, pendientes: 0 };
+  const sedes = {};
+  const cuadrillas = {};
+
+  listado.actas.forEach(a => {
+    const sede = normalizarTexto(a.sede) || "SIN SEDE";
+    const cuad = normalizarCuadrilla(a.cuadrilla) || "SIN CUADRILLA";
+    const estado = normalizarTexto(a.estado);
+    const resultado = normalizarTexto(a.resultadoValidacion);
+    function sumar(obj){
+      obj.escaneadas++;
+      if (estado === "FINALIZADO") obj.finalizadas++;
+      if (resultado === "OBSERVADO") obj.observadas++;
+      if (estado === "PENDIENTE") obj.pendientes++;
+    }
+    sumar(general);
+    if (!sedes[sede]) sedes[sede] = { sede, escaneadas: 0, finalizadas: 0, observadas: 0, pendientes: 0 };
+    if (!cuadrillas[cuad]) cuadrillas[cuad] = { sede, cuadrilla: cuad, escaneadas: 0, finalizadas: 0, observadas: 0, pendientes: 0 };
+    sumar(sedes[sede]);
+    sumar(cuadrillas[cuad]);
+  });
+
+  return {
+    ok: true,
+    modulo: "ACTAS",
+    accion: "RESUMEN",
+    general,
+    sedes: Object.keys(sedes).sort().map(k => sedes[k]),
+    cuadrillas: Object.keys(cuadrillas).sort().map(k => cuadrillas[k])
+  };
+}
+
+
 /* =========================
    API PRINCIPAL
 ========================= */
@@ -2414,6 +2698,26 @@ function doPost(e) {
   try {
     const data = JSON.parse(e.postData.contents);
 
+
+    if (data.accion === "registrarActaEscaneada") {
+      return ContentService.createTextOutput(JSON.stringify(registrarActaEscaneada(data))).setMimeType(ContentService.MimeType.JSON);
+    }
+
+    if (data.accion === "listarActasEscaneadas") {
+      return ContentService.createTextOutput(JSON.stringify(listarActasEscaneadas(data))).setMimeType(ContentService.MimeType.JSON);
+    }
+
+    if (data.accion === "validarActaEscaneada") {
+      return ContentService.createTextOutput(JSON.stringify(validarActaEscaneada(data))).setMimeType(ContentService.MimeType.JSON);
+    }
+
+    if (data.accion === "resumenActasEscaneadas") {
+      return ContentService.createTextOutput(JSON.stringify(resumenActasEscaneadas(data))).setMimeType(ContentService.MimeType.JSON);
+    }
+
+    if (data.accion === "listarTiposPartidaActas") {
+      return ContentService.createTextOutput(JSON.stringify(obtenerTiposPartidaActas())).setMimeType(ContentService.MimeType.JSON);
+    }
 
     if (data.accion === "registrarValidacionTecnica") {
       return ContentService

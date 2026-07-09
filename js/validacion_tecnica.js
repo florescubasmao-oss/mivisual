@@ -1,6 +1,6 @@
 // MI VISUAL - Módulo Validación Técnica v60.2
 
-const API_VALIDACION_TECNICA = "https://script.google.com/macros/s/AKfycbymVVBtL_UtjoGZKUcJNNy24MC96GMAPZ_Imlbw13rZdhSBew3WozxDZnkqqLSFVnFJ/exec";
+const API_VALIDACION_TECNICA = "https://script.google.com/macros/s/AKfycbxirv6JT0W68dY0SZV7_mHzR8lzizybcDTyXTqvn8BOWMWEmYaJRx01DEpgTDBvbg_x/exec";
 
 function usuarioActualValidacion(){
     return {

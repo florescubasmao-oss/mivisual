@@ -189,7 +189,8 @@ function configurarMenu(){
         "cardDashboardJefatura",
         "cardAdministracion",
         "cardActividadCampo",
-        "cardValidacionTecnica"
+        "cardValidacionTecnica",
+        "cardActas"
     ];
 
     todasLasCards.forEach(id => mostrarCardSeguro(id, false));
@@ -219,6 +220,7 @@ function configurarMenu(){
             "cardRanking",
             "cardObservaciones",
             "cardValidacionTecnica",
+            "cardActas",
             "cardAccesos",
             "cardBiblioteca",
             "cardCapacitacion"
@@ -231,7 +233,8 @@ function configurarMenu(){
             "cardCapacitacion",
             "cardDashboardSupervisor",
             "cardActividadCampo",
-            "cardValidacionTecnica"
+            "cardValidacionTecnica",
+            "cardActas"
         ],
         JEFATURA: [
             "cardRanking",
@@ -242,7 +245,8 @@ function configurarMenu(){
             "cardDashboardJefatura",
             "cardAdministracion",
             "cardActividadCampo",
-            "cardValidacionTecnica"
+            "cardValidacionTecnica",
+            "cardActas"
         ],
         ADMIN: [
             "cardRanking",
@@ -253,7 +257,8 @@ function configurarMenu(){
             "cardDashboardJefatura",
             "cardAdministracion",
             "cardActividadCampo",
-            "cardValidacionTecnica"
+            "cardValidacionTecnica",
+            "cardActas"
         ],
         ADMINISTRADOR: [
             "cardRanking",
@@ -264,7 +269,14 @@ function configurarMenu(){
             "cardDashboardJefatura",
             "cardAdministracion",
             "cardActividadCampo",
-            "cardValidacionTecnica"
+            "cardValidacionTecnica",
+            "cardActas"
+        ],
+        ALMACEN: [
+            "cardActas"
+        ],
+        "JEFATURA ALMACEN": [
+            "cardActas"
         ]
     };
 

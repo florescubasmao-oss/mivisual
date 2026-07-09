@@ -1,6 +1,6 @@
 // MI VISUAL - Módulo Actividad en Campo v52 ajustes operativos
 
-const API_ACTIVIDAD_CAMPO = "https://script.google.com/macros/s/AKfycbymVVBtL_UtjoGZKUcJNNy24MC96GMAPZ_Imlbw13rZdhSBew3WozxDZnkqqLSFVnFJ/exec";
+const API_ACTIVIDAD_CAMPO = "https://script.google.com/macros/s/AKfycbxirv6JT0W68dY0SZV7_mHzR8lzizybcDTyXTqvn8BOWMWEmYaJRx01DEpgTDBvbg_x/exec";
 
 const TIPOS_ACTIVIDAD_CAMPO = [
     "AUDITORIA EN FRIO",
