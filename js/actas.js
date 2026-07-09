@@ -48,16 +48,20 @@ function estiloActas(){
         .actas-btn.danger{background:#dc2626;color:white;}
         .actas-btn:disabled{opacity:.55;cursor:not-allowed;}
         .actas-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;}
-        .actas-field label{display:block;font-size:12px;font-weight:800;color:#334155;margin-bottom:4px;}
-        .actas-field input,.actas-field select,.actas-field textarea{width:100%;box-sizing:border-box;border:1px solid #cbd5e1;border-radius:12px;padding:10px;font-size:14px;background:white;}
+        .actas-field label{display:block;font-size:13px;font-weight:900;color:#ffffff;margin-bottom:5px;text-shadow:0 1px 2px rgba(0,0,0,.25);}
+        .actas-field input,.actas-field select,.actas-field textarea{width:100%;box-sizing:border-box;border:1px solid #cbd5e1;border-radius:12px;padding:10px;font-size:14px;background:#ffffff;color:#111827;font-weight:600;}
+        .actas-field input:disabled{background:#f8fafc;color:#0f172a;opacity:1;}
+        .actas-field select option{color:#111827;background:#ffffff;}
         .actas-card{background:white;border:1px solid #e5e7eb;border-radius:16px;padding:14px;margin-bottom:12px;box-shadow:0 6px 16px rgba(15,23,42,.08);}
         .actas-kpis{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin-bottom:12px;}
         .actas-kpi{background:#f8fafc;border:1px solid #e5e7eb;border-radius:14px;padding:12px;text-align:center;}
         .actas-kpi b{display:block;font-size:22px;color:#0f172a;}
         .actas-kpi span{font-size:12px;color:#64748b;font-weight:800;}
         .actas-table{width:100%;border-collapse:collapse;font-size:13px;background:white;border-radius:14px;overflow:hidden;}
-        .actas-table th{background:#0f172a;color:white;text-align:left;padding:9px;font-size:12px;}
-        .actas-table td{border-bottom:1px solid #e5e7eb;padding:9px;vertical-align:top;}
+        .actas-table th{background:#0f172a;color:#ffffff;text-align:left;padding:10px 9px;font-size:13px;font-weight:900;}
+        .actas-table td{border-bottom:1px solid #e5e7eb;padding:10px 9px;vertical-align:top;color:#111827;background:#ffffff;}
+        .actas-table a{color:#1d4ed8;font-weight:800;}
+        .actas-empty{text-align:center;color:#64748b;font-weight:800;padding:16px;background:#f8fafc;}
         .actas-badge{display:inline-block;padding:4px 8px;border-radius:999px;font-size:11px;font-weight:900;}
         .actas-pend{background:#fef3c7;color:#92400e;}
         .actas-fin{background:#dcfce7;color:#166534;}
@@ -191,8 +195,8 @@ async function cargarResumenActas(){
 }
 
 function resumenTablasActas(data){
-    const sedes = (data.sedes || []).map(x => `<tr><td>${x.sede}</td><td>${x.escaneadas}</td><td>${x.finalizadas}</td><td>${x.observadas}</td><td>${x.pendientes}</td></tr>`).join("");
-    const cuadrillas = (data.cuadrillas || []).map(x => `<tr><td>${x.sede}</td><td>${x.cuadrilla}</td><td>${x.escaneadas}</td><td>${x.finalizadas}</td><td>${x.observadas}</td><td>${x.pendientes}</td></tr>`).join("");
+    const sedes = (data.sedes || []).map(x => `<tr><td>${x.sede}</td><td>${x.escaneadas}</td><td>${x.finalizadas}</td><td>${x.observadas}</td><td>${x.pendientes}</td></tr>`).join("") || `<tr><td colspan="5" class="actas-empty">No existen actas registradas por sede.</td></tr>`;
+    const cuadrillas = (data.cuadrillas || []).map(x => `<tr><td>${x.sede}</td><td>${x.cuadrilla}</td><td>${x.escaneadas}</td><td>${x.finalizadas}</td><td>${x.observadas}</td><td>${x.pendientes}</td></tr>`).join("") || `<tr><td colspan="6" class="actas-empty">No existen actas registradas por cuadrilla.</td></tr>`;
     return `<div class="actas-card"><b>Resumen por sede</b><table class="actas-table" style="display:table;margin-top:8px;"><thead><tr><th>Sede</th><th>Escaneadas</th><th>Finalizadas</th><th>Observadas</th><th>Pendientes</th></tr></thead><tbody>${sedes}</tbody></table></div>
     <div class="actas-card"><b>Resumen por cuadrilla</b><table class="actas-table" style="display:table;margin-top:8px;"><thead><tr><th>Sede</th><th>Cuadrilla</th><th>Escaneadas</th><th>Finalizadas</th><th>Observadas</th><th>Pendientes</th></tr></thead><tbody>${cuadrillas}</tbody></table></div>`;
 }
