@@ -582,3 +582,43 @@ body{background:linear-gradient(180deg,var(--mv4-bg),var(--mv4-bg2));font-family
     white-space:normal;
   }
 }
+
+
+/* v65 Dashboard Supervisor/Jefatura - detalle desplegado diferenciado */
+.mv58-cuadrilla-card.detalle-abierto,
+.mv4-kpi-card.detalle-abierto,
+.mv4-sede-card.detalle-abierto{
+  background:linear-gradient(180deg,#17365c,#102b4c)!important;
+  border:1px solid rgba(56,189,248,.75)!important;
+  box-shadow:0 0 0 1px rgba(56,189,248,.20),0 16px 34px rgba(14,165,233,.18)!important;
+}
+.mv58-cuadrilla-card.detalle-abierto::before{
+  content:"DETALLE ABIERTO";
+  display:inline-block;
+  margin-bottom:8px;
+  padding:4px 9px;
+  border-radius:999px;
+  background:#0ea5e9;
+  color:#ffffff;
+  font-size:10px;
+  font-weight:950;
+  letter-spacing:.5px;
+}
+.mv4-link-btn.detalle-abierto-btn{
+  background:#0ea5e9!important;
+  color:#ffffff!important;
+  border-color:rgba(255,255,255,.30)!important;
+}
+.mv58-cuadrilla-card.detalle-abierto > div[id^="v58_"]{
+  background:rgba(15,31,53,.55);
+  border:1px solid rgba(255,255,255,.10);
+  border-radius:14px;
+  padding:10px;
+}
+.mv4-kpi-card.detalle-abierto > .mv4-kpi-detail,
+.mv4-sede-card.detalle-abierto > div[id^="sede_"]{
+  background:rgba(15,31,53,.45);
+  border:1px solid rgba(255,255,255,.08);
+  border-radius:16px;
+  padding:10px;
+}

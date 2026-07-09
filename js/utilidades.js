@@ -33,30 +33,44 @@ function toggleDetalle(id, btn){
 
     if(!div) return;
 
+    const contenedor = btn ? btn.closest(".mv58-cuadrilla-card, .mv4-kpi-card, .mv4-sede-card") : null;
+
     const visible =
         window.getComputedStyle(div).display !== "none";
 
     if(visible){
 
         div.style.display = "none";
+        if(contenedor) contenedor.classList.remove("detalle-abierto");
 
         if(btn){
+            btn.classList.remove("detalle-abierto-btn");
             if(id.startsWith("puntos_")){
                 btn.innerHTML = "⭐ Ver detalle de puntos";
+            }else if(id.startsWith("kpi_")){
+                btn.innerHTML = "▼ Ver cuadrillas";
+            }else if(id.startsWith("sede_")){
+                btn.innerHTML = "▼ Ver indicadores y cuadrillas";
             }else{
-                btn.innerHTML = "▼ Ver detalle diario";
+                btn.innerHTML = "▼ Ver detalle";
             }
         }
 
     }else{
 
         div.style.display = "block";
+        if(contenedor) contenedor.classList.add("detalle-abierto");
 
         if(btn){
+            btn.classList.add("detalle-abierto-btn");
             if(id.startsWith("puntos_")){
                 btn.innerHTML = "⭐ Ocultar detalle de puntos";
+            }else if(id.startsWith("kpi_")){
+                btn.innerHTML = "▲ Ocultar cuadrillas";
+            }else if(id.startsWith("sede_")){
+                btn.innerHTML = "▲ Ocultar indicadores y cuadrillas";
             }else{
-                btn.innerHTML = "▲ Ocultar detalle diario";
+                btn.innerHTML = "▲ Ocultar detalle";
             }
         }
 

@@ -1411,7 +1411,7 @@ cursor:pointer;
 font-weight:bold;
 margin-top:8px;
 ">
-▼ Ver detalle diario
+▼ Ver detalle
 </button>
 
 <div
@@ -1847,7 +1847,7 @@ function mv58CuadrillaAnalitica(x, tipo, puesto){
     const cab = mv58CabeceraCuadrilla(x, tipo, puesto);
     const detalle = mv58DetalleCuadrilla(x, tipo);
     return `
-    <div style="background:#142844;border:1px solid rgba(255,255,255,.08);border-radius:16px;padding:12px;margin:10px 0;color:white;">
+    <div class="mv58-cuadrilla-card" style="background:#142844;border:1px solid rgba(255,255,255,.08);border-radius:16px;padding:12px;margin:10px 0;color:white;">
         ${cab}
         <button class="mv4-link-btn" onclick="toggleDetalle('${id}', this)">▼ Ver detalle</button>
         <div id="${id}" style="display:none;margin-top:10px;">${detalle}</div>
@@ -1884,7 +1884,7 @@ function mv58DetalleProduccion(d){
     let html = `<div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;">${mv58KpiMini("Órdenes", mv58Valor(d.totalOrdenes))}${mv58KpiMini("Puntos", mv58Valor(d.totalPuntos))}</div>`;
     html += `<div style="margin-top:10px;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;">`;
     Object.keys(grupos).sort().forEach(g => html += mv58KpiMini(grupoNombre[g] || g, `${mv58Valor(grupos[g].cantidad)} / ${mv58Valor(grupos[g].puntos)} pts`));
-    html += `</div><div style="margin-top:12px;font-weight:900;color:#9fb7d8;">Detalle por tipo de trabajo</div>`;
+    html += `</div><div style="margin-top:12px;font-weight:900;color:#9fb7d8;">Detalle</div>`;
     Object.keys(tipos).sort((a,b)=>tipos[b].puntos-tipos[a].puntos).forEach(t => {
         const it = tipos[t];
         html += `<div style="background:#0f1f35;border-radius:10px;padding:9px;margin-top:7px;"><div style="font-size:12px;font-weight:800;">${t}</div><div style="font-size:12px;color:#9fb7d8;">${mv58Valor(it.cantidad)} órdenes × ${mv58Valor(it.puntaje)} = <b>${mv58Valor(it.puntos)} pts</b></div></div>`;
@@ -2093,7 +2093,7 @@ function renderDashboardProduccion(data){
     }
 
     html += `
-        <button class="mv4-link-btn mv59-detail-btn" onclick="toggleDetalle('mv59_detalle_diario', this)">▼ Ver detalle diario</button>
+        <button class="mv4-link-btn mv59-detail-btn" onclick="toggleDetalle('mv59_detalle_diario', this)">▼ Ver detalle</button>
         <div id="mv59_detalle_diario" class="mv4-kpi-detail" style="display:none;">`;
 
     const porDia = {};
