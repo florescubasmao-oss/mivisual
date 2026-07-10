@@ -3206,17 +3206,29 @@ function obtenerCatalogoEconomicoPorCodigo(codigo, catalogo) {
 function obtenerCuadrillasActivasEconomico() {
   const mapaUsuarios = obtenerMapaUsuarios();
   const lista = [];
+  const vistos = {};
 
   Object.keys(mapaUsuarios).forEach(cuadrilla => {
     const item = mapaUsuarios[cuadrilla] || {};
+    const cuadrillaNormalizada = normalizarCuadrilla(cuadrilla);
+    const perfil = normalizarTexto(item.perfil || "");
+    const sede = normalizarTexto(item.sede || "");
+
+    // Solo cuentan como meta las cuadrillas técnicas activas reales.
+    // Esto excluye filas generales como TODAS, JEFATURA, ADMIN o SUPERVISOR.
     if (normalizarTexto(item.estado || "ACTIVO") !== "ACTIVO") return;
-    if (!normalizarCuadrilla(cuadrilla)) return;
+    if (perfil !== "TECNICO") return;
+    if (!/^P\d+/i.test(cuadrillaNormalizada)) return;
+    if (!sede || sede === "TODAS" || sede === "ZONA NORTE") return;
+    if (vistos[cuadrillaNormalizada]) return;
 
     lista.push({
-      cuadrilla: normalizarCuadrilla(cuadrilla),
-      sede: normalizarTexto(item.sede),
+      cuadrilla: cuadrillaNormalizada,
+      sede,
       plataforma: normalizarTexto(item.plataforma)
     });
+
+    vistos[cuadrillaNormalizada] = true;
   });
 
   return lista;
