@@ -299,23 +299,53 @@ function filaResumenValidacion(label, valor){
     return `<div class="vt-resumen-row"><span>${label}</span><b>${safeValidacion(valor)}</b></div>`;
 }
 
+async function copiarTextoReporteValidacion(){
+    const bloque = document.getElementById("vtTextoReporte");
+    if(!bloque) return;
+
+    const texto = bloque.innerText.trim();
+
+    try{
+        if(navigator.clipboard && window.isSecureContext){
+            await navigator.clipboard.writeText(texto);
+        }else{
+            const temporal = document.createElement("textarea");
+            temporal.value = texto;
+            temporal.style.position = "fixed";
+            temporal.style.opacity = "0";
+            document.body.appendChild(temporal);
+            temporal.focus();
+            temporal.select();
+            document.execCommand("copy");
+            temporal.remove();
+        }
+        alert("✅ Texto copiado correctamente.");
+    }catch(e){
+        alert("No se pudo copiar automáticamente. Mantenga presionado el texto y seleccione Copiar.");
+    }
+}
+
 function mostrarConfirmacionValidacionTecnica(r){
     const linkTelegram = r.linkTelegram || "";
     const sede = (r.sede || "").toString().toUpperCase();
     const html = `
     ${estiloValidacionTecnica()}
     <style>
-        .vt-confirm{max-width:760px;margin:0 auto;color:#0f172a}
-        .vt-confirm-title{font-size:22px}
-        .vt-confirm-id{font-size:24px;margin-bottom:10px}
-        .vt-resumen{background:#f8fafc;border:1px solid #dbeafe;border-radius:16px;padding:12px;margin-top:12px}
-        .vt-resumen-row{display:grid;grid-template-columns:165px 1fr;gap:10px;padding:8px 0;border-bottom:1px solid #e2e8f0;font-size:14px}
+        .vt-confirm{max-width:560px;margin:0 auto;color:#0f172a}
+        .vt-confirm-title{font-size:19px;margin-bottom:5px}
+        .vt-confirm-id{font-size:21px;margin-bottom:7px}
+        .vt-resumen{background:#f8fafc;border:1px solid #dbeafe;border-radius:14px;padding:9px 11px;margin-top:8px}
+        .vt-resumen-row{display:grid;grid-template-columns:145px 1fr;gap:8px;padding:6px 0;border-bottom:1px solid #e2e8f0;font-size:13px}
         .vt-resumen-row:last-child{border-bottom:0}
         .vt-resumen-row span{font-weight:900;color:#475569;text-transform:uppercase;font-size:11px;letter-spacing:.03em}
         .vt-resumen-row b{color:#0f172a;word-break:break-word;line-height:1.35}
-        .vt-motivo-box{background:#fff;border:1px solid #e2e8f0;border-radius:14px;padding:12px;margin-top:10px;color:#0f172a;line-height:1.45;white-space:pre-wrap}
-        .vt-estado-final{background:#fef3c7;border:1px solid #fde68a;color:#92400e;border-radius:14px;padding:12px;margin:12px 0;font-weight:900}
-        .vt-telegram-box{background:#eff6ff;border:1px solid #bfdbfe;color:#1e3a8a;border-radius:14px;padding:12px;font-size:13px;margin:12px 0;line-height:1.45}
+        .vt-motivo-box{background:#fff;border:1px solid #e2e8f0;border-radius:12px;padding:9px;margin-top:6px;color:#0f172a;line-height:1.35;white-space:pre-wrap;font-size:13px}
+        .vt-estado-final{background:#fef3c7;border:1px solid #fde68a;color:#92400e;border-radius:12px;padding:9px;margin:9px 0;font-weight:900;font-size:13px}
+        .vt-reporte-box{background:#f8fafc;border:1px solid #cbd5e1;border-radius:12px;padding:10px;margin:9px 0}
+        .vt-reporte-title{font-size:12px;font-weight:900;color:#334155;text-transform:uppercase;margin-bottom:8px}
+        .vt-reporte-texto{background:#fff;border:1px dashed #94a3b8;border-radius:10px;padding:11px;white-space:pre-line;font-size:14px;font-weight:800;line-height:1.55;color:#0f172a}
+        .vt-reporte-ayuda{font-size:12px;color:#475569;line-height:1.45;margin-top:9px}
+        .vt-telegram-box{background:#eff6ff;border:1px solid #bfdbfe;color:#1e3a8a;border-radius:12px;padding:9px;font-size:12px;margin:9px 0;line-height:1.4}
         .vt-telegram-link{display:block;margin-top:8px;font-weight:900;color:#1d4ed8;word-break:break-all}
         @media(max-width:640px){.vt-resumen-row{grid-template-columns:1fr;gap:3px}}
     </style>
@@ -341,8 +371,17 @@ function mostrarConfirmacionValidacionTecnica(r){
 
             <div class="vt-estado-final">Estado: 🟡 PENDIENTE</div>
 
+            <div class="vt-reporte-box">
+                <div class="vt-reporte-title">📋 Texto para reportar</div>
+                <div id="vtTextoReporte" class="vt-reporte-texto">Código: ${safeValidacion(r.codigo)}
+Ticket: ${safeValidacion(r.ticketFinal)}
+Tipo de validación: ${safeValidacion(r.tipoValidacion)}</div>
+                <button class="vt-btn primary" style="margin-top:10px;width:100%" onclick="copiarTextoReporteValidacion()">📋 Copiar texto</button>
+                <div class="vt-reporte-ayuda"><b>Indicación:</b> Copie el texto, tome una captura de esta pantalla y reporte ambos junto con sus evidencias en el grupo de Telegram de su sede.</div>
+            </div>
+
             <div class="vt-telegram-box">
-                📲 Tome un pantallazo de este registro y envíelo junto con el video al grupo oficial de Telegram de ${safeValidacion(sede)}.
+                📲 Use el botón inferior para acceder al grupo oficial de Telegram de ${safeValidacion(sede)}.
                 ${linkTelegram ? `<span class="vt-telegram-link">${safeValidacion(linkTelegram)}</span>` : ""}
             </div>
 
@@ -381,7 +420,17 @@ async function cargarValidacionesTecnicas(){
 
         const histEl = document.getElementById("vtHistorial");
         if(histEl){
-            histEl.innerHTML = todas.length ? renderResumenValidaciones(todas) + (historial.length ? renderListaValidaciones(historial, false) : `<div class="vt-sub">No hay registros cerrados en el historial.</div>`) : `<div class="vt-sub">Sin registros.</div>`;
+            const usuarioVista = usuarioActualValidacion();
+            const listaVisible = usuarioVista.perfil === "TECNICO" ? todas : historial;
+            const mensajeVacio = usuarioVista.perfil === "TECNICO"
+                ? "No hay registros para mostrar."
+                : "No hay registros cerrados en el historial.";
+
+            histEl.innerHTML = todas.length
+                ? renderResumenValidaciones(todas) + (listaVisible.length
+                    ? renderListaValidaciones(listaVisible, false)
+                    : `<div class="vt-sub">${mensajeVacio}</div>`)
+                : `<div class="vt-sub">Sin registros.</div>`;
         }
     }catch(e){
         const histEl = document.getElementById("vtHistorial");
