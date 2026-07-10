@@ -1,0 +1,12 @@
+MI VISUAL V75 - OBSERVACIONES POR SEDE
+
+Archivos modificados:
+- js/observaciones.js
+- css/estilos.css
+
+Cambios:
+- En Jefatura/Admin se muestra la sede en cada tarjeta compacta de Observaciones.
+- Se agrega un resumen compacto por sede debajo de los KPI actuales.
+- El resumen muestra cantidad de observaciones e impacto por sede.
+- Técnico y Supervisor mantienen su vista actual.
+- No se modifica Code.gs, API, permisos, estados, descargos ni cambio de estado.

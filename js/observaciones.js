@@ -94,6 +94,7 @@ function mostrarObservaciones(){
                 <div class="obs-kpi obs-subsa"><b>-</b><span>Subsanadas</span></div>
                 <div class="obs-kpi obs-money"><b>S/ 0.00</b><span>Impacto</span></div>
             </div>
+            ${esVistaJefaturaObs(u) ? `<div id="resumenObservacionesSede" class="obs-resumen-sedes"></div>` : ``}
             <div class="obs-filtros">
                 <select id="filtroEstadoObs" onchange="cargarObservaciones()">
                     <option value="">Todos los estados</option>
@@ -132,6 +133,40 @@ function factorImpactoObs(estado){
     const e = (estado || "").toString().toUpperCase().trim();
     if(e === "SUBSANADO" || e === "ANULADO") return 0.20;
     return 1;
+}
+
+function esVistaJefaturaObs(u){
+    const perfil = ((u && u.perfil) || "").toString().toUpperCase().trim();
+    return perfil === "JEFATURA" || perfil === "ADMIN" || perfil === "ADMINISTRADOR";
+}
+
+function pintarResumenObservacionesPorSede(lista){
+    const cont = document.getElementById("resumenObservacionesSede");
+    if(!cont) return;
+
+    const sedes = {};
+    (lista || []).forEach(o => {
+        const sede = (o.sede || "SIN SEDE").toString().toUpperCase().trim();
+        if(!sedes[sede]) sedes[sede] = { sede, cantidad: 0, impacto: 0 };
+        sedes[sede].cantidad++;
+        sedes[sede].impacto += (Number(o.monto) || 0) * factorImpactoObs(o.estado);
+    });
+
+    const orden = ["CHICLAYO", "PIURA", "TRUJILLO"];
+    const listaSedes = Object.values(sedes).sort((a,b) => {
+        const ia = orden.indexOf(a.sede);
+        const ib = orden.indexOf(b.sede);
+        if(ia !== -1 || ib !== -1) return (ia === -1 ? 99 : ia) - (ib === -1 ? 99 : ib);
+        return a.sede.localeCompare(b.sede);
+    });
+
+    cont.innerHTML = listaSedes.map(x => `
+        <div class="obs-sede-mini">
+            <b>${x.sede}</b>
+            <span>${x.cantidad} observación${x.cantidad === 1 ? "" : "es"}</span>
+            <small>S/ ${x.impacto.toFixed(2)}</small>
+        </div>
+    `).join("");
 }
 
 function pintarResumenObservaciones(lista){
@@ -175,6 +210,7 @@ async function cargarResumenObservaciones(){
         });
         if(!data.ok) throw new Error(data.error || "Error al cargar resumen");
         pintarResumenObservaciones(data.observaciones || []);
+        if(esVistaJefaturaObs(u)) pintarResumenObservacionesPorSede(data.observaciones || []);
     }catch(err){
         const cont = document.getElementById("resumenObservaciones");
         if(cont) cont.innerHTML = `<div class="obs-error obs-resumen-error">No se pudo cargar el resumen.</div>`;
@@ -252,6 +288,7 @@ function cardObservacion(o, u){
             <div class="obs-resumen-main">
                 <b class="obs-codigo">${o.codigo || "-"}</b>
                 <span>${o.tipoObservacion || "-"} • S/ ${monto}</span>
+                ${esVistaJefaturaObs(u) ? `<span class="obs-sede-lineal">📍 ${o.sede || "SIN SEDE"}</span>` : ``}
                 <span class="obs-estado-lineal">${etiquetaEstadoObs(o.estado)}</span>
                 ${tieneDescargo ? `<span class="obs-chip-descargo">Descargo enviado</span>` : ``}
             </div>
