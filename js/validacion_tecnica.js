@@ -69,9 +69,19 @@ function estiloValidacionTecnica(){
     .vt-kpi{background:#f8fafc;border:1px solid #e5e7eb;border-radius:14px;padding:10px;text-align:center}
     .vt-kpi b{display:block;font-size:18px;color:#0f172a}
     .vt-kpi span{font-size:11px;color:#64748b;font-weight:800;text-transform:uppercase}
+    .vt-history-tools{display:grid;grid-template-columns:minmax(180px,1fr) auto auto auto;gap:8px;align-items:center;margin-bottom:10px}
+    .vt-search{width:100%;box-sizing:border-box;border:1px solid #cbd5e1;border-radius:12px;padding:11px;font-size:14px;background:#fff;outline:none}
+    .vt-group{border:1px solid #dbe3ee;border-radius:14px;background:#f8fafc;margin-top:10px;overflow:hidden}
+    .vt-group summary{cursor:pointer;list-style:none;padding:12px 14px;font-weight:900;color:#0f172a;display:flex;justify-content:space-between;align-items:center;background:#eef4fb}
+    .vt-group summary::-webkit-details-marker{display:none}
+    .vt-group summary::after{content:"▼";font-size:11px;color:#64748b;transition:transform .2s ease}
+    .vt-group[open] summary::after{transform:rotate(180deg)}
+    .vt-group-body{padding:10px}
     @media(max-width:640px){
         .vt-grid{grid-template-columns:1fr}
         .vt-kpis{grid-template-columns:repeat(2,minmax(0,1fr))}
+        .vt-history-tools{grid-template-columns:1fr 1fr}
+        .vt-history-tools .vt-search{grid-column:1/-1}
         .vt-header{border-radius:18px;padding:15px}
         .vt-wrap{padding:8px}
         .vt-btn{width:100%}
@@ -174,15 +184,16 @@ function mostrarValidacionTecnica(){
 
     html += `<div class="vt-card">
         <h3>📚 Historial</h3>
-        <div class="vt-actions" style="margin-bottom:10px">
-            <select id="vtFiltroTipo" onchange="cargarValidacionesTecnicas()">
+        <div class="vt-history-tools">
+            <input id="vtBuscarCodigo" class="vt-search" type="search" placeholder="🔍 Buscar por código" oninput="renderHistorialValidacionLocal()">
+            <select id="vtFiltroTipo" onchange="renderHistorialValidacionLocal()">
                 <option value="">Todos los tipos</option>
                 <option value="RECABLEADO">Recableado</option>
                 <option value="GAR">GAR</option>
                 <option value="VTR">VTR</option>
                 <option value="OTRO">Otro</option>
             </select>
-            <select id="vtFiltroEstado" onchange="cargarValidacionesTecnicas()">
+            <select id="vtFiltroEstado" onchange="renderHistorialValidacionLocal()">
                 <option value="">Todos los estados</option>
                 <option value="PENDIENTE">Pendiente</option>
                 <option value="APROBADO">Aprobado</option>
@@ -394,48 +405,95 @@ Tipo de validación: ${safeValidacion(r.tipoValidacion)}</div>
 
 async function cargarValidacionesTecnicas(){
     const u = usuarioActualValidacion();
-    const filtroTipo = document.getElementById("vtFiltroTipo")?.value || "";
-    const filtroEstado = document.getElementById("vtFiltroEstado")?.value || "";
 
     try{
         mostrarCargandoValidacion("Cargando validaciones...");
         const r = await apiValidacionTecnica({
             accion:"listarValidacionTecnica",
-            usuario:u.usuario,
-            tipoValidacion:filtroTipo,
-            estado:filtroEstado
+            usuario:u.usuario
         });
         if(!r.ok) throw new Error(r.error || "No se pudo listar");
 
-        const todas = r.validaciones || [];
-        const pendientes = todas.filter(x => (x.estado || "").toUpperCase() === "PENDIENTE");
-        const historial = todas.filter(x => (x.estado || "").toUpperCase() !== "PENDIENTE");
+        window.vtValidacionesActuales = r.validaciones || [];
 
+        const pendientes = window.vtValidacionesActuales.filter(x => (x.estado || "").toUpperCase() === "PENDIENTE");
         const pendientesEl = document.getElementById("vtPendientes");
         if(pendientesEl){
-            pendientesEl.innerHTML = pendientes.length ? renderListaValidaciones(pendientes, true) : `<div class="vt-sub">No hay validaciones pendientes.</div>`;
+            pendientesEl.innerHTML = pendientes.length
+                ? renderListaValidaciones(pendientes, true)
+                : `<div class="vt-sub">No hay validaciones pendientes.</div>`;
         }
 
-        const histEl = document.getElementById("vtHistorial");
-        if(histEl){
-            const usuarioVista = usuarioActualValidacion();
-            const listaVisible = usuarioVista.perfil === "TECNICO" ? todas : historial;
-            const mensajeVacio = usuarioVista.perfil === "TECNICO"
-                ? "No hay registros para mostrar."
-                : "No hay registros cerrados en el historial.";
-
-            histEl.innerHTML = todas.length
-                ? renderResumenValidaciones(todas) + (listaVisible.length
-                    ? renderListaValidaciones(listaVisible, false)
-                    : `<div class="vt-sub">${mensajeVacio}</div>`)
-                : `<div class="vt-sub">Sin registros.</div>`;
-        }
+        renderHistorialValidacionLocal();
     }catch(e){
         const histEl = document.getElementById("vtHistorial");
         if(histEl) histEl.innerHTML = `<div class="vt-sub">❌ ${e.message}</div>`;
     }finally{
         ocultarCargandoValidacion();
     }
+}
+
+function renderHistorialValidacionLocal(){
+    const histEl = document.getElementById("vtHistorial");
+    if(!histEl) return;
+
+    const u = usuarioActualValidacion();
+    const todas = Array.isArray(window.vtValidacionesActuales) ? window.vtValidacionesActuales : [];
+    const filtroTipo = (document.getElementById("vtFiltroTipo")?.value || "").toUpperCase();
+    const filtroEstado = (document.getElementById("vtFiltroEstado")?.value || "").toUpperCase();
+    const buscarCodigo = (document.getElementById("vtBuscarCodigo")?.value || "").trim().toUpperCase();
+    const esGestion = u.perfil === "SUPERVISOR" || esJefaturaValidacion(u.perfil);
+
+    let lista = esGestion
+        ? todas.filter(x => (x.estado || "").toUpperCase() !== "PENDIENTE")
+        : todas.slice();
+
+    if(filtroTipo){
+        lista = lista.filter(x => (x.tipoValidacion || "").toUpperCase() === filtroTipo);
+    }
+    if(filtroEstado){
+        lista = lista.filter(x => (x.estado || "").toUpperCase() === filtroEstado);
+    }
+    if(buscarCodigo){
+        lista = lista.filter(x => String(x.codigo || "").toUpperCase().includes(buscarCodigo));
+    }
+
+    if(!todas.length){
+        histEl.innerHTML = `<div class="vt-sub">Sin registros.</div>`;
+        return;
+    }
+
+    const resumen = renderResumenValidaciones(todas);
+    const contenido = esGestion
+        ? renderHistorialAgrupadoValidacion(lista)
+        : (lista.length ? renderListaValidaciones(lista, false) : `<div class="vt-sub">No hay registros para mostrar.</div>`);
+
+    histEl.innerHTML = resumen + contenido;
+}
+
+function renderHistorialAgrupadoValidacion(lista){
+    const orden = ["RECABLEADO", "VTR", "GAR", "OTRO"];
+    const etiquetas = {RECABLEADO:"RECABLEADO", VTR:"VTR", GAR:"GAR", OTRO:"OTRO"};
+    const grupos = {};
+    orden.forEach(t => grupos[t] = []);
+
+    lista.forEach(item => {
+        const tipo = (item.tipoValidacion || "OTRO").toUpperCase();
+        if(!grupos[tipo]) grupos[tipo] = [];
+        grupos[tipo].push(item);
+    });
+
+    return orden
+        .filter(tipo => tipo !== "OTRO" || grupos[tipo].length > 0)
+        .map(tipo => {
+            const items = grupos[tipo] || [];
+            return `<details class="vt-group">
+                <summary><span>${etiquetas[tipo]} (${items.length})</span></summary>
+                <div class="vt-group-body">
+                    ${items.length ? renderListaValidaciones(items, false) : `<div class="vt-sub">Sin registros.</div>`}
+                </div>
+            </details>`;
+        }).join("");
 }
 
 function renderResumenValidaciones(lista){
@@ -447,16 +505,18 @@ function renderResumenValidaciones(lista){
     });
 
     const totalAprobados = c.APROBADO + c["SIN RESPUESTA"];
-    const esJefatura = esJefaturaValidacion(u.perfil);
+    const esGestion = u.perfil === "SUPERVISOR" || esJefaturaValidacion(u.perfil);
 
-    if(esJefatura){
+    if(esGestion){
         return `<div class="vt-kpis">
             <div class="vt-kpi"><b>${lista.length}</b><span>Total</span></div>
             <div class="vt-kpi"><b>${c.PENDIENTE}</b><span>Pendientes</span></div>
+            <div class="vt-kpi"><b>${totalAprobados}</b><span>Aprobados</span></div>
+            <div class="vt-kpi"><b>${c.OBSERVADO}</b><span>Observados</span></div>
+            <div class="vt-kpi"><b>${c.RECHAZADO}</b><span>Rechazados</span></div>
+            <div class="vt-kpi"><b>${c["SIN RESPUESTA"]}</b><span>Automáticos</span></div>
             <div class="vt-kpi"><b>${c.BONO}</b><span>Bono</span></div>
             <div class="vt-kpi"><b>${c["NO BONO"]}</b><span>No bono</span></div>
-            <div class="vt-kpi"><b>${totalAprobados}</b><span>Aprobados</span></div>
-            <div class="vt-kpi"><b>${c["SIN RESPUESTA"]}</b><span>Automáticos</span></div>
         </div>`;
     }
 
