@@ -12,6 +12,7 @@ const HOJA_ACTIVIDAD_CAMPO = "ACTIVIDAD_CAMPO";
 const CARPETA_ACTIVIDAD_CAMPO = "1tu6DWyOkM0b-W1nI_MIXGuTmlZypjsBV";
 const HOJA_VALIDACION_TECNICA = "VALIDACION_TECNICA";
 const HOJA_ACTAS_ESCANEADAS = "ACTAS_ESCANEADAS";
+const HOJA_ANALISIS_ECONOMICO = "ANALISIS_ECONOMICO";
 const CARPETA_ACTAS_ESCANEADAS = "1EZALuMsXo_ZRO93FjKyuDgRmvAe2C69L";
 
 function doGet() {
@@ -3095,6 +3096,391 @@ function resumenActasEscaneadas(data) {
 
 
 
+
+/* =========================
+   ANÁLISIS ECONÓMICO
+   Solo Jefatura / Admin
+========================= */
+
+const META_DIARIA_CUADRILLA = 500;
+const DIAS_META_MENSUAL = 26;
+
+function esPerfilAnalisisEconomico(perfil) {
+  return esPerfilJefatura(perfil);
+}
+
+function convertirFechaAnalisisEconomico(valor) {
+  if (valor instanceof Date && !isNaN(valor.getTime())) {
+    return new Date(valor.getFullYear(), valor.getMonth(), valor.getDate());
+  }
+
+  const texto = (valor || "").toString().trim();
+  if (!texto) return null;
+
+  let partes = texto.split("/");
+  if (partes.length === 3) {
+    const fecha = new Date(Number(partes[2]), Number(partes[1]) - 1, Number(partes[0]));
+    return isNaN(fecha.getTime()) ? null : fecha;
+  }
+
+  partes = texto.split("-");
+  if (partes.length === 3) {
+    const fecha = new Date(Number(partes[0]), Number(partes[1]) - 1, Number(partes[2]));
+    return isNaN(fecha.getTime()) ? null : fecha;
+  }
+
+  const fecha = new Date(texto);
+  return isNaN(fecha.getTime()) ? null : new Date(fecha.getFullYear(), fecha.getMonth(), fecha.getDate());
+}
+
+function resolverPeriodoAnalisisEconomico(data) {
+  const ahora = new Date();
+  let anio = Number(data.anio) || ahora.getFullYear();
+  let mes = Number(data.mes) || (ahora.getMonth() + 1);
+
+  const periodo = (data.periodo || "").toString().trim();
+
+  if (/^\d{4}-\d{2}$/.test(periodo)) {
+    const partes = periodo.split("-");
+    anio = Number(partes[0]);
+    mes = Number(partes[1]);
+  } else if (/^\d{2}\/\d{4}$/.test(periodo)) {
+    const partes = periodo.split("/");
+    mes = Number(partes[0]);
+    anio = Number(partes[1]);
+  }
+
+  if (mes < 1 || mes > 12) throw new Error("Mes no válido");
+  if (anio < 2000 || anio > 2100) throw new Error("Año no válido");
+
+  const meses = [
+    "ENERO", "FEBRERO", "MARZO", "ABRIL", "MAYO", "JUNIO",
+    "JULIO", "AGOSTO", "SEPTIEMBRE", "OCTUBRE", "NOVIEMBRE", "DICIEMBRE"
+  ];
+
+  return {
+    anio,
+    mes,
+    clave: anio + "-" + String(mes).padStart(2, "0"),
+    nombre: meses[mes - 1] + " " + anio,
+    inicio: new Date(anio, mes - 1, 1),
+    fin: new Date(anio, mes, 0)
+  };
+}
+
+function obtenerCatalogoEconomico() {
+  const hoja = obtenerHoja(HOJA_CATALOGO_ORDENES);
+  const datos = hoja.getDataRange().getValues();
+  const mapa = {};
+
+  for (let i = 1; i < datos.length; i++) {
+    const codigo = (datos[i][0] || "").toString().trim();
+    if (!codigo) continue;
+
+    const tipoOrden = normalizarTexto(datos[i][1]);
+    const plataforma = normalizarTexto(datos[i][2]);
+    const grupo = normalizarTexto(datos[i][4]);
+    const monto = numeroProduccion(datos[i][5]);
+    const estadoTarifa = normalizarTexto(datos[i][6] || "ACTIVO");
+
+    mapa[codigo] = {
+      codigo,
+      tipoOrden,
+      plataforma,
+      grupo,
+      monto,
+      estadoTarifa
+    };
+
+    mapa[normalizarTexto(codigo)] = mapa[codigo];
+  }
+
+  return mapa;
+}
+
+function obtenerCatalogoEconomicoPorCodigo(codigo, catalogo) {
+  const original = (codigo || "").toString().trim();
+  return catalogo[original] || catalogo[normalizarTexto(original)] || null;
+}
+
+function obtenerCuadrillasActivasEconomico() {
+  const mapaUsuarios = obtenerMapaUsuarios();
+  const lista = [];
+
+  Object.keys(mapaUsuarios).forEach(cuadrilla => {
+    const item = mapaUsuarios[cuadrilla] || {};
+    if (normalizarTexto(item.estado || "ACTIVO") !== "ACTIVO") return;
+    if (!normalizarCuadrilla(cuadrilla)) return;
+
+    lista.push({
+      cuadrilla: normalizarCuadrilla(cuadrilla),
+      sede: normalizarTexto(item.sede),
+      plataforma: normalizarTexto(item.plataforma)
+    });
+  });
+
+  return lista;
+}
+
+function crearAcumuladorEconomico(clave, extras) {
+  return Object.assign({
+    clave,
+    cantidad: 0,
+    monto: 0,
+    meta: 0,
+    cumplimiento: 0,
+    ticketPromedio: 0
+  }, extras || {});
+}
+
+function sumarEconomico(mapa, clave, cantidad, monto, extras) {
+  if (!mapa[clave]) mapa[clave] = crearAcumuladorEconomico(clave, extras);
+  mapa[clave].cantidad += cantidad;
+  mapa[clave].monto += monto;
+  return mapa[clave];
+}
+
+function finalizarAcumuladoresEconomicos(mapa) {
+  return Object.keys(mapa).map(k => {
+    const item = mapa[k];
+    item.ticketPromedio = item.cantidad > 0 ? item.monto / item.cantidad : 0;
+    item.cumplimiento = item.meta > 0 ? item.monto / item.meta : 0;
+    return item;
+  });
+}
+
+function asegurarHojaAnalisisEconomico() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  let hoja = ss.getSheetByName(HOJA_ANALISIS_ECONOMICO);
+
+  if (!hoja) hoja = ss.insertSheet(HOJA_ANALISIS_ECONOMICO);
+
+  const encabezado = [[
+    "PERIODO",
+    "FECHA_ACTUALIZACION",
+    "FECHA_GESTION",
+    "SEDE",
+    "CUADRILLA",
+    "PLATAFORMA",
+    "TIPO_ORDEN",
+    "CODIGO",
+    "CANTIDAD",
+    "MONTO_UNITARIO",
+    "MONTO_TOTAL"
+  ]];
+
+  if (hoja.getLastRow() === 0 || !hoja.getRange(1, 1).getValue()) {
+    hoja.getRange(1, 1, 1, 11).setValues(encabezado);
+  }
+
+  return hoja;
+}
+
+function actualizarHojaAnalisisEconomico(periodo, detalle) {
+  const hoja = asegurarHojaAnalisisEconomico();
+  const ahora = new Date();
+  const salida = [[
+    "PERIODO",
+    "FECHA_ACTUALIZACION",
+    "FECHA_GESTION",
+    "SEDE",
+    "CUADRILLA",
+    "PLATAFORMA",
+    "TIPO_ORDEN",
+    "CODIGO",
+    "CANTIDAD",
+    "MONTO_UNITARIO",
+    "MONTO_TOTAL"
+  ]];
+
+  detalle.forEach(item => {
+    salida.push([
+      periodo.nombre,
+      ahora,
+      item.fecha,
+      item.sede,
+      item.cuadrilla,
+      item.plataforma,
+      item.tipoOrden,
+      item.codigo,
+      item.cantidad,
+      item.montoUnitario,
+      item.montoTotal
+    ]);
+  });
+
+  hoja.clearContents();
+  hoja.getRange(1, 1, salida.length, salida[0].length).setValues(salida);
+
+  if (salida.length > 1) {
+    hoja.getRange(2, 2, salida.length - 1, 1).setNumberFormat("dd/mm/yyyy hh:mm");
+    hoja.getRange(2, 3, salida.length - 1, 1).setNumberFormat("dd/mm/yyyy");
+    hoja.getRange(2, 10, salida.length - 1, 2).setNumberFormat('"S/ "0.00');
+  }
+}
+
+function obtenerAnalisisEconomico(data) {
+  const usuario = obtenerUsuarioApp(data.usuario);
+
+  if (!esPerfilAnalisisEconomico(usuario.perfil)) {
+    throw new Error("El módulo Análisis Económico es exclusivo para Jefatura");
+  }
+
+  const periodo = resolverPeriodoAnalisisEconomico(data);
+  const hojaProduccion = obtenerHoja(HOJA_PRODUCCION);
+  const produccion = hojaProduccion.getDataRange().getValues();
+  const catalogo = obtenerCatalogoEconomico();
+  const usuarios = obtenerMapaUsuarios();
+  const cuadrillasActivas = obtenerCuadrillasActivasEconomico();
+
+  const porSede = {};
+  const porCuadrilla = {};
+  const porPlataforma = {};
+  const porTipoPartida = {};
+  const porDia = {};
+  const detalle = [];
+  const codigosSinTarifa = {};
+  const codigosSinTarifaDetalles = [];
+  const diasConProduccion = {};
+
+  let montoTotal = 0;
+  let ordenesEjecutadas = 0;
+
+  for (let i = 1; i < produccion.length; i++) {
+    const fila = produccion[i];
+    const cuadrilla = normalizarCuadrilla(fila[1]);
+    const fecha = convertirFechaAnalisisEconomico(fila[2]);
+    const codigo = (fila[3] || "").toString().trim();
+    const cantidad = numeroProduccion(fila[4]);
+
+    if (!cuadrilla || !fecha || !codigo || cantidad <= 0) continue;
+    if (fecha.getFullYear() !== periodo.anio || (fecha.getMonth() + 1) !== periodo.mes) continue;
+
+    const cat = obtenerCatalogoEconomicoPorCodigo(codigo, catalogo);
+    if (!cat || cat.estadoTarifa !== "ACTIVO" || cat.monto <= 0) {
+      codigosSinTarifa[codigo] = true;
+      const datosUsuarioSinTarifa = usuarios[cuadrilla] || {};
+      codigosSinTarifaDetalles.push({
+        codigo,
+        fecha: Utilities.formatDate(fecha, Session.getScriptTimeZone(), "dd/MM/yyyy"),
+        cuadrilla,
+        sede: normalizarTexto(datosUsuarioSinTarifa.sede || "SIN SEDE"),
+        cantidad
+      });
+      continue;
+    }
+
+    const datosUsuario = usuarios[cuadrilla] || {};
+    const sede = normalizarTexto(datosUsuario.sede || "SIN SEDE");
+    const plataformaCatalogo = normalizarTexto(cat.plataforma || "");
+    const plataforma = plataformaCatalogo && plataformaCatalogo !== "TODAS"
+      ? plataformaCatalogo
+      : normalizarTexto(datosUsuario.plataforma || "SIN PLATAFORMA");
+    const tipoOrden = normalizarTexto(cat.tipoOrden || codigo);
+    const montoUnitario = cat.monto;
+    const montoLinea = cantidad * montoUnitario;
+    const fechaClave = Utilities.formatDate(fecha, Session.getScriptTimeZone(), "yyyy-MM-dd");
+    const fechaVisible = Utilities.formatDate(fecha, Session.getScriptTimeZone(), "dd/MM/yyyy");
+
+    montoTotal += montoLinea;
+    ordenesEjecutadas += cantidad;
+    diasConProduccion[fechaClave] = true;
+
+    sumarEconomico(porSede, sede, cantidad, montoLinea, { sede });
+    sumarEconomico(porCuadrilla, cuadrilla, cantidad, montoLinea, { cuadrilla, sede, plataforma });
+    sumarEconomico(porPlataforma, plataforma, cantidad, montoLinea, { plataforma });
+    sumarEconomico(porTipoPartida, tipoOrden, cantidad, montoLinea, { tipoOrden, plataforma });
+    sumarEconomico(porDia, fechaClave, cantidad, montoLinea, { fecha: fechaVisible, fechaClave });
+
+    detalle.push({
+      fecha,
+      sede,
+      cuadrilla,
+      plataforma,
+      tipoOrden,
+      codigo,
+      cantidad,
+      montoUnitario,
+      montoTotal: montoLinea
+    });
+  }
+
+  const metaPorCuadrilla = META_DIARIA_CUADRILLA * DIAS_META_MENSUAL;
+  const metaTotal = cuadrillasActivas.length * metaPorCuadrilla;
+
+  cuadrillasActivas.forEach(c => {
+    if (!porCuadrilla[c.cuadrilla]) {
+      porCuadrilla[c.cuadrilla] = crearAcumuladorEconomico(c.cuadrilla, {
+        cuadrilla: c.cuadrilla,
+        sede: c.sede,
+        plataforma: c.plataforma
+      });
+    }
+
+    porCuadrilla[c.cuadrilla].meta = metaPorCuadrilla;
+
+    if (!porSede[c.sede]) porSede[c.sede] = crearAcumuladorEconomico(c.sede, { sede: c.sede });
+    porSede[c.sede].meta += metaPorCuadrilla;
+  });
+
+  const diasTrabajados = Object.keys(diasConProduccion).length;
+  const proyeccionCierre = diasTrabajados > 0
+    ? (montoTotal / diasTrabajados) * DIAS_META_MENSUAL
+    : 0;
+
+  const listaCuadrillas = finalizarAcumuladoresEconomicos(porCuadrilla)
+    .sort((a, b) => b.monto - a.monto);
+
+  const listaSedes = finalizarAcumuladoresEconomicos(porSede)
+    .sort((a, b) => b.monto - a.monto);
+
+  const listaPlataformas = finalizarAcumuladoresEconomicos(porPlataforma)
+    .sort((a, b) => b.monto - a.monto);
+
+  const listaTipos = finalizarAcumuladoresEconomicos(porTipoPartida)
+    .sort((a, b) => b.monto - a.monto);
+
+  const listaDias = finalizarAcumuladoresEconomicos(porDia)
+    .sort((a, b) => a.fechaClave.localeCompare(b.fechaClave));
+
+  actualizarHojaAnalisisEconomico(periodo, detalle);
+
+  return {
+    ok: true,
+    modulo: "ANALISIS_ECONOMICO",
+    accion: "CONSULTAR",
+    periodo: periodo.nombre,
+    periodoClave: periodo.clave,
+    fechaActualizacion: Utilities.formatDate(new Date(), Session.getScriptTimeZone(), "dd/MM/yyyy HH:mm:ss"),
+    parametrosMeta: {
+      metaDiariaCuadrilla: META_DIARIA_CUADRILLA,
+      diasMetaMensual: DIAS_META_MENSUAL,
+      metaMensualCuadrilla: metaPorCuadrilla,
+      cuadrillasActivas: cuadrillasActivas.length
+    },
+    resumen: {
+      montoTotal,
+      metaTotal,
+      cumplimiento: metaTotal > 0 ? montoTotal / metaTotal : 0,
+      ordenesEjecutadas,
+      ticketPromedio: ordenesEjecutadas > 0 ? montoTotal / ordenesEjecutadas : 0,
+      diasConProduccion: diasTrabajados,
+      proyeccionCierre,
+      diferenciaMeta: montoTotal - metaTotal,
+      mejorCuadrilla: listaCuadrillas.length ? listaCuadrillas[0] : null,
+      menorCuadrilla: listaCuadrillas.length ? listaCuadrillas[listaCuadrillas.length - 1] : null
+    },
+    porSede: listaSedes,
+    porCuadrilla: listaCuadrillas,
+    porPlataforma: listaPlataformas,
+    porTipoPartida: listaTipos,
+    porDia: listaDias,
+    codigosSinTarifa: Object.keys(codigosSinTarifa).sort(),
+    codigosSinTarifaDetalles
+  };
+}
+
+
 /* =========================
    API PRINCIPAL
 ========================= */
@@ -3102,6 +3488,13 @@ function resumenActasEscaneadas(data) {
 function doPost(e) {
   try {
     const data = JSON.parse(e.postData.contents);
+
+
+    if (data.accion === "obtenerAnalisisEconomico") {
+      return ContentService
+        .createTextOutput(JSON.stringify(obtenerAnalisisEconomico(data)))
+        .setMimeType(ContentService.MimeType.JSON);
+    }
 
 
     if (data.accion === "registrarActaEscaneada") {
@@ -3299,6 +3692,22 @@ function doPost(e) {
       }))
       .setMimeType(ContentService.MimeType.JSON);
   }
+}
+
+function autorizarDriveObservaciones() {
+
+  const carpeta = DriveApp.getFolderById("1W23rJjyUgmYGTlG2NzrpvasIWbwKBV6h");
+
+  const archivoPrueba = carpeta.createFile(
+    "PRUEBA_PERMISO_MI_VISUAL.txt",
+    "Permiso Drive autorizado correctamente para MI VISUAL"
+  );
+
+  Logger.log("Archivo creado: " + archivoPrueba.getUrl());
+
+  archivoPrueba.setTrashed(true);
+
+  Logger.log("Permiso completo Drive OK");
 }
 
 function autorizarDriveActasEscaneadas() {
