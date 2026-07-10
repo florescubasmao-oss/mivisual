@@ -1,4 +1,4 @@
-// MI VISUAL v67 - Módulo Análisis Económico
+// MI VISUAL v68 - Módulo Análisis Económico
 const API_ANALISIS_ECONOMICO = "https://script.google.com/macros/s/AKfycbzA-ehYX_BOJ0H0-BiHEcSVkAEHcyOIZBX3QXEtqvlqidJF8fdUSTmbTA-GkULf7uQA/exec";
 
 function aePerfilPermitido(){
@@ -96,7 +96,7 @@ function aeFilas(lista,tipo){
     const nombre=x.sede||x.cuadrilla||x.plataforma||x.tipoOrden||x.fecha||x.clave||"SIN DATO";
     const meta=x.meta>0?`<small>Meta ${aeMoneda(x.meta)} · ${aePorcentaje(x.cumplimiento)}</small>`:"";
     const detalle=tipo==="cuadrilla"?`<button class="ae-detalle-btn" onclick="aeToggleDetalle(this)">Ver detalle</button><div class="ae-detalle"><div>Órdenes: <b>${aeNumero(x.cantidad)}</b></div><div>Ticket promedio: <b>${aeMoneda(x.ticketPromedio)}</b></div><div>Plataforma: <b>${x.plataforma||"-"}</b></div><div>Sede: <b>${x.sede||"-"}</b></div></div>`:"";
-    return `<div class="ae-fila ${x.meta>0?aeClaseCumplimiento(x.cumplimiento):""}"><div class="ae-fila-pos">${i+1}</div><div class="ae-fila-info"><b>${nombre}</b><span>${aeNumero(x.cantidad)} órdenes</span>${meta}</div><div class="ae-fila-monto">${aeMoneda(x.monto)}</div>${detalle}</div>`;
+    return `<div class="ae-fila ae-fila-${tipo} ${x.meta>0?aeClaseCumplimiento(x.cumplimiento):""}"><div class="ae-fila-pos">${i+1}</div><div class="ae-fila-info"><b class="ae-fila-titulo">${nombre}</b><span>${aeNumero(x.cantidad)} órdenes</span>${meta}</div><div class="ae-fila-monto">${aeMoneda(x.monto)}</div>${detalle}</div>`;
   }).join("");
 }
 
@@ -123,7 +123,7 @@ function renderAnalisisEconomico(data){
       ${aeTarjeta("Cuadrillas activas",aeNumero(pm.cuadrillasActivas),`${aeMoneda(pm.metaMensualCuadrilla)} por cuadrilla`)}
     </div>
     <div class="ae-regla-meta">Meta aplicada: <b>${aeMoneda(pm.metaDiariaCuadrilla)} diarios × ${pm.diasMetaMensual} días = ${aeMoneda(pm.metaMensualCuadrilla)} por cuadrilla.</b></div>
-    ${sinTarifa.length?`<div class="ae-aviso"><b>Atención:</b> ${sinTarifa.length} código(s) sin tarifa activa: ${sinTarifa.join(", ")}</div>`:""}
+    ${sinTarifa.length?`<div class="ae-aviso"><b>Atención:</b> No se pudo valorizar ${sinTarifa.length} orden(es) porque el código no tiene tarifa activa.<div class="ae-aviso-codigos">${sinTarifa.map(c=>`<span>Código de orden: <b>${c}</b></span>`).join("")}</div></div>`:""}
     <div class="ae-seccion"><h3>🏢 Monto generado por sede</h3>${aeFilas(data.porSede,"sede")}</div>
     <div class="ae-seccion"><h3>👷 Monto generado por cuadrilla</h3>${aeFilas(data.porCuadrilla,"cuadrilla")}</div>
     <div class="ae-seccion"><h3>🧭 Monto generado por plataforma</h3>${aeFilas(data.porPlataforma,"plataforma")}</div>

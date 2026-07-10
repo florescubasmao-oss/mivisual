@@ -3301,22 +3301,6 @@ function doPost(e) {
   }
 }
 
-function autorizarDriveObservaciones() {
-
-  const carpeta = DriveApp.getFolderById("1W23rJjyUgmYGTlG2NzrpvasIWbwKBV6h");
-
-  const archivoPrueba = carpeta.createFile(
-    "PRUEBA_PERMISO_MI_VISUAL.txt",
-    "Permiso Drive autorizado correctamente para MI VISUAL"
-  );
-
-  Logger.log("Archivo creado: " + archivoPrueba.getUrl());
-
-  archivoPrueba.setTrashed(true);
-
-  Logger.log("Permiso completo Drive OK");
-}
-
 function autorizarDriveActasEscaneadas() {
   const carpeta = DriveApp.getFolderById("1EZALuMsXo_ZRO93FjKyuDgRmvAe2C69L");
 
