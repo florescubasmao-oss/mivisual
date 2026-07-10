@@ -1,6 +1,6 @@
 // MI VISUAL - Módulo Validación Técnica v60.2
 
-const API_VALIDACION_TECNICA = "https://script.google.com/macros/s/AKfycbx_vVLAkDtLHT8-o9GRlyle5SFyJ42NkH76Sf-XQoq_p1imnVjgIoTxiD67itUAZZd_/exec";
+const API_VALIDACION_TECNICA = "https://script.google.com/macros/s/AKfycbzcbjCLweJNgZXDerdzmMN7Lwotc1G8NWdzoPkaLNGDivAgpYxDkq78xZwPRioSB4XY/exec";
 
 function usuarioActualValidacion(){
     return {
@@ -104,16 +104,35 @@ function badgeValidacion(estado, estadoVisible){
     return `<span class="vt-badge ${cls}">${txt}</span>`;
 }
 
+function obtenerTipoValidacionPorTicketFrontend(tipoTicket){
+    const tipo = (tipoTicket || "").toUpperCase().trim();
+    if(tipo === "AT-" || tipo === "VTEXT-") return "RECABLEADO";
+    if(tipo === "GAR-") return "GAR";
+    if(tipo === "VTR-") return "VTR";
+    if(tipo === "NO APLICA") return "OTRO";
+    return "";
+}
+
 function toggleNumeroTicketValidacion(){
-    const tipo = document.getElementById("vtTipoTicket")?.value || "";
+    const tipoTicket = document.getElementById("vtTipoTicket")?.value || "";
+    const tipoValidacion = document.getElementById("vtTipoValidacion");
     const div = document.getElementById("vtNumeroTicketWrap");
     const input = document.getElementById("vtNumeroTicket");
+    const motivoLabel = document.getElementById("vtMotivoLabel");
+    const motivo = document.getElementById("vtMotivo");
+
+    if(tipoValidacion) tipoValidacion.value = obtenerTipoValidacionPorTicketFrontend(tipoTicket);
     if(!div) return;
-    if(tipo === "NO APLICA"){
+
+    if(tipoTicket === "NO APLICA"){
         div.style.display = "none";
         if(input) input.value = "";
+        if(motivoLabel) motivoLabel.textContent = "Descripción del caso";
+        if(motivo) motivo.placeholder = "Describe obligatoriamente el caso especial...";
     }else{
         div.style.display = "block";
+        if(motivoLabel) motivoLabel.textContent = "Motivo";
+        if(motivo) motivo.placeholder = "Describe el motivo técnico de la solicitud...";
     }
 }
 
@@ -147,6 +166,7 @@ function mostrarValidacionTecnica(){
                 <option value="RECABLEADO">Recableado</option>
                 <option value="GAR">GAR</option>
                 <option value="VTR">VTR</option>
+                <option value="OTRO">Otro</option>
             </select>
             <select id="vtFiltroEstado" onchange="cargarValidacionesTecnicas()">
                 <option value="">Todos los estados</option>
@@ -164,7 +184,10 @@ function mostrarValidacionTecnica(){
     </div></div>`;
 
     mostrarPantalla(html);
-    setTimeout(cargarValidacionesTecnicas, 200);
+    setTimeout(() => {
+        toggleNumeroTicketValidacion();
+        cargarValidacionesTecnicas();
+    }, 200);
 }
 
 function renderFormularioValidacionTecnica(){
@@ -173,10 +196,11 @@ function renderFormularioValidacionTecnica(){
         <div class="vt-grid">
             <div class="vt-field">
                 <label>Tipo de validación</label>
-                <select id="vtTipoValidacion">
+                <select id="vtTipoValidacion" disabled>
                     <option value="RECABLEADO">RECABLEADO</option>
                     <option value="GAR">GAR</option>
                     <option value="VTR">VTR</option>
+                    <option value="OTRO">OTRO</option>
                 </select>
             </div>
             <div class="vt-field">
@@ -203,7 +227,7 @@ function renderFormularioValidacionTecnica(){
             </div>
         </div>
         <div class="vt-field">
-            <label>Motivo</label>
+            <label id="vtMotivoLabel">Motivo</label>
             <textarea id="vtMotivo" placeholder="Describe el motivo técnico de la solicitud..."></textarea>
         </div>
         <div class="vt-actions">
@@ -431,14 +455,14 @@ function renderItemValidacion(item, idx, u, soloPendientes){
 
 function puedeValidarItemValidacion(item, u){
     const tipo = (item.tipoValidacion || "").toUpperCase();
-    if(tipo === "RECABLEADO") return u.perfil === "SUPERVISOR" || esJefaturaValidacion(u.perfil);
+    if(tipo === "RECABLEADO" || tipo === "OTRO") return u.perfil === "SUPERVISOR" || esJefaturaValidacion(u.perfil);
     if(tipo === "GAR" || tipo === "VTR") return esJefaturaValidacion(u.perfil);
     return false;
 }
 
 function botonesValidacion(item){
     const tipo = (item.tipoValidacion || "").toUpperCase();
-    if(tipo === "RECABLEADO"){
+    if(tipo === "RECABLEADO" || tipo === "OTRO"){
         return `<button class="vt-btn ok" onclick="abrirValidarTecnica('${item.id}','APROBADO')">Aprobar</button>
                 <button class="vt-btn warn" onclick="abrirValidarTecnica('${item.id}','OBSERVADO')">Observar</button>
                 <button class="vt-btn bad" onclick="abrirValidarTecnica('${item.id}','RECHAZADO')">Rechazar</button>`;

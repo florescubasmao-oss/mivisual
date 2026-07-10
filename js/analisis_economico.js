@@ -1,5 +1,5 @@
 // MI VISUAL v70 - Módulo Análisis Económico
-const API_ANALISIS_ECONOMICO = "https://script.google.com/macros/s/AKfycbzA-ehYX_BOJ0H0-BiHEcSVkAEHcyOIZBX3QXEtqvlqidJF8fdUSTmbTA-GkULf7uQA/exec";
+const API_ANALISIS_ECONOMICO = "https://script.google.com/macros/s/AKfycbzcbjCLweJNgZXDerdzmMN7Lwotc1G8NWdzoPkaLNGDivAgpYxDkq78xZwPRioSB4XY/exec";
 
 function aePerfilPermitido(){
   const p=(localStorage.getItem("perfil")||"").toUpperCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"").trim();

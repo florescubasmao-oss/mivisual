@@ -1996,7 +1996,8 @@ function normalizarTipoValidacionTecnica(tipo) {
   if (t === "RECABLEADO") return "RECABLEADO";
   if (t === "GAR") return "GAR";
   if (t === "VTR") return "VTR";
-  throw new Error("Tipo de validación no válido. Usa RECABLEADO, GAR o VTR");
+  if (t === "OTRO") return "OTRO";
+  throw new Error("Tipo de validación no válido. Usa RECABLEADO, GAR, VTR u OTRO");
 }
 
 function normalizarTipoTicketValidacion(tipoTicket) {
@@ -2005,6 +2006,16 @@ function normalizarTipoTicketValidacion(tipoTicket) {
   if (limpio === "NOAPLICA" || limpio === "NO APLICA") return "NO APLICA";
   if (["AT-", "VTEXT-", "GAR-", "VTR-"].includes(limpio)) return limpio;
   throw new Error("Tipo de ticket no válido");
+}
+
+
+function obtenerTipoValidacionPorTicket(tipoTicket) {
+  const ticket = normalizarTipoTicketValidacion(tipoTicket);
+  if (ticket === "AT-" || ticket === "VTEXT-") return "RECABLEADO";
+  if (ticket === "GAR-") return "GAR";
+  if (ticket === "VTR-") return "VTR";
+  if (ticket === "NO APLICA") return "OTRO";
+  throw new Error("No se pudo determinar el tipo de validación");
 }
 
 function generarIdValidacionTecnica(codigo, tipoValidacion) {
@@ -2094,7 +2105,7 @@ function obtenerHoraLimiteValidacion(row) {
   const registro = convertirFechaHoraValidacion(row[1], row[2]);
   if (!registro) return null;
 
-  return new Date(registro.getTime() + 20 * 60 * 1000);
+  return new Date(registro.getTime() + 12 * 60 * 1000);
 }
 
 function procesarValidacionesTecnicasVencidas() {
@@ -2122,7 +2133,7 @@ function procesarValidacionesTecnicasVencidas() {
       hoja.getRange(filaHoja, 17).setValue("AUTOMÁTICO");
       hoja.getRange(filaHoja, 18).setValue(ahora);
       hoja.getRange(filaHoja, 19).setValue(ahora);
-      hoja.getRange(filaHoja, 20).setValue("Aprobación automática por no recibir respuesta dentro de los 20 minutos establecidos.");
+      hoja.getRange(filaHoja, 20).setValue("Aprobación automática por no recibir respuesta dentro de los 12 minutos establecidos.");
       hoja.getRange(filaHoja, 18).setNumberFormat("dd/mm/yyyy");
       hoja.getRange(filaHoja, 19).setNumberFormat("hh:mm:ss");
       actualizados++;
@@ -2149,15 +2160,14 @@ function registrarValidacionTecnica(data) {
   if (!cuadrilla) throw new Error("El usuario técnico no tiene cuadrilla asignada");
 
   const datosCuadrilla = obtenerDatosCuadrillaApp(cuadrilla);
-  const tipoValidacion = normalizarTipoValidacionTecnica(data.tipoValidacion || data.tipo_validacion);
+  const tipoTicket = normalizarTipoTicketValidacion(data.tipoTicket || data.tipo_ticket);
+  const tipoValidacion = obtenerTipoValidacionPorTicket(tipoTicket);
   const codigo = (data.codigo || "").toString().trim();
   const id = generarIdValidacionTecnica(codigo, tipoValidacion);
 
   if (existeValidacionTecnica(id)) {
     throw new Error("Ya existe una validación registrada con este código y tipo: " + id);
   }
-
-  const tipoTicket = normalizarTipoTicketValidacion(data.tipoTicket || data.tipo_ticket);
   const numeroTicket = tipoTicket === "NO APLICA" ? "" : (data.numeroTicket || data.numero_ticket || "").toString().trim();
 
   if (tipoTicket !== "NO APLICA" && !numeroTicket) {
@@ -2175,7 +2185,7 @@ function registrarValidacionTecnica(data) {
   const fecha = Utilities.formatDate(ahora, Session.getScriptTimeZone(), "dd/MM/yyyy");
   const hora = Utilities.formatDate(ahora, Session.getScriptTimeZone(), "HH:mm:ss");
   const horaLimite = tipoValidacion === "RECABLEADO"
-    ? new Date(ahora.getTime() + 20 * 60 * 1000)
+    ? new Date(ahora.getTime() + 12 * 60 * 1000)
     : "";
 
   const sede = datosCuadrilla.sede || usuarioRegistro.sede;
@@ -2340,9 +2350,9 @@ function validarValidacionTecnica(data) {
 
   const resultado = normalizarTexto(data.resultado);
 
-  if (tipo === "RECABLEADO") {
+  if (tipo === "RECABLEADO" || tipo === "OTRO") {
     if (!(usuario.perfil === "SUPERVISOR" || esPerfilJefatura(usuario.perfil))) {
-      throw new Error("Solo Supervisor o Jefatura pueden validar recableados");
+      throw new Error("Solo Supervisor o Jefatura pueden validar Recableado u Otro");
     }
 
     if (usuario.perfil === "SUPERVISOR" && normalizarTexto(usuario.sede) !== sedeCaso) {
@@ -2350,7 +2360,7 @@ function validarValidacionTecnica(data) {
     }
 
     if (!["APROBADO", "RECHAZADO", "OBSERVADO"].includes(resultado)) {
-      throw new Error("Resultado no válido para Recableado");
+      throw new Error("Resultado no válido para Recableado/Otro");
     }
   } else if (tipo === "GAR" || tipo === "VTR") {
     if (!esPerfilJefatura(usuario.perfil)) {

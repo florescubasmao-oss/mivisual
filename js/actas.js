@@ -1,6 +1,6 @@
 // MI VISUAL - Gestión de Actas v64 filtro partida y estados
 
-const API_ACTAS = "https://script.google.com/macros/s/AKfycbx_vVLAkDtLHT8-o9GRlyle5SFyJ42NkH76Sf-XQoq_p1imnVjgIoTxiD67itUAZZd_/exec";
+const API_ACTAS = "https://script.google.com/macros/s/AKfycbzcbjCLweJNgZXDerdzmMN7Lwotc1G8NWdzoPkaLNGDivAgpYxDkq78xZwPRioSB4XY/exec";
 
 function usuarioActualActas(){
     return {
