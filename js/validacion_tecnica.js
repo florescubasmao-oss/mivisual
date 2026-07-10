@@ -62,7 +62,7 @@ function estiloValidacionTecnica(){
     .vt-detail{display:none;margin-top:10px;border-top:1px solid #e5e7eb;padding-top:10px;font-size:13px;color:#334155;line-height:1.55}
     .vt-detail b{color:#0f172a}
     .vt-confirm{background:#fff;border-radius:22px;padding:18px;box-shadow:0 12px 28px rgba(15,23,42,.14);border:2px dashed #2563eb;text-align:left}
-    .vt-confirm-title{text-align:center;font-size:20px;font-weight:900;color:#0f172a;margin-bottom:8px}
+    .vt-confirm-title{text-align:center;font-size:20px;font-weight:900;color:#0f172a;margin-bottom:6px}
     .vt-confirm-id{text-align:center;font-size:24px;font-weight:900;color:#2563eb;margin-bottom:14px}
     .vt-note{background:#eff6ff;border:1px solid #bfdbfe;color:#1e3a8a;border-radius:14px;padding:12px;font-size:13px;margin:12px 0}
     .vt-kpis{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin-bottom:12px}
@@ -331,22 +331,21 @@ function mostrarConfirmacionValidacionTecnica(r){
     const html = `
     ${estiloValidacionTecnica()}
     <style>
-        .vt-confirm{max-width:560px;margin:0 auto;color:#0f172a}
-        .vt-confirm-title{font-size:19px;margin-bottom:5px}
-        .vt-confirm-id{font-size:21px;margin-bottom:7px}
-        .vt-resumen{background:#f8fafc;border:1px solid #dbeafe;border-radius:14px;padding:9px 11px;margin-top:8px}
-        .vt-resumen-row{display:grid;grid-template-columns:145px 1fr;gap:8px;padding:6px 0;border-bottom:1px solid #e2e8f0;font-size:13px}
+        .vt-confirm{max-width:480px;margin:0 auto;color:#0f172a;padding:12px;border-radius:18px}
+        .vt-confirm-title{font-size:17px;margin-bottom:3px}
+        .vt-confirm-id{font-size:19px;margin-bottom:5px}
+        .vt-resumen{background:#f8fafc;border:1px solid #dbeafe;border-radius:12px;padding:7px 9px;margin-top:6px}
+        .vt-resumen-row{display:grid;grid-template-columns:145px 1fr;gap:8px;padding:4px 0;border-bottom:1px solid #e2e8f0;font-size:12px}
         .vt-resumen-row:last-child{border-bottom:0}
         .vt-resumen-row span{font-weight:900;color:#475569;text-transform:uppercase;font-size:11px;letter-spacing:.03em}
         .vt-resumen-row b{color:#0f172a;word-break:break-word;line-height:1.35}
-        .vt-motivo-box{background:#fff;border:1px solid #e2e8f0;border-radius:12px;padding:9px;margin-top:6px;color:#0f172a;line-height:1.35;white-space:pre-wrap;font-size:13px}
-        .vt-estado-final{background:#fef3c7;border:1px solid #fde68a;color:#92400e;border-radius:12px;padding:9px;margin:9px 0;font-weight:900;font-size:13px}
-        .vt-reporte-box{background:#f8fafc;border:1px solid #cbd5e1;border-radius:12px;padding:10px;margin:9px 0}
+        .vt-motivo-box{background:#fff;border:1px solid #e2e8f0;border-radius:10px;padding:7px;margin-top:4px;color:#0f172a;line-height:1.35;white-space:pre-wrap;font-size:13px}
+        .vt-estado-final{background:#fef3c7;border:1px solid #fde68a;color:#92400e;border-radius:10px;padding:7px;margin:7px 0;font-weight:900;font-size:12px}
+        .vt-reporte-box{background:#f8fafc;border:1px solid #cbd5e1;border-radius:10px;padding:8px;margin:7px 0}
         .vt-reporte-title{font-size:12px;font-weight:900;color:#334155;text-transform:uppercase;margin-bottom:8px}
-        .vt-reporte-texto{background:#fff;border:1px dashed #94a3b8;border-radius:10px;padding:11px;white-space:pre-line;font-size:14px;font-weight:800;line-height:1.55;color:#0f172a}
-        .vt-reporte-ayuda{font-size:12px;color:#475569;line-height:1.45;margin-top:9px}
-        .vt-telegram-box{background:#eff6ff;border:1px solid #bfdbfe;color:#1e3a8a;border-radius:12px;padding:9px;font-size:12px;margin:9px 0;line-height:1.4}
-        .vt-telegram-link{display:block;margin-top:8px;font-weight:900;color:#1d4ed8;word-break:break-all}
+        .vt-reporte-texto{background:#fff;border:1px dashed #94a3b8;border-radius:9px;padding:8px;white-space:pre-line;font-size:13px;font-weight:800;line-height:1.55;color:#0f172a}
+        .vt-reporte-ayuda{font-size:12px;color:#475569;line-height:1.45;margin-top:6px}
+        .vt-telegram-box{background:#eff6ff;border:1px solid #bfdbfe;color:#1e3a8a;border-radius:10px;padding:7px;font-size:11px;margin:7px 0;line-height:1.4}
         @media(max-width:640px){.vt-resumen-row{grid-template-columns:1fr;gap:3px}}
     </style>
     <div class="vt-wrap">
@@ -366,7 +365,7 @@ function mostrarConfirmacionValidacionTecnica(r){
                 ${filaResumenValidacion("DNI cliente", r.dniCliente)}
             </div>
 
-            <div style="margin-top:12px;font-weight:900;color:#475569;text-transform:uppercase;font-size:11px;letter-spacing:.03em">Motivo técnico</div>
+            <div style="margin-top:8px;font-weight:900;color:#475569;text-transform:uppercase;font-size:11px;letter-spacing:.03em">Motivo técnico</div>
             <div class="vt-motivo-box">${safeValidacion(r.motivoTecnico)}</div>
 
             <div class="vt-estado-final">Estado: 🟡 PENDIENTE</div>
@@ -376,17 +375,16 @@ function mostrarConfirmacionValidacionTecnica(r){
                 <div id="vtTextoReporte" class="vt-reporte-texto">Código: ${safeValidacion(r.codigo)}
 Ticket: ${safeValidacion(r.ticketFinal)}
 Tipo de validación: ${safeValidacion(r.tipoValidacion)}</div>
-                <button class="vt-btn primary" style="margin-top:10px;width:100%" onclick="copiarTextoReporteValidacion()">📋 Copiar texto</button>
+                <button class="vt-btn primary" style="margin-top:7px;width:100%;padding:9px 12px" onclick="copiarTextoReporteValidacion()">📋 Copiar texto</button>
                 <div class="vt-reporte-ayuda"><b>Indicación:</b> Copie el texto, tome una captura de esta pantalla y reporte ambos junto con sus evidencias en el grupo de Telegram de su sede.</div>
             </div>
 
             <div class="vt-telegram-box">
                 📲 Use el botón inferior para acceder al grupo oficial de Telegram de ${safeValidacion(sede)}.
-                ${linkTelegram ? `<span class="vt-telegram-link">${safeValidacion(linkTelegram)}</span>` : ""}
             </div>
 
             <div class="vt-actions">
-                ${linkTelegram ? `<button class="vt-btn money" onclick="window.open('${linkTelegram}','_blank')">📨 Abrir Grupo Telegram</button>` : ""}
+                ${linkTelegram ? `<button class="vt-btn money" onclick="window.open('${linkTelegram}','_blank')">📲 Ir al grupo de Telegram</button>` : ""}
                 <button class="vt-btn secondary" onclick="mostrarValidacionTecnica()">Finalizar</button>
             </div>
         </div>
