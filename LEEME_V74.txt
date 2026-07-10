@@ -1,0 +1,13 @@
+MI VISUAL v74 - ALERTA ECONOMICA COMPACTA
+
+Cambios:
+- Se elimina el mensaje visible de meta aplicada.
+- La alerta de códigos sin tarifa se mueve al final del módulo.
+- La alerta aparece como una etiqueta pequeña desplegable.
+- Al abrirla muestra el detalle actual: código, fecha, cuadrilla, sede y cantidad.
+- No se modifican cálculos, API, permisos ni otros módulos.
+
+Reemplazar únicamente:
+- index.html
+- css/estilos.css
+- js/analisis_economico.js
