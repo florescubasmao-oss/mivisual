@@ -1,2 +1,2 @@
-Modulo Usuarios v1 integrado. URL API: https://script.google.com/macros/s/AKfycby8MgSBvDQcFZ9YBi-UDfYYHmRD4-x1m66mfO5xb0rYXjtbplyyzFhiPc4nCti8MyXK/exec
+Modulo Usuarios v1 integrado. URL API: https://script.google.com/macros/s/AKfycbzA-ehYX_BOJ0H0-BiHEcSVkAEHcyOIZBX3QXEtqvlqidJF8fdUSTmbTA-GkULf7uQA/exec
 Incluye importar usuarios, listar, cambiar clave, estado y permisos.

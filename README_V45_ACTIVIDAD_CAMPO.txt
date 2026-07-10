@@ -8,7 +8,7 @@ Cambios implementados:
 - Campos: Cliente presente, DNI validado, Estado instalación, DROP metraje, Templadores, Reserva cable, Potencia, Velocidad, Limpieza, Cliente conforme, Observaciones.
 - Permite subir Foto 1, Foto 2 y Foto Acta.
 - Conectado al nuevo Apps Script:
-  https://script.google.com/macros/s/AKfycby8MgSBvDQcFZ9YBi-UDfYYHmRD4-x1m66mfO5xb0rYXjtbplyyzFhiPc4nCti8MyXK/exec
+  https://script.google.com/macros/s/AKfycbzA-ehYX_BOJ0H0-BiHEcSVkAEHcyOIZBX3QXEtqvlqidJF8fdUSTmbTA-GkULf7uQA/exec
 - Jefatura visualiza resumen por supervisor y listado general.
 - Supervisor registra y visualiza sus propias actividades.
 
