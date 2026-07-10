@@ -3178,7 +3178,7 @@ function obtenerCatalogoEconomico() {
     if (!codigo) continue;
 
     const tipoOrden = normalizarTexto(datos[i][1]);
-    const plataforma = normalizarTexto(datos[i][2]);
+    const plataformaOrden = normalizarTexto(datos[i][2]);
     const grupo = normalizarTexto(datos[i][4]);
     const monto = numeroProduccion(datos[i][5]);
     const estadoTarifa = normalizarTexto(datos[i][6] || "ACTIVO");
@@ -3186,7 +3186,9 @@ function obtenerCatalogoEconomico() {
     mapa[codigo] = {
       codigo,
       tipoOrden,
-      plataforma,
+      plataformaOrden,
+      // Alias temporal para mantener compatibilidad con el frontend actual.
+      plataforma: plataformaOrden,
       grupo,
       monto,
       estadoTarifa
@@ -3218,7 +3220,7 @@ function obtenerCuadrillasActivasEconomico() {
     // Esto excluye filas generales como TODAS, JEFATURA, ADMIN o SUPERVISOR.
     if (normalizarTexto(item.estado || "ACTIVO") !== "ACTIVO") return;
     if (perfil !== "TECNICO") return;
-    if (!/^P\d+/i.test(cuadrillaNormalizada)) return;
+    if (!/^P\d+\b/i.test(cuadrillaNormalizada)) return;
     if (!sede || sede === "TODAS" || sede === "ZONA NORTE") return;
     if (vistos[cuadrillaNormalizada]) return;
 
@@ -3273,7 +3275,7 @@ function asegurarHojaAnalisisEconomico() {
     "FECHA_GESTION",
     "SEDE",
     "CUADRILLA",
-    "PLATAFORMA",
+    "PLATAFORMA_ORDEN",
     "TIPO_ORDEN",
     "CODIGO",
     "CANTIDAD",
@@ -3297,7 +3299,7 @@ function actualizarHojaAnalisisEconomico(periodo, detalle) {
     "FECHA_GESTION",
     "SEDE",
     "CUADRILLA",
-    "PLATAFORMA",
+    "PLATAFORMA_ORDEN",
     "TIPO_ORDEN",
     "CODIGO",
     "CANTIDAD",
@@ -3384,10 +3386,11 @@ function obtenerAnalisisEconomico(data) {
 
     const datosUsuario = usuarios[cuadrilla] || {};
     const sede = normalizarTexto(datosUsuario.sede || "SIN SEDE");
-    const plataformaCatalogo = normalizarTexto(cat.plataforma || "");
-    const plataforma = plataformaCatalogo && plataformaCatalogo !== "TODAS"
-      ? plataformaCatalogo
-      : normalizarTexto(datosUsuario.plataforma || "SIN PLATAFORMA");
+    // La plataforma económica depende exclusivamente del tipo de orden
+    // configurado en CATALOGO_ORDENES (columna PLATAFORMA_ORDEN).
+    // No se usa la plataforma asignada al usuario/cuadrilla.
+    const plataformaOrden = normalizarTexto(cat.plataformaOrden || cat.plataforma || "SIN PLATAFORMA_ORDEN");
+    const plataforma = plataformaOrden;
     const tipoOrden = normalizarTexto(cat.tipoOrden || codigo);
     const montoUnitario = cat.monto;
     const montoLinea = cantidad * montoUnitario;

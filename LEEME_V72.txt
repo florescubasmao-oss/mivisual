@@ -1,0 +1,19 @@
+MI VISUAL v72 - ACTUALIZACION INCREMENTAL PLATAFORMA_ORDEN
+
+Cambios incluidos:
+1. ANALISIS_ECONOMICO toma la plataforma exclusivamente desde CATALOGO_ORDENES columna C (PLATAFORMA_ORDEN).
+2. Ya no usa la plataforma de la hoja USUARIOS para clasificar los trabajos.
+3. La hoja ANALISIS_ECONOMICO se sigue llenando automaticamente al consultar.
+4. El encabezado generado cambia de PLATAFORMA a PLATAFORMA_ORDEN.
+5. Se mantiene compatibilidad con el frontend actual.
+6. Se corrige el filtro de cuadrillas reales para la meta mensual.
+7. Se actualiza la URL API vigente en los módulos activos.
+
+URL API vigente:
+https://script.google.com/macros/s/AKfycbxdSr87362qG9FQpGslg-WahLBQ1FkuNbjJGmXvR9bqkhp-UZwAqpE0u1ScSJEikllH/exec
+
+INSTALACION:
+- Copiar estas carpetas/archivos sobre el proyecto actual y reemplazar.
+- Pegar apps_script/Code.gs en Google Apps Script.
+- Guardar y crear una nueva implementacion.
+- Si la URL cambia, actualizarla antes de publicar el frontend.

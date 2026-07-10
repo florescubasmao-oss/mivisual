@@ -1,0 +1,15 @@
+MI VISUAL V73 - ACTUALIZACION INCREMENTAL DE URL API
+
+Cambios:
+- Se mantiene la lógica de Plataforma_Orden de la versión V72.
+- Se actualiza la URL de Google Apps Script en todos los archivos del proyecto que realizan llamadas a la API.
+- No se modifican cálculos, permisos, diseño ni otros módulos.
+
+URL vigente:
+https://script.google.com/macros/s/AKfycbx_vVLAkDtLHT8-o9GRlyle5SFyJ42NkH76Sf-XQoq_p1imnVjgIoTxiD67itUAZZd_/exec
+
+Instrucciones:
+1. Copiar el contenido de este paquete dentro del repositorio mivisual.
+2. Reemplazar los archivos existentes.
+3. No borrar la carpeta oculta .git.
+4. Realizar Commit y luego Push origin.
