@@ -863,6 +863,60 @@ function valorInformeVT(v){
     return v === undefined || v === null ? "" : v;
 }
 
+function formatearFechaExcelVT(valor){
+    if(valor === undefined || valor === null || valor === "") return "";
+
+    if(valor instanceof Date && !isNaN(valor.getTime())){
+        const dia = String(valor.getUTCDate()).padStart(2, "0");
+        const mes = String(valor.getUTCMonth() + 1).padStart(2, "0");
+        const anio = valor.getUTCFullYear();
+        return `${dia}/${mes}/${anio}`;
+    }
+
+    const texto = valor.toString().trim();
+    if(!texto) return "";
+
+    const iso = texto.match(/^(\d{4})-(\d{2})-(\d{2})/);
+    if(iso) return `${iso[3]}/${iso[2]}/${iso[1]}`;
+
+    const latam = texto.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})/);
+    if(latam){
+        return `${String(latam[1]).padStart(2, "0")}/${String(latam[2]).padStart(2, "0")}/${latam[3]}`;
+    }
+
+    return texto;
+}
+
+function formatearHoraExcelVT(valor){
+    if(valor === undefined || valor === null || valor === "") return "";
+
+    let horas = null;
+    let minutos = null;
+    let segundos = null;
+
+    if(valor instanceof Date && !isNaN(valor.getTime())){
+        horas = valor.getUTCHours();
+        minutos = valor.getUTCMinutes();
+        segundos = valor.getUTCSeconds();
+    }else{
+        const texto = valor.toString().trim();
+        if(!texto) return "";
+
+        const iso = texto.match(/T(\d{2}):(\d{2})(?::(\d{2}))?/i);
+        const simple = texto.match(/^(\d{1,2}):(\d{2})(?::(\d{2}))?/);
+        const partes = iso || simple;
+
+        if(!partes) return texto;
+        horas = Number(partes[1]);
+        minutos = Number(partes[2]);
+        segundos = Number(partes[3] || 0);
+    }
+
+    const periodo = horas >= 12 ? "PM" : "AM";
+    const hora12 = horas % 12 || 12;
+    return `${String(hora12).padStart(2, "0")}:${String(minutos).padStart(2, "0")}:${String(segundos).padStart(2, "0")} ${periodo}`;
+}
+
 function crearConteoInformeVT(lista){
     const c = {total:lista.length, pendientes:0, aprobados:0, observados:0, rechazados:0, automaticos:0, bono:0, noBono:0};
     lista.forEach(item => {
@@ -910,12 +964,12 @@ async function generarInformeValidacionTecnicaExcel(btn){
             "FECHA VALIDACION", "HORA VALIDACION", "MOTIVO TECNICO", "MOTIVO VALIDACION"
         ]];
         lista.forEach(x => detalle.push([
-            valorInformeVT(x.fechaRegistro), valorInformeVT(x.horaRegistro), valorInformeVT(x.sede),
+            formatearFechaExcelVT(x.fechaRegistro), formatearHoraExcelVT(x.horaRegistro), valorInformeVT(x.sede),
             valorInformeVT(x.cuadrilla), valorInformeVT(x.tecnico), valorInformeVT(x.codigo),
             valorInformeVT(x.tipoValidacion), valorInformeVT(x.tipoTicket), valorInformeVT(x.numeroTicket),
             valorInformeVT(x.ticketFinal), valorInformeVT(x.dniCliente), valorInformeVT(x.estado),
             valorInformeVT(x.resultadoFinal), valorInformeVT(x.validadoPor), valorInformeVT(x.perfilValidador),
-            valorInformeVT(x.fechaValidacion), valorInformeVT(x.horaValidacion), valorInformeVT(x.motivoTecnico),
+            formatearFechaExcelVT(x.fechaValidacion), formatearHoraExcelVT(x.horaValidacion), valorInformeVT(x.motivoTecnico),
             valorInformeVT(x.motivoValidacion)
         ]));
         XLSX.utils.book_append_sheet(wb, prepararHojaExcelVT(XLSX, detalle,
