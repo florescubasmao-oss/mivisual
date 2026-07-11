@@ -1,4 +1,4 @@
-// MI VISUAL - Gestión de Actas v64 filtro partida y estados
+// MI VISUAL - Gestión de Actas v89 doble control: escaneo y entrega física
 
 const API_ACTAS = "https://script.google.com/macros/s/AKfycbzcbjCLweJNgZXDerdzmMN7Lwotc1G8NWdzoPkaLNGDivAgpYxDkq78xZwPRioSB4XY/exec";
 
@@ -62,6 +62,26 @@ function etiquetaValidacionActas(valor, tipo){
     return `<span class="actas-badge actas-pend">PENDIENTE</span>`;
 }
 
+function etiquetaEntregaFisicaActas(valor){
+    const v = normalizarActas(valor || "PENDIENTE");
+    if(v === "ENTREGADA") return `<span class="actas-badge actas-fin">ENTREGADA</span>`;
+    return `<span class="actas-badge actas-pend">PENDIENTE</span>`;
+}
+
+function fechaVisibleActas(valor){
+    if(!valor) return "-";
+    const txt = valor.toString().trim();
+    if(/^\d{4}-\d{2}-\d{2}$/.test(txt)){
+        const p = txt.split("-");
+        return `${p[2]}/${p[1]}/${p[0]}`;
+    }
+    if(txt.includes("T")){
+        const d = new Date(txt);
+        if(!isNaN(d.getTime())) return new Intl.DateTimeFormat("es-PE",{timeZone:"America/Lima",day:"2-digit",month:"2-digit",year:"numeric"}).format(d);
+    }
+    return txt;
+}
+
 function estadoGeneralActas(a){
     if(estaFinalizadaActa(a)) return `<span class="actas-badge actas-fin">FINALIZADO</span>`;
     if(estaObservadaActa(a)) return `<span class="actas-badge actas-obs">OBSERVADO</span>`;
@@ -117,6 +137,9 @@ function estiloActas(){
         .actas-msg.err{background:#fee2e2;color:#991b1b;}
         .actas-msg.info{background:#e0f2fe;color:#075985;}
         .actas-small{font-size:12px;color:#64748b;font-weight:700;line-height:1.35;}
+        .actas-dual{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:10px 0;}
+        .actas-statebox{border:1px solid #e5e7eb;border-radius:12px;padding:9px;background:#f8fafc;}
+        .actas-statebox b{display:block;font-size:11px;color:#64748b;margin-bottom:5px;text-transform:uppercase;letter-spacing:.3px;}
         .actas-mobile{display:none;}
         @media(max-width:760px){.actas-grid,.actas-kpis{grid-template-columns:1fr 1fr}.actas-table{display:none}.actas-mobile{display:block}.actas-card{font-size:13px}.actas-head h2{font-size:20px}}
         @media(max-width:480px){.actas-grid,.actas-kpis{grid-template-columns:1fr}}
@@ -168,13 +191,13 @@ async function cargarActas(){
         const vistaValidacion = esAlmacenActas(u.perfil) || esJefaturaAlmacenActas(u.perfil);
         lista.innerHTML = vistaValidacion ? `
             <table class="actas-table">
-                <thead><tr><th>Pedido</th><th>Cuadrilla</th><th>Sede</th><th>Ejecución</th><th>Estado general</th><th>Validación almacén</th><th>Validación jefatura</th><th>PDF</th><th>Acción</th></tr></thead>
+                <thead><tr><th>N.º Acta / Pedido</th><th>Cuadrilla</th><th>Sede</th><th>Ejecución</th><th>Escaneo</th><th>Entrega física</th><th>PDF</th><th>Acción</th></tr></thead>
                 <tbody>${data.actas.map(a => filaActaValidacionHtml(a)).join("")}</tbody>
             </table>
             <div class="actas-mobile">${data.actas.map(a => cardActaHtml(a)).join("")}</div>
         ` : `
             <table class="actas-table">
-                <thead><tr><th>Pedido</th><th>Cuadrilla</th><th>Sede</th><th>Ejecución</th><th>Partida</th><th>Estado</th><th>PDF</th><th>Acción</th></tr></thead>
+                <thead><tr><th>Fecha</th><th>N.º Acta</th><th>Código pedido</th><th>Ejecución</th><th>Escaneo</th><th>Entrega física</th><th>PDF</th><th>Acción</th></tr></thead>
                 <tbody>${data.actas.map(a => filaActaHtml(a)).join("")}</tbody>
             </table>
             <div class="actas-mobile">${data.actas.map(a => cardActaHtml(a)).join("")}</div>
@@ -212,7 +235,9 @@ function estaFinalizadaActa(a){
 function botonesActa(a){
     const u = usuarioActualActas();
     const id = (a.id || "").replace(/'/g,"\\'");
+    const entrega = normalizarActas(a.estadoEntregaFisica || "PENDIENTE");
     let html = `<button class="actas-btn sec" onclick="verDetalleActa('${id}')">Ver detalle</button>`;
+
     if(esAlmacenActas(u.perfil) && !estaFinalizadaActa(a)){
         html += ` <button class="actas-btn ok" onclick="validarActa('${id}','CORRECTO')">Correcto</button>`;
         html += ` <button class="actas-btn warn" onclick="validarActa('${id}','OBSERVADO')">Observado</button>`;
@@ -221,6 +246,13 @@ function botonesActa(a){
         html += ` <button class="actas-btn ok" onclick="validarActa('${id}','CORRECTO')">Finalizar correcto</button>`;
         html += ` <button class="actas-btn warn" onclick="validarActa('${id}','OBSERVADO')">Observado</button>`;
     }
+
+    if((esAlmacenActas(u.perfil) || esJefaturaAlmacenActas(u.perfil)) && entrega !== "ENTREGADA"){
+        html += ` <button class="actas-btn blue" onclick="cambiarEntregaFisicaActa('${id}','ENTREGADA')">Confirmar entrega física</button>`;
+    }
+    if(esJefaturaAlmacenActas(u.perfil) && entrega === "ENTREGADA"){
+        html += ` <button class="actas-btn danger" onclick="cambiarEntregaFisicaActa('${id}','PENDIENTE')">Regresar a pendiente</button>`;
+    }
     if(u.perfil === "TECNICO" && estaObservadaActa(a) && !estaFinalizadaActa(a)){
         html += ` <button class="actas-btn danger" onclick="mostrarFormularioActa('${limpiarHtmlActas(a.codigoPedido || "")}')">Reemplazar PDF</button>`;
     }
@@ -228,32 +260,27 @@ function botonesActa(a){
 }
 
 function filaActaHtml(a){
-    const motivo = motivoVisibleActa(a);
     return `<tr>
-        <td><b>${limpiarHtmlActas(a.codigoPedido || "-")}</b><br><small>${limpiarHtmlActas(a.codigoOrden || "")}</small></td>
-        <td>${limpiarHtmlActas(a.cuadrilla || "-")}</td>
-        <td>${limpiarHtmlActas(a.sede || "-")}</td>
+        <td>${fechaVisibleActas(a.fechaGestion || a.fechaRegistro)}</td>
+        <td><b>${limpiarHtmlActas(a.numeroActa || "-")}</b></td>
+        <td><b>${limpiarHtmlActas(a.codigoPedido || "-")}</b><br><small>Orden: ${limpiarHtmlActas(a.codigoOrden || "-")}</small></td>
         <td>${limpiarHtmlActas(a.tipoEjecucion || "-")}</td>
-        <td>${limpiarHtmlActas(a.tipoPartida || "-")}</td>
-        <td>${badgeActa(a)}${motivo ? `<br><small>${limpiarHtmlActas(motivo)}</small>` : ""}</td>
-        <td>${a.linkActa ? `<a href="${a.linkActa}" target="_blank">Abrir PDF</a>` : "-"}</td>
+        <td>${badgeActa(a)}</td>
+        <td>${etiquetaEntregaFisicaActas(a.estadoEntregaFisica)}</td>
+        <td>${a.linkActa ? `<a href="${a.linkActa}" target="_blank" rel="noopener">Ver PDF</a>` : "-"}</td>
         <td>${botonesActa(a)}</td>
     </tr>`;
 }
 
-
 function filaActaValidacionHtml(a){
-    const motivoAlm = a.motivoAlmacen || "";
-    const motivoJef = a.motivoJefatura || "";
     return `<tr>
-        <td><b>${limpiarHtmlActas(a.codigoPedido || "-")}</b><br><small>Orden: ${limpiarHtmlActas(a.codigoOrden || "-")}</small></td>
+        <td><b>Acta: ${limpiarHtmlActas(a.numeroActa || "-")}</b><br><small>Pedido: ${limpiarHtmlActas(a.codigoPedido || "-")}</small></td>
         <td>${limpiarHtmlActas(a.cuadrilla || "-")}</td>
         <td>${limpiarHtmlActas(a.sede || "-")}</td>
         <td>${limpiarHtmlActas(a.tipoEjecucion || "-")}<br><small>${limpiarHtmlActas(a.tipoPartida || "-")}</small></td>
-        <td>${estadoGeneralActas(a)}</td>
-        <td>${etiquetaValidacionActas(a.resultadoAlmacen)}${motivoAlm ? `<br><small>${limpiarHtmlActas(motivoAlm)}</small>` : ""}</td>
-        <td>${etiquetaValidacionActas(a.resultadoJefatura)}${motivoJef ? `<br><small>${limpiarHtmlActas(motivoJef)}</small>` : ""}</td>
-        <td>${a.linkActa ? `<a href="${a.linkActa}" target="_blank">Abrir PDF</a>` : "-"}</td>
+        <td>${estadoGeneralActas(a)}<br><small>Almacén: ${normalizarActas(a.resultadoAlmacen || "PENDIENTE")} · Jefatura: ${normalizarActas(a.resultadoJefatura || "PENDIENTE")}</small></td>
+        <td>${etiquetaEntregaFisicaActas(a.estadoEntregaFisica)}${a.confirmadoFisicoPor ? `<br><small>${limpiarHtmlActas(a.confirmadoFisicoPor)}</small>` : ""}</td>
+        <td>${a.linkActa ? `<a href="${a.linkActa}" target="_blank" rel="noopener">Ver PDF</a>` : "-"}</td>
         <td>${botonesActa(a)}</td>
     </tr>`;
 }
@@ -261,12 +288,19 @@ function filaActaValidacionHtml(a){
 function cardActaHtml(a){
     const motivo = motivoVisibleActa(a);
     return `<div class="actas-card">
-        <b>${limpiarHtmlActas(a.codigoPedido || "Acta")}</b> ${badgeActa(a)}<br>
-        <small>${limpiarHtmlActas(a.sede || "")} • ${limpiarHtmlActas(a.cuadrilla || "")} • ${limpiarHtmlActas(a.tipoEjecucion || "")} • ${limpiarHtmlActas(a.tipoPartida || "")}</small><br>
+        <div style="display:flex;justify-content:space-between;gap:8px;align-items:flex-start;">
+            <div><b>ACTA N.º ${limpiarHtmlActas(a.numeroActa || "-")}</b><br><small>Fecha: ${fechaVisibleActas(a.fechaGestion || a.fechaRegistro)}</small></div>
+            <small>${limpiarHtmlActas(a.tipoEjecucion || "-")}</small>
+        </div>
+        <div class="actas-small" style="margin-top:7px;"><b>Código de pedido:</b> ${limpiarHtmlActas(a.codigoPedido || "-")}</div>
+        <div class="actas-dual">
+            <div class="actas-statebox"><b>Validación de escaneo</b>${badgeActa(a)}</div>
+            <div class="actas-statebox"><b>Entrega física</b>${etiquetaEntregaFisicaActas(a.estadoEntregaFisica)}</div>
+        </div>
         ${motivo ? `<div class="actas-msg err">${limpiarHtmlActas(motivo)}</div>` : ""}
         <div style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap;">
-            ${a.linkActa ? `<a class="actas-btn blue" href="${a.linkActa}" target="_blank">Abrir PDF</a>` : ""}
             ${botonesActa(a)}
+            ${a.linkActa ? `<a class="actas-btn blue" href="${a.linkActa}" target="_blank" rel="noopener">Ver PDF</a>` : ""}
         </div>
     </div>`;
 }
@@ -282,7 +316,9 @@ async function cargarResumenActas(){
             <div class="actas-kpi"><b>${g.escaneadas || 0}</b><span>Escaneadas</span></div>
             <div class="actas-kpi"><b>${g.finalizadas || 0}</b><span>Finalizadas</span></div>
             <div class="actas-kpi"><b>${g.observadas || 0}</b><span>Observadas</span></div>
-            <div class="actas-kpi"><b>${g.pendientes || 0}</b><span>Pendientes</span></div>
+            <div class="actas-kpi"><b>${g.pendientes || 0}</b><span>Pendientes escaneo</span></div>
+            <div class="actas-kpi"><b>${g.entregadasFisicas || 0}</b><span>Entregadas físicas</span></div>
+            <div class="actas-kpi"><b>${g.pendientesEntregaFisica || 0}</b><span>Pendientes de entrega</span></div>
         </div>
         ${(esJefaturaActas(u.perfil) || esJefaturaAlmacenActas(u.perfil)) ? resumenTablasActas(data) : ""}`;
     }catch(err){
@@ -316,6 +352,7 @@ async function mostrarFormularioActa(codigoPedidoPrefill){
                     <div class="actas-field" style="grid-column:1/-1"><label>Tipo de partida</label><select id="actaTipoPartida" required><option value="">Cargando...</option></select></div>
                     <div class="actas-field"><label>Código de orden</label><input id="actaCodigoOrden" required></div>
                     <div class="actas-field"><label>Código de pedido</label><input id="actaCodigoPedido" value="${limpiarHtmlActas(codigoPedidoPrefill || "")}" ${codigoPedidoPrefill ? "readonly" : ""} required></div>
+                    <div class="actas-field"><label>Número de acta</label><input id="actaNumeroActa" placeholder="Ej.: 00015487" required></div>
                     <div class="actas-field"><label>DNI</label><input id="actaDni" required></div>
                     <div class="actas-field"><label>Cliente</label><input id="actaCliente" required></div>
                     <div class="actas-field" style="grid-column:1/-1"><label>Acta escaneada PDF</label><input type="file" id="actaPdf" accept="application/pdf,.pdf" required></div>
@@ -386,6 +423,7 @@ async function guardarActa(btn){
             tipoPartida:document.getElementById("actaTipoPartida").value,
             codigoOrden:document.getElementById("actaCodigoOrden").value,
             codigoPedido:document.getElementById("actaCodigoPedido").value,
+            numeroActa:document.getElementById("actaNumeroActa").value,
             dni:document.getElementById("actaDni").value,
             cliente:document.getElementById("actaCliente").value,
             archivoBase64:pdf.base64,
@@ -408,7 +446,56 @@ async function verDetalleActa(id){
         const data = await apiActas({accion:"listarActasEscaneadas", usuario:u.usuario});
         const a = (data.actas || []).find(x => x.id === id);
         if(!a) throw new Error("No se encontró el acta");
-        alert(`Detalle de Acta\n\nPedido: ${a.codigoPedido}\nOrden: ${a.codigoOrden}\nDNI: ${a.dni}\nCliente: ${a.cliente}\nSede: ${a.sede}\nCuadrilla: ${a.cuadrilla}\nTipo Ejecución: ${a.tipoEjecucion || "-"}\nTipo Partida: ${a.tipoPartida}\nEstado: ${a.estado}\nAlmacén: ${a.resultadoAlmacen || "-"}\nMotivo Almacén: ${a.motivoAlmacen || "-"}\nJefatura: ${a.resultadoJefatura || "-"}\nMotivo Jefatura: ${a.motivoJefatura || "-"}\nVersión: ${a.version || 1}`);
+        alert(`DETALLE DE ACTA
+
+Fecha registro: ${fechaVisibleActas(a.fechaRegistro)} ${a.horaRegistro || ""}
+Fecha gestión: ${fechaVisibleActas(a.fechaGestion)}
+Número de acta: ${a.numeroActa || "-"}
+Código de pedido: ${a.codigoPedido || "-"}
+Código de orden: ${a.codigoOrden || "-"}
+Tipo de ejecución: ${a.tipoEjecucion || "-"}
+Tipo de partida: ${a.tipoPartida || "-"}
+DNI: ${a.dni || "-"}
+Cliente: ${a.cliente || "-"}
+Sede: ${a.sede || "-"}
+Cuadrilla: ${a.cuadrilla || "-"}
+Supervisor: ${a.supervisor || "-"}
+Técnico: ${a.tecnico || "-"}
+
+VALIDACIÓN DE ESCANEO
+Estado: ${a.estadoVisibleTecnico || a.estado || "PENDIENTE"}
+Resultado Almacén: ${a.resultadoAlmacen || "PENDIENTE"}
+Motivo Almacén: ${a.motivoAlmacen || "-"}
+Resultado Jefatura: ${a.resultadoJefatura || "PENDIENTE"}
+Motivo Jefatura: ${a.motivoJefatura || "-"}
+
+ENTREGA FÍSICA
+Estado: ${a.estadoEntregaFisica || "PENDIENTE"}
+Confirmado por: ${a.confirmadoFisicoPor || "-"}
+Perfil: ${a.perfilConfirmacionFisica || "-"}
+Fecha: ${fechaVisibleActas(a.fechaConfirmacionFisica)}
+Hora: ${a.horaConfirmacionFisica || "-"}
+Motivo reversión: ${a.motivoReversionFisica || "-"}
+
+Versión PDF: ${a.version || 1}`);
+    }catch(err){
+        alert("❌ " + err.message);
+    }
+}
+
+async function cambiarEntregaFisicaActa(id, estado){
+    const u = usuarioActualActas();
+    let motivo = "";
+    if(estado === "PENDIENTE"){
+        motivo = prompt("Ingrese el motivo para regresar la entrega física a pendiente:") || "";
+        if(!motivo.trim()) return alert("Debe ingresar el motivo de reversión.");
+    }else if(!confirm("¿Confirmar que el acta fue entregada físicamente al almacén?")){
+        return;
+    }
+    try{
+        await apiActas({accion:"actualizarEntregaFisicaActa", usuario:u.usuario, id, estado, motivoReversion:motivo});
+        alert(estado === "ENTREGADA" ? "✅ Entrega física confirmada." : "✅ Entrega física regresada a pendiente.");
+        cargarActas();
     }catch(err){
         alert("❌ " + err.message);
     }

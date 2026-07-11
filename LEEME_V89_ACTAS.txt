@@ -1,0 +1,18 @@
+MI VISUAL V89 - GESTIÓN DE ACTAS
+
+ARCHIVOS A REEMPLAZAR:
+1. js/actas.js
+2. apps_script/Code.gs
+3. index.html
+
+CAMBIOS:
+- Número de acta obligatorio para el técnico.
+- Dos controles independientes: validación de escaneo y entrega física.
+- Responsable de Almacén: confirma entrega física solo en su sede.
+- Jefatura de Almacén: confirma y puede regresar a pendiente con motivo obligatorio.
+- Técnico visualiza fecha, número de acta, código de pedido, tipo de ejecución, ambos estados, detalle y PDF.
+- Resumen incluye entregadas físicas y pendientes de entrega.
+
+IMPORTANTE:
+- La hoja ACTAS_ESCANEADAS debe conservar exactamente las 35 columnas acordadas.
+- Code.gs sí debe actualizarse y publicarse como nueva versión del despliegue existente para mantener la misma URL.
