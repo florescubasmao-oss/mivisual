@@ -756,20 +756,29 @@ function convertirFechaInformeVT(valor){
     if(valor instanceof Date && !isNaN(valor.getTime())){
         return new Date(valor.getFullYear(), valor.getMonth(), valor.getDate());
     }
+
     const texto = (valor || "").toString().trim();
     if(!texto) return null;
-    let p = texto.split("/");
-    if(p.length === 3){
-        const f = new Date(Number(p[2]), Number(p[1])-1, Number(p[0]));
+
+    // Formato ISO de Google Sheets/API: 2026-07-10T05:00:00.000Z
+    // Se toma únicamente YYYY-MM-DD para evitar desfases por zona horaria.
+    const iso = texto.match(/^(\d{4})-(\d{2})-(\d{2})/);
+    if(iso){
+        const f = new Date(Number(iso[1]), Number(iso[2]) - 1, Number(iso[3]));
         return isNaN(f.getTime()) ? null : f;
     }
-    p = texto.split("-");
-    if(p.length === 3){
-        const f = new Date(Number(p[0]), Number(p[1])-1, Number(p[2]));
+
+    // Formato visible habitual: dd/mm/yyyy
+    const latam = texto.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})/);
+    if(latam){
+        const f = new Date(Number(latam[3]), Number(latam[2]) - 1, Number(latam[1]));
         return isNaN(f.getTime()) ? null : f;
     }
+
     const f = new Date(texto);
-    return isNaN(f.getTime()) ? null : new Date(f.getFullYear(), f.getMonth(), f.getDate());
+    return isNaN(f.getTime())
+        ? null
+        : new Date(f.getFullYear(), f.getMonth(), f.getDate());
 }
 
 function estadoNormalizadoInformeVT(item){
