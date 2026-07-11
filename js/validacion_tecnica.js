@@ -1122,3 +1122,287 @@ async function generarInformeValidacionTecnicaExcel(btn){
         if(btn){ btn.disabled = false; btn.textContent = "Generar Excel"; }
     }
 }
+
+/* =========================================================
+   V88 - NOTIFICACIONES OPERATIVAS DE VALIDACIÓN TÉCNICA
+   - RECABLEADO: Supervisor de sede + Jefatura
+   - GAR / VTR / OTRO: Solo Jefatura
+   - Técnico: aviso cuando cambia el resultado de su solicitud
+   - Sin crear hojas ni modificar Apps Script
+========================================================= */
+
+(function iniciarMotorNotificacionesValidacionTecnica(){
+    if(window.__mvNotificacionesVTIniciadas) return;
+    window.__mvNotificacionesVTIniciadas = true;
+
+    const INTERVALO_MS = 30000;
+    let consultaEnCurso = false;
+    let ultimoUsuario = "";
+
+    function normalizarVTNotificacion(valor){
+        return (valor || "")
+            .toString()
+            .toUpperCase()
+            .normalize("NFD")
+            .replace(/[\u0300-\u036f]/g, "")
+            .trim();
+    }
+
+    function claveUsuarioVT(prefijo, usuario){
+        return `${prefijo}_${normalizarVTNotificacion(usuario).replace(/\s+/g, "")}`;
+    }
+
+    function asegurarEstilosNotificacionVT(){
+        if(document.getElementById("mvVtNotifStyles")) return;
+        const style = document.createElement("style");
+        style.id = "mvVtNotifStyles";
+        style.textContent = `
+            #cardValidacionTecnica{position:relative!important}
+            .mv-vt-badge-menu{
+                position:absolute;top:8px;right:10px;min-width:22px;height:22px;
+                padding:0 6px;border-radius:999px;background:#dc2626;color:#fff;
+                display:flex;align-items:center;justify-content:center;font-size:11px;
+                font-weight:900;box-shadow:0 4px 10px rgba(220,38,38,.35);
+                border:2px solid rgba(255,255,255,.9);z-index:4
+            }
+            .mv-vt-toast-wrap{
+                position:fixed;top:14px;right:14px;z-index:12000;width:min(360px,calc(100vw - 28px));
+                display:grid;gap:9px;pointer-events:none
+            }
+            .mv-vt-toast{
+                background:#fff;border:1px solid #dbe3ee;border-left:5px solid #2563eb;
+                border-radius:14px;padding:12px 14px;box-shadow:0 18px 45px rgba(15,23,42,.25);
+                color:#0f172a;pointer-events:auto;animation:mvVtToastIn .22s ease-out
+            }
+            .mv-vt-toast.success{border-left-color:#16a34a}
+            .mv-vt-toast.warn{border-left-color:#f59e0b}
+            .mv-vt-toast.bad{border-left-color:#dc2626}
+            .mv-vt-toast-title{font-weight:900;font-size:14px;margin-bottom:4px}
+            .mv-vt-toast-text{font-size:12px;line-height:1.45;color:#475569}
+            .mv-vt-toast-close{float:right;border:0;background:transparent;color:#64748b;font-size:18px;cursor:pointer;margin:-5px -5px 0 8px}
+            @keyframes mvVtToastIn{from{opacity:0;transform:translateY(-8px)}to{opacity:1;transform:none}}
+            @media(max-width:640px){.mv-vt-toast-wrap{top:8px;right:8px;width:calc(100vw - 16px)}}
+        `;
+        document.head.appendChild(style);
+    }
+
+    function contenedorToastVT(){
+        asegurarEstilosNotificacionVT();
+        let wrap = document.getElementById("mvVtToastWrap");
+        if(!wrap){
+            wrap = document.createElement("div");
+            wrap.id = "mvVtToastWrap";
+            wrap.className = "mv-vt-toast-wrap";
+            document.body.appendChild(wrap);
+        }
+        return wrap;
+    }
+
+    function mostrarToastVT(titulo, texto, tipo){
+        const wrap = contenedorToastVT();
+        const toast = document.createElement("div");
+        toast.className = `mv-vt-toast ${tipo || ""}`;
+        toast.innerHTML = `
+            <button class="mv-vt-toast-close" aria-label="Cerrar">×</button>
+            <div class="mv-vt-toast-title">${safeValidacion(titulo)}</div>
+            <div class="mv-vt-toast-text">${safeValidacion(texto)}</div>
+        `;
+        toast.querySelector("button").onclick = () => toast.remove();
+        wrap.prepend(toast);
+        setTimeout(() => toast.remove(), 9000);
+    }
+
+    function actualizarBadgeMenuVT(cantidad){
+        const card = document.getElementById("cardValidacionTecnica");
+        if(!card) return;
+        asegurarEstilosNotificacionVT();
+        let badge = card.querySelector(".mv-vt-badge-menu");
+        const total = Number(cantidad) || 0;
+        if(total <= 0){
+            if(badge) badge.remove();
+            return;
+        }
+        if(!badge){
+            badge = document.createElement("span");
+            badge.className = "mv-vt-badge-menu";
+            card.appendChild(badge);
+        }
+        badge.textContent = total > 99 ? "99+" : String(total);
+        badge.title = `${total} notificación${total === 1 ? "" : "es"} de Validación Técnica`;
+    }
+
+    function obtenerPendientesPermitidosVT(validaciones, perfil, sede){
+        const p = normalizarVTNotificacion(perfil);
+        const s = normalizarVTNotificacion(sede);
+        const pendientes = (validaciones || []).filter(v => normalizarVTNotificacion(v.estado) === "PENDIENTE");
+
+        if(p === "SUPERVISOR"){
+            return pendientes.filter(v =>
+                normalizarVTNotificacion(v.tipoValidacion) === "RECABLEADO" &&
+                (!s || normalizarVTNotificacion(v.sede) === s)
+            );
+        }
+
+        if(["JEFATURA", "ADMIN", "ADMINISTRADOR"].includes(p)){
+            return pendientes;
+        }
+
+        return [];
+    }
+
+    function procesarNotificacionesGestionVT(validaciones, usuario){
+        const pendientes = obtenerPendientesPermitidosVT(validaciones, usuario.perfil, usuario.sede);
+        actualizarBadgeMenuVT(pendientes.length);
+
+        const key = claveUsuarioVT("mv_vt_pendientes_vistos", usuario.usuario);
+        let anteriores = [];
+        try{ anteriores = JSON.parse(localStorage.getItem(key) || "[]"); }catch(e){ anteriores = []; }
+        const actuales = pendientes.map(v => String(v.id || ""));
+
+        if(!localStorage.getItem(key)){
+            localStorage.setItem(key, JSON.stringify(actuales));
+            if(pendientes.length > 0){
+                mostrarToastVT(
+                    "🔔 Validaciones pendientes",
+                    `Tienes ${pendientes.length} solicitud${pendientes.length === 1 ? "" : "es"} pendiente${pendientes.length === 1 ? "" : "s"} de revisión.`,
+                    "warn"
+                );
+            }
+            return;
+        }
+
+        const nuevos = pendientes.filter(v => !anteriores.includes(String(v.id || "")));
+        localStorage.setItem(key, JSON.stringify(actuales));
+
+        if(nuevos.length){
+            const primero = nuevos[0];
+            const extra = nuevos.length > 1 ? ` y ${nuevos.length - 1} más` : "";
+            mostrarToastVT(
+                "🔔 Nueva validación técnica",
+                `${safeValidacion(primero.tipoValidacion)} · Código ${safeValidacion(primero.codigo)} · ${safeValidacion(primero.sede)}${extra}`,
+                "warn"
+            );
+        }
+    }
+
+    function procesarNotificacionesTecnicoVT(validaciones, usuario){
+        const keyFirmas = claveUsuarioVT("mv_vt_firmas_tecnico", usuario.usuario);
+        const keyNoLeidas = claveUsuarioVT("mv_vt_no_leidas_tecnico", usuario.usuario);
+        let previas = {};
+        try{ previas = JSON.parse(localStorage.getItem(keyFirmas) || "{}"); }catch(e){ previas = {}; }
+
+        const actuales = {};
+        const cambios = [];
+        (validaciones || []).forEach(v => {
+            const id = String(v.id || "");
+            const estado = normalizarVTNotificacion(v.estadoVisibleTecnico || v.estado);
+            const resultado = normalizarVTNotificacion(v.resultadoVisibleTecnico || v.resultadoFinal);
+            const firma = `${estado}|${resultado}`;
+            actuales[id] = firma;
+            if(previas[id] && previas[id] !== firma && estado !== "PENDIENTE") cambios.push(v);
+        });
+
+        if(!localStorage.getItem(keyFirmas)){
+            localStorage.setItem(keyFirmas, JSON.stringify(actuales));
+            actualizarBadgeMenuVT(Number(localStorage.getItem(keyNoLeidas)) || 0);
+            return;
+        }
+
+        localStorage.setItem(keyFirmas, JSON.stringify(actuales));
+        if(cambios.length){
+            const acumulado = (Number(localStorage.getItem(keyNoLeidas)) || 0) + cambios.length;
+            localStorage.setItem(keyNoLeidas, String(acumulado));
+            actualizarBadgeMenuVT(acumulado);
+
+            const v = cambios[0];
+            const estado = normalizarVTNotificacion(v.estadoVisibleTecnico || v.estado || v.resultadoFinal);
+            const tipoToast = estado.includes("RECHAZ") ? "bad" : estado.includes("OBSERV") ? "warn" : "success";
+            mostrarToastVT(
+                estado.includes("APROB") || estado.includes("BONO") ? "✅ Validación actualizada" : "🔔 Validación actualizada",
+                `Código ${safeValidacion(v.codigo)} · ${safeValidacion(estado || v.resultadoFinal)}`,
+                tipoToast
+            );
+        }else{
+            actualizarBadgeMenuVT(Number(localStorage.getItem(keyNoLeidas)) || 0);
+        }
+    }
+
+    async function consultarNotificacionesVT(){
+        const usuario = usuarioActualValidacion();
+        if(!usuario.usuario){
+            actualizarBadgeMenuVT(0);
+            ultimoUsuario = "";
+            return;
+        }
+        if(consultaEnCurso) return;
+        consultaEnCurso = true;
+        try{
+            const respuesta = await apiValidacionTecnica({
+                accion:"listarValidacionTecnica",
+                usuario:usuario.usuario
+            });
+            if(!respuesta || !respuesta.ok) return;
+            const lista = respuesta.validaciones || [];
+            const perfil = normalizarVTNotificacion(usuario.perfil);
+
+            if(perfil === "SUPERVISOR" || ["JEFATURA", "ADMIN", "ADMINISTRADOR"].includes(perfil)){
+                procesarNotificacionesGestionVT(lista, usuario);
+            }else if(perfil === "TECNICO"){
+                procesarNotificacionesTecnicoVT(lista, usuario);
+            }else{
+                actualizarBadgeMenuVT(0);
+            }
+            ultimoUsuario = usuario.usuario;
+        }catch(e){
+            console.warn("Notificaciones Validación Técnica:", e);
+        }finally{
+            consultaEnCurso = false;
+        }
+    }
+
+    function marcarNotificacionesTecnicoLeidasVT(){
+        const usuario = usuarioActualValidacion();
+        if(normalizarVTNotificacion(usuario.perfil) !== "TECNICO") return;
+        const key = claveUsuarioVT("mv_vt_no_leidas_tecnico", usuario.usuario);
+        localStorage.setItem(key, "0");
+        actualizarBadgeMenuVT(0);
+    }
+
+    function instalarGanchoMenuVT(){
+        if(typeof window.configurarMenu === "function" && !window.configurarMenu.__mvVtEnvuelta){
+            const original = window.configurarMenu;
+            const envuelta = function(){
+                const resultado = original.apply(this, arguments);
+                setTimeout(consultarNotificacionesVT, 350);
+                return resultado;
+            };
+            envuelta.__mvVtEnvuelta = true;
+            window.configurarMenu = envuelta;
+        }
+
+        if(typeof window.mostrarValidacionTecnica === "function" && !window.mostrarValidacionTecnica.__mvVtEnvuelta){
+            const originalMostrar = window.mostrarValidacionTecnica;
+            const envueltaMostrar = function(){
+                marcarNotificacionesTecnicoLeidasVT();
+                return originalMostrar.apply(this, arguments);
+            };
+            envueltaMostrar.__mvVtEnvuelta = true;
+            window.mostrarValidacionTecnica = envueltaMostrar;
+        }
+    }
+
+    window.actualizarNotificacionesValidacionTecnica = consultarNotificacionesVT;
+
+    window.addEventListener("load", function(){
+        asegurarEstilosNotificacionVT();
+        setTimeout(function(){
+            instalarGanchoMenuVT();
+            consultarNotificacionesVT();
+        }, 2600);
+    });
+
+    setInterval(function(){
+        instalarGanchoMenuVT();
+        consultarNotificacionesVT();
+    }, INTERVALO_MS);
+})();
