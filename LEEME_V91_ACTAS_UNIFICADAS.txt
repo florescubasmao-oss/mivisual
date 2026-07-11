@@ -1,0 +1,14 @@
+MI VISUAL V91 - Actas unificadas
+
+Archivos a reemplazar:
+1. js/actas.js
+2. index.html
+
+Cambios:
+- Una sola tarjeta por acta.
+- En la misma tarjeta: estado de escaneo y estado de entrega física.
+- Botones de ambos procesos dentro de la misma tarjeta.
+- Letra, espacios y botones más compactos.
+- Se mantienen los desplegables por sede para Jefatura de Almacén.
+- Responsable de Almacén conserva solo su sede.
+- No requiere cambio adicional de Apps Script si ya está instalada la V89.
