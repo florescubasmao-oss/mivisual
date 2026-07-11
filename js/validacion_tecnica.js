@@ -547,6 +547,13 @@ function renderResumenValidaciones(lista){
     </div>`;
 }
 
+function formatearFechaHoraVistaVT(fecha, hora){
+    const fechaVisible = formatearFechaExcelVT(fecha);
+    const horaVisible = formatearHoraExcelVT(hora);
+    if(fechaVisible && horaVisible) return `${fechaVisible} · ${horaVisible}`;
+    return fechaVisible || horaVisible || "";
+}
+
 function renderListaValidaciones(lista, soloPendientes){
     const u = usuarioActualValidacion();
     return `<div class="vt-list">` + lista.map((item, idx) => renderItemValidacion(item, idx, u, soloPendientes)).join("") + `</div>`;
@@ -564,7 +571,7 @@ function renderItemValidacion(item, idx, u, soloPendientes){
         <div class="vt-item-top">
             <div>
                 <div class="vt-id">${item.id}</div>
-                <div class="vt-sub">${item.tipoValidacion} · ${item.cuadrilla}<br>${item.fechaRegistro || ""} ${item.horaRegistro || ""}</div>
+                <div class="vt-sub">${item.tipoValidacion} · ${item.cuadrilla}<br>${formatearFechaHoraVistaVT(item.fechaRegistro, item.horaRegistro)}</div>
             </div>
             ${badgeValidacion(item.estado, estadoMostrar)}
         </div>
@@ -579,8 +586,9 @@ function renderItemValidacion(item, idx, u, soloPendientes){
             <b>Motivo técnico:</b> ${item.motivoTecnico || "-"}<br>
             <b>Resultado:</b> ${resMostrar || "-"}<br>
             <b>Validado por:</b> ${item.validadoPor || "-"}<br>
+            ${item.fechaValidacion || item.horaValidacion ? `<b>Fecha de validación:</b> ${formatearFechaHoraVistaVT(item.fechaValidacion, item.horaValidacion)}<br>` : ""}
             <b>Motivo validación:</b> ${item.motivoValidacion || "-"}<br>
-            ${item.horaLimite ? `<b>Hora límite:</b> ${item.horaLimite}<br>` : ""}
+            ${item.horaLimite ? `<b>Hora límite:</b> ${formatearFechaHoraVistaVT(item.fechaRegistro, item.horaLimite)}<br>` : ""}
             ${item.linkTelegram ? `<button class="vt-btn money" style="margin-top:8px" onclick="window.open('${item.linkTelegram}','_blank')">📨 Abrir Telegram</button>` : ""}
         </div>
     </div>`;
