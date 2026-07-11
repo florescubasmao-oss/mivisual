@@ -932,12 +932,11 @@ function partesHoraLimaVT(valor){
 function esHoraSoloExcelVT(valor){
     if(valor === undefined || valor === null || valor === "") return false;
 
-    if(valor instanceof Date && !isNaN(valor.getTime())){
-        return valor.getUTCFullYear() <= 1900;
-    }
-
+    // Solo se considera "hora sin fecha" cuando llega como texto HH:mm o HH:mm:ss.
+    // Los valores ISO de Google Sheets (incluidos 1899-12-30T...Z) se tratan como UTC
+    // y se convierten a la zona horaria America/Lima.
     const texto = valor.toString().trim();
-    return /^1899-12-3[01]T/i.test(texto) || /^\d{1,2}:\d{2}(:\d{2})?/.test(texto);
+    return /^\d{1,2}:\d{2}(:\d{2})?$/.test(texto);
 }
 
 function formatearFechaExcelVT(valor){
@@ -972,8 +971,7 @@ function formatearHoraExcelVT(valor){
     const texto = valor.toString ? valor.toString().trim() : "";
     if(!texto) return "";
 
-    // Cuando Google Sheets envía una celda solo de hora como 1899-12-30Txx:xx:xxZ,
-    // se conserva esa hora como hora operativa local. No se resta zona horaria.
+    // Las horas escritas únicamente como HH:mm o HH:mm:ss se mantienen tal cual.
     if(esHoraSoloExcelVT(valor)){
         let partes = texto.match(/T(\d{2}):(\d{2})(?::(\d{2}))?/i) || texto.match(/^(\d{1,2}):(\d{2})(?::(\d{2}))?/);
 
