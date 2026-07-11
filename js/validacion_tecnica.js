@@ -871,58 +871,128 @@ function valorInformeVT(v){
     return v === undefined || v === null ? "" : v;
 }
 
-function formatearFechaExcelVT(valor){
-    if(valor === undefined || valor === null || valor === "") return "";
+function obtenerDateVT(valor){
+    if(valor === undefined || valor === null || valor === "") return null;
+    if(valor instanceof Date && !isNaN(valor.getTime())) return valor;
+
+    const texto = valor.toString().trim();
+    if(!texto) return null;
+
+    const fecha = new Date(texto);
+    if(!isNaN(fecha.getTime())) return fecha;
+
+    return null;
+}
+
+function partesFechaLimaVT(valor){
+    const fecha = obtenerDateVT(valor);
+    if(!fecha) return null;
+
+    const partes = new Intl.DateTimeFormat("es-PE", {
+        timeZone: "America/Lima",
+        day: "2-digit",
+        month: "2-digit",
+        year: "numeric"
+    }).formatToParts(fecha);
+
+    const mapa = {};
+    partes.forEach(p => mapa[p.type] = p.value);
+    return {
+        dia: mapa.day,
+        mes: mapa.month,
+        anio: mapa.year
+    };
+}
+
+function partesHoraLimaVT(valor){
+    const fecha = obtenerDateVT(valor);
+    if(!fecha) return null;
+
+    const partes = new Intl.DateTimeFormat("es-PE", {
+        timeZone: "America/Lima",
+        hour: "2-digit",
+        minute: "2-digit",
+        second: "2-digit",
+        hour12: false
+    }).formatToParts(fecha);
+
+    const mapa = {};
+    partes.forEach(p => mapa[p.type] = p.value);
+
+    let horas = Number(mapa.hour || 0);
+    if(horas === 24) horas = 0;
+
+    return {
+        horas,
+        minutos: Number(mapa.minute || 0),
+        segundos: Number(mapa.second || 0)
+    };
+}
+
+function esHoraSoloExcelVT(valor){
+    if(valor === undefined || valor === null || valor === "") return false;
 
     if(valor instanceof Date && !isNaN(valor.getTime())){
-        const dia = String(valor.getUTCDate()).padStart(2, "0");
-        const mes = String(valor.getUTCMonth() + 1).padStart(2, "0");
-        const anio = valor.getUTCFullYear();
-        return `${dia}/${mes}/${anio}`;
+        return valor.getUTCFullYear() <= 1900;
     }
 
     const texto = valor.toString().trim();
-    if(!texto) return "";
+    return /^1899-12-3[01]T/i.test(texto) || /^\d{1,2}:\d{2}(:\d{2})?/.test(texto);
+}
 
-    const iso = texto.match(/^(\d{4})-(\d{2})-(\d{2})/);
-    if(iso) return `${iso[3]}/${iso[2]}/${iso[1]}`;
+function formatearFechaExcelVT(valor){
+    if(valor === undefined || valor === null || valor === "") return "";
+
+    const texto = valor.toString ? valor.toString().trim() : "";
+    if(!texto) return "";
 
     const latam = texto.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})/);
     if(latam){
         return `${String(latam[1]).padStart(2, "0")}/${String(latam[2]).padStart(2, "0")}/${latam[3]}`;
     }
 
+    const fecha = partesFechaLimaVT(valor);
+    if(fecha) return `${fecha.dia}/${fecha.mes}/${fecha.anio}`;
+
+    const iso = texto.match(/^(\d{4})-(\d{2})-(\d{2})/);
+    if(iso) return `${iso[3]}/${iso[2]}/${iso[1]}`;
+
     return texto;
+}
+
+function formatearHoraDesdePartesVT(horas, minutos, segundos){
+    const periodo = horas >= 12 ? "PM" : "AM";
+    const hora12 = horas % 12 || 12;
+    return `${String(hora12).padStart(2, "0")}:${String(minutos).padStart(2, "0")}:${String(segundos).padStart(2, "0")} ${periodo}`;
 }
 
 function formatearHoraExcelVT(valor){
     if(valor === undefined || valor === null || valor === "") return "";
 
-    let horas = null;
-    let minutos = null;
-    let segundos = null;
+    const texto = valor.toString ? valor.toString().trim() : "";
+    if(!texto) return "";
 
-    if(valor instanceof Date && !isNaN(valor.getTime())){
-        horas = valor.getUTCHours();
-        minutos = valor.getUTCMinutes();
-        segundos = valor.getUTCSeconds();
-    }else{
-        const texto = valor.toString().trim();
-        if(!texto) return "";
+    // Cuando Google Sheets envía una celda solo de hora como 1899-12-30Txx:xx:xxZ,
+    // se conserva esa hora como hora operativa local. No se resta zona horaria.
+    if(esHoraSoloExcelVT(valor)){
+        let partes = texto.match(/T(\d{2}):(\d{2})(?::(\d{2}))?/i) || texto.match(/^(\d{1,2}):(\d{2})(?::(\d{2}))?/);
 
-        const iso = texto.match(/T(\d{2}):(\d{2})(?::(\d{2}))?/i);
-        const simple = texto.match(/^(\d{1,2}):(\d{2})(?::(\d{2}))?/);
-        const partes = iso || simple;
+        if(valor instanceof Date && !partes){
+            return formatearHoraDesdePartesVT(valor.getUTCHours(), valor.getUTCMinutes(), valor.getUTCSeconds());
+        }
 
-        if(!partes) return texto;
-        horas = Number(partes[1]);
-        minutos = Number(partes[2]);
-        segundos = Number(partes[3] || 0);
+        if(partes){
+            return formatearHoraDesdePartesVT(Number(partes[1]), Number(partes[2]), Number(partes[3] || 0));
+        }
     }
 
-    const periodo = horas >= 12 ? "PM" : "AM";
-    const hora12 = horas % 12 || 12;
-    return `${String(hora12).padStart(2, "0")}:${String(minutos).padStart(2, "0")}:${String(segundos).padStart(2, "0")} ${periodo}`;
+    // Cuando el dato viene con fecha real, se convierte correctamente a horario Perú.
+    const horaLima = partesHoraLimaVT(valor);
+    if(horaLima){
+        return formatearHoraDesdePartesVT(horaLima.horas, horaLima.minutos, horaLima.segundos);
+    }
+
+    return texto;
 }
 
 function crearConteoInformeVT(lista){
