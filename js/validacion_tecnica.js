@@ -77,12 +77,24 @@ function estiloValidacionTecnica(){
     .vt-group summary::after{content:"▼";font-size:11px;color:#64748b;transition:transform .2s ease}
     .vt-group[open] summary::after{transform:rotate(180deg)}
     .vt-group-body{padding:10px}
+    .vt-header-row{display:flex;justify-content:space-between;gap:12px;align-items:center}
+    .vt-report-btn{background:#fff;color:#1d4ed8;box-shadow:none;border:1px solid rgba(255,255,255,.75);white-space:nowrap}
+    .vt-modal-backdrop{position:fixed;inset:0;background:rgba(15,23,42,.58);z-index:10020;display:flex;align-items:center;justify-content:center;padding:14px}
+    .vt-modal{width:min(560px,100%);max-height:92vh;overflow:auto;background:#fff;border-radius:20px;padding:16px;box-shadow:0 22px 60px rgba(15,23,42,.28)}
+    .vt-modal-head{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:12px}
+    .vt-modal-head h3{margin:0;font-size:18px;color:#0f172a}
+    .vt-modal-close{border:0;background:#e2e8f0;color:#334155;width:34px;height:34px;border-radius:10px;font-size:18px;font-weight:900;cursor:pointer}
+    .vt-report-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+    .vt-report-note{background:#eff6ff;border:1px solid #bfdbfe;color:#1e3a8a;border-radius:12px;padding:10px;font-size:12px;line-height:1.45;margin-top:10px}
     @media(max-width:640px){
         .vt-grid{grid-template-columns:1fr}
         .vt-kpis{grid-template-columns:repeat(2,minmax(0,1fr))}
         .vt-history-tools{grid-template-columns:1fr 1fr}
         .vt-history-tools .vt-search{grid-column:1/-1}
         .vt-header{border-radius:18px;padding:15px}
+        .vt-header-row{align-items:flex-start;flex-direction:column}
+        .vt-report-btn{width:100%}
+        .vt-report-grid{grid-template-columns:1fr}
         .vt-wrap{padding:8px}
         .vt-btn{width:100%}
     }
@@ -167,8 +179,13 @@ function mostrarValidacionTecnica(){
     ${estiloValidacionTecnica()}
     <div class="vt-wrap">
         <div class="vt-header">
-            <h2>📋 VALIDACIÓN TÉCNICA</h2>
-            <p>Registro y control de recableados, GAR y VTR con trazabilidad operativa.</p>
+            <div class="vt-header-row">
+                <div>
+                    <h2>📋 VALIDACIÓN TÉCNICA</h2>
+                    <p>Registro y control de recableados, GAR y VTR con trazabilidad operativa.</p>
+                </div>
+                ${esJefaturaValidacion(u.perfil) ? `<button class="vt-btn vt-report-btn" onclick="abrirInformeValidacionTecnica()">📥 Descargar informe</button>` : ""}
+            </div>
         </div>`;
 
     if(u.perfil === "TECNICO"){
@@ -621,5 +638,348 @@ async function abrirValidarTecnica(id, resultado){
         alert("❌ " + e.message);
     }finally{
         ocultarCargandoValidacion();
+    }
+}
+
+
+/* =========================
+   INFORME EXCEL - SOLO JEFATURA
+========================= */
+
+function abrirInformeValidacionTecnica(){
+    const u = usuarioActualValidacion();
+    if(!esJefaturaValidacion(u.perfil)){
+        alert("Esta opción es exclusiva para Jefatura.");
+        return;
+    }
+
+    if(!Array.isArray(window.vtValidacionesActuales) || !window.vtValidacionesActuales.length){
+        alert("No hay registros cargados para generar el informe. Pulse Actualizar e inténtelo nuevamente.");
+        return;
+    }
+
+    cerrarInformeValidacionTecnica();
+    const hoy = new Date();
+    const primerDia = new Date(hoy.getFullYear(), hoy.getMonth(), 1);
+    const fmt = d => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
+
+    const modal = document.createElement("div");
+    modal.id = "vtInformeModal";
+    modal.className = "vt-modal-backdrop";
+    modal.innerHTML = `
+        <div class="vt-modal" role="dialog" aria-modal="true" aria-labelledby="vtInformeTitulo">
+            <div class="vt-modal-head">
+                <h3 id="vtInformeTitulo">📥 Informe de Validación Técnica</h3>
+                <button class="vt-modal-close" onclick="cerrarInformeValidacionTecnica()" aria-label="Cerrar">×</button>
+            </div>
+
+            <div class="vt-report-grid">
+                <div class="vt-field">
+                    <label>Periodo</label>
+                    <select id="vtInformePeriodo" onchange="actualizarCamposPeriodoInformeVT()">
+                        <option value="TODO">Todo</option>
+                        <option value="HOY">Hoy</option>
+                        <option value="SEMANA">Últimos 7 días</option>
+                        <option value="MES" selected>Mes actual</option>
+                        <option value="RANGO">Rango de fechas</option>
+                    </select>
+                </div>
+                <div class="vt-field">
+                    <label>Sede</label>
+                    <select id="vtInformeSede">
+                        <option value="">Todas</option>
+                        <option value="CHICLAYO">Chiclayo</option>
+                        <option value="PIURA">Piura</option>
+                        <option value="TRUJILLO">Trujillo</option>
+                    </select>
+                </div>
+                <div class="vt-field">
+                    <label>Tipo de validación</label>
+                    <select id="vtInformeTipo">
+                        <option value="">Todos</option>
+                        <option value="RECABLEADO">Recableado</option>
+                        <option value="GAR">GAR</option>
+                        <option value="VTR">VTR</option>
+                        <option value="OTRO">Otro</option>
+                    </select>
+                </div>
+                <div class="vt-field">
+                    <label>Estado / resultado</label>
+                    <select id="vtInformeEstado">
+                        <option value="">Todos</option>
+                        <option value="PENDIENTE">Pendiente</option>
+                        <option value="APROBADO">Aprobado</option>
+                        <option value="OBSERVADO">Observado</option>
+                        <option value="RECHAZADO">Rechazado</option>
+                        <option value="AUTOMATICO">Automático</option>
+                        <option value="BONO">Bono</option>
+                        <option value="NO BONO">No bono</option>
+                    </select>
+                </div>
+                <div class="vt-field vt-rango-fecha" style="display:none">
+                    <label>Desde</label>
+                    <input id="vtInformeDesde" type="date" value="${fmt(primerDia)}">
+                </div>
+                <div class="vt-field vt-rango-fecha" style="display:none">
+                    <label>Hasta</label>
+                    <input id="vtInformeHasta" type="date" value="${fmt(hoy)}">
+                </div>
+            </div>
+
+            <div class="vt-report-note">
+                El archivo incluirá: Detalle, Resumen Ejecutivo, Resumen por Sede y Resumen por Tipo.
+            </div>
+
+            <div class="vt-actions" style="justify-content:flex-end">
+                <button class="vt-btn secondary" onclick="cerrarInformeValidacionTecnica()">Cancelar</button>
+                <button class="vt-btn ok" onclick="generarInformeValidacionTecnicaExcel(this)">Generar Excel</button>
+            </div>
+        </div>`;
+
+    modal.addEventListener("click", e => {
+        if(e.target === modal) cerrarInformeValidacionTecnica();
+    });
+    document.body.appendChild(modal);
+}
+
+function cerrarInformeValidacionTecnica(){
+    const modal = document.getElementById("vtInformeModal");
+    if(modal) modal.remove();
+}
+
+function actualizarCamposPeriodoInformeVT(){
+    const mostrar = (document.getElementById("vtInformePeriodo")?.value || "") === "RANGO";
+    document.querySelectorAll(".vt-rango-fecha").forEach(el => el.style.display = mostrar ? "block" : "none");
+}
+
+function convertirFechaInformeVT(valor){
+    if(valor instanceof Date && !isNaN(valor.getTime())){
+        return new Date(valor.getFullYear(), valor.getMonth(), valor.getDate());
+    }
+    const texto = (valor || "").toString().trim();
+    if(!texto) return null;
+    let p = texto.split("/");
+    if(p.length === 3){
+        const f = new Date(Number(p[2]), Number(p[1])-1, Number(p[0]));
+        return isNaN(f.getTime()) ? null : f;
+    }
+    p = texto.split("-");
+    if(p.length === 3){
+        const f = new Date(Number(p[0]), Number(p[1])-1, Number(p[2]));
+        return isNaN(f.getTime()) ? null : f;
+    }
+    const f = new Date(texto);
+    return isNaN(f.getTime()) ? null : new Date(f.getFullYear(), f.getMonth(), f.getDate());
+}
+
+function estadoNormalizadoInformeVT(item){
+    const estado = (item.estado || "").toString().toUpperCase().trim();
+    const resultado = (item.resultadoFinal || "").toString().toUpperCase().trim();
+    if(estado === "SIN RESPUESTA" || resultado.includes("AUTOM")) return "AUTOMATICO";
+    return resultado || estado;
+}
+
+function filtrarInformeValidacionTecnica(){
+    const periodo = document.getElementById("vtInformePeriodo")?.value || "TODO";
+    const sede = (document.getElementById("vtInformeSede")?.value || "").toUpperCase();
+    const tipo = (document.getElementById("vtInformeTipo")?.value || "").toUpperCase();
+    const estadoFiltro = (document.getElementById("vtInformeEstado")?.value || "").toUpperCase();
+    const desdeTxt = document.getElementById("vtInformeDesde")?.value || "";
+    const hastaTxt = document.getElementById("vtInformeHasta")?.value || "";
+    const hoy = new Date();
+    const hoyCero = new Date(hoy.getFullYear(), hoy.getMonth(), hoy.getDate());
+    let desde = null;
+    let hasta = null;
+
+    if(periodo === "HOY"){
+        desde = hoyCero;
+        hasta = hoyCero;
+    }else if(periodo === "SEMANA"){
+        desde = new Date(hoyCero);
+        desde.setDate(desde.getDate()-6);
+        hasta = hoyCero;
+    }else if(periodo === "MES"){
+        desde = new Date(hoy.getFullYear(), hoy.getMonth(), 1);
+        hasta = hoyCero;
+    }else if(periodo === "RANGO"){
+        desde = convertirFechaInformeVT(desdeTxt);
+        hasta = convertirFechaInformeVT(hastaTxt);
+        if(!desde || !hasta) throw new Error("Seleccione correctamente el rango de fechas.");
+        if(desde > hasta) throw new Error("La fecha Desde no puede ser mayor que la fecha Hasta.");
+    }
+
+    return (window.vtValidacionesActuales || []).filter(item => {
+        if(sede && (item.sede || "").toString().toUpperCase() !== sede) return false;
+        if(tipo && (item.tipoValidacion || "").toString().toUpperCase() !== tipo) return false;
+
+        if(estadoFiltro){
+            const estado = (item.estado || "").toString().toUpperCase();
+            const resultado = (item.resultadoFinal || "").toString().toUpperCase();
+            const normalizado = estadoNormalizadoInformeVT(item);
+            if(estadoFiltro === "AUTOMATICO"){
+                if(normalizado !== "AUTOMATICO") return false;
+            }else if(estadoFiltro === "APROBADO"){
+                if(!(estado === "APROBADO" || resultado === "APROBADO")) return false;
+            }else if(!(estado === estadoFiltro || resultado === estadoFiltro || normalizado === estadoFiltro)){
+                return false;
+            }
+        }
+
+        if(desde || hasta){
+            const fecha = convertirFechaInformeVT(item.fechaRegistro);
+            if(!fecha) return false;
+            if(desde && fecha < desde) return false;
+            if(hasta && fecha > hasta) return false;
+        }
+        return true;
+    });
+}
+
+function cargarLibreriaExcelVT(){
+    if(window.XLSX) return Promise.resolve(window.XLSX);
+    if(window.vtPromesaXlsx) return window.vtPromesaXlsx;
+
+    window.vtPromesaXlsx = new Promise((resolve, reject) => {
+        const script = document.createElement("script");
+        script.src = "https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js";
+        script.async = true;
+        script.onload = () => window.XLSX ? resolve(window.XLSX) : reject(new Error("No se pudo iniciar el generador de Excel."));
+        script.onerror = () => reject(new Error("No se pudo cargar el generador de Excel. Verifique su conexión a internet."));
+        document.head.appendChild(script);
+    });
+    return window.vtPromesaXlsx;
+}
+
+function valorInformeVT(v){
+    return v === undefined || v === null ? "" : v;
+}
+
+function crearConteoInformeVT(lista){
+    const c = {total:lista.length, pendientes:0, aprobados:0, observados:0, rechazados:0, automaticos:0, bono:0, noBono:0};
+    lista.forEach(item => {
+        const estado = (item.estado || "").toString().toUpperCase();
+        const resultado = (item.resultadoFinal || "").toString().toUpperCase();
+        if(estado === "PENDIENTE") c.pendientes++;
+        if(estado === "APROBADO" || resultado === "APROBADO") c.aprobados++;
+        if(estado === "OBSERVADO" || resultado === "OBSERVADO") c.observados++;
+        if(estado === "RECHAZADO" || resultado === "RECHAZADO") c.rechazados++;
+        if(estado === "SIN RESPUESTA" || resultado.includes("AUTOM")) c.automaticos++;
+        if(resultado === "BONO" || estado === "BONO") c.bono++;
+        if(resultado === "NO BONO" || estado === "NO BONO") c.noBono++;
+    });
+    return c;
+}
+
+function prepararHojaExcelVT(XLSX, filas, anchos, autofiltro){
+    const ws = XLSX.utils.aoa_to_sheet(filas);
+    ws["!cols"] = anchos.map(w => ({wch:w}));
+    if(autofiltro && filas.length > 1){
+        ws["!autofilter"] = {ref:`A1:${XLSX.utils.encode_col(filas[0].length-1)}${filas.length}`};
+    }
+    return ws;
+}
+
+async function generarInformeValidacionTecnicaExcel(btn){
+    const u = usuarioActualValidacion();
+    if(!esJefaturaValidacion(u.perfil)){
+        alert("Esta opción es exclusiva para Jefatura.");
+        return;
+    }
+
+    try{
+        if(btn){ btn.disabled = true; btn.textContent = "Generando..."; }
+        mostrarCargandoValidacion("Generando informe Excel...");
+        const lista = filtrarInformeValidacionTecnica();
+        if(!lista.length) throw new Error("No existen registros con los filtros seleccionados.");
+        const XLSX = await cargarLibreriaExcelVT();
+        const wb = XLSX.utils.book_new();
+
+        const detalle = [[
+            "FECHA", "HORA", "SEDE", "CUADRILLA", "TECNICO", "CODIGO",
+            "TIPO VALIDACION", "TIPO TICKET", "N° TICKET", "TICKET FINAL",
+            "DNI", "ESTADO", "RESULTADO", "VALIDADO POR", "PERFIL VALIDADOR",
+            "FECHA VALIDACION", "HORA VALIDACION", "MOTIVO TECNICO", "MOTIVO VALIDACION"
+        ]];
+        lista.forEach(x => detalle.push([
+            valorInformeVT(x.fechaRegistro), valorInformeVT(x.horaRegistro), valorInformeVT(x.sede),
+            valorInformeVT(x.cuadrilla), valorInformeVT(x.tecnico), valorInformeVT(x.codigo),
+            valorInformeVT(x.tipoValidacion), valorInformeVT(x.tipoTicket), valorInformeVT(x.numeroTicket),
+            valorInformeVT(x.ticketFinal), valorInformeVT(x.dniCliente), valorInformeVT(x.estado),
+            valorInformeVT(x.resultadoFinal), valorInformeVT(x.validadoPor), valorInformeVT(x.perfilValidador),
+            valorInformeVT(x.fechaValidacion), valorInformeVT(x.horaValidacion), valorInformeVT(x.motivoTecnico),
+            valorInformeVT(x.motivoValidacion)
+        ]));
+        XLSX.utils.book_append_sheet(wb, prepararHojaExcelVT(XLSX, detalle,
+            [12,11,13,36,20,14,18,14,14,20,13,15,20,20,18,17,17,42,42], true), "DETALLE VALIDACIONES");
+
+        const conteo = crearConteoInformeVT(lista);
+        const periodoTexto = document.getElementById("vtInformePeriodo")?.selectedOptions[0]?.textContent || "Todo";
+        const sedeTexto = document.getElementById("vtInformeSede")?.selectedOptions[0]?.textContent || "Todas";
+        const tipoTexto = document.getElementById("vtInformeTipo")?.selectedOptions[0]?.textContent || "Todos";
+        const estadoTexto = document.getElementById("vtInformeEstado")?.selectedOptions[0]?.textContent || "Todos";
+        const ahora = new Date();
+        const generado = ahora.toLocaleString("es-PE");
+        const resumen = [
+            ["VISUAL CONNECTIONS SAC - ZONA NORTE"],
+            ["INFORME DE VALIDACION TECNICA"],
+            ["Generado", generado],
+            ["Periodo", periodoTexto],
+            ["Sede", sedeTexto],
+            ["Tipo", tipoTexto],
+            ["Estado", estadoTexto],
+            [],
+            ["INDICADOR", "CANTIDAD"],
+            ["Total", conteo.total],
+            ["Pendientes", conteo.pendientes],
+            ["Aprobados", conteo.aprobados],
+            ["Observados", conteo.observados],
+            ["Rechazados", conteo.rechazados],
+            ["Automaticos", conteo.automaticos],
+            ["Bono", conteo.bono],
+            ["No Bono", conteo.noBono]
+        ];
+        XLSX.utils.book_append_sheet(wb, prepararHojaExcelVT(XLSX, resumen,[34,18],false), "RESUMEN EJECUTIVO");
+
+        const sedes = {};
+        lista.forEach(x => {
+            const k = (x.sede || "SIN SEDE").toString().toUpperCase();
+            if(!sedes[k]) sedes[k] = [];
+            sedes[k].push(x);
+        });
+        const resumenSede = [["SEDE","TOTAL","PENDIENTES","APROBADOS","OBSERVADOS","RECHAZADOS","AUTOMATICOS","BONO","NO BONO"]];
+        Object.keys(sedes).sort().forEach(k => {
+            const c = crearConteoInformeVT(sedes[k]);
+            resumenSede.push([k,c.total,c.pendientes,c.aprobados,c.observados,c.rechazados,c.automaticos,c.bono,c.noBono]);
+        });
+        XLSX.utils.book_append_sheet(wb, prepararHojaExcelVT(XLSX,resumenSede,[15,10,13,13,13,13,13,10,10],true), "RESUMEN POR SEDE");
+
+        const tipos = {};
+        lista.forEach(x => {
+            const k = (x.tipoValidacion || "OTRO").toString().toUpperCase();
+            if(!tipos[k]) tipos[k] = [];
+            tipos[k].push(x);
+        });
+        const resumenTipo = [["TIPO VALIDACION","TOTAL","PORCENTAJE","PENDIENTES","APROBADOS","OBSERVADOS","RECHAZADOS","AUTOMATICOS","BONO","NO BONO"]];
+        ["RECABLEADO","GAR","VTR","OTRO"].forEach(k => {
+            if(!tipos[k]) return;
+            const c = crearConteoInformeVT(tipos[k]);
+            resumenTipo.push([k,c.total,c.total/lista.length,c.pendientes,c.aprobados,c.observados,c.rechazados,c.automaticos,c.bono,c.noBono]);
+        });
+        const wsTipo = prepararHojaExcelVT(XLSX,resumenTipo,[20,10,13,13,13,13,13,13,10,10],true);
+        for(let i=2;i<=resumenTipo.length;i++){
+            const celda=wsTipo[`C${i}`];
+            if(celda) celda.z="0.00%";
+        }
+        XLSX.utils.book_append_sheet(wb, wsTipo, "RESUMEN POR TIPO");
+
+        const periodoNombre = (periodoTexto || "TODO").toUpperCase().replace(/[^A-Z0-9ÁÉÍÓÚÑ]+/g,"_").replace(/^_|_$/g,"");
+        const fechaArchivo = `${ahora.getFullYear()}-${String(ahora.getMonth()+1).padStart(2,"0")}-${String(ahora.getDate()).padStart(2,"0")}`;
+        XLSX.writeFile(wb, `VALIDACION_TECNICA_${periodoNombre}_${fechaArchivo}.xlsx`);
+        cerrarInformeValidacionTecnica();
+    }catch(e){
+        alert("❌ " + e.message);
+    }finally{
+        ocultarCargandoValidacion();
+        if(btn){ btn.disabled = false; btn.textContent = "Generar Excel"; }
     }
 }
