@@ -1,4 +1,4 @@
-// MI VISUAL - Gestión de Actas v91: una sola tarjeta por acta
+// MI VISUAL - Gestión de Actas v92: tarjetas compactas, acciones alineadas y sedes persistentes
 
 const API_ACTAS = "https://script.google.com/macros/s/AKfycbzcbjCLweJNgZXDerdzmMN7Lwotc1G8NWdzoPkaLNGDivAgpYxDkq78xZwPRioSB4XY/exec";
 
@@ -150,16 +150,20 @@ function estiloActas(){
         .actas-proceso>summary{cursor:pointer;list-style:none;padding:12px 14px;font-weight:900;color:#0f172a;display:flex;justify-content:space-between;align-items:center;gap:10px;background:#e2e8f0;}
         .actas-proceso-body{padding:10px;}
         .actas-count{background:#dbeafe;color:#1e40af;border-radius:999px;padding:3px 8px;font-size:11px;font-weight:900;}
-        .actas-process-card{background:#fff;border:1px solid #e5e7eb;border-radius:12px;padding:10px;margin-bottom:8px;}
-        .actas-process-head{display:flex;justify-content:space-between;align-items:flex-start;gap:8px;margin-bottom:6px;}
-        .actas-process-meta{font-size:11px;color:#64748b;line-height:1.35;}
-        .actas-card-title{font-size:13px;font-weight:900;color:#0f172a;}
-        .actas-unified-states{display:grid;grid-template-columns:1fr 1fr;gap:7px;margin:7px 0;}
-        .actas-unified-state{background:#f8fafc;border:1px solid #e5e7eb;border-radius:10px;padding:7px 8px;}
-        .actas-unified-state b{display:block;font-size:10px;color:#64748b;text-transform:uppercase;margin-bottom:4px;}
-        .actas-action-label{font-size:10px;font-weight:900;color:#475569;text-transform:uppercase;margin:7px 0 4px;}
-        .actas-compact-actions{display:flex;gap:5px;flex-wrap:wrap;}
-        .actas-compact-actions .actas-btn{padding:7px 9px;border-radius:9px;font-size:11px;}
+        .actas-process-card{background:#fff;border:1px solid #e5e7eb;border-radius:12px;padding:8px;margin-bottom:7px;}
+        .actas-process-head{display:flex;justify-content:space-between;align-items:flex-start;gap:6px;margin-bottom:4px;}
+        .actas-process-meta{font-size:10px;color:#64748b;line-height:1.25;}
+        .actas-card-title{font-size:12px;font-weight:900;color:#0f172a;}
+        .actas-unified-states{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin:6px 0;}
+        .actas-unified-state{background:#f8fafc;border:1px solid #e5e7eb;border-radius:9px;padding:6px 7px;min-height:42px;}
+        .actas-unified-state b{display:block;font-size:9px;color:#64748b;text-transform:uppercase;margin-bottom:3px;}
+        .actas-action-label{font-size:9px;font-weight:900;color:#475569;text-transform:uppercase;margin:0 0 4px;}
+        .actas-compact-actions{display:flex;gap:4px;flex-wrap:wrap;align-items:center;}
+        .actas-compact-actions .actas-btn{padding:6px 8px;border-radius:8px;font-size:10px;line-height:1.05;}
+        .actas-validation-grid{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:6px;align-items:start;}
+        .actas-validation-col{border:1px dashed #cbd5e1;border-radius:9px;padding:6px;background:#fff;min-height:52px;}
+        .actas-primary-actions{margin-top:5px;}
+        @media(max-width:520px){.actas-validation-grid{grid-template-columns:1fr}.actas-unified-states{grid-template-columns:1fr 1fr}.actas-compact-actions .actas-btn{font-size:9px;padding:6px 7px;}}
         .actas-readonly{background:#f1f5f9;color:#475569;border-radius:10px;padding:8px 10px;font-size:12px;font-weight:800;margin-top:8px;}
         .actas-mobile{display:none;}
         @media(max-width:760px){.actas-grid,.actas-kpis{grid-template-columns:1fr 1fr}.actas-table{display:none}.actas-mobile{display:block}.actas-card{font-size:13px}.actas-head h2{font-size:20px}}
@@ -194,8 +198,9 @@ function mostrarGestionActas(){
     cargarActas();
 }
 
-async function cargarActas(){
+async function cargarActas(opciones){
     const u = usuarioActualActas();
+    opciones = opciones || {};
     const lista = document.getElementById("actasLista");
     if(lista) lista.innerHTML = "Cargando actas...";
     try{
@@ -209,11 +214,13 @@ async function cargarActas(){
 
         if(esJefaturaAlmacenActas(u.perfil)){
             lista.innerHTML = vistaJefaturaAlmacenPorSedes(actas);
+            restaurarEstadoVistaActas(opciones);
             return;
         }
 
         if(esAlmacenActas(u.perfil)){
             lista.innerHTML = vistaResponsableAlmacenPorProcesos(actas, u.sede);
+            restaurarEstadoVistaActas(opciones);
             return;
         }
 
@@ -225,10 +232,30 @@ async function cargarActas(){
             </table>
             <div class="actas-mobile">${actas.map(a => cardActaLecturaHtml(a)).join("")}</div>
         `;
+        restaurarEstadoVistaActas(opciones);
     }catch(err){
         lista.innerHTML = `<div class="actas-msg err">❌ ${err.message}</div>`;
     }
 }
+function obtenerEstadoVistaActas(){
+    const sedesAbiertas = Array.from(document.querySelectorAll("details.actas-sede[open]"))
+        .map(x => normalizarActas(x.dataset.sede || ""))
+        .filter(Boolean);
+    return { sedesAbiertas, scrollY: window.scrollY || 0 };
+}
+
+function restaurarEstadoVistaActas(opciones){
+    const abiertas = (opciones && opciones.sedesAbiertas) || [];
+    if(abiertas.length){
+        document.querySelectorAll("details.actas-sede").forEach(d => {
+            d.open = abiertas.includes(normalizarActas(d.dataset.sede || ""));
+        });
+    }
+    if(opciones && Number.isFinite(opciones.scrollY)){
+        requestAnimationFrame(() => window.scrollTo({top: opciones.scrollY, behavior:"auto"}));
+    }
+}
+
 function badgeActa(a){
     const estado = normalizarActas(a.estado);
     const estadoVisible = normalizarActas(a.estadoVisibleTecnico || "");
@@ -364,7 +391,7 @@ function accionesEntregaCompactas(a){
 function tarjetaActaGestionUnificada(a){
     const escaneoBtns = accionesEscaneoCompactas(a);
     const entregaBtns = accionesEntregaCompactas(a);
-    return `<div class="actas-process-card">
+    return `<div class="actas-process-card" data-acta-id="${limpiarHtmlActas(a.id || "")}">
         <div class="actas-process-head">
             <div>
                 <div class="actas-card-title">Acta N.º ${limpiarHtmlActas(a.numeroActa || "-")}</div>
@@ -378,15 +405,23 @@ function tarjetaActaGestionUnificada(a){
             <div class="actas-unified-state"><b>Escaneo</b>${badgeActa(a)}</div>
             <div class="actas-unified-state"><b>Entrega física</b>${etiquetaEntregaFisicaActas(a.estadoEntregaFisica)}</div>
         </div>
-        <div class="actas-compact-actions">${botonDetalleActa(a)} ${botonPdfActa(a)}</div>
-        ${escaneoBtns ? `<div class="actas-action-label">Validar escaneo</div><div class="actas-compact-actions">${escaneoBtns}</div>` : ""}
-        ${entregaBtns ? `<div class="actas-action-label">Entrega física</div><div class="actas-compact-actions">${entregaBtns}</div>` : ""}
+        <div class="actas-compact-actions actas-primary-actions">${botonDetalleActa(a)} ${botonPdfActa(a)}</div>
+        ${(escaneoBtns || entregaBtns) ? `<div class="actas-validation-grid">
+            <div class="actas-validation-col">
+                <div class="actas-action-label">Validar escaneo</div>
+                <div class="actas-compact-actions">${escaneoBtns || `<span class="actas-small">Sin acciones pendientes</span>`}</div>
+            </div>
+            <div class="actas-validation-col">
+                <div class="actas-action-label">Entrega física</div>
+                <div class="actas-compact-actions">${entregaBtns || `<span class="actas-small">Sin acciones pendientes</span>`}</div>
+            </div>
+        </div>` : ""}
     </div>`;
 }
 
 function bloqueSedeActas(sede, actas, abierto){
     const nombre = normalizarActas(sede);
-    return `<details class="actas-sede" ${abierto ? "open" : ""}>
+    return `<details class="actas-sede" data-sede="${limpiarHtmlActas(nombre)}" ${abierto ? "open" : ""}>
         <summary><span>📍 ${limpiarHtmlActas(nombre)}</span><span class="actas-count">${actas.length} actas</span></summary>
         <div class="actas-sede-body">
             ${actas.length ? actas.map(a => tarjetaActaGestionUnificada(a)).join("") : `<div class="actas-empty">No hay actas registradas en esta sede.</div>`}
@@ -596,7 +631,8 @@ async function cambiarEntregaFisicaActa(id, estado){
     try{
         await apiActas({accion:"actualizarEntregaFisicaActa", usuario:u.usuario, id, estado, motivoReversion:motivo});
         alert(estado === "ENTREGADA" ? "✅ Entrega física confirmada." : "✅ Entrega física regresada a pendiente.");
-        cargarActas();
+        const vista = obtenerEstadoVistaActas();
+        await cargarActas(vista);
     }catch(err){
         alert("❌ " + err.message);
     }
@@ -615,7 +651,8 @@ async function validarActa(id, resultado){
     try{
         await apiActas({accion:"validarActaEscaneada", usuario:u.usuario, id, resultado, motivoObservacion:motivo});
         alert("✅ Validación registrada.");
-        cargarActas();
+        const vista = obtenerEstadoVistaActas();
+        await cargarActas(vista);
     }catch(err){
         alert("❌ " + err.message);
     }

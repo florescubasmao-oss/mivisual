@@ -1,0 +1,12 @@
+MI VISUAL V92 - ACTAS ALINEADAS Y PERSISTENTES
+
+Archivos modificados:
+- js/actas.js
+- index.html (solo versión de caché)
+
+Cambios:
+- Estados y validaciones alineados en dos columnas.
+- Tarjetas, textos y botones más compactos.
+- Al validar escaneo o entrega física, la sede abierta permanece abierta.
+- Se conserva la posición vertical de la pantalla.
+- No modifica Apps Script ni Google Sheets.
