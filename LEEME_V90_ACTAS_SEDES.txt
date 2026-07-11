@@ -1,0 +1,17 @@
+MI VISUAL V90 - Gestión de Actas por sede y proceso
+
+Archivos a reemplazar:
+1. js/actas.js
+2. index.html
+
+Cambios:
+- Jefatura de Almacén: desplegables CHICLAYO, PIURA y TRUJILLO.
+- Dentro de cada sede: VALIDACIÓN DE ESCANEO y ENTREGA FÍSICA.
+- Los botones de cada proceso aparecen dentro de su sección correspondiente.
+- Responsable de Almacén: solo su sede, con ambas secciones y permisos actuales.
+- Supervisor y Jefatura operativa: visualizan ambos estados, detalle y PDF, sin validar.
+- La clasificación usa la SEDE registrada en cada acta/cuadrilla.
+
+Apps Script:
+- No requiere cambio adicional si ya se instaló el Code.gs de V89.
+- V89 ya contiene permisos, estados y acciones de entrega física.

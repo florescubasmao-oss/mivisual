@@ -1,4 +1,4 @@
-// MI VISUAL - Gestión de Actas v89 doble control: escaneo y entrega física
+// MI VISUAL - Gestión de Actas v90 vistas por sede y proceso
 
 const API_ACTAS = "https://script.google.com/macros/s/AKfycbzcbjCLweJNgZXDerdzmMN7Lwotc1G8NWdzoPkaLNGDivAgpYxDkq78xZwPRioSB4XY/exec";
 
@@ -140,6 +140,20 @@ function estiloActas(){
         .actas-dual{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:10px 0;}
         .actas-statebox{border:1px solid #e5e7eb;border-radius:12px;padding:9px;background:#f8fafc;}
         .actas-statebox b{display:block;font-size:11px;color:#64748b;margin-bottom:5px;text-transform:uppercase;letter-spacing:.3px;}
+        .actas-sede{border:1px solid #cbd5e1;border-radius:16px;background:#fff;margin:0 0 12px;overflow:hidden;box-shadow:0 6px 16px rgba(15,23,42,.07);}
+        .actas-sede>summary{cursor:pointer;list-style:none;padding:14px 16px;background:#0f172a;color:#fff;font-weight:900;display:flex;justify-content:space-between;align-items:center;gap:10px;}
+        .actas-sede>summary::-webkit-details-marker,.actas-proceso>summary::-webkit-details-marker{display:none;}
+        .actas-sede>summary:after,.actas-proceso>summary:after{content:'▾';font-size:14px;}
+        .actas-sede:not([open])>summary:after,.actas-proceso:not([open])>summary:after{content:'▸';}
+        .actas-sede-body{padding:12px;}
+        .actas-proceso{border:1px solid #e5e7eb;border-radius:14px;background:#f8fafc;margin-bottom:10px;overflow:hidden;}
+        .actas-proceso>summary{cursor:pointer;list-style:none;padding:12px 14px;font-weight:900;color:#0f172a;display:flex;justify-content:space-between;align-items:center;gap:10px;background:#e2e8f0;}
+        .actas-proceso-body{padding:10px;}
+        .actas-count{background:#dbeafe;color:#1e40af;border-radius:999px;padding:3px 8px;font-size:11px;font-weight:900;}
+        .actas-process-card{background:#fff;border:1px solid #e5e7eb;border-radius:14px;padding:12px;margin-bottom:9px;}
+        .actas-process-head{display:flex;justify-content:space-between;align-items:flex-start;gap:8px;margin-bottom:8px;}
+        .actas-process-meta{font-size:12px;color:#64748b;line-height:1.45;}
+        .actas-readonly{background:#f1f5f9;color:#475569;border-radius:10px;padding:8px 10px;font-size:12px;font-weight:800;margin-top:8px;}
         .actas-mobile{display:none;}
         @media(max-width:760px){.actas-grid,.actas-kpis{grid-template-columns:1fr 1fr}.actas-table{display:none}.actas-mobile{display:block}.actas-card{font-size:13px}.actas-head h2{font-size:20px}}
         @media(max-width:480px){.actas-grid,.actas-kpis{grid-template-columns:1fr}}
@@ -151,9 +165,9 @@ function mostrarGestionActas(){
     let subtitulo = "Registro y control documental de actas escaneadas.";
     if(u.perfil === "TECNICO") subtitulo = "Sube tus actas en PDF. Si son observadas, podrás reemplazar el archivo corregido.";
     if(u.perfil === "ALMACEN") subtitulo = "Primera validación documental de actas de tu sede.";
-    if(u.perfil === "SUPERVISOR") subtitulo = "Consulta de actas de tu sede. Solo lectura.";
-    if(esJefaturaActas(u.perfil)) subtitulo = "Vista de resumen. Solo lectura.";
-    if(esJefaturaAlmacenActas(u.perfil)) subtitulo = "Validación final de actas. Si marcas correcto, el acta queda finalizada.";
+    if(u.perfil === "SUPERVISOR") subtitulo = "Consulta de actas de tu sede: escaneo y entrega física. Solo lectura.";
+    if(esJefaturaActas(u.perfil)) subtitulo = "Consulta general de actas: escaneo y entrega física. Solo lectura.";
+    if(esJefaturaAlmacenActas(u.perfil)) subtitulo = "Gestión por sede y por proceso: escaneo y entrega física.";
 
     mostrarPantalla(`
         ${estiloActas()}
@@ -179,34 +193,35 @@ async function cargarActas(){
     if(lista) lista.innerHTML = "Cargando actas...";
     try{
         await cargarResumenActas();
-        if(esJefaturaActas(u.perfil) && !esJefaturaAlmacenActas(u.perfil)){
-            lista.innerHTML = `<div class="actas-card">Vista Jefatura: solo resumen de actas por sede y cuadrilla.</div>`;
-            return;
-        }
         const data = await apiActas({accion:"listarActasEscaneadas", usuario:u.usuario});
-        if(!data.actas || data.actas.length === 0){
+        const actas = data.actas || [];
+        if(actas.length === 0){
             lista.innerHTML = `<div class="actas-card actas-empty">No hay actas registradas.</div>`;
             return;
         }
-        const vistaValidacion = esAlmacenActas(u.perfil) || esJefaturaAlmacenActas(u.perfil);
-        lista.innerHTML = vistaValidacion ? `
+
+        if(esJefaturaAlmacenActas(u.perfil)){
+            lista.innerHTML = vistaJefaturaAlmacenPorSedes(actas);
+            return;
+        }
+
+        if(esAlmacenActas(u.perfil)){
+            lista.innerHTML = vistaResponsableAlmacenPorProcesos(actas, u.sede);
+            return;
+        }
+
+        // Técnico, Supervisor y Jefatura operativa: consulta y estados, sin botones de validación.
+        lista.innerHTML = `
             <table class="actas-table">
-                <thead><tr><th>N.º Acta / Pedido</th><th>Cuadrilla</th><th>Sede</th><th>Ejecución</th><th>Escaneo</th><th>Entrega física</th><th>PDF</th><th>Acción</th></tr></thead>
-                <tbody>${data.actas.map(a => filaActaValidacionHtml(a)).join("")}</tbody>
+                <thead><tr><th>Fecha</th><th>N.º Acta</th><th>Código pedido</th><th>Cuadrilla / Sede</th><th>Ejecución</th><th>Escaneo</th><th>Entrega física</th><th>PDF</th><th>Detalle</th></tr></thead>
+                <tbody>${actas.map(a => filaActaLecturaHtml(a)).join("")}</tbody>
             </table>
-            <div class="actas-mobile">${data.actas.map(a => cardActaHtml(a)).join("")}</div>
-        ` : `
-            <table class="actas-table">
-                <thead><tr><th>Fecha</th><th>N.º Acta</th><th>Código pedido</th><th>Ejecución</th><th>Escaneo</th><th>Entrega física</th><th>PDF</th><th>Acción</th></tr></thead>
-                <tbody>${data.actas.map(a => filaActaHtml(a)).join("")}</tbody>
-            </table>
-            <div class="actas-mobile">${data.actas.map(a => cardActaHtml(a)).join("")}</div>
+            <div class="actas-mobile">${actas.map(a => cardActaLecturaHtml(a)).join("")}</div>
         `;
     }catch(err){
         lista.innerHTML = `<div class="actas-msg err">❌ ${err.message}</div>`;
     }
 }
-
 function badgeActa(a){
     const estado = normalizarActas(a.estado);
     const estadoVisible = normalizarActas(a.estadoVisibleTecnico || "");
@@ -232,12 +247,19 @@ function estaFinalizadaActa(a){
     return normalizarActas(a.estado) === "FINALIZADO" || normalizarActas(a.resultadoJefatura) === "CORRECTO" || normalizarActas(a.estadoVisibleTecnico) === "CORRECTO";
 }
 
-function botonesActa(a){
+function botonDetalleActa(a){
+    const id = (a.id || "").replace(/'/g,"\\'");
+    return `<button class="actas-btn sec" onclick="verDetalleActa('${id}')">Ver detalle</button>`;
+}
+
+function botonPdfActa(a){
+    return a.linkActa ? `<a class="actas-btn blue" href="${a.linkActa}" target="_blank" rel="noopener">Ver PDF</a>` : "";
+}
+
+function botonesEscaneoActa(a){
     const u = usuarioActualActas();
     const id = (a.id || "").replace(/'/g,"\\'");
-    const entrega = normalizarActas(a.estadoEntregaFisica || "PENDIENTE");
-    let html = `<button class="actas-btn sec" onclick="verDetalleActa('${id}')">Ver detalle</button>`;
-
+    let html = `${botonDetalleActa(a)} ${botonPdfActa(a)}`;
     if(esAlmacenActas(u.perfil) && !estaFinalizadaActa(a)){
         html += ` <button class="actas-btn ok" onclick="validarActa('${id}','CORRECTO')">Correcto</button>`;
         html += ` <button class="actas-btn warn" onclick="validarActa('${id}','OBSERVADO')">Observado</button>`;
@@ -246,65 +268,105 @@ function botonesActa(a){
         html += ` <button class="actas-btn ok" onclick="validarActa('${id}','CORRECTO')">Finalizar correcto</button>`;
         html += ` <button class="actas-btn warn" onclick="validarActa('${id}','OBSERVADO')">Observado</button>`;
     }
+    return html;
+}
 
+function botonesEntregaActa(a){
+    const u = usuarioActualActas();
+    const id = (a.id || "").replace(/'/g,"\\'");
+    const entrega = normalizarActas(a.estadoEntregaFisica || "PENDIENTE");
+    let html = `${botonDetalleActa(a)} ${botonPdfActa(a)}`;
     if((esAlmacenActas(u.perfil) || esJefaturaAlmacenActas(u.perfil)) && entrega !== "ENTREGADA"){
         html += ` <button class="actas-btn blue" onclick="cambiarEntregaFisicaActa('${id}','ENTREGADA')">Confirmar entrega física</button>`;
     }
     if(esJefaturaAlmacenActas(u.perfil) && entrega === "ENTREGADA"){
         html += ` <button class="actas-btn danger" onclick="cambiarEntregaFisicaActa('${id}','PENDIENTE')">Regresar a pendiente</button>`;
     }
+    return html;
+}
+
+function botonesLecturaActa(a){
+    const u = usuarioActualActas();
+    let html = `${botonDetalleActa(a)} ${botonPdfActa(a)}`;
     if(u.perfil === "TECNICO" && estaObservadaActa(a) && !estaFinalizadaActa(a)){
         html += ` <button class="actas-btn danger" onclick="mostrarFormularioActa('${limpiarHtmlActas(a.codigoPedido || "")}')">Reemplazar PDF</button>`;
     }
     return html;
 }
-
-function filaActaHtml(a){
+function filaActaLecturaHtml(a){
     return `<tr>
         <td>${fechaVisibleActas(a.fechaGestion || a.fechaRegistro)}</td>
         <td><b>${limpiarHtmlActas(a.numeroActa || "-")}</b></td>
         <td><b>${limpiarHtmlActas(a.codigoPedido || "-")}</b><br><small>Orden: ${limpiarHtmlActas(a.codigoOrden || "-")}</small></td>
+        <td>${limpiarHtmlActas(a.cuadrilla || "-")}<br><small>${limpiarHtmlActas(a.sede || "-")}</small></td>
         <td>${limpiarHtmlActas(a.tipoEjecucion || "-")}</td>
         <td>${badgeActa(a)}</td>
         <td>${etiquetaEntregaFisicaActas(a.estadoEntregaFisica)}</td>
         <td>${a.linkActa ? `<a href="${a.linkActa}" target="_blank" rel="noopener">Ver PDF</a>` : "-"}</td>
-        <td>${botonesActa(a)}</td>
+        <td>${botonesLecturaActa(a)}</td>
     </tr>`;
 }
 
-function filaActaValidacionHtml(a){
-    return `<tr>
-        <td><b>Acta: ${limpiarHtmlActas(a.numeroActa || "-")}</b><br><small>Pedido: ${limpiarHtmlActas(a.codigoPedido || "-")}</small></td>
-        <td>${limpiarHtmlActas(a.cuadrilla || "-")}</td>
-        <td>${limpiarHtmlActas(a.sede || "-")}</td>
-        <td>${limpiarHtmlActas(a.tipoEjecucion || "-")}<br><small>${limpiarHtmlActas(a.tipoPartida || "-")}</small></td>
-        <td>${estadoGeneralActas(a)}<br><small>Almacén: ${normalizarActas(a.resultadoAlmacen || "PENDIENTE")} · Jefatura: ${normalizarActas(a.resultadoJefatura || "PENDIENTE")}</small></td>
-        <td>${etiquetaEntregaFisicaActas(a.estadoEntregaFisica)}${a.confirmadoFisicoPor ? `<br><small>${limpiarHtmlActas(a.confirmadoFisicoPor)}</small>` : ""}</td>
-        <td>${a.linkActa ? `<a href="${a.linkActa}" target="_blank" rel="noopener">Ver PDF</a>` : "-"}</td>
-        <td>${botonesActa(a)}</td>
-    </tr>`;
-}
-
-function cardActaHtml(a){
+function cardActaLecturaHtml(a){
     const motivo = motivoVisibleActa(a);
     return `<div class="actas-card">
         <div style="display:flex;justify-content:space-between;gap:8px;align-items:flex-start;">
-            <div><b>ACTA N.º ${limpiarHtmlActas(a.numeroActa || "-")}</b><br><small>Fecha: ${fechaVisibleActas(a.fechaGestion || a.fechaRegistro)}</small></div>
-            <small>${limpiarHtmlActas(a.tipoEjecucion || "-")}</small>
+            <div><b>ACTA N.º ${limpiarHtmlActas(a.numeroActa || "-")}</b><br><small>${fechaVisibleActas(a.fechaGestion || a.fechaRegistro)}</small></div>
+            <small>${limpiarHtmlActas(a.sede || "-")}</small>
         </div>
-        <div class="actas-small" style="margin-top:7px;"><b>Código de pedido:</b> ${limpiarHtmlActas(a.codigoPedido || "-")}</div>
+        <div class="actas-small" style="margin-top:7px;"><b>Código:</b> ${limpiarHtmlActas(a.codigoPedido || "-")} · <b>Cuadrilla:</b> ${limpiarHtmlActas(a.cuadrilla || "-")}</div>
+        <div class="actas-small"><b>Tipo:</b> ${limpiarHtmlActas(a.tipoEjecucion || "-")}</div>
         <div class="actas-dual">
             <div class="actas-statebox"><b>Validación de escaneo</b>${badgeActa(a)}</div>
             <div class="actas-statebox"><b>Entrega física</b>${etiquetaEntregaFisicaActas(a.estadoEntregaFisica)}</div>
         </div>
         ${motivo ? `<div class="actas-msg err">${limpiarHtmlActas(motivo)}</div>` : ""}
-        <div style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap;">
-            ${botonesActa(a)}
-            ${a.linkActa ? `<a class="actas-btn blue" href="${a.linkActa}" target="_blank" rel="noopener">Ver PDF</a>` : ""}
-        </div>
+        <div style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap;">${botonesLecturaActa(a)}</div>
     </div>`;
 }
 
+function tarjetaProcesoActa(a, proceso){
+    const esEscaneo = proceso === "ESCANEO";
+    const estado = esEscaneo ? badgeActa(a) : etiquetaEntregaFisicaActas(a.estadoEntregaFisica);
+    const acciones = esEscaneo ? botonesEscaneoActa(a) : botonesEntregaActa(a);
+    return `<div class="actas-process-card">
+        <div class="actas-process-head">
+            <div><b>Acta N.º ${limpiarHtmlActas(a.numeroActa || "-")}</b><div class="actas-process-meta">Pedido: ${limpiarHtmlActas(a.codigoPedido || "-")}<br>Cuadrilla: ${limpiarHtmlActas(a.cuadrilla || "-")}<br>${limpiarHtmlActas(a.tipoEjecucion || "-")} · ${fechaVisibleActas(a.fechaGestion || a.fechaRegistro)}</div></div>
+            <div>${estado}</div>
+        </div>
+        <div style="display:flex;gap:7px;flex-wrap:wrap;">${acciones}</div>
+    </div>`;
+}
+
+function bloqueProcesoActas(titulo, actas, proceso, abierto){
+    return `<details class="actas-proceso" ${abierto ? "open" : ""}>
+        <summary><span>${titulo}</span><span class="actas-count">${actas.length}</span></summary>
+        <div class="actas-proceso-body">${actas.length ? actas.map(a => tarjetaProcesoActa(a, proceso)).join("") : `<div class="actas-empty">No hay actas en esta sección.</div>`}</div>
+    </details>`;
+}
+
+function bloqueSedeActas(sede, actas, abierto){
+    const nombre = normalizarActas(sede);
+    return `<details class="actas-sede" ${abierto ? "open" : ""}>
+        <summary><span>📍 ${limpiarHtmlActas(nombre)}</span><span class="actas-count">${actas.length} actas</span></summary>
+        <div class="actas-sede-body">
+            ${bloqueProcesoActas("📄 VALIDACIÓN DE ESCANEO", actas, "ESCANEO", true)}
+            ${bloqueProcesoActas("📦 ENTREGA FÍSICA", actas, "ENTREGA", false)}
+        </div>
+    </details>`;
+}
+
+function vistaJefaturaAlmacenPorSedes(actas){
+    const sedes = ["CHICLAYO","PIURA","TRUJILLO"];
+    return `<div class="actas-msg info">Seleccione una sede y luego el proceso de Escaneo o Entrega Física.</div>` +
+        sedes.map((sede, i) => bloqueSedeActas(sede, actas.filter(a => normalizarActas(a.sede) === sede), i === 0)).join("");
+}
+
+function vistaResponsableAlmacenPorProcesos(actas, sedeUsuario){
+    const sede = normalizarActas(sedeUsuario || "SIN SEDE");
+    const propias = actas.filter(a => normalizarActas(a.sede) === sede);
+    return `<div class="actas-msg info">Responsable de Almacén · ${limpiarHtmlActas(sede)}. Solo puede gestionar actas de su sede.</div>` + bloqueSedeActas(sede, propias, true);
+}
 async function cargarResumenActas(){
     const u = usuarioActualActas();
     const cont = document.getElementById("actasResumen");
