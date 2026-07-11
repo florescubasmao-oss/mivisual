@@ -2457,7 +2457,8 @@ function encabezadoActasEscaneadas() {
     "VALIDADO_ALMACEN_POR","FECHA_VALIDACION_ALMACEN","HORA_VALIDACION_ALMACEN","RESULTADO_JEFATURA",
     "MOTIVO_JEFATURA","VALIDADO_JEFATURA_POR","FECHA_VALIDACION_JEFATURA","HORA_VALIDACION_JEFATURA",
     "VERSION","ESTADO_ENTREGA_FISICA","CONFIRMADO_FISICO_POR","PERFIL_CONFIRMACION_FISICA",
-    "FECHA_CONFIRMACION_FISICA","HORA_CONFIRMACION_FISICA","MOTIVO_REVERSION_FISICA"
+    "FECHA_CONFIRMACION_FISICA","HORA_CONFIRMACION_FISICA","MOTIVO_REVERSION_FISICA",
+    "ORIGEN_REGISTRO","MOTIVO_ACTA_FALTANTE","REGISTRADO_FALTANTE_POR","FECHA_REGISTRO_FALTANTE","HORA_REGISTRO_FALTANTE"
   ]];
 }
 
@@ -2466,9 +2467,9 @@ function asegurarHojaActasEscaneadas() {
   let hoja = ss.getSheetByName(HOJA_ACTAS_ESCANEADAS);
   if (!hoja) hoja = ss.insertSheet(HOJA_ACTAS_ESCANEADAS);
   if (hoja.getLastRow() === 0 || !hoja.getRange(1, 1).getValue()) {
-    hoja.getRange(1, 1, 1, 35).setValues(encabezadoActasEscaneadas());
+    hoja.getRange(1, 1, 1, 40).setValues(encabezadoActasEscaneadas());
   } else if (hoja.getLastColumn() >= 35) {
-    hoja.getRange(1, 1, 1, 35).setValues(encabezadoActasEscaneadas());
+    hoja.getRange(1, 1, 1, 40).setValues(encabezadoActasEscaneadas());
   }
   return hoja;
 }
@@ -2559,10 +2560,10 @@ function guardarPdfActaDrive(data, sede, cuadrilla, tipoEjecucion, fechaGestion,
 }
 
 function obtenerValorActaCompat(fila, nombreCampo) {
-  const actual = {id:0,fechaRegistro:1,horaRegistro:2,sede:3,cuadrilla:4,supervisor:5,tecnico:6,fechaGestion:7,tipoEjecucion:8,tipoPartida:9,codigoOrden:10,codigoPedido:11,numeroActa:12,dni:13,cliente:14,nombreArchivo:15,linkActa:16,estado:17,resultadoAlmacen:18,motivoAlmacen:19,validadoAlmacenPor:20,fechaValidacionAlmacen:21,horaValidacionAlmacen:22,resultadoJefatura:23,motivoJefatura:24,validadoJefaturaPor:25,fechaValidacionJefatura:26,horaValidacionJefatura:27,version:28,estadoEntregaFisica:29,confirmadoFisicoPor:30,perfilConfirmacionFisica:31,fechaConfirmacionFisica:32,horaConfirmacionFisica:33,motivoReversionFisica:34};
+  const actual = {id:0,fechaRegistro:1,horaRegistro:2,sede:3,cuadrilla:4,supervisor:5,tecnico:6,fechaGestion:7,tipoEjecucion:8,tipoPartida:9,codigoOrden:10,codigoPedido:11,numeroActa:12,dni:13,cliente:14,nombreArchivo:15,linkActa:16,estado:17,resultadoAlmacen:18,motivoAlmacen:19,validadoAlmacenPor:20,fechaValidacionAlmacen:21,horaValidacionAlmacen:22,resultadoJefatura:23,motivoJefatura:24,validadoJefaturaPor:25,fechaValidacionJefatura:26,horaValidacionJefatura:27,version:28,estadoEntregaFisica:29,confirmadoFisicoPor:30,perfilConfirmacionFisica:31,fechaConfirmacionFisica:32,horaConfirmacionFisica:33,motivoReversionFisica:34,origenRegistro:35,motivoActaFaltante:36,registradoFaltantePor:37,fechaRegistroFaltante:38,horaRegistroFaltante:39};
   const anterior28 = {id:0,fechaRegistro:1,horaRegistro:2,sede:3,cuadrilla:4,supervisor:5,tecnico:6,fechaGestion:7,tipoEjecucion:8,tipoPartida:9,codigoOrden:10,codigoPedido:11,dni:12,cliente:13,nombreArchivo:14,linkActa:15,estado:16,resultadoAlmacen:17,motivoAlmacen:18,validadoAlmacenPor:19,fechaValidacionAlmacen:20,horaValidacionAlmacen:21,resultadoJefatura:22,motivoJefatura:23,validadoJefaturaPor:24,fechaValidacionJefatura:25,horaValidacionJefatura:26,version:27};
   const antigua22 = {id:0,fechaRegistro:1,horaRegistro:2,sede:3,cuadrilla:4,supervisor:5,tecnico:6,fechaGestion:7,tipoPartida:8,codigoOrden:9,codigoPedido:10,dni:11,cliente:12,nombreArchivo:13,linkActa:14,estado:15,resultadoJefatura:16,motivoJefatura:17,validadoJefaturaPor:18,fechaValidacionJefatura:19,horaValidacionJefatura:20,version:21};
-  const mapa = fila.length >= 35 ? actual : (fila.length >= 28 ? anterior28 : antigua22);
+  const mapa = fila.length >= 40 ? actual : (fila.length >= 28 ? anterior28 : antigua22);
   const idx = mapa[nombreCampo];
   return idx === undefined ? "" : fila[idx];
 }
@@ -2595,9 +2596,10 @@ function registrarActaEscaneada(data) {
   const existente = buscarFilaActaPorPedido(codigoPedido);
   if (existente) {
     const obj = existente.objeto || filaActaAObjeto(existente.datos);
+    const esFaltantePendiente = normalizarTexto(obj.origenRegistro) === "ALMACEN" && !obj.linkActa;
     if (normalizarTexto(obj.estado) === "FINALIZADO" || normalizarTexto(obj.resultadoJefatura) === "CORRECTO") throw new Error("Esta acta ya está FINALIZADA. No se puede volver a subir.");
-    if (!(normalizarTexto(obj.resultadoAlmacen) === "OBSERVADO" || normalizarTexto(obj.resultadoJefatura) === "OBSERVADO")) throw new Error("Ya existe un acta pendiente para este Código de Pedido. Solo se puede reemplazar cuando esté OBSERVADA.");
-    enviarArchivoAnteriorActaPapelera(obj.linkActa);
+    if (!esFaltantePendiente && !(normalizarTexto(obj.resultadoAlmacen) === "OBSERVADO" || normalizarTexto(obj.resultadoJefatura) === "OBSERVADO")) throw new Error("Ya existe una acta pendiente para este Código de Pedido. Solo se puede completar si fue registrada como faltante o reemplazar cuando esté OBSERVADA.");
+    if (obj.linkActa) enviarArchivoAnteriorActaPapelera(obj.linkActa);
   }
   const anterior = existente ? (existente.objeto || filaActaAObjeto(existente.datos)) : {};
   const version = (Number(anterior.version) || 0) + 1;
@@ -2609,9 +2611,11 @@ function registrarActaEscaneada(data) {
     sede, cuadrilla, supervisor, usuario.usuario, fechaGestion, tipoEjecucion, tipoPartida, codigoOrden, codigoPedido, numeroActa,
     dni, cliente, nombreArchivo, link, "PENDIENTE", "", "", "", "", "", "", "", "", "", "", version,
     anterior.estadoEntregaFisica || "PENDIENTE", anterior.confirmadoFisicoPor || "", anterior.perfilConfirmacionFisica || "",
-    anterior.fechaConfirmacionFisica || "", anterior.horaConfirmacionFisica || "", anterior.motivoReversionFisica || ""
+    anterior.fechaConfirmacionFisica || "", anterior.horaConfirmacionFisica || "", anterior.motivoReversionFisica || "",
+    anterior.origenRegistro || "TECNICO", anterior.motivoActaFaltante || "", anterior.registradoFaltantePor || "",
+    anterior.fechaRegistroFaltante || "", anterior.horaRegistroFaltante || ""
   ];
-  if (existente) hoja.getRange(existente.fila, 1, 1, 35).setValues([filaValores]); else hoja.appendRow(filaValores);
+  if (existente) hoja.getRange(existente.fila, 1, 1, 40).setValues([filaValores]); else hoja.appendRow(filaValores);
   return {ok:true, modulo:"ACTAS", accion:existente?"REEMPLAZAR":"REGISTRAR", id:filaValores[0], estado:"PENDIENTE", estadoEntregaFisica:filaValores[29], numeroActa, tipoEjecucion, tipoPartida, version, linkActa:link, nombreArchivo};
 }
 
@@ -2624,7 +2628,7 @@ function filaActaAObjeto(fila) {
   if (normalizarTexto(resultadoJefatura) === "CORRECTO" || normalizarTexto(estado) === "FINALIZADO") estadoVisibleTecnico = "FINALIZADO";
   else if (normalizarTexto(resultadoJefatura) === "OBSERVADO" || normalizarTexto(resultadoAlmacen) === "OBSERVADO") estadoVisibleTecnico = "OBSERVADO";
   return {
-    id:g("id"),fechaRegistro:g("fechaRegistro"),horaRegistro:g("horaRegistro"),sede:g("sede"),cuadrilla:g("cuadrilla"),supervisor:g("supervisor"),tecnico:g("tecnico"),fechaGestion:g("fechaGestion"),tipoEjecucion,tipoPartida,codigoOrden:g("codigoOrden"),codigoPedido:g("codigoPedido"),numeroActa:g("numeroActa"),dni:g("dni"),cliente:g("cliente"),nombreArchivo:g("nombreArchivo"),linkActa:g("linkActa"),estado,estadoVisibleTecnico,resultadoAlmacen,motivoAlmacen:g("motivoAlmacen"),validadoAlmacenPor:g("validadoAlmacenPor"),fechaValidacionAlmacen:g("fechaValidacionAlmacen"),horaValidacionAlmacen:g("horaValidacionAlmacen"),resultadoJefatura,motivoJefatura:g("motivoJefatura"),validadoJefaturaPor:g("validadoJefaturaPor"),fechaValidacionJefatura:g("fechaValidacionJefatura"),horaValidacionJefatura:g("horaValidacionJefatura"),version:g("version"),estadoEntregaFisica:g("estadoEntregaFisica")||"PENDIENTE",confirmadoFisicoPor:g("confirmadoFisicoPor"),perfilConfirmacionFisica:g("perfilConfirmacionFisica"),fechaConfirmacionFisica:g("fechaConfirmacionFisica"),horaConfirmacionFisica:g("horaConfirmacionFisica"),motivoReversionFisica:g("motivoReversionFisica"),resultadoValidacion:resultadoJefatura||resultadoAlmacen,motivoObservacion:g("motivoJefatura")||g("motivoAlmacen"),validadoPor:g("validadoJefaturaPor")||g("validadoAlmacenPor")
+    id:g("id"),fechaRegistro:g("fechaRegistro"),horaRegistro:g("horaRegistro"),sede:g("sede"),cuadrilla:g("cuadrilla"),supervisor:g("supervisor"),tecnico:g("tecnico"),fechaGestion:g("fechaGestion"),tipoEjecucion,tipoPartida,codigoOrden:g("codigoOrden"),codigoPedido:g("codigoPedido"),numeroActa:g("numeroActa"),dni:g("dni"),cliente:g("cliente"),nombreArchivo:g("nombreArchivo"),linkActa:g("linkActa"),estado,estadoVisibleTecnico,resultadoAlmacen,motivoAlmacen:g("motivoAlmacen"),validadoAlmacenPor:g("validadoAlmacenPor"),fechaValidacionAlmacen:g("fechaValidacionAlmacen"),horaValidacionAlmacen:g("horaValidacionAlmacen"),resultadoJefatura,motivoJefatura:g("motivoJefatura"),validadoJefaturaPor:g("validadoJefaturaPor"),fechaValidacionJefatura:g("fechaValidacionJefatura"),horaValidacionJefatura:g("horaValidacionJefatura"),version:g("version"),estadoEntregaFisica:g("estadoEntregaFisica")||"PENDIENTE",confirmadoFisicoPor:g("confirmadoFisicoPor"),perfilConfirmacionFisica:g("perfilConfirmacionFisica"),fechaConfirmacionFisica:g("fechaConfirmacionFisica"),horaConfirmacionFisica:g("horaConfirmacionFisica"),motivoReversionFisica:g("motivoReversionFisica"),origenRegistro:g("origenRegistro")||"TECNICO",motivoActaFaltante:g("motivoActaFaltante"),registradoFaltantePor:g("registradoFaltantePor"),fechaRegistroFaltante:g("fechaRegistroFaltante"),horaRegistroFaltante:g("horaRegistroFaltante"),esActaFaltante:normalizarTexto(g("origenRegistro"))==="ALMACEN"&&!g("linkActa"),resultadoValidacion:resultadoJefatura||resultadoAlmacen,motivoObservacion:g("motivoJefatura")||g("motivoAlmacen"),validadoPor:g("validadoJefaturaPor")||g("validadoAlmacenPor")
   };
 }
 
@@ -2660,6 +2664,7 @@ function validarActaEscaneada(data) {
   if(resultado==="OBSERVADO"&&!motivo) throw new Error("Debe ingresar el motivo de observación");
   if(!(esPerfilAlmacen(usuario.perfil)||esPerfilJefaturaAlmacen(usuario.perfil))) throw new Error("Solo Almacén o Jefatura Almacén pueden validar actas");
   const e=buscarActaPorId(id), hoja=e.hoja, fila=e.fila, item=e.item, ahora=new Date();
+  if (!item.linkActa) throw new Error("El técnico aún no ha subido el PDF del acta faltante");
   if(esPerfilAlmacen(usuario.perfil)&&normalizarTexto(usuario.sede)!==normalizarTexto(item.sede)) throw new Error("Almacén solo puede validar actas de su sede");
   if(esPerfilAlmacen(usuario.perfil)) {
     hoja.getRange(fila,19).setValue(resultado); hoja.getRange(fila,20).setValue(resultado==="OBSERVADO"?motivo:""); hoja.getRange(fila,21).setValue(usuario.usuario); hoja.getRange(fila,22).setValue(ahora); hoja.getRange(fila,23).setValue(ahora); hoja.getRange(fila,22).setNumberFormat("dd/mm/yyyy"); hoja.getRange(fila,23).setNumberFormat("hh:mm:ss"); hoja.getRange(fila,18).setValue("PENDIENTE");
@@ -2675,6 +2680,7 @@ function actualizarEntregaFisicaActa(data) {
   if(!["PENDIENTE","ENTREGADA"].includes(estado)) throw new Error("Estado de entrega física no válido");
   if(!(esPerfilAlmacen(usuario.perfil)||esPerfilJefaturaAlmacen(usuario.perfil))) throw new Error("Solo Almacén o Jefatura Almacén pueden gestionar la entrega física");
   const e=buscarActaPorId(id), hoja=e.hoja, fila=e.fila, item=e.item;
+  if (!item.linkActa) throw new Error("El técnico aún no ha completado el acta faltante");
   if(esPerfilAlmacen(usuario.perfil)&&normalizarTexto(usuario.sede)!==normalizarTexto(item.sede)) throw new Error("Almacén solo puede gestionar actas de su sede");
   if(estado==="PENDIENTE"&&!esPerfilJefaturaAlmacen(usuario.perfil)) throw new Error("Solo Jefatura de Almacén puede regresar una entrega a pendiente");
   if(estado==="PENDIENTE"&&!motivo) throw new Error("Debe ingresar el motivo de reversión");
@@ -2688,6 +2694,66 @@ function actualizarEntregaFisicaActa(data) {
   hoja.getRange(fila,35).setValue(estado==="PENDIENTE"?motivo:"");
   hoja.getRange(fila,33).setNumberFormat("dd/mm/yyyy"); hoja.getRange(fila,34).setNumberFormat("hh:mm:ss");
   return {ok:true,modulo:"ACTAS",accion:"ENTREGA_FISICA",id,estado,confirmadoPor:usuario.usuario,perfil:usuario.perfil};
+}
+
+
+function listarCuadrillasActasFaltantes(data) {
+  const usuario = obtenerUsuarioApp(data.usuario);
+  if (!(esPerfilAlmacen(usuario.perfil) || esPerfilJefaturaAlmacen(usuario.perfil))) {
+    throw new Error("Solo Almacén o Jefatura Almacén pueden consultar cuadrillas");
+  }
+  const mapa = obtenerMapaUsuarios();
+  const lista = [];
+  Object.keys(mapa).forEach(c => {
+    const item = mapa[c] || {};
+    const cuad = normalizarCuadrilla(c);
+    const sede = normalizarTexto(item.sede || "");
+    if (!cuad || normalizarTexto(item.perfil) !== "TECNICO") return;
+    if (normalizarTexto(item.estado || "ACTIVO") !== "ACTIVO") return;
+    if (esPerfilAlmacen(usuario.perfil) && sede !== normalizarTexto(usuario.sede)) return;
+    lista.push({cuadrilla:cuad,sede,supervisor:item.usuarioSupervisor||"",tecnico:item.usuario||""});
+  });
+  lista.sort((a,b)=>a.sede.localeCompare(b.sede)||a.cuadrilla.localeCompare(b.cuadrilla));
+  return {ok:true,modulo:"ACTAS",accion:"LISTAR_CUADRILLAS_FALTANTES",cuadrillas:lista};
+}
+
+function registrarActaFaltante(data) {
+  const hoja = asegurarHojaActasEscaneadas();
+  const usuario = obtenerUsuarioApp(data.usuario);
+  if (!(esPerfilAlmacen(usuario.perfil) || esPerfilJefaturaAlmacen(usuario.perfil))) {
+    throw new Error("Solo Almacén o Jefatura Almacén pueden registrar actas faltantes");
+  }
+  const cuadrilla = normalizarCuadrilla(data.cuadrilla);
+  if (!cuadrilla) throw new Error("Debe seleccionar una cuadrilla");
+  const dc = obtenerDatosCuadrillaApp(cuadrilla);
+  const sede = normalizarTexto(dc.sede || "");
+  if (esPerfilAlmacen(usuario.perfil) && sede !== normalizarTexto(usuario.sede)) {
+    throw new Error("Almacén solo puede registrar faltantes de su sede");
+  }
+  const fechaGestion = fechaGestionActaTexto(data.fechaGestion || data.fecha_gestion);
+  const tipoPartida = normalizarTexto(data.tipoPartida || data.tipo_partida);
+  if (!tipoPartida) throw new Error("Debe seleccionar el tipo de partida");
+  const tipoEjecucion = normalizarTipoEjecucionActa(data.tipoEjecucion || data.tipo_ejecucion, tipoPartida);
+  const codigoOrden = (data.codigoOrden || data.codigo_orden || "").toString().trim();
+  const codigoPedido = (data.codigoPedido || data.codigo_pedido || "").toString().trim();
+  const numeroActa = (data.numeroActa || data.numero_acta || "").toString().trim();
+  const motivo = (data.motivoActaFaltante || data.motivo || "").toString().trim();
+  if (!codigoOrden) throw new Error("Debe ingresar el código de orden");
+  if (!codigoPedido) throw new Error("Debe ingresar el código de pedido");
+  if (!motivo) throw new Error("Debe ingresar el motivo del acta faltante");
+  if (buscarFilaActaPorPedido(codigoPedido)) throw new Error("Ya existe un registro para este Código de Pedido");
+  const ahora = new Date();
+  const fila = [
+    generarIdActa(codigoPedido),Utilities.formatDate(ahora,Session.getScriptTimeZone(),"dd/MM/yyyy"),Utilities.formatDate(ahora,Session.getScriptTimeZone(),"HH:mm:ss"),
+    sede,cuadrilla,dc.usuarioSupervisor||"",dc.usuario||"",fechaGestion,tipoEjecucion,tipoPartida,codigoOrden,codigoPedido,numeroActa,
+    "","","","","PENDIENTE","","","","","","","","","","",0,
+    "PENDIENTE","","","","","","ALMACEN",motivo,usuario.usuario,ahora,ahora
+  ];
+  hoja.appendRow(fila);
+  const n = hoja.getLastRow();
+  hoja.getRange(n,39).setNumberFormat("dd/mm/yyyy");
+  hoja.getRange(n,40).setNumberFormat("hh:mm:ss");
+  return {ok:true,modulo:"ACTAS",accion:"REGISTRAR_FALTANTE",id:fila[0],codigoPedido,cuadrilla,sede};
 }
 
 function resumenActasEscaneadas(data) {
@@ -3120,6 +3186,14 @@ function doPost(e) {
         .setMimeType(ContentService.MimeType.JSON);
     }
 
+
+    if (data.accion === "registrarActaFaltante") {
+      return ContentService.createTextOutput(JSON.stringify(registrarActaFaltante(data))).setMimeType(ContentService.MimeType.JSON);
+    }
+
+    if (data.accion === "listarCuadrillasActasFaltantes") {
+      return ContentService.createTextOutput(JSON.stringify(listarCuadrillasActasFaltantes(data))).setMimeType(ContentService.MimeType.JSON);
+    }
 
     if (data.accion === "registrarActaEscaneada") {
       return ContentService.createTextOutput(JSON.stringify(registrarActaEscaneada(data))).setMimeType(ContentService.MimeType.JSON);

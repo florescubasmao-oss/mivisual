@@ -1,4 +1,4 @@
-// MI VISUAL - Gestión de Actas v92: tarjetas compactas, acciones alineadas y sedes persistentes
+// MI VISUAL - Gestión de Actas v93: actas faltantes registradas por Almacén
 
 const API_ACTAS = "https://script.google.com/macros/s/AKfycbzcbjCLweJNgZXDerdzmMN7Lwotc1G8NWdzoPkaLNGDivAgpYxDkq78xZwPRioSB4XY/exec";
 
@@ -163,6 +163,11 @@ function estiloActas(){
         .actas-validation-grid{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:6px;align-items:start;}
         .actas-validation-col{border:1px dashed #cbd5e1;border-radius:9px;padding:6px;background:#fff;min-height:52px;}
         .actas-primary-actions{margin-top:5px;}
+        .actas-faltante{border:2px solid #f59e0b!important;background:#fff7ed!important;box-shadow:0 6px 16px rgba(245,158,11,.18)!important;}
+        .actas-faltante .actas-unified-state,.actas-faltante .actas-statebox{background:#fffbeb;border-color:#fdba74;}
+        .actas-faltante-tag{display:inline-block;background:#f97316;color:#fff;border-radius:999px;padding:4px 8px;font-size:10px;font-weight:900;margin-bottom:5px;}
+        .actas-btn.orange{background:#f97316;color:#fff;}
+
         @media(max-width:520px){.actas-validation-grid{grid-template-columns:1fr}.actas-unified-states{grid-template-columns:1fr 1fr}.actas-compact-actions .actas-btn{font-size:9px;padding:6px 7px;}}
         .actas-readonly{background:#f1f5f9;color:#475569;border-radius:10px;padding:8px 10px;font-size:12px;font-weight:800;margin-top:8px;}
         .actas-mobile{display:none;}
@@ -189,6 +194,7 @@ function mostrarGestionActas(){
             </div>
             <div class="actas-actions">
                 ${u.perfil === "TECNICO" ? `<button class="actas-btn ok" onclick="mostrarFormularioActa()">+ Subir Acta PDF</button>` : ""}
+                ${(esAlmacenActas(u.perfil) || esJefaturaAlmacenActas(u.perfil)) ? `<button class="actas-btn orange" onclick="mostrarFormularioActaFaltante()">⚠ Registrar acta faltante</button>` : ""}
                 <button class="actas-btn sec" onclick="cargarActas()">🔄 Actualizar</button>
             </div>
             <div id="actasResumen"></div>
@@ -322,13 +328,19 @@ function botonesEntregaActa(a){
 function botonesLecturaActa(a){
     const u = usuarioActualActas();
     let html = `${botonDetalleActa(a)} ${botonPdfActa(a)}`;
-    if(u.perfil === "TECNICO" && estaObservadaActa(a) && !estaFinalizadaActa(a)){
+    if(u.perfil === "TECNICO" && esActaFaltantePendiente(a)){
+        html += ` <button class="actas-btn orange" onclick="mostrarFormularioActa('${limpiarHtmlActas(a.codigoPedido || "")}')">Completar acta faltante</button>`;
+    }else if(u.perfil === "TECNICO" && estaObservadaActa(a) && !estaFinalizadaActa(a)){
         html += ` <button class="actas-btn danger" onclick="mostrarFormularioActa('${limpiarHtmlActas(a.codigoPedido || "")}')">Reemplazar PDF</button>`;
     }
     return html;
 }
+function esActaFaltantePendiente(a){
+    return normalizarActas(a.origenRegistro) === "ALMACEN" && !a.linkActa;
+}
+
 function filaActaLecturaHtml(a){
-    return `<tr>
+    return `<tr ${esActaFaltantePendiente(a) ? `style="background:#fff7ed"` : ""}>
         <td>${fechaVisibleActas(a.fechaGestion || a.fechaRegistro)}</td>
         <td><b>${limpiarHtmlActas(a.numeroActa || "-")}</b></td>
         <td><b>${limpiarHtmlActas(a.codigoPedido || "-")}</b><br><small>Orden: ${limpiarHtmlActas(a.codigoOrden || "-")}</small></td>
@@ -343,9 +355,9 @@ function filaActaLecturaHtml(a){
 
 function cardActaLecturaHtml(a){
     const motivo = motivoVisibleActa(a);
-    return `<div class="actas-card">
+    return `<div class="actas-card ${esActaFaltantePendiente(a) ? "actas-faltante" : ""}">
         <div style="display:flex;justify-content:space-between;gap:8px;align-items:flex-start;">
-            <div><b>ACTA N.º ${limpiarHtmlActas(a.numeroActa || "-")}</b><br><small>${fechaVisibleActas(a.fechaGestion || a.fechaRegistro)}</small></div>
+            <div>${esActaFaltantePendiente(a) ? `<span class="actas-faltante-tag">ACTA FALTANTE</span><br>` : ""}<b>ACTA N.º ${limpiarHtmlActas(a.numeroActa || "-")}</b><br><small>${fechaVisibleActas(a.fechaGestion || a.fechaRegistro)}</small></div>
             <small>${limpiarHtmlActas(a.sede || "-")}</small>
         </div>
         <div class="actas-small" style="margin-top:7px;"><b>Código:</b> ${limpiarHtmlActas(a.codigoPedido || "-")} · <b>Cuadrilla:</b> ${limpiarHtmlActas(a.cuadrilla || "-")}</div>
@@ -360,6 +372,7 @@ function cardActaLecturaHtml(a){
 }
 
 function accionesEscaneoCompactas(a){
+    if(esActaFaltantePendiente(a)) return "";
     const u = usuarioActualActas();
     const id = (a.id || "").replace(/'/g,"\\'");
     let html = "";
@@ -375,6 +388,7 @@ function accionesEscaneoCompactas(a){
 }
 
 function accionesEntregaCompactas(a){
+    if(esActaFaltantePendiente(a)) return "";
     const u = usuarioActualActas();
     const id = (a.id || "").replace(/'/g,"\\'");
     const entrega = normalizarActas(a.estadoEntregaFisica || "PENDIENTE");
@@ -391,9 +405,10 @@ function accionesEntregaCompactas(a){
 function tarjetaActaGestionUnificada(a){
     const escaneoBtns = accionesEscaneoCompactas(a);
     const entregaBtns = accionesEntregaCompactas(a);
-    return `<div class="actas-process-card" data-acta-id="${limpiarHtmlActas(a.id || "")}">
+    return `<div class="actas-process-card ${esActaFaltantePendiente(a) ? "actas-faltante" : ""}" data-acta-id="${limpiarHtmlActas(a.id || "")}">
         <div class="actas-process-head">
             <div>
+                ${esActaFaltantePendiente(a) ? `<span class="actas-faltante-tag">ACTA FALTANTE · PENDIENTE DEL TÉCNICO</span>` : ""}
                 <div class="actas-card-title">Acta N.º ${limpiarHtmlActas(a.numeroActa || "-")}</div>
                 <div class="actas-process-meta">
                     Pedido: ${limpiarHtmlActas(a.codigoPedido || "-")} · ${limpiarHtmlActas(a.tipoEjecucion || "-")}<br>
@@ -471,6 +486,14 @@ function resumenTablasActas(data){
 
 async function mostrarFormularioActa(codigoPedidoPrefill){
     const u = usuarioActualActas();
+    let actaPrefill = null;
+    if(codigoPedidoPrefill){
+        try{
+            const data = await apiActas({accion:"listarActasEscaneadas", usuario:u.usuario});
+            actaPrefill = (data.actas || []).find(a => (a.codigoPedido || "").toString() === codigoPedidoPrefill.toString()) || null;
+        }catch(e){}
+    }
+    const esFaltante = !!(actaPrefill && esActaFaltantePendiente(actaPrefill));
     if(u.perfil !== "TECNICO"){
         mostrarPantalla(`${estiloActas()}<div class="actas-wrap"><div class="actas-msg err">Solo el técnico puede subir actas.</div></div>`);
         return;
@@ -478,34 +501,99 @@ async function mostrarFormularioActa(codigoPedidoPrefill){
     mostrarPantalla(`
         ${estiloActas()}
         <div class="actas-wrap">
-            <div class="actas-head"><h2>📄 ${codigoPedidoPrefill ? "Reemplazar Acta Observada" : "Subir Acta Escaneada"}</h2><p>Solo se permite archivo PDF. Si el acta fue observada, el nuevo PDF reemplazará al anterior.</p></div>
+            <div class="actas-head"><h2>📄 ${esFaltante ? "Completar Acta Faltante" : (codigoPedidoPrefill ? "Reemplazar Acta Observada" : "Subir Acta Escaneada")}</h2><p>Solo se permite archivo PDF. Si el acta fue registrada como faltante, completa los datos y adjunta el PDF. Si fue observada, el nuevo PDF reemplazará al anterior.</p></div>
             <form id="formActa" onsubmit="event.preventDefault(); guardarActa(this.querySelector('[data-guardar]'))">
                 <div class="actas-grid">
                     <div class="actas-field"><label>Sede</label><input value="${limpiarHtmlActas(u.sede)}" disabled></div>
                     <div class="actas-field"><label>Cuadrilla</label><input value="${limpiarHtmlActas(u.cuadrilla)}" disabled></div>
-                    <div class="actas-field"><label>Fecha de gestión</label><input type="date" id="actaFechaGestion" required></div>
+                    <div class="actas-field"><label>Fecha de gestión</label><input type="date" id="actaFechaGestion" value="${limpiarHtmlActas(actaPrefill?.fechaGestion || "")}" required></div>
                     <div class="actas-field"><label>Tipo de ejecución</label><select id="actaTipoEjecucion" required onchange="cargarTiposPartidaActas()"><option value="INSTALACION">INSTALACIÓN</option><option value="VISITA TECNICA">VISITA TÉCNICA / POSTVENTA</option></select></div>
                     <div class="actas-field" style="grid-column:1/-1"><label>Tipo de partida</label><select id="actaTipoPartida" required><option value="">Cargando...</option></select></div>
-                    <div class="actas-field"><label>Código de orden</label><input id="actaCodigoOrden" required></div>
+                    <div class="actas-field"><label>Código de orden</label><input id="actaCodigoOrden" value="${limpiarHtmlActas(actaPrefill?.codigoOrden || "")}" required></div>
                     <div class="actas-field"><label>Código de pedido</label><input id="actaCodigoPedido" value="${limpiarHtmlActas(codigoPedidoPrefill || "")}" ${codigoPedidoPrefill ? "readonly" : ""} required></div>
-                    <div class="actas-field"><label>Número de acta</label><input id="actaNumeroActa" placeholder="Ej.: 00015487" required></div>
+                    <div class="actas-field"><label>Número de acta</label><input id="actaNumeroActa" value="${limpiarHtmlActas(actaPrefill?.numeroActa || "")}" placeholder="Ej.: 00015487" required></div>
                     <div class="actas-field"><label>DNI</label><input id="actaDni" required></div>
                     <div class="actas-field"><label>Cliente</label><input id="actaCliente" required></div>
                     <div class="actas-field" style="grid-column:1/-1"><label>Acta escaneada PDF</label><input type="file" id="actaPdf" accept="application/pdf,.pdf" required></div>
                 </div>
                 <div id="actaMsg"></div>
                 <div class="actas-actions">
-                    <button class="actas-btn ok" data-guardar type="submit">${codigoPedidoPrefill ? "Reemplazar PDF" : "Guardar Acta"}</button>
+                    <button class="actas-btn ok" data-guardar type="submit">${esFaltante ? "Completar acta" : (codigoPedidoPrefill ? "Reemplazar PDF" : "Guardar Acta")}</button>
                     <button class="actas-btn sec" type="button" onclick="mostrarGestionActas()">Cancelar</button>
                 </div>
             </form>
         </div>
     `);
-    document.getElementById("actaFechaGestion").value = new Date().toISOString().slice(0,10);
-    const tipoDefecto = inferirTipoEjecucionActas();
+    if(!document.getElementById("actaFechaGestion").value) document.getElementById("actaFechaGestion").value = new Date().toISOString().slice(0,10);
+    const tipoDefecto = actaPrefill?.tipoEjecucion || inferirTipoEjecucionActas();
     const selTipo = document.getElementById("actaTipoEjecucion");
     if(selTipo) selTipo.value = tipoDefecto;
     await cargarTiposPartidaActas();
+    if(actaPrefill?.tipoPartida){ const sp=document.getElementById("actaTipoPartida"); if(sp) sp.value=actaPrefill.tipoPartida; }
+}
+
+
+async function mostrarFormularioActaFaltante(){
+    const u = usuarioActualActas();
+    if(!(esAlmacenActas(u.perfil) || esJefaturaAlmacenActas(u.perfil))) return alert("No tiene permiso para registrar actas faltantes.");
+    let cuadrillas = [];
+    try{ cuadrillas = (await apiActas({accion:"listarCuadrillasActasFaltantes",usuario:u.usuario})).cuadrillas || []; }
+    catch(err){ return alert("❌ "+err.message); }
+    const sedes = [...new Set(cuadrillas.map(x=>x.sede).filter(Boolean))].sort();
+    mostrarPantalla(`
+        ${estiloActas()}
+        <div class="actas-wrap">
+            <div class="actas-head" style="background:linear-gradient(135deg,#c2410c,#f97316)"><h2>⚠ Registrar Acta Faltante</h2><p>La alerta aparecerá en color anaranjado al técnico de la cuadrilla para que complete el PDF y entregue el acta física.</p></div>
+            <form onsubmit="event.preventDefault();guardarActaFaltante(this.querySelector('[data-guardar-faltante]'))">
+                <div class="actas-grid">
+                    <div class="actas-field"><label>Sede</label><select id="faltanteSede" required onchange="actualizarCuadrillasFaltantes()">${sedes.map(x=>`<option value="${limpiarHtmlActas(x)}">${limpiarHtmlActas(x)}</option>`).join("")}</select></div>
+                    <div class="actas-field"><label>Cuadrilla</label><select id="faltanteCuadrilla" required></select></div>
+                    <div class="actas-field"><label>Fecha de gestión</label><input type="date" id="faltanteFecha" required></div>
+                    <div class="actas-field"><label>Tipo de ejecución</label><select id="faltanteTipoEjecucion" required onchange="cargarTiposPartidaFaltante()"><option value="INSTALACION">INSTALACIÓN</option><option value="VISITA TECNICA">VISITA TÉCNICA / POSTVENTA</option></select></div>
+                    <div class="actas-field" style="grid-column:1/-1"><label>Tipo de partida</label><select id="faltanteTipoPartida" required></select></div>
+                    <div class="actas-field"><label>Código de orden</label><input id="faltanteCodigoOrden" required></div>
+                    <div class="actas-field"><label>Código de pedido</label><input id="faltanteCodigoPedido" required></div>
+                    <div class="actas-field"><label>Número de acta (si se conoce)</label><input id="faltanteNumeroActa"></div>
+                    <div class="actas-field" style="grid-column:1/-1"><label>Motivo del faltante</label><textarea id="faltanteMotivo" rows="3" required placeholder="Ej.: Acta física no entregada al almacén"></textarea></div>
+                </div>
+                <div id="faltanteMsg"></div>
+                <div class="actas-actions"><button class="actas-btn orange" data-guardar-faltante type="submit">Registrar faltante</button><button class="actas-btn sec" type="button" onclick="mostrarGestionActas()">Cancelar</button></div>
+            </form>
+        </div>`);
+    window._cuadrillasFaltantesActas = cuadrillas;
+    const sedeSel=document.getElementById("faltanteSede");
+    if(esAlmacenActas(u.perfil) && sedeSel){ sedeSel.value=u.sede; sedeSel.disabled=true; }
+    document.getElementById("faltanteFecha").value=new Date().toISOString().slice(0,10);
+    actualizarCuadrillasFaltantes();
+    cargarTiposPartidaFaltante();
+}
+
+function actualizarCuadrillasFaltantes(){
+    const sede=normalizarActas(document.getElementById("faltanteSede")?.value||"");
+    const sel=document.getElementById("faltanteCuadrilla");
+    const lista=(window._cuadrillasFaltantesActas||[]).filter(x=>normalizarActas(x.sede)===sede);
+    if(sel) sel.innerHTML=`<option value="">Seleccione...</option>`+lista.map(x=>`<option value="${limpiarHtmlActas(x.cuadrilla)}">${limpiarHtmlActas(x.cuadrilla)}</option>`).join("");
+}
+
+async function cargarTiposPartidaFaltante(){
+    const tipo=document.getElementById("faltanteTipoEjecucion")?.value||"INSTALACION";
+    const sel=document.getElementById("faltanteTipoPartida");
+    if(!sel) return;
+    try{
+        const data=await apiActas({accion:"listarTiposPartidaActas",tipoEjecucion:tipo});
+        sel.innerHTML=`<option value="">Seleccione...</option>`+(data.tipos||[]).map(t=>`<option value="${limpiarHtmlActas(t)}">${limpiarHtmlActas(t)}</option>`).join("");
+    }catch(e){sel.innerHTML=`<option value="">Error</option>`;}
+}
+
+async function guardarActaFaltante(btn){
+    const u=usuarioActualActas(), msg=document.getElementById("faltanteMsg");
+    try{
+        if(btn){btn.disabled=true;btn.textContent="Guardando...";}
+        await apiActas({accion:"registrarActaFaltante",usuario:u.usuario,cuadrilla:document.getElementById("faltanteCuadrilla").value,fechaGestion:document.getElementById("faltanteFecha").value,tipoEjecucion:document.getElementById("faltanteTipoEjecucion").value,tipoPartida:document.getElementById("faltanteTipoPartida").value,codigoOrden:document.getElementById("faltanteCodigoOrden").value,codigoPedido:document.getElementById("faltanteCodigoPedido").value,numeroActa:document.getElementById("faltanteNumeroActa").value,motivoActaFaltante:document.getElementById("faltanteMotivo").value});
+        if(msg) msg.innerHTML=`<div class="actas-msg ok">✅ Acta faltante registrada. El técnico ya puede visualizarla.</div>`;
+        setTimeout(mostrarGestionActas,900);
+    }catch(err){if(msg)msg.innerHTML=`<div class="actas-msg err">❌ ${err.message}</div>`;}
+    finally{if(btn){btn.disabled=false;btn.textContent="Registrar faltante";}}
 }
 
 async function cargarTiposPartidaActas(){
@@ -612,6 +700,13 @@ Perfil: ${a.perfilConfirmacionFisica || "-"}
 Fecha: ${fechaVisibleActas(a.fechaConfirmacionFisica)}
 Hora: ${a.horaConfirmacionFisica || "-"}
 Motivo reversión: ${a.motivoReversionFisica || "-"}
+
+ACTA FALTANTE
+Origen registro: ${a.origenRegistro || "TECNICO"}
+Motivo faltante: ${a.motivoActaFaltante || "-"}
+Registrado por: ${a.registradoFaltantePor || "-"}
+Fecha registro faltante: ${fechaVisibleActas(a.fechaRegistroFaltante)}
+Hora registro faltante: ${a.horaRegistroFaltante || "-"}
 
 Versión PDF: ${a.version || 1}`);
     }catch(err){

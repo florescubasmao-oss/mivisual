@@ -1,0 +1,17 @@
+MI VISUAL V93 - ACTAS FALTANTES
+
+Archivos incluidos:
+- js/actas.js
+- apps_script/Code.gs
+- index.html
+
+Cambios:
+- Almacén y Jefatura Almacén pueden registrar un acta faltante.
+- Responsable de Almacén solo registra faltantes de su sede.
+- Jefatura Almacén puede registrar faltantes de Chiclayo, Piura y Trujillo.
+- La tarjeta faltante aparece en anaranjado al técnico, supervisor, jefatura y almacén.
+- El técnico completa el registro adjuntando PDF, DNI, cliente y número de acta.
+- Supervisor y Jefatura operativa solo visualizan los estados.
+- Se usan las columnas 36 a 40 ya creadas en ACTAS_ESCANEADAS.
+
+IMPORTANTE: actualizar el despliegue existente de Apps Script porque Code.gs sí cambia.
