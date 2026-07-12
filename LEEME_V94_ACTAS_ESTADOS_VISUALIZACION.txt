@@ -1,0 +1,17 @@
+MI VISUAL V94 - GESTIÓN DE ACTAS
+
+Archivos a reemplazar:
+- js/actas.js
+- index.html
+
+Cambios:
+- Se elimina el texto informativo de tarjeta única.
+- Cada acta queda enmarcada por estado:
+  Verde: escaneo finalizado + entrega realizada.
+  Amarillo: existe algún pendiente.
+  Rojo: observada o revertida.
+  Naranja: acta faltante registrada por Almacén.
+- Supervisor y Jefatura operativa ven solo:
+  Número de acta, código, fecha, estado de escaneo y estado de entrega física.
+- Los botones de validación siguen exclusivos para Almacén y Jefatura de Almacén.
+- No requiere modificar Apps Script.

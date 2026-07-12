@@ -1,4 +1,4 @@
-// MI VISUAL - Gestión de Actas v93: actas faltantes registradas por Almacén
+// MI VISUAL - Gestión de Actas v94: tarjetas por estado y vista operativa compacta
 
 const API_ACTAS = "https://script.google.com/macros/s/AKfycbzcbjCLweJNgZXDerdzmMN7Lwotc1G8NWdzoPkaLNGDivAgpYxDkq78xZwPRioSB4XY/exec";
 
@@ -167,6 +167,17 @@ function estiloActas(){
         .actas-faltante .actas-unified-state,.actas-faltante .actas-statebox{background:#fffbeb;border-color:#fdba74;}
         .actas-faltante-tag{display:inline-block;background:#f97316;color:#fff;border-radius:999px;padding:4px 8px;font-size:10px;font-weight:900;margin-bottom:5px;}
         .actas-btn.orange{background:#f97316;color:#fff;}
+        .actas-status-green{border:2px solid #22c55e!important;background:#f0fdf4!important;box-shadow:0 6px 16px rgba(34,197,94,.13)!important;}
+        .actas-status-yellow{border:2px solid #f59e0b!important;background:#fffbeb!important;box-shadow:0 6px 16px rgba(245,158,11,.13)!important;}
+        .actas-status-red{border:2px solid #ef4444!important;background:#fef2f2!important;box-shadow:0 6px 16px rgba(239,68,68,.13)!important;}
+        .actas-status-orange{border:2px solid #f97316!important;background:#fff7ed!important;box-shadow:0 6px 16px rgba(249,115,22,.16)!important;}
+        .actas-read-card{border-radius:12px;padding:10px 12px;margin-bottom:8px;}
+        .actas-read-main{display:grid;grid-template-columns:minmax(120px,1.1fr) minmax(110px,1fr) minmax(90px,.8fr);gap:8px;align-items:center;}
+        .actas-read-main b{font-size:12px;color:#0f172a;}
+        .actas-read-main span{font-size:11px;color:#475569;}
+        .actas-read-states{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:7px;}
+        .actas-read-state{border:1px solid rgba(148,163,184,.35);border-radius:9px;padding:6px 8px;background:rgba(255,255,255,.72);}
+        .actas-read-state small{display:block;font-size:9px;font-weight:900;color:#64748b;text-transform:uppercase;margin-bottom:2px;}
 
         @media(max-width:520px){.actas-validation-grid{grid-template-columns:1fr}.actas-unified-states{grid-template-columns:1fr 1fr}.actas-compact-actions .actas-btn{font-size:9px;padding:6px 7px;}}
         .actas-readonly{background:#f1f5f9;color:#475569;border-radius:10px;padding:8px 10px;font-size:12px;font-weight:800;margin-top:8px;}
@@ -230,14 +241,18 @@ async function cargarActas(opciones){
             return;
         }
 
-        // Técnico, Supervisor y Jefatura operativa: consulta y estados, sin botones de validación.
-        lista.innerHTML = `
-            <table class="actas-table">
-                <thead><tr><th>Fecha</th><th>N.º Acta</th><th>Código pedido</th><th>Cuadrilla / Sede</th><th>Ejecución</th><th>Escaneo</th><th>Entrega física</th><th>PDF</th><th>Detalle</th></tr></thead>
-                <tbody>${actas.map(a => filaActaLecturaHtml(a)).join("")}</tbody>
-            </table>
-            <div class="actas-mobile">${actas.map(a => cardActaLecturaHtml(a)).join("")}</div>
-        `;
+        if(u.perfil === "TECNICO") {
+            lista.innerHTML = `
+                <table class="actas-table">
+                    <thead><tr><th>Fecha</th><th>N.º Acta</th><th>Código pedido</th><th>Cuadrilla / Sede</th><th>Ejecución</th><th>Escaneo</th><th>Entrega física</th><th>PDF</th><th>Detalle</th></tr></thead>
+                    <tbody>${actas.map(a => filaActaLecturaHtml(a)).join("")}</tbody>
+                </table>
+                <div class="actas-mobile">${actas.map(a => cardActaLecturaHtml(a)).join("")}</div>
+            `;
+        } else {
+            // Supervisor y Jefatura operativa: visualización resumida, sin acciones.
+            lista.innerHTML = `<div>${actas.map(a => cardActaSoloEstadoHtml(a)).join("")}</div>`;
+        }
         restaurarEstadoVistaActas(opciones);
     }catch(err){
         lista.innerHTML = `<div class="actas-msg err">❌ ${err.message}</div>`;
@@ -339,6 +354,30 @@ function esActaFaltantePendiente(a){
     return normalizarActas(a.origenRegistro) === "ALMACEN" && !a.linkActa;
 }
 
+function claseEstadoMarcoActa(a){
+    if(esActaFaltantePendiente(a)) return "actas-status-orange";
+    const observado = estaObservadaActa(a) || !!(a.motivoReversionFisica || "").toString().trim();
+    if(observado) return "actas-status-red";
+    const escaneoOk = estaFinalizadaActa(a);
+    const entregaOk = normalizarActas(a.estadoEntregaFisica) === "ENTREGADA";
+    if(escaneoOk && entregaOk) return "actas-status-green";
+    return "actas-status-yellow";
+}
+
+function cardActaSoloEstadoHtml(a){
+    return `<div class="actas-read-card ${claseEstadoMarcoActa(a)}">
+        <div class="actas-read-main">
+            <div><span>N.º de acta</span><br><b>${limpiarHtmlActas(a.numeroActa || "-")}</b></div>
+            <div><span>Código</span><br><b>${limpiarHtmlActas(a.codigoPedido || "-")}</b></div>
+            <div><span>Fecha</span><br><b>${fechaVisibleActas(a.fechaGestion || a.fechaRegistro)}</b></div>
+        </div>
+        <div class="actas-read-states">
+            <div class="actas-read-state"><small>Escaneo</small>${badgeActa(a)}</div>
+            <div class="actas-read-state"><small>Entrega física</small>${etiquetaEntregaFisicaActas(a.estadoEntregaFisica)}</div>
+        </div>
+    </div>`;
+}
+
 function filaActaLecturaHtml(a){
     return `<tr ${esActaFaltantePendiente(a) ? `style="background:#fff7ed"` : ""}>
         <td>${fechaVisibleActas(a.fechaGestion || a.fechaRegistro)}</td>
@@ -355,7 +394,7 @@ function filaActaLecturaHtml(a){
 
 function cardActaLecturaHtml(a){
     const motivo = motivoVisibleActa(a);
-    return `<div class="actas-card ${esActaFaltantePendiente(a) ? "actas-faltante" : ""}">
+    return `<div class="actas-card ${claseEstadoMarcoActa(a)}">
         <div style="display:flex;justify-content:space-between;gap:8px;align-items:flex-start;">
             <div>${esActaFaltantePendiente(a) ? `<span class="actas-faltante-tag">ACTA FALTANTE</span><br>` : ""}<b>ACTA N.º ${limpiarHtmlActas(a.numeroActa || "-")}</b><br><small>${fechaVisibleActas(a.fechaGestion || a.fechaRegistro)}</small></div>
             <small>${limpiarHtmlActas(a.sede || "-")}</small>
@@ -405,7 +444,7 @@ function accionesEntregaCompactas(a){
 function tarjetaActaGestionUnificada(a){
     const escaneoBtns = accionesEscaneoCompactas(a);
     const entregaBtns = accionesEntregaCompactas(a);
-    return `<div class="actas-process-card ${esActaFaltantePendiente(a) ? "actas-faltante" : ""}" data-acta-id="${limpiarHtmlActas(a.id || "")}">
+    return `<div class="actas-process-card ${claseEstadoMarcoActa(a)}" data-acta-id="${limpiarHtmlActas(a.id || "")}">
         <div class="actas-process-head">
             <div>
                 ${esActaFaltantePendiente(a) ? `<span class="actas-faltante-tag">ACTA FALTANTE · PENDIENTE DEL TÉCNICO</span>` : ""}
@@ -446,14 +485,13 @@ function bloqueSedeActas(sede, actas, abierto){
 
 function vistaJefaturaAlmacenPorSedes(actas){
     const sedes = ["CHICLAYO","PIURA","TRUJILLO"];
-    return `<div class="actas-msg info">Cada acta aparece una sola vez con sus dos controles: escaneo y entrega física.</div>` +
-        sedes.map((sede, i) => bloqueSedeActas(sede, actas.filter(a => normalizarActas(a.sede) === sede), i === 0)).join("");
+    return sedes.map((sede, i) => bloqueSedeActas(sede, actas.filter(a => normalizarActas(a.sede) === sede), i === 0)).join("");
 }
 
 function vistaResponsableAlmacenPorProcesos(actas, sedeUsuario){
     const sede = normalizarActas(sedeUsuario || "SIN SEDE");
     const propias = actas.filter(a => normalizarActas(a.sede) === sede);
-    return `<div class="actas-msg info">Responsable de Almacén · ${limpiarHtmlActas(sede)}. Cada acta se gestiona desde una sola tarjeta.</div>` + bloqueSedeActas(sede, propias, true);
+    return bloqueSedeActas(sede, propias, true);
 }
 
 async function cargarResumenActas(){
