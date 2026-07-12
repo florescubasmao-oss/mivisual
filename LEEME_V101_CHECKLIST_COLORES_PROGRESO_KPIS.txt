@@ -1,0 +1,14 @@
+MI VISUAL V101 - CHECKLIST ALMACEN
+
+Archivos a reemplazar:
+- js/checklist_almacen.js
+- index.html
+
+Cambios:
+- Equipos con evidencias en amarillo mientras falte serie o fotografia.
+- Equipos en verde solo cuando serie y fotografia estén completas.
+- Materiales en amarillo mientras no se registre un valor.
+- Materiales en verde cuando se ingrese un valor, incluido 0.
+- Tarjetas KPI con mejor contraste y colores por estado.
+
+No modifica Apps Script, Google Sheets, Drive ni otros módulos.
