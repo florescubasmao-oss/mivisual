@@ -2879,9 +2879,10 @@ function registrarChecklistAlmacen(data) {
 
   const ahora = new Date();
   const nombres = (data.nombresApellidos || usuario.nombresApellidos || usuario.usuario || "").toString().trim();
+  const estadoInicialChecklist = "PENDIENTE DE VALIDACION POR AREA DE ALMACEN";
   const fila = [
     id, Utilities.formatDate(ahora, Session.getScriptTimeZone(), "dd/MM/yyyy"), Utilities.formatDate(ahora, Session.getScriptTimeZone(), "HH:mm:ss"),
-    usuario.usuario, nombres, sede, cuadrilla, fechaGestion, "PENDIENTE",
+    usuario.usuario, nombres, sede, cuadrilla, fechaGestion, estadoInicialChecklist,
     ontZte.series, ontZte.links, ontHuawei.series, ontHuawei.links,
     meshZte.series, meshZte.links, meshHuawei.series, meshHuawei.links,
     winbox.series, winbox.links, fonowin.series, fonowin.links,
@@ -2892,7 +2893,7 @@ function registrarChecklistAlmacen(data) {
     "","","","","","","","","","",1
   ];
   hoja.appendRow(fila);
-  return {ok:true, modulo:"CHECKLIST_ALMACEN", accion:"REGISTRAR", id, estadoGeneral:"PENDIENTE", sede, cuadrilla};
+  return {ok:true, modulo:"CHECKLIST_ALMACEN", accion:"REGISTRAR", id, estadoGeneral:estadoInicialChecklist, sede, cuadrilla};
 }
 
 function filaChecklistAObjeto(f) {
@@ -2951,7 +2952,7 @@ function validarChecklistAlmacen(data) {
     hoja.getRange(fila,9).setValue(resultado==="VISTO BUENO"?"VISTO BUENO ALMACEN":"OBSERVADO ALMACEN");
   } else if(esPerfilJefaturaAlmacen(usuario.perfil)) {
     if(!["CONFORME","OBSERVADO"].includes(resultado)) throw new Error("Resultado no válido para Jefatura de Almacén");
-    if(resultado==="CONFORME" && normalizarTexto(item.resultadoAlmacen)!=="VISTO BUENO") throw new Error("Primero el Responsable de Almacén debe dar el Visto Bueno");
+    // Jefatura de Almacén puede dar conformidad final directamente, aunque no exista visto bueno previo de Almacén.
     if(resultado==="OBSERVADO"&&!motivo) throw new Error("Debe ingresar el motivo");
     hoja.getRange(fila,46).setValue(resultado); hoja.getRange(fila,47).setValue(resultado==="OBSERVADO"?motivo:""); hoja.getRange(fila,48).setValue(usuario.usuario);
     hoja.getRange(fila,49).setValue(ahora).setNumberFormat("dd/mm/yyyy"); hoja.getRange(fila,50).setValue(ahora).setNumberFormat("hh:mm:ss");

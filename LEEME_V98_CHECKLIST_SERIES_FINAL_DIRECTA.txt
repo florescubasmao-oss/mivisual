@@ -1,0 +1,18 @@
+MI VISUAL V98 - CHECKLIST ALMACEN
+
+Archivos incluidos:
+- js/checklist_almacen.js
+- apps_script/Code.gs
+- index.html
+
+Cambios aplicados:
+1. Estado inicial del checklist:
+   PENDIENTE DE VALIDACION POR AREA DE ALMACEN
+
+2. En Ver detalle se muestran las series ingresadas por categoria y un boton/enlace Ver evidencia para cada foto correspondiente.
+
+3. Jefatura de Almacen puede dar CONFORME final sin necesidad de validacion previa del Responsable de Almacen.
+
+4. Se mantiene la estructura actual de la hoja CHECKLIST_ALMACEN. No se agregan columnas.
+
+Despues de reemplazar Code.gs, actualizar la implementacion existente de Apps Script creando una nueva version para conservar la misma URL.
