@@ -1,0 +1,13 @@
+MI VISUAL V104 - ADMINISTRACION Y VISIBILIDAD CHECKLIST
+
+REEMPLAZAR / AGREGAR SOLO:
+1. js/checklist_almacen.js
+2. js/admin_checklist.js (NUEVO)
+3. index.html
+
+CAMBIOS:
+- Disponibilidad del Checklist se movió a Administración.
+- Administración tiene tarjetas más compactas, en 2 columnas en PC y 1 en celular.
+- Cuando Checklist está deshabilitado, desaparece únicamente del menú del perfil TECNICO.
+- Supervisor, Jefatura, Almacén y Jefatura Almacén conservan acceso para consulta/validación.
+- No requiere modificar Apps Script ni Google Sheets porque se conserva CONFIG_MODULOS de V103.

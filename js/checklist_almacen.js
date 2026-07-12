@@ -121,7 +121,7 @@ async function ckGuardarConfiguracion(){
   const fechaInicio=document.getElementById('ckCfgInicio')?.value||'';
   const fechaFin=document.getElementById('ckCfgFin')?.value||'';
   if(fechaInicio&&fechaFin&&fechaInicio>fechaFin)return alert('La fecha de inicio no puede ser posterior a la fecha de fin.');
-  try{await ckApi({accion:'guardarConfiguracionChecklistAlmacen',usuario:ckUser().usuario,estado,fechaInicio,fechaFin});alert('Disponibilidad actualizada correctamente');await mostrarChecklistAlmacen();await ckAplicarVisibilidadChecklist();}catch(e){alert(e.message)}
+  try{await ckApi({accion:'guardarConfiguracionChecklistAlmacen',usuario:ckUser().usuario,estado,fechaInicio,fechaFin});alert('Disponibilidad actualizada correctamente');await ckAplicarVisibilidadChecklist();if(typeof mostrarAdministracion==='function')mostrarAdministracion();}catch(e){alert(e.message)}
 }
 async function ckAplicarVisibilidadChecklist(){
   const card=document.getElementById('cardChecklistAlmacen');if(!card)return;
@@ -133,7 +133,7 @@ async function ckAplicarVisibilidadChecklist(){
 async function mostrarChecklistAlmacen(){
   const u=ckUser();
   const cfg=await ckObtenerConfiguracion();
-  mostrarPantalla(ckStyle()+`<div class="ck-wrap"><div class="ck-head"><h2>✅ CHECKLIST ALMACÉN</h2><p>Control de equipos, materiales y evidencias por cuadrilla.</p></div>${ckEsJefaturaConfig(u.perfil)?ckConfigPanel(cfg):''}<div id="ckContenido"><div class="ck-card">Cargando...</div></div></div>`);
+  mostrarPantalla(ckStyle()+`<div class="ck-wrap"><div class="ck-head"><h2>✅ CHECKLIST ALMACÉN</h2><p>Control de equipos, materiales y evidencias por cuadrilla.</p></div><div id="ckContenido"><div class="ck-card">Cargando...</div></div></div>`);
   if(u.perfil==='TECNICO'){
     const c=document.getElementById('ckContenido');
     if(cfg.activo){
