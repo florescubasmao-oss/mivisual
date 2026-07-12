@@ -1,4 +1,4 @@
-// MI VISUAL - Programación de Descansos V105
+// MI VISUAL - Programación de Descansos V106
 const API_DESCANSOS = "https://script.google.com/macros/s/AKfycbzcbjCLweJNgZXDerdzmMN7Lwotc1G8NWdzoPkaLNGDivAgpYxDkq78xZwPRioSB4XY/exec";
 let PD_DATA={programacion:[],cuadrillas:[]};
 let PD_CAMBIOS={};
@@ -19,10 +19,50 @@ function pdStyle(){return `<style>
 .pd-wrap{max-width:1200px;margin:auto;padding:10px;color:#0f172a}.pd-head{background:linear-gradient(135deg,#1d4ed8,#0f766e);color:#fff;border-radius:18px;padding:16px;margin-bottom:11px}.pd-head h2{margin:0 0 4px;font-size:22px}.pd-head p{margin:0;font-size:12px;opacity:.9}.pd-card{background:#fff;border:1px solid #dbe4ef;border-radius:15px;padding:12px;margin-bottom:10px;box-shadow:0 5px 14px rgba(15,23,42,.08)}.pd-toolbar{display:flex;gap:8px;flex-wrap:wrap;align-items:end}.pd-field label{display:block;font-size:11px;font-weight:900;color:#334155;margin-bottom:4px}.pd-field input,.pd-field select,.pd-field textarea{border:1px solid #cbd5e1;border-radius:9px;padding:8px;background:#fff;color:#0f172a}.pd-btn{border:0;border-radius:10px;padding:9px 12px;font-weight:900;cursor:pointer}.pd-blue{background:#2563eb;color:#fff}.pd-green{background:#16a34a;color:#fff}.pd-orange{background:#f59e0b;color:#111827}.pd-red{background:#dc2626;color:#fff}.pd-gray{background:#64748b;color:#fff}.pd-kpis{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}.pd-kpi{border:2px solid #cbd5e1;border-radius:13px;padding:10px;background:#f8fafc}.pd-kpi b{display:block;font-size:20px}.pd-kpi small{font-size:10px;font-weight:900}.pd-kpi.verde{background:#ecfdf5;border-color:#22c55e;color:#166534}.pd-kpi.amarillo{background:#fffbeb;border-color:#f59e0b;color:#92400e}.pd-kpi.rojo{background:#fef2f2;border-color:#ef4444;color:#991b1b}.pd-cal-scroll{overflow:auto;border:1px solid #dbe4ef;border-radius:12px}.pd-cal{border-collapse:separate;border-spacing:0;min-width:1000px;width:100%;font-size:10px}.pd-cal th,.pd-cal td{border-right:1px solid #e5e7eb;border-bottom:1px solid #e5e7eb;text-align:center;padding:4px}.pd-cal th{position:sticky;top:0;background:#eff6ff;color:#1e3a8a;z-index:2}.pd-cal .pd-sticky{position:sticky;left:0;background:#fff;z-index:3;text-align:left;min-width:220px;font-weight:900}.pd-day{width:28px;height:28px;border:0;border-radius:7px;font-size:10px;font-weight:900;cursor:pointer}.pd-campo{background:#dcfce7;color:#166534}.pd-descanso{background:#e5e7eb;color:#374151}.pd-pendiente{outline:2px solid #f59e0b}.pd-hoy{box-shadow:inset 0 0 0 2px #2563eb}.pd-group{background:#dbeafe!important;color:#1e3a8a!important;font-weight:900;text-align:left!important}.pd-status{font-size:10px;padding:4px 7px;border-radius:999px;font-weight:900}.pd-status.campo{background:#dcfce7;color:#166534}.pd-status.descanso{background:#e5e7eb;color:#374151}.pd-status.pendiente{background:#fef3c7;color:#92400e}.pd-tech-state{padding:20px;border-radius:18px;text-align:center}.pd-tech-state.campo{background:#dcfce7;border:3px solid #22c55e;color:#166534}.pd-tech-state.descanso{background:#f1f5f9;border:3px solid #94a3b8;color:#334155}.pd-tech-state h2{font-size:28px;margin:5px 0}.pd-request{border:2px solid #f59e0b;background:#fff7ed;border-radius:13px;padding:11px;margin-top:10px}.pd-list{display:grid;gap:8px}.pd-item{border:1px solid #dbe4ef;border-radius:12px;padding:10px;background:#fff}.pd-item strong{display:block;margin-bottom:4px}.pd-actions{display:flex;gap:7px;flex-wrap:wrap;margin-top:8px}.pd-note{font-size:11px;color:#64748b;line-height:1.4}.pd-alert{background:#fff7ed;border:2px solid #fb923c;color:#9a3412;border-radius:12px;padding:10px;font-size:12px;font-weight:800}.pd-grid2{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px}@media(max-width:700px){.pd-wrap{padding:6px}.pd-kpis{grid-template-columns:1fr}.pd-grid2{grid-template-columns:1fr}.pd-head h2{font-size:19px}.pd-cal .pd-sticky{min-width:170px}}
 </style>`;}
 
+
+async function actualizarIndicadorDescansoMenu(){
+  const u=pdUser();
+  const welcome=document.getElementById("mv55Welcome");
+  if(!welcome) return;
+
+  let indicador=document.getElementById("pdEstadoMenu");
+  if(u.perfil!=="TECNICO"){
+    if(indicador) indicador.remove();
+    return;
+  }
+
+  if(!indicador){
+    indicador=document.createElement("button");
+    indicador.id="pdEstadoMenu";
+    indicador.type="button";
+    indicador.className="pd-menu-status cargando";
+    indicador.onclick=mostrarProgramacionDescansos;
+    welcome.appendChild(indicador);
+  }
+
+  indicador.className="pd-menu-status cargando";
+  indicador.innerHTML='<span class="pd-menu-dot"></span><strong>CONSULTANDO ESTADO...</strong>';
+
+  try{
+    const data=await pdApi({accion:"listarProgramacionDescansos",usuario:u.usuario,periodo:pdPeriodoActual()});
+    const item=(data.programacion||[]).find(x=>pdNorm(x.cuadrilla)===pdNorm(u.cuadrilla)&&x.fecha===pdHoy());
+    const estado=pdEstadoVisible(item);
+    const descanso=estado==="DESCANSO";
+    indicador.className="pd-menu-status "+(descanso?"descanso":"campo");
+    indicador.innerHTML=`<span class="pd-menu-dot"></span><strong>${descanso?'DESCANSO':'EN CAMPO'}</strong><small>Ver programación</small>`;
+  }catch(e){
+    indicador.className="pd-menu-status campo";
+    indicador.innerHTML='<span class="pd-menu-dot"></span><strong>EN CAMPO</strong><small>Ver programación</small>';
+  }
+}
+
 async function mostrarProgramacionDescansos(){
   const u=pdUser();
   if(["ALMACEN","JEFATURA ALMACEN"].includes(u.perfil)) return alert("Esta opción no está habilitada para perfiles de Almacén.");
-  limpiarPantalla();setBotonNavegacion("modulo");
+  limpiarPantalla();
+  const menu=document.getElementById("menuPrincipal");
+  if(menu) menu.style.setProperty("display","none","important");
+  setBotonNavegacion("modulo");
   const pantalla=document.getElementById("pantalla");
   pantalla.innerHTML=pdStyle()+`<div class="pd-wrap"><div class="pd-head"><h2>📅 Programación de Descansos</h2><p>Planificación por cuadrilla. No corresponde a control de asistencia.</p></div><div id="pdContenido"><div class="pd-card">Cargando...</div></div></div>`;
   try{await pdCargar();pdRender();}catch(e){document.getElementById("pdContenido").innerHTML=`<div class="pd-alert">${pdEsc(e.message)}</div>`;}

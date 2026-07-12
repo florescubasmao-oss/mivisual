@@ -1,0 +1,9 @@
+MI VISUAL V106 - PROGRAMACIÓN DE DESCANSOS
+
+CAMBIOS REALIZADOS:
+1. Al abrir Programación de Descansos se oculta completamente el menú principal en Técnico, Supervisor y Jefatura.
+2. Se mantiene visible el botón Volver al menú.
+3. Para el perfil Técnico se retiró la tarjeta grande Programación de Descansos.
+4. En la cabecera de bienvenida del Técnico se muestra un indicador compacto EN CAMPO o DESCANSO.
+5. El indicador permite ingresar a la vista simple de programación y solicitudes.
+6. No se modificaron los demás módulos ni la lógica de Apps Script.

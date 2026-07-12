@@ -714,3 +714,25 @@ body{background:linear-gradient(180deg,var(--mv4-bg),var(--mv4-bg2));font-family
   .obs-sede-mini small{font-size:10px;}
   .obs-sede-lineal{display:inline-block!important;width:max-content;max-width:100%;}
 }
+
+
+/* V106 - Estado compacto de descanso en cabecera del Técnico */
+.pd-menu-status{
+  width:100%;margin-top:12px;border:0;border-radius:13px;padding:10px 12px;
+  display:grid;grid-template-columns:auto 1fr auto;align-items:center;gap:9px;
+  text-align:left;cursor:pointer;font-family:inherit;box-sizing:border-box;
+  box-shadow:0 6px 16px rgba(0,0,0,.16);
+}
+.pd-menu-status .pd-menu-dot{width:13px;height:13px;border-radius:50%;display:block;}
+.pd-menu-status strong{font-size:15px;font-weight:950;letter-spacing:.3px;}
+.pd-menu-status small{font-size:10px;font-weight:850;opacity:.82;}
+.pd-menu-status.campo{background:#dcfce7;color:#166534;border:1px solid #22c55e;}
+.pd-menu-status.campo .pd-menu-dot{background:#22c55e;}
+.pd-menu-status.descanso{background:#f1f5f9;color:#334155;border:1px solid #94a3b8;}
+.pd-menu-status.descanso .pd-menu-dot{background:#64748b;}
+.pd-menu-status.cargando{background:#dbeafe;color:#1e3a8a;border:1px solid #60a5fa;}
+.pd-menu-status.cargando .pd-menu-dot{background:#3b82f6;}
+@media(max-width:620px){
+  .pd-menu-status{padding:9px 10px;margin-top:10px;}
+  .pd-menu-status strong{font-size:14px;}
+}

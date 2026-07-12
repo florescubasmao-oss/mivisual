@@ -225,7 +225,6 @@ function configurarMenu(){
             "cardValidacionTecnica",
             "cardActas",
             "cardChecklistAlmacen",
-            "cardProgramacionDescansos",
             "cardAccesos",
             "cardBiblioteca",
             "cardCapacitacion"
@@ -304,6 +303,10 @@ function configurarMenu(){
     const tieneRecursos = recursosIds.some(id => opciones.includes(id));
     if(mv55.recursosTitle) mv55.recursosTitle.style.display = tieneRecursos ? "flex" : "none";
     if(mv55.recursos) mv55.recursos.style.display = tieneRecursos ? "grid" : "none";
+
+    if(typeof actualizarIndicadorDescansoMenu === "function") {
+        actualizarIndicadorDescansoMenu();
+    }
 }
 
 window.addEventListener("load", function () {
