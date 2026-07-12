@@ -1,0 +1,40 @@
+MI VISUAL V105 - PROGRAMACIÓN DE DESCANSOS
+
+ARCHIVOS A REEMPLAZAR:
+- index.html
+- js/app.js
+- js/programacion_descansos.js (nuevo)
+- apps_script/Code.gs
+
+HOJA REQUERIDA:
+PROGRAMACION_DESCANSOS
+
+COLUMNAS (29):
+ID, PERIODO, FECHA, DIA_SEMANA, SEDE, CUADRILLA, PLATAFORMA, SUPERVISOR,
+TECNICOS_AFECTADOS, ESTADO_DIA, ESTADO_PROGRAMACION, SOLICITUD_CAMBIO,
+MOTIVO_SOLICITUD, SOLICITADO_POR, FECHA_SOLICITUD, HORA_SOLICITUD,
+RESULTADO_SUPERVISOR, MOTIVO_SUPERVISOR, VALIDADO_SUPERVISOR_POR,
+FECHA_VALIDACION_SUPERVISOR, HORA_VALIDACION_SUPERVISOR,
+RESULTADO_JEFATURA, MOTIVO_JEFATURA, VALIDADO_JEFATURA_POR,
+FECHA_VALIDACION_JEFATURA, HORA_VALIDACION_JEFATURA,
+COBERTURA_SEDE, ESTADO_COBERTURA, VERSION.
+
+PERFILES CON ACCESO:
+- TECNICO: solo visualiza su estado y solicita cambio de descanso.
+- SUPERVISOR: programa su sede y valida solicitudes en primera instancia.
+- JEFATURA / ADMIN / ADMINISTRADOR: visualiza Zona Norte, aprueba y modifica.
+
+SIN ACCESO:
+- ALMACEN
+- JEFATURA ALMACEN
+
+REGLAS DE COBERTURA:
+- Instalaciones lunes-sábado: objetivo 90%, mínimo 80%.
+- Instalaciones domingo: mínimo 60%.
+- Visita Técnica y Traslados lunes-sábado: objetivo 90%, mínimo 80%.
+- Visita Técnica y Traslados domingo: objetivo 70%, mínimo 60%.
+- Redondeo convencional: desde .5 hacia arriba.
+
+DESPLIEGUE APPS SCRIPT:
+Implementar > Administrar implementaciones > Editar > Nueva versión > Implementar.
+Mantener la URL vigente.
