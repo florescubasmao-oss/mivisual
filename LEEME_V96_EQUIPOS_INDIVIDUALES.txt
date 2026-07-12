@@ -1,0 +1,18 @@
+MI VISUAL V96 - CHECKLIST ALMACEN
+
+ARCHIVOS A REEMPLAZAR:
+1. js/checklist_almacen.js
+2. apps_script/Code.gs
+3. index.html
+
+CAMBIO:
+- Equipos con evidencia se registran uno por uno.
+- Cada equipo tiene Serie/Código + una foto obligatoria.
+- Al escribir una serie o seleccionar una foto se habilita automáticamente la siguiente fila.
+- Límites: ONT ZTE 10, ONT Huawei 10, Mesh ZTE 10, Mesh Huawei 10, WINBOX 5, FONOWIN 5.
+- Las columnas existentes no cambian: las series se guardan separadas por " | " y los enlaces de fotos se guardan en el mismo orden.
+- Las fotos se nombran con correlativo y serie dentro de la carpeta de su categoría.
+
+IMPORTANTE:
+- Reemplazar Code.gs y actualizar la implementación existente de Apps Script con Nueva versión.
+- No se modifica la estructura de la hoja CHECKLIST_ALMACEN.

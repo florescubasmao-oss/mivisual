@@ -2825,22 +2825,33 @@ function obtenerOCrearCarpetaChecklist(padre, nombre) {
   return it.hasNext() ? it.next() : padre.createFolder(n);
 }
 
-function guardarFotosChecklist(carpetaFecha, categoria, id, fotos, maximo) {
-  if (!Array.isArray(fotos) || fotos.length === 0) return "";
-  if (fotos.length > maximo) throw new Error("Máximo " + maximo + " fotos para " + categoria);
+function limpiarSerieChecklist(txt) {
+  return (txt || "").toString().trim().replace(/\s+/g, " ");
+}
+
+function guardarEquiposChecklist(carpetaFecha, categoria, id, equipos, maximo) {
+  if (!Array.isArray(equipos) || equipos.length === 0) return { series: "", links: "" };
+  if (equipos.length > maximo) throw new Error("Máximo " + maximo + " equipos para " + categoria);
   const carpeta = obtenerOCrearCarpetaChecklist(carpetaFecha, categoria);
+  const series = [];
   const links = [];
-  fotos.forEach((foto, i) => {
-    if (!foto || !foto.base64) return;
+  equipos.forEach((equipo, i) => {
+    const serie = limpiarSerieChecklist(equipo && equipo.serie);
+    const foto = equipo && equipo.foto;
+    if (!serie && (!foto || !foto.base64)) return;
+    if (!serie) throw new Error("Debe ingresar la serie o código de " + categoria);
+    if (!foto || !foto.base64) throw new Error("Debe subir la foto de " + categoria + " - " + serie);
     const original = (foto.nombre || "foto.jpg").toString();
     const ext = original.includes(".") ? original.split(".").pop().toLowerCase() : "jpg";
-    const nombre = id + "_" + categoria + "_" + String(i + 1).padStart(2, "0") + "." + ext;
+    const serieArchivo = limpiarNombreArchivo(serie).substring(0, 45) || String(i + 1).padStart(2, "0");
+    const nombre = id + "_" + categoria + "_" + String(i + 1).padStart(2, "0") + "_" + serieArchivo + "." + ext;
     const blob = Utilities.newBlob(Utilities.base64Decode(foto.base64), foto.mime || "image/jpeg", nombre);
     const archivo = carpeta.createFile(blob);
     archivo.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
+    series.push(serie);
     links.push(archivo.getUrl());
   });
-  return links.join("|");
+  return { series: series.join(" | "), links: links.join("|") };
 }
 
 function registrarChecklistAlmacen(data) {
@@ -2858,20 +2869,22 @@ function registrarChecklistAlmacen(data) {
     obtenerOCrearCarpetaChecklist(obtenerOCrearCarpetaChecklist(raiz, sede), cuadrilla),
     fechaGestion
   );
-  const linksOntZte = guardarFotosChecklist(carpetaFecha, "ONT_ZTE", id, data.fotosOntZte, 10);
-  const linksOntHuawei = guardarFotosChecklist(carpetaFecha, "ONT_HUAWEI", id, data.fotosOntHuawei, 10);
-  const linksMeshZte = guardarFotosChecklist(carpetaFecha, "MESH_ZTE", id, data.fotosMeshZte, 10);
-  const linksMeshHuawei = guardarFotosChecklist(carpetaFecha, "MESH_HUAWEI", id, data.fotosMeshHuawei, 10);
-  const linksWinbox = guardarFotosChecklist(carpetaFecha, "WINBOX", id, data.fotosWinbox, 5);
-  const linksFonowin = guardarFotosChecklist(carpetaFecha, "FONOWIN", id, data.fotosFonowin, 5);
+
+  const ontZte = guardarEquiposChecklist(carpetaFecha, "ONT_ZTE", id, data.ontZteEquipos, 10);
+  const ontHuawei = guardarEquiposChecklist(carpetaFecha, "ONT_HUAWEI", id, data.ontHuaweiEquipos, 10);
+  const meshZte = guardarEquiposChecklist(carpetaFecha, "MESH_ZTE", id, data.meshZteEquipos, 10);
+  const meshHuawei = guardarEquiposChecklist(carpetaFecha, "MESH_HUAWEI", id, data.meshHuaweiEquipos, 10);
+  const winbox = guardarEquiposChecklist(carpetaFecha, "WINBOX", id, data.winboxEquipos, 5);
+  const fonowin = guardarEquiposChecklist(carpetaFecha, "FONOWIN", id, data.fonowinEquipos, 5);
+
   const ahora = new Date();
   const nombres = (data.nombresApellidos || usuario.nombresApellidos || usuario.usuario || "").toString().trim();
   const fila = [
     id, Utilities.formatDate(ahora, Session.getScriptTimeZone(), "dd/MM/yyyy"), Utilities.formatDate(ahora, Session.getScriptTimeZone(), "HH:mm:ss"),
     usuario.usuario, nombres, sede, cuadrilla, fechaGestion, "PENDIENTE",
-    numeroChecklist(data.ontZte), linksOntZte, numeroChecklist(data.ontHuawei), linksOntHuawei,
-    numeroChecklist(data.meshZte), linksMeshZte, numeroChecklist(data.meshHuawei), linksMeshHuawei,
-    numeroChecklist(data.winbox), linksWinbox, numeroChecklist(data.fonowin), linksFonowin,
+    ontZte.series, ontZte.links, ontHuawei.series, ontHuawei.links,
+    meshZte.series, meshZte.links, meshHuawei.series, meshHuawei.links,
+    winbox.series, winbox.links, fonowin.series, fonowin.links,
     numeroChecklist(data.cableDrop), numeroChecklist(data.pre50), numeroChecklist(data.pre100), numeroChecklist(data.pre150), numeroChecklist(data.pre200),
     numeroChecklist(data.anclajeP), numeroChecklist(data.cintaBandIt), numeroChecklist(data.hebilla), numeroChecklist(data.acoplador), numeroChecklist(data.roseta),
     numeroChecklist(data.conectoresOpticos), numeroChecklist(data.templadores), numeroChecklist(data.splitter), numeroChecklist(data.clevis),
