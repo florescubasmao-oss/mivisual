@@ -1,0 +1,15 @@
+MI VISUAL V100 - CHECKLIST ALMACEN
+
+ARCHIVOS A REEMPLAZAR:
+- js/checklist_almacen.js
+- index.html
+
+CAMBIOS:
+- Pantalla de confirmación antes de marcar CONFORME.
+- Botón "Descargar informe de checklist" para todos los perfiles excepto TECNICO.
+- Filtros por sede, cuadrilla, fechas, equipo, estado y búsqueda de serie.
+- Informe Excel compatible (.xls) con detalle y listado de equipos/series/evidencias.
+- El técnico visualiza el motivo cuando el checklist está observado.
+
+NO REQUIERE CAMBIAR APPS SCRIPT.
+NO MODIFICA GOOGLE SHEETS NI DRIVE.
