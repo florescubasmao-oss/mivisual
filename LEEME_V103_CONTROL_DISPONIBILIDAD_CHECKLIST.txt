@@ -1,0 +1,16 @@
+MI VISUAL V103 - CONTROL DE DISPONIBILIDAD CHECKLIST ALMACÉN
+
+ARCHIVOS A REEMPLAZAR:
+- js/checklist_almacen.js
+- index.html
+- apps_script/Code.gs
+
+CAMBIOS:
+- Jefatura/Admin puede habilitar, deshabilitar o programar el Checklist por fechas.
+- Técnico no ve la tarjeta cuando el módulo está inactivo.
+- Técnico no puede registrar por API cuando está inactivo.
+- Almacén, Jefatura de Almacén, Supervisor y Jefatura mantienen historial/validaciones.
+- Se crea automáticamente la hoja CONFIG_MODULOS.
+
+DESPLIEGUE:
+Actualizar la implementación existente de Apps Script usando Nueva versión para conservar la URL.

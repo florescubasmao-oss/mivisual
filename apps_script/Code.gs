@@ -16,6 +16,7 @@ const HOJA_ANALISIS_ECONOMICO = "ANALISIS_ECONOMICO";
 const CARPETA_ACTAS_ESCANEADAS = "1EZALuMsXo_ZRO93FjKyuDgRmvAe2C69L";
 const HOJA_CHECKLIST_ALMACEN = "CHECKLIST_ALMACEN";
 const CARPETA_CHECKLIST_ALMACEN = "1nL5if5dRs3y1_OpKfzu7N9BNjiSvXVgp";
+const HOJA_CONFIG_MODULOS = "CONFIG_MODULOS";
 
 function doGet() {
   return ContentService
@@ -2862,7 +2863,96 @@ function obtenerEquiposChecklistEntrada(data, clave) {
   return [];
 }
 
+
+
+/* =========================
+   CONFIGURACIÓN DE MÓDULOS
+   Primera implementación: CHECKLIST_ALMACEN
+========================= */
+
+function asegurarHojaConfigModulos() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  let hoja = ss.getSheetByName(HOJA_CONFIG_MODULOS);
+  if (!hoja) hoja = ss.insertSheet(HOJA_CONFIG_MODULOS);
+  const encabezado = [["MODULO","ESTADO","FECHA_INICIO","FECHA_FIN","ACTUALIZADO_POR","FECHA_ACTUALIZACION","HORA_ACTUALIZACION"]];
+  if (hoja.getLastRow() === 0 || !hoja.getRange(1,1).getValue()) hoja.getRange(1,1,1,7).setValues(encabezado);
+  return hoja;
+}
+
+function fechaConfigTexto(valor) {
+  if (!valor) return "";
+  if (valor instanceof Date && !isNaN(valor.getTime())) return Utilities.formatDate(valor, Session.getScriptTimeZone(), "yyyy-MM-dd");
+  const t = valor.toString().trim();
+  if (/^\d{4}-\d{2}-\d{2}$/.test(t)) return t;
+  const p = t.split("/");
+  if (p.length === 3) return p[2] + "-" + p[1].padStart(2,"0") + "-" + p[0].padStart(2,"0");
+  return "";
+}
+
+function obtenerFilaConfigModulo(modulo) {
+  const hoja = asegurarHojaConfigModulos();
+  const datos = hoja.getDataRange().getValues();
+  const buscado = normalizarTexto(modulo);
+  for (let i=1;i<datos.length;i++) {
+    if (normalizarTexto(datos[i][0]) === buscado) return {hoja, fila:i+1, datos:datos[i]};
+  }
+  return null;
+}
+
+function evaluarConfigModulo(estado, fechaInicio, fechaFin) {
+  const e = normalizarTexto(estado || "HABILITADO");
+  const inicio = fechaConfigTexto(fechaInicio);
+  const fin = fechaConfigTexto(fechaFin);
+  const hoy = Utilities.formatDate(new Date(), Session.getScriptTimeZone(), "yyyy-MM-dd");
+  let activo = e === "HABILITADO";
+  if (activo && inicio && hoy < inicio) activo = false;
+  if (activo && fin && hoy > fin) activo = false;
+  return {estado:e, fechaInicio:inicio, fechaFin:fin, hoy, activo};
+}
+
+function obtenerConfiguracionChecklistAlmacen(data) {
+  const usuario = obtenerUsuarioApp(data.usuario);
+  let encontrado = obtenerFilaConfigModulo("CHECKLIST_ALMACEN");
+  if (!encontrado) {
+    const hoja = asegurarHojaConfigModulos();
+    hoja.appendRow(["CHECKLIST_ALMACEN","HABILITADO","","","SISTEMA",new Date(),new Date()]);
+    const fila = hoja.getLastRow();
+    hoja.getRange(fila,6).setNumberFormat("dd/mm/yyyy");
+    hoja.getRange(fila,7).setNumberFormat("hh:mm:ss");
+    encontrado = obtenerFilaConfigModulo("CHECKLIST_ALMACEN");
+  }
+  const d = encontrado.datos;
+  const cfg = evaluarConfigModulo(d[1], d[2], d[3]);
+  return {ok:true,modulo:"CHECKLIST_ALMACEN",accion:"OBTENER_CONFIGURACION",perfil:usuario.perfil,configuracion:cfg};
+}
+
+function guardarConfiguracionChecklistAlmacen(data) {
+  const usuario = obtenerUsuarioApp(data.usuario);
+  if (!esPerfilJefatura(usuario.perfil)) throw new Error("Solo Jefatura puede habilitar o deshabilitar el Checklist Almacén");
+  const estado = normalizarTexto(data.estado || "HABILITADO");
+  if (!["HABILITADO","DESHABILITADO"].includes(estado)) throw new Error("Estado no válido");
+  const inicio = fechaConfigTexto(data.fechaInicio);
+  const fin = fechaConfigTexto(data.fechaFin);
+  if (inicio && fin && inicio > fin) throw new Error("La fecha de inicio no puede ser posterior a la fecha de fin");
+  const hoja = asegurarHojaConfigModulos();
+  const encontrado = obtenerFilaConfigModulo("CHECKLIST_ALMACEN");
+  const ahora = new Date();
+  const valores = [["CHECKLIST_ALMACEN",estado,inicio,fin,usuario.usuario,ahora,ahora]];
+  let fila;
+  if (encontrado) {fila=encontrado.fila;hoja.getRange(fila,1,1,7).setValues(valores);} else {hoja.appendRow(valores[0]);fila=hoja.getLastRow();}
+  hoja.getRange(fila,6).setNumberFormat("dd/mm/yyyy");
+  hoja.getRange(fila,7).setNumberFormat("hh:mm:ss");
+  return {ok:true,modulo:"CHECKLIST_ALMACEN",accion:"GUARDAR_CONFIGURACION",configuracion:evaluarConfigModulo(estado,inicio,fin)};
+}
+
+function checklistAlmacenActivo() {
+  let encontrado = obtenerFilaConfigModulo("CHECKLIST_ALMACEN");
+  if (!encontrado) return true;
+  return evaluarConfigModulo(encontrado.datos[1], encontrado.datos[2], encontrado.datos[3]).activo;
+}
+
 function registrarChecklistAlmacen(data) {
+  if (!checklistAlmacenActivo()) throw new Error("El Checklist Almacén no está habilitado para nuevos registros en este periodo");
   const hoja = asegurarHojaChecklistAlmacen();
   const usuario = obtenerUsuarioApp(data.usuario);
   if (usuario.perfil !== "TECNICO") throw new Error("Solo el técnico puede registrar el checklist");
@@ -3391,6 +3481,8 @@ function doPost(e) {
     const data = JSON.parse(e.postData.contents);
 
 
+    if (data.accion === "obtenerConfiguracionChecklistAlmacen") return respuestaJson(obtenerConfiguracionChecklistAlmacen(data));
+    if (data.accion === "guardarConfiguracionChecklistAlmacen") return respuestaJson(guardarConfiguracionChecklistAlmacen(data));
     if (data.accion === "registrarChecklistAlmacen") return respuestaJson(registrarChecklistAlmacen(data));
     if (data.accion === "listarChecklistAlmacen") return respuestaJson(listarChecklistAlmacen(data));
     if (data.accion === "validarChecklistAlmacen") return respuestaJson(validarChecklistAlmacen(data));

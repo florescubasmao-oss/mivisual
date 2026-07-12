@@ -1,4 +1,4 @@
-// MI VISUAL - Checklist Almacén V99
+// MI VISUAL - Checklist Almacén V103
 const API_CHECKLIST_ALMACEN = "https://script.google.com/macros/s/AKfycbzcbjCLweJNgZXDerdzmMN7Lwotc1G8NWdzoPkaLNGDivAgpYxDkq78xZwPRioSB4XY/exec";
 
 function ckNorm(v){return (v||"").toString().toUpperCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"").replace(/\s+/g," ").trim();}
@@ -8,6 +8,7 @@ async function ckApi(payload){const r=await fetch(API_CHECKLIST_ALMACEN,{method:
 function ckEstado(e){const n=ckNorm(e);let c="pend";if(n==="CONFORME")c="ok";else if(n.includes("OBSERVADO"))c="obs";else if(n.includes("VISTO BUENO"))c="vb";return `<span class="ck-badge ${c}">${ckEsc(e||"PENDIENTE")}</span>`;}
 function ckStyle(){return `<style>
 .ck-wrap{max-width:1100px;margin:auto;padding:12px}.ck-head{background:linear-gradient(135deg,#0f766e,#2563eb);color:#fff;padding:17px;border-radius:18px;margin-bottom:12px}.ck-head h2{margin:0 0 4px;font-size:22px}.ck-card{background:#fff;border:1px solid #dbe3ee;border-radius:15px;padding:12px;margin-bottom:10px;box-shadow:0 5px 14px rgba(15,23,42,.08);color:#111827}.ck-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px}.ck-field label{display:block;font-size:11px;font-weight:900;color:#334155;margin-bottom:4px}.ck-field input,.ck-field textarea,.ck-field select{width:100%;box-sizing:border-box;border:1px solid #cbd5e1;border-radius:10px;padding:9px;background:#fff;color:#111827}.ck-unit{display:grid;grid-template-columns:1fr auto;align-items:center;gap:7px}.ck-unit span{font-size:11px;font-weight:900;color:#64748b}.ck-sec{font-size:15px;margin:12px 0 7px;color:#0f172a}.ck-photo-box{border:1px dashed #94a3b8;padding:8px;border-radius:11px;background:#f8fafc;margin-bottom:7px}.ck-photo-row{display:flex;gap:7px;align-items:center;margin:5px 0;font-size:11px}.ck-btn{border:0;border-radius:10px;padding:9px 12px;font-weight:900;cursor:pointer}.ck-btn.blue{background:#2563eb;color:#fff}.ck-btn.green{background:#16a34a;color:#fff}.ck-btn.orange{background:#f59e0b;color:#111827}.ck-btn.red{background:#dc2626;color:#fff}.ck-btn.gray{background:#64748b;color:#fff}.ck-actions{display:flex;gap:7px;flex-wrap:wrap}.ck-badge{padding:4px 8px;border-radius:999px;font-size:10px;font-weight:900}.ck-badge.pend{background:#fef3c7;color:#92400e}.ck-badge.vb{background:#dbeafe;color:#1e40af}.ck-badge.ok{background:#dcfce7;color:#166534}.ck-badge.obs{background:#fee2e2;color:#991b1b}.ck-kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:7px;margin:10px 0}.ck-kpi{background:#f8fafc;border:2px solid #cbd5e1;border-radius:12px;padding:10px;text-align:center;color:#0f172a;box-shadow:0 4px 10px rgba(15,23,42,.08)}.ck-kpi b{font-size:20px;display:block;line-height:1.05;margin-bottom:3px;color:#0f172a}.ck-kpi span{font-size:11px;font-weight:900;color:#334155}.ck-kpi.total{background:#eff6ff;border-color:#60a5fa}.ck-kpi.total b{color:#1d4ed8}.ck-kpi.pendiente{background:#fffbeb;border-color:#fbbf24}.ck-kpi.pendiente b{color:#b45309}.ck-kpi.visto{background:#ecfeff;border-color:#22d3ee}.ck-kpi.visto b{color:#0e7490}.ck-kpi.conforme{background:#f0fdf4;border-color:#4ade80}.ck-kpi.conforme b{color:#15803d}.ck-meta{font-size:11px;color:#64748b;line-height:1.4}.ck-details{margin-top:7px}.ck-details summary{cursor:pointer;font-weight:900;color:#1d4ed8}.ck-evidencias a{display:inline-block;margin:3px;padding:5px 7px;background:#e0f2fe;border-radius:7px;font-size:10px;font-weight:900;color:#075985;text-decoration:none}.ck-equipos-grid{align-items:start}.ck-new-toggle{width:100%;display:flex;align-items:center;justify-content:space-between;gap:10px;background:#fff;border:1px solid #cbd5e1;border-radius:14px;padding:12px 14px;margin-bottom:10px;font-size:15px;font-weight:900;color:#0f172a;cursor:pointer;box-shadow:0 4px 12px rgba(15,23,42,.07)}.ck-new-toggle:hover{background:#f8fafc}.ck-new-arrow{transition:transform .2s ease}.ck-new-toggle.open .ck-new-arrow{transform:rotate(180deg)}.ck-form-panel{display:none}.ck-form-panel.open{display:block}.ck-equipo-box{margin:0 0 12px;border:3px solid #2563eb;background:#f8fbff;border-radius:13px;box-shadow:inset 0 0 0 1px rgba(37,99,235,.10),0 6px 16px rgba(15,23,42,.12)}.ck-equipo-head{display:flex;justify-content:space-between;align-items:center;gap:8px;margin:-8px -8px 10px;padding:11px 12px;background:#dbeafe;border-bottom:2px solid #60a5fa;border-radius:10px 10px 0 0}.ck-equipo-head b{font-size:14px;color:#0b3b79;letter-spacing:.01em}.ck-equipo-head small{font-weight:900;color:#1d4ed8}.ck-equipo-row{position:relative;border-top:1px solid #dbeafe;padding:8px 28px 8px 0}.ck-equipo-row:first-child{border-top:0}.ck-equipo-num{font-size:11px;font-weight:900;color:#0f172a;margin-bottom:5px}.ck-equipo-inputs{display:grid;grid-template-columns:1fr 1fr;gap:7px}.ck-equipo-inputs input{width:100%;box-sizing:border-box}.ck-equipo-remove{position:absolute;right:0;top:9px;border:0;background:#fee2e2;color:#991b1b;border-radius:7px;width:24px;height:24px;font-weight:900;cursor:pointer}.ck-detail-box{background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;padding:8px}.ck-series-list{margin-top:5px;display:grid;gap:4px}.ck-serie-item{font-size:11px;line-height:1.35}.ck-serie-item a{display:inline-block;margin-left:5px;padding:3px 6px;background:#dbeafe;color:#1d4ed8;text-decoration:none;border-radius:6px;font-weight:900}.ck-serie-item em{font-style:normal;color:#94a3b8;margin-left:5px}.ck-toolbar{display:flex;justify-content:flex-end;margin:0 0 10px}.ck-modal-bg{position:fixed;inset:0;background:rgba(15,23,42,.65);z-index:99999;display:flex;align-items:center;justify-content:center;padding:14px}.ck-modal{width:min(720px,96vw);max-height:90vh;overflow:auto;background:#fff;border-radius:16px;padding:16px;box-shadow:0 20px 50px rgba(0,0,0,.35);color:#111827}.ck-modal h3{margin:0 0 12px}.ck-modal-close{float:right;border:0;background:#e2e8f0;border-radius:8px;width:32px;height:32px;font-weight:900;cursor:pointer}.ck-alerta-obs{margin-top:8px;padding:9px 10px;border:1px solid #fdba74;background:#fff7ed;color:#9a3412;border-radius:10px;font-size:12px;line-height:1.4}.ck-report-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px}.ck-report-note{font-size:11px;color:#64748b;margin:8px 0 12px}.ck-progress-yellow{background:#fff9df!important;border-color:#f59e0b!important;box-shadow:inset 0 0 0 1px rgba(245,158,11,.20),0 6px 16px rgba(180,83,9,.12)}.ck-progress-green{background:#ecfdf3!important;border-color:#16a34a!important;box-shadow:inset 0 0 0 1px rgba(22,163,74,.20),0 6px 16px rgba(21,128,61,.12)}.ck-equipo-row.ck-progress-yellow{border:2px solid #f59e0b;border-radius:10px;padding:9px 30px 9px 9px;margin-top:8px}.ck-equipo-row.ck-progress-green{border:2px solid #16a34a;border-radius:10px;padding:9px 30px 9px 9px;margin-top:8px}.ck-field.ck-material-progress{border:2px solid #f59e0b;background:#fffbea;border-radius:11px;padding:8px;transition:.18s ease}.ck-field.ck-material-progress.ck-progress-green{border-color:#22c55e;background:#f0fdf4}.ck-field.ck-material-progress label{margin-bottom:5px}.ck-progress-note{font-size:10px;font-weight:900;margin-top:5px;color:#92400e}.ck-progress-green .ck-progress-note{color:#166534}
+.ck-config{background:#eff6ff;border:2px solid #60a5fa;border-radius:14px;padding:12px;margin-bottom:10px;color:#0f172a}.ck-config-head{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:9px}.ck-config-head b{font-size:14px}.ck-config-status{font-size:10px;font-weight:900;padding:5px 8px;border-radius:999px}.ck-config-status.on{background:#dcfce7;color:#166534}.ck-config-status.off{background:#fee2e2;color:#991b1b}.ck-config-note{font-size:11px;color:#475569;margin-top:7px;line-height:1.4}.ck-disabled{background:#fff7ed;border:2px solid #fb923c;color:#9a3412;border-radius:13px;padding:12px;margin-bottom:10px;font-size:12px;font-weight:800}
 @media(max-width:650px){.ck-grid{grid-template-columns:1fr}.ck-equipo-inputs{grid-template-columns:1fr}.ck-kpis{grid-template-columns:repeat(2,1fr)}.ck-wrap{padding:7px}.ck-card{padding:9px}}
 </style>`;}
 
@@ -102,18 +103,49 @@ async function ckCollectEquipos(key){
 function ckNum(id){return Number(document.getElementById(id)?.value||0)||0;}
 function ckField(id,label,unit){return `<div class="ck-field ck-material-progress ck-progress-yellow"><label>${label}</label><div class="ck-unit"><input id="${id}" type="number" min="0" step="1" placeholder="0" oninput="ckActualizarMaterial(this)"><span>${unit}</span></div><div class="ck-progress-note">Pendiente de llenar</div></div>`;}
 
+
+let CK_CONFIG_ACTUAL=null;
+function ckEsJefaturaConfig(perfil){const p=ckNorm(perfil);return ['JEFATURA','ADMIN','ADMINISTRADOR'].includes(p);}
+async function ckObtenerConfiguracion(){
+  const u=ckUser();
+  if(!u.usuario)return {estado:'HABILITADO',activo:true,fechaInicio:'',fechaFin:''};
+  try{const d=await ckApi({accion:'obtenerConfiguracionChecklistAlmacen',usuario:u.usuario});CK_CONFIG_ACTUAL=d.configuracion||d;return CK_CONFIG_ACTUAL;}
+  catch(e){console.warn('No se pudo leer configuración Checklist:',e);return {estado:'HABILITADO',activo:true,fechaInicio:'',fechaFin:''};}
+}
+function ckConfigPanel(cfg){
+  const activo=!!cfg.activo;
+  return `<div class="ck-config"><div class="ck-config-head"><b>⚙️ Disponibilidad del Checklist</b><span class="ck-config-status ${activo?'on':'off'}">${activo?'ACTIVO':'INACTIVO'}</span></div><div class="ck-grid"><div class="ck-field"><label>Estado</label><select id="ckCfgEstado"><option value="HABILITADO" ${ckNorm(cfg.estado)==='HABILITADO'?'selected':''}>HABILITADO</option><option value="DESHABILITADO" ${ckNorm(cfg.estado)==='DESHABILITADO'?'selected':''}>DESHABILITADO</option></select></div><div class="ck-field"><label>Fecha de inicio (opcional)</label><input id="ckCfgInicio" type="date" value="${ckEsc(cfg.fechaInicio||'')}"></div><div class="ck-field"><label>Fecha de fin (opcional)</label><input id="ckCfgFin" type="date" value="${ckEsc(cfg.fechaFin||'')}"></div><div class="ck-field" style="display:flex;align-items:end"><button class="ck-btn blue" style="width:100%" onclick="ckGuardarConfiguracion()">Guardar disponibilidad</button></div></div><div class="ck-config-note">Cuando esté inactivo, el Técnico no verá la opción ni podrá registrar nuevos checklist. Los demás perfiles conservarán acceso al historial y validaciones.</div></div>`;
+}
+async function ckGuardarConfiguracion(){
+  const estado=document.getElementById('ckCfgEstado')?.value||'HABILITADO';
+  const fechaInicio=document.getElementById('ckCfgInicio')?.value||'';
+  const fechaFin=document.getElementById('ckCfgFin')?.value||'';
+  if(fechaInicio&&fechaFin&&fechaInicio>fechaFin)return alert('La fecha de inicio no puede ser posterior a la fecha de fin.');
+  try{await ckApi({accion:'guardarConfiguracionChecklistAlmacen',usuario:ckUser().usuario,estado,fechaInicio,fechaFin});alert('Disponibilidad actualizada correctamente');await mostrarChecklistAlmacen();await ckAplicarVisibilidadChecklist();}catch(e){alert(e.message)}
+}
+async function ckAplicarVisibilidadChecklist(){
+  const card=document.getElementById('cardChecklistAlmacen');if(!card)return;
+  const u=ckUser();
+  if(u.perfil!=='TECNICO'){card.style.display='';return;}
+  const cfg=await ckObtenerConfiguracion();card.style.display=cfg.activo?'':'none';
+}
+
 async function mostrarChecklistAlmacen(){
   const u=ckUser();
-  mostrarPantalla(ckStyle()+`<div class="ck-wrap"><div class="ck-head"><h2>✅ CHECKLIST ALMACÉN</h2><p>Control de equipos, materiales y evidencias por cuadrilla.</p></div><div id="ckContenido"><div class="ck-card">Cargando...</div></div></div>`);
+  const cfg=await ckObtenerConfiguracion();
+  mostrarPantalla(ckStyle()+`<div class="ck-wrap"><div class="ck-head"><h2>✅ CHECKLIST ALMACÉN</h2><p>Control de equipos, materiales y evidencias por cuadrilla.</p></div>${ckEsJefaturaConfig(u.perfil)?ckConfigPanel(cfg):''}<div id="ckContenido"><div class="ck-card">Cargando...</div></div></div>`);
   if(u.perfil==='TECNICO'){
     const c=document.getElementById('ckContenido');
-    c.innerHTML=`<button id="ckNuevoToggle" type="button" class="ck-new-toggle" onclick="ckToggleNuevoChecklist()"><span>➕ Nuevo checklist</span><span class="ck-new-arrow">▼</span></button><div id="ckFormPanel" class="ck-form-panel"></div><div id="ckLista"></div>`;
+    if(cfg.activo){
+      c.innerHTML=`<button id="ckNuevoToggle" type="button" class="ck-new-toggle" onclick="ckToggleNuevoChecklist()"><span>➕ Nuevo checklist</span><span class="ck-new-arrow">▼</span></button><div id="ckFormPanel" class="ck-form-panel"></div><div id="ckLista"></div>`;
+    }else{
+      c.innerHTML=`<div class="ck-disabled">Checklist no disponible para nuevos registros en este periodo.</div><div id="ckLista"></div>`;
+    }
     await ckCargarHistorialTecnico();
   }else{
     await ckCargarLista();
   }
 }
-
 function ckToggleNuevoChecklist(forzar){
   const panel=document.getElementById('ckFormPanel');
   const boton=document.getElementById('ckNuevoToggle');
@@ -144,6 +176,7 @@ function ckRenderForm(){
 
 async function ckGuardar(ev){
   const u=ckUser();const btn=ev?.target;
+  const cfg=await ckObtenerConfiguracion();if(!cfg.activo){alert('El Checklist Almacén no está habilitado para nuevos registros en este periodo.');ckToggleNuevoChecklist(false);return;}
   try{
     if(btn){btn.disabled=true;btn.textContent='Guardando...'}
     const payload={accion:'registrarChecklistAlmacen',usuario:u.usuario,nombresApellidos:document.getElementById('ckNombres').value,fechaGestion:document.getElementById('ckFecha').value,cableDrop:ckNum('ckCableDrop'),pre50:ckNum('ckPre50'),pre100:ckNum('ckPre100'),pre150:ckNum('ckPre150'),pre200:ckNum('ckPre200'),anclajeP:ckNum('ckAnclaje'),cintaBandIt:ckNum('ckBand'),hebilla:ckNum('ckHebilla'),acoplador:ckNum('ckAcoplador'),roseta:ckNum('ckRoseta'),conectoresOpticos:ckNum('ckConectores'),templadores:ckNum('ckTempladores'),splitter:ckNum('ckSplitter'),clevis:ckNum('ckClevis'),utpCat5:ckNum('ckCat5'),utpCat6:ckNum('ckCat6'),patchApcApc:ckNum('ckApc'),patchUpcApc:ckNum('ckUpc'),rj45:ckNum('ckRj45')};
@@ -258,3 +291,7 @@ async function ckValidar(id,resultado){
 }
 async function ckConfirmarConforme(id){ckCerrarModal();await ckEnviarValidacion(id,'CONFORME','');}
 async function ckEnviarValidacion(id,resultado,motivo){try{await ckApi({accion:'validarChecklistAlmacen',usuario:ckUser().usuario,id,resultado,motivo});await ckCargarLista();}catch(e){alert(e.message)}}
+
+
+// Aplicar visibilidad del módulo al cargar el menú principal.
+if(document.readyState==='loading'){document.addEventListener('DOMContentLoaded',()=>setTimeout(ckAplicarVisibilidadChecklist,300));}else{setTimeout(ckAplicarVisibilidadChecklist,300);}
