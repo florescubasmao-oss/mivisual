@@ -1,0 +1,18 @@
+MI VISUAL V107 - PROGRAMACIÓN DE DESCANSOS
+
+Cambios realizados únicamente en el módulo Programación de Descansos:
+
+1. Supervisor:
+   - Mantiene visible el total de cuadrillas de su sede por defecto.
+   - Nuevo filtro de plataforma: Todas, Instalaciones, Visita Técnica y Traslados.
+   - Consulta por mes completo, un día o rango de fechas.
+
+2. Jefatura:
+   - Filtro de sede: Todas, Chiclayo, Piura y Trujillo.
+   - Filtro de plataforma.
+   - Consulta por mes completo, un día o rango de fechas.
+
+3. Calendario y cobertura:
+   - Ambos respetan los filtros seleccionados.
+   - La cobertura se recalcula para el periodo visible.
+   - No se modificaron los demás módulos ni el Apps Script.

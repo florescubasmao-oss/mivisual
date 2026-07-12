@@ -1,4 +1,4 @@
-// MI VISUAL - Programación de Descansos V106
+// MI VISUAL - Programación de Descansos V107
 const API_DESCANSOS = "https://script.google.com/macros/s/AKfycbzcbjCLweJNgZXDerdzmMN7Lwotc1G8NWdzoPkaLNGDivAgpYxDkq78xZwPRioSB4XY/exec";
 let PD_DATA={programacion:[],cuadrillas:[]};
 let PD_CAMBIOS={};
@@ -90,29 +90,109 @@ function pdRenderTecnico(){
 async function pdSolicitarCambio(){try{const u=pdUser();const fechaDescansoActual=document.getElementById('pdDescansoActual').value,nuevaFecha=document.getElementById('pdNuevaFecha').value,motivo=document.getElementById('pdMotivoSolicitud').value.trim();await pdApi({accion:'solicitarCambioDescanso',usuario:u.usuario,fechaDescansoActual,nuevaFecha,motivo});alert('Solicitud enviada al Supervisor.');await pdCargar();pdRenderTecnico();}catch(e){alert(e.message);}}
 
 function pdRenderGestion(){
-  const u=pdUser(),per=PD_DATA.periodo||pdPeriodoActual(),sedes=u.perfil==='SUPERVISOR'?[u.sede]:['CHICLAYO','PIURA','TRUJILLO'];
-  const sedeSel=document.getElementById('pdSede')?.value||sedes[0];
-  const pendientes=PD_DATA.programacion.filter(x=>pdNorm(x.estadoProgramacion)===(u.perfil==='SUPERVISOR'?'PENDIENTE SUPERVISOR':'PENDIENTE JEFATURA'));
+  const u=pdUser(),per=PD_DATA.periodo||pdPeriodoActual();
+  const estadoVista=window.PD_FILTROS||{};
+  const esSupervisor=u.perfil==='SUPERVISOR';
+  const sedes=esSupervisor?[u.sede]:['TODAS','CHICLAYO','PIURA','TRUJILLO'];
+  const sedeSel=sedes.includes(estadoVista.sede)?estadoVista.sede:(esSupervisor?u.sede:'TODAS');
+  const plataformaSel=['TODAS','INSTALACIONES','VISITA TECNICA','TRASLADOS'].includes(estadoVista.plataforma)?estadoVista.plataforma:'TODAS';
+  const modo=['MES','RANGO','DIA'].includes(estadoVista.modo)?estadoVista.modo:'MES';
+  const ultimo=String(pdDiasMes(per)).padStart(2,'0');
+  let desde=estadoVista.desde&&estadoVista.desde.startsWith(per)?estadoVista.desde:`${per}-01`;
+  let hasta=estadoVista.hasta&&estadoVista.hasta.startsWith(per)?estadoVista.hasta:`${per}-${ultimo}`;
+  if(modo==='DIA'){desde=estadoVista.desde&&estadoVista.desde.startsWith(per)?estadoVista.desde:(per===pdPeriodoActual()?pdHoy():`${per}-01`);hasta=desde;}
+  const pendientes=PD_DATA.programacion.filter(x=>pdNorm(x.estadoProgramacion)===(esSupervisor?'PENDIENTE SUPERVISOR':'PENDIENTE JEFATURA'));
+  window.PD_FILTROS={sede:sedeSel,plataforma:plataformaSel,modo,desde,hasta};
   document.getElementById('pdContenido').innerHTML=`
-  <div class="pd-card"><div class="pd-toolbar"><div class="pd-field"><label>Periodo</label><input type="month" id="pdPeriodo" value="${per}"></div><div class="pd-field"><label>Sede</label><select id="pdSede">${sedes.map(s=>`<option ${s===sedeSel?'selected':''}>${s}</option>`).join('')}</select></div><button class="pd-btn pd-blue" onclick="pdCambiarVista()">Actualizar</button>${u.perfil==='SUPERVISOR'?'<button class="pd-btn pd-orange" onclick="pdGuardarCambios()">Enviar programación a Jefatura</button>':'<button class="pd-btn pd-green" onclick="pdGuardarCambios()">Guardar programación</button><button class="pd-btn pd-blue" onclick="pdAprobarProgramacion()">Aprobar pendientes</button>'}</div></div>
+  <div class="pd-card"><div class="pd-toolbar">
+    <div class="pd-field"><label>Periodo</label><input type="month" id="pdPeriodo" value="${per}"></div>
+    <div class="pd-field"><label>Vista</label><select id="pdModo" onchange="pdAjustarModoFechas()"><option value="MES" ${modo==='MES'?'selected':''}>Mes completo</option><option value="RANGO" ${modo==='RANGO'?'selected':''}>De fecha a fecha</option><option value="DIA" ${modo==='DIA'?'selected':''}>Un día</option></select></div>
+    <div class="pd-field"><label>Desde</label><input type="date" id="pdDesde" value="${desde}" ${modo==='MES'?'disabled':''}></div>
+    <div class="pd-field"><label>Hasta</label><input type="date" id="pdHasta" value="${hasta}" ${modo!=='RANGO'?'disabled':''}></div>
+    ${esSupervisor?`<div class="pd-field"><label>Sede</label><select id="pdSede" disabled><option>${pdEsc(u.sede)}</option></select></div>`:`<div class="pd-field"><label>Sede</label><select id="pdSede">${sedes.map(s=>`<option ${s===sedeSel?'selected':''}>${s}</option>`).join('')}</select></div>`}
+    <div class="pd-field"><label>Plataforma</label><select id="pdPlataforma"><option value="TODAS" ${plataformaSel==='TODAS'?'selected':''}>Todas</option><option value="INSTALACIONES" ${plataformaSel==='INSTALACIONES'?'selected':''}>Instalaciones</option><option value="VISITA TECNICA" ${plataformaSel==='VISITA TECNICA'?'selected':''}>Visita Técnica</option><option value="TRASLADOS" ${plataformaSel==='TRASLADOS'?'selected':''}>Traslados</option></select></div>
+    <button class="pd-btn pd-blue" onclick="pdCambiarVista()">Actualizar</button>
+    ${esSupervisor?'<button class="pd-btn pd-orange" onclick="pdGuardarCambios()">Enviar programación a Jefatura</button>':'<button class="pd-btn pd-green" onclick="pdGuardarCambios()">Guardar programación</button><button class="pd-btn pd-blue" onclick="pdAprobarProgramacion()">Aprobar pendientes</button>'}
+  </div></div>
   <div id="pdCobertura" class="pd-card">Calculando cobertura...</div>
-  <div class="pd-card"><div class="pd-note">Haz clic en cada día para cambiar entre <b>En campo</b> y <b>Descanso</b>. Los cambios del Supervisor quedan pendientes de aprobación de Jefatura.</div><div id="pdCalendario" style="margin-top:8px"></div></div>
-  <div class="pd-card"><b>${u.perfil==='SUPERVISOR'?'Solicitudes pendientes de Supervisor':'Solicitudes y programaciones pendientes de Jefatura'}</b><div class="pd-list" style="margin-top:8px">${pendientes.length?pendientes.map(pdSolicitudCard).join(''):'<div class="pd-note">No hay solicitudes pendientes.</div>'}</div></div>`;
+  <div class="pd-card"><div class="pd-note">Haz clic en cada día para cambiar entre <b>En campo</b> y <b>Descanso</b>. Los filtros solo cambian la visualización; no eliminan información.</div><div id="pdCalendario" style="margin-top:8px"></div></div>
+  <div class="pd-card"><b>${esSupervisor?'Solicitudes pendientes de Supervisor':'Solicitudes y programaciones pendientes de Jefatura'}</b><div class="pd-list" style="margin-top:8px">${pendientes.length?pendientes.map(pdSolicitudCard).join(''):'<div class="pd-note">No hay solicitudes pendientes.</div>'}</div></div>`;
   pdRenderCalendario();pdCargarCobertura();
 }
 
-async function pdCambiarVista(){await pdCargar(document.getElementById('pdPeriodo').value);pdRenderGestion();}
-function pdCuadrillasSede(){const sede=document.getElementById('pdSede').value;return PD_DATA.cuadrillas.filter(x=>pdNorm(x.sede)===pdNorm(sede));}
+function pdAjustarModoFechas(){
+  const modo=document.getElementById('pdModo').value,per=document.getElementById('pdPeriodo').value,ultimo=String(pdDiasMes(per)).padStart(2,'0'),desde=document.getElementById('pdDesde'),hasta=document.getElementById('pdHasta');
+  if(modo==='MES'){desde.value=`${per}-01`;hasta.value=`${per}-${ultimo}`;desde.disabled=true;hasta.disabled=true;}
+  else if(modo==='DIA'){desde.disabled=false;hasta.disabled=true;if(!desde.value.startsWith(per))desde.value=per===pdPeriodoActual()?pdHoy():`${per}-01`;hasta.value=desde.value;}
+  else{desde.disabled=false;hasta.disabled=false;if(!desde.value.startsWith(per))desde.value=`${per}-01`;if(!hasta.value.startsWith(per))hasta.value=`${per}-${ultimo}`;}
+}
+
+function pdCapturarFiltros(){
+  const modo=document.getElementById('pdModo')?.value||'MES',per=document.getElementById('pdPeriodo')?.value||pdPeriodoActual();
+  let desde=document.getElementById('pdDesde')?.value||`${per}-01`,hasta=document.getElementById('pdHasta')?.value||`${per}-${String(pdDiasMes(per)).padStart(2,'0')}`;
+  if(modo==='MES'){desde=`${per}-01`;hasta=`${per}-${String(pdDiasMes(per)).padStart(2,'0')}`;}
+  if(modo==='DIA')hasta=desde;
+  if(desde>hasta){const t=desde;desde=hasta;hasta=t;}
+  window.PD_FILTROS={modo,desde,hasta,sede:document.getElementById('pdSede')?.value||pdUser().sede,plataforma:document.getElementById('pdPlataforma')?.value||'TODAS'};
+  return window.PD_FILTROS;
+}
+
+async function pdCambiarVista(){
+  const per=document.getElementById('pdPeriodo').value;
+  pdCapturarFiltros();
+  if(!window.PD_FILTROS.desde.startsWith(per)||!window.PD_FILTROS.hasta.startsWith(per)){
+    window.PD_FILTROS.desde=`${per}-01`;window.PD_FILTROS.hasta=`${per}-${String(pdDiasMes(per)).padStart(2,'0')}`;
+  }
+  await pdCargar(per);pdRenderGestion();
+}
+
+function pdCuadrillasFiltradas(){
+  const f=pdCapturarFiltros();
+  return PD_DATA.cuadrillas.filter(x=>(f.sede==='TODAS'||pdNorm(x.sede)===pdNorm(f.sede))&&(f.plataforma==='TODAS'||pdNorm(x.plataforma)===pdNorm(f.plataforma)));
+}
+
+function pdFechasVista(){
+  const f=pdCapturarFiltros(),fechas=[];
+  let d=new Date(f.desde+'T12:00:00'),fin=new Date(f.hasta+'T12:00:00');
+  while(d<=fin){fechas.push(`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`);d.setDate(d.getDate()+1);}
+  return fechas;
+}
+
 function pdRenderCalendario(){
-  const periodo=document.getElementById('pdPeriodo').value,dias=pdDiasMes(periodo),cuadrillas=pdCuadrillasSede();
+  const fechas=pdFechasVista(),cuadrillas=pdCuadrillasFiltradas(),f=pdCapturarFiltros();
+  if(!cuadrillas.length){document.getElementById('pdCalendario').innerHTML='<div class="pd-alert">No existen cuadrillas para los filtros seleccionados.</div>';return;}
   let html=`<div class="pd-cal-scroll"><table class="pd-cal"><thead><tr><th class="pd-sticky">Cuadrilla / Plataforma</th>`;
-  for(let d=1;d<=dias;d++){const f=pdFecha(periodo,d);html+=`<th>${pdDiaCorto(f)}<br>${d}</th>`;}html+='</tr></thead><tbody>';
-  ['INSTALACIONES','VISITA TECNICA','TRASLADOS'].forEach(p=>{const grupo=cuadrillas.filter(x=>pdNorm(x.plataforma)===p);if(!grupo.length)return;html+=`<tr><td class="pd-group" colspan="${dias+1}">${p}</td></tr>`;grupo.forEach(c=>{html+=`<tr><td class="pd-sticky">${pdEsc(c.cuadrilla)}<br><small>${pdEsc(c.tecnico||'')}</small></td>`;for(let d=1;d<=dias;d++){const fecha=pdFecha(periodo,d),key=c.cuadrilla+'|'+fecha,item=pdBuscar(c.cuadrilla,fecha),estado=PD_CAMBIOS[key]||pdEstadoVisible(item),pend=item&&pdNorm(item.estadoProgramacion)!=='APROBADO',cl=estado==='DESCANSO'?'pd-descanso':'pd-campo';html+=`<td><button class="pd-day ${cl} ${pend?'pd-pendiente':''} ${fecha===pdHoy()?'pd-hoy':''}" onclick="pdToggleDia('${pdEsc(c.cuadrilla)}','${fecha}',this)" title="${pdEsc(item?.estadoProgramacion||'APROBADO')}">${estado==='DESCANSO'?'D':'C'}</button></td>`;}html+='</tr>';});});
+  fechas.forEach(fecha=>{html+=`<th>${pdDiaCorto(fecha)}<br>${Number(fecha.slice(8,10))}</th>`;});html+='</tr></thead><tbody>';
+  const sedes=f.sede==='TODAS'?['CHICLAYO','PIURA','TRUJILLO']:[f.sede];
+  sedes.forEach(sede=>['INSTALACIONES','VISITA TECNICA','TRASLADOS'].forEach(p=>{
+    if(f.plataforma!=='TODAS'&&p!==f.plataforma)return;
+    const grupo=cuadrillas.filter(x=>pdNorm(x.sede)===pdNorm(sede)&&pdNorm(x.plataforma)===p);if(!grupo.length)return;
+    html+=`<tr><td class="pd-group" colspan="${fechas.length+1}">${f.sede==='TODAS'?pdEsc(sede)+' — ':''}${p}</td></tr>`;
+    grupo.forEach(c=>{html+=`<tr><td class="pd-sticky">${pdEsc(c.cuadrilla)}<br><small>${pdEsc(c.tecnico||'')}</small></td>`;fechas.forEach(fecha=>{const key=c.cuadrilla+'|'+fecha,item=pdBuscar(c.cuadrilla,fecha),estado=PD_CAMBIOS[key]||pdEstadoVisible(item),pend=item&&pdNorm(item.estadoProgramacion)!=='APROBADO',cl=estado==='DESCANSO'?'pd-descanso':'pd-campo';html+=`<td><button class="pd-day ${cl} ${pend?'pd-pendiente':''} ${fecha===pdHoy()?'pd-hoy':''}" onclick="pdToggleDia('${pdEsc(c.cuadrilla)}','${fecha}',this)" title="${pdEsc(item?.estadoProgramacion||'APROBADO')}">${estado==='DESCANSO'?'D':'C'}</button></td>`;});html+='</tr>';});
+  }));
   html+='</tbody></table></div>';document.getElementById('pdCalendario').innerHTML=html;
 }
+
 function pdToggleDia(cuadrilla,fecha,btn){const key=cuadrilla+'|'+fecha,current=PD_CAMBIOS[key]||pdEstadoVisible(pdBuscar(cuadrilla,fecha)),next=current==='DESCANSO'?'EN CAMPO':'DESCANSO';PD_CAMBIOS[key]=next;btn.textContent=next==='DESCANSO'?'D':'C';btn.classList.toggle('pd-descanso',next==='DESCANSO');btn.classList.toggle('pd-campo',next!=='DESCANSO');btn.classList.remove('pd-pendiente');pdCargarCobertura();}
-async function pdGuardarCambios(){try{const u=pdUser(),registros=Object.entries(PD_CAMBIOS).map(([k,estadoDia])=>{const i=k.lastIndexOf('|');return {cuadrilla:k.slice(0,i),fecha:k.slice(i+1),estadoDia};});if(!registros.length)return alert('No hay cambios para guardar.');const r=await pdApi({accion:'guardarProgramacionDescansos',usuario:u.usuario,registros});alert(`${r.guardados} registros guardados. Estado: ${r.estado}`);await pdCargar(document.getElementById('pdPeriodo').value);pdRenderGestion();}catch(e){alert(e.message);}}
-async function pdAprobarProgramacion(){try{const u=pdUser();if(!confirm('¿Aprobar todas las programaciones pendientes de Jefatura?'))return;const r=await pdApi({accion:'aprobarProgramacionDescansos',usuario:u.usuario,ids:[]});alert(`${r.actualizados} registros aprobados.`);await pdCargar(document.getElementById('pdPeriodo').value);pdRenderGestion();}catch(e){alert(e.message);}}
-async function pdCargarCobertura(){try{const u=pdUser(),fecha=pdPeriodoActual()===document.getElementById('pdPeriodo').value?pdHoy():document.getElementById('pdPeriodo').value+'-01',r=await pdApi({accion:'resumenCoberturaDescansos',usuario:u.usuario,fecha}),sede=document.getElementById('pdSede').value,items=r.resumen.filter(x=>pdNorm(x.sede)===pdNorm(sede));document.getElementById('pdCobertura').innerHTML=`<b>Cobertura de ${pdEsc(fecha)} — ${pdEsc(sede)}</b><div class="pd-kpis" style="margin-top:8px">${items.map(x=>`<div class="pd-kpi ${x.estado.toLowerCase()}"><small>${pdEsc(x.plataforma)}</small><b>${Math.round(x.porcentaje*100)}%</b><div>${x.enCampo}/${x.total} en campo</div><small>Objetivo ${Math.round(x.objetivo*100)}% · Mínimo ${Math.round(x.minimo*100)}%</small></div>`).join('')}</div>`;}catch(e){document.getElementById('pdCobertura').innerHTML=`<div class="pd-alert">${pdEsc(e.message)}</div>`;}}
+
+function pdReglaCobertura(plataforma,fecha){const domingo=new Date(fecha+'T12:00:00').getDay()===0,p=pdNorm(plataforma);if(domingo&&p==='INSTALACIONES')return{objetivo:.60,minimo:.60};if(domingo)return{objetivo:.70,minimo:.60};return{objetivo:.90,minimo:.80};}
+function pdRedondeo(v){return Math.floor(Number(v)+.5);}
+
+async function pdCargarCobertura(){
+  try{
+    const fechas=pdFechasVista(),cuadrillas=pdCuadrillasFiltradas(),f=pdCapturarFiltros();
+    const plataformas=f.plataforma==='TODAS'?['INSTALACIONES','VISITA TECNICA','TRASLADOS']:[f.plataforma];
+    const items=plataformas.map(plataforma=>{
+      const qs=cuadrillas.filter(c=>pdNorm(c.plataforma)===plataforma);let totalJornadas=0,campoJornadas=0,objJornadas=0,minJornadas=0,diasCumple=0,diasConCuadrillas=0;
+      fechas.forEach(fecha=>{const total=qs.length;if(!total)return;diasConCuadrillas++;let campo=0;qs.forEach(c=>{const key=c.cuadrilla+'|'+fecha,estado=PD_CAMBIOS[key]||pdEstadoVisible(pdBuscar(c.cuadrilla,fecha));if(estado!=='DESCANSO')campo++;});const regla=pdReglaCobertura(plataforma,fecha),obj=pdRedondeo(total*regla.objetivo),min=pdRedondeo(total*regla.minimo);totalJornadas+=total;campoJornadas+=campo;objJornadas+=obj;minJornadas+=min;if(campo>=obj)diasCumple++;});
+      const porcentaje=totalJornadas?campoJornadas/totalJornadas:0;let estado='rojo';if(campoJornadas>=objJornadas)estado='verde';else if(campoJornadas>=minJornadas)estado='amarillo';return{plataforma,totalJornadas,campoJornadas,porcentaje,estado,diasCumple,diasConCuadrillas};
+    }).filter(x=>x.totalJornadas>0);
+    const etiqueta=fechas.length===1?fechas[0]:`${fechas[0]} al ${fechas[fechas.length-1]}`;
+    document.getElementById('pdCobertura').innerHTML=`<b>Cobertura: ${pdEsc(etiqueta)}${f.sede!=='TODAS'?' — '+pdEsc(f.sede):' — TODAS LAS SEDES'}</b><div class="pd-kpis" style="margin-top:8px">${items.length?items.map(x=>`<div class="pd-kpi ${x.estado}"><small>${pdEsc(x.plataforma)}</small><b>${Math.round(x.porcentaje*100)}%</b><div>${x.campoJornadas}/${x.totalJornadas} cuadrillas-día en campo</div><small>Días que cumplen objetivo: ${x.diasCumple}/${x.diasConCuadrillas}</small></div>`).join(''):'<div class="pd-note">No hay datos para los filtros seleccionados.</div>'}</div>`;
+  }catch(e){document.getElementById('pdCobertura').innerHTML=`<div class="pd-alert">${pdEsc(e.message)}</div>`;}
+}
+
+async function pdGuardarCambios(){try{const u=pdUser(),registros=Object.entries(PD_CAMBIOS).map(([k,estadoDia])=>{const i=k.lastIndexOf('|');return {cuadrilla:k.slice(0,i),fecha:k.slice(i+1),estadoDia};});if(!registros.length)return alert('No hay cambios para guardar.');const r=await pdApi({accion:'guardarProgramacionDescansos',usuario:u.usuario,registros});alert(`${r.guardados} registros guardados. Estado: ${r.estado}`);const per=document.getElementById('pdPeriodo').value;pdCapturarFiltros();await pdCargar(per);pdRenderGestion();}catch(e){alert(e.message);}}
+async function pdAprobarProgramacion(){try{const u=pdUser();if(!confirm('¿Aprobar todas las programaciones pendientes de Jefatura?'))return;const r=await pdApi({accion:'aprobarProgramacionDescansos',usuario:u.usuario,ids:[]});alert(`${r.actualizados} registros aprobados.`);const per=document.getElementById('pdPeriodo').value;pdCapturarFiltros();await pdCargar(per);pdRenderGestion();}catch(e){alert(e.message);}}
 function pdSolicitudCard(x){const u=pdUser(),solicitud=!!x.solicitudCambio;return `<div class="pd-item"><strong>${pdEsc(x.cuadrilla)} · ${pdEsc(x.sede)} · ${pdEsc(x.plataforma)}</strong><div>${solicitud?`Cambio: ${x.fecha} → ${pdEsc(x.solicitudCambio)}`:`Programación: ${x.fecha} · ${pdEsc(x.estadoDia)}`}</div><span class="pd-status pendiente">${pdEsc(x.estadoProgramacion)}</span>${x.motivoSolicitud?`<div class="pd-note">${pdEsc(x.motivoSolicitud)}</div>`:''}${solicitud?`<div class="pd-actions"><button class="pd-btn pd-green" onclick="pdValidarSolicitud('${pdEsc(x.id)}','APROBADO')">Aprobar</button><button class="pd-btn pd-red" onclick="pdValidarSolicitud('${pdEsc(x.id)}','RECHAZADO')">Rechazar</button></div>`:''}</div>`;}
-async function pdValidarSolicitud(id,resultado){try{const u=pdUser(),motivo=prompt('Motivo / comentario:')||'';const accion=u.perfil==='SUPERVISOR'?'validarCambioDescansoSupervisor':'validarCambioDescansoJefatura';await pdApi({accion,usuario:u.usuario,id,resultado,motivo});alert('Solicitud actualizada.');await pdCargar(document.getElementById('pdPeriodo').value);pdRenderGestion();}catch(e){alert(e.message);}}
+async function pdValidarSolicitud(id,resultado){try{const u=pdUser(),motivo=prompt('Motivo / comentario:')||'';const accion=u.perfil==='SUPERVISOR'?'validarCambioDescansoSupervisor':'validarCambioDescansoJefatura';await pdApi({accion,usuario:u.usuario,id,resultado,motivo});alert('Solicitud actualizada.');const per=document.getElementById('pdPeriodo').value;pdCapturarFiltros();await pdCargar(per);pdRenderGestion();}catch(e){alert(e.message);}}
