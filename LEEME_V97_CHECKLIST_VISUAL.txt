@@ -1,0 +1,14 @@
+MI VISUAL V97 - AJUSTE VISUAL CHECKLIST ALMACÉN
+
+Archivos a reemplazar:
+- js/checklist_almacen.js
+- index.html
+
+Cambios:
+1. "Nuevo checklist" queda cerrado y se abre al hacer clic.
+2. Puede cerrarse con Cancelar o desde el mismo encabezado.
+3. Al guardar correctamente, el formulario se cierra y el registro aparece en el historial inferior.
+4. Cada categoría de equipo queda enmarcada y diferenciada visualmente.
+5. No modifica Apps Script, Google Sheets, Drive ni la lógica de validación.
+
+No reemplazar otros archivos.
