@@ -14,6 +14,8 @@ const HOJA_VALIDACION_TECNICA = "VALIDACION_TECNICA";
 const HOJA_ACTAS_ESCANEADAS = "ACTAS_ESCANEADAS";
 const HOJA_ANALISIS_ECONOMICO = "ANALISIS_ECONOMICO";
 const CARPETA_ACTAS_ESCANEADAS = "1EZALuMsXo_ZRO93FjKyuDgRmvAe2C69L";
+const HOJA_CHECKLIST_ALMACEN = "CHECKLIST_ALMACEN";
+const CARPETA_CHECKLIST_ALMACEN = "1nL5if5dRs3y1_OpKfzu7N9BNjiSvXVgp";
 
 function doGet() {
   return ContentService
@@ -759,7 +761,8 @@ function obtenerUsuarioApp(usuarioBuscar) {
         perfil: normalizarTexto(datos[i][6]),
         nivelAcceso: normalizarTexto(datos[i][7]),
         estado: normalizarTexto(datos[i][8]),
-        usuarioSupervisor: normalizarUsuario(datos[i][9])
+        usuarioSupervisor: normalizarUsuario(datos[i][9]),
+        nombresApellidos: (datos[i][10] || datos[i][0] || "").toString().trim()
       };
     }
   }
@@ -2772,6 +2775,186 @@ function resumenActasEscaneadas(data) {
 }
 
 
+
+
+/* =========================
+   CHECKLIST ALMACÉN
+========================= */
+
+function encabezadoChecklistAlmacen() {
+  return [[
+    "ID","FECHA_REGISTRO","HORA_REGISTRO","USUARIO","NOMBRES_APELLIDOS","SEDE","CUADRILLA","FECHA_GESTION","ESTADO_GENERAL",
+    "ONT ZTE","FOTOS SERIES ONT ZTE","ONT HUAWEI","FOTOS SERIES ONT HUAWEI",
+    "MESH/REPETIDOR ZTE","FOTO MESH/REPETIDOR ZTE","MESH/REPETIDOR HUAWEI","FOTO MESH/REPETIDOR HUAWEI",
+    "WINBOX","FOTO WINBOX","FONOWIN","FOTO FONOWIN","CABLE DROP/BOBINA","PRECONECTORIZADO 50m","PRECONECTORIZADO 100m",
+    "PRECONECTORIZADO 150m","PRECONECTORIZADO 200m","ANCLAJE P","CINTA BAND-IT","HEBILLA 3/4","ACOPLADOR","ROSETA",
+    "CONECTORES OPTICOS","TEMPLADORES","SPLITTER","CLEVIS","CABLE UTP CAT5","CABLE UTP CAT6","PATCHCORD APC-APC",
+    "PATCHCORD UPC-APC","CONECTOR RJ45","RESULTADO_ALMACEN","MOTIVO_ALMACEN","VALIDADO_ALMACEN_POR","FECHA_VALIDACION_ALMACEN",
+    "HORA_VALIDACION_ALMACEN","RESULTADO_JEFATURA","MOTIVO_JEFATURA","VALIDADO_JEFATURA_POR","FECHA_VALIDACION_JEFATURA",
+    "HORA_VALIDACION_JEFATURA","VERSION"
+  ]];
+}
+
+function asegurarHojaChecklistAlmacen() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  let hoja = ss.getSheetByName(HOJA_CHECKLIST_ALMACEN);
+  if (!hoja) hoja = ss.insertSheet(HOJA_CHECKLIST_ALMACEN);
+  if (hoja.getLastRow() === 0 || !hoja.getRange(1, 1).getValue()) {
+    hoja.getRange(1, 1, 1, 51).setValues(encabezadoChecklistAlmacen());
+  }
+  return hoja;
+}
+
+function idChecklistAlmacen() {
+  return "CHK-" + Utilities.formatDate(new Date(), Session.getScriptTimeZone(), "yyyyMMddHHmmss") + "-" + Math.floor(Math.random()*900+100);
+}
+
+function numeroChecklist(valor) {
+  const n = Number(valor);
+  return isFinite(n) && n >= 0 ? n : 0;
+}
+
+function carpetaChecklistSegura(txt) {
+  return (txt || "SIN_DATO").toString().toUpperCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "")
+    .replace(/[\\/:*?"<>|#%{}~&]+/g, " ").replace(/\s+/g, " ").trim().substring(0, 120);
+}
+
+function obtenerOCrearCarpetaChecklist(padre, nombre) {
+  const n = carpetaChecklistSegura(nombre);
+  const it = padre.getFoldersByName(n);
+  return it.hasNext() ? it.next() : padre.createFolder(n);
+}
+
+function guardarFotosChecklist(carpetaFecha, categoria, id, fotos, maximo) {
+  if (!Array.isArray(fotos) || fotos.length === 0) return "";
+  if (fotos.length > maximo) throw new Error("Máximo " + maximo + " fotos para " + categoria);
+  const carpeta = obtenerOCrearCarpetaChecklist(carpetaFecha, categoria);
+  const links = [];
+  fotos.forEach((foto, i) => {
+    if (!foto || !foto.base64) return;
+    const original = (foto.nombre || "foto.jpg").toString();
+    const ext = original.includes(".") ? original.split(".").pop().toLowerCase() : "jpg";
+    const nombre = id + "_" + categoria + "_" + String(i + 1).padStart(2, "0") + "." + ext;
+    const blob = Utilities.newBlob(Utilities.base64Decode(foto.base64), foto.mime || "image/jpeg", nombre);
+    const archivo = carpeta.createFile(blob);
+    archivo.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
+    links.push(archivo.getUrl());
+  });
+  return links.join("|");
+}
+
+function registrarChecklistAlmacen(data) {
+  const hoja = asegurarHojaChecklistAlmacen();
+  const usuario = obtenerUsuarioApp(data.usuario);
+  if (usuario.perfil !== "TECNICO") throw new Error("Solo el técnico puede registrar el checklist");
+  const cuadrilla = normalizarCuadrilla(usuario.cuadrilla);
+  if (!cuadrilla) throw new Error("El técnico no tiene cuadrilla asignada");
+  const dc = obtenerDatosCuadrillaApp(cuadrilla);
+  const sede = normalizarTexto(dc.sede || usuario.sede);
+  const fechaGestion = fechaGestionActaTexto(data.fechaGestion || data.fecha_gestion);
+  const id = idChecklistAlmacen();
+  const raiz = DriveApp.getFolderById(CARPETA_CHECKLIST_ALMACEN);
+  const carpetaFecha = obtenerOCrearCarpetaChecklist(
+    obtenerOCrearCarpetaChecklist(obtenerOCrearCarpetaChecklist(raiz, sede), cuadrilla),
+    fechaGestion
+  );
+  const linksOntZte = guardarFotosChecklist(carpetaFecha, "ONT_ZTE", id, data.fotosOntZte, 10);
+  const linksOntHuawei = guardarFotosChecklist(carpetaFecha, "ONT_HUAWEI", id, data.fotosOntHuawei, 10);
+  const linksMeshZte = guardarFotosChecklist(carpetaFecha, "MESH_ZTE", id, data.fotosMeshZte, 10);
+  const linksMeshHuawei = guardarFotosChecklist(carpetaFecha, "MESH_HUAWEI", id, data.fotosMeshHuawei, 10);
+  const linksWinbox = guardarFotosChecklist(carpetaFecha, "WINBOX", id, data.fotosWinbox, 5);
+  const linksFonowin = guardarFotosChecklist(carpetaFecha, "FONOWIN", id, data.fotosFonowin, 5);
+  const ahora = new Date();
+  const nombres = (data.nombresApellidos || usuario.nombresApellidos || usuario.usuario || "").toString().trim();
+  const fila = [
+    id, Utilities.formatDate(ahora, Session.getScriptTimeZone(), "dd/MM/yyyy"), Utilities.formatDate(ahora, Session.getScriptTimeZone(), "HH:mm:ss"),
+    usuario.usuario, nombres, sede, cuadrilla, fechaGestion, "PENDIENTE",
+    numeroChecklist(data.ontZte), linksOntZte, numeroChecklist(data.ontHuawei), linksOntHuawei,
+    numeroChecklist(data.meshZte), linksMeshZte, numeroChecklist(data.meshHuawei), linksMeshHuawei,
+    numeroChecklist(data.winbox), linksWinbox, numeroChecklist(data.fonowin), linksFonowin,
+    numeroChecklist(data.cableDrop), numeroChecklist(data.pre50), numeroChecklist(data.pre100), numeroChecklist(data.pre150), numeroChecklist(data.pre200),
+    numeroChecklist(data.anclajeP), numeroChecklist(data.cintaBandIt), numeroChecklist(data.hebilla), numeroChecklist(data.acoplador), numeroChecklist(data.roseta),
+    numeroChecklist(data.conectoresOpticos), numeroChecklist(data.templadores), numeroChecklist(data.splitter), numeroChecklist(data.clevis),
+    numeroChecklist(data.utpCat5), numeroChecklist(data.utpCat6), numeroChecklist(data.patchApcApc), numeroChecklist(data.patchUpcApc), numeroChecklist(data.rj45),
+    "","","","","","","","","","",1
+  ];
+  hoja.appendRow(fila);
+  return {ok:true, modulo:"CHECKLIST_ALMACEN", accion:"REGISTRAR", id, estadoGeneral:"PENDIENTE", sede, cuadrilla};
+}
+
+function filaChecklistAObjeto(f) {
+  return {
+    id:f[0],fechaRegistro:f[1],horaRegistro:f[2],usuario:f[3],nombresApellidos:f[4],sede:f[5],cuadrilla:f[6],fechaGestion:f[7],estadoGeneral:f[8],
+    ontZte:f[9],fotosOntZte:f[10],ontHuawei:f[11],fotosOntHuawei:f[12],meshZte:f[13],fotosMeshZte:f[14],meshHuawei:f[15],fotosMeshHuawei:f[16],
+    winbox:f[17],fotosWinbox:f[18],fonowin:f[19],fotosFonowin:f[20],cableDrop:f[21],pre50:f[22],pre100:f[23],pre150:f[24],pre200:f[25],
+    anclajeP:f[26],cintaBandIt:f[27],hebilla:f[28],acoplador:f[29],roseta:f[30],conectoresOpticos:f[31],templadores:f[32],splitter:f[33],
+    clevis:f[34],utpCat5:f[35],utpCat6:f[36],patchApcApc:f[37],patchUpcApc:f[38],rj45:f[39],resultadoAlmacen:f[40],motivoAlmacen:f[41],
+    validadoAlmacenPor:f[42],fechaValidacionAlmacen:f[43],horaValidacionAlmacen:f[44],resultadoJefatura:f[45],motivoJefatura:f[46],
+    validadoJefaturaPor:f[47],fechaValidacionJefatura:f[48],horaValidacionJefatura:f[49],version:f[50]
+  };
+}
+
+function listarChecklistAlmacen(data) {
+  const hoja = asegurarHojaChecklistAlmacen();
+  const datos = hoja.getDataRange().getValues();
+  const usuario = obtenerUsuarioApp(data.usuario);
+  const lista = [];
+  for (let i=1;i<datos.length;i++) {
+    const item = filaChecklistAObjeto(datos[i]);
+    let permitir=false;
+    if (usuario.perfil === "TECNICO") permitir = normalizarCuadrilla(usuario.cuadrilla) === normalizarCuadrilla(item.cuadrilla);
+    else if (usuario.perfil === "ALMACEN" || usuario.perfil === "SUPERVISOR") permitir = normalizarTexto(usuario.sede) === normalizarTexto(item.sede);
+    else if (esPerfilJefaturaAlmacen(usuario.perfil) || esPerfilJefatura(usuario.perfil)) permitir = true;
+    if (!permitir) continue;
+    if (data.sede && normalizarTexto(data.sede)!==normalizarTexto(item.sede)) continue;
+    if (data.cuadrilla && normalizarCuadrilla(data.cuadrilla)!==normalizarCuadrilla(item.cuadrilla)) continue;
+    if (data.estado && normalizarTexto(data.estado)!==normalizarTexto(item.estadoGeneral)) continue;
+    lista.push(item);
+  }
+  lista.reverse();
+  return {ok:true, modulo:"CHECKLIST_ALMACEN", accion:"LISTAR", perfil:usuario.perfil, registros:lista.length, checklist:lista};
+}
+
+function buscarChecklistAlmacen(id) {
+  const hoja=asegurarHojaChecklistAlmacen();
+  const datos=hoja.getDataRange().getValues();
+  for(let i=1;i<datos.length;i++) if((datos[i][0]||"").toString()===id.toString()) return {hoja,fila:i+1,item:filaChecklistAObjeto(datos[i])};
+  throw new Error("No se encontró el checklist: "+id);
+}
+
+function validarChecklistAlmacen(data) {
+  const usuario=obtenerUsuarioApp(data.usuario);
+  const id=(data.id||"").toString().trim();
+  const resultado=normalizarTexto(data.resultado);
+  const motivo=(data.motivo||"").toString().trim();
+  if(!id) throw new Error("ID obligatorio");
+  const e=buscarChecklistAlmacen(id), hoja=e.hoja, fila=e.fila, item=e.item, ahora=new Date();
+  if(usuario.perfil === "ALMACEN") {
+    if(normalizarTexto(usuario.sede)!==normalizarTexto(item.sede)) throw new Error("Almacén solo puede validar checklist de su sede");
+    if(!["VISTO BUENO","OBSERVADO"].includes(resultado)) throw new Error("Resultado no válido para Almacén");
+    if(resultado==="OBSERVADO"&&!motivo) throw new Error("Debe ingresar el motivo");
+    hoja.getRange(fila,41).setValue(resultado); hoja.getRange(fila,42).setValue(resultado==="OBSERVADO"?motivo:""); hoja.getRange(fila,43).setValue(usuario.usuario);
+    hoja.getRange(fila,44).setValue(ahora).setNumberFormat("dd/mm/yyyy"); hoja.getRange(fila,45).setValue(ahora).setNumberFormat("hh:mm:ss");
+    hoja.getRange(fila,9).setValue(resultado==="VISTO BUENO"?"VISTO BUENO ALMACEN":"OBSERVADO ALMACEN");
+  } else if(esPerfilJefaturaAlmacen(usuario.perfil)) {
+    if(!["CONFORME","OBSERVADO"].includes(resultado)) throw new Error("Resultado no válido para Jefatura de Almacén");
+    if(resultado==="CONFORME" && normalizarTexto(item.resultadoAlmacen)!=="VISTO BUENO") throw new Error("Primero el Responsable de Almacén debe dar el Visto Bueno");
+    if(resultado==="OBSERVADO"&&!motivo) throw new Error("Debe ingresar el motivo");
+    hoja.getRange(fila,46).setValue(resultado); hoja.getRange(fila,47).setValue(resultado==="OBSERVADO"?motivo:""); hoja.getRange(fila,48).setValue(usuario.usuario);
+    hoja.getRange(fila,49).setValue(ahora).setNumberFormat("dd/mm/yyyy"); hoja.getRange(fila,50).setValue(ahora).setNumberFormat("hh:mm:ss");
+    hoja.getRange(fila,9).setValue(resultado==="CONFORME"?"CONFORME":"OBSERVADO JEFATURA");
+  } else throw new Error("Solo Almacén o Jefatura de Almacén pueden validar checklist");
+  return {ok:true, modulo:"CHECKLIST_ALMACEN", accion:"VALIDAR", id, resultado};
+}
+
+function autorizarDriveChecklistAlmacen() {
+  const carpeta=DriveApp.getFolderById(CARPETA_CHECKLIST_ALMACEN);
+  const prueba=carpeta.createFile("PRUEBA_CHECKLIST_MI_VISUAL.txt","Permiso Drive autorizado correctamente");
+  const url=prueba.getUrl(); prueba.setTrashed(true);
+  return {ok:true,modulo:"CHECKLIST_ALMACEN",carpeta:carpeta.getName(),url:carpeta.getUrl(),prueba:url};
+}
+
+
 /* =========================
    ANÁLISIS ECONÓMICO
    Solo Jefatura / Admin
@@ -3179,6 +3362,11 @@ function doPost(e) {
   try {
     const data = JSON.parse(e.postData.contents);
 
+
+    if (data.accion === "registrarChecklistAlmacen") return respuestaJson(registrarChecklistAlmacen(data));
+    if (data.accion === "listarChecklistAlmacen") return respuestaJson(listarChecklistAlmacen(data));
+    if (data.accion === "validarChecklistAlmacen") return respuestaJson(validarChecklistAlmacen(data));
+    if (data.accion === "autorizarDriveChecklistAlmacen") return respuestaJson(autorizarDriveChecklistAlmacen());
 
     if (data.accion === "obtenerAnalisisEconomico") {
       return ContentService

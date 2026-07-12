@@ -1,0 +1,15 @@
+MI VISUAL V95 - CHECKLIST ALMACEN
+
+Archivos a reemplazar/agregar:
+- apps_script/Code.gs (reemplazar y actualizar despliegue existente)
+- js/checklist_almacen.js (nuevo)
+- js/app.js
+- js/login.js
+- index.html
+
+Hoja requerida: CHECKLIST_ALMACEN con las 51 columnas definidas.
+Carpeta Drive raíz: 1nL5if5dRs3y1_OpKfzu7N9BNjiSvXVgp
+
+Opcional en USUARIOS: agregar NOMBRES_APELLIDOS como columna 11. Si no existe, se usa el usuario como nombre.
+
+Después de pegar Code.gs: ejecutar autorizarDriveChecklistAlmacen una vez y actualizar la implementación existente para conservar la URL.

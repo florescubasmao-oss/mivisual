@@ -41,6 +41,7 @@ async function login() {
                 const perfil = datos[6]?.replace(/"/g, "").trim();
                 const nivel = datos[7]?.replace(/"/g, "").trim();
                 const estado = datos[8]?.replace(/"/g, "").trim();
+                const nombresApellidos = datos[10]?.replace(/"/g, "").trim() || usuario;
 
                 localStorage.setItem("usuario", usuario);
                 localStorage.setItem("cuadrilla", cuadrilla);
@@ -50,6 +51,7 @@ async function login() {
                 localStorage.setItem("nivel", nivel);
                 localStorage.setItem("estado", estado);
                 localStorage.setItem("correo", correo);
+                localStorage.setItem("nombresApellidos", nombresApellidos);
 
                 document.getElementById("usuarioInfo").innerHTML = "";
                 document.getElementById("panelLogin").style.display = "none";
