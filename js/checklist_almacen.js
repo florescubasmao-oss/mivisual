@@ -1,4 +1,4 @@
-// MI VISUAL - Checklist Almacén V98
+// MI VISUAL - Checklist Almacén V99
 const API_CHECKLIST_ALMACEN = "https://script.google.com/macros/s/AKfycbzcbjCLweJNgZXDerdzmMN7Lwotc1G8NWdzoPkaLNGDivAgpYxDkq78xZwPRioSB4XY/exec";
 
 function ckNorm(v){return (v||"").toString().toUpperCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"").replace(/\s+/g," ").trim();}
@@ -112,7 +112,13 @@ async function ckGuardar(ev){
   try{
     if(btn){btn.disabled=true;btn.textContent='Guardando...'}
     const payload={accion:'registrarChecklistAlmacen',usuario:u.usuario,nombresApellidos:document.getElementById('ckNombres').value,fechaGestion:document.getElementById('ckFecha').value,cableDrop:ckNum('ckCableDrop'),pre50:ckNum('ckPre50'),pre100:ckNum('ckPre100'),pre150:ckNum('ckPre150'),pre200:ckNum('ckPre200'),anclajeP:ckNum('ckAnclaje'),cintaBandIt:ckNum('ckBand'),hebilla:ckNum('ckHebilla'),acoplador:ckNum('ckAcoplador'),roseta:ckNum('ckRoseta'),conectoresOpticos:ckNum('ckConectores'),templadores:ckNum('ckTempladores'),splitter:ckNum('ckSplitter'),clevis:ckNum('ckClevis'),utpCat5:ckNum('ckCat5'),utpCat6:ckNum('ckCat6'),patchApcApc:ckNum('ckApc'),patchUpcApc:ckNum('ckUpc'),rj45:ckNum('ckRj45')};
-    for(const k of Object.keys(CK_EQUIPOS))payload[k+'Equipos']=await ckCollectEquipos(k);
+    payload.ontZteEquipos=await ckCollectEquipos('ontZte');
+    payload.ontHuaweiEquipos=await ckCollectEquipos('ontHuawei');
+    payload.meshZteEquipos=await ckCollectEquipos('meshZte');
+    payload.meshHuaweiEquipos=await ckCollectEquipos('meshHuawei');
+    payload.winboxEquipos=await ckCollectEquipos('winbox');
+    payload.fonowinEquipos=await ckCollectEquipos('fonowin');
+    payload.equipos={ontZte:payload.ontZteEquipos,ontHuawei:payload.ontHuaweiEquipos,meshZte:payload.meshZteEquipos,meshHuawei:payload.meshHuaweiEquipos,winbox:payload.winboxEquipos,fonowin:payload.fonowinEquipos};
     await ckApi(payload);
     alert('Checklist registrado correctamente');
     ckToggleNuevoChecklist(false);

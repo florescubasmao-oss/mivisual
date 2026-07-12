@@ -1,0 +1,15 @@
+MI VISUAL V99 - CORRECCION DE SERIES CHECKLIST
+
+Archivos a reemplazar:
+- js/checklist_almacen.js
+- apps_script/Code.gs
+- index.html
+
+Correccion:
+- Se envian las series con nombres de campos explicitos.
+- Apps Script acepta tanto los campos directos como el objeto equipos.
+- Las series se guardan en las columnas ONT ZTE, ONT HUAWEI, MESH, WINBOX y FONOWIN.
+- Los enlaces se guardan en las columnas de fotos correspondientes.
+
+IMPORTANTE:
+Actualizar la implementacion existente de Apps Script con una nueva version.

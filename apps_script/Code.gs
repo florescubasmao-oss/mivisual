@@ -2854,6 +2854,14 @@ function guardarEquiposChecklist(carpetaFecha, categoria, id, equipos, maximo) {
   return { series: series.join(" | "), links: links.join("|") };
 }
 
+
+function obtenerEquiposChecklistEntrada(data, clave) {
+  const directo = data ? data[clave + "Equipos"] : null;
+  if (Array.isArray(directo)) return directo;
+  if (data && data.equipos && Array.isArray(data.equipos[clave])) return data.equipos[clave];
+  return [];
+}
+
 function registrarChecklistAlmacen(data) {
   const hoja = asegurarHojaChecklistAlmacen();
   const usuario = obtenerUsuarioApp(data.usuario);
@@ -2870,12 +2878,12 @@ function registrarChecklistAlmacen(data) {
     fechaGestion
   );
 
-  const ontZte = guardarEquiposChecklist(carpetaFecha, "ONT_ZTE", id, data.ontZteEquipos, 10);
-  const ontHuawei = guardarEquiposChecklist(carpetaFecha, "ONT_HUAWEI", id, data.ontHuaweiEquipos, 10);
-  const meshZte = guardarEquiposChecklist(carpetaFecha, "MESH_ZTE", id, data.meshZteEquipos, 10);
-  const meshHuawei = guardarEquiposChecklist(carpetaFecha, "MESH_HUAWEI", id, data.meshHuaweiEquipos, 10);
-  const winbox = guardarEquiposChecklist(carpetaFecha, "WINBOX", id, data.winboxEquipos, 5);
-  const fonowin = guardarEquiposChecklist(carpetaFecha, "FONOWIN", id, data.fonowinEquipos, 5);
+  const ontZte = guardarEquiposChecklist(carpetaFecha, "ONT_ZTE", id, obtenerEquiposChecklistEntrada(data, "ontZte"), 10);
+  const ontHuawei = guardarEquiposChecklist(carpetaFecha, "ONT_HUAWEI", id, obtenerEquiposChecklistEntrada(data, "ontHuawei"), 10);
+  const meshZte = guardarEquiposChecklist(carpetaFecha, "MESH_ZTE", id, obtenerEquiposChecklistEntrada(data, "meshZte"), 10);
+  const meshHuawei = guardarEquiposChecklist(carpetaFecha, "MESH_HUAWEI", id, obtenerEquiposChecklistEntrada(data, "meshHuawei"), 10);
+  const winbox = guardarEquiposChecklist(carpetaFecha, "WINBOX", id, obtenerEquiposChecklistEntrada(data, "winbox"), 5);
+  const fonowin = guardarEquiposChecklist(carpetaFecha, "FONOWIN", id, obtenerEquiposChecklistEntrada(data, "fonowin"), 5);
 
   const ahora = new Date();
   const nombres = (data.nombresApellidos || usuario.nombresApellidos || usuario.usuario || "").toString().trim();
@@ -2893,7 +2901,13 @@ function registrarChecklistAlmacen(data) {
     "","","","","","","","","","",1
   ];
   hoja.appendRow(fila);
-  return {ok:true, modulo:"CHECKLIST_ALMACEN", accion:"REGISTRAR", id, estadoGeneral:estadoInicialChecklist, sede, cuadrilla};
+  return {
+    ok:true, modulo:"CHECKLIST_ALMACEN", accion:"REGISTRAR", id, estadoGeneral:estadoInicialChecklist, sede, cuadrilla,
+    seriesGuardadas:{
+      ontZte:ontZte.series, ontHuawei:ontHuawei.series, meshZte:meshZte.series, meshHuawei:meshHuawei.series,
+      winbox:winbox.series, fonowin:fonowin.series
+    }
+  };
 }
 
 function filaChecklistAObjeto(f) {
