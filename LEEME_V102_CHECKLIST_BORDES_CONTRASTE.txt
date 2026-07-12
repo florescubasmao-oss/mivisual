@@ -1,0 +1,12 @@
+MI VISUAL V102 - CHECKLIST ALMACEN
+
+Archivos a reemplazar:
+- js/checklist_almacen.js
+- index.html
+
+Cambios:
+- Bordes mas anchos y con mayor contraste en ONT, MESH, WINBOX y FONOWIN.
+- Contenedores de equipos con borde de 3 px y sombra mas visible.
+- Filas individuales completas o pendientes con borde de 2 px.
+- Mayor separacion visual entre categorias.
+- No modifica Apps Script, Google Sheets ni Drive.
