@@ -3676,12 +3676,14 @@ function calcularCoberturaDescansos(fechaIso, sede, plataforma, cambiosTemporale
     return {total,enCampo:campo,enDescanso:Math.max(total-campo,0),porcentaje,estado:ambasDescansan?"ROJO":"VERDE",objetivo:regla.objetivo,minimo:regla.minimo,objetivoCuadrillas:1,minimoCuadrillas:1,aplicaPorcentaje:false,reglaEspecial:"DOS_CUADRILLAS_NO_DESCANSAN_JUNTAS",alerta:ambasDescansan};
   }
   if (esSupervisor && total === 3) {
-    const estado = campo >= 3 ? "VERDE" : (campo === 2 ? "AMARILLO" : "ROJO");
-    return {total,enCampo:campo,enDescanso:Math.max(total-campo,0),porcentaje,estado,objetivo:regla.objetivo,minimo:regla.minimo,objetivoCuadrillas:3,minimoCuadrillas:2,aplicaPorcentaje:false,reglaEspecial:"TRES_CUADRILLAS_MINIMO_DOS",alerta:campo<2};
+    const alerta = campo < 2;
+    const estado = alerta ? "ROJO" : "VERDE";
+    return {total,enCampo:campo,enDescanso:Math.max(total-campo,0),porcentaje,estado,objetivo:regla.objetivo,minimo:regla.minimo,objetivoCuadrillas:3,minimoCuadrillas:2,aplicaPorcentaje:false,reglaEspecial:"TRES_CUADRILLAS_MINIMO_DOS",alerta};
   }
   if (esSupervisor && total === 4) {
-    const estado = campo >= 4 ? "VERDE" : (campo === 3 ? "AMARILLO" : "ROJO");
-    return {total,enCampo:campo,enDescanso:Math.max(total-campo,0),porcentaje,estado,objetivo:regla.objetivo,minimo:regla.minimo,objetivoCuadrillas:4,minimoCuadrillas:3,aplicaPorcentaje:false,reglaEspecial:"CUATRO_CUADRILLAS_MINIMO_TRES",alerta:campo<3};
+    const alerta = campo < 3;
+    const estado = alerta ? "ROJO" : "VERDE";
+    return {total,enCampo:campo,enDescanso:Math.max(total-campo,0),porcentaje,estado,objetivo:regla.objetivo,minimo:regla.minimo,objetivoCuadrillas:4,minimoCuadrillas:3,aplicaPorcentaje:false,reglaEspecial:"CUATRO_CUADRILLAS_MINIMO_TRES",alerta};
   }
 
   const objetivoCuadrillas = redondearCoberturaDescansos(total*regla.objetivo);
@@ -3739,7 +3741,7 @@ function guardarProgramacionDescansos(data) {
     const estadoProg = esJefaturaDescansos(usuario.perfil) ? "APROBADO" : "PENDIENTE JEFATURA";
     const version = existente ? (existente.item.version+1) : 1;
     const cobertura=calcularCoberturaDescansos(fecha,sede,plataforma,cambiosTemporales,usuario.perfil);
-    if(cobertura.alerta) alertas++;
+    if(cobertura.estado!=="VERDE" && cobertura.estado!=="NO APLICA") alertas++;
     const fila = [
       idProgramacionDescansos(cuadrilla,fecha),periodoDescansos(fecha),fecha,diaSemanaDescansos(fecha),sede,cuadrilla,plataforma,
       dc.usuarioSupervisor||"",dc.usuario||"",estadoDia,estadoProg,"",motivo,usuario.usuario,ahora,ahora,"","","","","",
@@ -4254,7 +4256,7 @@ function guardarProgramacionDescansos(data) {
     if(esSupervisor&&sede!==normalizarTexto(usuario.sede)) throw new Error("Supervisor solo puede programar su sede");
     const existente=buscarProgramacionDescansos(cuadrilla,fecha), ahora=new Date();
     const anterior=existente?normalizarTexto(existente.item.estadoDia||"EN CAMPO"):"EN CAMPO";
-    const cobertura=calcularCoberturaDescansos(fecha,sede,plataforma,cambiosTemporales,usuario.perfil); if(cobertura.alerta) alertas++;
+    const cobertura=calcularCoberturaDescansos(fecha,sede,plataforma,cambiosTemporales,usuario.perfil); if(cobertura.estado!=="VERDE" && cobertura.estado!=="NO APLICA") alertas++;
     if(esSupervisor){
       const fila=[idProgramacionDescansos(cuadrilla,fecha),periodoDescansos(fecha),fecha,diaSemanaDescansos(fecha),sede,cuadrilla,plataforma,dc.usuarioSupervisor||"",dc.usuario||"",anterior,"PENDIENTE JEFATURA",nuevo,motivo,usuario.usuario,ahora,ahora,"","","","","","","","","","",cobertura.porcentaje,cobertura.estado,existente?(existente.item.version+1):1];
       if(existente) hoja.getRange(existente.fila,1,1,29).setValues([fila]); else hoja.appendRow(fila);
