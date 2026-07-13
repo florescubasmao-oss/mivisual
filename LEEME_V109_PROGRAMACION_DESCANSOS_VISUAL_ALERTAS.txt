@@ -1,0 +1,17 @@
+MI VISUAL V109 - PROGRAMACION DE DESCANSOS
+
+Cambios aplicados únicamente al módulo Programación de Descansos:
+- Vista mensual operativa con extensión automática a días del mes anterior/siguiente.
+- Primeros 10 días: muestra también los últimos 10 días del mes anterior.
+- Últimos 7 días: muestra también la primera semana del mes siguiente.
+- Consulta por un día: lista cuadrillas en campo y en descanso.
+- Consulta por cuadrilla: muestra sus fechas de descanso en el periodo.
+- Supervisor puede enviar programación mensual y modificaciones con motivo obligatorio.
+- Solicitud de técnico mantiene validación Supervisor -> Jefatura.
+- Cambios del Supervisor pasan directamente a validación de Jefatura.
+- Alertas automáticas cuando la capacidad queda debajo del mínimo.
+- Las alertas no bloquean; Jefatura valida si la programación procede.
+- Se conservaron los demás módulos sin cambios.
+
+IMPORTANTE:
+Para que las funciones de guardado, alertas y aprobación operen, actualizar también Code.gs y realizar un nuevo despliegue de Apps Script. Luego actualizar API_DESCANSOS si el despliegue genera una URL distinta.

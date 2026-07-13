@@ -3654,11 +3654,16 @@ function listarProgramacionDescansos(data) {
 
 function guardarProgramacionDescansos(data) {
   const usuario = obtenerUsuarioApp(data.usuario);
-  if (!(normalizarTexto(usuario.perfil)==="SUPERVISOR" || esJefaturaDescansos(usuario.perfil))) throw new Error("Solo Supervisor o Jefatura pueden programar descansos");
+  const esSupervisor = normalizarTexto(usuario.perfil)==="SUPERVISOR";
+  if (!(esSupervisor || esJefaturaDescansos(usuario.perfil))) throw new Error("Solo Supervisor o Jefatura pueden programar descansos");
   const registros = Array.isArray(data.registros) ? data.registros : [];
   if (!registros.length) throw new Error("No hay cambios para guardar");
+  const motivo = (data.motivo||"").toString().trim();
+  if (esSupervisor && !motivo) throw new Error("El motivo es obligatorio para enviar una programación o modificación");
   const hoja = asegurarHojaProgramacionDescansos();
-  let guardados=0;
+  const cambiosTemporales={};
+  registros.forEach(r=>{const c=normalizarCuadrilla(r.cuadrilla),f=fechaISODescansos(r.fecha);if(c&&f)cambiosTemporales[c+"|"+f]=normalizarTexto(r.estadoDia||"EN CAMPO");});
+  let guardados=0, alertas=0;
   registros.forEach(r=>{
     const cuadrilla = normalizarCuadrilla(r.cuadrilla);
     const fecha = fechaISODescansos(r.fecha);
@@ -3666,21 +3671,24 @@ function guardarProgramacionDescansos(data) {
     if (!cuadrilla || !fecha || !["EN CAMPO","DESCANSO"].includes(estadoDia)) return;
     const dc = obtenerDatosCuadrillaApp(cuadrilla);
     const sede = normalizarTexto(dc.sede);
-    if (normalizarTexto(usuario.perfil)==="SUPERVISOR" && sede!==normalizarTexto(usuario.sede)) throw new Error("Supervisor solo puede programar su sede");
+    const plataforma=plataformaDescansos(dc.plataforma);
+    if (esSupervisor && sede!==normalizarTexto(usuario.sede)) throw new Error("Supervisor solo puede programar su sede");
     const existente = buscarProgramacionDescansos(cuadrilla,fecha);
     const ahora = new Date();
     const estadoProg = esJefaturaDescansos(usuario.perfil) ? "APROBADO" : "PENDIENTE JEFATURA";
     const version = existente ? (existente.item.version+1) : 1;
+    const cobertura=calcularCoberturaDescansos(fecha,sede,plataforma,cambiosTemporales);
+    if(cobertura.estado==="ROJO") alertas++;
     const fila = [
-      idProgramacionDescansos(cuadrilla,fecha),periodoDescansos(fecha),fecha,diaSemanaDescansos(fecha),sede,cuadrilla,plataformaDescansos(dc.plataforma),
-      dc.usuarioSupervisor||"",dc.usuario||"",estadoDia,estadoProg,"","","","","","","","","","",
-      esJefaturaDescansos(usuario.perfil)?"APROBADO":"","",esJefaturaDescansos(usuario.perfil)?usuario.usuario:"",esJefaturaDescansos(usuario.perfil)?ahora:"",esJefaturaDescansos(usuario.perfil)?ahora:"",
-      0,"",version
+      idProgramacionDescansos(cuadrilla,fecha),periodoDescansos(fecha),fecha,diaSemanaDescansos(fecha),sede,cuadrilla,plataforma,
+      dc.usuarioSupervisor||"",dc.usuario||"",estadoDia,estadoProg,"",motivo,usuario.usuario,ahora,ahora,"","","","","",
+      esJefaturaDescansos(usuario.perfil)?"APROBADO":"",esJefaturaDescansos(usuario.perfil)?motivo:"",esJefaturaDescansos(usuario.perfil)?usuario.usuario:"",esJefaturaDescansos(usuario.perfil)?ahora:"",esJefaturaDescansos(usuario.perfil)?ahora:"",
+      cobertura.porcentaje,cobertura.estado,version
     ];
     if (existente) hoja.getRange(existente.fila,1,1,29).setValues([fila]); else hoja.appendRow(fila);
     guardados++;
   });
-  return {ok:true,modulo:"PROGRAMACION_DESCANSOS",accion:"GUARDAR",guardados,estado:esJefaturaDescansos(usuario.perfil)?"APROBADO":"PENDIENTE JEFATURA"};
+  return {ok:true,modulo:"PROGRAMACION_DESCANSOS",accion:"GUARDAR",guardados,alertas,estado:esJefaturaDescansos(usuario.perfil)?"APROBADO":"PENDIENTE JEFATURA"};
 }
 
 function aprobarProgramacionDescansos(data) {
@@ -3695,6 +3703,7 @@ function aprobarProgramacionDescansos(data) {
     if (!ids.length && normalizarTexto(datos[i][10])!=="PENDIENTE JEFATURA") continue;
     hoja.getRange(i+1,11).setValue("APROBADO");
     hoja.getRange(i+1,22).setValue("APROBADO");
+    if (normalizarTexto(datos[i][27]) === "ROJO") hoja.getRange(i+1,23).setValue("ALERTA DE CAPACIDAD VALIDADA POR JEFATURA");
     hoja.getRange(i+1,24).setValue(usuario.usuario);
     hoja.getRange(i+1,25).setValue(ahora);
     hoja.getRange(i+1,26).setValue(ahora);
