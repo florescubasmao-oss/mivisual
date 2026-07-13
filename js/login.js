@@ -41,7 +41,7 @@ async function login() {
                 const perfil = datos[6]?.replace(/"/g, "").trim();
                 const nivel = datos[7]?.replace(/"/g, "").trim();
                 const estado = datos[8]?.replace(/"/g, "").trim();
-                const nombresApellidos = datos[10]?.replace(/"/g, "").trim() || usuario;
+                const nombresApellidos = datos[10]?.replace(/"/g, "").trim() || "";
 
                 localStorage.setItem("usuario", usuario);
                 localStorage.setItem("cuadrilla", cuadrilla);

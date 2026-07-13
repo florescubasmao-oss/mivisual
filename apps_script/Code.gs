@@ -3582,24 +3582,56 @@ function diaSemanaDescansos(fechaIso) {
 }
 
 function listaCuadrillasDescansos(usuario) {
-  const mapa = obtenerMapaUsuarios();
-  const lista = [];
-  Object.keys(mapa).forEach(c => {
-    const item = mapa[c] || {};
-    if (normalizarTexto(item.estado || "ACTIVO") !== "ACTIVO") return;
-    if (normalizarTexto(item.perfil) !== "TECNICO") return;
-    const cuadrilla = normalizarCuadrilla(c);
-    const sede = normalizarTexto(item.sede);
-    if (!/^P\d+\b/i.test(cuadrilla) || !sede || sede === "TODAS") return;
-    if (normalizarTexto(usuario.perfil) === "SUPERVISOR" && sede !== normalizarTexto(usuario.sede)) return;
-    lista.push({
-      cuadrilla,
-      sede,
-      plataforma: plataformaDescansos(item.plataforma),
-      supervisor: item.usuarioSupervisor || "",
-      tecnico: item.usuario || ""
+  const hoja = obtenerHoja(HOJA_USUARIOS);
+  const datos = hoja.getDataRange().getValues();
+  const encabezados = (datos[0] || []).map(h => normalizarTexto(h).replace(/\s+/g, "_"));
+  const indiceNombres = encabezados.indexOf("NOMBRES_APELLIDOS");
+  const mapa = {};
+
+  for (let i = 1; i < datos.length; i++) {
+    const fila = datos[i];
+    const perfil = normalizarTexto(fila[6]);
+    const estado = normalizarTexto(fila[8] || "ACTIVO");
+    const cuadrilla = normalizarCuadrilla(fila[3]);
+    const sede = normalizarTexto(fila[4]);
+
+    if (perfil !== "TECNICO" || estado !== "ACTIVO") continue;
+    if (!/^P\d+\b/i.test(cuadrilla) || !sede || sede === "TODAS") continue;
+    if (normalizarTexto(usuario.perfil) === "SUPERVISOR" && sede !== normalizarTexto(usuario.sede)) continue;
+
+    if (!mapa[cuadrilla]) {
+      mapa[cuadrilla] = {
+        cuadrilla,
+        sede,
+        plataforma: plataformaDescansos(fila[5]),
+        supervisor: fila[9] || "",
+        tecnico: fila[0] || "",
+        tecnicos: [],
+        usuariosTecnicos: []
+      };
+    }
+
+    const usuarioTecnico = (fila[0] || "").toString().trim();
+    const nombreTecnico = indiceNombres >= 0
+      ? (fila[indiceNombres] || "").toString().trim()
+      : "";
+
+    if (usuarioTecnico && !mapa[cuadrilla].usuariosTecnicos.includes(usuarioTecnico)) {
+      mapa[cuadrilla].usuariosTecnicos.push(usuarioTecnico);
+    }
+
+    if (nombreTecnico && !mapa[cuadrilla].tecnicos.some(n => normalizarTexto(n) === normalizarTexto(nombreTecnico))) {
+      mapa[cuadrilla].tecnicos.push(nombreTecnico);
+    }
+  }
+
+  const lista = Object.keys(mapa).map(cuadrilla => {
+    const item = mapa[cuadrilla];
+    return Object.assign({}, item, {
+      tecnicosAfectados: item.tecnicos.join(" | ")
     });
   });
+
   lista.sort((a,b)=>a.sede.localeCompare(b.sede)||a.plataforma.localeCompare(b.plataforma)||a.cuadrilla.localeCompare(b.cuadrilla));
   return lista;
 }
@@ -3736,7 +3768,7 @@ function guardarProgramacionDescansos(data) {
     const cuadrilla = normalizarCuadrilla(r.cuadrilla);
     const fecha = fechaISODescansos(r.fecha);
     const estadoDia = normalizarTexto(r.estadoDia||"EN CAMPO");
-    if (!cuadrilla || !fecha || !["EN CAMPO","DESCANSO","VACACIONES"].includes(estadoDia)) return;
+    if (!cuadrilla || !fecha || !["EN CAMPO","EN CAMPO BOLSA","DESCANSO","VACACIONES"].includes(estadoDia)) return;
     const dc = obtenerDatosCuadrillaApp(cuadrilla);
     const sede = normalizarTexto(dc.sede);
     const plataforma=plataformaDescansos(dc.plataforma);
@@ -4256,7 +4288,7 @@ function guardarProgramacionDescansos(data) {
   let guardados=0, alertas=0;
   registros.forEach(r=>{
     const cuadrilla=normalizarCuadrilla(r.cuadrilla), fecha=fechaISODescansos(r.fecha), nuevo=normalizarTexto(r.estadoDia||"EN CAMPO");
-    if(!cuadrilla||!fecha||!["EN CAMPO","DESCANSO","VACACIONES"].includes(nuevo)) return;
+    if(!cuadrilla||!fecha||!["EN CAMPO","EN CAMPO BOLSA","DESCANSO","VACACIONES"].includes(nuevo)) return;
     const dc=obtenerDatosCuadrillaApp(cuadrilla), sede=normalizarTexto(dc.sede), plataforma=plataformaDescansos(dc.plataforma);
     if(esSupervisor&&sede!==normalizarTexto(usuario.sede)) throw new Error("Supervisor solo puede programar su sede");
     const existente=buscarProgramacionDescansos(cuadrilla,fecha), ahora=new Date();
@@ -4304,4 +4336,121 @@ function rechazarProgramacionDescansos(data) {
   const hoja=asegurarHojaProgramacionDescansos(),datos=hoja.getDataRange().getValues(),ahora=new Date();let actualizados=0;
   for(let i=1;i<datos.length;i++){if(ids.length&&!ids.includes((datos[i][0]||"").toString()))continue;if(!ids.length&&!['PENDIENTE JEFATURA','OBSERVADO'].includes(normalizarTexto(datos[i][10])))continue;const item=filaProgramacionAObjeto(datos[i]);hoja.getRange(i+1,11).setValue("APROBADO");hoja.getRange(i+1,12).setValue("");hoja.getRange(i+1,22).setValue("RECHAZADO");hoja.getRange(i+1,23).setValue(motivo);hoja.getRange(i+1,24).setValue(usuario.usuario);hoja.getRange(i+1,25).setValue(ahora);hoja.getRange(i+1,26).setValue(ahora);registrarHistorialDescansos({periodo:item.periodo,sede:item.sede,cuadrilla:item.cuadrilla,plataforma:item.plataforma,fecha:item.fecha,estadoAnterior:item.estadoDia,estadoNuevo:item.solicitudCambio,accion:"RECHAZADO",origen:"JEFATURA",usuario:usuario.usuario,motivo,resultado:"RECHAZADO"});actualizados++;}
   return {ok:true,modulo:"PROGRAMACION_DESCANSOS",accion:"RECHAZAR_PROGRAMACION",actualizados};
+}
+
+
+/* =========================
+   PROGRAMACIÓN DE DESCANSOS V134
+   Supervisores y Responsables de Almacén
+========================= */
+function esPerfilDescansos(perfil) {
+  const p = normalizarTexto(perfil);
+  return ["TECNICO","SUPERVISOR","JEFATURA","ADMIN","ADMINISTRADOR","ALMACEN"].includes(p);
+}
+
+function clavePersonalDescansos(usuario) {
+  return "PERSONAL|" + normalizarUsuario(usuario);
+}
+
+function listaCuadrillasDescansos(usuario) {
+  const hoja = obtenerHoja(HOJA_USUARIOS);
+  const datos = hoja.getDataRange().getValues();
+  const encabezados = (datos[0] || []).map(h => normalizarTexto(h).replace(/\s+/g, "_"));
+  const indiceNombres = encabezados.indexOf("NOMBRES_APELLIDOS");
+  const perfilSolicitante = normalizarTexto(usuario.perfil);
+  const usuarioSolicitante = normalizarUsuario(usuario.usuario || "");
+  const sedeSolicitante = normalizarTexto(usuario.sede || "");
+  const mapaCuadrillas = {};
+  const personales = [];
+
+  for (let i = 1; i < datos.length; i++) {
+    const fila = datos[i];
+    const usuarioFila = normalizarUsuario(fila[0]);
+    const perfil = normalizarTexto(fila[6]);
+    const estado = normalizarTexto(fila[8] || "ACTIVO");
+    const sede = normalizarTexto(fila[4]);
+    const cuadrilla = normalizarCuadrilla(fila[3]);
+    const nombre = indiceNombres >= 0 ? (fila[indiceNombres] || fila[0] || "").toString().trim() : (fila[0] || "").toString().trim();
+    if (estado !== "ACTIVO") continue;
+
+    if (perfil === "TECNICO") {
+      if (!/^P\d+\b/i.test(cuadrilla) || !sede || sede === "TODAS") continue;
+      if (perfilSolicitante === "SUPERVISOR" && sede !== sedeSolicitante) continue;
+      if (perfilSolicitante === "TECNICO" && normalizarCuadrilla(usuario.cuadrilla) !== cuadrilla) continue;
+      if (perfilSolicitante === "ALMACEN") continue;
+      if (!mapaCuadrillas[cuadrilla]) {
+        mapaCuadrillas[cuadrilla] = {cuadrilla,sede,plataforma:plataformaDescansos(fila[5]),supervisor:fila[9]||"",tecnico:fila[0]||"",tecnicos:[],usuariosTecnicos:[],tipoPersonal:"CUADRILLA",nombrePersonal:""};
+      }
+      if (usuarioFila && !mapaCuadrillas[cuadrilla].usuariosTecnicos.includes(usuarioFila)) mapaCuadrillas[cuadrilla].usuariosTecnicos.push(usuarioFila);
+      if (nombre && !mapaCuadrillas[cuadrilla].tecnicos.some(n=>normalizarTexto(n)===normalizarTexto(nombre))) mapaCuadrillas[cuadrilla].tecnicos.push(nombre);
+      continue;
+    }
+
+    if (!["SUPERVISOR","ALMACEN"].includes(perfil)) continue;
+    if (perfilSolicitante === "TECNICO") continue;
+    if (perfilSolicitante === "SUPERVISOR" && usuarioFila !== usuarioSolicitante) continue;
+    if (perfilSolicitante === "ALMACEN" && usuarioFila !== usuarioSolicitante) continue;
+    if (!esJefaturaDescansos(perfilSolicitante) && !["SUPERVISOR","ALMACEN"].includes(perfilSolicitante)) continue;
+
+    personales.push({
+      cuadrilla: clavePersonalDescansos(usuarioFila),
+      sede,
+      plataforma:"PERSONAL",
+      supervisor: perfil === "SUPERVISOR" ? usuarioFila : (fila[9] || ""),
+      tecnico:usuarioFila,
+      usuario:usuarioFila,
+      tecnicos:[],
+      usuariosTecnicos:[],
+      tecnicosAfectados:nombre,
+      tipoPersonal:perfil,
+      nombrePersonal:nombre || usuarioFila
+    });
+  }
+
+  const lista = Object.keys(mapaCuadrillas).map(k=>Object.assign({},mapaCuadrillas[k],{tecnicosAfectados:mapaCuadrillas[k].tecnicos.join(" | ")})).concat(personales);
+  lista.sort((a,b)=>normalizarTexto(a.tipoPersonal).localeCompare(normalizarTexto(b.tipoPersonal))||normalizarTexto(a.sede).localeCompare(normalizarTexto(b.sede))||normalizarTexto(a.nombrePersonal||a.cuadrilla).localeCompare(normalizarTexto(b.nombrePersonal||b.cuadrilla)));
+  return lista;
+}
+
+function obtenerEntidadDescansos(clave) {
+  const buscado = normalizarCuadrilla(clave);
+  const lista = listaCuadrillasDescansos({perfil:"JEFATURA",usuario:"",sede:""});
+  const entidad = lista.find(x=>normalizarCuadrilla(x.cuadrilla)===buscado);
+  if (!entidad) throw new Error("No se encontró la cuadrilla o personal: " + clave);
+  return entidad;
+}
+
+function calcularCoberturaDescansos(fechaIso, sede, plataforma, cambiosTemporales, perfilEvaluador) {
+  const cuadrillas = listaCuadrillasDescansos({perfil:"JEFATURA",usuario:"",sede:""}).filter(x=>normalizarTexto(x.tipoPersonal)==="CUADRILLA"&&normalizarTexto(x.sede)===normalizarTexto(sede)&&plataformaDescansos(x.plataforma)===plataformaDescansos(plataforma));
+  let campo=0,vacaciones=0;
+  cuadrillas.forEach(c=>{let estado="EN CAMPO";const key=c.cuadrilla+"|"+fechaIso;if(cambiosTemporales&&cambiosTemporales[key])estado=normalizarTexto(cambiosTemporales[key]);else{const r=buscarProgramacionDescansos(c.cuadrilla,fechaIso);if(r&&normalizarTexto(r.item.estadoProgramacion)==="APROBADO")estado=normalizarTexto(r.item.estadoDia);}if(estado==="VACACIONES")vacaciones++;else if(estado==="EN CAMPO"||estado==="EN CAMPO BOLSA")campo++;});
+  const totalRegistradas=cuadrillas.length,total=Math.max(totalRegistradas-vacaciones,0),porcentaje=total?campo/total:1,regla=reglasCoberturaDescansos(plataforma,fechaIso),esSupervisor=normalizarTexto(perfilEvaluador)==="SUPERVISOR";
+  if(total===0)return{total,totalRegistradas,vacaciones,enCampo:0,enDescanso:0,porcentaje:1,estado:"NO APLICA",objetivo:regla.objetivo,minimo:regla.minimo,objetivoCuadrillas:0,minimoCuadrillas:0,aplicaPorcentaje:false,reglaEspecial:"SOLO_VACACIONES",alerta:false};
+  if(esSupervisor&&total===1)return{total,totalRegistradas,vacaciones,enCampo:campo,enDescanso:Math.max(total-campo,0),porcentaje,estado:"NO APLICA",objetivo:regla.objetivo,minimo:regla.minimo,objetivoCuadrillas:0,minimoCuadrillas:0,aplicaPorcentaje:false,reglaEspecial:"UNA_CUADRILLA",alerta:false};
+  if(esSupervisor&&total===2){const alerta=campo===0;return{total,totalRegistradas,vacaciones,enCampo:campo,enDescanso:Math.max(total-campo,0),porcentaje,estado:alerta?"ROJO":"VERDE",objetivo:regla.objetivo,minimo:regla.minimo,objetivoCuadrillas:1,minimoCuadrillas:1,aplicaPorcentaje:false,reglaEspecial:"DOS_CUADRILLAS_NO_DESCANSAN_JUNTAS",alerta};}
+  if(esSupervisor&&total===3){const alerta=campo<2;return{total,totalRegistradas,vacaciones,enCampo:campo,enDescanso:Math.max(total-campo,0),porcentaje,estado:alerta?"ROJO":"VERDE",objetivo:regla.objetivo,minimo:regla.minimo,objetivoCuadrillas:3,minimoCuadrillas:2,aplicaPorcentaje:false,reglaEspecial:"TRES_CUADRILLAS_MINIMO_DOS",alerta};}
+  if(esSupervisor&&total===4){const alerta=campo<3;return{total,totalRegistradas,vacaciones,enCampo:campo,enDescanso:Math.max(total-campo,0),porcentaje,estado:alerta?"ROJO":"VERDE",objetivo:regla.objetivo,minimo:regla.minimo,objetivoCuadrillas:4,minimoCuadrillas:3,aplicaPorcentaje:false,reglaEspecial:"CUATRO_CUADRILLAS_MINIMO_TRES",alerta};}
+  const objetivoCuadrillas=redondearCoberturaDescansos(total*regla.objetivo);let estado="VERDE";if(campo===objetivoCuadrillas-1)estado="AMARILLO";else if(campo<objetivoCuadrillas-1)estado="ROJO";return{total,totalRegistradas,vacaciones,enCampo:campo,enDescanso:Math.max(total-campo,0),porcentaje,estado,objetivo:regla.objetivo,minimo:regla.minimo,objetivoCuadrillas,minimoCuadrillas:objetivoCuadrillas,aplicaPorcentaje:true,reglaEspecial:"",alerta:estado!=="VERDE"};
+}
+
+function listarHistorialDescansos(usuario, periodo) {
+  const hoja=asegurarHojaHistorialDescansos(),datos=hoja.getDataRange().getValues(),lista=[],perfil=normalizarTexto(usuario.perfil),personal=clavePersonalDescansos(usuario.usuario||"");
+  for(let i=1;i<datos.length;i++){const f=datos[i];if(periodo&&(f[3]||"").toString()!==periodo)continue;if(perfil==="SUPERVISOR"&&normalizarTexto(f[4])!==normalizarTexto(usuario.sede))continue;if(perfil==="TECNICO"&&normalizarCuadrilla(f[5])!==normalizarCuadrilla(usuario.cuadrilla))continue;if(perfil==="ALMACEN"&&normalizarCuadrilla(f[5])!==normalizarCuadrilla(personal))continue;lista.push({id:f[0],fechaRegistro:f[1],horaRegistro:f[2],periodo:f[3],sede:f[4],cuadrilla:f[5],plataforma:f[6],fechaAfectada:fechaISODescansos(f[7]),estadoAnterior:f[8],estadoNuevo:f[9],accion:f[10],origen:f[11],usuario:f[12],motivo:f[13],resultado:f[14]});}
+  return lista.reverse();
+}
+
+function listarProgramacionDescansos(data) {
+  const usuario=obtenerUsuarioApp(data.usuario);if(!esPerfilDescansos(usuario.perfil))throw new Error("No tienes acceso a Programación de Descansos");
+  const hoja=asegurarHojaProgramacionDescansos(),datos=hoja.getDataRange().getValues(),periodo=(data.periodo||Utilities.formatDate(new Date(),Session.getScriptTimeZone(),"yyyy-MM")).toString(),lista=[],perfil=normalizarTexto(usuario.perfil),personal=clavePersonalDescansos(usuario.usuario);
+  for(let i=1;i<datos.length;i++){const item=filaProgramacionAObjeto(datos[i]);if(item.periodo!==periodo)continue;let permitir=false;if(perfil==="TECNICO")permitir=normalizarCuadrilla(usuario.cuadrilla)===normalizarCuadrilla(item.cuadrilla);else if(perfil==="SUPERVISOR")permitir=(normalizarTexto(item.sede)===normalizarTexto(usuario.sede)&&!normalizarCuadrilla(item.cuadrilla).startsWith("PERSONAL|"))||normalizarCuadrilla(item.cuadrilla)===normalizarCuadrilla(personal);else if(perfil==="ALMACEN")permitir=normalizarCuadrilla(item.cuadrilla)===normalizarCuadrilla(personal);else if(esJefaturaDescansos(perfil))permitir=true;if(!permitir)continue;if(data.sede&&normalizarTexto(data.sede)!=="TODAS"&&normalizarTexto(data.sede)!==normalizarTexto(item.sede))continue;lista.push(item);}
+  return{ok:true,modulo:"PROGRAMACION_DESCANSOS",accion:"LISTAR",perfil:usuario.perfil,periodo,cuadrillas:listaCuadrillasDescansos(usuario),programacion:lista,historial:listarHistorialDescansos(usuario,periodo)};
+}
+
+function guardarProgramacionDescansos(data) {
+  const usuario=obtenerUsuarioApp(data.usuario),esSupervisor=normalizarTexto(usuario.perfil)==="SUPERVISOR",esJefatura=esJefaturaDescansos(usuario.perfil);if(!(esSupervisor||esJefatura))throw new Error("Solo Supervisor o Jefatura pueden programar descansos");
+  const registros=Array.isArray(data.registros)?data.registros:[];if(!registros.length)throw new Error("No hay cambios para guardar");const motivo=(data.motivo||"").toString().trim();if(!motivo)throw new Error("El motivo es obligatorio");const hoja=asegurarHojaProgramacionDescansos(),cambiosTemporales={};registros.forEach(r=>{const c=normalizarCuadrilla(r.cuadrilla),f=fechaISODescansos(r.fecha);if(c&&f)cambiosTemporales[c+"|"+f]=normalizarTexto(r.estadoDia||"EN CAMPO");});let guardados=0,alertas=0;
+  registros.forEach(r=>{const clave=normalizarCuadrilla(r.cuadrilla),fecha=fechaISODescansos(r.fecha),nuevo=normalizarTexto(r.estadoDia||"EN CAMPO");if(!clave||!fecha||!["EN CAMPO","EN CAMPO BOLSA","DESCANSO","VACACIONES"].includes(nuevo))return;const entidad=obtenerEntidadDescansos(clave),sede=normalizarTexto(entidad.sede),tipo=normalizarTexto(entidad.tipoPersonal||"CUADRILLA"),plataforma=tipo==="CUADRILLA"?plataformaDescansos(entidad.plataforma):"PERSONAL";if(esSupervisor&&tipo!=="CUADRILLA")throw new Error("La programación personal es gestionada por Jefatura");if(esSupervisor&&sede!==normalizarTexto(usuario.sede))throw new Error("Supervisor solo puede programar su sede");const existente=buscarProgramacionDescansos(clave,fecha),ahora=new Date(),anterior=existente?normalizarTexto(existente.item.estadoDia||"EN CAMPO"):"EN CAMPO",cobertura=tipo==="CUADRILLA"?calcularCoberturaDescansos(fecha,sede,plataforma,cambiosTemporales,usuario.perfil):{porcentaje:0,estado:"NO APLICA"};if(tipo==="CUADRILLA"&&cobertura.estado!=="VERDE"&&cobertura.estado!=="NO APLICA")alertas++;
+    if(esSupervisor){const fila=[idProgramacionDescansos(clave,fecha),periodoDescansos(fecha),fecha,diaSemanaDescansos(fecha),sede,clave,plataforma,entidad.supervisor||"",entidad.tecnicosAfectados||"",anterior,"PENDIENTE JEFATURA",nuevo,motivo,usuario.usuario,ahora,ahora,"","","","","","","","","","",cobertura.porcentaje,cobertura.estado,existente?(existente.item.version+1):1];if(existente)hoja.getRange(existente.fila,1,1,29).setValues([fila]);else hoja.appendRow(fila);registrarHistorialDescansos({periodo:periodoDescansos(fecha),sede,cuadrilla:clave,plataforma,fecha,estadoAnterior:anterior,estadoNuevo:nuevo,accion:existente?"CAMBIO ENVIADO":"PROGRAMACION ENVIADA",origen:"SUPERVISOR",usuario:usuario.usuario,motivo,resultado:"PENDIENTE JEFATURA"});}
+    else{const fila=[idProgramacionDescansos(clave,fecha),periodoDescansos(fecha),fecha,diaSemanaDescansos(fecha),sede,clave,plataforma,entidad.supervisor||"",entidad.tecnicosAfectados||"",nuevo,"APROBADO","",motivo,usuario.usuario,ahora,ahora,"","","","","","APROBADO",motivo,usuario.usuario,ahora,ahora,cobertura.porcentaje,cobertura.estado,existente?(existente.item.version+1):1];if(existente)hoja.getRange(existente.fila,1,1,29).setValues([fila]);else hoja.appendRow(fila);registrarHistorialDescansos({periodo:periodoDescansos(fecha),sede,cuadrilla:clave,plataforma,fecha,estadoAnterior:anterior,estadoNuevo:nuevo,accion:"CAMBIO APLICADO",origen:"JEFATURA",usuario:usuario.usuario,motivo,resultado:"APLICADO"});}guardados++;});
+  return{ok:true,modulo:"PROGRAMACION_DESCANSOS",accion:"GUARDAR",guardados,alertas,estado:esJefatura?"APROBADO":"PENDIENTE JEFATURA"};
 }

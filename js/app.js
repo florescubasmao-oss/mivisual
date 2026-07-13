@@ -93,10 +93,10 @@ function mostrarCardSeguro(id, visible){
 
 
 function obtenerNombrePerfilMenu(){
-    const usuario = localStorage.getItem("usuario") || "USUARIO";
     const perfil = normalizarPerfilApp(localStorage.getItem("perfil"));
     const sede = normalizarPerfilApp(localStorage.getItem("sede"));
     const cuadrilla = localStorage.getItem("cuadrilla") || "";
+    const nombresApellidos = (localStorage.getItem("nombresApellidos") || "").trim();
 
     let detalle = perfil + " • " + (sede || "ZONA NORTE");
     if(perfil === "TECNICO" && cuadrilla){
@@ -105,11 +105,14 @@ function obtenerNombrePerfilMenu(){
     if(perfil === "SUPERVISOR"){
         detalle = "SUPERVISOR • " + sede;
     }
+    if(perfil === "ALMACEN"){
+        detalle = "RESPONSABLE DE ALMACÉN • " + sede;
+    }
     if(perfil === "JEFATURA" || perfil === "ADMIN" || perfil === "ADMINISTRADOR"){
         detalle = perfil + " • TODAS";
     }
 
-    return { usuario, detalle };
+    return { nombresApellidos, detalle };
 }
 
 function prepararMenuVisual(){
@@ -152,7 +155,7 @@ function prepararMenuVisual(){
 
     const info = obtenerNombrePerfilMenu();
     welcome.innerHTML = `
-        <div class="mv55-welcome-hi">👋 Bienvenido, ${info.usuario}</div>
+        <div class="mv55-welcome-hi">👋 Bienvenido${info.nombresApellidos ? ", " + info.nombresApellidos : ""}</div>
         <div class="mv55-welcome-detail">${info.detalle}</div>
     `;
 
