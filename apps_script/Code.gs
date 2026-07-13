@@ -3659,7 +3659,7 @@ function guardarProgramacionDescansos(data) {
   const registros = Array.isArray(data.registros) ? data.registros : [];
   if (!registros.length) throw new Error("No hay cambios para guardar");
   const motivo = (data.motivo||"").toString().trim();
-  if (esSupervisor && !motivo) throw new Error("El motivo es obligatorio para enviar una programación o modificación");
+  if (!motivo) throw new Error("El motivo es obligatorio para enviar una programación o modificación");
   const hoja = asegurarHojaProgramacionDescansos();
   const cambiosTemporales={};
   registros.forEach(r=>{const c=normalizarCuadrilla(r.cuadrilla),f=fechaISODescansos(r.fecha);if(c&&f)cambiosTemporales[c+"|"+f]=normalizarTexto(r.estadoDia||"EN CAMPO");});
@@ -3703,13 +3703,38 @@ function aprobarProgramacionDescansos(data) {
     if (!ids.length && normalizarTexto(datos[i][10])!=="PENDIENTE JEFATURA") continue;
     hoja.getRange(i+1,11).setValue("APROBADO");
     hoja.getRange(i+1,22).setValue("APROBADO");
-    if (normalizarTexto(datos[i][27]) === "ROJO") hoja.getRange(i+1,23).setValue("ALERTA DE CAPACIDAD VALIDADA POR JEFATURA");
+    const comentario = (data.motivo || "").toString().trim();
+    hoja.getRange(i+1,23).setValue(comentario || (normalizarTexto(datos[i][27]) === "ROJO" ? "ALERTA DE CAPACIDAD VALIDADA POR JEFATURA" : "APROBADO POR JEFATURA"));
     hoja.getRange(i+1,24).setValue(usuario.usuario);
     hoja.getRange(i+1,25).setValue(ahora);
     hoja.getRange(i+1,26).setValue(ahora);
     actualizados++;
   }
   return {ok:true,modulo:"PROGRAMACION_DESCANSOS",accion:"APROBAR_PROGRAMACION",actualizados};
+}
+
+function rechazarProgramacionDescansos(data) {
+  const usuario = obtenerUsuarioApp(data.usuario);
+  if (!esJefaturaDescansos(usuario.perfil)) throw new Error("Solo Jefatura puede rechazar la programación");
+  const ids = Array.isArray(data.ids) ? data.ids : [];
+  const motivo = (data.motivo || "").toString().trim();
+  if (!motivo) throw new Error("Debe ingresar el motivo del rechazo");
+  const hoja = asegurarHojaProgramacionDescansos();
+  const datos = hoja.getDataRange().getValues();
+  const ahora = new Date();
+  let actualizados = 0;
+  for (let i=1;i<datos.length;i++) {
+    if (ids.length && !ids.includes((datos[i][0]||"").toString())) continue;
+    if (!ids.length && normalizarTexto(datos[i][10]) !== "PENDIENTE JEFATURA") continue;
+    hoja.getRange(i+1,11).setValue("RECHAZADO");
+    hoja.getRange(i+1,22).setValue("RECHAZADO");
+    hoja.getRange(i+1,23).setValue(motivo);
+    hoja.getRange(i+1,24).setValue(usuario.usuario);
+    hoja.getRange(i+1,25).setValue(ahora);
+    hoja.getRange(i+1,26).setValue(ahora);
+    actualizados++;
+  }
+  return {ok:true,modulo:"PROGRAMACION_DESCANSOS",accion:"RECHAZAR_PROGRAMACION",actualizados};
 }
 
 function solicitarCambioDescanso(data) {
@@ -3805,6 +3830,7 @@ function doPost(e) {
     if (data.accion === "listarProgramacionDescansos") return respuestaJson(listarProgramacionDescansos(data));
     if (data.accion === "guardarProgramacionDescansos") return respuestaJson(guardarProgramacionDescansos(data));
     if (data.accion === "aprobarProgramacionDescansos") return respuestaJson(aprobarProgramacionDescansos(data));
+    if (data.accion === "rechazarProgramacionDescansos") return respuestaJson(rechazarProgramacionDescansos(data));
     if (data.accion === "solicitarCambioDescanso") return respuestaJson(solicitarCambioDescanso(data));
     if (data.accion === "validarCambioDescansoSupervisor") return respuestaJson(validarCambioDescansoSupervisor(data));
     if (data.accion === "validarCambioDescansoJefatura") return respuestaJson(validarCambioDescansoJefatura(data));

@@ -1,0 +1,13 @@
+MI VISUAL V114 - PROGRAMACION DE DESCANSOS
+
+Cambios realizados exclusivamente en Programación de Descansos:
+- Pendientes visibles en calendario con borde rojo y símbolo de alerta.
+- El estado propuesto C/D se visualiza antes de la aprobación.
+- Comentario visible al pasar sobre la celda.
+- Jefatura puede aprobar o rechazar cada programación pendiente.
+- Motivo obligatorio para cambios de Supervisor y Jefatura.
+- Cambios directos de Jefatura quedan aprobados inmediatamente.
+- Supervisor visualiza debajo del calendario las alertas de cambios aplicados por Jefatura.
+- No se modificaron otros módulos.
+
+Requiere actualizar Code.gs y desplegar una nueva versión de Apps Script.
