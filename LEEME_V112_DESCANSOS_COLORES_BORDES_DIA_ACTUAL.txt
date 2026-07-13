@@ -1,0 +1,11 @@
+MI VISUAL V112 - PROGRAMACIÓN DE DESCANSOS
+
+Cambios puntuales:
+- C (En campo) se mantiene verde.
+- D (Descanso) ahora se muestra azul.
+- Bordes del calendario reforzados.
+- Columnas de domingo más visibles.
+- La columna resaltada corresponde al día actual.
+- Se evitó que el primer día del mes parezca el día seleccionado.
+
+No se modificaron otros módulos ni Apps Script.
