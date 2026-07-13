@@ -205,6 +205,12 @@ async function ckGuardar(ev){
   }
 }
 function ckPartes(v){return (v||'').toString().split('|').map(x=>x.trim()).filter(Boolean);}
+function ckUrlDescargaEvidencia(url){
+  const texto=(url||'').toString().trim();
+  if(!texto)return '';
+  const match=texto.match(/\/d\/([a-zA-Z0-9_-]+)/)||texto.match(/[?&]id=([a-zA-Z0-9_-]+)/);
+  return match&&match[1]?('https://drive.google.com/uc?export=download&id='+match[1]):texto;
+}
 function ckSeriesConLinks(series,links){
   const ss=ckPartes(series);const ls=ckPartes(links);
   if(!ss.length&&!ls.length)return '<span class="ck-meta">Sin series registradas</span>';
@@ -212,7 +218,8 @@ function ckSeriesConLinks(series,links){
   let html='<div class="ck-series-list">';
   for(let i=0;i<max;i++){
     const serie=ss[i]||('Equipo '+(i+1));const link=ls[i]||'';
-    html+=`<div class="ck-serie-item"><span>• ${ckEsc(serie)}</span>${link?` <a href="${ckEsc(link)}" target="_blank" rel="noopener noreferrer">Ver evidencia</a>`:' <em>Sin evidencia</em>'}</div>`;
+    const descarga=link?ckUrlDescargaEvidencia(link):'';
+    html+=`<div class="ck-serie-item"><span>• ${ckEsc(serie)}</span>${link?` <a href="${ckEsc(link)}" target="_blank" rel="noopener noreferrer">Ver evidencia</a> <a href="${ckEsc(descarga)}" target="_blank" rel="noopener noreferrer">Descargar evidencia</a>`:' <em>Sin evidencia</em>'}</div>`;
   }
   return html+'</div>';
 }
