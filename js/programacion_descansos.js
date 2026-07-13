@@ -243,11 +243,20 @@ async function pdCargarCobertura(){
       }
       if(esSupervisor&&total===2){
         const alerta=campo===0;
-        return{plataforma,total,campo,porcentaje,estado:alerta?'rojo':'verde',aplica:false,tipo:'DOS',objetivoPct:Math.round(regla.objetivo*100),alerta};
+        return{plataforma,total,campo,porcentaje,estado:alerta?'rojo':'verde',aplica:false,tipo:'DOS',objetivo:1,objetivoPct:Math.round(regla.objetivo*100),alerta};
+      }
+      if(esSupervisor&&total===3){
+        const estado=campo>=3?'verde':(campo===2?'amarillo':'rojo');
+        return{plataforma,total,campo,porcentaje,estado,aplica:false,tipo:'TRES',objetivo:3,minimo:2,objetivoPct:Math.round(regla.objetivo*100),alerta:estado!=='verde'};
+      }
+      if(esSupervisor&&total===4){
+        const estado=campo>=4?'verde':(campo===3?'amarillo':'rojo');
+        return{plataforma,total,campo,porcentaje,estado,aplica:false,tipo:'CUATRO',objetivo:4,minimo:3,objetivoPct:Math.round(regla.objetivo*100),alerta:estado!=='verde'};
       }
 
-      const requerido=pdRedondeo(total*regla.objetivo),alerta=campo<requerido;
-      return{plataforma,total,campo,porcentaje,estado:alerta?'rojo':'verde',aplica:true,tipo:'PORCENTAJE',objetivo:requerido,objetivoPct:Math.round(regla.objetivo*100),alerta};
+      const requerido=pdRedondeo(total*regla.objetivo);
+      const estado=campo>=requerido?'verde':(campo===requerido-1?'amarillo':'rojo');
+      return{plataforma,total,campo,porcentaje,estado,aplica:true,tipo:'PORCENTAJE',objetivo:requerido,objetivoPct:Math.round(regla.objetivo*100),alerta:estado!=='verde'};
     }
 
     const items=plataformas.map(p=>evaluar(p,fecha)).filter(Boolean);
@@ -264,11 +273,13 @@ async function pdCargarCobertura(){
       let detalle='';
       if(!x.aplica&&x.tipo==='UNA')detalle='No aplica alerta: existe 1 sola cuadrilla en esta plataforma.';
       else if(!x.aplica&&x.tipo==='DOS')detalle=x.alerta?'ALERTA: las 2 cuadrillas descansan el mismo día.':'Regla especial: las 2 cuadrillas no pueden descansar el mismo día.';
-      else detalle=`Meta diaria ${x.objetivoPct}% · mínimo requerido ${x.objetivo}/${x.total}`;
-      return `<div class="pd-kpi ${x.estado}"><small>${pdEsc(x.plataforma)}</small><b>${x.aplica?Math.round(x.porcentaje*100)+'%':'NO APLICA'}</b><div>${x.campo}/${x.total} cuadrillas en campo</div><small>${pdEsc(detalle)}</small></div>`;
+      else if(!x.aplica&&x.tipo==='TRES')detalle=x.estado==='verde'?'Cumple: 3 cuadrillas en campo.':(x.estado==='amarillo'?'Alerta preventiva: mínimo 2 de 3 en campo.':'ALERTA: menos de 2 de 3 cuadrillas en campo.');
+      else if(!x.aplica&&x.tipo==='CUATRO')detalle=x.estado==='verde'?'Cumple: 4 cuadrillas en campo.':(x.estado==='amarillo'?'Alerta preventiva: mínimo 3 de 4 en campo.':'ALERTA: menos de 3 de 4 cuadrillas en campo.');
+      else detalle=x.estado==='verde'?`Meta diaria ${x.objetivoPct}% · requerido ${x.objetivo}/${x.total}`:(x.estado==='amarillo'?`Alerta preventiva: falta 1 cuadrilla para la meta de ${x.objetivo}/${x.total}`:`ALERTA: capacidad por debajo de la meta ${x.objetivo}/${x.total}`);
+      return `<div class="pd-kpi ${x.estado}"><small>${pdEsc(x.plataforma)}</small><b>${x.aplica?Math.round(x.porcentaje*100)+'%':(x.tipo==='UNA'||x.tipo==='DOS'?'NO APLICA':Math.round(x.porcentaje*100)+'%')}</b><div>${x.campo}/${x.total} cuadrillas en campo</div><small>${pdEsc(detalle)}</small></div>`;
     }).join(''):'<div class="pd-note">No hay datos para los filtros seleccionados.</div>';
 
-    const detalleAlertas=alertas.length?`<div class="pd-alert-row"><b>⚠️ ${alertas.length} alerta(s) operativa(s) en el periodo visible</b><div class="pd-note" style="color:inherit;margin-top:5px">La alerta no bloquea el envío. Jefatura decide si procede.</div>${alertas.slice(0,30).map(a=>a.tipo==='DOS'?`<div>${a.fecha} · ${pdEsc(a.plataforma)}: las 2 cuadrillas están en descanso.</div>`:`<div>${a.fecha} · ${pdEsc(a.plataforma)}: ${a.campo}/${a.total} en campo (${Math.round(a.porcentaje*100)}%, meta ${a.objetivoPct}%).</div>`).join('')}</div>`:'';
+    const detalleAlertas=alertas.length?`<div class="pd-alert-row"><b>⚠️ ${alertas.length} alerta(s) operativa(s) en el periodo visible</b><div class="pd-note" style="color:inherit;margin-top:5px">Incluye alertas preventivas y críticas. La alerta no bloquea el envío; Jefatura decide si procede.</div>${alertas.slice(0,30).map(a=>{if(a.tipo==='DOS')return `<div>${a.fecha} · ${pdEsc(a.plataforma)}: las 2 cuadrillas están en descanso.</div>`;if(a.tipo==='TRES')return `<div>${a.fecha} · ${pdEsc(a.plataforma)}: ${a.campo}/3 en campo. Mínimo operativo: 2.</div>`;if(a.tipo==='CUATRO')return `<div>${a.fecha} · ${pdEsc(a.plataforma)}: ${a.campo}/4 en campo. Mínimo operativo: 3.</div>`;return `<div>${a.fecha} · ${pdEsc(a.plataforma)}: ${a.campo}/${a.total} en campo (${Math.round(a.porcentaje*100)}%, meta ${a.objetivoPct}%).</div>`;}).join('')}</div>`:'';
 
     document.getElementById('pdCobertura').innerHTML=`<b>Capacidad operativa diaria: ${pdEsc(fecha)}${f.sede!=='TODAS'?' — '+pdEsc(f.sede):' — TODAS LAS SEDES'}</b><div class="pd-note" style="margin-top:3px">Instalaciones: L-V 85%, sábado 80%, domingo 60%. Visita Técnica y Traslados: L-V 90%, sábado 85%, domingo 70%.</div><div class="pd-kpis" style="margin-top:8px">${tarjetas}</div>${detalleAlertas}`;
   }catch(e){document.getElementById('pdCobertura').innerHTML=`<div class="pd-alert">${pdEsc(e.message)}</div>`;}
