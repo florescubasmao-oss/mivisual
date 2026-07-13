@@ -1,0 +1,9 @@
+MI VISUAL V110 - PROGRAMACIÓN DE DESCANSOS
+
+Cambios aplicados únicamente en js/programacion_descansos.js:
+- Calendario con todas las cuadrillas en una sola lista, sin separadores por plataforma.
+- Se mantienen filtros por plataforma para Supervisor.
+- Se mantienen filtros por sede y plataforma para Jefatura.
+- Capacidad operativa calculada por día, no acumulada por mes o rango.
+- Alertas evaluadas diariamente dentro del periodo visible.
+- No se modificaron otros módulos ni Apps Script.

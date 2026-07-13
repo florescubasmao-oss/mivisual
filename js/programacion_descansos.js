@@ -1,4 +1,4 @@
-// MI VISUAL - Programación de Descansos V109
+// MI VISUAL - Programación de Descansos V110
 const API_DESCANSOS = "https://script.google.com/macros/s/AKfycbzcbjCLweJNgZXDerdzmMN7Lwotc1G8NWdzoPkaLNGDivAgpYxDkq78xZwPRioSB4XY/exec";
 let PD_DATA={programacion:[],cuadrillas:[]};
 let PD_CAMBIOS={};
@@ -172,15 +172,18 @@ function pdFechasVista(){
 function pdRenderCalendario(){
   const fechas=pdFechasVista(),cuadrillas=pdCuadrillasFiltradas(),f=pdCapturarFiltros();
   if(!cuadrillas.length){document.getElementById('pdCalendario').innerHTML='<div class="pd-alert">No existen cuadrillas para los filtros seleccionados.</div>';return;}
-  let html=`<div class="pd-cal-scroll"><table class="pd-cal"><thead><tr><th class="pd-sticky">Cuadrilla / Plataforma</th>`;
+  const ordenadas=[...cuadrillas].sort((a,b)=>{
+    const sedeA=pdNorm(a.sede),sedeB=pdNorm(b.sede);
+    if(sedeA!==sedeB)return sedeA.localeCompare(sedeB);
+    return pdNorm(a.cuadrilla).localeCompare(pdNorm(b.cuadrilla),undefined,{numeric:true});
+  });
+  let html=`<div class="pd-cal-scroll"><table class="pd-cal"><thead><tr><th class="pd-sticky">Cuadrilla</th>`;
   let mesAnt='';fechas.forEach(fecha=>{const mes=fecha.slice(0,7),cambio=mes!==mesAnt;html+=`<th class="${cambio?'pd-month-label':''}">${cambio?pdNombreMes(mes).split(' ')[0]+'<br>':''}${pdDiaCorto(fecha)}<br>${Number(fecha.slice(8,10))}</th>`;mesAnt=mes;});html+='</tr></thead><tbody>';
-  const sedes=f.sede==='TODAS'?['CHICLAYO','PIURA','TRUJILLO']:[f.sede];
-  sedes.forEach(sede=>['INSTALACIONES','VISITA TECNICA','TRASLADOS'].forEach(p=>{
-    if(f.plataforma!=='TODAS'&&p!==f.plataforma)return;
-    const grupo=cuadrillas.filter(x=>pdNorm(x.sede)===pdNorm(sede)&&pdNorm(x.plataforma)===p);if(!grupo.length)return;
-    html+=`<tr><td class="pd-group" colspan="${fechas.length+1}">${f.sede==='TODAS'?pdEsc(sede)+' — ':''}${p}</td></tr>`;
-    grupo.forEach(c=>{html+=`<tr><td class="pd-sticky">${pdEsc(c.cuadrilla)}<br><small>${pdEsc(c.tecnico||'')}</small></td>`;fechas.forEach(fecha=>{const key=c.cuadrilla+'|'+fecha,item=pdBuscar(c.cuadrilla,fecha),estado=PD_CAMBIOS[key]||pdEstadoVisible(item),pend=item&&pdNorm(item.estadoProgramacion)!=='APROBADO',cl=estado==='DESCANSO'?'pd-descanso':'pd-campo';html+=`<td><button class="pd-day ${cl} ${pend?'pd-pendiente':''} ${fecha===pdHoy()?'pd-hoy':''}" onclick="pdToggleDia('${pdEsc(c.cuadrilla)}','${fecha}',this)" title="${pdEsc(item?.estadoProgramacion||'APROBADO')}">${estado==='DESCANSO'?'D':'C'}</button></td>`;});html+='</tr>';});
-  }));
+  ordenadas.forEach(c=>{
+    html+=`<tr><td class="pd-sticky">${pdEsc(c.cuadrilla)}<br><small>${pdEsc(c.sede)} · ${pdEsc(c.plataforma)}${c.tecnico?' · '+pdEsc(c.tecnico):''}</small></td>`;
+    fechas.forEach(fecha=>{const key=c.cuadrilla+'|'+fecha,item=pdBuscar(c.cuadrilla,fecha),estado=PD_CAMBIOS[key]||pdEstadoVisible(item),pend=item&&pdNorm(item.estadoProgramacion)!=='APROBADO',cl=estado==='DESCANSO'?'pd-descanso':'pd-campo';html+=`<td><button class="pd-day ${cl} ${pend?'pd-pendiente':''} ${fecha===pdHoy()?'pd-hoy':''}" onclick="pdToggleDia('${pdEsc(c.cuadrilla)}','${fecha}',this)" title="${pdEsc(item?.estadoProgramacion||'APROBADO')}">${estado==='DESCANSO'?'D':'C'}</button></td>`;});
+    html+='</tr>';
+  });
   html+='</tbody></table></div>';document.getElementById('pdCalendario').innerHTML=html;
 }
 
@@ -203,18 +206,34 @@ function pdToggleDia(cuadrilla,fecha,btn){const key=cuadrilla+'|'+fecha,current=
 function pdReglaCobertura(plataforma,fecha){const domingo=new Date(fecha+'T12:00:00').getDay()===0,p=pdNorm(plataforma);if(domingo&&p==='INSTALACIONES')return{objetivo:.60,minimo:.60};if(domingo)return{objetivo:.70,minimo:.60};return{objetivo:.90,minimo:.80};}
 function pdRedondeo(v){return Math.floor(Number(v)+.5);}
 
+function pdFechaCoberturaDiaria(){
+  const fechas=pdFechasVista(),f=pdCapturarFiltros();
+  if(f.modo==='DIA')return fechas[0];
+  const hoy=pdHoy();
+  if(fechas.includes(hoy))return hoy;
+  const dentroPeriodo=fechas.find(x=>x.slice(0,7)===(document.getElementById('pdPeriodo')?.value||PD_DATA.periodo));
+  return dentroPeriodo||fechas[0];
+}
+
 async function pdCargarCobertura(){
   try{
-    const fechas=pdFechasVista(),cuadrillas=pdCuadrillasFiltradas(),f=pdCapturarFiltros();
+    const fechas=pdFechasVista(),fecha=pdFechaCoberturaDiaria(),cuadrillas=pdCuadrillasFiltradas(),f=pdCapturarFiltros();
     const plataformas=f.plataforma==='TODAS'?['INSTALACIONES','VISITA TECNICA','TRASLADOS']:[f.plataforma];
     const items=plataformas.map(plataforma=>{
-      const qs=cuadrillas.filter(c=>pdNorm(c.plataforma)===plataforma);let totalJornadas=0,campoJornadas=0,objJornadas=0,minJornadas=0,diasCumple=0,diasConCuadrillas=0;
-      fechas.forEach(fecha=>{const total=qs.length;if(!total)return;diasConCuadrillas++;let campo=0;qs.forEach(c=>{const key=c.cuadrilla+'|'+fecha,estado=PD_CAMBIOS[key]||pdEstadoVisible(pdBuscar(c.cuadrilla,fecha));if(estado!=='DESCANSO')campo++;});const regla=pdReglaCobertura(plataforma,fecha),obj=pdRedondeo(total*regla.objetivo),min=pdRedondeo(total*regla.minimo);totalJornadas+=total;campoJornadas+=campo;objJornadas+=obj;minJornadas+=min;if(campo>=obj)diasCumple++;});
-      const porcentaje=totalJornadas?campoJornadas/totalJornadas:0;let estado='rojo';if(campoJornadas>=objJornadas)estado='verde';else if(campoJornadas>=minJornadas)estado='amarillo';return{plataforma,totalJornadas,campoJornadas,porcentaje,estado,diasCumple,diasConCuadrillas};
-    }).filter(x=>x.totalJornadas>0);
-    const etiqueta=fechas.length===1?fechas[0]:`${fechas[0]} al ${fechas[fechas.length-1]}`;
-    const alertas=[];plataformas.forEach(plataforma=>{const qs=cuadrillas.filter(c=>pdNorm(c.plataforma)===plataforma);fechas.forEach(fecha=>{if(!qs.length)return;let campo=qs.filter(c=>(PD_CAMBIOS[c.cuadrilla+'|'+fecha]||pdEstadoVisible(pdBuscar(c.cuadrilla,fecha)))!=='DESCANSO').length;const regla=pdReglaCobertura(plataforma,fecha),min=pdRedondeo(qs.length*regla.minimo);if(campo<min)alertas.push({fecha,plataforma,campo,total:qs.length,porcentaje:Math.round(campo/qs.length*100),minimo:Math.round(regla.minimo*100)});});});
-    document.getElementById('pdCobertura').innerHTML=`<b>Capacidad operativa: ${pdEsc(etiqueta)}${f.sede!=='TODAS'?' — '+pdEsc(f.sede):' — TODAS LAS SEDES'}</b><div class="pd-kpis" style="margin-top:8px">${items.length?items.map(x=>`<div class="pd-kpi ${x.estado}"><small>${pdEsc(x.plataforma)}</small><b>${Math.round(x.porcentaje*100)}%</b><div>${x.campoJornadas}/${x.totalJornadas} cuadrillas-día en campo</div><small>Días que cumplen objetivo: ${x.diasCumple}/${x.diasConCuadrillas}</small></div>`).join(''):'<div class="pd-note">No hay datos para los filtros seleccionados.</div>'}</div>${alertas.length?`<div class="pd-alert-row"><b>⚠️ ${alertas.length} alerta(s) bajo la capacidad mínima</b><div class="pd-note" style="color:inherit;margin-top:5px">La alerta no bloquea el envío. Jefatura decide si procede.</div>${alertas.slice(0,20).map(a=>`<div>${a.fecha} · ${pdEsc(a.plataforma)}: ${a.campo}/${a.total} en campo (${a.porcentaje}%, mínimo ${a.minimo}%)</div>`).join('')}</div>`:''}`;
+      const qs=cuadrillas.filter(c=>pdNorm(c.plataforma)===plataforma);
+      const total=qs.length;
+      if(!total)return null;
+      const campo=qs.filter(c=>(PD_CAMBIOS[c.cuadrilla+'|'+fecha]||pdEstadoVisible(pdBuscar(c.cuadrilla,fecha)))!=='DESCANSO').length;
+      const regla=pdReglaCobertura(plataforma,fecha),objetivo=pdRedondeo(total*regla.objetivo),minimo=pdRedondeo(total*regla.minimo);
+      let estado='rojo';if(campo>=objetivo)estado='verde';else if(campo>=minimo)estado='amarillo';
+      return{plataforma,total,campo,porcentaje:campo/total,estado,objetivo,minimo,objetivoPct:Math.round(regla.objetivo*100),minimoPct:Math.round(regla.minimo*100)};
+    }).filter(Boolean);
+    const alertas=[];
+    plataformas.forEach(plataforma=>{
+      const qs=cuadrillas.filter(c=>pdNorm(c.plataforma)===plataforma);
+      fechas.forEach(dia=>{if(!qs.length)return;const campo=qs.filter(c=>(PD_CAMBIOS[c.cuadrilla+'|'+dia]||pdEstadoVisible(pdBuscar(c.cuadrilla,dia)))!=='DESCANSO').length;const regla=pdReglaCobertura(plataforma,dia),min=pdRedondeo(qs.length*regla.minimo);if(campo<min)alertas.push({fecha:dia,plataforma,campo,total:qs.length,porcentaje:Math.round(campo/qs.length*100),minimo:Math.round(regla.minimo*100)});});
+    });
+    document.getElementById('pdCobertura').innerHTML=`<b>Capacidad operativa diaria: ${pdEsc(fecha)}${f.sede!=='TODAS'?' — '+pdEsc(f.sede):' — TODAS LAS SEDES'}</b><div class="pd-note" style="margin-top:3px">Los porcentajes corresponden únicamente al día indicado. El calendario conserva la visualización completa del periodo.</div><div class="pd-kpis" style="margin-top:8px">${items.length?items.map(x=>`<div class="pd-kpi ${x.estado}"><small>${pdEsc(x.plataforma)}</small><b>${Math.round(x.porcentaje*100)}%</b><div>${x.campo}/${x.total} cuadrillas en campo</div><small>Objetivo ${x.objetivoPct}% · Mínimo ${x.minimoPct}%</small></div>`).join(''):'<div class="pd-note">No hay datos para los filtros seleccionados.</div>'}</div>${alertas.length?`<div class="pd-alert-row"><b>⚠️ ${alertas.length} alerta(s) diaria(s) bajo la capacidad mínima en el periodo visible</b><div class="pd-note" style="color:inherit;margin-top:5px">La alerta no bloquea el envío. Jefatura decide si procede.</div>${alertas.slice(0,20).map(a=>`<div>${a.fecha} · ${pdEsc(a.plataforma)}: ${a.campo}/${a.total} en campo (${a.porcentaje}%, mínimo ${a.minimo}%)</div>`).join('')}</div>`:''}`;
   }catch(e){document.getElementById('pdCobertura').innerHTML=`<div class="pd-alert">${pdEsc(e.message)}</div>`;}
 }
 
