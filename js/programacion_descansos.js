@@ -255,11 +255,11 @@ async function pdCargarCobertura(){
       }
       if(esSupervisor&&total===3){
         const estado=campo>=3?'verde':(campo===2?'amarillo':'rojo');
-        return{plataforma,total,campo,porcentaje,estado,aplica:false,tipo:'TRES',objetivo:3,minimo:2,objetivoPct:Math.round(regla.objetivo*100),alerta:estado!=='verde'};
+        return{plataforma,total,campo,porcentaje,estado,aplica:false,tipo:'TRES',objetivo:3,minimo:2,objetivoPct:Math.round(regla.objetivo*100),alerta:campo<2};
       }
       if(esSupervisor&&total===4){
         const estado=campo>=4?'verde':(campo===3?'amarillo':'rojo');
-        return{plataforma,total,campo,porcentaje,estado,aplica:false,tipo:'CUATRO',objetivo:4,minimo:3,objetivoPct:Math.round(regla.objetivo*100),alerta:estado!=='verde'};
+        return{plataforma,total,campo,porcentaje,estado,aplica:false,tipo:'CUATRO',objetivo:4,minimo:3,objetivoPct:Math.round(regla.objetivo*100),alerta:campo<3};
       }
 
       const requerido=pdRedondeo(total*regla.objetivo);
@@ -281,8 +281,8 @@ async function pdCargarCobertura(){
       let detalle='';
       if(!x.aplica&&x.tipo==='UNA')detalle='No aplica alerta: existe 1 sola cuadrilla en esta plataforma.';
       else if(!x.aplica&&x.tipo==='DOS')detalle=x.alerta?'ALERTA: las 2 cuadrillas descansan el mismo día.':'Regla especial: las 2 cuadrillas no pueden descansar el mismo día.';
-      else if(!x.aplica&&x.tipo==='TRES')detalle=x.estado==='verde'?'Cumple: 3 cuadrillas en campo.':(x.estado==='amarillo'?'Alerta preventiva: mínimo 2 de 3 en campo.':'ALERTA: menos de 2 de 3 cuadrillas en campo.');
-      else if(!x.aplica&&x.tipo==='CUATRO')detalle=x.estado==='verde'?'Cumple: 4 cuadrillas en campo.':(x.estado==='amarillo'?'Alerta preventiva: mínimo 3 de 4 en campo.':'ALERTA: menos de 3 de 4 cuadrillas en campo.');
+      else if(!x.aplica&&x.tipo==='TRES')detalle=x.estado==='verde'?'Cumple: 3 cuadrillas en campo.':(x.estado==='amarillo'?'Cumple mínimo operativo: 2 de 3 en campo.':'ALERTA: menos de 2 de 3 cuadrillas en campo.');
+      else if(!x.aplica&&x.tipo==='CUATRO')detalle=x.estado==='verde'?'Cumple: 4 cuadrillas en campo.':(x.estado==='amarillo'?'Cumple mínimo operativo: 3 de 4 en campo.':'ALERTA: menos de 3 de 4 cuadrillas en campo.');
       else detalle=x.estado==='verde'?`Meta diaria ${x.objetivoPct}% · requerido ${x.objetivo}/${x.total}`:(x.estado==='amarillo'?`Alerta preventiva: falta 1 cuadrilla para la meta de ${x.objetivo}/${x.total}`:`ALERTA: capacidad por debajo de la meta ${x.objetivo}/${x.total}`);
       return `<div class="pd-kpi ${x.estado}"><small>${pdEsc(x.plataforma)}</small><b>${x.aplica?Math.round(x.porcentaje*100)+'%':(x.tipo==='UNA'||x.tipo==='DOS'?'NO APLICA':Math.round(x.porcentaje*100)+'%')}</b><div>${x.campo}/${x.total} cuadrillas en campo</div><small>${pdEsc(detalle)}</small></div>`;
     }).join(''):'<div class="pd-note">No hay datos para los filtros seleccionados.</div>';
