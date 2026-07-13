@@ -1,4 +1,6 @@
-// MI VISUAL - Checklist Almacén V103
+// MI VISUAL - Checklist Almacén V115 - prevención de doble registro
+let CK_GUARDANDO_CHECKLIST = false;
+
 const API_CHECKLIST_ALMACEN = "https://script.google.com/macros/s/AKfycbzcbjCLweJNgZXDerdzmMN7Lwotc1G8NWdzoPkaLNGDivAgpYxDkq78xZwPRioSB4XY/exec";
 
 function ckNorm(v){return (v||"").toString().toUpperCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"").replace(/\s+/g," ").trim();}
@@ -175,10 +177,14 @@ function ckRenderForm(){
 }
 
 async function ckGuardar(ev){
-  const u=ckUser();const btn=ev?.target;
-  const cfg=await ckObtenerConfiguracion();if(!cfg.activo){alert('El Checklist Almacén no está habilitado para nuevos registros en este periodo.');ckToggleNuevoChecklist(false);return;}
+  const u=ckUser();
+  const btn=ev?.currentTarget||ev?.target;
+  if(CK_GUARDANDO_CHECKLIST) return;
+  CK_GUARDANDO_CHECKLIST=true;
+  if(btn){btn.disabled=true;btn.textContent='Guardando, espere...'}
   try{
-    if(btn){btn.disabled=true;btn.textContent='Guardando...'}
+    const cfg=await ckObtenerConfiguracion();
+    if(!cfg.activo){throw new Error('El Checklist Almacén no está habilitado para nuevos registros en este periodo.');}
     const payload={accion:'registrarChecklistAlmacen',usuario:u.usuario,nombresApellidos:document.getElementById('ckNombres').value,fechaGestion:document.getElementById('ckFecha').value,cableDrop:ckNum('ckCableDrop'),pre50:ckNum('ckPre50'),pre100:ckNum('ckPre100'),pre150:ckNum('ckPre150'),pre200:ckNum('ckPre200'),anclajeP:ckNum('ckAnclaje'),cintaBandIt:ckNum('ckBand'),hebilla:ckNum('ckHebilla'),acoplador:ckNum('ckAcoplador'),roseta:ckNum('ckRoseta'),conectoresOpticos:ckNum('ckConectores'),templadores:ckNum('ckTempladores'),splitter:ckNum('ckSplitter'),clevis:ckNum('ckClevis'),utpCat5:ckNum('ckCat5'),utpCat6:ckNum('ckCat6'),patchApcApc:ckNum('ckApc'),patchUpcApc:ckNum('ckUpc'),rj45:ckNum('ckRj45')};
     payload.ontZteEquipos=await ckCollectEquipos('ontZte');
     payload.ontHuaweiEquipos=await ckCollectEquipos('ontHuawei');
@@ -193,7 +199,10 @@ async function ckGuardar(ev){
     await ckCargarHistorialTecnico();
     const lista=document.getElementById('ckLista');
     if(lista)setTimeout(()=>lista.scrollIntoView({behavior:'smooth',block:'start'}),60);
-  }catch(e){alert(e.message)}finally{if(btn&&document.body.contains(btn)){btn.disabled=false;btn.textContent='Guardar checklist'}}
+  }catch(e){alert(e.message)}finally{
+    CK_GUARDANDO_CHECKLIST=false;
+    if(btn&&document.body.contains(btn)){btn.disabled=false;btn.textContent='Guardar checklist'}
+  }
 }
 function ckPartes(v){return (v||'').toString().split('|').map(x=>x.trim()).filter(Boolean);}
 function ckSeriesConLinks(series,links){

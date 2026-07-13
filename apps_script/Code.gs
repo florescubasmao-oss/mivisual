@@ -2951,6 +2951,29 @@ function checklistAlmacenActivo() {
   return evaluarConfigModulo(encontrado.datos[1], encontrado.datos[2], encontrado.datos[3]).activo;
 }
 
+function buscarChecklistDuplicado(cuadrilla, fechaGestion) {
+  const hoja = asegurarHojaChecklistAlmacen();
+  const ultimaFila = hoja.getLastRow();
+  if (ultimaFila <= 1) return null;
+
+  const datos = hoja.getRange(2, 1, ultimaFila - 1, 9).getValues();
+  const cuadrillaBuscada = normalizarCuadrilla(cuadrilla);
+  const fechaBuscada = fechaGestionActaTexto(fechaGestion);
+
+  for (let i = 0; i < datos.length; i++) {
+    const cuadrillaFila = normalizarCuadrilla(datos[i][6]);
+    const fechaFila = fechaGestionActaTexto(datos[i][7]);
+    if (cuadrillaFila === cuadrillaBuscada && fechaFila === fechaBuscada) {
+      return {
+        fila: i + 2,
+        id: datos[i][0],
+        estado: datos[i][8] || ""
+      };
+    }
+  }
+  return null;
+}
+
 function registrarChecklistAlmacen(data) {
   if (!checklistAlmacenActivo()) throw new Error("El Checklist Almacén no está habilitado para nuevos registros en este periodo");
   const hoja = asegurarHojaChecklistAlmacen();
@@ -2961,6 +2984,13 @@ function registrarChecklistAlmacen(data) {
   const dc = obtenerDatosCuadrillaApp(cuadrilla);
   const sede = normalizarTexto(dc.sede || usuario.sede);
   const fechaGestion = fechaGestionActaTexto(data.fechaGestion || data.fecha_gestion);
+  const bloqueo = LockService.getScriptLock();
+  bloqueo.waitLock(30000);
+  try {
+    const duplicado = buscarChecklistDuplicado(cuadrilla, fechaGestion);
+    if (duplicado) {
+      throw new Error("Ya existe un checklist registrado para esta cuadrilla y fecha de gestión. No vuelva a presionar Guardar.");
+    }
   const id = idChecklistAlmacen();
   const raiz = DriveApp.getFolderById(CARPETA_CHECKLIST_ALMACEN);
   const carpetaFecha = obtenerOCrearCarpetaChecklist(
@@ -2998,8 +3028,10 @@ function registrarChecklistAlmacen(data) {
       winbox:winbox.series, fonowin:fonowin.series
     }
   };
+  } finally {
+    bloqueo.releaseLock();
+  }
 }
-
 function filaChecklistAObjeto(f) {
   return {
     id:f[0],fechaRegistro:f[1],horaRegistro:f[2],usuario:f[3],nombresApellidos:f[4],sede:f[5],cuadrilla:f[6],fechaGestion:f[7],estadoGeneral:f[8],
@@ -3573,13 +3605,8 @@ function listaCuadrillasDescansos(usuario) {
 }
 
 function filaProgramacionAObjeto(f) {
-  const fechaNormalizada = fechaISODescansos(f[2]);
-  const periodoNormalizado = /^\d{4}-\d{2}$/.test((f[1] || "").toString().trim())
-    ? (f[1] || "").toString().trim()
-    : (fechaNormalizada ? periodoDescansos(fechaNormalizada) : "");
-
   return {
-    id:f[0],periodo:periodoNormalizado,fecha:fechaNormalizada,diaSemana:f[3],sede:f[4],cuadrilla:f[5],plataforma:f[6],
+    id:f[0],periodo:f[1],fecha:fechaISODescansos(f[2]),diaSemana:f[3],sede:f[4],cuadrilla:f[5],plataforma:f[6],
     supervisor:f[7],tecnicosAfectados:f[8],estadoDia:f[9]||"EN CAMPO",estadoProgramacion:f[10]||"APROBADO",
     solicitudCambio:f[11],motivoSolicitud:f[12],solicitadoPor:f[13],fechaSolicitud:f[14],horaSolicitud:f[15],
     resultadoSupervisor:f[16],motivoSupervisor:f[17],validadoSupervisorPor:f[18],fechaValidacionSupervisor:f[19],horaValidacionSupervisor:f[20],
@@ -3645,7 +3672,6 @@ function listarProgramacionDescansos(data) {
   const lista = [];
   for(let i=1;i<datos.length;i++) {
     const item = filaProgramacionAObjeto(datos[i]);
-    // El periodo se deriva de la FECHA cuando Google Sheets convierte la columna PERIODO en fecha.
     if (item.periodo !== periodo) continue;
     let permitir = false;
     if (normalizarTexto(usuario.perfil)==="TECNICO") permitir = normalizarCuadrilla(usuario.cuadrilla)===normalizarCuadrilla(item.cuadrilla);
