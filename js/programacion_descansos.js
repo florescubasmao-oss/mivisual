@@ -126,6 +126,7 @@ function pdRenderGestion(){
     <div class="pd-field"><label>Cuadrilla</label><select id="pdCuadrilla"><option value="TODAS">Todas</option>${PD_DATA.cuadrillas.filter(c=>esSupervisor||sedeSel==='TODAS'||pdNorm(c.sede)===pdNorm(sedeSel)).map(c=>`<option value="${pdEsc(c.cuadrilla)}" ${estadoVista.cuadrilla===c.cuadrilla?'selected':''}>${pdEsc(c.cuadrilla)}</option>`).join('')}</select></div>
     <button class="pd-btn pd-blue" onclick="pdCambiarVista()">Consultar</button>
   </div></div>
+  <div id="pdAlertas" class="pd-card" style="display:none"></div>
   <div class="pd-card">
     <div style="display:flex;justify-content:space-between;gap:8px;align-items:center;flex-wrap:wrap">
       <div class="pd-note">Vista operativa: <b>C = En campo</b>, <b>D = Descanso</b>, <b>V = Vacaciones</b>. Una fecha con <b>borde rojo y !</b> tiene un cambio pendiente. Pulse esa fecha para revisar el detalle.</div>
@@ -299,8 +300,17 @@ async function pdCargarCobertura(){
 
     const detalleAlertas=alertas.length?`<div class="pd-alert-row"><b>⚠️ ${alertas.length} alerta(s) operativa(s) en el periodo visible</b><div class="pd-note" style="color:inherit;margin-top:5px">Incluye alertas preventivas y críticas. La alerta no bloquea el envío; Jefatura decide si procede.</div>${alertas.slice(0,30).map(a=>{if(a.tipo==='DOS')return `<div>${a.fecha} · ${pdEsc(a.plataforma)}: las 2 cuadrillas están en descanso.</div>`;if(a.tipo==='TRES')return `<div>${a.fecha} · ${pdEsc(a.plataforma)}: ${a.campo}/3 en campo. Mínimo operativo: 2.</div>`;if(a.tipo==='CUATRO')return `<div>${a.fecha} · ${pdEsc(a.plataforma)}: ${a.campo}/4 en campo. Mínimo operativo: 3.</div>`;return `<div>${a.fecha} · ${pdEsc(a.plataforma)}: ${a.campo}/${a.total} en campo (${Math.round(a.porcentaje*100)}%, meta ${a.objetivoPct}%).</div>`;}).join('')}</div>`:'';
 
-    document.getElementById('pdCobertura').innerHTML=`<b>Capacidad operativa diaria: ${pdEsc(fecha)}${f.sede!=='TODAS'?' — '+pdEsc(f.sede):' — TODAS LAS SEDES'}</b><div class="pd-note" style="margin-top:3px">Instalaciones: L-V 85%, sábado 80%, domingo 60%. Visita Técnica y Traslados: L-V 90%, sábado 85%, domingo 70%.</div><div class="pd-kpis" style="margin-top:8px">${tarjetas}</div>${detalleAlertas}`;
-  }catch(e){document.getElementById('pdCobertura').innerHTML=`<div class="pd-alert">${pdEsc(e.message)}</div>`;}
+    const alertasCont=document.getElementById('pdAlertas');
+    if(alertasCont){
+      alertasCont.style.display=detalleAlertas?'block':'none';
+      alertasCont.innerHTML=detalleAlertas;
+    }
+    document.getElementById('pdCobertura').innerHTML=`<b>Capacidad operativa diaria: ${pdEsc(fecha)}${f.sede!=='TODAS'?' — '+pdEsc(f.sede):' — TODAS LAS SEDES'}</b><div class="pd-note" style="margin-top:3px">Instalaciones: L-V 85%, sábado 80%, domingo 60%. Visita Técnica y Traslados: L-V 90%, sábado 85%, domingo 70%.</div><div class="pd-kpis" style="margin-top:8px">${tarjetas}</div>`;
+  }catch(e){
+    const alertasCont=document.getElementById('pdAlertas');
+    if(alertasCont){alertasCont.style.display='none';alertasCont.innerHTML='';}
+    document.getElementById('pdCobertura').innerHTML=`<div class="pd-alert">${pdEsc(e.message)}</div>`;
+  }
 }
 
 async function pdGuardarCambios(){try{const u=pdUser(),registros=Object.entries(PD_CAMBIOS).map(([k,estadoDia])=>{const i=k.lastIndexOf('|');return {cuadrilla:k.slice(0,i),fecha:k.slice(i+1),estadoDia};});if(!registros.length)return;const motivo=(prompt(u.perfil==='SUPERVISOR'?'Motivo de los cambios que se enviarán a Jefatura:':'Motivo del cambio realizado por Jefatura:')||'').trim();if(!motivo)return alert('Debe ingresar el motivo.');const r=await pdApi({accion:'guardarProgramacionDescansos',usuario:u.usuario,registros,motivo});alert(u.perfil==='SUPERVISOR'?`${r.guardados} cambio(s) enviados a validación de Jefatura.`:`${r.guardados} cambio(s) aplicados y registrados en el historial del Supervisor.`);PD_CAMBIOS={};const per=document.getElementById('pdPeriodo').value;pdCapturarFiltros();await pdCargar(per);pdRenderGestion();}catch(e){alert(e.message);}}
