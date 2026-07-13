@@ -3571,6 +3571,24 @@ function periodoDescansos(fechaIso) {
   return fechaIso.substring(0,7);
 }
 
+function periodoRegistroDescansos(item) {
+  const fecha = fechaISODescansos(item && item.fecha);
+  if (/^\d{4}-\d{2}-\d{2}$/.test(fecha)) return fecha.substring(0, 7);
+
+  const periodoCrudo = item && item.periodo;
+  if (periodoCrudo instanceof Date && !isNaN(periodoCrudo.getTime())) {
+    return Utilities.formatDate(periodoCrudo, Session.getScriptTimeZone(), "yyyy-MM");
+  }
+
+  const periodoTexto = (periodoCrudo || "").toString().trim();
+  if (/^\d{4}-\d{2}$/.test(periodoTexto)) return periodoTexto;
+
+  const periodoComoFecha = fechaISODescansos(periodoTexto);
+  if (/^\d{4}-\d{2}-\d{2}$/.test(periodoComoFecha)) return periodoComoFecha.substring(0, 7);
+
+  return periodoTexto;
+}
+
 function idProgramacionDescansos(cuadrilla, fechaIso) {
   return "DESC|" + normalizarCuadrilla(cuadrilla) + "|" + fechaIso;
 }
@@ -3672,7 +3690,7 @@ function listarProgramacionDescansos(data) {
   const lista = [];
   for(let i=1;i<datos.length;i++) {
     const item = filaProgramacionAObjeto(datos[i]);
-    if (item.periodo !== periodo) continue;
+    if (periodoRegistroDescansos(item) !== periodo) continue;
     let permitir = false;
     if (normalizarTexto(usuario.perfil)==="TECNICO") permitir = normalizarCuadrilla(usuario.cuadrilla)===normalizarCuadrilla(item.cuadrilla);
     else if (normalizarTexto(usuario.perfil)==="SUPERVISOR") permitir = normalizarTexto(usuario.sede)===normalizarTexto(item.sede);
@@ -3711,9 +3729,12 @@ function guardarProgramacionDescansos(data) {
     const version = existente ? (existente.item.version+1) : 1;
     const cobertura=calcularCoberturaDescansos(fecha,sede,plataforma,cambiosTemporales);
     if(cobertura.estado==="ROJO") alertas++;
+    const estadoAnterior = existente ? normalizarTexto(existente.item.estadoDia || "EN CAMPO") : "";
+    const estadoAnteriorProgramacion = existente ? normalizarTexto(existente.item.estadoProgramacion || "") : "";
+    const marcaEstadoAnterior = (existente && estadoAnteriorProgramacion === "APROBADO") ? ("ESTADO_ANTERIOR:" + estadoAnterior) : (existente ? (existente.item.solicitudCambio || "") : "");
     const fila = [
       idProgramacionDescansos(cuadrilla,fecha),periodoDescansos(fecha),fecha,diaSemanaDescansos(fecha),sede,cuadrilla,plataforma,
-      dc.usuarioSupervisor||"",dc.usuario||"",estadoDia,estadoProg,"",motivo,usuario.usuario,ahora,ahora,"","","","","",
+      dc.usuarioSupervisor||"",dc.usuario||"",estadoDia,estadoProg,marcaEstadoAnterior,motivo,usuario.usuario,ahora,ahora,"","","","","",
       esJefaturaDescansos(usuario.perfil)?"APROBADO":"",esJefaturaDescansos(usuario.perfil)?motivo:"",esJefaturaDescansos(usuario.perfil)?usuario.usuario:"",esJefaturaDescansos(usuario.perfil)?ahora:"",esJefaturaDescansos(usuario.perfil)?ahora:"",
       cobertura.porcentaje,cobertura.estado,version
     ];
@@ -3758,7 +3779,16 @@ function rechazarProgramacionDescansos(data) {
   for (let i=1;i<datos.length;i++) {
     if (ids.length && !ids.includes((datos[i][0]||"").toString())) continue;
     if (!ids.length && normalizarTexto(datos[i][10]) !== "PENDIENTE JEFATURA") continue;
-    hoja.getRange(i+1,11).setValue("RECHAZADO");
+    const item = filaProgramacionAObjeto(datos[i]);
+    const anterior = (item.solicitudCambio || "").toString().indexOf("ESTADO_ANTERIOR:") === 0
+      ? normalizarTexto((item.solicitudCambio || "").toString().replace("ESTADO_ANTERIOR:", ""))
+      : "";
+    if (anterior) {
+      hoja.getRange(i+1,10).setValue(anterior);
+      hoja.getRange(i+1,11).setValue("APROBADO");
+    } else {
+      hoja.getRange(i+1,11).setValue("RECHAZADO");
+    }
     hoja.getRange(i+1,22).setValue("RECHAZADO");
     hoja.getRange(i+1,23).setValue(motivo);
     hoja.getRange(i+1,24).setValue(usuario.usuario);
