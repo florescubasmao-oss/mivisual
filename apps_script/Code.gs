@@ -3651,6 +3651,7 @@ function calcularCoberturaDescansos(fechaIso, sede, plataforma, cambiosTemporale
   const usuarioSistema = {perfil:"JEFATURA",sede:""};
   const cuadrillas = listaCuadrillasDescansos(usuarioSistema).filter(x => normalizarTexto(x.sede)===normalizarTexto(sede) && plataformaDescansos(x.plataforma)===plataformaDescansos(plataforma));
   let campo = 0;
+  let vacaciones = 0;
   cuadrillas.forEach(c => {
     let estado = "EN CAMPO";
     const key = c.cuadrilla + "|" + fechaIso;
@@ -3659,31 +3660,35 @@ function calcularCoberturaDescansos(fechaIso, sede, plataforma, cambiosTemporale
       const r = buscarProgramacionDescansos(c.cuadrilla, fechaIso);
       if (r && normalizarTexto(r.item.estadoProgramacion) === "APROBADO") estado = normalizarTexto(r.item.estadoDia);
     }
-    if (estado !== "DESCANSO") campo++;
+    if (estado === "VACACIONES") vacaciones++;
+    else if (estado === "EN CAMPO") campo++;
   });
 
-  const total = cuadrillas.length;
-  const porcentaje = total ? campo/total : 0;
+  const totalRegistradas = cuadrillas.length;
+  const total = Math.max(totalRegistradas - vacaciones, 0);
+  const porcentaje = total ? campo/total : 1;
   const regla = reglasCoberturaDescansos(plataforma,fechaIso);
   const esSupervisor = normalizarTexto(perfilEvaluador) === "SUPERVISOR";
 
-  // Reglas especiales solo para alertas del Supervisor por sede/plataforma.
+  if (total === 0) {
+    return {total,totalRegistradas,vacaciones,enCampo:0,enDescanso:0,porcentaje:1,estado:"NO APLICA",objetivo:regla.objetivo,minimo:regla.minimo,objetivoCuadrillas:0,minimoCuadrillas:0,aplicaPorcentaje:false,reglaEspecial:"SOLO_VACACIONES",alerta:false};
+  }
   if (esSupervisor && total === 1) {
-    return {total,enCampo:campo,enDescanso:Math.max(total-campo,0),porcentaje,estado:"NO APLICA",objetivo:regla.objetivo,minimo:regla.minimo,objetivoCuadrillas:0,minimoCuadrillas:0,aplicaPorcentaje:false,reglaEspecial:"UNA_CUADRILLA",alerta:false};
+    return {total,totalRegistradas,vacaciones,enCampo:campo,enDescanso:Math.max(total-campo,0),porcentaje,estado:"NO APLICA",objetivo:regla.objetivo,minimo:regla.minimo,objetivoCuadrillas:0,minimoCuadrillas:0,aplicaPorcentaje:false,reglaEspecial:"UNA_CUADRILLA",alerta:false};
   }
   if (esSupervisor && total === 2) {
     const ambasDescansan = campo === 0;
-    return {total,enCampo:campo,enDescanso:Math.max(total-campo,0),porcentaje,estado:ambasDescansan?"ROJO":"VERDE",objetivo:regla.objetivo,minimo:regla.minimo,objetivoCuadrillas:1,minimoCuadrillas:1,aplicaPorcentaje:false,reglaEspecial:"DOS_CUADRILLAS_NO_DESCANSAN_JUNTAS",alerta:ambasDescansan};
+    return {total,totalRegistradas,vacaciones,enCampo:campo,enDescanso:Math.max(total-campo,0),porcentaje,estado:ambasDescansan?"ROJO":"VERDE",objetivo:regla.objetivo,minimo:regla.minimo,objetivoCuadrillas:1,minimoCuadrillas:1,aplicaPorcentaje:false,reglaEspecial:"DOS_CUADRILLAS_NO_DESCANSAN_JUNTAS",alerta:ambasDescansan};
   }
   if (esSupervisor && total === 3) {
     const alerta = campo < 2;
     const estado = alerta ? "ROJO" : "VERDE";
-    return {total,enCampo:campo,enDescanso:Math.max(total-campo,0),porcentaje,estado,objetivo:regla.objetivo,minimo:regla.minimo,objetivoCuadrillas:3,minimoCuadrillas:2,aplicaPorcentaje:false,reglaEspecial:"TRES_CUADRILLAS_MINIMO_DOS",alerta};
+    return {total,totalRegistradas,vacaciones,enCampo:campo,enDescanso:Math.max(total-campo,0),porcentaje,estado,objetivo:regla.objetivo,minimo:regla.minimo,objetivoCuadrillas:3,minimoCuadrillas:2,aplicaPorcentaje:false,reglaEspecial:"TRES_CUADRILLAS_MINIMO_DOS",alerta};
   }
   if (esSupervisor && total === 4) {
     const alerta = campo < 3;
     const estado = alerta ? "ROJO" : "VERDE";
-    return {total,enCampo:campo,enDescanso:Math.max(total-campo,0),porcentaje,estado,objetivo:regla.objetivo,minimo:regla.minimo,objetivoCuadrillas:4,minimoCuadrillas:3,aplicaPorcentaje:false,reglaEspecial:"CUATRO_CUADRILLAS_MINIMO_TRES",alerta};
+    return {total,totalRegistradas,vacaciones,enCampo:campo,enDescanso:Math.max(total-campo,0),porcentaje,estado,objetivo:regla.objetivo,minimo:regla.minimo,objetivoCuadrillas:4,minimoCuadrillas:3,aplicaPorcentaje:false,reglaEspecial:"CUATRO_CUADRILLAS_MINIMO_TRES",alerta};
   }
 
   const objetivoCuadrillas = redondearCoberturaDescansos(total*regla.objetivo);
@@ -3691,7 +3696,7 @@ function calcularCoberturaDescansos(fechaIso, sede, plataforma, cambiosTemporale
   let estado = "VERDE";
   if (campo === objetivoCuadrillas - 1) estado = "AMARILLO";
   else if (campo < objetivoCuadrillas - 1) estado = "ROJO";
-  return {total,enCampo:campo,enDescanso:Math.max(total-campo,0),porcentaje,estado,objetivo:regla.objetivo,minimo:regla.minimo,objetivoCuadrillas,minimoCuadrillas,aplicaPorcentaje:true,reglaEspecial:"",alerta:estado!=="VERDE"};
+  return {total,totalRegistradas,vacaciones,enCampo:campo,enDescanso:Math.max(total-campo,0),porcentaje,estado,objetivo:regla.objetivo,minimo:regla.minimo,objetivoCuadrillas,minimoCuadrillas,aplicaPorcentaje:true,reglaEspecial:"",alerta:estado!=="VERDE"};
 }
 
 function listarProgramacionDescansos(data) {
@@ -3731,7 +3736,7 @@ function guardarProgramacionDescansos(data) {
     const cuadrilla = normalizarCuadrilla(r.cuadrilla);
     const fecha = fechaISODescansos(r.fecha);
     const estadoDia = normalizarTexto(r.estadoDia||"EN CAMPO");
-    if (!cuadrilla || !fecha || !["EN CAMPO","DESCANSO"].includes(estadoDia)) return;
+    if (!cuadrilla || !fecha || !["EN CAMPO","DESCANSO","VACACIONES"].includes(estadoDia)) return;
     const dc = obtenerDatosCuadrillaApp(cuadrilla);
     const sede = normalizarTexto(dc.sede);
     const plataforma=plataformaDescansos(dc.plataforma);
@@ -4251,7 +4256,7 @@ function guardarProgramacionDescansos(data) {
   let guardados=0, alertas=0;
   registros.forEach(r=>{
     const cuadrilla=normalizarCuadrilla(r.cuadrilla), fecha=fechaISODescansos(r.fecha), nuevo=normalizarTexto(r.estadoDia||"EN CAMPO");
-    if(!cuadrilla||!fecha||!["EN CAMPO","DESCANSO"].includes(nuevo)) return;
+    if(!cuadrilla||!fecha||!["EN CAMPO","DESCANSO","VACACIONES"].includes(nuevo)) return;
     const dc=obtenerDatosCuadrillaApp(cuadrilla), sede=normalizarTexto(dc.sede), plataforma=plataformaDescansos(dc.plataforma);
     if(esSupervisor&&sede!==normalizarTexto(usuario.sede)) throw new Error("Supervisor solo puede programar su sede");
     const existente=buscarProgramacionDescansos(cuadrilla,fecha), ahora=new Date();
