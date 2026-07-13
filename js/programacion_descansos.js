@@ -1,4 +1,4 @@
-// MI VISUAL - Programación de Descansos V114
+// MI VISUAL - Programación de Descansos V122
 const API_DESCANSOS = "https://script.google.com/macros/s/AKfycbzcbjCLweJNgZXDerdzmMN7Lwotc1G8NWdzoPkaLNGDivAgpYxDkq78xZwPRioSB4XY/exec";
 let PD_DATA={programacion:[],cuadrillas:[]};
 let PD_CAMBIOS={};
@@ -125,11 +125,16 @@ function pdRenderGestion(){
     <div class="pd-field"><label>Plataforma</label><select id="pdPlataforma"><option value="TODAS" ${plataformaSel==='TODAS'?'selected':''}>Todas</option><option value="INSTALACIONES" ${plataformaSel==='INSTALACIONES'?'selected':''}>Instalaciones</option><option value="VISITA TECNICA" ${plataformaSel==='VISITA TECNICA'?'selected':''}>Visita Técnica</option><option value="TRASLADOS" ${plataformaSel==='TRASLADOS'?'selected':''}>Traslados</option></select></div>
     <div class="pd-field"><label>Cuadrilla</label><select id="pdCuadrilla"><option value="TODAS">Todas</option>${PD_DATA.cuadrillas.filter(c=>esSupervisor||sedeSel==='TODAS'||pdNorm(c.sede)===pdNorm(sedeSel)).map(c=>`<option value="${pdEsc(c.cuadrilla)}" ${estadoVista.cuadrilla===c.cuadrilla?'selected':''}>${pdEsc(c.cuadrilla)}</option>`).join('')}</select></div>
     <button class="pd-btn pd-blue" onclick="pdCambiarVista()">Consultar</button>
-    <button id="pdBtnGuardarCambios" class="pd-btn ${esSupervisor?'pd-orange':'pd-green'}" style="display:none" onclick="pdGuardarCambios()">${esSupervisor?'Guardar cambios y enviar a validación':'Guardar cambios'}</button>
   </div></div>
+  <div class="pd-card">
+    <div style="display:flex;justify-content:space-between;gap:8px;align-items:center;flex-wrap:wrap">
+      <div class="pd-note">Vista operativa: <b>C = En campo</b>, <b>D = Descanso</b>. Una fecha con <b>borde rojo y !</b> tiene un cambio pendiente. Pulse esa fecha para revisar el detalle.</div>
+      <button id="pdBtnGuardarCambios" class="pd-btn ${esSupervisor?'pd-orange':'pd-green'}" style="display:none" onclick="pdGuardarCambios()">${esSupervisor?'Guardar cambios y enviar a validación':'Guardar cambios'}</button>
+    </div>
+    <div id="pdCalendario" style="margin-top:8px"></div>
+  </div>
   <div id="pdCobertura" class="pd-card">Calculando capacidad operativa...</div>
   <div id="pdConsultaDia" class="pd-card"></div>
-  <div class="pd-card"><div class="pd-note">Vista operativa: <b>C = En campo</b>, <b>D = Descanso</b>. Una fecha con <b>borde rojo y !</b> tiene un cambio pendiente. Pulse esa fecha para revisar el detalle.</div><div id="pdCalendario" style="margin-top:8px"></div></div>
   <div id="pdDetallePendiente" class="pd-card" style="display:none"></div>
   <div class="pd-card"><div style="display:flex;justify-content:space-between;gap:8px;align-items:center;flex-wrap:wrap"><b>${esSupervisor?'Solicitudes de técnicos pendientes de Supervisor':'Cambios pendientes de Jefatura'}</b>${(!esSupervisor&&pendientes.length)?`<div class="pd-actions"><button class="pd-btn pd-green" onclick="pdResolverSeleccionados('APROBADO')">Aprobar seleccionados</button><button class="pd-btn pd-orange" onclick="pdResolverSeleccionados('OBSERVADO')">Observar seleccionados</button><button class="pd-btn pd-red" onclick="pdResolverSeleccionados('RECHAZADO')">Rechazar seleccionados</button></div>`:''}</div><div class="pd-list" style="margin-top:8px">${pendientes.length?pendientes.map(pdSolicitudCard).join(''):'<div class="pd-note">No hay solicitudes pendientes.</div>'}</div></div>
   ${esSupervisor?`<div class="pd-card"><b>Historial de cambios aplicados por Jefatura</b><div class="pd-list" style="margin-top:8px">${alertasJefatura.length?alertasJefatura.map(pdHistorialCard).join(''):'<div class="pd-note">No hay cambios recientes realizados por Jefatura.</div>'}</div></div>`:''}
