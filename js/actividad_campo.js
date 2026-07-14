@@ -760,3 +760,9 @@ function obtenerClienteConformeGenerico(tipo){
 }
 
 // El Checklist de Actividad en Campo reutiliza el formulario completo de Checklist Almacén.
+
+
+/* CHECKLIST POR TIPO EN ACTIVIDAD DE CAMPO V140 */
+function formularioChecklist(){const hoy=new Date().toISOString().slice(0,10);return `<div class="act-card"><div class="act-section-title">📋 Checklist ejecutado en campo</div><div class="act-note">Seleccione el tipo. Materiales conserva exactamente el formulario actual.</div><div class="ck-grid"><div class="ck-field"><label>Tipo de checklist</label><select id="ckTipoChecklist" onchange="ckCambioTipoChecklist()">${CK_TIPOS_V140.map(t=>`<option>${t}</option>`).join('')}</select></div><div class="ck-field"><label>Fecha de gestión</label><input id="ckFecha" type="date" value="${hoy}"></div></div><div id="ckFormularioTipo">${ckFormularioPorTipo('MATERIALES')}</div></div>`;}
+function inicializarChecklistActividadCampo(){if(typeof CK_EQUIPOS==='undefined'||typeof ckAddEquipo!=='function')return;Object.keys(CK_EQUIPOS).forEach(ckAddEquipo);}
+async function armarChecklistActividadCampo(cuadrilla,comentarioFinal){const tipo=document.getElementById('ckTipoChecklist')?.value||'MATERIALES';const payload={fechaGestion:obtenerValor('ckFecha'),cuadrilla,origenRegistro:'ACTIVIDAD_CAMPO',comentarioFinal,tipoChecklist:tipo};Object.assign(payload,await ckConstruirPayloadTipo(tipo));payload.comentarioFinal=comentarioFinal;return payload;}
