@@ -26,7 +26,7 @@ function pdHayCambios(){return Object.keys(PD_CAMBIOS).length>0;}
 function pdEsPendiente(item){if(!item)return false;const e=pdNorm(item.estadoValidacion||item.estadoProgramacion).replace(/_/g," ");return ["PENDIENTE JEFATURA","PENDIENTE SUPERVISOR","OBSERVADO"].includes(e);}
 function pdActualizarBotonCambios(){const b=document.getElementById("pdBtnGuardarCambios");if(!b)return;b.style.display=pdHayCambios()?"inline-block":"none";const u=pdUser();b.textContent=u.perfil==="SUPERVISOR"?"Guardar cambios y enviar a validación":"Guardar cambios";}
 function pdStyle(){return `<style>
-.pd-wrap{max-width:1200px;margin:auto;padding:10px;color:#0f172a}.pd-head{background:linear-gradient(135deg,#1d4ed8,#0f766e);color:#fff;border-radius:18px;padding:16px;margin-bottom:11px}.pd-head h2{margin:0 0 4px;font-size:22px}.pd-head p{margin:0;font-size:12px;opacity:.9}.pd-card{background:#fff;border:1px solid #dbe4ef;border-radius:15px;padding:12px;margin-bottom:10px;box-shadow:0 5px 14px rgba(15,23,42,.08)}.pd-toolbar{display:flex;gap:8px;flex-wrap:wrap;align-items:end}.pd-field label{display:block;font-size:11px;font-weight:900;color:#334155;margin-bottom:4px}.pd-field input,.pd-field select,.pd-field textarea{border:1px solid #cbd5e1;border-radius:9px;padding:8px;background:#fff;color:#0f172a}.pd-btn{border:0;border-radius:10px;padding:9px 12px;font-weight:900;cursor:pointer}.pd-blue{background:#2563eb;color:#fff}.pd-green{background:#16a34a;color:#fff}.pd-orange{background:#f59e0b;color:#111827}.pd-red{background:#dc2626;color:#fff}.pd-gray{background:#64748b;color:#fff}.pd-kpis{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}.pd-kpi{border:2px solid #cbd5e1;border-radius:13px;padding:10px;background:#f8fafc}.pd-kpi b{display:block;font-size:20px}.pd-kpi small{font-size:10px;font-weight:900}.pd-kpi.verde{background:#ecfdf5;border-color:#22c55e;color:#166534}.pd-kpi.amarillo{background:#fffbeb;border-color:#f59e0b;color:#92400e}.pd-kpi.rojo{background:#fef2f2;border-color:#ef4444;color:#991b1b}.pd-cal-scroll{overflow:auto;border:2px solid #94a3b8;border-radius:12px}.pd-cal{border-collapse:separate;border-spacing:0;min-width:1000px;width:100%;font-size:10px}.pd-cal th,.pd-cal td{border-right:1px solid #94a3b8;border-bottom:1px solid #94a3b8;text-align:center;padding:4px}.pd-cal th:first-child,.pd-cal td:first-child{border-left:1px solid #94a3b8}.pd-cal thead th{border-top:1px solid #94a3b8}.pd-cal th{position:sticky;top:0;background:#eff6ff;color:#1e3a8a;z-index:2}.pd-cal .pd-sticky{position:sticky;left:0;background:#fff;z-index:3;text-align:left;min-width:220px;font-weight:900}.pd-cuadrilla-nombre{font-weight:900;line-height:1.15}.pd-integrantes{display:grid;gap:1px;margin-top:4px;font-size:8px;font-weight:700;line-height:1.2;opacity:.82}.pd-integrantes span{display:block}.pd-day{width:28px;height:28px;border:0;border-radius:7px;font-size:10px;font-weight:900;cursor:pointer}.pd-campo{background:#dcfce7;color:#166534}.pd-bolsa{background:#dcfce7;color:#166534;position:relative}.pd-bolsa-mark{display:block;font-size:7px;line-height:7px;margin-top:-1px;font-weight:900}.pd-descanso{background:#2563eb;color:#fff}.pd-vacaciones{background:#7c3aed;color:#fff}.pd-pendiente{outline:3px solid #dc2626;position:relative}.pd-pendiente::after{content:"!";position:absolute;right:-4px;top:-7px;background:#dc2626;color:#fff;border-radius:50%;width:13px;height:13px;line-height:13px;font-size:9px}.pd-hoy{box-shadow:inset 0 0 0 3px #dc2626!important}.pd-current-day{background:#fef2f2!important;border-left:3px solid #dc2626!important;border-right:3px solid #dc2626!important}.pd-cal th.pd-current-day{background:#dc2626!important;color:#fff!important;font-weight:900}.pd-cal td.pd-current-day{background:#fff1f2!important}.pd-group{background:#dbeafe!important;color:#1e3a8a!important;font-weight:900;text-align:left!important}.pd-status{font-size:10px;padding:4px 7px;border-radius:999px;font-weight:900}.pd-status.campo{background:#dcfce7;color:#166534}.pd-status.descanso{background:#e5e7eb;color:#374151}.pd-status.vacaciones{background:#ede9fe;color:#6d28d9}.pd-status.pendiente{background:#fef3c7;color:#92400e}.pd-tech-state{padding:20px;border-radius:18px;text-align:center}.pd-tech-state.campo{background:#dcfce7;border:3px solid #22c55e;color:#166534}.pd-tech-state.descanso{background:#f1f5f9;border:3px solid #94a3b8;color:#334155}.pd-tech-state h2{font-size:28px;margin:5px 0}.pd-request{border:2px solid #f59e0b;background:#fff7ed;border-radius:13px;padding:11px;margin-top:10px}.pd-list{display:grid;gap:8px}.pd-item{border:1px solid #dbe4ef;border-radius:12px;padding:10px;background:#fff}.pd-item strong{display:block;margin-bottom:4px}.pd-actions{display:flex;gap:7px;flex-wrap:wrap;margin-top:8px}.pd-note{font-size:11px;color:#64748b;line-height:1.4}.pd-alert{background:#fff7ed;border:2px solid #fb923c;color:#9a3412;border-radius:12px;padding:10px;font-size:12px;font-weight:800}.pd-grid2{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px}.pd-summary{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px}.pd-summary .pd-kpi{min-height:72px}.pd-query-list{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}.pd-query-box{border:1px solid #cbd5e1;border-radius:12px;padding:10px;background:#f8fafc}.pd-query-box h4{margin:0 0 6px}.pd-alert-row{border:2px solid #ef4444;background:#fef2f2;color:#991b1b;border-radius:12px;padding:10px;margin-top:8px}.pd-month-label{background:#dbeafe!important;color:#1e3a8a!important;font-weight:900}.pd-row-instalaciones td{background:#eff6ff}.pd-row-visita td{background:#ecfdf5}.pd-row-traslados td{background:#ecfeff}.pd-row-instalaciones .pd-sticky{background:#bfdbfe!important;color:#1e3a8a}.pd-row-visita .pd-sticky{background:#bbf7d0!important;color:#166534}.pd-row-traslados .pd-sticky{background:#a5f3fc!important;color:#155e75}.pd-row-personal td{background:#f8fafc}.pd-row-personal .pd-sticky{background:#e2e8f0!important;color:#334155}.pd-personal-badge{display:inline-block;margin-top:3px;padding:2px 6px;border-radius:999px;background:#e2e8f0;color:#334155;font-size:8px;font-weight:900}.pd-sunday{border-left:3px solid #f59e0b!important;border-right:3px solid #f59e0b!important;background:#fff7ed!important}.pd-cal th.pd-sunday{background:#ffedd5!important;color:#9a3412!important;font-weight:900}.pd-cal td.pd-sunday{background:#fff7ed!important}.pd-disabled{opacity:.55;cursor:not-allowed}@media(max-width:700px){.pd-wrap{padding:6px}.pd-kpis{grid-template-columns:1fr}.pd-summary{grid-template-columns:repeat(2,minmax(0,1fr))}.pd-query-list{grid-template-columns:1fr}.pd-grid2{grid-template-columns:1fr}.pd-head h2{font-size:19px}.pd-cal .pd-sticky{min-width:170px}}
+.pd-wrap{max-width:1200px;margin:auto;padding:10px;color:#0f172a}.pd-head{background:linear-gradient(135deg,#1d4ed8,#0f766e);color:#fff;border-radius:18px;padding:16px;margin-bottom:11px}.pd-head h2{margin:0 0 4px;font-size:22px}.pd-head p{margin:0;font-size:12px;opacity:.9}.pd-card{background:#fff;border:1px solid #dbe4ef;border-radius:15px;padding:12px;margin-bottom:10px;box-shadow:0 5px 14px rgba(15,23,42,.08)}.pd-toolbar{display:flex;gap:8px;flex-wrap:wrap;align-items:end}.pd-field label{display:block;font-size:11px;font-weight:900;color:#334155;margin-bottom:4px}.pd-field input,.pd-field select,.pd-field textarea{border:1px solid #cbd5e1;border-radius:9px;padding:8px;background:#fff;color:#0f172a}.pd-btn{border:0;border-radius:10px;padding:9px 12px;font-weight:900;cursor:pointer}.pd-blue{background:#2563eb;color:#fff}.pd-green{background:#16a34a;color:#fff}.pd-orange{background:#f59e0b;color:#111827}.pd-red{background:#dc2626;color:#fff}.pd-gray{background:#64748b;color:#fff}.pd-kpis{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}.pd-kpi{border:2px solid #cbd5e1;border-radius:13px;padding:10px;background:#f8fafc}.pd-kpi b{display:block;font-size:20px}.pd-kpi small{font-size:10px;font-weight:900}.pd-kpi.verde{background:#ecfdf5;border-color:#22c55e;color:#166534}.pd-kpi.amarillo{background:#fffbeb;border-color:#f59e0b;color:#92400e}.pd-kpi.rojo{background:#fef2f2;border-color:#ef4444;color:#991b1b}.pd-cal-scroll{overflow:auto;border:2px solid #94a3b8;border-radius:12px}.pd-cal{border-collapse:separate;border-spacing:0;min-width:1000px;width:100%;font-size:10px}.pd-cal th,.pd-cal td{border-right:1px solid #94a3b8;border-bottom:1px solid #94a3b8;text-align:center;padding:4px}.pd-cal th:first-child,.pd-cal td:first-child{border-left:1px solid #94a3b8}.pd-cal thead th{border-top:1px solid #94a3b8}.pd-cal th{position:sticky;top:0;background:#eff6ff;color:#1e3a8a;z-index:2}.pd-cal .pd-sticky{position:sticky;left:0;background:#fff;z-index:3;text-align:left;min-width:220px;font-weight:900}.pd-cuadrilla-nombre{font-weight:900;line-height:1.15}.pd-integrantes{display:grid;gap:1px;margin-top:4px;font-size:8px;font-weight:700;line-height:1.2;opacity:.82}.pd-integrantes span{display:block}.pd-day{width:28px;height:28px;border:0;border-radius:7px;font-size:10px;font-weight:900;cursor:pointer}.pd-campo{background:#dcfce7;color:#166534}.pd-bolsa{background:#dcfce7;color:#166534;position:relative}.pd-bolsa-mark{display:block;font-size:7px;line-height:7px;margin-top:-1px;font-weight:900}.pd-descanso{background:#2563eb;color:#fff}.pd-vacaciones{background:#7c3aed;color:#fff}.pd-pendiente{outline:3px solid #dc2626;position:relative}.pd-pendiente::after{content:"!";position:absolute;right:-4px;top:-7px;background:#dc2626;color:#fff;border-radius:50%;width:13px;height:13px;line-height:13px;font-size:9px}.pd-hoy{box-shadow:inset 0 0 0 3px #dc2626!important}.pd-current-day{background:#fef2f2!important;border-left:3px solid #dc2626!important;border-right:3px solid #dc2626!important}.pd-cal th.pd-current-day{background:#dc2626!important;color:#fff!important;font-weight:900}.pd-cal td.pd-current-day{background:#fff1f2!important}.pd-group{background:#dbeafe!important;color:#1e3a8a!important;font-weight:900;text-align:left!important}.pd-status{font-size:10px;padding:4px 7px;border-radius:999px;font-weight:900}.pd-status.campo{background:#dcfce7;color:#166534}.pd-status.descanso{background:#e5e7eb;color:#374151}.pd-status.vacaciones{background:#ede9fe;color:#6d28d9}.pd-status.pendiente{background:#fef3c7;color:#92400e}.pd-tech-state{padding:20px;border-radius:18px;text-align:center}.pd-tech-state.campo{background:#dcfce7;border:3px solid #22c55e;color:#166534}.pd-tech-state.descanso{background:#f1f5f9;border:3px solid #94a3b8;color:#334155}.pd-tech-state h2{font-size:28px;margin:5px 0}.pd-request{border:2px solid #f59e0b;background:#fff7ed;border-radius:13px;padding:11px;margin-top:10px}.pd-list{display:grid;gap:8px}.pd-item{border:1px solid #dbe4ef;border-radius:12px;padding:10px;background:#fff}.pd-item strong{display:block;margin-bottom:4px}.pd-actions{display:flex;gap:7px;flex-wrap:wrap;margin-top:8px}.pd-note{font-size:11px;color:#64748b;line-height:1.4}.pd-alert{background:#fff7ed;border:2px solid #fb923c;color:#9a3412;border-radius:12px;padding:10px;font-size:12px;font-weight:800}.pd-grid2{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px}.pd-summary{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px}.pd-summary .pd-kpi{min-height:72px}.pd-query-list{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}.pd-query-box{border:1px solid #cbd5e1;border-radius:12px;padding:10px;background:#f8fafc}.pd-query-box h4{margin:0 0 6px}.pd-alert-row{border:2px solid #ef4444;background:#fef2f2;color:#991b1b;border-radius:12px;padding:10px;margin-top:8px}.pd-month-label{background:#dbeafe!important;color:#1e3a8a!important;font-weight:900}.pd-row-instalaciones td{background:#eff6ff}.pd-row-visita td{background:#ecfdf5}.pd-row-traslados td{background:#ecfeff}.pd-row-instalaciones .pd-sticky{background:#bfdbfe!important;color:#1e3a8a}.pd-row-visita .pd-sticky{background:#bbf7d0!important;color:#166534}.pd-row-traslados .pd-sticky{background:#a5f3fc!important;color:#155e75}.pd-row-personal td{background:#f8fafc}.pd-row-personal .pd-sticky{background:#e2e8f0!important;color:#334155}.pd-personal-badge{display:inline-block;margin-top:3px;padding:2px 6px;border-radius:999px;background:#e2e8f0;color:#334155;font-size:8px;font-weight:900}.pd-sunday{border-left:3px solid #f59e0b!important;border-right:3px solid #f59e0b!important;background:#fff7ed!important}.pd-cal th.pd-sunday{background:#ffedd5!important;color:#9a3412!important;font-weight:900}.pd-cal td.pd-sunday{background:#fff7ed!important}.pd-report-action{margin-left:auto}.pd-disabled{opacity:.55;cursor:not-allowed}@media(max-width:700px){.pd-wrap{padding:6px}.pd-kpis{grid-template-columns:1fr}.pd-summary{grid-template-columns:repeat(2,minmax(0,1fr))}.pd-query-list{grid-template-columns:1fr}.pd-grid2{grid-template-columns:1fr}.pd-head h2{font-size:19px}.pd-cal .pd-sticky{min-width:170px}}
 </style>`;}
 
 
@@ -188,6 +188,7 @@ function pdRenderGestion(){
   const sedeSel=sedes.includes(estadoVista.sede)?estadoVista.sede:(esSupervisor?u.sede:'TODAS');
   const plataformaSel=['TODAS','INSTALACIONES','VISITA TECNICA','TRASLADOS'].includes(estadoVista.plataforma)?estadoVista.plataforma:'TODAS';
   const tipoPersonalSel=['TODAS','CUADRILLA','PERSONAL','SUPERVISOR','ALMACEN'].includes(estadoVista.tipoPersonal)?estadoVista.tipoPersonal:'TODAS';
+  const estadoInformeSel=['TODOS','EN CAMPO','EN CAMPO BOLSA','DESCANSO','VACACIONES'].includes(estadoVista.estadoInforme)?estadoVista.estadoInforme:'TODOS';
   const supervisorSel=estadoVista.supervisor||'TODOS';
   const modo=['MES','RANGO','DIA'].includes(estadoVista.modo)?estadoVista.modo:'MES';
   const rango=pdRangoVisualMes(per);
@@ -198,7 +199,7 @@ function pdRenderGestion(){
   const historial=baseHistorial.filter(x=>esSupervisor?pdNorm(x.sede)===u.sede:true).slice(0,120);
   const alertasJefatura=esSupervisor?historial.filter(x=>pdNorm(x.origen)==='JEFATURA'&&pdNorm(x.accion)==='CAMBIO APLICADO'):[];
   const supervisores=[...new Set((PD_DATA.cuadrillas||[]).filter(c=>pdNorm(c.tipoPersonal)==='CUADRILLA').map(c=>c.supervisor).filter(Boolean))].sort();
-  window.PD_FILTROS={sede:sedeSel,plataforma:plataformaSel,tipoPersonal:tipoPersonalSel,supervisor:supervisorSel,modo,desde,hasta,cuadrilla:estadoVista.cuadrilla||'TODAS'};
+  window.PD_FILTROS={sede:sedeSel,plataforma:plataformaSel,tipoPersonal:tipoPersonalSel,supervisor:supervisorSel,modo,desde,hasta,cuadrilla:estadoVista.cuadrilla||'TODAS',estadoInforme:estadoInformeSel};
   // El estado personal del Supervisor se muestra únicamente en el menú de inicio.
   // Dentro del módulo se conserva solo la gestión de sus cuadrillas.
   document.getElementById('pdContenido').innerHTML=`
@@ -212,7 +213,9 @@ function pdRenderGestion(){
     ${esJefatura?`<div class="pd-field"><label>Supervisor</label><select id="pdSupervisor"><option value="TODOS">Todos</option>${supervisores.map(s=>`<option value="${pdEsc(s)}" ${supervisorSel===s?'selected':''}>${pdEsc(s)}</option>`).join('')}</select></div>`:''}
     <div class="pd-field"><label>Plataforma</label><select id="pdPlataforma"><option value="TODAS" ${plataformaSel==='TODAS'?'selected':''}>Todas</option><option value="INSTALACIONES" ${plataformaSel==='INSTALACIONES'?'selected':''}>Instalaciones</option><option value="VISITA TECNICA" ${plataformaSel==='VISITA TECNICA'?'selected':''}>Visita Técnica</option><option value="TRASLADOS" ${plataformaSel==='TRASLADOS'?'selected':''}>Traslados</option></select></div>
     <div class="pd-field"><label>${esJefatura?'Cuadrilla / Personal':'Cuadrilla'}</label><select id="pdCuadrilla"><option value="TODAS">Todas</option>${PD_DATA.cuadrillas.filter(c=>esSupervisor||sedeSel==='TODAS'||pdNorm(c.sede)===pdNorm(sedeSel)).map(c=>`<option value="${pdEsc(c.cuadrilla)}" ${estadoVista.cuadrilla===c.cuadrilla?'selected':''}>${pdEsc(c.nombrePersonal||c.cuadrilla)}</option>`).join('')}</select></div>
+    <div class="pd-field"><label>Estado informe</label><select id="pdEstadoInforme"><option value="TODOS" ${estadoInformeSel==='TODOS'?'selected':''}>Todos</option><option value="EN CAMPO" ${estadoInformeSel==='EN CAMPO'?'selected':''}>En campo</option><option value="EN CAMPO BOLSA" ${estadoInformeSel==='EN CAMPO BOLSA'?'selected':''}>En campo bolsa</option><option value="DESCANSO" ${estadoInformeSel==='DESCANSO'?'selected':''}>Descanso</option><option value="VACACIONES" ${estadoInformeSel==='VACACIONES'?'selected':''}>Vacaciones</option></select></div>
     <button class="pd-btn pd-blue" onclick="pdCambiarVista()">Consultar</button>
+    <button id="pdBtnDescargarExcel" class="pd-btn pd-green pd-report-action" onclick="pdGenerarExcelDescansos()">Descargar Excel</button>
   </div></div>
   <div id="pdAlertasOperativas" class="pd-card" style="display:none"></div>
   <div class="pd-card">
@@ -228,7 +231,7 @@ function pdRenderGestion(){
   <div class="pd-card"><div style="display:flex;justify-content:space-between;gap:8px;align-items:center;flex-wrap:wrap"><b>${esSupervisor?'Solicitudes de técnicos pendientes de Supervisor':'Cambios pendientes de Jefatura'}</b>${(!esSupervisor&&pendientes.length)?`<div class="pd-actions"><button class="pd-btn pd-green" onclick="pdResolverSeleccionados('APROBADO')">Aprobar seleccionados</button><button class="pd-btn pd-orange" onclick="pdResolverSeleccionados('OBSERVADO')">Observar seleccionados</button><button class="pd-btn pd-red" onclick="pdResolverSeleccionados('RECHAZADO')">Rechazar seleccionados</button></div>`:''}</div><div class="pd-list" style="margin-top:8px">${pendientes.length?pendientes.map(pdSolicitudCard).join(''):'<div class="pd-note">No hay solicitudes pendientes.</div>'}</div></div>
   ${esSupervisor?`<div class="pd-card"><b>Historial de cambios aplicados por Jefatura</b><div class="pd-list" style="margin-top:8px">${alertasJefatura.length?alertasJefatura.map(pdHistorialCard).join(''):'<div class="pd-note">No hay cambios recientes realizados por Jefatura.</div>'}</div></div>`:''}
   <div class="pd-card"><b>Historial de programación y cambios</b><div class="pd-list" style="margin-top:8px">${historial.length?historial.map(pdHistorialCard).join(''):'<div class="pd-note">Aún no hay historial registrado.</div>'}</div></div>
-  ${pdReporteHtml()}`;
+  `;
   pdRenderCalendario();pdCargarCobertura();pdRenderConsultaOperativa();pdActualizarBotonCambios();
 }
 function pdRangoVisualMes(periodo){
@@ -253,7 +256,7 @@ function pdCapturarFiltros(){
   if(modo==='MES'){const r=pdRangoVisualMes(per);desde=r.desde;hasta=r.hasta;}
   if(modo==='DIA')hasta=desde;
   if(desde>hasta){const t=desde;desde=hasta;hasta=t;}
-  window.PD_FILTROS={modo,desde,hasta,sede:document.getElementById('pdSede')?.value||pdUser().sede,plataforma:document.getElementById('pdPlataforma')?.value||'TODAS',tipoPersonal:document.getElementById('pdTipoPersonal')?.value||'TODAS',supervisor:document.getElementById('pdSupervisor')?.value||'TODOS',cuadrilla:document.getElementById('pdCuadrilla')?.value||'TODAS'};
+  window.PD_FILTROS={modo,desde,hasta,sede:document.getElementById('pdSede')?.value||pdUser().sede,plataforma:document.getElementById('pdPlataforma')?.value||'TODAS',tipoPersonal:document.getElementById('pdTipoPersonal')?.value||'TODAS',supervisor:document.getElementById('pdSupervisor')?.value||'TODOS',cuadrilla:document.getElementById('pdCuadrilla')?.value||'TODAS',estadoInforme:document.getElementById('pdEstadoInforme')?.value||'TODOS'};
   return window.PD_FILTROS;
 }
 
@@ -475,7 +478,7 @@ function pdCargarXlsx(){
   if(window.XLSX) return Promise.resolve(window.XLSX);
   return new Promise((resolve,reject)=>{
     const script=document.createElement('script');
-    script.src='https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js';
+    script.src='https://cdn.jsdelivr.net/npm/xlsx-js-style@1.2.0/dist/xlsx.bundle.js';
     script.onload=()=>window.XLSX?resolve(window.XLSX):reject(new Error('No se pudo iniciar el generador de Excel.'));
     script.onerror=()=>reject(new Error('No se pudo cargar la librería de Excel. Revise su conexión.'));
     document.head.appendChild(script);
@@ -537,31 +540,85 @@ function pdTituloMesReporte(desde,hasta){
   return meses.length===1?meses[0]:`${meses[0]} - ${meses[meses.length-1]}`;
 }
 function pdAplicarAnchos(ws,anchos){ws['!cols']=anchos.map(w=>({wch:w}));}
+function pdTipoEntidadReporte(c){
+  const explicito=pdNorm(c?.tipoPersonal||'');
+  if(['CUADRILLA','SUPERVISOR','ALMACEN'].includes(explicito)) return explicito;
+  const clave=pdNorm(c?.cuadrilla||'');
+  if(!clave.startsWith('PERSONAL|')) return 'CUADRILLA';
+  const perfil=pdNorm(c?.perfilPersonal||c?.perfil||c?.rol||'');
+  return perfil.includes('ALMACEN')?'ALMACEN':'SUPERVISOR';
+}
+function pdEtiquetaEntidadReporte(c){
+  return pdTipoEntidadReporte(c)==='CUADRILLA'?(c.cuadrilla||''):(c.nombrePersonal||c.cuadrilla||'');
+}
+function pdBordeExcel(){return {top:{style:'thin',color:{rgb:'000000'}},bottom:{style:'thin',color:{rgb:'000000'}},left:{style:'thin',color:{rgb:'000000'}},right:{style:'thin',color:{rgb:'000000'}}};}
+function pdEstiloRangoExcel(ws,r1,c1,r2,c2,estilo){
+  for(let r=r1;r<=r2;r++)for(let c=c1;c<=c2;c++){
+    const ref=window.XLSX.utils.encode_cell({r,c});
+    if(!ws[ref]) ws[ref]={t:'s',v:''};
+    ws[ref].s=Object.assign({},ws[ref].s||{},estilo);
+  }
+}
+function pdEstilizarCalendarioExcel(ws,fechas,entidades){
+  const XLSX=window.XLSX,totalCols=1+fechas.length+4,ultimaFila=3+entidades.length,borde=pdBordeExcel();
+  pdEstiloRangoExcel(ws,0,0,0,totalCols-1,{font:{bold:true,color:{rgb:'FFFFFF'},sz:16},fill:{fgColor:{rgb:'1F4E78'}},alignment:{horizontal:'left',vertical:'center'}});
+  pdEstiloRangoExcel(ws,1,0,1,totalCols-1,{font:{bold:true,color:{rgb:'FFFFFF'},sz:12},fill:{fgColor:{rgb:'0F766E'}},alignment:{horizontal:'left',vertical:'center'}});
+  pdEstiloRangoExcel(ws,3,0,3,totalCols-1,{font:{bold:true,color:{rgb:'000000'}},fill:{fgColor:{rgb:'B7DEE8'}},alignment:{horizontal:'center',vertical:'center',wrapText:true},border:borde});
+  for(let r=4;r<=ultimaFila;r++){
+    pdEstiloRangoExcel(ws,r,0,r,0,{font:{bold:true,color:{rgb:'000000'}},alignment:{horizontal:'left',vertical:'center',wrapText:true},border:borde});
+    for(let c=1;c<=fechas.length;c++){
+      const ref=XLSX.utils.encode_cell({r,c}),v=(ws[ref]?.v||'').toString();
+      let color='DCFCE7',font='166534';
+      if(v==='D'){color='2563EB';font='FFFFFF';}
+      else if(v==='V'){color='7C3AED';font='FFFFFF';}
+      else if(v==='Cᴮ'){color='A5F3FC';font='155E75';}
+      ws[ref].s={font:{bold:true,color:{rgb:font}},fill:{fgColor:{rgb:color}},alignment:{horizontal:'center',vertical:'center'},border:borde};
+    }
+    pdEstiloRangoExcel(ws,r,1+fechas.length,r,totalCols-1,{font:{bold:true},alignment:{horizontal:'center',vertical:'center'},border:borde});
+  }
+  ws['!autofilter']={ref:`A4:${XLSX.utils.encode_col(totalCols-1)}${ultimaFila+1}`};
+  ws['!pageSetup']={orientation:'landscape',fitToWidth:1,fitToHeight:0,paperSize:9};
+  ws['!margins']={left:0.25,right:0.25,top:0.5,bottom:0.5,header:0.2,footer:0.2};
+}
+function pdEstilizarResumenExcel(ws,filas){
+  const borde=pdBordeExcel();
+  pdEstiloRangoExcel(ws,0,0,0,1,{font:{bold:true,color:{rgb:'FFFFFF'},sz:16},fill:{fgColor:{rgb:'1F4E78'}},alignment:{horizontal:'left'}});
+  pdEstiloRangoExcel(ws,1,0,1,1,{font:{bold:true,color:{rgb:'FFFFFF'}},fill:{fgColor:{rgb:'0F766E'}}});
+  pdEstiloRangoExcel(ws,11,0,11,1,{font:{bold:true},fill:{fgColor:{rgb:'B7DEE8'}},alignment:{horizontal:'center'},border:borde});
+  for(let r=3;r<filas;r++) pdEstiloRangoExcel(ws,r,0,r,1,{border:borde,alignment:{vertical:'center',wrapText:true}});
+}
+function pdEstilizarDetalleExcel(ws,filas){
+  const borde=pdBordeExcel();
+  pdEstiloRangoExcel(ws,0,0,0,8,{font:{bold:true},fill:{fgColor:{rgb:'B7DEE8'}},alignment:{horizontal:'center',vertical:'center',wrapText:true},border:borde});
+  for(let r=1;r<filas;r++) pdEstiloRangoExcel(ws,r,0,r,8,{border:borde,alignment:{vertical:'center',wrapText:true}});
+  ws['!freeze']={xSplit:0,ySplit:1};
+}
 
 async function pdGenerarExcelDescansos(){
-  const boton=document.querySelector('#pdInformes .pd-green');
+  const boton=document.getElementById('pdBtnDescargarExcel');
   try{
-    const desde=document.getElementById('pdRepDesde')?.value||'',hasta=document.getElementById('pdRepHasta')?.value||'';
+    const f=pdCapturarFiltros();
+    const desde=f.desde||'',hasta=f.hasta||'';
     if(!desde||!hasta) throw new Error('Seleccione las fechas Desde y Hasta.');
     if(desde>hasta) throw new Error('La fecha Desde no puede ser posterior a Hasta.');
     if(boton){boton.disabled=true;boton.textContent='Generando...';}
-    const sede=pdNorm(document.getElementById('pdRepSede')?.value||'TODAS');
-    const plataforma=pdNorm(document.getElementById('pdRepPlataforma')?.value||'TODAS');
-    const tipo=pdNorm(document.getElementById('pdRepTipo')?.value||'TODAS');
-    const estadoFiltro=pdNorm(document.getElementById('pdRepEstado')?.value||'TODOS');
+    const sede=pdNorm(f.sede||'TODAS'),plataforma=pdNorm(f.plataforma||'TODAS');
+    const tipo=pdNorm(f.tipoPersonal||'TODAS'),estadoFiltro=pdNorm(f.estadoInforme||'TODOS');
+    const supervisor=pdNorm(f.supervisor||'TODOS'),cuadrilla=pdNorm(f.cuadrilla||'TODAS');
     const u=pdUser(),datos=await pdDatosRangoReporte(desde,hasta),fechas=pdFechasEntre(desde,hasta);
     let entidades=datos.entidades.filter(c=>{
-      const t=pdNorm(c.tipoPersonal||'CUADRILLA');
+      const t=pdTipoEntidadReporte(c);
       if(sede!=='TODAS'&&pdNorm(c.sede)!==sede)return false;
-      if(tipo!=='TODAS'&&t!==tipo)return false;
+      if(tipo==='PERSONAL'&&!['SUPERVISOR','ALMACEN'].includes(t))return false;
+      if(!['TODAS','PERSONAL'].includes(tipo)&&t!==tipo)return false;
       if(plataforma!=='TODAS'&&(t!=='CUADRILLA'||pdNorm(c.plataforma)!==plataforma))return false;
+      if(supervisor!=='TODOS'&&t==='CUADRILLA'&&pdNorm(c.supervisor)!==supervisor)return false;
+      if(cuadrilla!=='TODAS'&&pdNorm(c.cuadrilla)!==cuadrilla)return false;
       return true;
     });
-    if(estadoFiltro!=='TODOS'){
-      entidades=entidades.filter(c=>fechas.some(f=>pdEstadoReporte(c,f,datos.programacion)===estadoFiltro));
-    }
+    if(estadoFiltro!=='TODOS') entidades=entidades.filter(c=>fechas.some(fecha=>pdEstadoReporte(c,fecha,datos.programacion)===estadoFiltro));
     if(!entidades.length) throw new Error('No existen registros para los filtros seleccionados.');
-    entidades.sort((a,b)=>pdNorm(a.sede).localeCompare(pdNorm(b.sede))||pdNorm(a.plataforma).localeCompare(pdNorm(b.plataforma))||pdNorm(a.nombrePersonal||a.cuadrilla).localeCompare(pdNorm(b.nombrePersonal||b.cuadrilla),undefined,{numeric:true}));
+    entidades.sort((a,b)=>pdNorm(a.sede).localeCompare(pdNorm(b.sede))||pdTipoEntidadReporte(a).localeCompare(pdTipoEntidadReporte(b))||pdNorm(a.plataforma).localeCompare(pdNorm(b.plataforma))||pdNorm(pdEtiquetaEntidadReporte(a)).localeCompare(pdNorm(pdEtiquetaEntidadReporte(b)),undefined,{numeric:true}));
 
     const conteo={campo:0,bolsa:0,descanso:0,vacaciones:0};
     const detalle=[['FECHA','DÍA','SEDE','PLATAFORMA','CUADRILLA / PERSONAL','TÉCNICOS','ESTADO','SUPERVISOR','TIPO DE PERSONAL']];
@@ -569,68 +626,47 @@ async function pdGenerarExcelDescansos(){
       const e=pdEstadoReporte(c,fecha,datos.programacion);
       if(estadoFiltro!=='TODOS'&&e!==estadoFiltro)return;
       if(e==='DESCANSO')conteo.descanso++;else if(e==='VACACIONES')conteo.vacaciones++;else if(pdEsBolsa(e))conteo.bolsa++;else conteo.campo++;
-      detalle.push([pdFechaVisibleReporte(fecha),pdNombreDiaReporte(fecha),c.sede||'',c.plataforma||'',c.nombrePersonal||c.cuadrilla||'',pdNombresTecnicosReporte(c),e,c.supervisor||'',c.tipoPersonal||'CUADRILLA']);
+      detalle.push([pdFechaVisibleReporte(fecha),pdNombreDiaReporte(fecha),c.sede||'',pdTipoEntidadReporte(c)==='CUADRILLA'?(c.plataforma||''):'',pdEtiquetaEntidadReporte(c),pdTipoEntidadReporte(c)==='CUADRILLA'?pdNombresTecnicosReporte(c):'',e,c.supervisor||'',pdTipoEntidadReporte(c)]);
     }));
 
     const tituloMes=pdTituloMesReporte(desde,hasta);
     const resumen=[
-      ['PROGRAMACIÓN DE DESCANSOS'],
-      [`MES: ${tituloMes}`],
-      [],
+      ['PROGRAMACIÓN DE DESCANSOS'],[`MES: ${tituloMes}`],[],
       ['Período',`${pdFechaVisibleReporte(desde)} - ${pdFechaVisibleReporte(hasta)}`],
-      ['Sede',sede==='TODAS'?'TODAS':sede],
-      ['Plataforma',plataforma==='TODAS'?'TODAS':plataforma],
-      ['Tipo de personal',tipo==='TODAS'?'TODOS':tipo],
-      ['Estado',estadoFiltro==='TODOS'?'TODOS':estadoFiltro],
-      ['Generado por',localStorage.getItem('nombresApellidos')||u.usuario],
-      ['Fecha y hora',new Date().toLocaleString('es-PE')],
-      [],
-      ['INDICADOR','TOTAL'],
-      ['En campo',conteo.campo],
-      ['En campo bolsa',conteo.bolsa],
-      ['Descanso',conteo.descanso],
-      ['Vacaciones',conteo.vacaciones],
-      ['Registros incluidos',detalle.length-1]
+      ['Sede',sede==='TODAS'?'TODAS':sede],['Plataforma',plataforma==='TODAS'?'TODAS':plataforma],
+      ['Tipo de personal',tipo==='TODAS'?'TODOS':tipo],['Estado',estadoFiltro==='TODOS'?'TODOS':estadoFiltro],
+      ['Generado por',localStorage.getItem('nombresApellidos')||u.usuario],['Fecha y hora',new Date().toLocaleString('es-PE')],[],
+      ['INDICADOR','TOTAL'],['En campo',conteo.campo],['En campo bolsa',conteo.bolsa],['Descanso',conteo.descanso],['Vacaciones',conteo.vacaciones],['Registros incluidos',detalle.length-1]
     ];
 
-    const calendario=[];
-    calendario.push(['PROGRAMACIÓN DE DESCANSOS']);
-    calendario.push([`MES: ${tituloMes}`]);
-    calendario.push([]);
-    calendario.push(['CUADRILLA / PERSONAL',...fechas.map(f=>`${pdNombreDiaReporte(f)}\n${Number(f.slice(8,10))}`),'CAMPO','CAMPO BOLSA','DESCANSO','VACACIONES']);
+    const calendario=[['PROGRAMACIÓN DE DESCANSOS'],[`MES: ${tituloMes}`],[],['CUADRILLA / PERSONAL',...fechas.map(fecha=>`${pdNombreDiaReporte(fecha)}\n${Number(fecha.slice(8,10))}`),'CAMPO','CAMPO BOLSA','DESCANSO','VACACIONES']];
     entidades.forEach(c=>{
       let ca=0,bo=0,de=0,va=0;
-      const estados=fechas.map(f=>{
-        const e=pdEstadoReporte(c,f,datos.programacion);
-        if(e==='DESCANSO')de++;else if(e==='VACACIONES')va++;else if(pdEsBolsa(e))bo++;else ca++;
-        return pdSiglaReporte(e);
-      });
-      const tecnicos=pdNombresTecnicosReporte(c);
-      const etiqueta=`${c.nombrePersonal||c.cuadrilla||''}${tecnicos?'\n'+tecnicos:''}`;
-      calendario.push([etiqueta,...estados,ca,bo,de,va]);
+      const estados=fechas.map(fecha=>{const e=pdEstadoReporte(c,fecha,datos.programacion);if(e==='DESCANSO')de++;else if(e==='VACACIONES')va++;else if(pdEsBolsa(e))bo++;else ca++;return pdSiglaReporte(e);});
+      const tecnicos=pdTipoEntidadReporte(c)==='CUADRILLA'?pdNombresTecnicosReporte(c):'';
+      const nombre=pdEtiquetaEntidadReporte(c);
+      calendario.push([`${nombre}${tecnicos?'\n'+tecnicos:''}`,...estados,ca,bo,de,va]);
     });
 
     const XLSX=await pdCargarXlsx(),wb=XLSX.utils.book_new();
     const wsResumen=XLSX.utils.aoa_to_sheet(resumen);
     wsResumen['!merges']=[XLSX.utils.decode_range('A1:B1'),XLSX.utils.decode_range('A2:B2')];
-    pdAplicarAnchos(wsResumen,[28,48]);
+    pdAplicarAnchos(wsResumen,[28,48]);pdEstilizarResumenExcel(wsResumen,resumen.length);
     XLSX.utils.book_append_sheet(wb,wsResumen,'RESUMEN');
 
-    const wsCalendario=XLSX.utils.aoa_to_sheet(calendario);
-    const totalCols=1+fechas.length+4;
+    const wsCalendario=XLSX.utils.aoa_to_sheet(calendario),totalCols=1+fechas.length+4;
     wsCalendario['!merges']=[{s:{r:0,c:0},e:{r:0,c:totalCols-1}},{s:{r:1,c:0},e:{r:1,c:totalCols-1}}];
-    wsCalendario['!cols']=[{wch:48},...fechas.map(()=>({wch:6})),{wch:10},{wch:13},{wch:10},{wch:12}];
-    wsCalendario['!rows']=[{hpt:24},{hpt:22},{hpt:8},{hpt:34},...entidades.map(()=>({hpt:34}))];
-    wsCalendario['!freeze']={xSplit:1,ySplit:4};
+    wsCalendario['!cols']=[{wch:58},...fechas.map(()=>({wch:7})),{wch:11},{wch:14},{wch:11},{wch:12}];
+    wsCalendario['!rows']=[{hpt:28},{hpt:24},{hpt:8},{hpt:38},...entidades.map(()=>({hpt:42}))];
+    wsCalendario['!freeze']={xSplit:1,ySplit:4};pdEstilizarCalendarioExcel(wsCalendario,fechas,entidades);
     XLSX.utils.book_append_sheet(wb,wsCalendario,'CALENDARIO');
 
     const wsDetalle=XLSX.utils.aoa_to_sheet(detalle);
-    wsDetalle['!autofilter']={ref:`A1:I${detalle.length}`};
-    pdAplicarAnchos(wsDetalle,[13,8,13,20,48,42,20,20,20]);
+    wsDetalle['!autofilter']={ref:`A1:I${detalle.length}`};pdAplicarAnchos(wsDetalle,[13,8,13,20,48,42,20,20,20]);pdEstilizarDetalleExcel(wsDetalle,detalle.length);
     XLSX.utils.book_append_sheet(wb,wsDetalle,'DETALLE');
 
-    const archivo=`PROGRAMACION_DESCANSOS_${desde.replaceAll('-','')}_${hasta.replaceAll('-','')}.xlsx`;
-    XLSX.writeFile(wb,archivo);
+    XLSX.writeFile(wb,`PROGRAMACION_DESCANSOS_${desde.replaceAll('-','')}_${hasta.replaceAll('-','')}.xlsx`);
   }catch(e){alert(e.message||e);}
   finally{if(boton){boton.disabled=false;boton.textContent='Descargar Excel';}}
 }
+
