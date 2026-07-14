@@ -227,7 +227,8 @@ function pdRenderGestion(){
   <div id="pdDetallePendiente" class="pd-card" style="display:none"></div>
   <div class="pd-card"><div style="display:flex;justify-content:space-between;gap:8px;align-items:center;flex-wrap:wrap"><b>${esSupervisor?'Solicitudes de técnicos pendientes de Supervisor':'Cambios pendientes de Jefatura'}</b>${(!esSupervisor&&pendientes.length)?`<div class="pd-actions"><button class="pd-btn pd-green" onclick="pdResolverSeleccionados('APROBADO')">Aprobar seleccionados</button><button class="pd-btn pd-orange" onclick="pdResolverSeleccionados('OBSERVADO')">Observar seleccionados</button><button class="pd-btn pd-red" onclick="pdResolverSeleccionados('RECHAZADO')">Rechazar seleccionados</button></div>`:''}</div><div class="pd-list" style="margin-top:8px">${pendientes.length?pendientes.map(pdSolicitudCard).join(''):'<div class="pd-note">No hay solicitudes pendientes.</div>'}</div></div>
   ${esSupervisor?`<div class="pd-card"><b>Historial de cambios aplicados por Jefatura</b><div class="pd-list" style="margin-top:8px">${alertasJefatura.length?alertasJefatura.map(pdHistorialCard).join(''):'<div class="pd-note">No hay cambios recientes realizados por Jefatura.</div>'}</div></div>`:''}
-  <div class="pd-card"><b>Historial de programación y cambios</b><div class="pd-list" style="margin-top:8px">${historial.length?historial.map(pdHistorialCard).join(''):'<div class="pd-note">Aún no hay historial registrado.</div>'}</div></div>`;
+  <div class="pd-card"><b>Historial de programación y cambios</b><div class="pd-list" style="margin-top:8px">${historial.length?historial.map(pdHistorialCard).join(''):'<div class="pd-note">Aún no hay historial registrado.</div>'}</div></div>
+  ${pdReporteHtml()}`;
   pdRenderCalendario();pdCargarCobertura();pdRenderConsultaOperativa();pdActualizarBotonCambios();
 }
 function pdRangoVisualMes(periodo){
@@ -438,3 +439,198 @@ function pdHistorialCard(x){return `<div class="pd-item"><strong>${pdEsc(x.cuadr
 async function pdValidarSolicitud(id,resultado){try{const u=pdUser(),motivo=prompt('Motivo / comentario:')||'';const accion=u.perfil==='SUPERVISOR'?'validarCambioDescansoSupervisor':'validarCambioDescansoJefatura';await pdApi({accion,usuario:u.usuario,id,resultado,motivo});alert('Solicitud actualizada.');const per=document.getElementById('pdPeriodo').value;pdCapturarFiltros();await pdCargar(per);pdRenderGestion();}catch(e){alert(e.message);}}
 
 async function pdResolverProgramacion(id,resultado){try{const u=pdUser(),motivo=(prompt('Comentario de Jefatura (obligatorio):')||'').trim();if(!motivo)return alert('Debe ingresar un comentario.');const accion=resultado==='APROBADO'?'aprobarProgramacionDescansos':(resultado==='OBSERVADO'?'observarProgramacionDescansos':'rechazarProgramacionDescansos');const payload={accion,usuario:u.usuario,ids:[id],motivo};const r=await pdApi(payload);alert(`${r.actualizados||0} registro(s) ${resultado==='APROBADO'?'aprobado(s)':'rechazado(s)'}.`);const per=document.getElementById('pdPeriodo').value;pdCapturarFiltros();await pdCargar(per);pdRenderGestion();}catch(e){alert(e.message);}}
+
+
+/* =========================
+   INFORMES DE PROGRAMACIÓN DE DESCANSOS V139
+   Excel: Resumen, Calendario y Detalle
+========================= */
+function pdReporteHtml(){
+  const u=pdUser(),esSupervisor=u.perfil==='SUPERVISOR';
+  const f=window.PD_FILTROS||{};
+  const desde=f.desde||`${pdPeriodoActual()}-01`;
+  const hasta=f.hasta||`${pdPeriodoActual()}-${String(pdDiasMes(pdPeriodoActual())).padStart(2,'0')}`;
+  const sedes=['TODAS','CHICLAYO','PIURA','TRUJILLO'];
+  const sedeControl=esSupervisor
+    ? `<input id="pdRepSede" type="hidden" value="${pdEsc(u.sede)}"><div class="pd-field"><label>Sede</label><input value="${pdEsc(u.sede)}" disabled></div>`
+    : `<div class="pd-field"><label>Sede</label><select id="pdRepSede">${sedes.map(x=>`<option value="${x}" ${(f.sede||'TODAS')===x?'selected':''}>${x==='TODAS'?'Todas':x}</option>`).join('')}</select></div>`;
+  return `<div class="pd-card" id="pdInformes">
+    <div style="display:flex;justify-content:space-between;gap:8px;align-items:center;flex-wrap:wrap">
+      <div><b>Informes de Programación de Descansos</b><div class="pd-note">Genera un Excel por día, semana, mes o rango personalizado.</div></div>
+      <button class="pd-btn pd-green" onclick="pdGenerarExcelDescansos()">Descargar Excel</button>
+    </div>
+    <div class="pd-toolbar" style="margin-top:10px">
+      <div class="pd-field"><label>Desde</label><input id="pdRepDesde" type="date" value="${pdEsc(desde)}"></div>
+      <div class="pd-field"><label>Hasta</label><input id="pdRepHasta" type="date" value="${pdEsc(hasta)}"></div>
+      ${sedeControl}
+      <div class="pd-field"><label>Plataforma</label><select id="pdRepPlataforma"><option value="TODAS">Todas</option><option value="INSTALACIONES">Instalaciones</option><option value="VISITA TECNICA">Visita Técnica</option><option value="TRASLADOS">Traslados</option></select></div>
+      <div class="pd-field"><label>Tipo de personal</label><select id="pdRepTipo"><option value="TODAS">Todos</option><option value="CUADRILLA">Cuadrillas técnicas</option><option value="SUPERVISOR">Supervisores</option><option value="ALMACEN">Encargados de almacén</option></select></div>
+      <div class="pd-field"><label>Estado</label><select id="pdRepEstado"><option value="TODOS">Todos</option><option value="EN CAMPO">En campo</option><option value="EN CAMPO BOLSA">En campo bolsa</option><option value="DESCANSO">Descanso</option><option value="VACACIONES">Vacaciones</option></select></div>
+    </div>
+    <div class="pd-note" style="margin-top:8px">El calendario del Excel mostrará el mes arriba y cada fecha como <b>LUN<br>5</b>. La cuadrilla aparecerá con su nombre completo y sus técnicos debajo.</div>
+  </div>`;
+}
+
+function pdCargarXlsx(){
+  if(window.XLSX) return Promise.resolve(window.XLSX);
+  return new Promise((resolve,reject)=>{
+    const script=document.createElement('script');
+    script.src='https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js';
+    script.onload=()=>window.XLSX?resolve(window.XLSX):reject(new Error('No se pudo iniciar el generador de Excel.'));
+    script.onerror=()=>reject(new Error('No se pudo cargar la librería de Excel. Revise su conexión.'));
+    document.head.appendChild(script);
+  });
+}
+
+function pdMesesEntre(desde,hasta){
+  const a=new Date(desde+'T12:00:00'),b=new Date(hasta+'T12:00:00'),out=[];
+  let y=a.getFullYear(),m=a.getMonth();
+  while(y<b.getFullYear()||(y===b.getFullYear()&&m<=b.getMonth())){
+    out.push(`${y}-${String(m+1).padStart(2,'0')}`);
+    m++;if(m>11){m=0;y++;}
+  }
+  return out;
+}
+
+async function pdDatosRangoReporte(desde,hasta){
+  const u=pdUser(),meses=pdMesesEntre(desde,hasta),respuestas=[];
+  for(const periodo of meses){
+    respuestas.push(await pdApi({accion:'listarProgramacionDescansos',usuario:u.usuario,periodo}));
+  }
+  const entidadesMap=new Map(),programacionMap=new Map();
+  respuestas.forEach(r=>{
+    (r.cuadrillas||[]).forEach(c=>{
+      const key=pdNorm(c.cuadrilla);
+      if(key&&!entidadesMap.has(key)) entidadesMap.set(key,c);
+    });
+    (r.programacion||[]).forEach(x=>{
+      if(x.fecha>=desde&&x.fecha<=hasta) programacionMap.set(pdNorm(x.cuadrilla)+'|'+x.fecha,x);
+    });
+  });
+  return {entidades:[...entidadesMap.values()],programacion:[...programacionMap.values()]};
+}
+
+function pdFechasEntre(desde,hasta){
+  const out=[],d=new Date(desde+'T12:00:00'),fin=new Date(hasta+'T12:00:00');
+  while(d<=fin){
+    out.push(`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`);
+    d.setDate(d.getDate()+1);
+  }
+  return out;
+}
+
+function pdEstadoReporte(entidad,fecha,programacion){
+  const item=programacion.find(x=>pdNorm(x.cuadrilla)===pdNorm(entidad.cuadrilla)&&x.fecha===fecha);
+  return pdNorm(item?.estadoDia||'EN CAMPO');
+}
+function pdSiglaReporte(estado){
+  const e=pdNorm(estado);if(e==='DESCANSO')return 'D';if(e==='VACACIONES')return 'V';if(pdEsBolsa(e))return 'Cᴮ';return 'C';
+}
+function pdNombreDiaReporte(fecha){return ['DOM','LUN','MAR','MIÉ','JUE','VIE','SÁB'][new Date(fecha+'T12:00:00').getDay()];}
+function pdFechaVisibleReporte(fecha){const [y,m,d]=fecha.split('-');return `${d}/${m}/${y}`;}
+function pdNombresTecnicosReporte(c){
+  if(Array.isArray(c.tecnicos)&&c.tecnicos.length)return c.tecnicos.filter(Boolean).join(' / ');
+  return (c.tecnicosAfectados||'').toString().split('|').map(x=>x.trim()).filter(Boolean).join(' / ');
+}
+function pdTituloMesReporte(desde,hasta){
+  const meses=pdMesesEntre(desde,hasta).map(pdNombreMes);
+  return meses.length===1?meses[0]:`${meses[0]} - ${meses[meses.length-1]}`;
+}
+function pdAplicarAnchos(ws,anchos){ws['!cols']=anchos.map(w=>({wch:w}));}
+
+async function pdGenerarExcelDescansos(){
+  const boton=document.querySelector('#pdInformes .pd-green');
+  try{
+    const desde=document.getElementById('pdRepDesde')?.value||'',hasta=document.getElementById('pdRepHasta')?.value||'';
+    if(!desde||!hasta) throw new Error('Seleccione las fechas Desde y Hasta.');
+    if(desde>hasta) throw new Error('La fecha Desde no puede ser posterior a Hasta.');
+    if(boton){boton.disabled=true;boton.textContent='Generando...';}
+    const sede=pdNorm(document.getElementById('pdRepSede')?.value||'TODAS');
+    const plataforma=pdNorm(document.getElementById('pdRepPlataforma')?.value||'TODAS');
+    const tipo=pdNorm(document.getElementById('pdRepTipo')?.value||'TODAS');
+    const estadoFiltro=pdNorm(document.getElementById('pdRepEstado')?.value||'TODOS');
+    const u=pdUser(),datos=await pdDatosRangoReporte(desde,hasta),fechas=pdFechasEntre(desde,hasta);
+    let entidades=datos.entidades.filter(c=>{
+      const t=pdNorm(c.tipoPersonal||'CUADRILLA');
+      if(sede!=='TODAS'&&pdNorm(c.sede)!==sede)return false;
+      if(tipo!=='TODAS'&&t!==tipo)return false;
+      if(plataforma!=='TODAS'&&(t!=='CUADRILLA'||pdNorm(c.plataforma)!==plataforma))return false;
+      return true;
+    });
+    if(estadoFiltro!=='TODOS'){
+      entidades=entidades.filter(c=>fechas.some(f=>pdEstadoReporte(c,f,datos.programacion)===estadoFiltro));
+    }
+    if(!entidades.length) throw new Error('No existen registros para los filtros seleccionados.');
+    entidades.sort((a,b)=>pdNorm(a.sede).localeCompare(pdNorm(b.sede))||pdNorm(a.plataforma).localeCompare(pdNorm(b.plataforma))||pdNorm(a.nombrePersonal||a.cuadrilla).localeCompare(pdNorm(b.nombrePersonal||b.cuadrilla),undefined,{numeric:true}));
+
+    const conteo={campo:0,bolsa:0,descanso:0,vacaciones:0};
+    const detalle=[['FECHA','DÍA','SEDE','PLATAFORMA','CUADRILLA / PERSONAL','TÉCNICOS','ESTADO','SUPERVISOR','TIPO DE PERSONAL']];
+    entidades.forEach(c=>fechas.forEach(fecha=>{
+      const e=pdEstadoReporte(c,fecha,datos.programacion);
+      if(estadoFiltro!=='TODOS'&&e!==estadoFiltro)return;
+      if(e==='DESCANSO')conteo.descanso++;else if(e==='VACACIONES')conteo.vacaciones++;else if(pdEsBolsa(e))conteo.bolsa++;else conteo.campo++;
+      detalle.push([pdFechaVisibleReporte(fecha),pdNombreDiaReporte(fecha),c.sede||'',c.plataforma||'',c.nombrePersonal||c.cuadrilla||'',pdNombresTecnicosReporte(c),e,c.supervisor||'',c.tipoPersonal||'CUADRILLA']);
+    }));
+
+    const tituloMes=pdTituloMesReporte(desde,hasta);
+    const resumen=[
+      ['PROGRAMACIÓN DE DESCANSOS'],
+      [`MES: ${tituloMes}`],
+      [],
+      ['Período',`${pdFechaVisibleReporte(desde)} - ${pdFechaVisibleReporte(hasta)}`],
+      ['Sede',sede==='TODAS'?'TODAS':sede],
+      ['Plataforma',plataforma==='TODAS'?'TODAS':plataforma],
+      ['Tipo de personal',tipo==='TODAS'?'TODOS':tipo],
+      ['Estado',estadoFiltro==='TODOS'?'TODOS':estadoFiltro],
+      ['Generado por',localStorage.getItem('nombresApellidos')||u.usuario],
+      ['Fecha y hora',new Date().toLocaleString('es-PE')],
+      [],
+      ['INDICADOR','TOTAL'],
+      ['En campo',conteo.campo],
+      ['En campo bolsa',conteo.bolsa],
+      ['Descanso',conteo.descanso],
+      ['Vacaciones',conteo.vacaciones],
+      ['Registros incluidos',detalle.length-1]
+    ];
+
+    const calendario=[];
+    calendario.push(['PROGRAMACIÓN DE DESCANSOS']);
+    calendario.push([`MES: ${tituloMes}`]);
+    calendario.push([]);
+    calendario.push(['CUADRILLA / PERSONAL',...fechas.map(f=>`${pdNombreDiaReporte(f)}\n${Number(f.slice(8,10))}`),'CAMPO','CAMPO BOLSA','DESCANSO','VACACIONES']);
+    entidades.forEach(c=>{
+      let ca=0,bo=0,de=0,va=0;
+      const estados=fechas.map(f=>{
+        const e=pdEstadoReporte(c,f,datos.programacion);
+        if(e==='DESCANSO')de++;else if(e==='VACACIONES')va++;else if(pdEsBolsa(e))bo++;else ca++;
+        return pdSiglaReporte(e);
+      });
+      const tecnicos=pdNombresTecnicosReporte(c);
+      const etiqueta=`${c.nombrePersonal||c.cuadrilla||''}${tecnicos?'\n'+tecnicos:''}`;
+      calendario.push([etiqueta,...estados,ca,bo,de,va]);
+    });
+
+    const XLSX=await pdCargarXlsx(),wb=XLSX.utils.book_new();
+    const wsResumen=XLSX.utils.aoa_to_sheet(resumen);
+    wsResumen['!merges']=[XLSX.utils.decode_range('A1:B1'),XLSX.utils.decode_range('A2:B2')];
+    pdAplicarAnchos(wsResumen,[28,48]);
+    XLSX.utils.book_append_sheet(wb,wsResumen,'RESUMEN');
+
+    const wsCalendario=XLSX.utils.aoa_to_sheet(calendario);
+    const totalCols=1+fechas.length+4;
+    wsCalendario['!merges']=[{s:{r:0,c:0},e:{r:0,c:totalCols-1}},{s:{r:1,c:0},e:{r:1,c:totalCols-1}}];
+    wsCalendario['!cols']=[{wch:48},...fechas.map(()=>({wch:6})),{wch:10},{wch:13},{wch:10},{wch:12}];
+    wsCalendario['!rows']=[{hpt:24},{hpt:22},{hpt:8},{hpt:34},...entidades.map(()=>({hpt:34}))];
+    wsCalendario['!freeze']={xSplit:1,ySplit:4};
+    XLSX.utils.book_append_sheet(wb,wsCalendario,'CALENDARIO');
+
+    const wsDetalle=XLSX.utils.aoa_to_sheet(detalle);
+    wsDetalle['!autofilter']={ref:`A1:I${detalle.length}`};
+    pdAplicarAnchos(wsDetalle,[13,8,13,20,48,42,20,20,20]);
+    XLSX.utils.book_append_sheet(wb,wsDetalle,'DETALLE');
+
+    const archivo=`PROGRAMACION_DESCANSOS_${desde.replaceAll('-','')}_${hasta.replaceAll('-','')}.xlsx`;
+    XLSX.writeFile(wb,archivo);
+  }catch(e){alert(e.message||e);}
+  finally{if(boton){boton.disabled=false;boton.textContent='Descargar Excel';}}
+}
