@@ -1,0 +1,11 @@
+MI VISUAL V137 - Corrección de accesos de Programación de Descansos
+
+Archivo a reemplazar:
+- js/programacion_descansos.js
+
+Corrección:
+- El indicador personal de la bienvenida abre únicamente el descanso personal.
+- La tarjeta Programación de Descansos del Supervisor mantiene la gestión y edición de sus cuadrillas.
+- El Responsable de Almacén conserva únicamente su vista personal.
+- Técnico mantiene su vista personal.
+- No se modificó Apps Script ni otros módulos.

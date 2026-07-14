@@ -1,9 +1,10 @@
-// MI VISUAL - Programación de Descansos V136
+// MI VISUAL - Programación de Descansos V137
 const API_DESCANSOS = "https://script.google.com/macros/s/AKfycbzcbjCLweJNgZXDerdzmMN7Lwotc1G8NWdzoPkaLNGDivAgpYxDkq78xZwPRioSB4XY/exec";
 let PD_DATA={programacion:[],cuadrillas:[]};
 let PD_CAMBIOS={};
 let PD_MOTIVO_CAMBIO="";
 let PD_PENDIENTES_SELECCIONADOS=new Set();
+let PD_VISTA_PERSONAL=false;
 
 function pdNorm(v){return (v||"").toString().toUpperCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"").replace(/\s+/g," ").trim();}
 function pdUser(){return {usuario:localStorage.getItem("usuario")||"",perfil:pdNorm(localStorage.getItem("perfil")),sede:pdNorm(localStorage.getItem("sede")),cuadrilla:localStorage.getItem("cuadrilla")||""};}
@@ -45,7 +46,7 @@ async function actualizarIndicadorDescansoMenu(){
     indicador.id="pdEstadoMenu";
     indicador.type="button";
     indicador.className="pd-menu-status cargando";
-    indicador.onclick=mostrarProgramacionDescansos;
+    indicador.onclick=mostrarMiProgramacionPersonal;
     welcome.appendChild(indicador);
   }
 
@@ -71,9 +72,10 @@ async function actualizarIndicadorDescansoMenu(){
   }
 }
 
-async function mostrarProgramacionDescansos(){
+async function pdAbrirModuloDescansos(vistaPersonal){
   const u=pdUser();
   if(u.perfil==="JEFATURA ALMACEN") return alert("Esta opción no está habilitada para Jefatura de Almacén.");
+  PD_VISTA_PERSONAL=!!vistaPersonal;
   limpiarPantalla();
   const menu=document.getElementById("menuPrincipal");
   if(menu) menu.style.setProperty("display","none","important");
@@ -81,6 +83,17 @@ async function mostrarProgramacionDescansos(){
   const pantalla=document.getElementById("pantalla");
   pantalla.innerHTML=pdStyle()+`<div class="pd-wrap"><div class="pd-head"><h2>📅 Programación de Descansos</h2><p>Planificación por cuadrilla. No corresponde a control de asistencia.</p></div><div id="pdContenido"><div class="pd-card">Cargando...</div></div></div>`;
   try{await pdCargar();pdRender();}catch(e){const c=document.getElementById("pdContenido")||document.getElementById("pantalla");if(c)c.innerHTML=`<div class="pd-wrap"><div class="pd-alert">${pdEsc(e.message)}</div></div>`;else alert(e.message);}
+}
+
+// Acceso desde la tarjeta del menú: el Supervisor administra sus cuadrillas.
+async function mostrarProgramacionDescansos(){
+  const u=pdUser();
+  return pdAbrirModuloDescansos(u.perfil==="ALMACEN");
+}
+
+// Acceso desde el indicador personal de la bienvenida.
+async function mostrarMiProgramacionPersonal(){
+  return pdAbrirModuloDescansos(true);
 }
 
 async function pdCargar(periodo){
@@ -96,7 +109,8 @@ async function pdCargar(periodo){
 function pdRender(){
   const u=pdUser();
   if(u.perfil==="TECNICO") return pdRenderTecnico();
-  if(u.perfil==="SUPERVISOR"||u.perfil==="ALMACEN") return pdRenderPersonalSimple();
+  if(PD_VISTA_PERSONAL && (u.perfil==="SUPERVISOR"||u.perfil==="ALMACEN")) return pdRenderPersonalSimple();
+  if(u.perfil==="ALMACEN") return pdRenderPersonalSimple();
   return pdRenderGestion();
 }
 
