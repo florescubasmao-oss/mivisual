@@ -1,4 +1,4 @@
-// MI VISUAL - Programación de Descansos V137
+// MI VISUAL - Programación de Descansos V138
 const API_DESCANSOS = "https://script.google.com/macros/s/AKfycbzcbjCLweJNgZXDerdzmMN7Lwotc1G8NWdzoPkaLNGDivAgpYxDkq78xZwPRioSB4XY/exec";
 let PD_DATA={programacion:[],cuadrillas:[]};
 let PD_CAMBIOS={};
@@ -199,9 +199,9 @@ function pdRenderGestion(){
   const alertasJefatura=esSupervisor?historial.filter(x=>pdNorm(x.origen)==='JEFATURA'&&pdNorm(x.accion)==='CAMBIO APLICADO'):[];
   const supervisores=[...new Set((PD_DATA.cuadrillas||[]).filter(c=>pdNorm(c.tipoPersonal)==='CUADRILLA').map(c=>c.supervisor).filter(Boolean))].sort();
   window.PD_FILTROS={sede:sedeSel,plataforma:plataformaSel,tipoPersonal:tipoPersonalSel,supervisor:supervisorSel,modo,desde,hasta,cuadrilla:estadoVista.cuadrilla||'TODAS'};
-  const estadoPersonal=esSupervisor?pdEstadoPersonalHtml(pdEntidadPersonalActual()):'';
+  // El estado personal del Supervisor se muestra únicamente en el menú de inicio.
+  // Dentro del módulo se conserva solo la gestión de sus cuadrillas.
   document.getElementById('pdContenido').innerHTML=`
-  ${estadoPersonal}
   <div class="pd-card"><div class="pd-toolbar">
     <div class="pd-field"><label>Periodo principal</label><input type="month" id="pdPeriodo" value="${per}"></div>
     <div class="pd-field"><label>Consulta</label><select id="pdModo" onchange="pdAjustarModoFechas()"><option value="MES" ${modo==='MES'?'selected':''}>Mes visual completo</option><option value="RANGO" ${modo==='RANGO'?'selected':''}>De fecha a fecha</option><option value="DIA" ${modo==='DIA'?'selected':''}>Un día</option></select></div>

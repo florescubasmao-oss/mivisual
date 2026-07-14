@@ -1,0 +1,10 @@
+MI VISUAL V138
+
+Corrección puntual:
+- El estado personal del Supervisor se mantiene únicamente en el menú de inicio.
+- Al ingresar a la tarjeta Programación de Descansos, el Supervisor ve solo la gestión de sus cuadrillas.
+- No se modificaron filtros, calendario, alertas, capacidad, vacaciones, campo bolsa, pendientes ni historial.
+- Responsable de Almacén conserva su vista personal.
+
+Archivo modificado:
+- js/programacion_descansos.js
