@@ -11,7 +11,9 @@ function ckEstado(e){const n=ckNorm(e);let c="pend";if(n==="CONFORME")c="ok";els
 function ckStyle(){return `<style>
 .ck-wrap{max-width:1100px;margin:auto;padding:12px}.ck-head{background:linear-gradient(135deg,#0f766e,#2563eb);color:#fff;padding:17px;border-radius:18px;margin-bottom:12px}.ck-head h2{margin:0 0 4px;font-size:22px}.ck-card{background:#fff;border:1px solid #dbe3ee;border-radius:15px;padding:12px;margin-bottom:10px;box-shadow:0 5px 14px rgba(15,23,42,.08);color:#111827}.ck-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px}.ck-field label{display:block;font-size:11px;font-weight:900;color:#334155;margin-bottom:4px}.ck-field input,.ck-field textarea,.ck-field select{width:100%;box-sizing:border-box;border:1px solid #cbd5e1;border-radius:10px;padding:9px;background:#fff;color:#111827}.ck-unit{display:grid;grid-template-columns:1fr auto;align-items:center;gap:7px}.ck-unit span{font-size:11px;font-weight:900;color:#64748b}.ck-sec{font-size:15px;margin:12px 0 7px;color:#0f172a}.ck-photo-box{border:1px dashed #94a3b8;padding:8px;border-radius:11px;background:#f8fafc;margin-bottom:7px}.ck-photo-row{display:flex;gap:7px;align-items:center;margin:5px 0;font-size:11px}.ck-btn{border:0;border-radius:10px;padding:9px 12px;font-weight:900;cursor:pointer}.ck-btn.blue{background:#2563eb;color:#fff}.ck-btn.green{background:#16a34a;color:#fff}.ck-btn.orange{background:#f59e0b;color:#111827}.ck-btn.red{background:#dc2626;color:#fff}.ck-btn.gray{background:#64748b;color:#fff}.ck-actions{display:flex;gap:7px;flex-wrap:wrap}.ck-badge{padding:4px 8px;border-radius:999px;font-size:10px;font-weight:900}.ck-badge.pend{background:#fef3c7;color:#92400e}.ck-badge.vb{background:#dbeafe;color:#1e40af}.ck-badge.ok{background:#dcfce7;color:#166534}.ck-badge.obs{background:#fee2e2;color:#991b1b}.ck-kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:7px;margin:10px 0}.ck-kpi{background:#f8fafc;border:2px solid #cbd5e1;border-radius:12px;padding:10px;text-align:center;color:#0f172a;box-shadow:0 4px 10px rgba(15,23,42,.08)}.ck-kpi b{font-size:20px;display:block;line-height:1.05;margin-bottom:3px;color:#0f172a}.ck-kpi span{font-size:11px;font-weight:900;color:#334155}.ck-kpi.total{background:#eff6ff;border-color:#60a5fa}.ck-kpi.total b{color:#1d4ed8}.ck-kpi.pendiente{background:#fffbeb;border-color:#fbbf24}.ck-kpi.pendiente b{color:#b45309}.ck-kpi.visto{background:#ecfeff;border-color:#22d3ee}.ck-kpi.visto b{color:#0e7490}.ck-kpi.conforme{background:#f0fdf4;border-color:#4ade80}.ck-kpi.conforme b{color:#15803d}.ck-meta{font-size:11px;color:#64748b;line-height:1.4}.ck-details{margin-top:7px}.ck-details summary{cursor:pointer;font-weight:900;color:#1d4ed8}.ck-evidencias a{display:inline-block;margin:3px;padding:5px 7px;background:#e0f2fe;border-radius:7px;font-size:10px;font-weight:900;color:#075985;text-decoration:none}.ck-equipos-grid{align-items:start}.ck-new-toggle{width:100%;display:flex;align-items:center;justify-content:space-between;gap:10px;background:#fff;border:1px solid #cbd5e1;border-radius:14px;padding:12px 14px;margin-bottom:10px;font-size:15px;font-weight:900;color:#0f172a;cursor:pointer;box-shadow:0 4px 12px rgba(15,23,42,.07)}.ck-new-toggle:hover{background:#f8fafc}.ck-new-arrow{transition:transform .2s ease}.ck-new-toggle.open .ck-new-arrow{transform:rotate(180deg)}.ck-form-panel{display:none}.ck-form-panel.open{display:block}.ck-equipo-box{margin:0 0 12px;border:3px solid #2563eb;background:#f8fbff;border-radius:13px;box-shadow:inset 0 0 0 1px rgba(37,99,235,.10),0 6px 16px rgba(15,23,42,.12)}.ck-equipo-head{display:flex;justify-content:space-between;align-items:center;gap:8px;margin:-8px -8px 10px;padding:11px 12px;background:#dbeafe;border-bottom:2px solid #60a5fa;border-radius:10px 10px 0 0}.ck-equipo-head b{font-size:14px;color:#0b3b79;letter-spacing:.01em}.ck-equipo-head small{font-weight:900;color:#1d4ed8}.ck-equipo-row{position:relative;border-top:1px solid #dbeafe;padding:8px 28px 8px 0}.ck-equipo-row:first-child{border-top:0}.ck-equipo-num{font-size:11px;font-weight:900;color:#0f172a;margin-bottom:5px}.ck-equipo-inputs{display:grid;grid-template-columns:1fr 1fr;gap:7px}.ck-equipo-inputs input{width:100%;box-sizing:border-box}.ck-photo-input{position:absolute!important;opacity:0!important;width:1px!important;height:1px!important;pointer-events:none}.ck-photo-label{display:flex;align-items:center;justify-content:center;min-height:34px;box-sizing:border-box;border:1px solid #94a3b8;border-radius:8px;background:#f8fafc;color:#0f172a;font-size:11px;font-weight:900;cursor:pointer;padding:7px 10px}.ck-photo-label:hover{background:#eef2f7}.ck-equipo-remove{position:absolute;right:0;top:9px;border:0;background:#fee2e2;color:#991b1b;border-radius:7px;width:24px;height:24px;font-weight:900;cursor:pointer}.ck-detail-box{background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;padding:8px}.ck-series-list{margin-top:5px;display:grid;gap:4px}.ck-serie-item{font-size:11px;line-height:1.35}.ck-serie-item a{display:inline-block;margin-left:5px;padding:3px 6px;background:#dbeafe;color:#1d4ed8;text-decoration:none;border-radius:6px;font-weight:900}.ck-serie-item em{font-style:normal;color:#94a3b8;margin-left:5px}.ck-toolbar{display:flex;justify-content:flex-end;margin:0 0 10px}.ck-modal-bg{position:fixed;inset:0;background:rgba(15,23,42,.65);z-index:99999;display:flex;align-items:center;justify-content:center;padding:14px}.ck-modal{width:min(720px,96vw);max-height:90vh;overflow:auto;background:#fff;border-radius:16px;padding:16px;box-shadow:0 20px 50px rgba(0,0,0,.35);color:#111827}.ck-modal h3{margin:0 0 12px}.ck-modal-close{float:right;border:0;background:#e2e8f0;border-radius:8px;width:32px;height:32px;font-weight:900;cursor:pointer}.ck-alerta-obs{margin-top:8px;padding:9px 10px;border:1px solid #fdba74;background:#fff7ed;color:#9a3412;border-radius:10px;font-size:12px;line-height:1.4}.ck-alerta-ok{margin-top:8px;padding:9px 10px;border:1px solid #86efac;background:#f0fdf4;color:#166534;border-radius:10px;font-size:12px;line-height:1.4}.ck-report-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px}.ck-report-note{font-size:11px;color:#64748b;margin:8px 0 12px}.ck-progress-yellow{background:#fff9df!important;border-color:#f59e0b!important;box-shadow:inset 0 0 0 1px rgba(245,158,11,.20),0 6px 16px rgba(180,83,9,.12)}.ck-progress-green{background:#ecfdf3!important;border-color:#16a34a!important;box-shadow:inset 0 0 0 1px rgba(22,163,74,.20),0 6px 16px rgba(21,128,61,.12)}.ck-equipo-row.ck-progress-yellow{border:2px solid #f59e0b;border-radius:10px;padding:9px 30px 9px 9px;margin-top:8px}.ck-equipo-row.ck-progress-green{border:2px solid #16a34a;border-radius:10px;padding:9px 30px 9px 9px;margin-top:8px}.ck-field.ck-material-progress{border:2px solid #f59e0b;background:#fffbea;border-radius:11px;padding:8px;transition:.18s ease}.ck-field.ck-material-progress.ck-progress-green{border-color:#22c55e;background:#f0fdf4}.ck-field.ck-material-progress label{margin-bottom:5px}.ck-progress-note{font-size:10px;font-weight:900;margin-top:5px;color:#92400e}.ck-progress-green .ck-progress-note{color:#166534}
 .ck-config{background:#eff6ff;border:2px solid #60a5fa;border-radius:14px;padding:12px;margin-bottom:10px;color:#0f172a}.ck-config-head{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:9px}.ck-config-head b{font-size:14px}.ck-config-status{font-size:10px;font-weight:900;padding:5px 8px;border-radius:999px}.ck-config-status.on{background:#dcfce7;color:#166534}.ck-config-status.off{background:#fee2e2;color:#991b1b}.ck-config-note{font-size:11px;color:#475569;margin-top:7px;line-height:1.4}.ck-disabled{background:#fff7ed;border:2px solid #fb923c;color:#9a3412;border-radius:13px;padding:12px;margin-bottom:10px;font-size:12px;font-weight:800}
-@media(max-width:650px){.ck-grid{grid-template-columns:1fr}.ck-equipo-inputs{grid-template-columns:1fr}.ck-kpis{grid-template-columns:repeat(2,1fr)}.ck-wrap{padding:7px}.ck-card{padding:9px}}
+
+.ck-filter-panel{background:#fff;border:1px solid #dbe3ee;border-radius:14px;padding:10px;margin:0 0 10px;box-shadow:0 4px 12px rgba(15,23,42,.07)}.ck-filter-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;align-items:end}.ck-sede-group{background:#fff;border:1px solid #dbe3ee;border-radius:15px;margin-bottom:12px;overflow:hidden;box-shadow:0 5px 14px rgba(15,23,42,.08)}.ck-sede-summary{list-style:none;cursor:pointer;padding:12px 13px;background:linear-gradient(90deg,#eff6ff,#ecfeff);display:flex;align-items:center;justify-content:space-between;gap:10px;color:#0f172a}.ck-sede-summary::-webkit-details-marker{display:none}.ck-sede-title{font-size:15px;font-weight:900}.ck-sede-arrow{font-size:12px;font-weight:900;color:#1d4ed8}.ck-sede-group[open] .ck-sede-arrow{transform:rotate(180deg)}.ck-sede-body{padding:10px}.ck-sede-kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin:0 0 9px}.ck-sede-kpi{border:1px solid #cbd5e1;border-radius:10px;padding:7px;text-align:center;background:#f8fafc}.ck-sede-kpi b{display:block;font-size:16px}.ck-sede-kpi span{font-size:10px;font-weight:900;color:#475569}.ck-no-results{background:#fff;border:1px dashed #94a3b8;border-radius:12px;padding:14px;text-align:center;color:#64748b;font-weight:800}
+@media(max-width:650px){.ck-grid{grid-template-columns:1fr}.ck-filter-grid{grid-template-columns:1fr 1fr}.ck-sede-kpis{grid-template-columns:repeat(2,1fr)}.ck-equipo-inputs{grid-template-columns:1fr}.ck-kpis{grid-template-columns:repeat(2,1fr)}.ck-wrap{padding:7px}.ck-card{padding:9px}}
 </style>`;}
 
 const CK_EQUIPOS={
@@ -244,14 +246,91 @@ function ckCard(x,u){
   return `<div class="ck-card"><div style="display:flex;justify-content:space-between;gap:8px"><div><b>${ckEsc(x.cuadrilla)}</b><div class="ck-meta">${ckEsc(x.nombresApellidos)} · ${ckEsc(x.sede)}<br>${ckEsc(x.fechaGestion||x.fechaRegistro)}</div></div>${ckEstado(x.estadoGeneral)}</div>${alerta}${ckDetalle(x)}${acciones?`<div class="ck-actions" style="margin-top:8px">${acciones}</div>`:''}</div>`;
 }
 async function ckCargarHistorialTecnico(){const box=document.getElementById('ckLista');if(!box)return;try{const d=await ckApi({accion:'listarChecklistAlmacen',usuario:ckUser().usuario});box.innerHTML='<h3 class="ck-sec">Historial</h3>'+d.checklist.map(x=>ckCard(x,ckUser())).join('');}catch(e){box.innerHTML=`<div class="ck-card">${ckEsc(e.message)}</div>`}}
+function ckEsJefaturaVisualChecklist(perfil){
+  const p=ckNorm(perfil);
+  return ['JEFATURA','ADMIN','ADMINISTRADOR','JEFATURA ALMACEN','JEFATURA DE ALMACEN'].includes(p);
+}
+function ckConteosLista(arr){
+  return {
+    total:arr.length,
+    pend:arr.filter(x=>ckNorm(x.estadoGeneral).startsWith('PENDIENTE')).length,
+    vb:arr.filter(x=>ckNorm(x.estadoGeneral).includes('VISTO BUENO')).length,
+    ok:arr.filter(x=>ckNorm(x.estadoGeneral)==='CONFORME').length
+  };
+}
+function ckKpisHtml(counts,compacto){
+  const cls=compacto?'ck-sede-kpis':'ck-kpis';
+  const item=compacto?'ck-sede-kpi':'ck-kpi';
+  return `<div class="${cls}"><div class="${item} total"><b>${counts.total}</b><span>Total</span></div><div class="${item} pendiente"><b>${counts.pend}</b><span>Pendientes</span></div><div class="${item} visto"><b>${counts.vb}</b><span>Visto bueno</span></div><div class="${item} conforme"><b>${counts.ok}</b><span>Conformes</span></div></div>`;
+}
+function ckTodasSeriesChecklist(x){
+  return ['ontZte','ontHuawei','meshZte','meshHuawei','winbox','fonowin']
+    .flatMap(k=>ckPartes(x[k])).map(ckNorm);
+}
+function ckRenderFiltrosJefatura(arr){
+  const sedes=[...new Set(arr.map(x=>ckNorm(x.sede)).filter(Boolean))].sort();
+  const cuadrillas=[...new Set(arr.map(x=>(x.cuadrilla||'').toString().trim()).filter(Boolean))].sort();
+  const estados=[...new Set(arr.map(x=>(x.estadoGeneral||'').toString().trim()).filter(Boolean))].sort();
+  return `<div class="ck-filter-panel"><div class="ck-filter-grid">
+    <div class="ck-field"><label>Sede</label><select id="ckFiltroSede" onchange="ckAplicarFiltrosVisuales()"><option value="">Todas</option>${sedes.map(v=>`<option value="${ckEsc(v)}">${ckEsc(v)}</option>`).join('')}</select></div>
+    <div class="ck-field"><label>Cuadrilla</label><select id="ckFiltroCuadrilla" onchange="ckAplicarFiltrosVisuales()"><option value="">Todas</option>${cuadrillas.map(v=>`<option value="${ckEsc(v)}">${ckEsc(v)}</option>`).join('')}</select></div>
+    <div class="ck-field"><label>Serie de equipo</label><input id="ckFiltroSerie" placeholder="Serie completa o parcial" oninput="ckAplicarFiltrosVisuales()"></div>
+    <div class="ck-field"><label>Estado</label><select id="ckFiltroEstado" onchange="ckAplicarFiltrosVisuales()"><option value="">Todos</option>${estados.map(v=>`<option value="${ckEsc(v)}">${ckEsc(v)}</option>`).join('')}</select></div>
+  </div><div class="ck-actions" style="margin-top:9px"><button class="ck-btn blue" onclick="ckAplicarFiltrosVisuales()">Aplicar filtros</button><button class="ck-btn gray" onclick="ckLimpiarFiltrosVisuales()">Limpiar filtros</button></div></div>`;
+}
+function ckFiltrarVisualChecklist(arr){
+  const sede=ckNorm(document.getElementById('ckFiltroSede')?.value);
+  const cuadrilla=(document.getElementById('ckFiltroCuadrilla')?.value||'').trim();
+  const serie=ckNorm(document.getElementById('ckFiltroSerie')?.value);
+  const estado=ckNorm(document.getElementById('ckFiltroEstado')?.value);
+  return arr.filter(x=>{
+    if(sede&&ckNorm(x.sede)!==sede)return false;
+    if(cuadrilla&&(x.cuadrilla||'').toString().trim()!==cuadrilla)return false;
+    if(estado&&ckNorm(x.estadoGeneral)!==estado)return false;
+    if(serie&&!ckTodasSeriesChecklist(x).some(v=>v.includes(serie)))return false;
+    return true;
+  });
+}
+function ckRenderAgrupadoPorSede(arr){
+  if(!arr.length)return '<div class="ck-no-results">No hay registros que coincidan con los filtros.</div>';
+  const mapa={};
+  arr.forEach(x=>{const sede=ckNorm(x.sede)||'SIN SEDE';if(!mapa[sede])mapa[sede]=[];mapa[sede].push(x);});
+  const orden=['CHICLAYO','PIURA','TRUJILLO'];
+  return Object.keys(mapa).sort((a,b)=>{
+    const ia=orden.indexOf(a),ib=orden.indexOf(b);
+    if(ia>=0||ib>=0)return (ia<0?99:ia)-(ib<0?99:ib);
+    return a.localeCompare(b);
+  }).map(sede=>{
+    const registros=mapa[sede];
+    const counts=ckConteosLista(registros);
+    return `<details class="ck-sede-group"><summary class="ck-sede-summary"><span class="ck-sede-title">📍 ${ckEsc(sede)}</span><span class="ck-sede-arrow">▼ Ver ${registros.length} registro(s)</span></summary><div class="ck-sede-body">${ckKpisHtml(counts,true)}${registros.map(x=>ckCard(x,ckUser())).join('')}</div></details>`;
+  }).join('');
+}
+function ckAplicarFiltrosVisuales(){
+  const box=document.getElementById('ckResultadosJefatura');
+  const kpis=document.getElementById('ckResumenGeneralJefatura');
+  if(!box||!kpis)return;
+  const filtrados=ckFiltrarVisualChecklist(CK_LISTA_ACTUAL||[]);
+  kpis.innerHTML=ckKpisHtml(ckConteosLista(filtrados),false);
+  box.innerHTML=ckRenderAgrupadoPorSede(filtrados);
+}
+function ckLimpiarFiltrosVisuales(){
+  ['ckFiltroSede','ckFiltroCuadrilla','ckFiltroSerie','ckFiltroEstado'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
+  ckAplicarFiltrosVisuales();
+}
 async function ckCargarLista(){
   const c=document.getElementById('ckContenido')||document.getElementById('ckLista');if(!c)return;
   try{
     const d=await ckApi({accion:'listarChecklistAlmacen',usuario:ckUser().usuario});
     const arr=d.checklist||[];CK_LISTA_ACTUAL=arr;
-    const counts={total:arr.length,pend:arr.filter(x=>ckNorm(x.estadoGeneral).startsWith('PENDIENTE')).length,vb:arr.filter(x=>ckNorm(x.estadoGeneral).includes('VISTO BUENO')).length,ok:arr.filter(x=>ckNorm(x.estadoGeneral)==='CONFORME').length};
-    const toolbar=ckUser().perfil!=='TECNICO'?`<div class="ck-toolbar"><button class="ck-btn blue" onclick="ckAbrirInformeChecklist()">📥 Descargar informe de checklist</button></div>`:'';
-    c.innerHTML=toolbar+`<div class="ck-kpis"><div class="ck-kpi total"><b>${counts.total}</b><span>Total</span></div><div class="ck-kpi pendiente"><b>${counts.pend}</b><span>Pendientes</span></div><div class="ck-kpi visto"><b>${counts.vb}</b><span>Visto bueno</span></div><div class="ck-kpi conforme"><b>${counts.ok}</b><span>Conformes</span></div></div>${arr.map(x=>ckCard(x,ckUser())).join('')||'<div class="ck-card">No hay registros.</div>'}`;
+    const u=ckUser();
+    const toolbar=u.perfil!=='TECNICO'?`<div class="ck-toolbar"><button class="ck-btn blue" onclick="ckAbrirInformeChecklist()">📥 Descargar informe de checklist</button></div>`:'';
+    if(ckEsJefaturaVisualChecklist(u.perfil)){
+      c.innerHTML=toolbar+ckRenderFiltrosJefatura(arr)+`<div id="ckResumenGeneralJefatura">${ckKpisHtml(ckConteosLista(arr),false)}</div><div id="ckResultadosJefatura">${ckRenderAgrupadoPorSede(arr)}</div>`;
+    }else{
+      const counts=ckConteosLista(arr);
+      c.innerHTML=toolbar+ckKpisHtml(counts,false)+(arr.map(x=>ckCard(x,u)).join('')||'<div class="ck-card">No hay registros.</div>');
+    }
   }catch(e){c.innerHTML=`<div class="ck-card">${ckEsc(e.message)}</div>`}
 }
 
