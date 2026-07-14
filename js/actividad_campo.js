@@ -101,6 +101,13 @@ function estiloActividadCampo(){
         .act-mobile-card b{color:#fff;}
         .act-mobile-card small{color:#c9d7ef;}
         .act-file input{padding:10px;background:#0c1d34;color:#dbeafe;}
+        /* V142: contraste del Checklist ejecutado en campo */
+        .act-card .ck-field label{color:#f8fafc!important;font-size:12px!important;font-weight:900!important;line-height:1.25!important;margin-bottom:7px!important;text-transform:uppercase;letter-spacing:.2px;}
+        .act-card .ck-sec,.act-card #ckFormularioTipo h3,.act-card #ckFormularioTipo h4{color:#ffffff!important;font-weight:900!important;}
+        .act-card .ck-sec{margin:12px 0 10px!important;}
+        .act-card .ck-grid{gap:14px!important;}
+        .act-card .ck-field input,.act-card .ck-field select,.act-card .ck-field textarea{border-color:#55779d!important;}
+        .act-card .ck-field input:focus,.act-card .ck-field select:focus,.act-card .ck-field textarea:focus{border-color:#38bdf8!important;box-shadow:0 0 0 3px rgba(56,189,248,.18)!important;}
         .act-loading-overlay{position:fixed;inset:0;background:rgba(0,0,0,.58);display:none;align-items:center;justify-content:center;z-index:9999;}
         .act-loading-box{background:#10213b;color:white;padding:20px;border-radius:16px;text-align:center;box-shadow:0 15px 35px rgba(0,0,0,.35);}
         .act-spinner{width:34px;height:34px;border:4px solid rgba(255,255,255,.25);border-top-color:white;border-radius:50%;animation:actSpin 1s linear infinite;margin:0 auto 10px;}
