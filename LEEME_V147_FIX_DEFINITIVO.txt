@@ -1,0 +1,14 @@
+MI VISUAL V147 - FIX DEFINITIVO CHECKLIST
+
+Archivos a reemplazar:
+- index.html
+- js/checklist_almacen.js
+
+Correcciones:
+- Se restaura la función ckFormularioPorTipo.
+- Se agregan las funciones ckEstadoHerramienta y ckActualizarTarjetaHerramienta.
+- Se mantiene el catálogo dinámico de herramientas.
+- Se conserva Cantidad, serie condicional, motivo y foto según estado.
+- Se fuerza actualización de caché con v=147-fix-definitivo.
+
+No requiere actualizar Apps Script.
