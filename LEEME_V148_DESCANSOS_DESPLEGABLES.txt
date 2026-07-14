@@ -1,0 +1,20 @@
+MI VISUAL V148 - Descansos desplegables
+
+Archivos incluidos:
+- index.html
+- js/programacion_descansos.js
+
+Cambios aplicados:
+- Cambios pendientes de Jefatura ahora es desplegable.
+- Se agrega seleccionar todas para solicitudes pendientes.
+- Historial de programación y cambios ahora es desplegable.
+- Historial de cambios aplicados por Jefatura, para Supervisor, también queda desplegable.
+- Alertas operativas se muestran como alerta compacta con botón Ver/Ocultar.
+
+No se modifica:
+- Reglas de capacidad.
+- Calendario.
+- Validaciones.
+- Programación de descansos.
+- Checklist Almacén.
+- Apps Script.
