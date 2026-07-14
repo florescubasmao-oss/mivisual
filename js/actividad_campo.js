@@ -132,6 +132,7 @@ function mostrarActividadCampo(){
 
     mostrarPantalla(`
         ${estiloActividadCampo()}
+        ${typeof ckStyle === "function" ? ckStyle() : ""}
         <div class="act-wrap">
             <div class="act-head">
                 <h2>📍 Registro de Actividad en Campo</h2>
@@ -327,6 +328,7 @@ async function mostrarFormularioActividadCampo(){
     }
     mostrarPantalla(`
         ${estiloActividadCampo()}
+        ${typeof ckStyle === "function" ? ckStyle() : ""}
         <div class="act-wrap">
             <div class="act-head">
                 <h2>📍 Nueva Actividad en Campo</h2>
@@ -349,12 +351,12 @@ async function mostrarFormularioActividadCampo(){
                 <div class="act-card">
                     <div class="act-section-title">📝 Cierre de actividad</div>
                     <div id="camposCierreActividad" class="act-grid"></div>
-                    <div class="act-grid" style="margin-top:12px;">
+                    <div id="actEvidenciasGenerales" class="act-grid" style="margin-top:12px;">
                         <div class="act-field act-file"><label>Foto 1</label><input type="file" id="actFoto1" accept="image/*" capture="environment"></div>
                         <div class="act-field act-file"><label>Foto 2</label><input type="file" id="actFoto2" accept="image/*" capture="environment"></div>
                         <div id="contenedorFotoActa" class="act-field act-file"><label>Foto Acta</label><input type="file" id="actFotoActa" accept="image/*" capture="environment"></div>
                     </div>
-                    <div class="act-note">La firma digital queda para la segunda etapa. Por ahora el respaldo será con evidencias fotográficas.</div>
+                    <div id="actNotaEvidencias" class="act-note">La firma digital queda para la segunda etapa. Por ahora el respaldo será con evidencias fotográficas.</div>
                     <div class="act-actions">
                         <button type="submit" data-guardar class="act-btn ok">💾 Guardar actividad</button>
                         <button type="button" class="act-btn sec" onclick="mostrarActividadCampo()">Cancelar</button>
@@ -402,6 +404,11 @@ function renderCierreActividad(tipo){
         return;
     }
 
+    if(tipo === "CHECKLIST"){
+        cont.innerHTML = `${campoArea("actConclusion","Comentario final","Detalle del checklist ejecutado en campo, hallazgos y acciones indicadas.")}`;
+        return;
+    }
+
     cont.innerHTML = `
         ${campoArea("actObservacionesGenerales","Observaciones generales","Resumen general, hallazgos o comentarios finales.")}
         ${campoArea("actConclusion","Conclusión","Conclusión de la actividad y próximos pasos.")}
@@ -412,7 +419,11 @@ function renderFormularioTipoActividad(){
     const tipo = document.getElementById("actTipoActividad")?.value || "AUDITORIA EN FRIO";
     const cont = document.getElementById("camposTipoActividad");
     const fotoActa = document.getElementById("contenedorFotoActa");
+    const evidenciasGenerales = document.getElementById("actEvidenciasGenerales");
+    const notaEvidencias = document.getElementById("actNotaEvidencias");
     if(fotoActa) fotoActa.style.display = tipo === "AUDITORIA EN FRIO" ? "flex" : "none";
+    if(evidenciasGenerales) evidenciasGenerales.style.display = tipo === "CHECKLIST" ? "none" : "grid";
+    if(notaEvidencias) notaEvidencias.style.display = tipo === "CHECKLIST" ? "none" : "block";
     if(!cont) return;
 
     const formularios = {
@@ -425,6 +436,7 @@ function renderFormularioTipoActividad(){
     };
     cont.innerHTML = formularios[tipo] || formularioAuditoriaFrio();
     renderCierreActividad(tipo);
+    if(tipo === "CHECKLIST") inicializarChecklistActividadCampo();
 }
 
 function formularioAuditoriaFrio(){
@@ -499,30 +511,51 @@ function formularioCapacitacion(){
 }
 
 function formularioChecklist(){
+    if(typeof CK_EQUIPOS === "undefined" || typeof ckEquipoBlock !== "function" || typeof ckField !== "function"){
+        return `<div class="act-card"><div class="act-error">No se pudo cargar el formulario de Checklist Almacén.</div></div>`;
+    }
+    const hoy = new Date().toISOString().slice(0,10);
     return `<div class="act-card">
-        <div class="act-section-title">📋 Checklist</div>
-        <div class="act-grid">
-            <div class="act-field"><label>Tipo de Checklist</label><select id="chkTipo" onchange="renderItemsChecklist()"><option>VEHICULO</option><option>HERRAMIENTAS</option><option>EPP</option><option>MATERIALES</option><option>ALMACEN MOVIL</option><option>DOCUMENTACION</option></select></div>
+        <div class="act-section-title">📋 Checklist ejecutado en campo</div>
+        <div class="act-note">Este registro ingresará directamente al módulo Checklist Almacén de la cuadrilla seleccionada y conservará el flujo de validación existente.</div>
+        <div class="ck-grid">
+            <div class="ck-field"><label>Fecha de gestión</label><input id="ckFecha" type="date" value="${hoy}"></div>
+            <div class="ck-field"><label>Origen</label><input value="Ejecutado en campo por Supervisor" disabled></div>
         </div>
-        <div id="itemsChecklist" style="margin-top:12px;"></div>
+        <h3 class="ck-sec">Equipos y evidencias</h3>
+        <div class="ck-grid ck-equipos-grid">${Object.keys(CK_EQUIPOS).map(ckEquipoBlock).join("")}</div>
+        <h3 class="ck-sec">Materiales</h3>
+        <div class="ck-grid">
+            ${ckField('ckCableDrop','Cable Drop/Bobina','metros')}${ckField('ckPre50','Preconectorizado 50 m','cantidad')}${ckField('ckPre100','Preconectorizado 100 m','cantidad')}${ckField('ckPre150','Preconectorizado 150 m','cantidad')}${ckField('ckPre200','Preconectorizado 200 m','cantidad')}${ckField('ckAnclaje','Anclaje P','cantidad')}${ckField('ckBand','Cinta Band-It','metros')}${ckField('ckHebilla','Hebilla 3/4','unidades')}${ckField('ckAcoplador','Acoplador','unidades')}${ckField('ckRoseta','Roseta','unidades')}${ckField('ckConectores','Conectores ópticos','unidades')}${ckField('ckTempladores','Templadores','unidades')}${ckField('ckSplitter','Splitter','unidades')}${ckField('ckClevis','Clevis','unidades')}${ckField('ckCat5','Cable UTP CAT5','unidades')}${ckField('ckCat6','Cable UTP CAT6','unidades')}${ckField('ckApc','Patchcord APC-APC','unidades')}${ckField('ckUpc','Patchcord UPC-APC','unidades')}${ckField('ckRj45','Conector RJ45','unidades')}
+        </div>
     </div>`;
 }
 
-function renderItemsChecklist(){
-    const tipo = document.getElementById("chkTipo")?.value || "VEHICULO";
-    const itemsPorTipo = {
-        "VEHICULO":["SOAT vigente","Revisión técnica","Extintor","Triángulos","Llanta de repuesto","Botiquín","Limpieza"],
-        "HERRAMIENTAS":["Taladro","Escalera","Fusionadora","Power meter","Cortadora","Peladora","Herramientas completas"],
-        "EPP":["Casco","Chaleco","Botas","Guantes","Lentes","Arnés","Conos de seguridad"],
-        "MATERIALES":["Drop/Fibra","Conectores","Templadores","Cintillos","Cinta aislante","Rosetas","Patch cord"],
-        "ALMACEN MOVIL":["Orden de maletera","Stock mínimo","Material identificado","Equipos separados","Devoluciones pendientes"],
-        "DOCUMENTACION":["Actas","OT/Orden","DNI validado","Checklist firmado","Evidencias cargadas"]
+function inicializarChecklistActividadCampo(){
+    if(typeof CK_EQUIPOS === "undefined" || typeof ckAddEquipo !== "function") return;
+    Object.keys(CK_EQUIPOS).forEach(key => ckAddEquipo(key));
+}
+
+async function armarChecklistActividadCampo(cuadrilla, comentarioFinal){
+    if(typeof ckCollectEquipos !== "function") throw new Error("No se cargaron las funciones del Checklist Almacén");
+    const payload={
+        fechaGestion:obtenerValor("ckFecha"),
+        cuadrilla,
+        origenRegistro:"ACTIVIDAD_CAMPO",
+        comentarioFinal,
+        cableDrop:ckNum('ckCableDrop'),pre50:ckNum('ckPre50'),pre100:ckNum('ckPre100'),pre150:ckNum('ckPre150'),pre200:ckNum('ckPre200'),
+        anclajeP:ckNum('ckAnclaje'),cintaBandIt:ckNum('ckBand'),hebilla:ckNum('ckHebilla'),acoplador:ckNum('ckAcoplador'),roseta:ckNum('ckRoseta'),
+        conectoresOpticos:ckNum('ckConectores'),templadores:ckNum('ckTempladores'),splitter:ckNum('ckSplitter'),clevis:ckNum('ckClevis'),
+        utpCat5:ckNum('ckCat5'),utpCat6:ckNum('ckCat6'),patchApcApc:ckNum('ckApc'),patchUpcApc:ckNum('ckUpc'),rj45:ckNum('ckRj45')
     };
-    const cont = document.getElementById("itemsChecklist");
-    if(!cont) return;
-    cont.innerHTML = `<div class="act-grid-3">${(itemsPorTipo[tipo] || []).map((item, i) => `
-        <div class="act-field"><label>${item}</label><select id="chkItem_${i}" data-checkitem="${item}"><option>SI</option><option>NO</option><option>NO APLICA</option></select></div>
-    `).join("")}</div>`;
+    payload.ontZteEquipos=await ckCollectEquipos('ontZte');
+    payload.ontHuaweiEquipos=await ckCollectEquipos('ontHuawei');
+    payload.meshZteEquipos=await ckCollectEquipos('meshZte');
+    payload.meshHuaweiEquipos=await ckCollectEquipos('meshHuawei');
+    payload.winboxEquipos=await ckCollectEquipos('winbox');
+    payload.fonowinEquipos=await ckCollectEquipos('fonowin');
+    payload.equipos={ontZte:payload.ontZteEquipos,ontHuawei:payload.ontHuaweiEquipos,meshZte:payload.meshZteEquipos,meshHuawei:payload.meshHuaweiEquipos,winbox:payload.winboxEquipos,fonowin:payload.fonowinEquipos};
+    return payload;
 }
 
 function obtenerValor(id){ return document.getElementById(id)?.value || ""; }
@@ -573,11 +606,12 @@ function armarDetalleActividad(tipo){
         lineas.push(`TIEMPO: ${obtenerValor("capTiempo")}`);
     }
     if(tipo === "CHECKLIST"){
-        lineas.push(`TIPO DE CHECKLIST: ${obtenerValor("chkTipo")}`);
-        document.querySelectorAll("[data-checkitem]").forEach(el => lineas.push(`${el.getAttribute("data-checkitem").toUpperCase()}: ${el.value}`));
+        lineas.push(`ORIGEN: EJECUTADO EN CAMPO POR SUPERVISOR`);
+        lineas.push(`FECHA DE GESTION: ${obtenerValor("ckFecha")}`);
+        lineas.push(`COMENTARIO FINAL: ${obtenerValor("actConclusion")}`);
     }
 
-    if(tipo !== "VALIDACION DE OBSERVACION" && tipo !== "CAPACITACION"){
+    if(tipo !== "VALIDACION DE OBSERVACION" && tipo !== "CAPACITACION" && tipo !== "CHECKLIST"){
         lineas.push(`OBSERVACIONES GENERALES: ${obtenerValor("actObservacionesGenerales")}`);
         lineas.push(`CONCLUSION: ${obtenerValor("actConclusion")}`);
     }
@@ -671,9 +705,12 @@ async function guardarActividadCampo(btn){
     mostrarCargandoActividad("Subiendo evidencias y guardando registro...");
 
     try{
-        const foto1 = await leerArchivoActividad(document.getElementById("actFoto1")?.files[0]);
-        const foto2 = await leerArchivoActividad(document.getElementById("actFoto2")?.files[0]);
+        const comentarioFinal = obtenerValor("actConclusion").trim();
+        if(tipo === "CHECKLIST" && !comentarioFinal) throw new Error("Debe ingresar el comentario final");
+        const foto1 = tipo === "CHECKLIST" ? null : await leerArchivoActividad(document.getElementById("actFoto1")?.files[0]);
+        const foto2 = tipo === "CHECKLIST" ? null : await leerArchivoActividad(document.getElementById("actFoto2")?.files[0]);
         const fotoActa = tipo === "AUDITORIA EN FRIO" ? await leerArchivoActividad(document.getElementById("actFotoActa")?.files[0]) : null;
+        const checklist = tipo === "CHECKLIST" ? await armarChecklistActividadCampo(cuadrilla, comentarioFinal) : null;
 
         const payload = {
             accion: "registrarActividadCampo",
@@ -693,7 +730,8 @@ async function guardarActividadCampo(btn){
             observaciones: armarDetalleActividad(tipo),
             foto1,
             foto2,
-            fotoActa
+            fotoActa,
+            checklist
         };
 
         const data = await apiActividadCampo(payload);
@@ -712,7 +750,7 @@ function obtenerEstadoResumenActividad(tipo){
     if(tipo === "SEGUIMIENTO") return obtenerValor("segMotivo") || "REGISTRADO";
     if(tipo === "VALIDACION DE OBSERVACION") return obtenerValor("valCumple") === "SI" ? "CUMPLE" : "REVISAR";
     if(tipo === "CAPACITACION") return obtenerValor("capTema") || "REGISTRADO";
-    if(tipo === "CHECKLIST") return obtenerValor("chkTipo") || "REGISTRADO";
+    if(tipo === "CHECKLIST") return "CHECKLIST ALMACEN";
     return "REGISTRADO";
 }
 
@@ -721,9 +759,4 @@ function obtenerClienteConformeGenerico(tipo){
     return "";
 }
 
-// Si se abre directamente el formulario Checklist, cargar sus items luego del render.
-setInterval(() => {
-    const chk = document.getElementById("chkTipo");
-    const items = document.getElementById("itemsChecklist");
-    if(chk && items && !items.innerHTML.trim()) renderItemsChecklist();
-}, 600);
+// El Checklist de Actividad en Campo reutiliza el formulario completo de Checklist Almacén.

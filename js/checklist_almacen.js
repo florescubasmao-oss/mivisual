@@ -243,7 +243,9 @@ function ckCard(x,u){
     :conforme
       ?`<div class="ck-alerta-ok"><b>Detalle de conformidad:</b> ${ckEsc(motivo||'Sin detalle registrado')}${quien?`<br><b>Conforme por:</b> ${ckEsc(quien)}`:''}${fechaObs?` · ${ckEsc(fechaObs)} ${ckEsc(horaObs)}`:''}</div>`
       :'';
-  return `<div class="ck-card"><div style="display:flex;justify-content:space-between;gap:8px"><div><b>${ckEsc(x.cuadrilla)}</b><div class="ck-meta">${ckEsc(x.nombresApellidos)} · ${ckEsc(x.sede)}<br>${ckEsc(x.fechaGestion||x.fechaRegistro)}</div></div>${ckEstado(x.estadoGeneral)}</div>${alerta}${ckDetalle(x)}${acciones?`<div class="ck-actions" style="margin-top:8px">${acciones}</div>`:''}</div>`;
+  const esCampo=ckNorm(x.origenRegistro)==='ACTIVIDAD_CAMPO';
+  const origen=esCampo?`<div class="ck-alerta-ok" style="margin-top:8px"><b>Ejecutado en campo por Supervisor:</b> ${ckEsc(x.registradoPor||'Supervisor')}${x.comentarioFinal?`<br><b>Comentario final:</b> ${ckEsc(x.comentarioFinal)}`:''}</div>`:'';
+  return `<div class="ck-card"><div style="display:flex;justify-content:space-between;gap:8px"><div><b>${ckEsc(x.cuadrilla)}</b><div class="ck-meta">${ckEsc(x.nombresApellidos)} · ${ckEsc(x.sede)}<br>${ckEsc(x.fechaGestion||x.fechaRegistro)}</div></div>${ckEstado(x.estadoGeneral)}</div>${origen}${alerta}${ckDetalle(x)}${acciones?`<div class="ck-actions" style="margin-top:8px">${acciones}</div>`:''}</div>`;
 }
 async function ckCargarHistorialTecnico(){const box=document.getElementById('ckLista');if(!box)return;try{const d=await ckApi({accion:'listarChecklistAlmacen',usuario:ckUser().usuario});box.innerHTML='<h3 class="ck-sec">Historial</h3>'+d.checklist.map(x=>ckCard(x,ckUser())).join('');}catch(e){box.innerHTML=`<div class="ck-card">${ckEsc(e.message)}</div>`}}
 function ckEsJefaturaVisualChecklist(perfil){
