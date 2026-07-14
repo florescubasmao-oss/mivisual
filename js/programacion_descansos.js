@@ -1,4 +1,4 @@
-// MI VISUAL - Programación de Descansos V135
+// MI VISUAL - Programación de Descansos V136
 const API_DESCANSOS = "https://script.google.com/macros/s/AKfycbzcbjCLweJNgZXDerdzmMN7Lwotc1G8NWdzoPkaLNGDivAgpYxDkq78xZwPRioSB4XY/exec";
 let PD_DATA={programacion:[],cuadrillas:[]};
 let PD_CAMBIOS={};
@@ -93,7 +93,12 @@ async function pdCargar(periodo){
   PD_CAMBIOS={};PD_MOTIVO_CAMBIO="";
 }
 
-function pdRender(){const u=pdUser();if(u.perfil==="TECNICO")pdRenderTecnico();else if(u.perfil==="ALMACEN")pdRenderPersonal();else pdRenderGestion();}
+function pdRender(){
+  const u=pdUser();
+  if(u.perfil==="TECNICO") return pdRenderTecnico();
+  if(u.perfil==="SUPERVISOR"||u.perfil==="ALMACEN") return pdRenderPersonalSimple();
+  return pdRenderGestion();
+}
 
 
 function pdEntidadPersonalActual(){
@@ -119,6 +124,32 @@ function pdCalendarioPersonalHtml(entidad){
 function pdRenderPersonal(){
   const ent=pdEntidadPersonalActual();
   document.getElementById('pdContenido').innerHTML=pdEstadoPersonalHtml(ent)+pdCalendarioPersonalHtml(ent);
+}
+
+
+function pdRenderPersonalSimple(){
+  const ent=pdEntidadPersonalActual();
+  const hoy=pdHoy();
+  if(!ent){
+    document.getElementById('pdContenido').innerHTML='<div class="pd-card"><b>Sin programación personal</b><div class="pd-note">Jefatura todavía no ha registrado su programación.</div></div>';
+    return;
+  }
+  const itemHoy=pdBuscar(ent.cuadrilla,hoy);
+  const estado=pdEstadoTecnico(pdEstadoVisible(itemHoy));
+  const clase=estado==='DESCANSO'?'descanso':'campo';
+  const titulo=estado==='DESCANSO'?'😴 DESCANSO':(estado==='VACACIONES'?'🏖️ VACACIONES':'🟢 EN CAMPO');
+  const proximos=(PD_DATA.programacion||[])
+    .filter(x=>pdNorm(x.cuadrilla)===pdNorm(ent.cuadrilla)&&x.fecha>=hoy&&pdNorm(x.estadoProgramacion)==='APROBADO')
+    .filter(x=>['DESCANSO','EN CAMPO BOLSA','CAMPO BOLSA','BOLSA'].includes(pdNorm(x.estadoDia)))
+    .sort((a,b)=>a.fecha.localeCompare(b.fecha));
+  const proximo=proximos[0]?.fecha||'Sin descanso programado';
+  document.getElementById('pdContenido').innerHTML=`
+    <div class="pd-tech-state ${clase}">
+      <div>ESTADO DE HOY</div>
+      <h2>${titulo}</h2>
+      <div>${pdEsc(new Date(hoy+'T12:00:00').toLocaleDateString('es-PE',{weekday:'long',day:'2-digit',month:'long'}))}</div>
+    </div>
+    <div class="pd-card"><b>Próximo descanso:</b> ${pdEsc(proximo)}<br><span class="pd-note">La programación personal solo puede ser modificada por Jefatura.</span></div>`;
 }
 
 function pdRenderTecnico(){
