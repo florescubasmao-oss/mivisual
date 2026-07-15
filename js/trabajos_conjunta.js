@@ -13,8 +13,16 @@ function tcLoadingOff(){const o=document.getElementById("tcLoading");if(o)o.styl
 
 function mostrarTrabajosConjunta(){
   const u=tcUsuario();
-  limpiarPantalla();setBotonNavegacion("modulo");
+  const menu=document.getElementById("menuPrincipal");
+  const resultado=document.getElementById("resultadoProduccion");
   const pantalla=document.getElementById("pantalla");
+
+  // PEXT debe abrirse como una vista independiente, no debajo del menú central.
+  if(menu) menu.style.setProperty("display","none","important");
+  if(resultado) resultado.innerHTML="";
+  if(!pantalla) return;
+
+  setBotonNavegacion("modulo");
   pantalla.innerHTML=`${tcEstilos()}<div class="tc-wrap">
     <section class="tc-head"><h2>🛠️ PEXT</h2><p>Registro, visto bueno técnico y conformidad de Jefatura.</p></section>
     <div class="tc-actions">${u.perfil==="SUPERVISOR"?'<button class="tc-btn" onclick="tcMostrarFormulario()">＋ Nuevo registro</button>':''}<button class="tc-btn tc-sec" onclick="tcCargar()">↻ Actualizar</button></div>

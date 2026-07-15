@@ -1,0 +1,14 @@
+MI VISUAL V153 - PEXT VISTA INDEPENDIENTE
+
+Cambios incluidos únicamente:
+- Al ingresar a PEXT se oculta completamente el menú principal.
+- Se muestra solo la vista del módulo PEXT.
+- El botón superior cambia a "Volver al menú".
+- Al volver, se restaura el menú principal mediante la navegación existente.
+- Se actualiza la versión de caché en index.html.
+
+Archivos a reemplazar:
+- index.html
+- js/trabajos_conjunta.js
+
+No requiere cambios en Apps Script ni en Google Sheets.
