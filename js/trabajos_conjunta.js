@@ -1,11 +1,11 @@
-// MI VISUAL - Registro de Trabajos en Conjunta v151
+// MI VISUAL - PEXT v152
 const API_TRABAJOS_CONJUNTA = "https://script.google.com/macros/s/AKfycbzcbjCLweJNgZXDerdzmMN7Lwotc1G8NWdzoPkaLNGDivAgpYxDkq78xZwPRioSB4XY/exec";
 let tcRegistros = [];
 let tcCuadrillas = [];
 
 function tcUsuario(){return {usuario:localStorage.getItem("usuario")||"",perfil:(localStorage.getItem("perfil")||"").toUpperCase(),sede:localStorage.getItem("sede")||"",cuadrilla:localStorage.getItem("cuadrilla")||""};}
 function tcJefatura(p){return ["JEFATURA","ADMIN","ADMINISTRADOR"].includes((p||"").toUpperCase());}
-async function tcApi(payload){const r=await fetch(API_TRABAJOS_CONJUNTA,{method:"POST",body:JSON.stringify(payload)});const t=await r.text();let d;try{d=JSON.parse(t)}catch(e){throw new Error(t)}if(!d.ok)throw new Error(d.error||"Error en Trabajos en Conjunta");return d;}
+async function tcApi(payload){const r=await fetch(API_TRABAJOS_CONJUNTA,{method:"POST",body:JSON.stringify(payload)});const t=await r.text();let d;try{d=JSON.parse(t)}catch(e){throw new Error(t)}if(!d.ok)throw new Error(d.error||"Error en PEXT");return d;}
 function tcEsc(v){return (v??"").toString().replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));}
 function tcFmtFecha(v){if(!v)return "-";if(v instanceof Date)return v.toLocaleDateString("es-PE");const s=v.toString();return /^\d{4}-\d{2}-\d{2}$/.test(s)?s.split("-").reverse().join("/"):s;}
 function tcLoading(txt){let o=document.getElementById("tcLoading");if(!o){o=document.createElement("div");o.id="tcLoading";o.className="tc-loading";o.innerHTML='<div><span class="tc-spin"></span><b id="tcLoadingTxt">Procesando...</b></div>';document.body.appendChild(o)}document.getElementById("tcLoadingTxt").textContent=txt||"Procesando...";o.style.display="flex";}
@@ -16,7 +16,7 @@ function mostrarTrabajosConjunta(){
   limpiarPantalla();setBotonNavegacion("modulo");
   const pantalla=document.getElementById("pantalla");
   pantalla.innerHTML=`${tcEstilos()}<div class="tc-wrap">
-    <section class="tc-head"><h2>🤝 Trabajos en Conjunta</h2><p>Registro, visto bueno técnico y conformidad de Jefatura.</p></section>
+    <section class="tc-head"><h2>🛠️ PEXT</h2><p>Registro, visto bueno técnico y conformidad de Jefatura.</p></section>
     <div class="tc-actions">${u.perfil==="SUPERVISOR"?'<button class="tc-btn" onclick="tcMostrarFormulario()">＋ Nuevo registro</button>':''}<button class="tc-btn tc-sec" onclick="tcCargar()">↻ Actualizar</button></div>
     <section id="tcFormulario"></section>
     <section class="tc-card"><h3>Consulta de registros</h3><div class="tc-filtros">
