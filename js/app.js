@@ -316,6 +316,10 @@ function configurarMenu(){
     if(typeof actualizarIndicadorDescansoMenu === "function") {
         actualizarIndicadorDescansoMenu();
     }
+
+    if(typeof tcAplicarVisibilidadPext === "function") {
+        tcAplicarVisibilidadPext();
+    }
 }
 
 window.addEventListener("load", function () {

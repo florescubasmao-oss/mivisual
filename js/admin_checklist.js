@@ -16,7 +16,7 @@
       .adm104-config .ck-config{margin:0;box-shadow:none;border:0;background:transparent;padding:0}
       .adm104-config .ck-config-head{margin-bottom:10px}
       .adm104-config .ck-config-note{color:#334155}
-      .adm104-back{margin-top:16px}
+      .adm104-back{margin-top:16px}.tc-config-admin{display:flex;align-items:center;justify-content:space-between;gap:16px}.tc-config-admin p{margin:4px 0 0;color:#334155;font-size:12px}.tc-config-actions{display:flex;gap:10px;align-items:center}.tc-config-actions select{padding:10px 12px;border-radius:10px;border:1px solid #94a3b8;background:#fff;color:#0f172a;font-weight:700}@media(max-width:700px){.tc-config-admin{align-items:stretch;flex-direction:column}.tc-config-actions{width:100%}.tc-config-actions select{flex:1}}
       @media(max-width:700px){.adm104-grid{grid-template-columns:1fr}.adm104-card{min-height:88px;padding:14px}.adm104-title{font-size:22px}.adm104-config{grid-column:auto}}
     </style>`;
   }
@@ -29,7 +29,9 @@
     }
 
     let cfg={estado:'HABILITADO',activo:true,fechaInicio:'',fechaFin:''};
+    let cfgPext={estado:'DESHABILITADO',activo:false};
     try{ cfg=await ckObtenerConfiguracion(); }catch(e){ console.warn(e); }
+    try{ if(typeof tcObtenerConfiguracionPext==='function') cfgPext=await tcObtenerConfiguracionPext(); }catch(e){ console.warn(e); }
 
     const cards=[
       ['📥','ACTUALIZAR PRODUCCIÓN','Importar producción desde la hoja IMPORTAR_PRODUCCION','mostrarImportarProduccion()'],
@@ -45,6 +47,7 @@
       <div class="adm104-grid">
         ${cards.map(c=>`<div class="adm104-card" onclick="${c[3]}"><div class="adm104-icon">${c[0]}</div><div><h3>${c[1]}</h3><p>${c[2]}</p></div></div>`).join('')}
         <div class="adm104-config">${ckConfigPanel(cfg)}</div>
+        <div class="adm104-config">${typeof tcConfigPanelPext==='function'?tcConfigPanelPext(cfgPext):''}</div>
       </div>
       <div class="adm104-back"><button class="button_1" onclick="volverInicio()">⬅️ Volver al menú</button></div>
     </div>`;

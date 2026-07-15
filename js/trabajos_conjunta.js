@@ -5,13 +5,51 @@ let tcCuadrillas = [];
 
 function tcUsuario(){return {usuario:localStorage.getItem("usuario")||"",perfil:(localStorage.getItem("perfil")||"").toUpperCase(),sede:localStorage.getItem("sede")||"",cuadrilla:localStorage.getItem("cuadrilla")||""};}
 function tcJefatura(p){return ["JEFATURA","ADMIN","ADMINISTRADOR"].includes((p||"").toUpperCase());}
+
+let TC_CONFIG_PEXT={estado:"DESHABILITADO",activo:false};
+async function tcObtenerConfiguracionPext(){
+  const u=tcUsuario();
+  if(!u.usuario)return TC_CONFIG_PEXT;
+  try{
+    const d=await tcApi({accion:"obtenerConfiguracionPext",usuario:u.usuario});
+    TC_CONFIG_PEXT=d.configuracion||d;
+  }catch(e){
+    console.warn("No se pudo consultar configuración PEXT",e);
+    TC_CONFIG_PEXT={estado:"DESHABILITADO",activo:false};
+  }
+  return TC_CONFIG_PEXT;
+}
+async function tcAplicarVisibilidadPext(){
+  const card=document.getElementById("cardTrabajosConjunta");
+  if(!card)return;
+  const cfg=await tcObtenerConfiguracionPext();
+  const perfil=(localStorage.getItem("perfil")||"").toUpperCase();
+  const permitido=["TECNICO","SUPERVISOR","JEFATURA","ADMIN","ADMINISTRADOR"].includes(perfil);
+  card.style.setProperty("display",cfg.activo&&permitido?"flex":"none","important");
+}
+async function tcGuardarConfiguracionPext(){
+  const sel=document.getElementById("tcConfigEstadoPext");
+  if(!sel)return;
+  try{
+    await tcApi({accion:"guardarConfiguracionPext",usuario:tcUsuario().usuario,estado:sel.value});
+    alert("Estado de PEXT actualizado correctamente");
+    await tcAplicarVisibilidadPext();
+    if(typeof mostrarAdministracion==='function')mostrarAdministracion();
+  }catch(e){alert(e.message)}
+}
+function tcConfigPanelPext(cfg){
+  const estado=(cfg&&cfg.estado)||"DESHABILITADO";
+  return `<div class="tc-config-admin"><div><b>🤝 PEXT</b><p>Control de disponibilidad del módulo para todos los perfiles.</p></div><div class="tc-config-actions"><select id="tcConfigEstadoPext"><option value="HABILITADO" ${estado==='HABILITADO'?'selected':''}>HABILITADO</option><option value="DESHABILITADO" ${estado==='DESHABILITADO'?'selected':''}>DESHABILITADO</option></select><button class="button_1" onclick="tcGuardarConfiguracionPext()">Guardar</button></div></div>`;
+}
 async function tcApi(payload){const r=await fetch(API_TRABAJOS_CONJUNTA,{method:"POST",body:JSON.stringify(payload)});const t=await r.text();let d;try{d=JSON.parse(t)}catch(e){throw new Error(t)}if(!d.ok)throw new Error(d.error||"Error en PEXT");return d;}
 function tcEsc(v){return (v??"").toString().replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));}
 function tcFmtFecha(v){if(!v)return "-";if(v instanceof Date)return v.toLocaleDateString("es-PE");const s=v.toString();return /^\d{4}-\d{2}-\d{2}$/.test(s)?s.split("-").reverse().join("/"):s;}
 function tcLoading(txt){let o=document.getElementById("tcLoading");if(!o){o=document.createElement("div");o.id="tcLoading";o.className="tc-loading";o.innerHTML='<div><span class="tc-spin"></span><b id="tcLoadingTxt">Procesando...</b></div>';document.body.appendChild(o)}document.getElementById("tcLoadingTxt").textContent=txt||"Procesando...";o.style.display="flex";}
 function tcLoadingOff(){const o=document.getElementById("tcLoading");if(o)o.style.display="none";}
 
-function mostrarTrabajosConjunta(){
+async function mostrarTrabajosConjunta(){
+  const cfg=await tcObtenerConfiguracionPext();
+  if(!cfg.activo){alert("El módulo PEXT se encuentra deshabilitado por Administración.");return;}
   const u=tcUsuario();
   const menu=document.getElementById("menuPrincipal");
   const resultado=document.getElementById("resultadoProduccion");
