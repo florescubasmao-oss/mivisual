@@ -755,3 +755,81 @@ body{background:linear-gradient(180deg,var(--mv4-bg),var(--mv4-bg2));font-family
   .obs-sede-grupo>summary{padding:12px;border-left-width:5px;}
   .obs-sede-contenido{padding:3px 8px 8px;}
 }
+
+/* V150 - Observaciones: mejora de contraste en filtros y resumen por sede */
+.obs-contenedor h2{
+  color:#f8fafc;
+  font-weight:900;
+}
+.obs-contenedor .obs-sub{
+  color:#cbd5e1;
+  font-weight:500;
+}
+.obs-filtros-jefatura{
+  gap:18px 10px;
+}
+.obs-filtros-jefatura input,
+.obs-filtros-jefatura select{
+  color:#111827;
+  background:#ffffff;
+  border:2px solid #cbd5e1;
+  font-weight:600;
+  min-height:48px;
+  box-shadow:0 2px 8px rgba(15,23,42,.08);
+}
+.obs-filtros-jefatura input::placeholder{
+  color:#64748b;
+  opacity:1;
+  font-weight:600;
+}
+.obs-filtros-jefatura input[type="date"]{
+  color:#111827;
+}
+.obs-filtros-jefatura input[type="date"]::-webkit-datetime-edit,
+.obs-filtros-jefatura input[type="date"]::-webkit-datetime-edit-text,
+.obs-filtros-jefatura input[type="date"]::-webkit-datetime-edit-month-field,
+.obs-filtros-jefatura input[type="date"]::-webkit-datetime-edit-day-field,
+.obs-filtros-jefatura input[type="date"]::-webkit-datetime-edit-year-field{
+  color:#111827;
+}
+.obs-filtros-jefatura input:focus,
+.obs-filtros-jefatura select:focus{
+  outline:none;
+  border-color:#38bdf8;
+  box-shadow:0 0 0 3px rgba(56,189,248,.28);
+}
+.obs-filtros-jefatura select option{
+  color:#111827;
+  background:#ffffff;
+}
+.obs-filtros-jefatura .obs-btn-limpiar{
+  background:#2563eb;
+  color:#ffffff;
+  border:2px solid #60a5fa;
+  font-weight:900;
+  min-height:48px;
+  box-shadow:0 5px 12px rgba(37,99,235,.28);
+}
+.obs-filtros-jefatura .obs-btn-limpiar:hover{
+  background:#1d4ed8;
+}
+.obs-sede-mini{
+  border-color:#94a3b8;
+  border-left-color:#14b8a6;
+  box-shadow:0 5px 14px rgba(15,23,42,.12);
+}
+.obs-sede-mini b{
+  color:#111827;
+  font-weight:900;
+}
+.obs-sede-mini span{
+  color:#334155;
+  font-weight:600;
+}
+.obs-sede-mini small{
+  color:#047857;
+  font-weight:900;
+}
+@media(max-width:520px){
+  .obs-filtros-jefatura{gap:12px;}
+}

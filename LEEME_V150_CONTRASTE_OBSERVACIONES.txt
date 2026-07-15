@@ -1,0 +1,13 @@
+MI VISUAL V150 - CONTRASTE OBSERVACIONES
+
+Archivos a reemplazar:
+- index.html
+- css/estilos.css
+
+Cambios:
+- Mayor contraste en títulos, subtítulo, filtros y placeholders de Observaciones.
+- Fechas y opciones de select con texto oscuro y legible.
+- Botón Limpiar filtros más visible.
+- Tarjetas de resumen por sede con mejor contraste.
+
+No modifica lógica, filtros, Apps Script ni otros módulos.
