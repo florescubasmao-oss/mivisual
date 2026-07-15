@@ -117,21 +117,17 @@ async function ckObtenerConfiguracion(){
   catch(e){console.warn('No se pudo leer configuración Checklist:',e);return {estado:'HABILITADO',activo:true,fechaInicio:'',fechaFin:''};}
 }
 function ckConfigPanel(cfg){
-  const activo=!!cfg.activo;
-  return `<div class="ck-config"><div class="ck-config-head"><b>⚙️ Disponibilidad del Checklist</b><span class="ck-config-status ${activo?'on':'off'}">${activo?'ACTIVO':'INACTIVO'}</span></div><div class="ck-grid"><div class="ck-field"><label>Estado</label><select id="ckCfgEstado"><option value="HABILITADO" ${ckNorm(cfg.estado)==='HABILITADO'?'selected':''}>HABILITADO</option><option value="DESHABILITADO" ${ckNorm(cfg.estado)==='DESHABILITADO'?'selected':''}>DESHABILITADO</option></select></div><div class="ck-field"><label>Fecha de inicio (opcional)</label><input id="ckCfgInicio" type="date" value="${ckEsc(cfg.fechaInicio||'')}"></div><div class="ck-field"><label>Fecha de fin (opcional)</label><input id="ckCfgFin" type="date" value="${ckEsc(cfg.fechaFin||'')}"></div><div class="ck-field" style="display:flex;align-items:end"><button class="ck-btn blue" style="width:100%" onclick="ckGuardarConfiguracion()">Guardar disponibilidad</button></div></div><div class="ck-config-note">Cuando esté inactivo, el Técnico no verá la opción ni podrá registrar nuevos checklist. Los demás perfiles conservarán acceso al historial y validaciones.</div></div>`;
+  const estado=ckNorm((cfg&&cfg.estado)||'HABILITADO');
+  return `<div class="tc-config-admin"><div><b>✅ CHECKLIST ALMACÉN</b><p>Control de disponibilidad del módulo para todos los perfiles.</p></div><div class="tc-config-actions"><select id="ckCfgEstado"><option value="HABILITADO" ${estado==='HABILITADO'?'selected':''}>HABILITADO</option><option value="DESHABILITADO" ${estado==='DESHABILITADO'?'selected':''}>DESHABILITADO</option></select><button class="button_1" onclick="ckGuardarConfiguracion()">Guardar</button></div></div>`;
 }
 async function ckGuardarConfiguracion(){
   const estado=document.getElementById('ckCfgEstado')?.value||'HABILITADO';
-  const fechaInicio=document.getElementById('ckCfgInicio')?.value||'';
-  const fechaFin=document.getElementById('ckCfgFin')?.value||'';
-  if(fechaInicio&&fechaFin&&fechaInicio>fechaFin)return alert('La fecha de inicio no puede ser posterior a la fecha de fin.');
-  try{await ckApi({accion:'guardarConfiguracionChecklistAlmacen',usuario:ckUser().usuario,estado,fechaInicio,fechaFin});alert('Disponibilidad actualizada correctamente');await ckAplicarVisibilidadChecklist();if(typeof mostrarAdministracion==='function')mostrarAdministracion();}catch(e){alert(e.message)}
+  try{await ckApi({accion:'guardarConfiguracionChecklistAlmacen',usuario:ckUser().usuario,estado,fechaInicio:'',fechaFin:''});alert('Estado del Checklist actualizado correctamente');await ckAplicarVisibilidadChecklist();if(typeof mostrarAdministracion==='function')mostrarAdministracion();}catch(e){alert(e.message)}
 }
 async function ckAplicarVisibilidadChecklist(){
   const card=document.getElementById('cardChecklistAlmacen');if(!card)return;
-  const u=ckUser();
-  if(u.perfil!=='TECNICO'){card.style.display='';return;}
-  const cfg=await ckObtenerConfiguracion();card.style.display=cfg.activo?'':'none';
+  const cfg=await ckObtenerConfiguracion();
+  card.style.setProperty('display',cfg.activo?'flex':'none','important');
 }
 
 async function mostrarChecklistAlmacen(){

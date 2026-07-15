@@ -162,7 +162,7 @@ function prepararMenuVisual(){
     return { menu, main, recursos, recursosTitle };
 }
 
-function configurarMenu(){
+async function configurarMenu(){
 
     console.log("CONFIGURAR MENU DESDE APP.JS");
 
@@ -174,7 +174,8 @@ function configurarMenu(){
 
     if (pantalla) pantalla.innerHTML = "";
     if (resultado) resultado.innerHTML = "";
-    if (menu) menu.style.display = "grid";
+    // Ocultar el menú mientras se consultan permisos y módulos habilitados.
+    if (menu) menu.style.setProperty("display", "none", "important");
     const mv55 = prepararMenuVisual();
     setBotonNavegacion("menu");
 
@@ -306,19 +307,36 @@ function configurarMenu(){
         ]
     };
 
-    const opciones = permisos[perfil] || [];
+    let opciones = [...(permisos[perfil] || [])];
+
+    // Consultar primero la disponibilidad de los módulos para evitar que aparezcan
+    // por unos instantes antes de ocultarse.
+    let checklistActivo = true;
+    let pextActivo = false;
+    try {
+        const consultas = await Promise.all([
+            typeof ckObtenerConfiguracion === "function" ? ckObtenerConfiguracion() : Promise.resolve({activo:true}),
+            typeof tcObtenerConfiguracionPext === "function" ? tcObtenerConfiguracionPext() : Promise.resolve({activo:false})
+        ]);
+        checklistActivo = consultas[0] ? consultas[0].activo !== false : true;
+        pextActivo = consultas[1] ? consultas[1].activo === true : false;
+    } catch (e) {
+        console.warn("No se pudo completar la configuración inicial del menú", e);
+    }
+
+    if (!checklistActivo) opciones = opciones.filter(id => id !== "cardChecklistAlmacen");
+    if (!pextActivo) opciones = opciones.filter(id => id !== "cardTrabajosConjunta");
+
     opciones.forEach(id => mostrarCardSeguro(id, true));
 
     const tieneRecursos = recursosIds.some(id => opciones.includes(id));
     if(mv55.recursosTitle) mv55.recursosTitle.style.display = tieneRecursos ? "flex" : "none";
     if(mv55.recursos) mv55.recursos.style.display = tieneRecursos ? "grid" : "none";
 
+    if (menu) menu.style.setProperty("display", "grid", "important");
+
     if(typeof actualizarIndicadorDescansoMenu === "function") {
         actualizarIndicadorDescansoMenu();
-    }
-
-    if(typeof tcAplicarVisibilidadPext === "function") {
-        tcAplicarVisibilidadPext();
     }
 }
 
