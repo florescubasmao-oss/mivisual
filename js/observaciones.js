@@ -95,8 +95,8 @@ function mostrarObservaciones(){
                 <div class="obs-kpi obs-money"><b>S/ 0.00</b><span>Impacto</span></div>
             </div>
             ${esVistaJefaturaObs(u) ? `<div id="resumenObservacionesSede" class="obs-resumen-sedes"></div>` : ``}
-            <div class="obs-filtros">
-                <select id="filtroEstadoObs" onchange="cargarObservaciones()">
+            <div class="obs-filtros ${esVistaJefaturaObs(u) ? "obs-filtros-jefatura" : ""}">
+                <select id="filtroEstadoObs" onchange="aplicarFiltrosObservaciones()">
                     <option value="">Todos los estados</option>
                     <option>DERIVADO</option>
                     <option>EN PROCESO</option>
@@ -104,17 +104,35 @@ function mostrarObservaciones(){
                     <option>APELADO</option>
                     <option>SUBSANADO</option>
                 </select>
-                <select id="filtroFuenteObs" onchange="cargarObservaciones()">
+                <select id="filtroFuenteObs" onchange="aplicarFiltrosObservaciones()">
                     <option value="">Todas las fuentes</option>
                     <option>WIN</option>
                     <option>VISUAL</option>
                 </select>
+                ${esVistaJefaturaObs(u) ? `
+                    <input id="filtroCodigoObs" type="search" placeholder="Buscar por código" oninput="aplicarFiltrosObservaciones()">
+                    <input id="filtroCuadrillaObs" type="search" placeholder="Buscar por cuadrilla" oninput="aplicarFiltrosObservaciones()">
+                    <input id="filtroFechaDesdeObs" type="date" aria-label="Fecha desde" onchange="aplicarFiltrosObservaciones()">
+                    <input id="filtroFechaHastaObs" type="date" aria-label="Fecha hasta" onchange="aplicarFiltrosObservaciones()">
+                    <select id="filtroTipoObs" onchange="aplicarFiltrosObservaciones()">
+                        <option value="">Todos los tipos</option>
+                        <option value="SEGURIDAD">SEGURIDAD</option>
+                        <option value="IMPLEMENTACION">IMPLEMENTACIÓN</option>
+                        <option value="GESTION TECNICA">GESTIÓN TÉCNICA</option>
+                    </select>
+                    <select id="filtroSedeObs" onchange="aplicarFiltrosObservaciones()">
+                        <option value="">Todas las sedes</option>
+                        <option>CHICLAYO</option>
+                        <option>PIURA</option>
+                        <option>TRUJILLO</option>
+                    </select>
+                    <button type="button" class="obs-btn-limpiar" onclick="limpiarFiltrosObservaciones()">Limpiar filtros</button>
+                ` : ``}
             </div>
             <div id="listaObservaciones">Cargando...</div>
         </div>
     `);
 
-    cargarResumenObservaciones();
     cargarObservaciones();
 }
 
@@ -217,29 +235,116 @@ async function cargarResumenObservaciones(){
     }
 }
 
+let observacionesCache = [];
+
+function textoObs(valor){
+    return (valor || "").toString().toUpperCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim();
+}
+
+function fechaISOObs(valor){
+    if(!valor) return "";
+    if(valor instanceof Date && !isNaN(valor.getTime())){
+        return `${valor.getFullYear()}-${String(valor.getMonth()+1).padStart(2,"0")}-${String(valor.getDate()).padStart(2,"0")}`;
+    }
+    const texto = valor.toString().trim();
+    const iso = texto.match(/^(\d{4})-(\d{2})-(\d{2})/);
+    if(iso) return `${iso[1]}-${iso[2]}-${iso[3]}`;
+    const lat = texto.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})/);
+    if(lat) return `${lat[3]}-${lat[2].padStart(2,"0")}-${lat[1].padStart(2,"0")}`;
+    const f = new Date(valor);
+    if(!isNaN(f.getTime())) return `${f.getFullYear()}-${String(f.getMonth()+1).padStart(2,"0")}-${String(f.getDate()).padStart(2,"0")}`;
+    return "";
+}
+
+function obtenerObservacionesFiltradas(){
+    const estado = textoObs(document.getElementById("filtroEstadoObs")?.value);
+    const fuente = textoObs(document.getElementById("filtroFuenteObs")?.value);
+    const codigo = textoObs(document.getElementById("filtroCodigoObs")?.value);
+    const cuadrilla = textoObs(document.getElementById("filtroCuadrillaObs")?.value);
+    const tipo = textoObs(document.getElementById("filtroTipoObs")?.value);
+    const sede = textoObs(document.getElementById("filtroSedeObs")?.value);
+    const desde = document.getElementById("filtroFechaDesdeObs")?.value || "";
+    const hasta = document.getElementById("filtroFechaHastaObs")?.value || "";
+
+    return (observacionesCache || []).filter(o => {
+        if(estado && textoObs(o.estado) !== estado) return false;
+        if(fuente && textoObs(o.fuente) !== fuente) return false;
+        if(codigo && !textoObs(o.codigo).includes(codigo)) return false;
+        if(cuadrilla && !textoObs(o.cuadrilla).includes(cuadrilla)) return false;
+        if(tipo && textoObs(o.tipoObservacion) !== tipo) return false;
+        if(sede && textoObs(o.sede) !== sede) return false;
+        const fecha = fechaISOObs(o.fechaRegistro);
+        if(desde && fecha && fecha < desde) return false;
+        if(hasta && fecha && fecha > hasta) return false;
+        return true;
+    });
+}
+
+function resumenGrupoSedeObs(sede, lista){
+    const impacto = (lista || []).reduce((s,o) => s + ((Number(o.monto)||0) * factorImpactoObs(o.estado)), 0);
+    return `${lista.length} observación${lista.length === 1 ? "" : "es"} · S/ ${impacto.toFixed(2)}`;
+}
+
+function pintarObservacionesAgrupadasPorSede(lista, u){
+    const cont = document.getElementById("listaObservaciones");
+    const orden = ["CHICLAYO", "PIURA", "TRUJILLO"];
+    const grupos = {};
+    (lista || []).forEach(o => {
+        const sede = textoObs(o.sede) || "SIN SEDE";
+        if(!grupos[sede]) grupos[sede] = [];
+        grupos[sede].push(o);
+    });
+    const sedes = Object.keys(grupos).sort((a,b) => {
+        const ia = orden.indexOf(a), ib = orden.indexOf(b);
+        if(ia !== -1 || ib !== -1) return (ia === -1 ? 99 : ia) - (ib === -1 ? 99 : ib);
+        return a.localeCompare(b);
+    });
+    cont.innerHTML = sedes.map((sede, indice) => `
+        <details class="obs-sede-grupo" ${sedes.length === 1 || indice === 0 ? "open" : ""}>
+            <summary>
+                <span><b>📍 ${sede}</b><small>${resumenGrupoSedeObs(sede, grupos[sede])}</small></span>
+                <span class="obs-sede-flecha">▼</span>
+            </summary>
+            <div class="obs-sede-contenido">
+                ${grupos[sede].map(o => cardObservacion(o, u)).join("")}
+            </div>
+        </details>
+    `).join("");
+}
+
+function aplicarFiltrosObservaciones(){
+    const u = usuarioActualObs();
+    const cont = document.getElementById("listaObservaciones");
+    if(!cont) return;
+    const lista = obtenerObservacionesFiltradas();
+    pintarResumenObservaciones(lista);
+    if(esVistaJefaturaObs(u)) pintarResumenObservacionesPorSede(lista);
+    if(!lista.length){
+        cont.innerHTML = `<div class="obs-vacio">No hay observaciones que coincidan con los filtros.</div>`;
+        return;
+    }
+    if(esVistaJefaturaObs(u)) pintarObservacionesAgrupadasPorSede(lista, u);
+    else cont.innerHTML = lista.map(o => cardObservacion(o, u)).join("");
+}
+
+function limpiarFiltrosObservaciones(){
+    ["filtroEstadoObs","filtroFuenteObs","filtroCodigoObs","filtroCuadrillaObs","filtroFechaDesdeObs","filtroFechaHastaObs","filtroTipoObs","filtroSedeObs"].forEach(id => {
+        const el = document.getElementById(id);
+        if(el) el.value = "";
+    });
+    aplicarFiltrosObservaciones();
+}
+
 async function cargarObservaciones(){
     const u = usuarioActualObs();
     const cont = document.getElementById("listaObservaciones");
     if(!cont) return;
-
     cont.innerHTML = "Cargando observaciones...";
-
     try{
-        const data = await apiObservaciones({
-            accion: "listarObservaciones",
-            usuario: u.usuario,
-            estado: document.getElementById("filtroEstadoObs")?.value || "",
-            fuente: document.getElementById("filtroFuenteObs")?.value || ""
-        });
-
+        const data = await apiObservaciones({accion:"listarObservaciones", usuario:u.usuario});
         if(!data.ok) throw new Error(data.error || "Error al listar observaciones");
-
-        if(!data.observaciones || data.observaciones.length === 0){
-            cont.innerHTML = `<div class="obs-vacio">No hay observaciones para mostrar.</div>`;
-            return;
-        }
-
-        cont.innerHTML = data.observaciones.map(o => cardObservacion(o, u)).join("");
+        observacionesCache = Array.isArray(data.observaciones) ? data.observaciones : [];
+        aplicarFiltrosObservaciones();
     }catch(err){
         cont.innerHTML = `<div class="obs-error">❌ ${err.message}</div>`;
     }

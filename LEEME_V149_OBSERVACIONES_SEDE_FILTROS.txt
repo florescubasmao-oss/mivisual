@@ -1,0 +1,15 @@
+MI VISUAL V149 - AJUSTE INCREMENTAL OBSERVACIONES
+
+Archivos a reemplazar:
+- index.html
+- js/observaciones.js
+- css/estilos.css
+
+Cambios únicamente para Observaciones en Jefatura/Admin:
+- Observaciones agrupadas por sede en bloques desplegables.
+- Filtros por código, cuadrilla, fecha desde/hasta, tipo y sede.
+- Se mantienen filtros de estado y fuente.
+- Resumen general y por sede se recalculan según los filtros.
+- Técnico y Supervisor mantienen su visualización actual.
+
+No requiere cambios en Apps Script ni nuevo despliegue de la API.

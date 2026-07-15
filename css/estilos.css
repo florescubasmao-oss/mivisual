@@ -736,3 +736,22 @@ body{background:linear-gradient(180deg,var(--mv4-bg),var(--mv4-bg2));font-family
   .pd-menu-status{padding:9px 10px;margin-top:10px;}
   .pd-menu-status strong{font-size:14px;}
 }
+
+/* V149 - Observaciones Jefatura: filtros avanzados y agrupación desplegable por sede */
+.obs-filtros-jefatura{grid-template-columns:repeat(2,minmax(0,1fr));align-items:end;}
+.obs-filtros-jefatura .obs-btn-limpiar{margin:6px 0 12px;background:#475569;min-height:45px;}
+.obs-sede-grupo{background:#fff;border:1px solid #cbd5e1;border-radius:16px;margin:12px 0;overflow:hidden;box-shadow:0 6px 16px rgba(15,23,42,.08);}
+.obs-sede-grupo>summary{list-style:none;cursor:pointer;display:flex;align-items:center;justify-content:space-between;gap:12px;padding:14px 16px;background:#f8fafc;border-left:6px solid #0f766e;color:#0f172a;}
+.obs-sede-grupo>summary::-webkit-details-marker{display:none;}
+.obs-sede-grupo>summary span:first-child{display:flex;flex-direction:column;gap:3px;min-width:0;}
+.obs-sede-grupo>summary b{font-size:15px;}
+.obs-sede-grupo>summary small{font-size:12px;color:#475569;font-weight:700;}
+.obs-sede-flecha{font-size:13px;color:#0f766e;transition:transform .2s ease;}
+.obs-sede-grupo[open] .obs-sede-flecha{transform:rotate(180deg);}
+.obs-sede-contenido{padding:4px 12px 12px;background:#fff;}
+.obs-sede-contenido .obs-card{margin:10px 0;}
+@media(max-width:520px){
+  .obs-filtros-jefatura{grid-template-columns:1fr;}
+  .obs-sede-grupo>summary{padding:12px;border-left-width:5px;}
+  .obs-sede-contenido{padding:3px 8px 8px;}
+}
