@@ -1,0 +1,15 @@
+MI VISUAL V164 - SELECTORES DINAMICOS EN PERMISOS
+
+Cambios:
+- PERFIL ahora es una lista desplegable.
+- MODULO se carga dinámicamente desde PERMISOS_MODULOS.
+- Al cambiar Perfil o Módulo, los permisos se cargan automáticamente.
+- Se eliminó el botón Consultar.
+- Queda un solo botón: Guardar cambios.
+- No se modifica Code.gs ni los demás módulos.
+
+Reemplazar únicamente:
+- index.html
+- js/permisos.js
+
+No requiere nuevo despliegue de Apps Script.

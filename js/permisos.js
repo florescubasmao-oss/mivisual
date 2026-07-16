@@ -5,43 +5,87 @@ let PM_PERMISOS_CARGADOS = false;
 let PM_CONFIG_MENU = null;
 function pmNorm(v){return (v||"").toString().toUpperCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"").replace(/\s+/g," ").trim();}
 async function pmApi(payload){const r=await fetch(API_PERMISOS,{method:'POST',body:JSON.stringify(payload)});const d=await r.json();if(!d.ok)throw new Error(d.error||'Error de permisos');return d;}
-async function pmCargarPermisosActuales(forzar){
-  const usuario=(localStorage.getItem('usuario')||'').trim();
-  if(!usuario){PM_PERMISOS=[];PM_PERMISOS_CARGADOS=true;PM_CONFIG_MENU=null;return [];}
-  if(PM_PERMISOS_CARGADOS&&!forzar)return PM_PERMISOS||[];
-  const cacheKey='permisosContexto:'+pmNorm(usuario);
-  const ttl=3*60*1000;
-  if(!forzar){
-    try{
-      const cache=JSON.parse(sessionStorage.getItem(cacheKey)||'null');
-      if(cache&&Date.now()-Number(cache.ts||0)<ttl&&Array.isArray(cache.permisos)){
-        PM_PERMISOS=cache.permisos;PM_CONFIG_MENU=cache.configuracion||null;PM_PERMISOS_CARGADOS=true;return PM_PERMISOS;
-      }
-    }catch(_){ }
-  }
-  try{
-    let d;
-    try{d=await pmApi({accion:'obtenerContextoMenu',usuario});}
-    catch(_){d=await pmApi({accion:'obtenerPermisosUsuario',usuario});}
-    PM_PERMISOS=Array.isArray(d.permisos)?d.permisos:[];
-    PM_CONFIG_MENU=d.configuracion||null;
-    PM_PERMISOS_CARGADOS=true;
-    sessionStorage.setItem(cacheKey,JSON.stringify({ts:Date.now(),permisos:PM_PERMISOS,configuracion:PM_CONFIG_MENU}));
-    localStorage.setItem('permisosModulos:'+pmNorm(usuario),JSON.stringify(PM_PERMISOS));
-    return PM_PERMISOS;
-  }catch(e){
-    console.warn('Permisos: no se pudo consultar la configuración actual',e);
-    try{const cache=JSON.parse(localStorage.getItem('permisosModulos:'+pmNorm(usuario))||'null');PM_PERMISOS=Array.isArray(cache)?cache:[];}catch(_){PM_PERMISOS=[];}
-    PM_PERMISOS_CARGADOS=true;return PM_PERMISOS;
-  }
-}
+async function pmCargarPermisosActuales(forzar){const usuario=(localStorage.getItem('usuario')||'').trim();if(!usuario){PM_PERMISOS=[];PM_PERMISOS_CARGADOS=true;return [];}if(PM_PERMISOS_CARGADOS&&!forzar)return PM_PERMISOS||[];const cacheKey='permisosModulos:'+pmNorm(usuario);try{let d;try{d=await pmApi({accion:'obtenerContextoMenu',usuario});}catch(_){d=await pmApi({accion:'obtenerPermisosUsuario',usuario});}PM_PERMISOS=Array.isArray(d.permisos)?d.permisos:[];PM_CONFIG_MENU=d.configuracion||null;PM_PERMISOS_CARGADOS=true;localStorage.setItem(cacheKey,JSON.stringify(PM_PERMISOS));localStorage.removeItem('permisosModulos');return PM_PERMISOS;}catch(e){console.warn('Permisos: no se pudo consultar la configuración actual',e);try{const cache=JSON.parse(localStorage.getItem(cacheKey)||'null');PM_PERMISOS=Array.isArray(cache)?cache:[];}catch(_){PM_PERMISOS=[];}PM_PERMISOS_CARGADOS=true;return PM_PERMISOS;}}
 function pmFila(modulo){const m=pmNorm(modulo);return (PM_PERMISOS||[]).find(x=>pmNorm(x.modulo)===m&&pmNorm(x.activo||'SI')==='SI');}
 function pmPuede(modulo,accion){if(!PM_PERMISOS_CARGADOS)return false;const f=pmFila(modulo);if(!f)return false;return pmNorm(f[accion.toLowerCase()]||f[accion]||'NO')==='SI';}
 function pmModulosMenu(){if(!PM_PERMISOS_CARGADOS)return null;const perfil=pmNorm(localStorage.getItem('perfil'));let lista=(PM_PERMISOS||[]).filter(x=>pmNorm(x.activo||'SI')==='SI'&&pmNorm(x.mostrarModulo||'NO')==='SI'&&pmNorm(x.ver||'NO')==='SI'&&pmNorm(x.alcanceDatos||'SIN ACCESO')!=='SIN ACCESO');if(perfil==='OPERACIONES LIMA'){const permitidos=new Set(['ACTIVIDAD CAMPO','PROGRAMACION DESCANSOS','PEXT']);lista=lista.filter(x=>permitidos.has(pmNorm(x.modulo)));}return lista.sort((a,b)=>(Number(a.ordenMenu)||999)-(Number(b.ordenMenu)||999));}
 const PM_CARD_MAP={'PRODUCCION':'cardProduccion','EFECTIVIDAD':'cardEfectividad','PORCENTAJE RECABLEADO':'cardRecableado','VTR GAR':'cardVTRGAR','RANKING':'cardRanking','OBSERVACIONES':'cardObservaciones','ACCESOS':'cardAccesos','BIBLIOTECA':'cardBiblioteca','CAPACITACION':'cardCapacitacion','DASHBOARD SUPERVISOR':'cardDashboardSupervisor','DASHBOARD JEFATURA':'cardDashboardJefatura','ANALISIS ECONOMICO':'cardAnalisisEconomico','ACTIVIDAD CAMPO':'cardActividadCampo','VALIDACION TECNICA':'cardValidacionTecnica','ACTAS ESCANEADAS':'cardActas','CHECKLIST ALMACEN':'cardChecklistAlmacen','PROGRAMACION DESCANSOS':'cardProgramacionDescansos','PEXT':'cardTrabajosConjunta','ADMINISTRACION':'cardAdministracion'};
-function pmPanelAdmin(){return `<div class="adm104-config"><div class="pm-admin"><h3>🔐 Permisos por perfil</h3><p>Configura módulos, acciones, alcance y vista sin alterar las funciones actuales.</p><div class="pm-grid"><label>Perfil<input id="pmPerfil" list="pmPerfiles" placeholder="Ej. OPERACIONES LIMA"><datalist id="pmPerfiles"></datalist></label><label>Módulo<select id="pmModulo"></select></label><label>Activo<select id="pmActivo"><option>SI</option><option>NO</option></select></label><label>Orden menú<input id="pmOrden" type="number" min="1"></label><label>Mostrar módulo<select id="pmMostrar"><option>SI</option><option>NO</option></select></label><label>Alcance<select id="pmAlcance"><option>SIN ACCESO</option><option>CUADRILLA</option><option>SEDE</option><option>SEDE / PROPIOS</option><option>ZONA NORTE</option><option>PERSONAL</option><option>SEGUN DESTINO</option></select></label></div><div id="pmChecks" class="pm-checks"></div><label class="pm-obs">Observación<textarea id="pmObs"></textarea></label><div class="pm-actions"><button class="button_1" onclick="pmCargarFilaAdmin()">Consultar</button><button class="button_1" onclick="pmGuardarAdmin()">Guardar permiso</button></div><div id="pmMsg"></div></div></div>`;}
-async function pmInitAdmin(){try{const d=await pmApi({accion:'listarPermisosAdministracion',usuario:localStorage.getItem('usuario')});window.PM_ADMIN=d.permisos||[];const perfiles=[...new Set(PM_ADMIN.map(x=>x.perfil))].sort();document.getElementById('pmPerfiles').innerHTML=perfiles.map(x=>`<option value="${x}">`).join('');const mods=[...new Set(PM_ADMIN.map(x=>x.modulo))];document.getElementById('pmModulo').innerHTML=mods.map(x=>`<option>${x}</option>`).join('');document.getElementById('pmChecks').innerHTML=['VER','REGISTRAR','EDITAR','OBSERVAR','APROBAR','VALIDAR','DESCARGAR','ADMINISTRAR'].map(x=>`<label><input type="checkbox" data-pm="${x}"> ${x}</label>`).join('');}catch(e){document.getElementById('pmMsg').textContent=e.message;}}
-function pmCargarFilaAdmin(){const p=pmNorm(document.getElementById('pmPerfil').value),m=pmNorm(document.getElementById('pmModulo').value),f=(window.PM_ADMIN||[]).find(x=>pmNorm(x.perfil)===p&&pmNorm(x.modulo)===m);if(!f)return alert('No existe esa combinación. Puede crearla y guardarla.');document.getElementById('pmActivo').value=f.activo||'SI';document.getElementById('pmOrden').value=f.ordenMenu||'';document.getElementById('pmMostrar').value=f.mostrarModulo||'NO';document.getElementById('pmAlcance').value=f.alcanceDatos||'SIN ACCESO';document.getElementById('pmObs').value=f.observacion||'';document.querySelectorAll('[data-pm]').forEach(c=>c.checked=pmNorm(f[c.dataset.pm.toLowerCase()]||'NO')==='SI');}
-async function pmGuardarAdmin(){const payload={accion:'guardarPermisoModulo',usuario:localStorage.getItem('usuario'),perfil:document.getElementById('pmPerfil').value,modulo:document.getElementById('pmModulo').value,activo:document.getElementById('pmActivo').value,ordenMenu:document.getElementById('pmOrden').value,mostrarModulo:document.getElementById('pmMostrar').value,alcanceDatos:document.getElementById('pmAlcance').value,observacion:document.getElementById('pmObs').value};document.querySelectorAll('[data-pm]').forEach(c=>payload[c.dataset.pm.toLowerCase()]=c.checked?'SI':'NO');try{await pmApi(payload);localStorage.removeItem('permisosModulos:'+pmNorm(payload.perfil));if(pmNorm(payload.perfil)===pmNorm(localStorage.getItem('perfil'))){PM_PERMISOS_CARGADOS=false;PM_PERMISOS=null;PM_CONFIG_MENU=null;}document.getElementById('pmMsg').innerHTML='<b style="color:#16a34a">Permiso guardado.</b>';await pmInitAdmin();}catch(e){document.getElementById('pmMsg').textContent=e.message;}}
+function pmPanelAdmin(){return `<div class="adm104-config"><div class="pm-admin"><h3>🔐 Permisos por perfil</h3><p>Selecciona un perfil y un módulo. Los permisos existentes se cargarán automáticamente.</p><div class="pm-grid"><label>Perfil<select id="pmPerfil"><option value="">Cargando perfiles...</option></select></label><label>Módulo<select id="pmModulo"><option value="">Cargando módulos...</option></select></label><label>Activo<select id="pmActivo"><option>SI</option><option>NO</option></select></label><label>Orden menú<input id="pmOrden" type="number" min="1"></label><label>Mostrar módulo<select id="pmMostrar"><option>SI</option><option>NO</option></select></label><label>Alcance<select id="pmAlcance"><option>SIN ACCESO</option><option>CUADRILLA</option><option>SEDE</option><option>SEDE / PROPIOS</option><option>ZONA NORTE</option><option>PERSONAL</option><option>SEGUN DESTINO</option></select></label></div><div id="pmChecks" class="pm-checks"></div><label class="pm-obs">Observación<textarea id="pmObs"></textarea></label><div class="pm-actions"><button class="button_1" onclick="pmGuardarAdmin()">Guardar cambios</button></div><div id="pmMsg"></div></div></div>`;}
 
-function pmLimpiarSesion(){PM_PERMISOS=null;PM_PERMISOS_CARGADOS=false;PM_CONFIG_MENU=null;try{Object.keys(sessionStorage).filter(k=>k.startsWith('permisosContexto:')).forEach(k=>sessionStorage.removeItem(k));}catch(_){}}
+function pmLimpiarFormularioAdmin(){
+  document.getElementById('pmActivo').value='SI';
+  document.getElementById('pmOrden').value='';
+  document.getElementById('pmMostrar').value='NO';
+  document.getElementById('pmAlcance').value='SIN ACCESO';
+  document.getElementById('pmObs').value='';
+  document.querySelectorAll('[data-pm]').forEach(c=>c.checked=false);
+}
+
+function pmCargarFilaAdmin(){
+  const perfilEl=document.getElementById('pmPerfil');
+  const moduloEl=document.getElementById('pmModulo');
+  if(!perfilEl||!moduloEl)return;
+  const p=pmNorm(perfilEl.value),m=pmNorm(moduloEl.value);
+  if(!p||!m){pmLimpiarFormularioAdmin();return;}
+  const f=(window.PM_ADMIN||[]).find(x=>pmNorm(x.perfil)===p&&pmNorm(x.modulo)===m);
+  if(!f){pmLimpiarFormularioAdmin();return;}
+  document.getElementById('pmActivo').value=f.activo||'SI';
+  document.getElementById('pmOrden').value=f.ordenMenu||'';
+  document.getElementById('pmMostrar').value=f.mostrarModulo||'NO';
+  document.getElementById('pmAlcance').value=f.alcanceDatos||'SIN ACCESO';
+  document.getElementById('pmObs').value=f.observacion||'';
+  document.querySelectorAll('[data-pm]').forEach(c=>c.checked=pmNorm(f[c.dataset.pm.toLowerCase()]||'NO')==='SI');
+  const msg=document.getElementById('pmMsg');
+  if(msg)msg.textContent='';
+}
+
+async function pmInitAdmin(){
+  const msg=document.getElementById('pmMsg');
+  try{
+    const d=await pmApi({accion:'listarPermisosAdministracion',usuario:localStorage.getItem('usuario')});
+    window.PM_ADMIN=Array.isArray(d.permisos)?d.permisos:[];
+    const perfiles=[...new Set(PM_ADMIN.map(x=>pmNorm(x.perfil)).filter(Boolean))].sort();
+    const modulos=[...new Set(PM_ADMIN.map(x=>pmNorm(x.modulo)).filter(Boolean))].sort();
+    const perfilEl=document.getElementById('pmPerfil');
+    const moduloEl=document.getElementById('pmModulo');
+    const perfilAnterior=pmNorm(perfilEl.value);
+    const moduloAnterior=pmNorm(moduloEl.value);
+    perfilEl.innerHTML='<option value="">Seleccione perfil</option>'+perfiles.map(x=>`<option value="${x}">${x}</option>`).join('');
+    moduloEl.innerHTML='<option value="">Seleccione módulo</option>'+modulos.map(x=>`<option value="${x}">${x}</option>`).join('');
+    if(perfiles.includes(perfilAnterior))perfilEl.value=perfilAnterior;
+    if(modulos.includes(moduloAnterior))moduloEl.value=moduloAnterior;
+    document.getElementById('pmChecks').innerHTML=['VER','REGISTRAR','EDITAR','OBSERVAR','APROBAR','VALIDAR','DESCARGAR','ADMINISTRAR'].map(x=>`<label><input type="checkbox" data-pm="${x}"> ${x}</label>`).join('');
+    perfilEl.onchange=pmCargarFilaAdmin;
+    moduloEl.onchange=pmCargarFilaAdmin;
+    pmCargarFilaAdmin();
+  }catch(e){
+    if(msg)msg.textContent=e.message;
+  }
+}
+
+async function pmGuardarAdmin(){
+  const perfil=document.getElementById('pmPerfil').value;
+  const modulo=document.getElementById('pmModulo').value;
+  const msg=document.getElementById('pmMsg');
+  if(!perfil||!modulo){
+    if(msg)msg.innerHTML='<b style="color:#dc2626">Seleccione perfil y módulo.</b>';
+    return;
+  }
+  const payload={accion:'guardarPermisoModulo',usuario:localStorage.getItem('usuario'),perfil,modulo,activo:document.getElementById('pmActivo').value,ordenMenu:document.getElementById('pmOrden').value,mostrarModulo:document.getElementById('pmMostrar').value,alcanceDatos:document.getElementById('pmAlcance').value,observacion:document.getElementById('pmObs').value};
+  document.querySelectorAll('[data-pm]').forEach(c=>payload[c.dataset.pm.toLowerCase()]=c.checked?'SI':'NO');
+  try{
+    if(msg)msg.textContent='Guardando...';
+    await pmApi(payload);
+    localStorage.removeItem('permisosModulos:'+pmNorm(payload.perfil));
+    if(pmNorm(payload.perfil)===pmNorm(localStorage.getItem('perfil'))){PM_PERMISOS_CARGADOS=false;PM_PERMISOS=null;PM_CONFIG_MENU=null;}
+    await pmInitAdmin();
+    document.getElementById('pmPerfil').value=pmNorm(payload.perfil);
+    document.getElementById('pmModulo').value=pmNorm(payload.modulo);
+    pmCargarFilaAdmin();
+    if(msg)msg.innerHTML='<b style="color:#16a34a">Cambios guardados correctamente.</b>';
+  }catch(e){
+    if(msg)msg.textContent=e.message;
+  }
+}
+
+function pmLimpiarSesion(){PM_PERMISOS=null;PM_PERMISOS_CARGADOS=false;PM_CONFIG_MENU=null;}
