@@ -1,0 +1,16 @@
+MI VISUAL V159 - FIX PERMISOS AUTORITATIVOS DEL MENÚ
+
+Archivos a reemplazar:
+- index.html
+- js/app.js
+- js/permisos.js
+
+Corrección:
+- PERMISOS_MODULOS manda sobre las reglas antiguas del perfil.
+- ACTIVO=SI, MOSTRAR_MODULO=SI, VER=SI y ALCANCE distinto de SIN ACCESO son obligatorios para mostrar una opción.
+- CONFIG_MODULOS solo puede apagar un módulo globalmente; no concede acceso.
+- La caché de permisos queda separada por usuario.
+- Al cerrar sesión se limpia la memoria de permisos.
+- Aunque un perfil no tenga módulos permitidos, no se aplica el menú antiguo como respaldo.
+
+No requiere actualizar Code.gs ni realizar un nuevo despliegue de Apps Script.

@@ -34,6 +34,7 @@ function accionBotonNavegacion(){
 }
 
 function cerrarSesion(){
+    if (typeof pmLimpiarSesion === 'function') pmLimpiarSesion();
     localStorage.clear();
 
     const panelLogin = document.getElementById("panelLogin");
@@ -312,7 +313,11 @@ async function configurarMenu(){
         if (typeof pmCargarPermisosActuales === "function") {
             await pmCargarPermisosActuales(true);
             const dinamicos = pmModulosMenu();
-            if (Array.isArray(dinamicos) && dinamicos.length) opciones = dinamicos.map(x => PM_CARD_MAP[pmNorm(x.modulo)]).filter(Boolean);
+            // Si la hoja PERMISOS_MODULOS fue leída, su resultado es autoritativo,
+            // incluso cuando devuelve cero módulos. No se mezclan permisos antiguos.
+            if (Array.isArray(dinamicos)) {
+                opciones = dinamicos.map(x => PM_CARD_MAP[pmNorm(x.modulo)]).filter(Boolean);
+            }
         }
     } catch(e) { console.warn("Se conserva menú anterior", e); }
 
