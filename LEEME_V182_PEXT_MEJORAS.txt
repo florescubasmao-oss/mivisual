@@ -1,0 +1,11 @@
+MI VISUAL V182 - MEJORAS PEXT
+
+- Validación directa por perfiles con permiso VALIDAR, incluso si está pendiente de visto bueno técnico.
+- Conformidad final por permiso APROBAR.
+- Visualización controlada por VER y ALCANCE_DATOS.
+- Descarga Excel por permiso DESCARGAR.
+- Filtros por CTO, fecha, sede, cuadrilla, tipo y estado.
+- Informe: sede, tipo de trabajo realizado, fecha, CTO, conectorizados, recableados, códigos de recableados, hora inicio, hora fin y comentarios del supervisor.
+- No modifica otros módulos.
+
+Instalación: reemplazar Code.gs, nuevo despliegue y subir archivos web.

@@ -63,3 +63,138 @@ async function tcRespuestaTecnico(id,res){const obs=res==="OBSERVADO"?prompt("In
 async function tcValidarJefatura(id,res){const obs=res!=="APROBADO"?prompt("Ingrese el motivo obligatorio:"):prompt("Comentario de validación (opcional):")||"";if(res!=="APROBADO"&&!obs)return;try{tcLoading("Validando...");await tcApi({accion:"validarTrabajoConjuntaJefatura",usuario:tcUsuario().usuario,id,resultado:res,observacion:obs});await tcCargar();}catch(e){alert(e.message)}finally{tcLoadingOff();}}
 async function tcConformidad(id,res){const obs=res==="SIN CONFORMIDAD"?prompt("Ingrese el motivo obligatorio:"):prompt("Comentario final de conformidad (opcional):")||"";if(res==="SIN CONFORMIDAD"&&!obs)return;try{tcLoading("Registrando conformidad...");await tcApi({accion:"conformidadFinalTrabajoConjunta",usuario:tcUsuario().usuario,id,resultado:res,observacion:obs});await tcCargar();}catch(e){alert(e.message)}finally{tcLoadingOff();}}
 function tcEstilos(){return `<style>.tc-wrap{max-width:980px;margin:auto;padding:12px 12px 90px;color:#fff}.tc-head,.tc-card{background:#1d3557;border:1px solid #38577f;border-radius:18px;padding:17px;margin:12px 0;box-shadow:0 8px 22px #0003}.tc-head h2{margin:0 0 6px}.tc-head p{margin:0;color:#d5e5fa}.tc-actions{display:flex;gap:9px;flex-wrap:wrap;margin:12px 0}.tc-btn{border:0;border-radius:11px;padding:11px 14px;background:#087cf0;color:#fff;font-weight:800;cursor:pointer}.tc-sec{background:#475569}.tc-ok{background:#15803d}.tc-warn{background:#d97706}.tc-danger{background:#dc2626}.tc-grid,.tc-filtros{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}.tc-filtros{grid-template-columns:repeat(3,minmax(0,1fr))}.tc-grid label{font-size:12px;font-weight:800;color:#f1f5f9;display:flex;flex-direction:column;gap:6px}.tc-grid input,.tc-grid select,.tc-grid textarea,.tc-filtros input,.tc-filtros select,.tc-evidencias input{width:100%;box-sizing:border-box;padding:11px;border-radius:10px;border:1px solid #5a779c;background:#fff;color:#111827;font-size:14px}.tc-grid textarea{min-height:80px}.tc-wide{grid-column:1/-1}.tc-evidencias{padding:12px;margin-top:12px;background:#12243e;border-radius:12px}.tc-kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin:13px 0}.tc-kpis div{background:#10243e;padding:12px;border-radius:12px;text-align:center}.tc-kpis b,.tc-kpis span{display:block}.tc-kpis b{font-size:22px}.tc-kpis span{font-size:11px;color:#cbd5e1}.tc-item{background:#f8fafc;color:#111827;border-radius:15px;padding:14px;margin:10px 0;border-left:6px solid #0ea5e9}.tc-item-top{display:flex;justify-content:space-between;gap:10px;align-items:center}.tc-item small{display:block;color:#475569;margin-top:4px}.tc-estado{font-size:11px;font-weight:900;background:#dbeafe;padding:7px 10px;border-radius:999px}.tc-item summary{cursor:pointer;font-weight:800;margin-top:10px}.tc-det{padding:8px 4px}.tc-det a{color:#0369a1;font-weight:800}.tc-error,.tc-okmsg,.tc-vacio{padding:13px;border-radius:12px;margin:9px 0}.tc-error{background:#7f1d1d;color:#fff}.tc-okmsg{background:#166534}.tc-vacio{background:#10243e;text-align:center}.tc-codigos{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;background:#10243e;padding:10px;border-radius:12px}.tc-codigos b{grid-column:1/-1}.tc-loading{display:none;position:fixed;inset:0;background:#0009;z-index:99999;align-items:center;justify-content:center}.tc-loading>div{background:#12243e;padding:20px;border-radius:16px;display:flex;gap:10px;align-items:center}.tc-spin{width:22px;height:22px;border:3px solid #fff4;border-top-color:#fff;border-radius:50%;animation:tcs .8s linear infinite}@keyframes tcs{to{transform:rotate(360deg)}}@media(max-width:700px){.tc-grid,.tc-filtros{grid-template-columns:1fr}.tc-kpis{grid-template-columns:repeat(2,1fr)}.tc-item-top{align-items:flex-start;flex-direction:column}.tc-codigos{grid-template-columns:1fr}}</style>`;}
+
+
+/* =========================
+   PEXT V182 - permisos dinámicos, validación directa, filtros e informe
+========================= */
+function tcPermiso(accion){
+  return typeof pmPuede === "function" ? pmPuede("PEXT", accion) : false;
+}
+function tcPuedeVer(){
+  return typeof pmPuedeVer === "function" ? pmPuedeVer("PEXT") : true;
+}
+function tcFiltrados(){
+  const tipo=(document.getElementById("tcFiltroTipo")?.value||"");
+  const estado=(document.getElementById("tcFiltroEstado")?.value||"");
+  const cuad=(document.getElementById("tcFiltroCuadrilla")?.value||"").toUpperCase();
+  const cto=(document.getElementById("tcFiltroCto")?.value||"").toUpperCase();
+  const sede=(document.getElementById("tcFiltroSede")?.value||"").toUpperCase();
+  const desde=document.getElementById("tcFiltroDesde")?.value||"";
+  const hasta=document.getElementById("tcFiltroHasta")?.value||"";
+  return tcRegistros.filter(x=>(!tipo||x.tipoTrabajo===tipo)
+    &&(!estado||x.estadoGeneral===estado)
+    &&(!cuad||(x.cuadrilla||"").toUpperCase().includes(cuad))
+    &&(!cto||(x.cto||"").toUpperCase().includes(cto))
+    &&(!sede||(x.sede||"").toUpperCase()===sede)
+    &&(!desde||x.fechaTrabajo>=desde)
+    &&(!hasta||x.fechaTrabajo<=hasta));
+}
+
+async function mostrarTrabajosConjunta(){
+  const u=tcUsuario();
+  const menu=document.getElementById("menuPrincipal");
+  const resultado=document.getElementById("resultadoProduccion");
+  const pantalla=document.getElementById("pantalla");
+  if(menu) menu.style.setProperty("display","none","important");
+  if(resultado) resultado.innerHTML="";
+  if(!pantalla) return;
+  setBotonNavegacion("modulo");
+  if(!tcPuedeVer()){
+    pantalla.innerHTML=`${tcEstilos()}<div class="tc-wrap"><div class="tc-error">No tienes permiso para visualizar PEXT.</div></div>`;
+    return;
+  }
+  const puedeRegistrar=tcPermiso("REGISTRAR");
+  const puedeDescargar=tcPermiso("DESCARGAR");
+  pantalla.innerHTML=`${tcEstilos()}<div class="tc-wrap">
+    <section class="tc-head"><h2>🛠️ PEXT</h2><p>Registro, visto bueno técnico, validación y conformidad final.</p></section>
+    <div class="tc-actions">
+      ${puedeRegistrar?'<button class="tc-btn" onclick="tcMostrarFormulario()">＋ Nuevo registro</button>':''}
+      <button class="tc-btn tc-sec" onclick="tcCargar()">↻ Actualizar</button>
+      ${puedeDescargar?'<button class="tc-btn tc-ok" onclick="tcDescargarInforme()">⬇ Descargar informe</button>':''}
+    </div>
+    <section id="tcFormulario"></section>
+    <section class="tc-card"><h3>Consulta de registros</h3><div class="tc-filtros">
+      <select id="tcFiltroTipo" onchange="tcRenderLista()"><option value="">Todos los tipos</option><option>NORMALIZACION</option><option>CONJUNTA PEXT</option><option>ORDENAMIENTO</option></select>
+      <select id="tcFiltroEstado" onchange="tcRenderLista()"><option value="">Todos los estados</option><option>PENDIENTE DE VISTO BUENO TECNICO</option><option>OBSERVADO POR TECNICO</option><option>PENDIENTE DE VALIDACION JEFATURA</option><option>PENDIENTE CONFORMIDAD FINAL</option><option>CONFORMIDAD FINAL</option><option>OBSERVADO POR JEFATURA</option><option>RECHAZADO</option></select>
+      <select id="tcFiltroSede" onchange="tcRenderLista()"><option value="">Todas las sedes</option></select>
+      <input id="tcFiltroCuadrilla" placeholder="Buscar cuadrilla" oninput="tcRenderLista()">
+      <input id="tcFiltroCto" placeholder="Buscar CTO" oninput="tcRenderLista()">
+      <input id="tcFiltroDesde" type="date" onchange="tcRenderLista()"><input id="tcFiltroHasta" type="date" onchange="tcRenderLista()">
+    </div><div id="tcResumen"></div><div id="tcLista" class="tc-lista"></div></section>
+  </div>`;
+  tcCargar();
+}
+
+async function tcCargar(){
+  try{
+    tcLoading("Cargando trabajos...");
+    const u=tcUsuario();
+    const d=await tcApi({accion:"listarTrabajosConjunta",usuario:u.usuario});
+    tcRegistros=d.trabajos||[];
+    const sedes=[...new Set(tcRegistros.map(x=>(x.sede||"").toString().trim()).filter(Boolean))].sort();
+    const sel=document.getElementById("tcFiltroSede");
+    if(sel){const actual=sel.value;sel.innerHTML='<option value="">Todas las sedes</option>'+sedes.map(s=>`<option value="${tcEsc(s)}">${tcEsc(s)}</option>`).join("");sel.value=actual;}
+    if(tcPermiso("REGISTRAR")){
+      const q=await tcApi({accion:"listarCuadrillasTrabajosConjunta",usuario:u.usuario});
+      tcCuadrillas=q.cuadrillas||[];
+    }
+    tcRenderLista();
+  }catch(e){
+    const lista=document.getElementById("tcLista");
+    if(lista)lista.innerHTML=`<div class="tc-error">${tcEsc(e.message)}</div>`;
+  }finally{tcLoadingOff();}
+}
+
+function tcRenderLista(){
+  const arr=tcFiltrados();
+  const r=document.getElementById("tcResumen");
+  if(r)r.innerHTML=`<div class="tc-kpis"><div><b>${arr.length}</b><span>Total</span></div><div><b>${arr.filter(x=>x.estadoGeneral==="PENDIENTE DE VISTO BUENO TECNICO").length}</b><span>Pendiente Técnico</span></div><div><b>${arr.filter(x=>["PENDIENTE DE VALIDACION JEFATURA","PENDIENTE CONFORMIDAD FINAL"].includes(x.estadoGeneral)).length}</b><span>Pendiente Jefatura</span></div><div><b>${arr.filter(x=>x.estadoGeneral==="CONFORMIDAD FINAL").length}</b><span>Conformes</span></div></div>`;
+  const lista=document.getElementById("tcLista");
+  if(!lista)return;
+  if(!arr.length){lista.innerHTML='<div class="tc-vacio">No hay registros para los filtros seleccionados.</div>';return;}
+  lista.innerHTML=arr.map(tcTarjeta).join("");
+}
+
+function tcTarjeta(x){
+  const u=tcUsuario();
+  const pendTec=x.estadoGeneral==="PENDIENTE DE VISTO BUENO TECNICO";
+  const pendJef=["PENDIENTE DE VALIDACION JEFATURA","OBSERVADO POR TECNICO","PENDIENTE DE VISTO BUENO TECNICO"].includes(x.estadoGeneral);
+  const pendConf=x.estadoGeneral==="PENDIENTE CONFORMIDAD FINAL";
+  let acc="";
+  if(u.perfil==="TECNICO"&&pendTec&&tcPermiso("OBSERVAR")){
+    acc=`<button class="tc-btn tc-ok" onclick="tcRespuestaTecnico('${tcEsc(x.id)}','VISTO BUENO')">Visto bueno</button><button class="tc-btn tc-warn" onclick="tcRespuestaTecnico('${tcEsc(x.id)}','OBSERVADO')">Observar</button>`;
+  }
+  if(pendJef&&tcPermiso("VALIDAR")){
+    acc=`<button class="tc-btn tc-ok" onclick="tcValidarJefatura('${tcEsc(x.id)}','APROBADO')">Validar</button><button class="tc-btn tc-warn" onclick="tcValidarJefatura('${tcEsc(x.id)}','OBSERVADO')">Observar</button><button class="tc-btn tc-danger" onclick="tcValidarJefatura('${tcEsc(x.id)}','RECHAZADO')">Rechazar</button>`;
+  }
+  if(pendConf&&tcPermiso("APROBAR")){
+    acc=`<button class="tc-btn tc-ok" onclick="tcConformidad('${tcEsc(x.id)}','CONFORME')">Dar conformidad final</button><button class="tc-btn tc-danger" onclick="tcConformidad('${tcEsc(x.id)}','SIN CONFORMIDAD')">Sin conformidad</button>`;
+  }
+  return `<article class="tc-item"><div class="tc-item-top"><div><b>${tcEsc(x.cuadrilla)} · ${tcEsc(x.tipoTrabajo)}</b><small>${tcEsc(x.sede||"")} · ${tcFmtFecha(x.fechaTrabajo)} · ${tcEsc(x.horaInicio)} a ${tcEsc(x.horaFin)} · ${tcEsc(x.supervisorRegistra)}</small></div><span class="tc-estado">${tcEsc(x.estadoGeneral)}</span></div><details><summary>Ver detalle</summary>${tcDetalle(x)}<div class="tc-actions">${acc}</div></details></article>`;
+}
+
+function tcCargarXlsx(){
+  if(window.XLSX)return Promise.resolve(window.XLSX);
+  return new Promise((resolve,reject)=>{const s=document.createElement("script");s.src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js";s.onload=()=>window.XLSX?resolve(window.XLSX):reject(new Error("No se pudo iniciar el generador de Excel."));s.onerror=()=>reject(new Error("No se pudo cargar el generador de Excel."));document.head.appendChild(s);});
+}
+async function tcDescargarInforme(){
+  if(!tcPermiso("DESCARGAR")){alert("No tienes permiso para descargar el informe PEXT.");return;}
+  const arr=tcFiltrados();
+  if(!arr.length){alert("No hay registros para descargar con los filtros seleccionados.");return;}
+  try{
+    tcLoading("Generando informe...");
+    const XLSX=await tcCargarXlsx();
+    const filas=[["SEDE","TIPO DE TRABAJO REALIZADO","FECHA","CTO","CONECTORIZADOS","RECABLEADOS","CODIGOS DE RECABLEADOS","HORA DE INICIO","HORA DE FIN","COMENTARIOS DEL SUPERVISOR"]];
+    arr.forEach(x=>filas.push([
+      x.sede||"",x.tipoTrabajo||"",tcFmtFecha(x.fechaTrabajo),x.cto||"",
+      Number(x.cantidadConectorizados)||0,Number(x.cantidadRecableados)||0,x.codigosRecableados||"",
+      x.horaInicio||"",x.horaFin||"",x.comentarioFinal||""
+    ]));
+    const ws=XLSX.utils.aoa_to_sheet(filas);
+    ws['!autofilter']={ref:`A1:J${filas.length}`};
+    ws['!cols']=[{wch:14},{wch:28},{wch:13},{wch:22},{wch:16},{wch:14},{wch:32},{wch:14},{wch:14},{wch:48}];
+    const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,"PEXT");
+    XLSX.writeFile(wb,`INFORME_PEXT_${new Date().toISOString().slice(0,10).replaceAll('-','')}.xlsx`);
+  }catch(e){alert(e.message);}finally{tcLoadingOff();}
+}

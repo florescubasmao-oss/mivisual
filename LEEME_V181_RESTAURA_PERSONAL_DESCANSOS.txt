@@ -1,0 +1,15 @@
+MI VISUAL V181 - RESTAURA SUPERVISORES Y RESPONSABLES DE ALMACÉN EN DESCANSOS
+
+Base: V180.
+
+- Recupera supervisores y responsables de almacén desde la misma lectura de USUARIOS.
+- Mantiene cuadrillas, filtro por técnico y desplegable de técnicos.
+- Restaura los filtros de personal.
+- No agrega lecturas adicionales de Google Sheets.
+- Cambia la clave de caché para evitar respuestas antiguas.
+- No modifica aprobaciones, alertas, capacidad, estados ni permisos.
+
+Instalación:
+1. Reemplazar Code.gs completo.
+2. Guardar y crear un nuevo despliegue de Apps Script.
+3. Recargar con Ctrl + F5.

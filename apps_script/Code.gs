@@ -3964,7 +3964,7 @@ function puedeVerDescanso(usuario,item) {
 
 function claveCacheDescansos(usuario, periodo, sede) {
   return [
-    "DESCANSOS_V171",
+    "DESCANSOS_V181",
     normalizarUsuario(usuario.usuario || ""),
     normalizarTexto(usuario.perfil || ""),
     (periodo || "").toString(),
@@ -4000,44 +4000,96 @@ function leerUsuariosDescansosUnaVez(usuario) {
   const ultimaFila = hoja.getLastRow();
   if (ultimaFila <= 1) return [];
 
-  const datos = hoja.getRange(2, 1, ultimaFila - 1, Math.min(Math.max(hoja.getLastColumn(), 10), 11)).getValues();
+  const columnas = Math.min(Math.max(hoja.getLastColumn(), 10), 11);
+  const datos = hoja.getRange(2, 1, ultimaFila - 1, columnas).getValues();
   const perfilSolicitante = normalizarTexto(usuario.perfil);
   const sedeSolicitante = normalizarTexto(usuario.sede);
   const lista = [];
-  const mapa = {};
+  const mapaCuadrillas = {};
+  const mapaPersonal = {};
 
   datos.forEach(f => {
+    const usuarioFila = String(f[0] || "").trim();
     const cuadrilla = normalizarCuadrilla(f[3]);
     const sede = normalizarTexto(f[4]);
     const plataforma = plataformaDescansos(f[5]);
     const perfil = normalizarTexto(f[6]);
     const estado = normalizarTexto(f[8] || "ACTIVO");
+    const usuarioSupervisor = String(f[9] || "").trim();
+    const nombresApellidos = String(f[10] || f[0] || "").trim();
 
-    if (!cuadrilla) return;
-    if (perfil !== "TECNICO" || estado !== "ACTIVO") return;
-    if (!/^P\d+\b/i.test(cuadrilla) || !sede || sede === "TODAS") return;
+    if (estado !== "ACTIVO") return;
+    if (!sede || sede === "TODAS") return;
     if (perfilSolicitante === "SUPERVISOR" && sede !== sedeSolicitante) return;
 
-    const nombreTecnico = String(f[10] || f[0] || "").trim();
-    if (!mapa[cuadrilla]) {
-      mapa[cuadrilla] = {
-        cuadrilla,
-        sede,
-        plataforma,
-        supervisor: f[9] || "",
-        tecnico: f[0] || "",
-        tecnicos: []
-      };
-      lista.push(mapa[cuadrilla]);
+    if (perfil === "TECNICO" && cuadrilla && /^P\d+\b/i.test(cuadrilla)) {
+      if (!mapaCuadrillas[cuadrilla]) {
+        mapaCuadrillas[cuadrilla] = {
+          cuadrilla,
+          sede,
+          plataforma,
+          supervisor: usuarioSupervisor,
+          tecnico: usuarioFila,
+          tecnicos: [],
+          tipoPersonal: "CUADRILLA",
+          nombrePersonal: ""
+        };
+        lista.push(mapaCuadrillas[cuadrilla]);
+      }
+
+      if (nombresApellidos && mapaCuadrillas[cuadrilla].tecnicos.indexOf(nombresApellidos) === -1) {
+        mapaCuadrillas[cuadrilla].tecnicos.push(nombresApellidos);
+      }
+      return;
     }
-    if (nombreTecnico && mapa[cuadrilla].tecnicos.indexOf(nombreTecnico) === -1) {
-      mapa[cuadrilla].tecnicos.push(nombreTecnico);
+
+    const esSupervisor = perfil === "SUPERVISOR";
+    const esAlmacen = perfil === "ALMACEN" || perfil === "RESPONSABLE ALMACEN" || perfil === "RESPONSABLE DE ALMACEN";
+    if (!esSupervisor && !esAlmacen) return;
+    if (!usuarioFila) return;
+
+    const tipoPersonal = esAlmacen ? "ALMACEN" : "SUPERVISOR";
+    const clavePersonal = tipoPersonal + "|" + normalizarUsuario(usuarioFila);
+    if (mapaPersonal[clavePersonal]) return;
+
+    const idPersonal = "PERSONAL|" + usuarioFila;
+    mapaPersonal[clavePersonal] = {
+      cuadrilla: idPersonal,
+      sede,
+      plataforma: "PERSONAL",
+      supervisor: esSupervisor ? usuarioFila : usuarioSupervisor,
+      tecnico: usuarioFila,
+      tecnicos: [],
+      tipoPersonal,
+      nombrePersonal: nombresApellidos || usuarioFila,
+      usuario: usuarioFila
+    };
+    lista.push(mapaPersonal[clavePersonal]);
+  });
+
+  lista.forEach(item => {
+    if (Array.isArray(item.tecnicos)) {
+      item.tecnicos.sort((a, b) => a.localeCompare(b));
     }
   });
 
-  lista.forEach(item => item.tecnicos.sort((a,b) => a.localeCompare(b)));
+  lista.sort((a, b) => {
+    const sedeA = String(a.sede || "");
+    const sedeB = String(b.sede || "");
+    if (sedeA !== sedeB) return sedeA.localeCompare(sedeB);
 
-  lista.sort((a,b) => a.sede.localeCompare(b.sede) || a.plataforma.localeCompare(b.plataforma) || a.cuadrilla.localeCompare(b.cuadrilla));
+    const tipoA = normalizarTexto(a.tipoPersonal || "CUADRILLA");
+    const tipoB = normalizarTexto(b.tipoPersonal || "CUADRILLA");
+    const ordenTipo = { CUADRILLA: 1, SUPERVISOR: 2, ALMACEN: 3 };
+    if ((ordenTipo[tipoA] || 9) !== (ordenTipo[tipoB] || 9)) {
+      return (ordenTipo[tipoA] || 9) - (ordenTipo[tipoB] || 9);
+    }
+
+    const nombreA = String(a.nombrePersonal || a.cuadrilla || "");
+    const nombreB = String(b.nombrePersonal || b.cuadrilla || "");
+    return nombreA.localeCompare(nombreB, undefined, { numeric: true });
+  });
+
   return lista;
 }
 
@@ -4531,14 +4583,14 @@ function filaTrabajoConjuntaAObjeto(f){return {
 function listarCuadrillasTrabajosConjunta(data){
   exigirPextActivo();
   const u=obtenerUsuarioApp(data.usuario);
-  if(normalizarTexto(u.perfil)!=="SUPERVISOR"&&!validarPerfilJefaturaConjunta(u.perfil))throw new Error("Sin acceso a cuadrillas");
+  exigirPermisoModuloCentral(u,"PEXT","REGISTRAR");
   const base=listarCuadrillasObservacion(data).cuadrillas||[];
   return {ok:true,modulo:"TRABAJOS_CONJUNTA",accion:"LISTAR_CUADRILLAS",cuadrillas:base};
 }
 function registrarTrabajoConjunta(data){
   exigirPextActivo();
   const u=obtenerUsuarioApp(data.usuario);
-  if(normalizarTexto(u.perfil)!=="SUPERVISOR")throw new Error("Solo el Supervisor puede registrar trabajos PEXT");
+  exigirPermisoModuloCentral(u,"PEXT","REGISTRAR");
   const cuadrilla=normalizarCuadrilla(data.cuadrilla);if(!cuadrilla)throw new Error("Debe seleccionar una cuadrilla");
   const dc=obtenerDatosCuadrillaApp(cuadrilla);if(normalizarTexto(dc.sede)!==normalizarTexto(u.sede))throw new Error("Supervisor solo puede registrar cuadrillas de su sede");
   const tipo=normalizarTexto(data.tipoTrabajo);if(!["NORMALIZACION","CONJUNTA PEXT","ORDENAMIENTO"].includes(tipo))throw new Error("Tipo de trabajo no válido");
@@ -4565,19 +4617,33 @@ function registrarTrabajoConjunta(data){
 }
 function listarTrabajosConjunta(data){
   exigirPextActivo();
-  const u=obtenerUsuarioApp(data.usuario),h=asegurarHojaTrabajosConjunta(),d=h.getDataRange().getValues(),lista=[];
-  for(let i=1;i<d.length;i++){
-    const x=filaTrabajoConjuntaAObjeto(d[i]);let ver=false;
-    if(normalizarTexto(u.perfil)==="TECNICO")ver=normalizarCuadrilla(u.cuadrilla)===normalizarCuadrilla(x.cuadrilla);
-    else if(normalizarTexto(u.perfil)==="SUPERVISOR")ver=normalizarUsuario(u.usuario)===normalizarUsuario(x.supervisorRegistra);
-    else if(validarPerfilJefaturaConjunta(u.perfil)||esOperacionesLima(u.perfil))ver=true;
-    if(!ver)continue;lista.push(x);
+  const u=obtenerUsuarioApp(data.usuario);
+  const permiso=exigirPermisoModuloCentral(u,"PEXT","VER");
+  const h=asegurarHojaTrabajosConjunta(),ultima=h.getLastRow();
+  if(ultima<=1)return {ok:true,modulo:"TRABAJOS_CONJUNTA",accion:"LISTAR",perfil:u.perfil,registros:0,trabajos:[]};
+  const d=h.getRange(2,1,ultima-1,36).getValues(),lista=[],mapaSede={};
+  for(let i=0;i<d.length;i++){
+    const x=filaTrabajoConjuntaAObjeto(d[i]);
+    const clave=normalizarCuadrilla(x.cuadrilla);
+    if(!mapaSede[clave]){
+      try{mapaSede[clave]=normalizarTexto(obtenerDatosCuadrillaApp(x.cuadrilla).sede);}catch(e){mapaSede[clave]="";}
+    }
+    x.sede=mapaSede[clave]||"";
+    const alcance=normalizarTexto(permiso.alcanceDatos);
+    let ver=false;
+    if(alcance==="ZONA NORTE")ver=true;
+    else if(alcance==="SEDE")ver=normalizarTexto(u.sede)===normalizarTexto(x.sede);
+    else if(alcance==="CUADRILLA")ver=normalizarCuadrilla(u.cuadrilla)===normalizarCuadrilla(x.cuadrilla);
+    else if(alcance==="PERSONAL")ver=normalizarUsuario(u.usuario)===normalizarUsuario(x.supervisorRegistra)||normalizarCuadrilla(u.cuadrilla)===normalizarCuadrilla(x.cuadrilla);
+    else if(alcance==="SEDE / PROPIOS")ver=normalizarTexto(u.sede)===normalizarTexto(x.sede)||normalizarUsuario(u.usuario)===normalizarUsuario(x.supervisorRegistra);
+    if(ver)lista.push(x);
   }
-  lista.reverse();return {ok:true,modulo:"TRABAJOS_CONJUNTA",accion:"LISTAR",perfil:u.perfil,registros:lista.length,trabajos:lista};
+  lista.reverse();
+  return {ok:true,modulo:"TRABAJOS_CONJUNTA",accion:"LISTAR",perfil:u.perfil,registros:lista.length,trabajos:lista};
 }
 function responderTrabajoConjuntaTecnico(data){
   exigirPextActivo();
-  const u=obtenerUsuarioApp(data.usuario);if(normalizarTexto(u.perfil)!=="TECNICO")throw new Error("Solo el Técnico puede dar visto bueno u observar");
+  const u=obtenerUsuarioApp(data.usuario);exigirPermisoModuloCentral(u,"PEXT","OBSERVAR");
   const e=buscarTrabajoConjunta(data.id),x=e.item;if(normalizarCuadrilla(u.cuadrilla)!==normalizarCuadrilla(x.cuadrilla))throw new Error("Este registro no corresponde a su cuadrilla");
   if(normalizarTexto(x.estadoGeneral)!=="PENDIENTE DE VISTO BUENO TECNICO")throw new Error("El registro ya fue revisado por el Técnico");
   const resultado=normalizarTexto(data.resultado),obs=(data.observacion||"").toString().trim();if(!["VISTO BUENO","OBSERVADO"].includes(resultado))throw new Error("Resultado técnico no válido");if(resultado==="OBSERVADO"&&!obs)throw new Error("La observación es obligatoria");
@@ -4586,18 +4652,38 @@ function responderTrabajoConjuntaTecnico(data){
 }
 function validarTrabajoConjuntaJefatura(data){
   exigirPextActivo();
-  const u=obtenerUsuarioApp(data.usuario);if(!validarPerfilJefaturaConjunta(u.perfil))throw new Error("Solo Jefatura puede validar");
-  const e=buscarTrabajoConjunta(data.id),estado=normalizarTexto(e.item.estadoGeneral);if(!["PENDIENTE DE VALIDACION JEFATURA","OBSERVADO POR TECNICO"].includes(estado))throw new Error("El registro no está pendiente de validación de Jefatura");
-  const resultado=normalizarTexto(data.resultado),obs=(data.observacion||"").toString().trim();if(!["APROBADO","OBSERVADO","RECHAZADO"].includes(resultado))throw new Error("Resultado de Jefatura no válido");if(resultado!=="APROBADO"&&!obs)throw new Error("El motivo es obligatorio");
-  const ahora=new Date();e.hoja.getRange(e.fila,29).setValue(resultado);e.hoja.getRange(e.fila,30).setValue(obs);e.hoja.getRange(e.fila,31).setValue(u.usuario);e.hoja.getRange(e.fila,32).setValue(ahora).setNumberFormat("dd/mm/yyyy");e.hoja.getRange(e.fila,33).setValue(ahora).setNumberFormat("hh:mm:ss");e.hoja.getRange(e.fila,35).setValue(resultado==="APROBADO"?"PENDIENTE CONFORMIDAD FINAL":(resultado==="OBSERVADO"?"OBSERVADO POR JEFATURA":"RECHAZADO"));
+  const u=obtenerUsuarioApp(data.usuario);
+  exigirPermisoModuloCentral(u,"PEXT","VALIDAR");
+  const e=buscarTrabajoConjunta(data.id),estado=normalizarTexto(e.item.estadoGeneral);
+  if(!["PENDIENTE DE VISTO BUENO TECNICO","PENDIENTE DE VALIDACION JEFATURA","OBSERVADO POR TECNICO"].includes(estado))throw new Error("El registro no está pendiente de validación");
+  const resultado=normalizarTexto(data.resultado),obs=(data.observacion||"").toString().trim();
+  if(!["APROBADO","OBSERVADO","RECHAZADO"].includes(resultado))throw new Error("Resultado de validación no válido");
+  if(resultado!=="APROBADO"&&!obs)throw new Error("El motivo es obligatorio");
+  const ahora=new Date();
+  e.hoja.getRange(e.fila,29).setValue(resultado);
+  e.hoja.getRange(e.fila,30).setValue(obs);
+  e.hoja.getRange(e.fila,31).setValue(u.usuario);
+  e.hoja.getRange(e.fila,32).setValue(ahora).setNumberFormat("dd/mm/yyyy");
+  e.hoja.getRange(e.fila,33).setValue(ahora).setNumberFormat("hh:mm:ss");
+  e.hoja.getRange(e.fila,35).setValue(resultado==="APROBADO"?"PENDIENTE CONFORMIDAD FINAL":(resultado==="OBSERVADO"?"OBSERVADO POR JEFATURA":"RECHAZADO"));
   return {ok:true,modulo:"TRABAJOS_CONJUNTA",accion:"VALIDAR_JEFATURA",id:data.id,resultado};
 }
 function conformidadFinalTrabajoConjunta(data){
   exigirPextActivo();
-  const u=obtenerUsuarioApp(data.usuario);if(!validarPerfilJefaturaConjunta(u.perfil))throw new Error("Solo Jefatura puede dar conformidad final");
-  const e=buscarTrabajoConjunta(data.id);if(normalizarTexto(e.item.estadoGeneral)!=="PENDIENTE CONFORMIDAD FINAL")throw new Error("El registro no está pendiente de conformidad final");
-  const resultado=normalizarTexto(data.resultado),obs=(data.observacion||"").toString().trim();if(!["CONFORME","SIN CONFORMIDAD"].includes(resultado))throw new Error("Conformidad final no válida");if(resultado==="SIN CONFORMIDAD"&&!obs)throw new Error("El motivo es obligatorio");
-  const ahora=new Date();e.hoja.getRange(e.fila,30).setValue(obs||e.item.observacionJefatura||"");e.hoja.getRange(e.fila,31).setValue(u.usuario);e.hoja.getRange(e.fila,32).setValue(ahora).setNumberFormat("dd/mm/yyyy");e.hoja.getRange(e.fila,33).setValue(ahora).setNumberFormat("hh:mm:ss");e.hoja.getRange(e.fila,34).setValue(resultado);e.hoja.getRange(e.fila,35).setValue(resultado==="CONFORME"?"CONFORMIDAD FINAL":"SIN CONFORMIDAD");
+  const u=obtenerUsuarioApp(data.usuario);
+  exigirPermisoModuloCentral(u,"PEXT","APROBAR");
+  const e=buscarTrabajoConjunta(data.id);
+  if(normalizarTexto(e.item.estadoGeneral)!=="PENDIENTE CONFORMIDAD FINAL")throw new Error("El registro no está pendiente de conformidad final");
+  const resultado=normalizarTexto(data.resultado),obs=(data.observacion||"").toString().trim();
+  if(!["CONFORME","SIN CONFORMIDAD"].includes(resultado))throw new Error("Conformidad final no válida");
+  if(resultado==="SIN CONFORMIDAD"&&!obs)throw new Error("El motivo es obligatorio");
+  const ahora=new Date();
+  e.hoja.getRange(e.fila,30).setValue(obs||e.item.observacionJefatura||"");
+  e.hoja.getRange(e.fila,31).setValue(u.usuario);
+  e.hoja.getRange(e.fila,32).setValue(ahora).setNumberFormat("dd/mm/yyyy");
+  e.hoja.getRange(e.fila,33).setValue(ahora).setNumberFormat("hh:mm:ss");
+  e.hoja.getRange(e.fila,34).setValue(resultado);
+  e.hoja.getRange(e.fila,35).setValue(resultado==="CONFORME"?"CONFORMIDAD FINAL":"SIN CONFORMIDAD");
   return {ok:true,modulo:"TRABAJOS_CONJUNTA",accion:"CONFORMIDAD_FINAL",id:data.id,resultado};
 }
 
