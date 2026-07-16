@@ -108,39 +108,13 @@ function ckNum(id){return Number(document.getElementById(id)?.value||0)||0;}
 function ckField(id,label,unit){return `<div class="ck-field ck-material-progress ck-progress-yellow"><label>${label}</label><div class="ck-unit"><input id="${id}" type="number" min="0" step="1" placeholder="0" oninput="ckActualizarMaterial(this)"><span>${unit}</span></div><div class="ck-progress-note">Pendiente de llenar</div></div>`;}
 
 
-let CK_CONFIG_ACTUAL=null;
-function ckEsJefaturaConfig(perfil){const p=ckNorm(perfil);return ['JEFATURA','ADMIN','ADMINISTRADOR'].includes(p);}
-async function ckObtenerConfiguracion(){
-  const u=ckUser();
-  if(!u.usuario)return {estado:'HABILITADO',activo:true,fechaInicio:'',fechaFin:''};
-  try{const d=await ckApi({accion:'obtenerConfiguracionChecklistAlmacen',usuario:u.usuario});CK_CONFIG_ACTUAL=d.configuracion||d;return CK_CONFIG_ACTUAL;}
-  catch(e){console.warn('No se pudo leer configuración Checklist:',e);return {estado:'HABILITADO',activo:true,fechaInicio:'',fechaFin:''};}
-}
-function ckConfigPanel(cfg){
-  const estado=ckNorm((cfg&&cfg.estado)||'HABILITADO');
-  return `<div class="tc-config-admin"><div><b>✅ CHECKLIST ALMACÉN</b><p>Control de disponibilidad del módulo para todos los perfiles.</p></div><div class="tc-config-actions"><select id="ckCfgEstado"><option value="HABILITADO" ${estado==='HABILITADO'?'selected':''}>HABILITADO</option><option value="DESHABILITADO" ${estado==='DESHABILITADO'?'selected':''}>DESHABILITADO</option></select><button class="button_1" onclick="ckGuardarConfiguracion()">Guardar</button></div></div>`;
-}
-async function ckGuardarConfiguracion(){
-  const estado=document.getElementById('ckCfgEstado')?.value||'HABILITADO';
-  try{await ckApi({accion:'guardarConfiguracionChecklistAlmacen',usuario:ckUser().usuario,estado,fechaInicio:'',fechaFin:''});alert('Estado del Checklist actualizado correctamente');await ckAplicarVisibilidadChecklist();if(typeof mostrarAdministracion==='function')mostrarAdministracion();}catch(e){alert(e.message)}
-}
-async function ckAplicarVisibilidadChecklist(){
-  const card=document.getElementById('cardChecklistAlmacen');if(!card)return;
-  const cfg=await ckObtenerConfiguracion();
-  if(!cfg.activo) card.style.setProperty('display','none','important');
-}
 
 async function mostrarChecklistAlmacen(){
   const u=ckUser();
-  const cfg=await ckObtenerConfiguracion();
   mostrarPantalla(ckStyle()+`<div class="ck-wrap"><div class="ck-head"><h2>✅ CHECKLIST ALMACÉN</h2><p>Control de equipos, materiales y evidencias por cuadrilla.</p></div><div id="ckContenido"><div class="ck-card">Cargando...</div></div></div>`);
   if(u.perfil==='TECNICO'){
     const c=document.getElementById('ckContenido');
-    if(cfg.activo){
-      c.innerHTML=`<button id="ckNuevoToggle" type="button" class="ck-new-toggle" onclick="ckToggleNuevoChecklist()"><span>➕ Nuevo checklist</span><span class="ck-new-arrow">▼</span></button><div id="ckFormPanel" class="ck-form-panel"></div><div id="ckLista"></div>`;
-    }else{
-      c.innerHTML=`<div class="ck-disabled">Checklist no disponible para nuevos registros en este periodo.</div><div id="ckLista"></div>`;
-    }
+    c.innerHTML=`<button id="ckNuevoToggle" type="button" class="ck-new-toggle" onclick="ckToggleNuevoChecklist()"><span>➕ Nuevo checklist</span><span class="ck-new-arrow">▼</span></button><div id="ckFormPanel" class="ck-form-panel"></div><div id="ckLista"></div>`;
     await ckCargarHistorialTecnico();
   }else{
     await ckCargarLista();
@@ -181,8 +155,6 @@ async function ckGuardar(ev){
   CK_GUARDANDO_CHECKLIST=true;
   if(btn){btn.disabled=true;btn.textContent='Guardando, espere...'}
   try{
-    const cfg=await ckObtenerConfiguracion();
-    if(!cfg.activo){throw new Error('El Checklist Almacén no está habilitado para nuevos registros en este periodo.');}
     const payload={accion:'registrarChecklistAlmacen',usuario:u.usuario,nombresApellidos:document.getElementById('ckNombres').value,fechaGestion:document.getElementById('ckFecha').value,cableDrop:ckNum('ckCableDrop'),pre50:ckNum('ckPre50'),pre100:ckNum('ckPre100'),pre150:ckNum('ckPre150'),pre200:ckNum('ckPre200'),anclajeP:ckNum('ckAnclaje'),cintaBandIt:ckNum('ckBand'),hebilla:ckNum('ckHebilla'),acoplador:ckNum('ckAcoplador'),roseta:ckNum('ckRoseta'),conectoresOpticos:ckNum('ckConectores'),templadores:ckNum('ckTempladores'),splitter:ckNum('ckSplitter'),clevis:ckNum('ckClevis'),utpCat5:ckNum('ckCat5'),utpCat6:ckNum('ckCat6'),patchApcApc:ckNum('ckApc'),patchUpcApc:ckNum('ckUpc'),rj45:ckNum('ckRj45')};
     payload.ontZteEquipos=await ckCollectEquipos('ontZte');
     payload.ontHuaweiEquipos=await ckCollectEquipos('ontHuawei');
@@ -490,7 +462,7 @@ async function ckConstruirPayloadTipo(tipo){const p={tipoChecklist:tipo,comentar
  else if(tipo==='UNIDAD VEHICULAR'){p.fotoUnidadFrente=await ckArchivoObligatorio('ckUnidadFrente','la foto frontal');p.fotoUnidadPosterior=await ckArchivoObligatorio('ckUnidadPosterior','la foto posterior');p.fotoUnidadLadoIzquierdo=await ckArchivoObligatorio('ckUnidadIzq','la foto del lado izquierdo');p.fotoUnidadLadoDerecho=await ckArchivoObligatorio('ckUnidadDer','la foto del lado derecho');p.fotoExtintor=await ckArchivoObligatorio('ckExtintor','la foto del extintor');p.fotoBotiquin=await ckArchivoObligatorio('ckBotiquin','la foto del botiquín');p.fotoRejaSeparadora=await ckArchivoObligatorio('ckReja','la foto de la reja separadora');p.fotoParrilla1=await ckArchivoObligatorio('ckParrilla1','la primera foto de la parrilla');p.fotoParrilla2=await ckArchivoObligatorio('ckParrilla2','la segunda foto de la parrilla');p.observacionUnidad=document.getElementById('ckObsUnidad')?.value||'';}
  else if(tipo==='DOCUMENTACION'){p.licenciaFechaVencimiento=document.getElementById('ckLicVence')?.value||'';p.soatFechaVencimiento=document.getElementById('ckSoatVence')?.value||'';p.revisionTecnicaFechaVencimiento=document.getElementById('ckRevVence')?.value||'';if(!p.licenciaFechaVencimiento||!p.soatFechaVencimiento||!p.revisionTecnicaFechaVencimiento)throw new Error('Debe completar todas las fechas de vencimiento');p.licenciaFotoFrente=await ckArchivoObligatorio('ckLicFrente','la licencia por delante');p.licenciaFotoReverso=await ckArchivoObligatorio('ckLicReverso','la licencia por detrás');p.soatArchivo=await ckArchivoObligatorio('ckSoatArchivo','el SOAT',true);p.revisionTecnicaArchivo=await ckArchivoObligatorio('ckRevArchivo','la revisión técnica',true);p.observacionDocumentacion=document.getElementById('ckObsDoc')?.value||'';}
  else {p.fotoPersonalCompleto=await ckArchivoObligatorio('ckPersonalCompleto','la foto completa del personal');p.fotoBotas=await ckArchivoObligatorio('ckBotas','la foto de botas');p.fotoFotocheck=await ckArchivoObligatorio('ckFotocheck','la foto del fotocheck');p.observacionEpp=document.getElementById('ckObsEpp')?.value||'';}return p;}
-async function ckGuardar(ev){const u=ckUser(),btn=ev?.currentTarget||ev?.target;if(CK_GUARDANDO_CHECKLIST)return;CK_GUARDANDO_CHECKLIST=true;if(btn){btn.disabled=true;btn.textContent='Guardando, espere...'}try{const cfg=await ckObtenerConfiguracion();if(!cfg.activo)throw new Error('El Checklist Almacén no está habilitado');const tipo=document.getElementById('ckTipoChecklist')?.value||'MATERIALES';const payload={accion:'registrarChecklistAlmacen',usuario:u.usuario,nombresApellidos:document.getElementById('ckNombres')?.value||'',fechaGestion:document.getElementById('ckFecha')?.value||''};Object.assign(payload,await ckConstruirPayloadTipo(tipo));await ckApi(payload);alert('Checklist de '+tipo+' registrado correctamente');ckToggleNuevoChecklist(false);await ckCargarHistorialTecnico();}catch(e){alert(e.message)}finally{CK_GUARDANDO_CHECKLIST=false;if(btn&&document.body.contains(btn)){btn.disabled=false;btn.textContent='Guardar checklist'}}}
+async function ckGuardar(ev){const u=ckUser(),btn=ev?.currentTarget||ev?.target;if(CK_GUARDANDO_CHECKLIST)return;CK_GUARDANDO_CHECKLIST=true;if(btn){btn.disabled=true;btn.textContent='Guardando, espere...'}try{const tipo=document.getElementById('ckTipoChecklist')?.value||'MATERIALES';const payload={accion:'registrarChecklistAlmacen',usuario:u.usuario,nombresApellidos:document.getElementById('ckNombres')?.value||'',fechaGestion:document.getElementById('ckFecha')?.value||''};Object.assign(payload,await ckConstruirPayloadTipo(tipo));await ckApi(payload);alert('Checklist de '+tipo+' registrado correctamente');ckToggleNuevoChecklist(false);await ckCargarHistorialTecnico();}catch(e){alert(e.message)}finally{CK_GUARDANDO_CHECKLIST=false;if(btn&&document.body.contains(btn)){btn.disabled=false;btn.textContent='Guardar checklist'}}}
 
 /* =========================
    VISUALIZACIÓN CHECKLIST V141

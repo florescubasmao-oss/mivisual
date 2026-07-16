@@ -1,4 +1,4 @@
-// MI VISUAL V104 - Administración visual + disponibilidad Checklist
+// MI VISUAL - Administración visual + permisos por perfil
 (function(){
   const oldConfigurarMenu = typeof configurarMenu === 'function' ? configurarMenu : null;
 
@@ -13,11 +13,7 @@
       .adm104-card h3{margin:0 0 5px;font-size:16px;color:#fff}
       .adm104-card p{margin:0;color:#cbd5e1;font-size:12px;line-height:1.4}
       .adm104-config{grid-column:1/-1;background:#eff6ff;color:#0f172a;border:2px solid #60a5fa;border-radius:18px;padding:16px;box-shadow:0 10px 24px rgba(15,23,42,.16)}
-      .adm104-config .ck-config{margin:0;box-shadow:none;border:0;background:transparent;padding:0}
-      .adm104-config .ck-config-head{margin-bottom:10px}
-      .adm104-config .ck-config-note{color:#334155}
-      .adm104-back{margin-top:16px}.pm-admin h3{margin:0 0 4px}.pm-admin p{color:#475569}.pm-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}.pm-grid label,.pm-obs{font-size:12px;font-weight:800;display:flex;flex-direction:column;gap:5px}.pm-grid input,.pm-grid select,.pm-obs textarea{padding:9px;border:1px solid #94a3b8;border-radius:9px;background:#fff;color:#111827}.pm-checks{display:flex;gap:10px;flex-wrap:wrap;margin:12px 0}.pm-checks label{background:#e2e8f0;padding:7px 9px;border-radius:9px;font-size:11px;font-weight:800}.pm-actions{display:flex;gap:8px;margin-top:10px}@media(max-width:700px){.pm-grid{grid-template-columns:1fr}}.tc-config-admin{display:flex;align-items:center;justify-content:space-between;gap:16px}.tc-config-admin p{margin:4px 0 0;color:#334155;font-size:12px}.tc-config-actions{display:flex;gap:10px;align-items:center}.tc-config-actions select{padding:10px 12px;border-radius:10px;border:1px solid #94a3b8;background:#fff;color:#0f172a;font-weight:700}@media(max-width:700px){.tc-config-admin{align-items:stretch;flex-direction:column}.tc-config-actions{width:100%}.tc-config-actions select{flex:1}}
-      @media(max-width:700px){.adm104-grid{grid-template-columns:1fr}.adm104-card{min-height:88px;padding:14px}.adm104-title{font-size:22px}.adm104-config{grid-column:auto}}
+      .adm104-back{margin-top:16px}.pm-admin h3{margin:0 0 4px}.pm-admin p{color:#475569}.pm-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}.pm-grid label,.pm-obs{font-size:12px;font-weight:800;display:flex;flex-direction:column;gap:5px}.pm-grid input,.pm-grid select,.pm-obs textarea{padding:9px;border:1px solid #94a3b8;border-radius:9px;background:#fff;color:#111827}.pm-checks{display:flex;gap:10px;flex-wrap:wrap;margin:12px 0}.pm-checks label{background:#e2e8f0;padding:7px 9px;border-radius:9px;font-size:11px;font-weight:800}.pm-actions{display:flex;gap:8px;margin-top:10px}@media(max-width:700px){.pm-grid{grid-template-columns:1fr}}      @media(max-width:700px){.adm104-grid{grid-template-columns:1fr}.adm104-card{min-height:88px;padding:14px}.adm104-title{font-size:22px}.adm104-config{grid-column:auto}}
     </style>`;
   }
 
@@ -28,10 +24,6 @@
       return;
     }
 
-    let cfg={estado:'HABILITADO',activo:true,fechaInicio:'',fechaFin:''};
-    let cfgPext={estado:'DESHABILITADO',activo:false};
-    try{ cfg=await ckObtenerConfiguracion(); }catch(e){ console.warn(e); }
-    try{ if(typeof tcObtenerConfiguracionPext==='function') cfgPext=await tcObtenerConfiguracionPext(); }catch(e){ console.warn(e); }
 
     const cards=[
       ['📥','ACTUALIZAR PRODUCCIÓN','Importar producción desde la hoja IMPORTAR_PRODUCCION','mostrarImportarProduccion()'],
@@ -46,8 +38,6 @@
       <h2 class="adm104-title">⚙️ ADMINISTRACIÓN</h2>
       <div class="adm104-grid">
         ${cards.map(c=>`<div class="adm104-card" onclick="${c[3]}"><div class="adm104-icon">${c[0]}</div><div><h3>${c[1]}</h3><p>${c[2]}</p></div></div>`).join('')}
-        <div class="adm104-config">${ckConfigPanel(cfg)}</div>
-        <div class="adm104-config">${typeof tcConfigPanelPext==='function'?tcConfigPanelPext(cfgPext):''}</div>
         ${typeof pmPanelAdmin==='function'?pmPanelAdmin():''}
       </div>
       <div class="adm104-back"><button class="button_1" onclick="volverInicio()">⬅️ Volver al menú</button></div>

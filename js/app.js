@@ -175,10 +175,8 @@ async function configurarMenu(){
 
     if (pantalla) pantalla.innerHTML = "";
     if (resultado) resultado.innerHTML = "";
-    // Si ya existe contexto en memoria, conservar el menú visible mientras se aplica la configuración.
-    // Esto evita la sensación de pantalla en blanco al volver desde un módulo.
-    const contextoEnMemoria = typeof PM_PERMISOS_CARGADOS !== "undefined" && PM_PERMISOS_CARGADOS;
-    if (menu && !contextoEnMemoria) menu.style.setProperty("display", "none", "important");
+    // Ocultar el menú mientras se consultan permisos y módulos habilitados.
+    if (menu) menu.style.setProperty("display", "none", "important");
     const mv55 = prepararMenuVisual();
     setBotonNavegacion("menu");
 
@@ -313,7 +311,7 @@ async function configurarMenu(){
     let opciones = [...(permisos[perfil] || [])];
     try {
         if (typeof pmCargarPermisosActuales === "function") {
-            await pmCargarPermisosActuales(false);
+            await pmCargarPermisosActuales(true);
             const dinamicos = pmModulosMenu();
             // Si la hoja PERMISOS_MODULOS fue leída, su resultado es autoritativo,
             // incluso cuando devuelve cero módulos. No se mezclan permisos antiguos.
@@ -336,28 +334,7 @@ async function configurarMenu(){
         opciones = opciones.filter(id => id !== "cardChecklistAlmacen");
     }
 
-    // Consultar primero la disponibilidad de los módulos para evitar que aparezcan
-    // por unos instantes antes de ocultarse.
-    let checklistActivo = true;
-    let pextActivo = false;
-    try {
-        if (typeof PM_CONFIG_MENU !== "undefined" && PM_CONFIG_MENU) {
-            checklistActivo = PM_CONFIG_MENU.checklist ? PM_CONFIG_MENU.checklist.activo !== false : true;
-            pextActivo = PM_CONFIG_MENU.pext ? PM_CONFIG_MENU.pext.activo === true : false;
-        } else {
-            const consultas = await Promise.all([
-                typeof ckObtenerConfiguracion === "function" ? ckObtenerConfiguracion() : Promise.resolve({activo:true}),
-                typeof tcObtenerConfiguracionPext === "function" ? tcObtenerConfiguracionPext() : Promise.resolve({activo:false})
-            ]);
-            checklistActivo = consultas[0] ? consultas[0].activo !== false : true;
-            pextActivo = consultas[1] ? consultas[1].activo === true : false;
-        }
-    } catch (e) {
-        console.warn("No se pudo completar la configuración inicial del menú", e);
-    }
-
-    if (!checklistActivo) opciones = opciones.filter(id => id !== "cardChecklistAlmacen");
-    if (!pextActivo) opciones = opciones.filter(id => id !== "cardTrabajosConjunta");
+    // La visibilidad depende únicamente de PERMISOS_MODULOS.
 
     opciones.forEach(id => mostrarCardSeguro(id, true));
 
@@ -368,9 +345,7 @@ async function configurarMenu(){
     if (menu) menu.style.setProperty("display", "grid", "important");
 
     if(typeof actualizarIndicadorDescansoMenu === "function") {
-        const cargarIndicador = () => actualizarIndicadorDescansoMenu(false);
-        if ("requestIdleCallback" in window) requestIdleCallback(cargarIndicador, {timeout: 1200});
-        else setTimeout(cargarIndicador, 150);
+        actualizarIndicadorDescansoMenu();
     }
 }
 
@@ -381,5 +356,5 @@ window.addEventListener("load", function () {
         document.getElementById("pantallaCarga").style.display = "none";
         document.getElementById("contenidoApp").style.display = "block";
 
-    },250);
+    },2000);
 });
