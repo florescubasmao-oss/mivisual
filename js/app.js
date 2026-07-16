@@ -311,7 +311,7 @@ async function configurarMenu(){
     let opciones = [...(permisos[perfil] || [])];
     try {
         if (typeof pmCargarPermisosActuales === "function") {
-            await pmCargarPermisosActuales(true);
+            await pmCargarPermisosActuales(false);
             const dinamicos = pmModulosMenu();
             // Si la hoja PERMISOS_MODULOS fue leída, su resultado es autoritativo,
             // incluso cuando devuelve cero módulos. No se mezclan permisos antiguos.
@@ -321,18 +321,7 @@ async function configurarMenu(){
         }
     } catch(e) { console.warn("Se conserva menú anterior", e); }
 
-    // V161: OPERACIONES LIMA tiene una vista ejecutiva cerrada.
-    // Esta regla evita que una caché antigua, una regla heredada o la
-    // disponibilidad global del Checklist le concedan acceso por error.
-    if (perfil === "OPERACIONES LIMA") {
-        const permitidasOperacionesLima = new Set([
-            "cardActividadCampo",
-            "cardProgramacionDescansos",
-            "cardTrabajosConjunta"
-        ]);
-        opciones = opciones.filter(id => permitidasOperacionesLima.has(id));
-        opciones = opciones.filter(id => id !== "cardChecklistAlmacen");
-    }
+    // V168: el menú se construye exclusivamente desde PERMISOS_MODULOS.
 
     // La visibilidad depende únicamente de PERMISOS_MODULOS.
 

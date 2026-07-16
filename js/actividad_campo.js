@@ -132,7 +132,7 @@ function estiloActividadCampo(){
 
 function mostrarActividadCampo(){
     const u = usuarioActualActividad();
-    if(!(u.perfil === "SUPERVISOR" || esJefaturaActividad(u.perfil))){
+    if(typeof pmPuedeVer === "function" ? !pmPuedeVer("ACTIVIDAD CAMPO") : !(u.perfil === "SUPERVISOR" || esJefaturaActividad(u.perfil))){
         mostrarPantalla(`${estiloActividadCampo()}<div class="act-wrap"><div class="act-error">No tienes permiso para acceder a Actividad en Campo.</div></div>`);
         return;
     }
@@ -146,7 +146,7 @@ function mostrarActividadCampo(){
                 <p class="act-sub">Registro de auditorías, supervisiones, seguimiento, validaciones, capacitaciones y checklist.</p>
             </div>
             <div class="act-actions">
-                ${u.perfil === "SUPERVISOR" && (typeof pmPuede!=="function" || pmPuede("ACTIVIDAD CAMPO","REGISTRAR")) ? `<button class="act-btn ok" onclick="mostrarFormularioActividadCampo()">+ Nueva actividad</button>` : ""}
+                ${(typeof pmPuede==="function" ? pmPuede("ACTIVIDAD CAMPO","REGISTRAR") : u.perfil === "SUPERVISOR") ? `<button class="act-btn ok" onclick="mostrarFormularioActividadCampo()">+ Nueva actividad</button>` : ""}
                 <button class="act-btn sec" onclick="cargarActividadCampo()">🔄 Actualizar lista</button>
             </div>
             ${esJefaturaActividad(u.perfil) ? `<div class="act-note">Vista Jefatura: consulta y validación visual de registros realizados por supervisores. El registro de nuevas actividades queda habilitado solo para Supervisores.</div>` : ""}

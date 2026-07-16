@@ -1,0 +1,19 @@
+MI VISUAL V168 - MOTOR CENTRAL DE PERMISOS
+
+Base: mivisual(24).zip + Code.gs entregado por el usuario.
+
+Cambios:
+- Menú construido únicamente desde PERMISOS_MODULOS.
+- Eliminada la lista fija de OPERACIONES LIMA.
+- Nuevo motor central para VER, REGISTRAR, EDITAR, OBSERVAR, APROBAR, VALIDAR, DESCARGAR y ADMINISTRAR.
+- Alcance central: CUADRILLA, SEDE, SEDE / PROPIOS, PERSONAL y ZONA NORTE.
+- Lectura dinámica aplicada a Actividad Campo, Validación Técnica, Observaciones, Actas Escaneadas, Checklist Almacén, Descansos y PEXT.
+- Validación Técnica admite cualquier perfil con VER y muestra acciones solo si la hoja las autoriza.
+- No se modificaron los flujos internos de aprobación/validación de los perfiles actuales.
+
+Instalación:
+1. Reemplazar archivos web del proyecto.
+2. Reemplazar Code.gs completo en Apps Script.
+3. Guardar y crear un nuevo despliegue.
+4. Usar la nueva URL si Apps Script genera otra.
+5. Ctrl + F5 y volver a iniciar sesión.

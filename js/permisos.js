@@ -7,8 +7,27 @@ function pmNorm(v){return (v||"").toString().toUpperCase().normalize("NFD").repl
 async function pmApi(payload){const r=await fetch(API_PERMISOS,{method:'POST',body:JSON.stringify(payload)});const d=await r.json();if(!d.ok)throw new Error(d.error||'Error de permisos');return d;}
 async function pmCargarPermisosActuales(forzar){const usuario=(localStorage.getItem('usuario')||'').trim();if(!usuario){PM_PERMISOS=[];PM_PERMISOS_CARGADOS=true;return [];}if(PM_PERMISOS_CARGADOS&&!forzar)return PM_PERMISOS||[];const cacheKey='permisosModulos:'+pmNorm(usuario);try{let d;try{d=await pmApi({accion:'obtenerContextoMenu',usuario});}catch(_){d=await pmApi({accion:'obtenerPermisosUsuario',usuario});}PM_PERMISOS=Array.isArray(d.permisos)?d.permisos:[];PM_CONFIG_MENU=d.configuracion||null;PM_PERMISOS_CARGADOS=true;localStorage.setItem(cacheKey,JSON.stringify(PM_PERMISOS));localStorage.removeItem('permisosModulos');return PM_PERMISOS;}catch(e){console.warn('Permisos: no se pudo consultar la configuración actual',e);try{const cache=JSON.parse(localStorage.getItem(cacheKey)||'null');PM_PERMISOS=Array.isArray(cache)?cache:[];}catch(_){PM_PERMISOS=[];}PM_PERMISOS_CARGADOS=true;return PM_PERMISOS;}}
 function pmFila(modulo){const m=pmNorm(modulo);return (PM_PERMISOS||[]).find(x=>pmNorm(x.modulo)===m&&pmNorm(x.activo||'SI')==='SI');}
-function pmPuede(modulo,accion){if(!PM_PERMISOS_CARGADOS)return false;const f=pmFila(modulo);if(!f)return false;return pmNorm(f[accion.toLowerCase()]||f[accion]||'NO')==='SI';}
-function pmModulosMenu(){if(!PM_PERMISOS_CARGADOS)return null;const perfil=pmNorm(localStorage.getItem('perfil'));let lista=(PM_PERMISOS||[]).filter(x=>pmNorm(x.activo||'SI')==='SI'&&pmNorm(x.mostrarModulo||'NO')==='SI'&&pmNorm(x.ver||'NO')==='SI'&&pmNorm(x.alcanceDatos||'SIN ACCESO')!=='SIN ACCESO');if(perfil==='OPERACIONES LIMA'){const permitidos=new Set(['ACTIVIDAD CAMPO','PROGRAMACION DESCANSOS','PEXT']);lista=lista.filter(x=>permitidos.has(pmNorm(x.modulo)));}return lista.sort((a,b)=>(Number(a.ordenMenu)||999)-(Number(b.ordenMenu)||999));}
+function pmPermiso(modulo){return pmFila(modulo)||null;}
+function pmPuedeVer(modulo){const f=pmPermiso(modulo);return !!f&&pmNorm(f.mostrarModulo||'NO')==='SI'&&pmNorm(f.ver||'NO')==='SI'&&pmNorm(f.alcanceDatos||'SIN ACCESO')!=='SIN ACCESO';}
+function pmAlcance(modulo){const f=pmPermiso(modulo);return f?pmNorm(f.alcanceDatos||'SIN ACCESO'):'SIN ACCESO';}
+function pmSoloLectura(modulo){return pmPuedeVer(modulo)&&!pmPuede(modulo,'REGISTRAR')&&!pmPuede(modulo,'EDITAR')&&!pmPuede(modulo,'OBSERVAR')&&!pmPuede(modulo,'APROBAR')&&!pmPuede(modulo,'VALIDAR')&&!pmPuede(modulo,'ADMINISTRAR');}
+
+function pmPuede(modulo,accion){
+  if(!PM_PERMISOS_CARGADOS)return false;
+  const f=pmFila(modulo);
+  if(!f)return false;
+  const clave=pmNorm(accion).toLowerCase();
+  return pmNorm(f[clave]||f[accion]||'NO')==='SI';
+}
+function pmModulosMenu(){
+  if(!PM_PERMISOS_CARGADOS)return null;
+  return (PM_PERMISOS||[])
+    .filter(x=>pmNorm(x.activo||'SI')==='SI')
+    .filter(x=>pmNorm(x.mostrarModulo||'NO')==='SI')
+    .filter(x=>pmNorm(x.ver||'NO')==='SI')
+    .filter(x=>pmNorm(x.alcanceDatos||'SIN ACCESO')!=='SIN ACCESO')
+    .sort((a,b)=>(Number(a.ordenMenu)||999)-(Number(b.ordenMenu)||999));
+}
 const PM_CARD_MAP={'PRODUCCION':'cardProduccion','EFECTIVIDAD':'cardEfectividad','PORCENTAJE RECABLEADO':'cardRecableado','VTR GAR':'cardVTRGAR','RANKING':'cardRanking','OBSERVACIONES':'cardObservaciones','ACCESOS':'cardAccesos','BIBLIOTECA':'cardBiblioteca','CAPACITACION':'cardCapacitacion','DASHBOARD SUPERVISOR':'cardDashboardSupervisor','DASHBOARD JEFATURA':'cardDashboardJefatura','ANALISIS ECONOMICO':'cardAnalisisEconomico','ACTIVIDAD CAMPO':'cardActividadCampo','VALIDACION TECNICA':'cardValidacionTecnica','ACTAS ESCANEADAS':'cardActas','CHECKLIST ALMACEN':'cardChecklistAlmacen','PROGRAMACION DESCANSOS':'cardProgramacionDescansos','PEXT':'cardTrabajosConjunta','ADMINISTRACION':'cardAdministracion'};
 function pmPanelAdmin(){return `<div class="adm104-config"><div class="pm-admin"><h3>🔐 Permisos por perfil</h3><p>Selecciona un perfil y un módulo. Los permisos existentes se cargarán automáticamente.</p><div class="pm-grid"><label>Perfil<select id="pmPerfil"><option value="">Cargando perfiles...</option></select></label><label>Módulo<select id="pmModulo"><option value="">Cargando módulos...</option></select></label><label>Activo<select id="pmActivo"><option>SI</option><option>NO</option></select></label><label>Orden menú<input id="pmOrden" type="number" min="1"></label><label>Mostrar módulo<select id="pmMostrar"><option>SI</option><option>NO</option></select></label><label>Alcance<select id="pmAlcance"><option>SIN ACCESO</option><option>CUADRILLA</option><option>SEDE</option><option>SEDE / PROPIOS</option><option>ZONA NORTE</option><option>PERSONAL</option><option>SEGUN DESTINO</option></select></label></div><div id="pmChecks" class="pm-checks"></div><label class="pm-obs">Observación<textarea id="pmObs"></textarea></label><div class="pm-actions"><button class="button_1" onclick="pmGuardarAdmin()">Guardar cambios</button></div><div id="pmMsg"></div></div></div>`;}
 

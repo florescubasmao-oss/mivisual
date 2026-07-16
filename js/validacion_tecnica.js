@@ -174,7 +174,14 @@ function toggleNumeroTicketValidacion(){
 
 function mostrarValidacionTecnica(){
     const u = usuarioActualValidacion();
-    const puedeValidar = u.perfil === "SUPERVISOR" || esJefaturaValidacion(u.perfil);
+    const puedeVer = typeof pmPuedeVer === "function" ? pmPuedeVer("VALIDACION TECNICA") : true;
+    const puedeRegistrar = typeof pmPuede === "function" ? pmPuede("VALIDACION TECNICA","REGISTRAR") : u.perfil === "TECNICO";
+    const puedeValidar = typeof pmPuede === "function" ? pmPuede("VALIDACION TECNICA","VALIDAR") : (u.perfil === "SUPERVISOR" || esJefaturaValidacion(u.perfil));
+    const puedeDescargar = typeof pmPuede === "function" ? pmPuede("VALIDACION TECNICA","DESCARGAR") : esJefaturaValidacion(u.perfil);
+    if(!puedeVer){
+        mostrarPantalla(`${estiloValidacionTecnica()}<div class="vt-wrap"><div class="vt-card">No tienes permiso para ver Validación Técnica.</div></div>`);
+        return;
+    }
     let html = `
     ${estiloValidacionTecnica()}
     <div class="vt-wrap">
@@ -184,11 +191,11 @@ function mostrarValidacionTecnica(){
                     <h2>📋 VALIDACIÓN TÉCNICA</h2>
                     <p>Registro y control de recableados, GAR y VTR con trazabilidad operativa.</p>
                 </div>
-                ${esJefaturaValidacion(u.perfil) ? `<button class="vt-btn vt-report-btn" onclick="abrirInformeValidacionTecnica()">📥 Descargar informe</button>` : ""}
+                ${puedeDescargar ? `<button class="vt-btn vt-report-btn" onclick="abrirInformeValidacionTecnica()">📥 Descargar informe</button>` : ""}
             </div>
         </div>`;
 
-    if(u.perfil === "TECNICO"){
+    if(puedeRegistrar){
         html += renderFormularioValidacionTecnica();
     }
 
