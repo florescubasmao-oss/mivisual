@@ -5,8 +5,6 @@ let PD_CAMBIOS={};
 let PD_MOTIVO_CAMBIO="";
 let PD_PENDIENTES_SELECCIONADOS=new Set();
 let PD_VISTA_PERSONAL=false;
-const PD_CACHE=new Map();
-const PD_CACHE_TTL=2*60*1000;
 
 function pdNorm(v){return (v||"").toString().toUpperCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"").replace(/\s+/g," ").trim();}
 function pdUser(){return {usuario:localStorage.getItem("usuario")||"",perfil:pdNorm(localStorage.getItem("perfil")),sede:pdNorm(localStorage.getItem("sede")),cuadrilla:localStorage.getItem("cuadrilla")||""};}
@@ -19,7 +17,8 @@ function pdDiasMes(periodo){const [y,m]=periodo.split("-").map(Number);return ne
 function pdFecha(periodo,dia){return `${periodo}-${String(dia).padStart(2,"0")}`;}
 function pdNombreMes(periodo){const [y,m]=periodo.split("-").map(Number);return new Intl.DateTimeFormat("es-PE",{month:"long",year:"numeric"}).format(new Date(y,m-1,1)).toUpperCase();}
 function pdDiaCorto(fecha){return ["D","L","M","M","J","V","S"][new Date(fecha+"T12:00:00").getDay()];}
-function pdEstadoVisible(item){if(!item)return "EN CAMPO";return pdNorm(item.estadoProgramacion)==="APROBADO"?pdNorm(item.estadoDia||"EN CAMPO"):"EN CAMPO";}
+function pdNormalizarEstado(v){const e=pdNorm(v||"EN CAMPO");if(["C","CAMPO","EN CAMPO"].includes(e))return "EN CAMPO";if(["CB","C B","Cᴮ","CAMPO BOLSA","EN CAMPO BOLSA","BOLSA"].includes(e))return "EN CAMPO BOLSA";if(["D","DESCANSO"].includes(e))return "DESCANSO";if(["V","VACACIONES"].includes(e))return "VACACIONES";return e||"EN CAMPO";}
+function pdEstadoVisible(item){if(!item)return "EN CAMPO";return pdNorm(item.estadoProgramacion)==="APROBADO"?pdNormalizarEstado(item.estadoDia||"EN CAMPO"):"EN CAMPO";}
 function pdEsBolsa(estado){return ["EN CAMPO BOLSA","CAMPO BOLSA","BOLSA"].includes(pdNorm(estado));}
 function pdEstadoTecnico(estado){return pdEsBolsa(estado)?"DESCANSO":pdNorm(estado||"EN CAMPO");}
 function pdEtiquetaEstado(estado){const e=pdNorm(estado);if(e==="DESCANSO")return "D";if(e==="VACACIONES")return "V";if(pdEsBolsa(e))return 'C<span class="pd-bolsa-mark">B</span>';return "C";}
@@ -36,7 +35,7 @@ function pdStyle(){return `<style>
 </style>`;}
 
 
-async function actualizarIndicadorDescansoMenu(forzar){
+async function actualizarIndicadorDescansoMenu(){
   const u=pdUser();
   const welcome=document.getElementById("mv55Welcome");
   if(!welcome) return;
@@ -60,15 +59,7 @@ async function actualizarIndicadorDescansoMenu(forzar){
   indicador.innerHTML='<span class="pd-menu-dot"></span><strong>CONSULTANDO ESTADO...</strong>';
 
   try{
-    const claveCache='pdIndicador:'+pdNorm(u.usuario)+':'+pdPeriodoActual();
-    let data=null;
-    if(!forzar){
-      try{const c=JSON.parse(sessionStorage.getItem(claveCache)||'null');if(c&&Date.now()-Number(c.ts||0)<PD_CACHE_TTL)data=c.data;}catch(_){ }
-    }
-    if(!data){
-      data=await pdApi({accion:"listarProgramacionDescansos",usuario:u.usuario,periodo:pdPeriodoActual()});
-      try{sessionStorage.setItem(claveCache,JSON.stringify({ts:Date.now(),data}));}catch(_){ }
-    }
+    const data=await pdApi({accion:"listarProgramacionDescansos",usuario:u.usuario,periodo:pdPeriodoActual()});
     let clave=u.cuadrilla;
     if(u.perfil==="SUPERVISOR"||u.perfil==="ALMACEN"){
       const personal=(data.cuadrillas||[]).find(c=>pdNorm(c.tipoPersonal)!=="CUADRILLA"&&pdNorm(c.usuario)===pdNorm(u.usuario));
@@ -110,22 +101,16 @@ async function mostrarMiProgramacionPersonal(){
   return pdAbrirModuloDescansos(true);
 }
 
-async function pdCargar(periodo,forzar){
-  const u=pdUser();
-  const per=periodo||document.getElementById("pdPeriodo")?.value||pdPeriodoActual();
-  const key=pdNorm(u.usuario)+'|'+per;
-  const cached=PD_CACHE.get(key);
-  if(!forzar&&cached&&Date.now()-cached.ts<PD_CACHE_TTL){
-    PD_DATA=JSON.parse(JSON.stringify(cached.data));
-    PD_CAMBIOS={};PD_MOTIVO_CAMBIO="";
-    return PD_DATA;
-  }
-  const centro=await pdApi({accion:"listarProgramacionDescansos",usuario:u.usuario,periodo:per});
-  PD_DATA={...centro,periodo:per,programacion:centro.programacion||[],cuadrillas:centro.cuadrillas||[]};
-  PD_CACHE.set(key,{ts:Date.now(),data:PD_DATA});
+async function pdCargar(periodo){
+  const u=pdUser();const per=periodo||document.getElementById("pdPeriodo")?.value||pdPeriodoActual();
+  const [y,m]=per.split("-").map(Number);
+  const periodos=[new Date(y,m-2,1),new Date(y,m-1,1),new Date(y,m,1)].map(d=>`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}`);
+  const respuestas=await Promise.all(periodos.map(x=>pdApi({accion:"listarProgramacionDescansos",usuario:u.usuario,periodo:x})));
+  const centro=respuestas[1];
+  PD_DATA={...centro,periodo:per,programacion:respuestas.flatMap(x=>x.programacion||[]),cuadrillas:centro.cuadrillas||[]};
   PD_CAMBIOS={};PD_MOTIVO_CAMBIO="";
-  return PD_DATA;
 }
+
 function pdRender(){
   const u=pdUser();
   if(u.perfil==="TECNICO") return pdRenderTecnico();
@@ -197,7 +182,7 @@ function pdRenderTecnico(){
   ${solicitudes.length?`<div class="pd-card"><b>Solicitudes en proceso</b><div class="pd-list" style="margin-top:8px">${solicitudes.map(x=>`<div class="pd-item"><strong>${x.fecha} → ${pdEsc(x.solicitudCambio)}</strong><span class="pd-status pendiente">${pdEsc(x.estadoProgramacion)}</span><div class="pd-note">${pdEsc(x.motivoSolicitud)}</div></div>`).join('')}</div></div>`:''}`;
 }
 
-async function pdSolicitarCambio(){try{const u=pdUser();const fechaDescansoActual=document.getElementById('pdDescansoActual').value,nuevaFecha=document.getElementById('pdNuevaFecha').value,motivo=document.getElementById('pdMotivoSolicitud').value.trim();await pdApi({accion:'solicitarCambioDescanso',usuario:u.usuario,fechaDescansoActual,nuevaFecha,motivo});alert('Solicitud enviada al Supervisor.');await pdCargar(undefined,true);pdRenderTecnico();}catch(e){alert(e.message);}}
+async function pdSolicitarCambio(){try{const u=pdUser();const fechaDescansoActual=document.getElementById('pdDescansoActual').value,nuevaFecha=document.getElementById('pdNuevaFecha').value,motivo=document.getElementById('pdMotivoSolicitud').value.trim();await pdApi({accion:'solicitarCambioDescanso',usuario:u.usuario,fechaDescansoActual,nuevaFecha,motivo});alert('Solicitud enviada al Supervisor.');await pdCargar();pdRenderTecnico();}catch(e){alert(e.message);}}
 
 function pdRenderGestion(){
   const u=pdUser(),per=PD_DATA.periodo||pdPeriodoActual();
@@ -283,7 +268,7 @@ function pdCapturarFiltros(){
 async function pdCambiarVista(){
   const per=document.getElementById('pdPeriodo').value;
   pdCapturarFiltros();
-  await pdCargar(per,true);pdRenderGestion();
+  await pdCargar(per);pdRenderGestion();
 }
 
 function pdCuadrillasFiltradas(){
@@ -434,8 +419,8 @@ async function pdCargarCobertura(){
   }
 }
 
-async function pdGuardarCambios(){try{const u=pdUser(),registros=Object.entries(PD_CAMBIOS).map(([k,estadoDia])=>{const i=k.lastIndexOf('|');return {cuadrilla:k.slice(0,i),fecha:k.slice(i+1),estadoDia};});if(!registros.length)return;const motivo=(prompt(u.perfil==='SUPERVISOR'?'Motivo de los cambios que se enviarán a Jefatura:':'Motivo del cambio realizado por Jefatura:')||'').trim();if(!motivo)return alert('Debe ingresar el motivo.');const r=await pdApi({accion:'guardarProgramacionDescansos',usuario:u.usuario,registros,motivo});alert(u.perfil==='SUPERVISOR'?`${r.guardados} cambio(s) enviados a validación de Jefatura.`:`${r.guardados} cambio(s) aplicados y registrados en el historial del Supervisor.`);PD_CAMBIOS={};const per=document.getElementById('pdPeriodo').value;pdCapturarFiltros();await pdCargar(per,true);pdRenderGestion();}catch(e){alert(e.message);}}
-async function pdAprobarProgramacion(){try{const u=pdUser();if(!confirm('¿Validar y aprobar las programaciones/cambios pendientes? Las alertas de capacidad quedarán aceptadas por Jefatura.'))return;const r=await pdApi({accion:'aprobarProgramacionDescansos',usuario:u.usuario,ids:[]});alert(`${r.actualizados} registros aprobados.`);const per=document.getElementById('pdPeriodo').value;pdCapturarFiltros();await pdCargar(per,true);pdRenderGestion();}catch(e){alert(e.message);}}
+async function pdGuardarCambios(){try{const u=pdUser(),registros=Object.entries(PD_CAMBIOS).map(([k,estadoDia])=>{const i=k.lastIndexOf('|');return {cuadrilla:k.slice(0,i),fecha:k.slice(i+1),estadoDia};});if(!registros.length)return;const motivo=(prompt(u.perfil==='SUPERVISOR'?'Motivo de los cambios que se enviarán a Jefatura:':'Motivo del cambio realizado por Jefatura:')||'').trim();if(!motivo)return alert('Debe ingresar el motivo.');const r=await pdApi({accion:'guardarProgramacionDescansos',usuario:u.usuario,registros,motivo});alert(u.perfil==='SUPERVISOR'?`${r.guardados} cambio(s) enviados a validación de Jefatura.`:`${r.guardados} cambio(s) aplicados y registrados en el historial del Supervisor.`);PD_CAMBIOS={};const per=document.getElementById('pdPeriodo').value;pdCapturarFiltros();await pdCargar(per);pdRenderGestion();}catch(e){alert(e.message);}}
+async function pdAprobarProgramacion(){try{const u=pdUser();if(!confirm('¿Validar y aprobar las programaciones/cambios pendientes? Las alertas de capacidad quedarán aceptadas por Jefatura.'))return;const r=await pdApi({accion:'aprobarProgramacionDescansos',usuario:u.usuario,ids:[]});alert(`${r.actualizados} registros aprobados.`);const per=document.getElementById('pdPeriodo').value;pdCapturarFiltros();await pdCargar(per);pdRenderGestion();}catch(e){alert(e.message);}}
 function pdSolicitudCard(x){
   const u=pdUser(),solicitud=!!x.solicitudCambio,esJefatura=u.perfil!=='SUPERVISOR',checked=PD_PENDIENTES_SELECCIONADOS.has(x.id);
   return `<div class="pd-item"><div style="display:flex;gap:8px;align-items:flex-start">${esJefatura?`<input type="checkbox" class="pd-check-pendiente" ${checked?'checked':''} onchange="pdSeleccionarPendiente('${pdEsc(x.id)}',this.checked)" aria-label="Seleccionar pendiente">`:''}<div style="flex:1"><strong>${pdEsc(x.cuadrilla)} · ${pdEsc(x.sede)} · ${pdEsc(x.plataforma)}</strong><div>${solicitud?`Cambio: ${x.fecha} → ${pdEsc(x.solicitudCambio)}`:`Programación: ${x.fecha} · ${pdEsc(x.estadoNuevo||x.estadoDia)}`}</div><span class="pd-status pendiente">${pdEsc(x.estadoValidacion||x.estadoProgramacion)}</span>${x.motivoSolicitud?`<div class="pd-note">${pdEsc(x.motivoSolicitud)}</div>`:''}<div class="pd-actions"><button class="pd-btn pd-blue" onclick="pdMostrarDetallePendiente('${pdEsc(x.id)}')">Ver detalle</button>${solicitud?`<button class="pd-btn pd-green" onclick="pdValidarSolicitud('${pdEsc(x.id)}','APROBADO')">Aprobar</button><button class="pd-btn pd-red" onclick="pdValidarSolicitud('${pdEsc(x.id)}','RECHAZADO')">Rechazar</button>`:(esJefatura?`<button class="pd-btn pd-green" onclick="pdResolverProgramacion('${pdEsc(x.id)}','APROBADO')">Aprobar</button><button class="pd-btn pd-orange" onclick="pdResolverProgramacion('${pdEsc(x.id)}','OBSERVADO')">Observar</button><button class="pd-btn pd-red" onclick="pdResolverProgramacion('${pdEsc(x.id)}','RECHAZADO')">Rechazar</button>`:'')}</div></div></div></div>`;
@@ -453,15 +438,15 @@ async function pdResolverSeleccionados(resultado){
     alert(`${r.actualizados||0} registro(s) procesado(s).`);
     PD_PENDIENTES_SELECCIONADOS.clear();
     const per=document.getElementById('pdPeriodo')?.value||PD_DATA.periodo;
-    await pdCargar(per,true);pdRenderGestion();
+    await pdCargar(per);pdRenderGestion();
   }catch(e){alert(e.message);}
 }
 function pdMostrarDetallePendiente(id){const x=PD_DATA.programacion.find(i=>i.id===id);const cont=document.getElementById('pdDetallePendiente');if(!x||!cont)return;const u=pdUser(),anterior=pdNorm(x.estadoAnterior||x.estadoDia||'EN CAMPO'),propuesto=pdNorm(x.estadoNuevo||x.solicitudCambio||pdEstadoPropuesto(x));cont.style.display='block';cont.innerHTML=`<b>Detalle del cambio pendiente</b><div class="pd-item" style="margin-top:8px"><strong>${pdEsc(x.cuadrilla)} · ${pdEsc(x.fecha)}</strong><div>Estado vigente: <b>${pdEsc(anterior)}</b></div><div>Estado solicitado: <b>${pdEsc(propuesto)}</b></div><div>Motivo: ${pdEsc(x.comentarioSupervisor||x.motivoSolicitud||'Sin comentario')}</div><div>Solicitado por: ${pdEsc(x.solicitadoPor||x.validadoSupervisorPor||'')}</div><div>Estado: <span class="pd-status pendiente">${pdEsc(x.estadoValidacion||x.estadoProgramacion)}</span></div>${u.perfil!=='SUPERVISOR'&&!pdSoloLectura()?`<div class="pd-actions"><button class="pd-btn pd-green" onclick="pdResolverProgramacion('${pdEsc(x.id)}','APROBADO')">Aprobar</button><button class="pd-btn pd-orange" onclick="pdResolverProgramacion('${pdEsc(x.id)}','OBSERVADO')">Observar</button><button class="pd-btn pd-red" onclick="pdResolverProgramacion('${pdEsc(x.id)}','RECHAZADO')">Rechazar</button></div>`:''}</div>`;cont.scrollIntoView({behavior:'smooth',block:'center'});}
 function pdHistorialCard(x){return `<div class="pd-item"><strong>${pdEsc(x.cuadrilla||'')} · ${pdEsc(x.fechaAfectada||x.fecha||'')}</strong><div>${pdEsc(x.accion||'CAMBIO')} · ${pdEsc(x.estadoAnterior||'')} → ${pdEsc(x.estadoNuevo||'')}</div><div class="pd-note">${pdEsc(x.motivo||'Sin comentario')}</div><div class="pd-note">${pdEsc(x.usuario||'')} · ${pdEsc(x.fechaRegistro||'')} ${pdEsc(x.horaRegistro||'')}</div></div>`;}
 
-async function pdValidarSolicitud(id,resultado){try{const u=pdUser(),motivo=prompt('Motivo / comentario:')||'';const accion=u.perfil==='SUPERVISOR'?'validarCambioDescansoSupervisor':'validarCambioDescansoJefatura';await pdApi({accion,usuario:u.usuario,id,resultado,motivo});alert('Solicitud actualizada.');const per=document.getElementById('pdPeriodo').value;pdCapturarFiltros();await pdCargar(per,true);pdRenderGestion();}catch(e){alert(e.message);}}
+async function pdValidarSolicitud(id,resultado){try{const u=pdUser(),motivo=prompt('Motivo / comentario:')||'';const accion=u.perfil==='SUPERVISOR'?'validarCambioDescansoSupervisor':'validarCambioDescansoJefatura';await pdApi({accion,usuario:u.usuario,id,resultado,motivo});alert('Solicitud actualizada.');const per=document.getElementById('pdPeriodo').value;pdCapturarFiltros();await pdCargar(per);pdRenderGestion();}catch(e){alert(e.message);}}
 
-async function pdResolverProgramacion(id,resultado){try{const u=pdUser(),motivo=(prompt('Comentario de Jefatura (obligatorio):')||'').trim();if(!motivo)return alert('Debe ingresar un comentario.');const accion=resultado==='APROBADO'?'aprobarProgramacionDescansos':(resultado==='OBSERVADO'?'observarProgramacionDescansos':'rechazarProgramacionDescansos');const payload={accion,usuario:u.usuario,ids:[id],motivo};const r=await pdApi(payload);alert(`${r.actualizados||0} registro(s) ${resultado==='APROBADO'?'aprobado(s)':'rechazado(s)'}.`);const per=document.getElementById('pdPeriodo').value;pdCapturarFiltros();await pdCargar(per,true);pdRenderGestion();}catch(e){alert(e.message);}}
+async function pdResolverProgramacion(id,resultado){try{const u=pdUser(),motivo=(prompt('Comentario de Jefatura (obligatorio):')||'').trim();if(!motivo)return alert('Debe ingresar un comentario.');const accion=resultado==='APROBADO'?'aprobarProgramacionDescansos':(resultado==='OBSERVADO'?'observarProgramacionDescansos':'rechazarProgramacionDescansos');const payload={accion,usuario:u.usuario,ids:[id],motivo};const r=await pdApi(payload);alert(`${r.actualizados||0} registro(s) ${resultado==='APROBADO'?'aprobado(s)':'rechazado(s)'}.`);const per=document.getElementById('pdPeriodo').value;pdCapturarFiltros();await pdCargar(per);pdRenderGestion();}catch(e){alert(e.message);}}
 
 
 /* =========================
