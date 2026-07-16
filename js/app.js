@@ -321,6 +321,19 @@ async function configurarMenu(){
         }
     } catch(e) { console.warn("Se conserva menú anterior", e); }
 
+    // V161: OPERACIONES LIMA tiene una vista ejecutiva cerrada.
+    // Esta regla evita que una caché antigua, una regla heredada o la
+    // disponibilidad global del Checklist le concedan acceso por error.
+    if (perfil === "OPERACIONES LIMA") {
+        const permitidasOperacionesLima = new Set([
+            "cardActividadCampo",
+            "cardProgramacionDescansos",
+            "cardTrabajosConjunta"
+        ]);
+        opciones = opciones.filter(id => permitidasOperacionesLima.has(id));
+        opciones = opciones.filter(id => id !== "cardChecklistAlmacen");
+    }
+
     // Consultar primero la disponibilidad de los módulos para evitar que aparezcan
     // por unos instantes antes de ocultarse.
     let checklistActivo = true;
