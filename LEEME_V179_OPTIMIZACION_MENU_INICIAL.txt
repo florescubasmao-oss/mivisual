@@ -1,0 +1,14 @@
+MI VISUAL V179 - OPTIMIZACIÓN DE CARGA DEL MENÚ
+
+Cambios:
+- El menú utiliza inmediatamente la última caché válida de permisos del usuario.
+- Los permisos se verifican y actualizan en segundo plano sin bloquear la pantalla.
+- La caché de permisos se conserva al cerrar sesión; no contiene claves ni datos sensibles.
+- Al regresar desde un módulo, no vuelve a bloquearse el menú por una consulta repetida.
+- Si Administración cambia permisos, el menú se actualiza automáticamente al recibir la nueva configuración.
+- No se modificaron módulos operativos ni Code.gs.
+
+Archivos modificados:
+- index.html
+- js/app.js
+- js/permisos.js

@@ -35,7 +35,16 @@ function accionBotonNavegacion(){
 
 function cerrarSesion(){
     if (typeof pmLimpiarSesion === 'function') pmLimpiarSesion();
+    // Conserva únicamente la caché no sensible de permisos para acelerar el próximo ingreso.
+    const cachePermisos = {};
+    for (let i = 0; i < localStorage.length; i++) {
+        const key = localStorage.key(i);
+        if (key && (key.startsWith('permisosModulos:') || key.startsWith('permisosModulosFecha:'))) {
+            cachePermisos[key] = localStorage.getItem(key);
+        }
+    }
     localStorage.clear();
+    Object.keys(cachePermisos).forEach(key => localStorage.setItem(key, cachePermisos[key]));
 
     const panelLogin = document.getElementById("panelLogin");
     const usuarioInfo = document.getElementById("usuarioInfo");
@@ -162,6 +171,29 @@ function prepararMenuVisual(){
 
     return { menu, main, recursos, recursosTitle };
 }
+
+function aplicarPermisosMenuActualizados(){
+    const todasLasCards = [
+        'cardProduccion','cardEfectividad','cardRecableado','cardVTRGAR','cardRanking',
+        'cardObservaciones','cardAccesos','cardBiblioteca','cardCapacitacion',
+        'cardDashboardSupervisor','cardDashboardJefatura','cardAnalisisEconomico',
+        'cardAdministracion','cardActividadCampo','cardValidacionTecnica','cardActas',
+        'cardChecklistAlmacen','cardProgramacionDescansos','cardTrabajosConjunta'
+    ];
+    todasLasCards.forEach(id => mostrarCardSeguro(id, false));
+    const dinamicos = typeof pmModulosMenu === 'function' ? pmModulosMenu() : null;
+    const opciones = Array.isArray(dinamicos)
+        ? dinamicos.map(x => PM_CARD_MAP[pmNorm(x.modulo)]).filter(Boolean)
+        : [];
+    opciones.forEach(id => mostrarCardSeguro(id, true));
+    const recursosIds = ['cardAccesos','cardBiblioteca','cardCapacitacion'];
+    const recursosTitle = document.getElementById('mv55RecursosTitle');
+    const recursos = document.getElementById('mv55Recursos');
+    const tieneRecursos = recursosIds.some(id => opciones.includes(id));
+    if(recursosTitle) recursosTitle.style.display = tieneRecursos ? 'flex' : 'none';
+    if(recursos) recursos.style.display = tieneRecursos ? 'grid' : 'none';
+}
+window.aplicarPermisosMenuActualizados = aplicarPermisosMenuActualizados;
 
 async function configurarMenu(){
 
@@ -329,11 +361,7 @@ async function configurarMenu(){
 
     // La visibilidad depende únicamente de PERMISOS_MODULOS.
 
-    opciones.forEach(id => mostrarCardSeguro(id, true));
-
-    const tieneRecursos = recursosIds.some(id => opciones.includes(id));
-    if(mv55.recursosTitle) mv55.recursosTitle.style.display = tieneRecursos ? "flex" : "none";
-    if(mv55.recursos) mv55.recursos.style.display = tieneRecursos ? "grid" : "none";
+    aplicarPermisosMenuActualizados();
 
     if (menu) menu.style.setProperty("display", "grid", "important");
 

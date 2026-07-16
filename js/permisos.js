@@ -5,7 +5,81 @@ let PM_PERMISOS_CARGADOS = false;
 let PM_CONFIG_MENU = null;
 function pmNorm(v){return (v||"").toString().toUpperCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"").replace(/\s+/g," ").trim();}
 async function pmApi(payload){const r=await fetch(API_PERMISOS,{method:'POST',body:JSON.stringify(payload)});const d=await r.json();if(!d.ok)throw new Error(d.error||'Error de permisos');return d;}
-async function pmCargarPermisosActuales(forzar){const usuario=(localStorage.getItem('usuario')||'').trim();if(!usuario){PM_PERMISOS=[];PM_PERMISOS_CARGADOS=true;return [];}if(PM_PERMISOS_CARGADOS&&!forzar)return PM_PERMISOS||[];const cacheKey='permisosModulos:'+pmNorm(usuario);try{let d;try{d=await pmApi({accion:'obtenerContextoMenu',usuario});}catch(_){d=await pmApi({accion:'obtenerPermisosUsuario',usuario});}PM_PERMISOS=Array.isArray(d.permisos)?d.permisos:[];PM_CONFIG_MENU=d.configuracion||null;PM_PERMISOS_CARGADOS=true;localStorage.setItem(cacheKey,JSON.stringify(PM_PERMISOS));localStorage.removeItem('permisosModulos');return PM_PERMISOS;}catch(e){console.warn('Permisos: no se pudo consultar la configuración actual',e);try{const cache=JSON.parse(localStorage.getItem(cacheKey)||'null');PM_PERMISOS=Array.isArray(cache)?cache:[];}catch(_){PM_PERMISOS=[];}PM_PERMISOS_CARGADOS=true;return PM_PERMISOS;}}
+const PM_CACHE_TTL_MS = 5 * 60 * 1000;
+let PM_ACTUALIZACION_EN_CURSO = false;
+
+function pmCacheKey(usuario){ return 'permisosModulos:' + pmNorm(usuario); }
+function pmCacheFechaKey(usuario){ return 'permisosModulosFecha:' + pmNorm(usuario); }
+function pmLeerCache(usuario){
+  try {
+    const permisos = JSON.parse(localStorage.getItem(pmCacheKey(usuario)) || 'null');
+    const fecha = Number(localStorage.getItem(pmCacheFechaKey(usuario)) || 0);
+    return { permisos: Array.isArray(permisos) ? permisos : null, fecha };
+  } catch (_) {
+    return { permisos: null, fecha: 0 };
+  }
+}
+function pmGuardarCache(usuario, permisos){
+  localStorage.setItem(pmCacheKey(usuario), JSON.stringify(permisos || []));
+  localStorage.setItem(pmCacheFechaKey(usuario), String(Date.now()));
+  localStorage.removeItem('permisosModulos');
+}
+async function pmConsultarPermisosServidor(usuario){
+  try { return await pmApi({accion:'obtenerContextoMenu',usuario}); }
+  catch (_) { return await pmApi({accion:'obtenerPermisosUsuario',usuario}); }
+}
+async function pmActualizarPermisosSegundoPlano(usuario){
+  if (PM_ACTUALIZACION_EN_CURSO) return;
+  PM_ACTUALIZACION_EN_CURSO = true;
+  try {
+    const d = await pmConsultarPermisosServidor(usuario);
+    const nuevos = Array.isArray(d.permisos) ? d.permisos : [];
+    const anterior = JSON.stringify(PM_PERMISOS || []);
+    PM_PERMISOS = nuevos;
+    PM_CONFIG_MENU = d.configuracion || null;
+    PM_PERMISOS_CARGADOS = true;
+    pmGuardarCache(usuario, nuevos);
+    if (JSON.stringify(nuevos) !== anterior && typeof window.aplicarPermisosMenuActualizados === 'function') {
+      window.aplicarPermisosMenuActualizados();
+    }
+  } catch (e) {
+    console.warn('Permisos: no se pudo actualizar en segundo plano', e);
+  } finally {
+    PM_ACTUALIZACION_EN_CURSO = false;
+  }
+}
+async function pmCargarPermisosActuales(forzar){
+  const usuario=(localStorage.getItem('usuario')||'').trim();
+  if(!usuario){PM_PERMISOS=[];PM_PERMISOS_CARGADOS=true;return [];}
+  if(PM_PERMISOS_CARGADOS&&!forzar)return PM_PERMISOS||[];
+
+  const cache = pmLeerCache(usuario);
+  if (!forzar && Array.isArray(cache.permisos)) {
+    PM_PERMISOS = cache.permisos;
+    PM_PERMISOS_CARGADOS = true;
+    // El menú se muestra de inmediato; la verificación real se ejecuta sin bloquear la pantalla.
+    if ((Date.now() - cache.fecha) > PM_CACHE_TTL_MS) {
+      Promise.resolve(pmActualizarPermisosSegundoPlano(usuario));
+    } else {
+      setTimeout(() => pmActualizarPermisosSegundoPlano(usuario), 50);
+    }
+    return PM_PERMISOS;
+  }
+
+  try{
+    const d = await pmConsultarPermisosServidor(usuario);
+    PM_PERMISOS=Array.isArray(d.permisos)?d.permisos:[];
+    PM_CONFIG_MENU=d.configuracion||null;
+    PM_PERMISOS_CARGADOS=true;
+    pmGuardarCache(usuario, PM_PERMISOS);
+    return PM_PERMISOS;
+  }catch(e){
+    console.warn('Permisos: no se pudo consultar la configuración actual',e);
+    PM_PERMISOS=Array.isArray(cache.permisos)?cache.permisos:[];
+    PM_PERMISOS_CARGADOS=true;
+    return PM_PERMISOS;
+  }
+}
 function pmFila(modulo){const m=pmNorm(modulo);return (PM_PERMISOS||[]).find(x=>pmNorm(x.modulo)===m&&pmNorm(x.activo||'SI')==='SI');}
 function pmPermiso(modulo){return pmFila(modulo)||null;}
 function pmPuedeVer(modulo){const f=pmPermiso(modulo);return !!f&&pmNorm(f.mostrarModulo||'NO')==='SI'&&pmNorm(f.ver||'NO')==='SI'&&pmNorm(f.alcanceDatos||'SIN ACCESO')!=='SIN ACCESO';}
