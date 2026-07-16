@@ -757,7 +757,7 @@ function obtenerCatalogosUsuariosAdministracion(data) {
   const usuarios = hojaUsuarios.getDataRange().getValues();
   const permisos = asegurarHojaPermisosModulos().getDataRange().getValues();
 
-  const perfiles = [], sedes = [], plataformas = [], cuadrillas = [], supervisores = [];
+  const perfiles = [], sedes = [], plataformas = [], cuadrillas = [], supervisores = [], listaUsuarios = [];
   const vistos = { perfiles:{}, sedes:{}, plataformas:{}, cuadrillas:{}, supervisores:{} };
 
   for (let i = 1; i < permisos.length; i++) {
@@ -775,6 +775,21 @@ function obtenerCatalogosUsuariosAdministracion(data) {
     const estado = normalizarTexto(fila[8] || "ACTIVO");
     const nombres = (fila[10] || fila[0] || "").toString().trim();
 
+    if (usuario) {
+      listaUsuarios.push({
+        usuario,
+        nombresApellidos: nombres,
+        correo: (fila[1] || "").toString().trim(),
+        cuadrilla,
+        sede,
+        plataforma,
+        perfil,
+        nivelAcceso: normalizarTexto(fila[7] || ""),
+        estado,
+        usuarioSupervisor: normalizarUsuario(fila[9] || "")
+      });
+    }
+
     if (sede && !vistos.sedes[sede]) { vistos.sedes[sede] = true; sedes.push(sede); }
     if (plataforma && !vistos.plataformas[plataforma]) { vistos.plataformas[plataforma] = true; plataformas.push(plataforma); }
     if (cuadrilla && !vistos.cuadrillas[cuadrilla]) { vistos.cuadrillas[cuadrilla] = true; cuadrillas.push(cuadrilla); }
@@ -786,7 +801,8 @@ function obtenerCatalogosUsuariosAdministracion(data) {
 
   perfiles.sort(); sedes.sort(); plataformas.sort(); cuadrillas.sort();
   supervisores.sort((a,b) => (a.nombresApellidos || a.usuario).localeCompare(b.nombresApellidos || b.usuario));
-  return { ok:true, perfiles, sedes, plataformas, cuadrillas, supervisores };
+  listaUsuarios.sort((a,b) => (a.nombresApellidos || a.usuario).localeCompare(b.nombresApellidos || b.usuario));
+  return { ok:true, perfiles, sedes, plataformas, cuadrillas, supervisores, usuarios:listaUsuarios };
 }
 
 function listarCuadrillasObservacion(data) {

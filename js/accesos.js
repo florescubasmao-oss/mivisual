@@ -1438,57 +1438,79 @@ function mostrarImportarUsuarios(){
 
             <div class="card" style="margin-bottom:16px;">
                 <h3 style="margin-top:0;">🔎 4. Gestionar usuario existente</h3>
-                <p style="margin-top:4px;">Escribe el usuario una sola vez. Este dato se utilizará en Seguridad, Perfil y Datos básicos.</p>
-                <label style="display:block;font-weight:700;margin-bottom:6px;">Usuario obligatorio</label>
-                <input id="usuarioGestion" style="width:100%;padding:12px;border-radius:9px;box-sizing:border-box;" placeholder="Ejemplo: P1TRASLADOVISUAL">
-            </div>
-
-            <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:16px;align-items:start;">
-                <details class="card" open>
-                    <summary style="cursor:pointer;font-weight:800;font-size:17px;padding:4px 0;">🔐 5. Cuenta y seguridad</summary>
-                    <div style="padding-top:16px;">
-                        <label style="display:block;font-weight:700;margin-bottom:6px;">Nueva clave</label>
-                        <input id="claveGestion" type="password" style="width:100%;padding:11px;border-radius:8px;box-sizing:border-box;" placeholder="Nueva clave">
-                        <button class="button_1" style="width:100%;margin-top:12px;" onclick="cambiarClaveUsuarioApp()">🔑 Cambiar clave</button>
-                        <div style="height:1px;background:#475569;margin:18px 0;"></div>
-                        <p style="font-weight:700;margin-bottom:10px;">Estado de la cuenta</p>
-                        <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;">
-                            <button class="button_1" onclick="cambiarEstadoUsuarioApp('ACTIVO')">✅ Activar</button>
-                            <button class="button_1" onclick="cambiarEstadoUsuarioApp('SUSPENDIDO')">⛔ Suspender</button>
-                            <button class="button_1" onclick="cambiarEstadoUsuarioApp('BAJA')">🗑️ Baja</button>
-                        </div>
-                    </div>
-                </details>
-
-                <details class="card" open>
-                    <summary style="cursor:pointer;font-weight:800;font-size:17px;padding:4px 0;">🪪 6. Perfil y nivel de acceso</summary>
-                    <div style="padding-top:16px;">
-                        <label style="display:block;font-weight:700;margin-bottom:6px;">Perfil</label>
-                        <select id="perfilGestion" style="width:100%;padding:11px;border-radius:8px;box-sizing:border-box;" onchange="ajustarNivelAccesoPerfilUsuario()"></select>
-                        <label style="display:block;font-weight:700;margin:14px 0 6px;">Nivel de acceso</label>
-                        <select id="nivelGestion" style="width:100%;padding:11px;border-radius:8px;box-sizing:border-box;">
-                            <option value="CUADRILLA">CUADRILLA</option><option value="SEDE">SEDE</option><option value="ZONA NORTE">ZONA NORTE</option><option value="ADMIN">ADMIN</option>
+                <p style="margin-top:4px;">Selecciona un usuario y luego elige la acción que deseas realizar.</p>
+                <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:12px;align-items:end;">
+                    <label>Usuario
+                        <select id="usuarioGestion" class="usuario-admin-input" onchange="seleccionarUsuarioGestionApp()">
+                            <option value="">Cargando usuarios...</option>
                         </select>
-                        <button class="button_1" style="width:100%;margin-top:14px;" onclick="guardarPerfilUsuarioSeleccionado()">💾 Guardar perfil</button>
-                        <p style="font-size:12px;margin:12px 0 0;color:#cbd5e1;">Los permisos específicos se configuran desde “Permisos por perfil”.</p>
-                    </div>
-                </details>
+                    </label>
+                    <label>¿Qué deseas hacer?
+                        <select id="accionUsuarioGestion" class="usuario-admin-input" onchange="mostrarAccionUsuarioGestionApp()" disabled>
+                            <option value="">Seleccione una acción</option>
+                            <option value="CLAVE">Cambiar clave</option>
+                            <option value="ESTADO">Activar / suspender / dar de baja</option>
+                            <option value="PERFIL">Cambiar perfil y nivel de acceso</option>
+                            <option value="DATOS">Editar datos básicos</option>
+                        </select>
+                    </label>
+                </div>
+                <div id="resumenUsuarioGestion" style="display:none;margin-top:14px;padding:12px;border-radius:10px;background:#0f2f52;color:#e2e8f0;"></div>
+                <div id="mensajeGestionUsuario" style="margin-top:10px;font-weight:700;"></div>
             </div>
 
-            <details class="card" open style="margin-top:16px;">
-                <summary style="cursor:pointer;font-weight:800;font-size:17px;padding:4px 0;">✏️ 7. Editar datos básicos</summary>
-                <div style="padding-top:16px;">
-                    <p>Completa únicamente los datos que deseas cambiar. El usuario se toma del campo superior.</p>
+            <div id="panelAccionClave" class="panel-accion-usuario" style="display:none;">
+                <div class="card">
+                    <h3 style="margin-top:0;">🔐 Cambiar clave</h3>
+                    <label style="display:block;font-weight:700;margin-bottom:6px;">Nueva clave</label>
+                    <input id="claveGestion" type="password" class="usuario-admin-input" placeholder="Nueva clave">
+                    <button class="button_1" style="width:100%;margin-top:12px;" onclick="cambiarClaveUsuarioApp()">🔑 Cambiar clave</button>
+                </div>
+            </div>
+
+            <div id="panelAccionEstado" class="panel-accion-usuario" style="display:none;">
+                <div class="card">
+                    <h3 style="margin-top:0;">🛡️ Estado de la cuenta</h3>
+                    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;">
+                        <button class="button_1" onclick="cambiarEstadoUsuarioApp('ACTIVO')">✅ Activar</button>
+                        <button class="button_1" onclick="cambiarEstadoUsuarioApp('SUSPENDIDO')">⛔ Suspender</button>
+                        <button class="button_1" onclick="cambiarEstadoUsuarioApp('BAJA')">🗑️ Baja</button>
+                    </div>
+                </div>
+            </div>
+
+            <div id="panelAccionPerfil" class="panel-accion-usuario" style="display:none;">
+                <div class="card">
+                    <h3 style="margin-top:0;">🪪 Perfil y nivel de acceso</h3>
                     <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:12px;">
-                        <label>Correo<input id="editCorreo" style="width:100%;padding:11px;border-radius:8px;box-sizing:border-box;margin-top:5px;" placeholder="Correo"></label>
-                        <label>Cuadrilla<input id="editCuadrilla" style="width:100%;padding:11px;border-radius:8px;box-sizing:border-box;margin-top:5px;" placeholder="Cuadrilla"></label>
-                        <label>Sede<input id="editSede" style="width:100%;padding:11px;border-radius:8px;box-sizing:border-box;margin-top:5px;" placeholder="Sede"></label>
-                        <label>Plataforma<input id="editPlataforma" style="width:100%;padding:11px;border-radius:8px;box-sizing:border-box;margin-top:5px;" placeholder="Plataforma"></label>
-                        <label>Usuario Supervisor<input id="editUsuarioSupervisor" style="width:100%;padding:11px;border-radius:8px;box-sizing:border-box;margin-top:5px;" placeholder="UsuarioSupervisor"></label>
+                        <label>Perfil
+                            <select id="perfilGestion" class="usuario-admin-input" onchange="ajustarNivelAccesoPerfilUsuario()"></select>
+                        </label>
+                        <label>Nivel de acceso
+                            <select id="nivelGestion" class="usuario-admin-input">
+                                <option value="CUADRILLA">CUADRILLA</option><option value="SEDE">SEDE</option><option value="ZONA NORTE">ZONA NORTE</option><option value="ADMIN">ADMIN</option>
+                            </select>
+                        </label>
+                    </div>
+                    <button class="button_1" style="width:100%;margin-top:14px;" onclick="guardarPerfilUsuarioSeleccionado()">💾 Guardar perfil</button>
+                    <p style="font-size:12px;margin:12px 0 0;color:#cbd5e1;">Los permisos específicos se configuran desde “Permisos por perfil”.</p>
+                </div>
+            </div>
+
+            <div id="panelAccionDatos" class="panel-accion-usuario" style="display:none;">
+                <div class="card">
+                    <h3 style="margin-top:0;">✏️ Editar datos básicos</h3>
+                    <p>Los datos actuales se cargan automáticamente. Modifica solo lo necesario.</p>
+                    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:12px;">
+                        <label>Correo<input id="editCorreo" class="usuario-admin-input" placeholder="Correo"></label>
+                        <label>Cuadrilla<input id="editCuadrilla" class="usuario-admin-input" list="listaCuadrillasAdmin" placeholder="Cuadrilla"></label>
+                        <label>Sede<select id="editSede" class="usuario-admin-input"><option value="">SIN SEDE</option></select></label>
+                        <label>Plataforma<select id="editPlataforma" class="usuario-admin-input"><option value="">SIN PLATAFORMA</option></select></label>
+                        <label>Usuario Supervisor<select id="editUsuarioSupervisor" class="usuario-admin-input"><option value="">SIN SUPERVISOR</option></select></label>
                     </div>
                     <div style="text-align:center;margin-top:16px;"><button class="button_1" onclick="editarUsuarioApp()">💾 Guardar cambios básicos</button></div>
                 </div>
-            </details>
+            </div>
         </div>
         <style>
           .usuario-admin-input{width:100%;padding:11px;border-radius:8px;box-sizing:border-box;margin-top:5px;min-height:43px;}
@@ -1513,6 +1535,7 @@ async function cargarCatalogosUsuariosAdministracion(){
         const res=await apiUsuariosAdmin({accion:"obtenerCatalogosUsuariosAdministracion",usuarioSesion:localStorage.getItem("usuario")||""});
         if(!res.ok) throw new Error(res.error||"No se pudieron cargar los catálogos");
         const perfiles=res.perfiles||[], sedes=res.sedes||[], plataformas=res.plataformas||[], cuadrillas=res.cuadrillas||[], supervisores=res.supervisores||[];
+        catalogoUsuariosAdministracionActual = Array.isArray(res.usuarios) ? res.usuarios : [];
         const perfilNuevo=document.getElementById("nuevoPerfil"), perfilGestion=document.getElementById("perfilGestion");
         const opcionesPerfil=perfiles.map(p=>`<option value="${escaparOptionUsuario(p)}">${escaparOptionUsuario(p)}</option>`).join("");
         if(perfilNuevo) perfilNuevo.innerHTML='<option value="">Seleccione perfil</option>'+opcionesPerfil;
@@ -1520,11 +1543,64 @@ async function cargarCatalogosUsuariosAdministracion(){
         const sede=document.getElementById("nuevoSede"); if(sede) sede.innerHTML='<option value="">SIN SEDE</option>'+sedes.map(x=>`<option>${escaparOptionUsuario(x)}</option>`).join("");
         const plataforma=document.getElementById("nuevoPlataforma"); if(plataforma) plataforma.innerHTML='<option value="">SIN PLATAFORMA</option>'+plataformas.map(x=>`<option>${escaparOptionUsuario(x)}</option>`).join("");
         const dl=document.getElementById("listaCuadrillasAdmin"); if(dl) dl.innerHTML=cuadrillas.map(x=>`<option value="${escaparOptionUsuario(x)}"></option>`).join("");
-        const sup=document.getElementById("nuevoSupervisor"); if(sup) sup.innerHTML='<option value="">SIN SUPERVISOR</option>'+supervisores.map(x=>`<option value="${escaparOptionUsuario(x.usuario)}">${escaparOptionUsuario((x.nombresApellidos||x.usuario)+(x.sede?' · '+x.sede:''))}</option>`).join("");
+        const opcionesSup='<option value="">SIN SUPERVISOR</option>'+supervisores.map(x=>`<option value="${escaparOptionUsuario(x.usuario)}">${escaparOptionUsuario((x.nombresApellidos||x.usuario)+(x.sede?' · '+x.sede:''))}</option>`).join("");
+        const sup=document.getElementById("nuevoSupervisor"); if(sup) sup.innerHTML=opcionesSup;
+        const editSup=document.getElementById("editUsuarioSupervisor"); if(editSup) editSup.innerHTML=opcionesSup;
+        const editSede=document.getElementById("editSede"); if(editSede) editSede.innerHTML='<option value="">SIN SEDE</option>'+sedes.map(x=>`<option value="${escaparOptionUsuario(x)}">${escaparOptionUsuario(x)}</option>`).join("");
+        const editPlataforma=document.getElementById("editPlataforma"); if(editPlataforma) editPlataforma.innerHTML='<option value="">SIN PLATAFORMA</option>'+plataformas.map(x=>`<option value="${escaparOptionUsuario(x)}">${escaparOptionUsuario(x)}</option>`).join("");
+        const usuarioGestion=document.getElementById("usuarioGestion");
+        if(usuarioGestion){
+            usuarioGestion.innerHTML='<option value="">Seleccione usuario</option>'+catalogoUsuariosAdministracionActual.map(x=>`<option value="${escaparOptionUsuario(x.usuario)}">${escaparOptionUsuario((x.nombresApellidos||x.usuario)+' · '+x.usuario)}</option>`).join("");
+        }
         ajustarNivelNuevoUsuario(); ajustarNivelAccesoPerfilUsuario();
     }catch(err){
         const m=document.getElementById("mensajeNuevoUsuario"); if(m){m.style.color="#fecaca";m.textContent="No se pudieron cargar los catálogos: "+err.message;}
     }
+}
+
+let catalogoUsuariosAdministracionActual = [];
+
+function obtenerUsuarioGestionSeleccionado(){
+    const sel=document.getElementById("usuarioGestion");
+    const codigo=sel ? (sel.value||"").trim() : "";
+    return catalogoUsuariosAdministracionActual.find(x => normalizarUsuarioTexto(x.usuario).replace(/\s+/g,"") === normalizarUsuarioTexto(codigo).replace(/\s+/g,"")) || null;
+}
+
+function seleccionarUsuarioGestionApp(){
+    const usuario=obtenerUsuarioGestionSeleccionado();
+    const accion=document.getElementById("accionUsuarioGestion");
+    const resumen=document.getElementById("resumenUsuarioGestion");
+    if(accion){accion.disabled=!usuario;accion.value="";}
+    document.querySelectorAll(".panel-accion-usuario").forEach(x=>x.style.display="none");
+    if(!usuario){if(resumen)resumen.style.display="none";return;}
+    if(resumen){
+        resumen.style.display="block";
+        resumen.innerHTML=`<strong>${escaparOptionUsuario(usuario.nombresApellidos||usuario.usuario)}</strong><br>
+        Usuario: ${escaparOptionUsuario(usuario.usuario)} · Perfil: ${escaparOptionUsuario(usuario.perfil||"SIN PERFIL")} · Estado: ${escaparOptionUsuario(usuario.estado||"")}<br>
+        Sede: ${escaparOptionUsuario(usuario.sede||"SIN SEDE")} · Cuadrilla: ${escaparOptionUsuario(usuario.cuadrilla||"SIN CUADRILLA")} · Plataforma: ${escaparOptionUsuario(usuario.plataforma||"SIN PLATAFORMA")}`;
+    }
+    const perfil=document.getElementById("perfilGestion"); if(perfil) perfil.value=usuario.perfil||"";
+    const nivel=document.getElementById("nivelGestion"); if(nivel) nivel.value=usuario.nivelAcceso||nivelAccesoSugeridoPerfilUsuario(usuario.perfil);
+    const correo=document.getElementById("editCorreo"); if(correo) correo.value=usuario.correo||"";
+    const cuadrilla=document.getElementById("editCuadrilla"); if(cuadrilla) cuadrilla.value=usuario.cuadrilla||"";
+    establecerValorSelectUsuario("editSede",usuario.sede||"");
+    establecerValorSelectUsuario("editPlataforma",usuario.plataforma||"");
+    establecerValorSelectUsuario("editUsuarioSupervisor",usuario.usuarioSupervisor||"");
+}
+
+function establecerValorSelectUsuario(id,valor){
+    const sel=document.getElementById(id); if(!sel)return;
+    const v=(valor||"").toString();
+    if(v && !Array.from(sel.options).some(o=>o.value===v)) sel.add(new Option(v,v));
+    sel.value=v;
+}
+
+function mostrarAccionUsuarioGestionApp(){
+    document.querySelectorAll(".panel-accion-usuario").forEach(x=>x.style.display="none");
+    const accion=document.getElementById("accionUsuarioGestion");
+    if(!accion||!accion.value)return;
+    const mapa={CLAVE:"panelAccionClave",ESTADO:"panelAccionEstado",PERFIL:"panelAccionPerfil",DATOS:"panelAccionDatos"};
+    const panel=document.getElementById(mapa[accion.value]); if(panel)panel.style.display="block";
 }
 
 function ajustarNivelNuevoUsuario(){

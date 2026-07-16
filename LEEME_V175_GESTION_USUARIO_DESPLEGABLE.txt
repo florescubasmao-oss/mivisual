@@ -1,0 +1,15 @@
+MI VISUAL V175 - GESTION DE USUARIO ORDENADA
+
+Cambios:
+- Selector desplegable de usuarios existentes.
+- Carga automática de ficha básica del usuario seleccionado.
+- Selector de acción: cambiar clave, estado, perfil o datos básicos.
+- Solo se muestra el panel correspondiente a la acción elegida.
+- Sede, plataforma y supervisor se gestionan mediante desplegables.
+- Se conserva la lógica existente de cambio de clave, estado, perfil y edición.
+
+Requiere:
+1. Reemplazar archivos web.
+2. Reemplazar Code.gs completo.
+3. Guardar y crear nuevo despliegue de Apps Script.
+4. Recargar con Ctrl + F5.
