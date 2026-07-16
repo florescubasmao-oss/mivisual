@@ -60,7 +60,7 @@
   if(oldConfigurarMenu){
     configurarMenu = function(){
       const r=oldConfigurarMenu.apply(this,arguments);
-      setTimeout(()=>{ if(typeof ckAplicarVisibilidadChecklist==='function') ckAplicarVisibilidadChecklist(); },80);
+
       return r;
     };
   }

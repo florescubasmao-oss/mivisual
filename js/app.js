@@ -326,12 +326,17 @@ async function configurarMenu(){
     let checklistActivo = true;
     let pextActivo = false;
     try {
-        const consultas = await Promise.all([
-            typeof ckObtenerConfiguracion === "function" ? ckObtenerConfiguracion() : Promise.resolve({activo:true}),
-            typeof tcObtenerConfiguracionPext === "function" ? tcObtenerConfiguracionPext() : Promise.resolve({activo:false})
-        ]);
-        checklistActivo = consultas[0] ? consultas[0].activo !== false : true;
-        pextActivo = consultas[1] ? consultas[1].activo === true : false;
+        if (typeof PM_CONFIG_MENU !== "undefined" && PM_CONFIG_MENU) {
+            checklistActivo = PM_CONFIG_MENU.checklist ? PM_CONFIG_MENU.checklist.activo !== false : true;
+            pextActivo = PM_CONFIG_MENU.pext ? PM_CONFIG_MENU.pext.activo === true : false;
+        } else {
+            const consultas = await Promise.all([
+                typeof ckObtenerConfiguracion === "function" ? ckObtenerConfiguracion() : Promise.resolve({activo:true}),
+                typeof tcObtenerConfiguracionPext === "function" ? tcObtenerConfiguracionPext() : Promise.resolve({activo:false})
+            ]);
+            checklistActivo = consultas[0] ? consultas[0].activo !== false : true;
+            pextActivo = consultas[1] ? consultas[1].activo === true : false;
+        }
     } catch (e) {
         console.warn("No se pudo completar la configuración inicial del menú", e);
     }

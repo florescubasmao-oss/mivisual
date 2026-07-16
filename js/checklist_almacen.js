@@ -127,7 +127,7 @@ async function ckGuardarConfiguracion(){
 async function ckAplicarVisibilidadChecklist(){
   const card=document.getElementById('cardChecklistAlmacen');if(!card)return;
   const cfg=await ckObtenerConfiguracion();
-  card.style.setProperty('display',cfg.activo?'flex':'none','important');
+  if(!cfg.activo) card.style.setProperty('display','none','important');
 }
 
 async function mostrarChecklistAlmacen(){
@@ -409,7 +409,7 @@ async function ckEnviarValidacion(id,resultado,motivo){try{await ckApi({accion:'
 
 
 // Aplicar visibilidad del módulo al cargar el menú principal.
-if(document.readyState==='loading'){document.addEventListener('DOMContentLoaded',()=>setTimeout(ckAplicarVisibilidadChecklist,300));}else{setTimeout(ckAplicarVisibilidadChecklist,300);}
+// La visibilidad inicial se resuelve una sola vez desde el contexto del menú.
 
 
 /* =========================

@@ -8,6 +8,7 @@ let PD_VISTA_PERSONAL=false;
 
 function pdNorm(v){return (v||"").toString().toUpperCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"").replace(/\s+/g," ").trim();}
 function pdUser(){return {usuario:localStorage.getItem("usuario")||"",perfil:pdNorm(localStorage.getItem("perfil")),sede:pdNorm(localStorage.getItem("sede")),cuadrilla:localStorage.getItem("cuadrilla")||""};}
+function pdSoloLectura(){const u=pdUser();return u.perfil==="OPERACIONES LIMA"||(typeof pmPuede==="function"&&!pmPuede("PROGRAMACION DESCANSOS","EDITAR"));}
 function pdEsc(v){return (v??"").toString().replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");}
 async function pdApi(payload){const r=await fetch(API_DESCANSOS,{method:"POST",body:JSON.stringify(payload)});const d=await r.json();if(!d.ok)throw new Error(d.error||"Error en Programación de Descansos");return d;}
 function pdHoy(){const d=new Date(),m=String(d.getMonth()+1).padStart(2,"0"),day=String(d.getDate()).padStart(2,"0");return `${d.getFullYear()}-${m}-${day}`;}
@@ -185,8 +186,8 @@ async function pdSolicitarCambio(){try{const u=pdUser();const fechaDescansoActua
 function pdRenderGestion(){
   const u=pdUser(),per=PD_DATA.periodo||pdPeriodoActual();
   const estadoVista=window.PD_FILTROS||{};
-  const esSupervisor=u.perfil==='SUPERVISOR';const soloLectura=u.perfil==='OPERACIONES LIMA'||(typeof pmPuede==='function'&&!pmPuede('PROGRAMACION DESCANSOS','EDITAR'));
-  const esJefatura=!esSupervisor;
+  const esSupervisor=u.perfil==='SUPERVISOR';const soloLectura=pdSoloLectura();
+  const esJefatura=!esSupervisor&&!soloLectura;
   const sedes=esSupervisor?[u.sede]:['TODAS','CHICLAYO','PIURA','TRUJILLO'];
   const sedeSel=sedes.includes(estadoVista.sede)?estadoVista.sede:(esSupervisor?u.sede:'TODAS');
   const plataformaSel=['TODAS','INSTALACIONES','VISITA TECNICA','TRASLADOS'].includes(estadoVista.plataforma)?estadoVista.plataforma:'TODAS';
@@ -197,7 +198,7 @@ function pdRenderGestion(){
   const rango=pdRangoVisualMes(per);
   let desde=estadoVista.desde||rango.desde,hasta=estadoVista.hasta||rango.hasta;
   if(modo==='DIA'){desde=estadoVista.desde||pdHoy();hasta=desde;}
-  const pendientes=PD_DATA.programacion.filter(x=>pdNorm(x.estadoProgramacion)===(esSupervisor?'PENDIENTE SUPERVISOR':'PENDIENTE JEFATURA')||(!esSupervisor&&pdNorm(x.estadoProgramacion)==='OBSERVADO'));
+  const pendientes=soloLectura?[]:PD_DATA.programacion.filter(x=>pdNorm(x.estadoProgramacion)===(esSupervisor?'PENDIENTE SUPERVISOR':'PENDIENTE JEFATURA')||(!esSupervisor&&pdNorm(x.estadoProgramacion)==='OBSERVADO'));
   const baseHistorial=(PD_DATA.historial&&PD_DATA.historial.length?PD_DATA.historial:PD_DATA.programacion||[]);
   const historial=baseHistorial.filter(x=>esSupervisor?pdNorm(x.sede)===u.sede:true).slice(0,120);
   const alertasJefatura=esSupervisor?historial.filter(x=>pdNorm(x.origen)==='JEFATURA'&&pdNorm(x.accion)==='CAMBIO APLICADO'):[];
@@ -309,7 +310,7 @@ function pdRenderCalendario(){
     const nombre=c.nombrePersonal||c.cuadrilla;
     const badge=tipo!=='CUADRILLA'?`<span class="pd-personal-badge">${pdEsc(tipo==='ALMACEN'?'RESPONSABLE DE ALMACÉN':tipo)}</span>`:'';
     html+=`<tr class="${claseFila}"><td class="pd-sticky"><div class="pd-cuadrilla-nombre">${pdEsc(nombre)}</div>${badge}${integrantesHtml}</td>`;
-    fechas.forEach(fecha=>{const key=c.cuadrilla+'|'+fecha,item=pdBuscar(c.cuadrilla,fecha),pend=pdEsPendiente(item),estado=PD_CAMBIOS[key]||(pend?pdEstadoPropuesto(item):pdEstadoVisible(item)),cl=estado==='DESCANSO'?'pd-descanso':(estado==='VACACIONES'?'pd-vacaciones':(pdEsBolsa(estado)?'pd-bolsa':'pd-campo')),domingo=pdDiaCorto(fecha)==='D',hoy=fecha===pdHoy(),detalle=pend?`${item.estadoProgramacion} · ${item.motivoSolicitud||'Sin comentario'} · ${item.solicitadoPor||''}`:(item?.estadoProgramacion||'APROBADO'),editable=tipo==='CUADRILLA'||u.perfil!=='SUPERVISOR',click=pend?`pdMostrarDetallePendiente('${pdEsc(item.id)}')`:(editable?`pdToggleDia('${pdEsc(c.cuadrilla)}','${fecha}',this)`:'');html+=`<td class="${domingo?'pd-sunday ':''}${hoy?'pd-current-day':''}"><button class="pd-day ${cl} ${pend?'pd-pendiente':''} ${hoy?'pd-hoy':''} ${editable?'':'pd-disabled'}" ${click?`onclick="${click}"`:'disabled'} title="${pdEsc(detalle)}">${pdEtiquetaEstado(estado)}</button></td>`;});
+    fechas.forEach(fecha=>{const key=c.cuadrilla+'|'+fecha,item=pdBuscar(c.cuadrilla,fecha),pend=pdEsPendiente(item),estado=PD_CAMBIOS[key]||(pend?pdEstadoPropuesto(item):pdEstadoVisible(item)),cl=estado==='DESCANSO'?'pd-descanso':(estado==='VACACIONES'?'pd-vacaciones':(pdEsBolsa(estado)?'pd-bolsa':'pd-campo')),domingo=pdDiaCorto(fecha)==='D',hoy=fecha===pdHoy(),detalle=pend?`${item.estadoProgramacion} · ${item.motivoSolicitud||'Sin comentario'} · ${item.solicitadoPor||''}`:(item?.estadoProgramacion||'APROBADO'),editable=!pdSoloLectura()&&(tipo==='CUADRILLA'||u.perfil!=='SUPERVISOR'),click=pend?`pdMostrarDetallePendiente('${pdEsc(item.id)}')`:(editable?`pdToggleDia('${pdEsc(c.cuadrilla)}','${fecha}',this)`:'');html+=`<td class="${domingo?'pd-sunday ':''}${hoy?'pd-current-day':''}"><button class="pd-day ${cl} ${pend?'pd-pendiente':''} ${hoy?'pd-hoy':''} ${editable?'':'pd-disabled'}" ${click?`onclick="${click}"`:'disabled'} title="${pdEsc(detalle)}">${pdEtiquetaEstado(estado)}</button></td>`;});
     html+='</tr>';
   });
   html+='</tbody></table></div>';document.getElementById('pdCalendario').innerHTML=html;
@@ -439,7 +440,7 @@ async function pdResolverSeleccionados(resultado){
     await pdCargar(per);pdRenderGestion();
   }catch(e){alert(e.message);}
 }
-function pdMostrarDetallePendiente(id){const x=PD_DATA.programacion.find(i=>i.id===id);const cont=document.getElementById('pdDetallePendiente');if(!x||!cont)return;const u=pdUser(),anterior=pdNorm(x.estadoAnterior||x.estadoDia||'EN CAMPO'),propuesto=pdNorm(x.estadoNuevo||x.solicitudCambio||pdEstadoPropuesto(x));cont.style.display='block';cont.innerHTML=`<b>Detalle del cambio pendiente</b><div class="pd-item" style="margin-top:8px"><strong>${pdEsc(x.cuadrilla)} · ${pdEsc(x.fecha)}</strong><div>Estado vigente: <b>${pdEsc(anterior)}</b></div><div>Estado solicitado: <b>${pdEsc(propuesto)}</b></div><div>Motivo: ${pdEsc(x.comentarioSupervisor||x.motivoSolicitud||'Sin comentario')}</div><div>Solicitado por: ${pdEsc(x.solicitadoPor||x.validadoSupervisorPor||'')}</div><div>Estado: <span class="pd-status pendiente">${pdEsc(x.estadoValidacion||x.estadoProgramacion)}</span></div>${u.perfil!=='SUPERVISOR'?`<div class="pd-actions"><button class="pd-btn pd-green" onclick="pdResolverProgramacion('${pdEsc(x.id)}','APROBADO')">Aprobar</button><button class="pd-btn pd-orange" onclick="pdResolverProgramacion('${pdEsc(x.id)}','OBSERVADO')">Observar</button><button class="pd-btn pd-red" onclick="pdResolverProgramacion('${pdEsc(x.id)}','RECHAZADO')">Rechazar</button></div>`:''}</div>`;cont.scrollIntoView({behavior:'smooth',block:'center'});}
+function pdMostrarDetallePendiente(id){const x=PD_DATA.programacion.find(i=>i.id===id);const cont=document.getElementById('pdDetallePendiente');if(!x||!cont)return;const u=pdUser(),anterior=pdNorm(x.estadoAnterior||x.estadoDia||'EN CAMPO'),propuesto=pdNorm(x.estadoNuevo||x.solicitudCambio||pdEstadoPropuesto(x));cont.style.display='block';cont.innerHTML=`<b>Detalle del cambio pendiente</b><div class="pd-item" style="margin-top:8px"><strong>${pdEsc(x.cuadrilla)} · ${pdEsc(x.fecha)}</strong><div>Estado vigente: <b>${pdEsc(anterior)}</b></div><div>Estado solicitado: <b>${pdEsc(propuesto)}</b></div><div>Motivo: ${pdEsc(x.comentarioSupervisor||x.motivoSolicitud||'Sin comentario')}</div><div>Solicitado por: ${pdEsc(x.solicitadoPor||x.validadoSupervisorPor||'')}</div><div>Estado: <span class="pd-status pendiente">${pdEsc(x.estadoValidacion||x.estadoProgramacion)}</span></div>${u.perfil!=='SUPERVISOR'&&!pdSoloLectura()?`<div class="pd-actions"><button class="pd-btn pd-green" onclick="pdResolverProgramacion('${pdEsc(x.id)}','APROBADO')">Aprobar</button><button class="pd-btn pd-orange" onclick="pdResolverProgramacion('${pdEsc(x.id)}','OBSERVADO')">Observar</button><button class="pd-btn pd-red" onclick="pdResolverProgramacion('${pdEsc(x.id)}','RECHAZADO')">Rechazar</button></div>`:''}</div>`;cont.scrollIntoView({behavior:'smooth',block:'center'});}
 function pdHistorialCard(x){return `<div class="pd-item"><strong>${pdEsc(x.cuadrilla||'')} · ${pdEsc(x.fechaAfectada||x.fecha||'')}</strong><div>${pdEsc(x.accion||'CAMBIO')} · ${pdEsc(x.estadoAnterior||'')} → ${pdEsc(x.estadoNuevo||'')}</div><div class="pd-note">${pdEsc(x.motivo||'Sin comentario')}</div><div class="pd-note">${pdEsc(x.usuario||'')} · ${pdEsc(x.fechaRegistro||'')} ${pdEsc(x.horaRegistro||'')}</div></div>`;}
 
 async function pdValidarSolicitud(id,resultado){try{const u=pdUser(),motivo=prompt('Motivo / comentario:')||'';const accion=u.perfil==='SUPERVISOR'?'validarCambioDescansoSupervisor':'validarCambioDescansoJefatura';await pdApi({accion,usuario:u.usuario,id,resultado,motivo});alert('Solicitud actualizada.');const per=document.getElementById('pdPeriodo').value;pdCapturarFiltros();await pdCargar(per);pdRenderGestion();}catch(e){alert(e.message);}}
