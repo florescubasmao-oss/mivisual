@@ -473,7 +473,7 @@ function renderHistorialValidacionLocal(){
     const filtroSede = (document.getElementById("vtFiltroSede")?.value || "").toUpperCase();
     const filtroEstado = (document.getElementById("vtFiltroEstado")?.value || "").toUpperCase();
     const buscarCodigo = (document.getElementById("vtBuscarCodigo")?.value || "").trim().toUpperCase();
-    const esGestion = u.perfil === "SUPERVISOR" || esJefaturaValidacion(u.perfil) || (typeof esOperacionesLima === "function" && esOperacionesLima(u.perfil));
+    const esGestion = (typeof pmAlcance === "function" && ["SEDE","SEDE / PROPIOS","ZONA NORTE"].includes(pmAlcance("VALIDACION TECNICA"))) || u.perfil === "SUPERVISOR" || esJefaturaValidacion(u.perfil);
 
     let lista = esGestion
         ? todas.filter(x => (x.estado || "").toUpperCase() !== "PENDIENTE")
@@ -539,7 +539,7 @@ function renderResumenValidaciones(lista){
     });
 
     const totalAprobados = c.APROBADO + c["SIN RESPUESTA"];
-    const esGestion = u.perfil === "SUPERVISOR" || esJefaturaValidacion(u.perfil) || (typeof esOperacionesLima === "function" && esOperacionesLima(u.perfil));
+    const esGestion = (typeof pmAlcance === "function" && ["SEDE","SEDE / PROPIOS","ZONA NORTE"].includes(pmAlcance("VALIDACION TECNICA"))) || u.perfil === "SUPERVISOR" || esJefaturaValidacion(u.perfil);
 
     if(esGestion){
         return `<div class="vt-kpis">

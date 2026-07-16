@@ -1,0 +1,18 @@
+MI VISUAL V178 - MOTOR CENTRAL DE PERMISOS, ETAPA 2
+
+Base: V177.
+
+Cambios controlados:
+- Se agrega un motor central de permisos en Code.gs.
+- Programación de Descansos deja de validar listas fijas de perfiles para consultar.
+- Validación Técnica deja de validar listas fijas de perfiles para consultar.
+- El alcance se toma de PERMISOS_MODULOS: PERSONAL, CUADRILLA, SEDE, SEDE / PROPIOS o ZONA NORTE.
+- VER y DESCARGAR funcionan para perfiles nuevos según la hoja.
+- Se conserva la optimización y caché de Descansos.
+- Se mantienen las reglas operativas existentes de aprobación y validación.
+- No se migraron otros módulos en esta versión.
+
+Instalación:
+1. Reemplazar Code.gs completo y realizar un nuevo despliegue.
+2. Subir los archivos web del ZIP.
+3. Cerrar sesión y recargar con Ctrl + F5.

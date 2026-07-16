@@ -8,7 +8,7 @@ let PD_VISTA_PERSONAL=false;
 
 function pdNorm(v){return (v||"").toString().toUpperCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"").replace(/\s+/g," ").trim();}
 function pdUser(){return {usuario:localStorage.getItem("usuario")||"",perfil:pdNorm(localStorage.getItem("perfil")),sede:pdNorm(localStorage.getItem("sede")),cuadrilla:localStorage.getItem("cuadrilla")||""};}
-function pdSoloLectura(){const u=pdUser();return u.perfil==="OPERACIONES LIMA"||(typeof pmPuede==="function"&&!pmPuede("PROGRAMACION DESCANSOS","EDITAR"));}
+function pdSoloLectura(){if(typeof pmPuede==="function")return !pmPuede("PROGRAMACION DESCANSOS","REGISTRAR")&&!pmPuede("PROGRAMACION DESCANSOS","EDITAR")&&!pmPuede("PROGRAMACION DESCANSOS","OBSERVAR")&&!pmPuede("PROGRAMACION DESCANSOS","APROBAR")&&!pmPuede("PROGRAMACION DESCANSOS","VALIDAR")&&!pmPuede("PROGRAMACION DESCANSOS","ADMINISTRAR");const u=pdUser();return u.perfil==="OPERACIONES LIMA";}
 function pdEsc(v){return (v??"").toString().replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");}
 async function pdApi(payload){const r=await fetch(API_DESCANSOS,{method:"POST",body:JSON.stringify(payload)});const d=await r.json();if(!d.ok)throw new Error(d.error||"Error en Programación de Descansos");return d;}
 function pdHoy(){const d=new Date(),m=String(d.getMonth()+1).padStart(2,"0"),day=String(d.getDate()).padStart(2,"0");return `${d.getFullYear()}-${m}-${day}`;}

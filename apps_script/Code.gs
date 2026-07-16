@@ -2525,22 +2525,12 @@ function listarValidacionTecnica(data) {
   const hoja = asegurarHojaValidacionTecnica();
   const datos = hoja.getDataRange().getValues();
   const usuario = obtenerUsuarioApp(data.usuario);
+  const permisoValidacion = exigirPermisoModuloCentral(usuario, "VALIDACION TECNICA", "VER");
   const lista = [];
 
   for (let i = 1; i < datos.length; i++) {
     const item = filaValidacionTecnicaAObjeto(datos[i]);
-
-    let permitir = false;
-
-    if (usuario.perfil === "TECNICO") {
-      permitir = normalizarCuadrilla(usuario.cuadrilla) === normalizarCuadrilla(item.cuadrilla);
-    } else if (usuario.perfil === "SUPERVISOR") {
-      permitir = normalizarTexto(usuario.sede) === normalizarTexto(item.sede);
-    } else if (esPerfilJefatura(usuario.perfil) || esOperacionesLima(usuario.perfil)) {
-      permitir = true;
-    }
-
-    if (!permitir) continue;
+    if (!registroCumpleAlcanceCentral(usuario, permisoValidacion, item)) continue;
     if (data.estado && normalizarTexto(data.estado) !== normalizarTexto(item.estado)) continue;
     if (data.tipoValidacion && normalizarTexto(data.tipoValidacion) !== normalizarTexto(item.tipoValidacion)) continue;
     if (data.sede && normalizarTexto(data.sede) !== normalizarTexto(item.sede)) continue;
@@ -2577,6 +2567,7 @@ function validarValidacionTecnica(data) {
   const fila = encontrado.fila;
   const datos = encontrado.datos;
   const usuario = obtenerUsuarioApp(data.usuario);
+  exigirPermisoModuloCentral(usuario, "VALIDACION TECNICA", "VALIDAR");
   const tipo = normalizarTexto(datos[6]);
   const sedeCaso = normalizarTexto(datos[3]);
   const estadoActual = normalizarTexto(datos[13]);
@@ -4062,7 +4053,7 @@ function leerProgramacionDescansosPeriodo(periodo) {
 
 function listarProgramacionDescansos(data) {
   const usuario = obtenerUsuarioApp(data.usuario);
-  if (!esPerfilDescansos(usuario.perfil)) throw new Error("No tienes acceso a Programación de Descansos");
+  const permisoDescansos = exigirPermisoModuloCentral(usuario, "PROGRAMACION DESCANSOS", "VER");
 
   const periodo = (data.periodo || Utilities.formatDate(new Date(), Session.getScriptTimeZone(), "yyyy-MM")).toString();
   const filtroSede = normalizarTexto(data.sede || "TODAS");
@@ -4078,19 +4069,14 @@ function listarProgramacionDescansos(data) {
   }
 
   // Solo dos lecturas de Sheets: USUARIOS y PROGRAMACION_DESCANSOS.
-  const cuadrillas = leerUsuariosDescansosUnaVez(usuario);
+  let cuadrillas = leerUsuariosDescansosUnaVez(usuario);
   const registrosPeriodo = leerProgramacionDescansosPeriodo(periodo);
-  const perfil = normalizarTexto(usuario.perfil);
-  const soloLecturaOperaciones = esOperacionesLima(perfil);
-  const esTecnico = perfil === "TECNICO";
-  const esSupervisor = perfil === "SUPERVISOR";
-  const cuadrillaUsuario = normalizarCuadrilla(usuario.cuadrilla);
-  const sedeUsuario = normalizarTexto(usuario.sede);
+  const soloLecturaOperaciones = !(permisoDescansos.registrar || permisoDescansos.editar || permisoDescansos.observar || permisoDescansos.aprobar || permisoDescansos.validar || permisoDescansos.administrar);
 
+  cuadrillas = cuadrillas.filter(item => registroCumpleAlcanceCentral(usuario, permisoDescansos, item));
   const visibles = registrosPeriodo.filter(reg => {
     const item = reg.item;
-    if (esTecnico && normalizarCuadrilla(item.cuadrilla) !== cuadrillaUsuario) return false;
-    if (esSupervisor && normalizarTexto(item.sede) !== sedeUsuario) return false;
+    if (!registroCumpleAlcanceCentral(usuario, permisoDescansos, item)) return false;
     if (filtroSede && filtroSede !== "TODAS" && normalizarTexto(item.sede) !== filtroSede) return false;
     return true;
   });
@@ -4331,9 +4317,10 @@ function validarCambioDescansoJefatura(data) {
 
 function resumenCoberturaDescansos(data) {
   const usuario=obtenerUsuarioApp(data.usuario);
-  if(!esPerfilDescansos(usuario.perfil))throw new Error("Sin acceso");
+  const permisoDescansos=exigirPermisoModuloCentral(usuario,"PROGRAMACION DESCANSOS","VER");
   const fecha=fechaISODescansos(data.fecha||Utilities.formatDate(new Date(),Session.getScriptTimeZone(),"yyyy-MM-dd"));
-  const sedes=normalizarTexto(usuario.perfil)==="SUPERVISOR"?[normalizarTexto(usuario.sede)]:["CHICLAYO","PIURA","TRUJILLO"];
+  const alcance=normalizarTexto(permisoDescansos.alcanceDatos);
+  const sedes=(alcance==="SEDE"||alcance==="SEDE / PROPIOS")?[normalizarTexto(usuario.sede)]:["CHICLAYO","PIURA","TRUJILLO"];
   const salida=[];
   sedes.forEach(s=>["INSTALACIONES","VISITA TECNICA","TRASLADOS"].forEach(p=>salida.push(Object.assign({fecha,sede:s,plataforma:p},calcularCoberturaDescansos(fecha,s,p)))));
   return {ok:true,modulo:"PROGRAMACION_DESCANSOS",accion:"RESUMEN_COBERTURA",fecha,resumen:salida};
@@ -4351,8 +4338,84 @@ function asegurarHojaPermisosModulos(){const ss=SpreadsheetApp.getActiveSpreadsh
 function filaPermisoAObjeto(f){return {perfil:normalizarTexto(f[0]),modulo:normalizarTexto(f[1]),activo:normalizarTexto(f[2]||"SI"),ordenMenu:f[3],mostrarModulo:normalizarTexto(f[4]||"NO"),ver:normalizarTexto(f[5]||"NO"),registrar:normalizarTexto(f[6]||"NO"),editar:normalizarTexto(f[7]||"NO"),observar:normalizarTexto(f[8]||"NO"),aprobar:normalizarTexto(f[9]||"NO"),validar:normalizarTexto(f[10]||"NO"),descargar:normalizarTexto(f[11]||"NO"),administrar:normalizarTexto(f[12]||"NO"),alcanceDatos:normalizarTexto(f[13]||"SIN ACCESO"),vistaPerfil:(f[14]||"").toString(),observacion:(f[15]||"").toString()};}
 function obtenerPermisosUsuario(data){const u=obtenerUsuarioApp(data.usuario),h=asegurarHojaPermisosModulos(),d=h.getDataRange().getValues(),p=normalizarTexto(u.perfil),lista=[];for(let i=1;i<d.length;i++){const x=filaPermisoAObjeto(d[i]);if(x.perfil===p)lista.push(x);}return {ok:true,modulo:"PERMISOS",perfil:p,permisos:lista};}
 function listarPermisosAdministracion(data){const u=obtenerUsuarioApp(data.usuario);if(!esPerfilJefatura(u.perfil))throw new Error("Solo Jefatura puede administrar permisos");const d=asegurarHojaPermisosModulos().getDataRange().getValues(),lista=[];for(let i=1;i<d.length;i++)if(d[i][0]&&d[i][1])lista.push(filaPermisoAObjeto(d[i]));return {ok:true,permisos:lista};}
-function guardarPermisoModulo(data){const u=obtenerUsuarioApp(data.usuario);if(!esPerfilJefatura(u.perfil))throw new Error("Solo Jefatura puede administrar permisos");const h=asegurarHojaPermisosModulos(),d=h.getDataRange().getValues(),p=normalizarTexto(data.perfil),m=normalizarTexto(data.modulo);if(!p||!m)throw new Error("Perfil y módulo son obligatorios");const sn=v=>normalizarTexto(v)==="SI"?"SI":"NO";const fila=[p,m,sn(data.activo||"SI"),Number(data.ordenMenu)||"",sn(data.mostrarModulo),sn(data.ver),sn(data.registrar),sn(data.editar),sn(data.observar),sn(data.aprobar),sn(data.validar),sn(data.descargar),sn(data.administrar),normalizarTexto(data.alcanceDatos||"SIN ACCESO"),(data.vistaPerfil||p).toString(),(data.observacion||"").toString()];let n=0;for(let i=1;i<d.length;i++)if(normalizarTexto(d[i][0])===p&&normalizarTexto(d[i][1])===m){n=i+1;break;}if(n)h.getRange(n,1,1,16).setValues([fila]);else h.appendRow(fila);return {ok:true,perfil:p,modulo:m};}
+function guardarPermisoModulo(data){const u=obtenerUsuarioApp(data.usuario);if(!esPerfilJefatura(u.perfil))throw new Error("Solo Jefatura puede administrar permisos");const h=asegurarHojaPermisosModulos(),d=h.getDataRange().getValues(),p=normalizarTexto(data.perfil),m=normalizarTexto(data.modulo);if(!p||!m)throw new Error("Perfil y módulo son obligatorios");const sn=v=>normalizarTexto(v)==="SI"?"SI":"NO";const fila=[p,m,sn(data.activo||"SI"),Number(data.ordenMenu)||"",sn(data.mostrarModulo),sn(data.ver),sn(data.registrar),sn(data.editar),sn(data.observar),sn(data.aprobar),sn(data.validar),sn(data.descargar),sn(data.administrar),normalizarTexto(data.alcanceDatos||"SIN ACCESO"),(data.vistaPerfil||p).toString(),(data.observacion||"").toString()];let n=0;for(let i=1;i<d.length;i++)if(normalizarTexto(d[i][0])===p&&normalizarTexto(d[i][1])===m){n=i+1;break;}if(n)h.getRange(n,1,1,16).setValues([fila]);else h.appendRow(fila);try{CacheService.getScriptCache().remove("PM_CENTRAL|"+p+"|"+m);}catch(e){}return {ok:true,perfil:p,modulo:m};}
 function permisoUsuarioAccion(usuario,modulo,accion){const h=asegurarHojaPermisosModulos(),d=h.getDataRange().getValues(),p=normalizarTexto(usuario.perfil),m=normalizarTexto(modulo),col={VER:5,REGISTRAR:6,EDITAR:7,OBSERVAR:8,APROBAR:9,VALIDAR:10,DESCARGAR:11,ADMINISTRAR:12}[normalizarTexto(accion)];if(col===undefined)return false;for(let i=1;i<d.length;i++)if(normalizarTexto(d[i][0])===p&&normalizarTexto(d[i][1])===m)return normalizarTexto(d[i][2]||"SI")==="SI"&&normalizarTexto(d[i][col]||"NO")==="SI";return false;}
+
+// Motor central de permisos V178. Lee PERMISOS_MODULOS y evita listas fijas por perfil.
+function obtenerPermisoModuloCentral(usuario, modulo) {
+  const perfil = normalizarTexto(usuario && usuario.perfil);
+  const moduloNorm = normalizarTexto(modulo);
+  const cacheKey = "PM_CENTRAL|" + perfil + "|" + moduloNorm;
+  try {
+    const guardado = CacheService.getScriptCache().get(cacheKey);
+    if (guardado) return JSON.parse(guardado);
+  } catch (e) {}
+
+  const hoja = asegurarHojaPermisosModulos();
+  const ultimaFila = hoja.getLastRow();
+  let permiso = null;
+  if (ultimaFila > 1) {
+    const datos = hoja.getRange(2, 1, ultimaFila - 1, 16).getValues();
+    for (let i = 0; i < datos.length; i++) {
+      if (normalizarTexto(datos[i][0]) === perfil && normalizarTexto(datos[i][1]) === moduloNorm) {
+        permiso = filaPermisoAObjeto(datos[i]);
+        break;
+      }
+    }
+  }
+
+  const si = valor => normalizarTexto(valor) === "SI";
+  const resultado = {
+    perfil,
+    modulo: moduloNorm,
+    existe: !!permiso,
+    activo: permiso ? si(permiso.activo) : false,
+    mostrar: permiso ? si(permiso.mostrarModulo) : false,
+    ver: permiso ? si(permiso.ver) : false,
+    registrar: permiso ? si(permiso.registrar) : false,
+    editar: permiso ? si(permiso.editar) : false,
+    observar: permiso ? si(permiso.observar) : false,
+    aprobar: permiso ? si(permiso.aprobar) : false,
+    validar: permiso ? si(permiso.validar) : false,
+    descargar: permiso ? si(permiso.descargar) : false,
+    administrar: permiso ? si(permiso.administrar) : false,
+    alcanceDatos: permiso ? normalizarTexto(permiso.alcanceDatos || "SIN ACCESO") : "SIN ACCESO",
+    vistaPerfil: permiso ? (permiso.vistaPerfil || perfil).toString() : perfil
+  };
+  resultado.habilitado = resultado.existe && resultado.activo && resultado.ver && resultado.alcanceDatos !== "SIN ACCESO";
+
+  try { CacheService.getScriptCache().put(cacheKey, JSON.stringify(resultado), 60); } catch (e) {}
+  return resultado;
+}
+
+function exigirPermisoModuloCentral(usuario, modulo, accion) {
+  const permiso = obtenerPermisoModuloCentral(usuario, modulo);
+  const accionNorm = normalizarTexto(accion || "VER");
+  const mapa = {
+    VER: "ver", REGISTRAR: "registrar", EDITAR: "editar", OBSERVAR: "observar",
+    APROBAR: "aprobar", VALIDAR: "validar", DESCARGAR: "descargar", ADMINISTRAR: "administrar"
+  };
+  const clave = mapa[accionNorm] || "ver";
+  if (!permiso.existe || !permiso.activo || permiso.alcanceDatos === "SIN ACCESO" || !permiso[clave]) {
+    throw new Error("No tienes permiso para " + accionNorm.toLowerCase() + " en " + normalizarTexto(modulo));
+  }
+  return permiso;
+}
+
+function registroCumpleAlcanceCentral(usuario, permiso, registro) {
+  const alcance = normalizarTexto(permiso && permiso.alcanceDatos || "SIN ACCESO");
+  if (alcance === "ZONA NORTE" || alcance === "SEGUN DESTINO") return true;
+  if (alcance === "SEDE" || alcance === "SEDE / PROPIOS") {
+    return normalizarTexto(registro && registro.sede) === normalizarTexto(usuario && usuario.sede);
+  }
+  if (alcance === "CUADRILLA" || alcance === "PERSONAL") {
+    const mismaCuadrilla = normalizarCuadrilla(registro && registro.cuadrilla) === normalizarCuadrilla(usuario && usuario.cuadrilla);
+    const mismoUsuario = normalizarTexto(registro && (registro.usuario || registro.solicitadoPor || registro.tecnico)) === normalizarTexto(usuario && usuario.usuario);
+    return mismaCuadrilla || mismoUsuario;
+  }
+  return false;
+}
+
 function esOperacionesLima(perfil){return normalizarTexto(perfil)==="OPERACIONES LIMA";}
 
 function obtenerConfiguracionPext(data){
