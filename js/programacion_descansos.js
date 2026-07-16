@@ -69,9 +69,13 @@ async function actualizarIndicadorDescansoMenu(){
     const estado=pdEstadoTecnico(pdEstadoVisible(item));
     const descanso=estado==="DESCANSO";
     const vacaciones=estado==="VACACIONES";
+    indicador=document.getElementById("pdEstadoMenu");
+    if(!indicador) return;
     indicador.className="pd-menu-status "+(descanso?"descanso":"campo");
     indicador.innerHTML=`<span class="pd-menu-dot"></span><strong>${vacaciones?'VACACIONES':(descanso?'DESCANSO':'EN CAMPO')}</strong><small>Ver programación</small>`;
   }catch(e){
+    indicador=document.getElementById("pdEstadoMenu");
+    if(!indicador) return;
     indicador.className="pd-menu-status campo";
     indicador.innerHTML='<span class="pd-menu-dot"></span><strong>EN CAMPO</strong><small>Ver programación</small>';
   }

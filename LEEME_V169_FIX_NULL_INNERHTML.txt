@@ -1,0 +1,7 @@
+MI VISUAL V169 - CORRECCION NULL INNERHTML
+
+- Protege la construcción del menú cuando un contenedor aún no existe.
+- Protege el formulario de permisos ante cambios de pantalla.
+- Evita que el indicador de descansos escriba en un elemento eliminado durante una consulta asíncrona.
+- Mantiene el motor central de permisos de V168.
+- No modifica Code.gs ni la lógica operativa del backend.

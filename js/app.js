@@ -173,6 +173,10 @@ async function configurarMenu(){
     const pantalla = document.getElementById("pantalla");
     const resultado = document.getElementById("resultadoProduccion");
 
+    if (!menu) {
+        console.error("No existe el contenedor menuPrincipal. Se cancela la construcción del menú.");
+        return;
+    }
     if (pantalla) pantalla.innerHTML = "";
     if (resultado) resultado.innerHTML = "";
     // Ocultar el menú mientras se consultan permisos y módulos habilitados.
@@ -333,17 +337,18 @@ async function configurarMenu(){
 
     if (menu) menu.style.setProperty("display", "grid", "important");
 
-    if(typeof actualizarIndicadorDescansoMenu === "function") {
-        actualizarIndicadorDescansoMenu();
+    if (typeof actualizarIndicadorDescansoMenu === "function" && document.getElementById("mv55Welcome")) {
+        Promise.resolve(actualizarIndicadorDescansoMenu()).catch(function(error){
+            console.warn("No se pudo actualizar el indicador de descansos", error);
+        });
     }
 }
 
 window.addEventListener("load", function () {
-
     setTimeout(function () {
-
-        document.getElementById("pantallaCarga").style.display = "none";
-        document.getElementById("contenidoApp").style.display = "block";
-
-    },2000);
+        const pantallaCarga = document.getElementById("pantallaCarga");
+        const contenidoApp = document.getElementById("contenidoApp");
+        if (pantallaCarga) pantallaCarga.style.display = "none";
+        if (contenidoApp) contenidoApp.style.display = "block";
+    }, 250);
 });
