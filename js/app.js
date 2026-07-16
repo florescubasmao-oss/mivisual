@@ -308,6 +308,13 @@ async function configurarMenu(){
     };
 
     let opciones = [...(permisos[perfil] || [])];
+    try {
+        if (typeof pmCargarPermisosActuales === "function") {
+            await pmCargarPermisosActuales(true);
+            const dinamicos = pmModulosMenu();
+            if (Array.isArray(dinamicos) && dinamicos.length) opciones = dinamicos.map(x => PM_CARD_MAP[pmNorm(x.modulo)]).filter(Boolean);
+        }
+    } catch(e) { console.warn("Se conserva menú anterior", e); }
 
     // Consultar primero la disponibilidad de los módulos para evitar que aparezcan
     // por unos instantes antes de ocultarse.

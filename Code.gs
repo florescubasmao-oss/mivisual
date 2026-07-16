@@ -600,7 +600,7 @@ function cambiarPermisoUsuario(usuarioBuscar, perfilNuevo, nivelNuevo) {
   const perfil = normalizarTexto(perfilNuevo);
   const nivel = normalizarTexto(nivelNuevo);
 
-  if (!["TECNICO", "SUPERVISOR", "JEFATURA", "ADMIN", "ADMINISTRADOR", "ALMACEN", "JEFATURA ALMACEN"].includes(perfil)) {
+  if (!["TECNICO", "SUPERVISOR", "JEFATURA", "ADMIN", "ADMINISTRADOR", "ALMACEN", "JEFATURA ALMACEN", "OPERACIONES LIMA"].includes(perfil)) {
     throw new Error("Perfil no válido");
   }
 
@@ -928,7 +928,7 @@ function listarObservaciones(data) {
     let permitir = false;
     if (usuario.perfil === "TECNICO") permitir = normalizarCuadrilla(usuario.cuadrilla) === normalizarCuadrilla(item.cuadrilla);
     if (usuario.perfil === "SUPERVISOR") permitir = normalizarTexto(usuario.sede) === normalizarTexto(item.sede);
-    if (esPerfilJefatura(usuario.perfil)) permitir = true;
+    if (esPerfilJefatura(usuario.perfil) || esOperacionesLima(usuario.perfil)) permitir = true;
     if (!permitir) continue;
 
     if (data.estado && normalizarTexto(data.estado) !== normalizarTexto(item.estado)) continue;
@@ -1732,7 +1732,23 @@ function registrarActividadCampo(data) {
   const fecha = Utilities.formatDate(ahora, Session.getScriptTimeZone(), "dd/MM/yyyy");
   const hora = Utilities.formatDate(ahora, Session.getScriptTimeZone(), "HH:mm:ss");
 
-  const evidencias = guardarEvidenciasActividadCampo(data, cuadrilla, id);
+  let checklistRegistrado = null;
+  if (tipoActividad === "CHECKLIST") {
+    const checklistData = Object.assign({}, data.checklist || {}, {
+      usuario: usuarioRegistro.usuario,
+      cuadrilla,
+      origenRegistro: "ACTIVIDAD_CAMPO",
+      comentarioFinal: (data.checklist && data.checklist.comentarioFinal) || data.comentarioFinal || ""
+    });
+    if (!checklistData.comentarioFinal || !checklistData.comentarioFinal.toString().trim()) {
+      throw new Error("Debe ingresar el comentario final del checklist");
+    }
+    checklistRegistrado = registrarChecklistAlmacen(checklistData);
+  }
+
+  const evidencias = tipoActividad === "CHECKLIST"
+    ? {foto1:"",foto2:"",fotoActa:"",carpeta:""}
+    : guardarEvidenciasActividadCampo(data, cuadrilla, id);
 
   hoja.appendRow([
     id,
@@ -1752,7 +1768,7 @@ function registrarActividadCampo(data) {
     validarSiNoActividad(data.velocidadConforme || data.velocidad_conforme, "Velocidad conforme"),
     validarSiNoActividad(data.limpiezaTrabajo || data.limpieza_trabajo, "Limpieza del trabajo"),
     validarSiNoActividad(data.clienteConforme || data.cliente_conforme, "Cliente conforme"),
-    data.observaciones || "",
+    (data.observaciones || "") + (checklistRegistrado ? "\nID CHECKLIST ALMACEN: " + checklistRegistrado.id : ""),
     evidencias.foto1,
     evidencias.foto2,
     evidencias.fotoActa
@@ -1763,7 +1779,8 @@ function registrarActividadCampo(data) {
     modulo: "ACTIVIDAD_CAMPO",
     accion: "REGISTRAR",
     id,
-    carpeta: evidencias.carpeta
+    carpeta: evidencias.carpeta,
+    checklistId: checklistRegistrado ? checklistRegistrado.id : ""
   };
 }
 
@@ -1847,7 +1864,7 @@ function listarActividadCampo(data) {
     if (usuario.perfil === "SUPERVISOR") {
       permitir = normalizarUsuario(item.supervisor) === normalizarUsuario(usuario.usuario);
     }
-    if (esPerfilJefatura(usuario.perfil)) permitir = true;
+    if (esPerfilJefatura(usuario.perfil) || esOperacionesLima(usuario.perfil)) permitir = true;
     if (!permitir) continue;
 
     if (data.sede && normalizarTexto(data.sede) !== normalizarTexto(item.sede)) continue;
@@ -2792,7 +2809,7 @@ function encabezadoChecklistAlmacen() {
     "CONECTORES OPTICOS","TEMPLADORES","SPLITTER","CLEVIS","CABLE UTP CAT5","CABLE UTP CAT6","PATCHCORD APC-APC",
     "PATCHCORD UPC-APC","CONECTOR RJ45","RESULTADO_ALMACEN","MOTIVO_ALMACEN","VALIDADO_ALMACEN_POR","FECHA_VALIDACION_ALMACEN",
     "HORA_VALIDACION_ALMACEN","RESULTADO_JEFATURA","MOTIVO_JEFATURA","VALIDADO_JEFATURA_POR","FECHA_VALIDACION_JEFATURA",
-    "HORA_VALIDACION_JEFATURA","VERSION"
+    "HORA_VALIDACION_JEFATURA","VERSION","ORIGEN_REGISTRO","REGISTRADO_POR","PERFIL_REGISTRO","COMENTARIO_FINAL"
   ]];
 }
 
@@ -2800,8 +2817,11 @@ function asegurarHojaChecklistAlmacen() {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
   let hoja = ss.getSheetByName(HOJA_CHECKLIST_ALMACEN);
   if (!hoja) hoja = ss.insertSheet(HOJA_CHECKLIST_ALMACEN);
+  if (hoja.getMaxColumns() < 55) hoja.insertColumnsAfter(hoja.getMaxColumns(), 55 - hoja.getMaxColumns());
   if (hoja.getLastRow() === 0 || !hoja.getRange(1, 1).getValue()) {
-    hoja.getRange(1, 1, 1, 51).setValues(encabezadoChecklistAlmacen());
+    hoja.getRange(1, 1, 1, 55).setValues(encabezadoChecklistAlmacen());
+  } else {
+    hoja.getRange(1, 1, 1, 55).setValues(encabezadoChecklistAlmacen());
   }
   return hoja;
 }
@@ -2974,15 +2994,39 @@ function buscarChecklistDuplicado(cuadrilla, fechaGestion) {
   return null;
 }
 
+function obtenerNombresTecnicosChecklist(cuadrillaBuscar) {
+  const hoja = obtenerHoja(HOJA_USUARIOS);
+  const datos = hoja.getDataRange().getValues();
+  const encabezados = (datos[0] || []).map(h => normalizarTexto(h).replace(/\s+/g, "_"));
+  const idxNombres = encabezados.indexOf("NOMBRES_APELLIDOS");
+  const cuadrilla = normalizarCuadrilla(cuadrillaBuscar);
+  const nombres = [];
+  for (let i = 1; i < datos.length; i++) {
+    if (normalizarTexto(datos[i][6]) !== "TECNICO") continue;
+    if (normalizarTexto(datos[i][8] || "ACTIVO") !== "ACTIVO") continue;
+    if (normalizarCuadrilla(datos[i][3]) !== cuadrilla) continue;
+    const nombre = (idxNombres >= 0 ? datos[i][idxNombres] : datos[i][0] || "").toString().trim();
+    if (nombre && !nombres.some(n => normalizarTexto(n) === normalizarTexto(nombre))) nombres.push(nombre);
+  }
+  return nombres.join(" | ");
+}
+
 function registrarChecklistAlmacen(data) {
   if (!checklistAlmacenActivo()) throw new Error("El Checklist Almacén no está habilitado para nuevos registros en este periodo");
   const hoja = asegurarHojaChecklistAlmacen();
   const usuario = obtenerUsuarioApp(data.usuario);
-  if (usuario.perfil !== "TECNICO") throw new Error("Solo el técnico puede registrar el checklist");
-  const cuadrilla = normalizarCuadrilla(usuario.cuadrilla);
-  if (!cuadrilla) throw new Error("El técnico no tiene cuadrilla asignada");
+  const origenRegistro = normalizarTexto(data.origenRegistro || "TECNICO");
+  const esRegistroCampoSupervisor = usuario.perfil === "SUPERVISOR" && origenRegistro === "ACTIVIDAD_CAMPO";
+  if (!(usuario.perfil === "TECNICO" || esRegistroCampoSupervisor)) {
+    throw new Error("Solo el técnico o un Supervisor desde Actividad en Campo pueden registrar el checklist");
+  }
+  const cuadrilla = normalizarCuadrilla(esRegistroCampoSupervisor ? data.cuadrilla : usuario.cuadrilla);
+  if (!cuadrilla) throw new Error("Debe indicar la cuadrilla del checklist");
   const dc = obtenerDatosCuadrillaApp(cuadrilla);
   const sede = normalizarTexto(dc.sede || usuario.sede);
+  if (esRegistroCampoSupervisor && sede !== normalizarTexto(usuario.sede)) {
+    throw new Error("Supervisor solo puede registrar checklist de su sede");
+  }
   const fechaGestion = fechaGestionActaTexto(data.fechaGestion || data.fecha_gestion);
   const bloqueo = LockService.getScriptLock();
   bloqueo.waitLock(30000);
@@ -3006,11 +3050,11 @@ function registrarChecklistAlmacen(data) {
   const fonowin = guardarEquiposChecklist(carpetaFecha, "FONOWIN", id, obtenerEquiposChecklistEntrada(data, "fonowin"), 5);
 
   const ahora = new Date();
-  const nombres = (data.nombresApellidos || usuario.nombresApellidos || usuario.usuario || "").toString().trim();
+  const nombres = (data.nombresApellidos || (esRegistroCampoSupervisor ? obtenerNombresTecnicosChecklist(cuadrilla) : usuario.nombresApellidos) || dc.usuario || usuario.usuario || "").toString().trim();
   const estadoInicialChecklist = "PENDIENTE DE VALIDACION POR AREA DE ALMACEN";
   const fila = [
     id, Utilities.formatDate(ahora, Session.getScriptTimeZone(), "dd/MM/yyyy"), Utilities.formatDate(ahora, Session.getScriptTimeZone(), "HH:mm:ss"),
-    usuario.usuario, nombres, sede, cuadrilla, fechaGestion, estadoInicialChecklist,
+    esRegistroCampoSupervisor ? (dc.usuario || cuadrilla) : usuario.usuario, nombres, sede, cuadrilla, fechaGestion, estadoInicialChecklist,
     ontZte.series, ontZte.links, ontHuawei.series, ontHuawei.links,
     meshZte.series, meshZte.links, meshHuawei.series, meshHuawei.links,
     winbox.series, winbox.links, fonowin.series, fonowin.links,
@@ -3018,11 +3062,16 @@ function registrarChecklistAlmacen(data) {
     numeroChecklist(data.anclajeP), numeroChecklist(data.cintaBandIt), numeroChecklist(data.hebilla), numeroChecklist(data.acoplador), numeroChecklist(data.roseta),
     numeroChecklist(data.conectoresOpticos), numeroChecklist(data.templadores), numeroChecklist(data.splitter), numeroChecklist(data.clevis),
     numeroChecklist(data.utpCat5), numeroChecklist(data.utpCat6), numeroChecklist(data.patchApcApc), numeroChecklist(data.patchUpcApc), numeroChecklist(data.rj45),
-    "","","","","","","","","","",1
+    "","","","","","","","","","",1,
+    esRegistroCampoSupervisor ? "ACTIVIDAD_CAMPO" : "TECNICO",
+    usuario.usuario,
+    usuario.perfil,
+    (data.comentarioFinal || "").toString().trim()
   ];
   hoja.appendRow(fila);
   return {
     ok:true, modulo:"CHECKLIST_ALMACEN", accion:"REGISTRAR", id, estadoGeneral:estadoInicialChecklist, sede, cuadrilla,
+    origenRegistro:esRegistroCampoSupervisor ? "ACTIVIDAD_CAMPO" : "TECNICO", registradoPor:usuario.usuario, comentarioFinal:(data.comentarioFinal || "").toString().trim(),
     seriesGuardadas:{
       ontZte:ontZte.series, ontHuawei:ontHuawei.series, meshZte:meshZte.series, meshHuawei:meshHuawei.series,
       winbox:winbox.series, fonowin:fonowin.series
@@ -3040,7 +3089,8 @@ function filaChecklistAObjeto(f) {
     anclajeP:f[26],cintaBandIt:f[27],hebilla:f[28],acoplador:f[29],roseta:f[30],conectoresOpticos:f[31],templadores:f[32],splitter:f[33],
     clevis:f[34],utpCat5:f[35],utpCat6:f[36],patchApcApc:f[37],patchUpcApc:f[38],rj45:f[39],resultadoAlmacen:f[40],motivoAlmacen:f[41],
     validadoAlmacenPor:f[42],fechaValidacionAlmacen:f[43],horaValidacionAlmacen:f[44],resultadoJefatura:f[45],motivoJefatura:f[46],
-    validadoJefaturaPor:f[47],fechaValidacionJefatura:f[48],horaValidacionJefatura:f[49],version:f[50]
+    validadoJefaturaPor:f[47],fechaValidacionJefatura:f[48],horaValidacionJefatura:f[49],version:f[50],
+    origenRegistro:f[51]||"TECNICO",registradoPor:f[52]||f[3],perfilRegistro:f[53]||"TECNICO",comentarioFinal:f[54]||""
   };
 }
 
@@ -3539,7 +3589,7 @@ function asegurarHojaProgramacionDescansos() {
 }
 
 function esPerfilDescansos(perfil) {
-  return ["TECNICO","SUPERVISOR","JEFATURA","ADMIN","ADMINISTRADOR"].includes(normalizarTexto(perfil));
+  return ["TECNICO","SUPERVISOR","JEFATURA","ADMIN","ADMINISTRADOR","OPERACIONES LIMA"].includes(normalizarTexto(perfil));
 }
 
 function esJefaturaDescansos(perfil) {
@@ -3888,6 +3938,196 @@ function resumenCoberturaDescansos(data) {
 }
 
 
+
+
+/* =========================
+   PERMISOS DINÁMICOS V156
+========================= */
+const HOJA_PERMISOS_MODULOS = "PERMISOS_MODULOS";
+function encabezadoPermisosModulos(){return [["PERFIL","MODULO","ACTIVO","ORDEN_MENU","MOSTRAR_MODULO","VER","REGISTRAR","EDITAR","OBSERVAR","APROBAR","VALIDAR","DESCARGAR","ADMINISTRAR","ALCANCE_DATOS","VISTA_PERFIL","OBSERVACION"]];}
+function asegurarHojaPermisosModulos(){const ss=SpreadsheetApp.getActiveSpreadsheet();let h=ss.getSheetByName(HOJA_PERMISOS_MODULOS);if(!h)h=ss.insertSheet(HOJA_PERMISOS_MODULOS);if(h.getMaxColumns()<16)h.insertColumnsAfter(h.getMaxColumns(),16-h.getMaxColumns());if(h.getLastRow()===0||!h.getRange(1,1).getValue())h.getRange(1,1,1,16).setValues(encabezadoPermisosModulos());return h;}
+function filaPermisoAObjeto(f){return {perfil:normalizarTexto(f[0]),modulo:normalizarTexto(f[1]),activo:normalizarTexto(f[2]||"SI"),ordenMenu:f[3],mostrarModulo:normalizarTexto(f[4]||"NO"),ver:normalizarTexto(f[5]||"NO"),registrar:normalizarTexto(f[6]||"NO"),editar:normalizarTexto(f[7]||"NO"),observar:normalizarTexto(f[8]||"NO"),aprobar:normalizarTexto(f[9]||"NO"),validar:normalizarTexto(f[10]||"NO"),descargar:normalizarTexto(f[11]||"NO"),administrar:normalizarTexto(f[12]||"NO"),alcanceDatos:normalizarTexto(f[13]||"SIN ACCESO"),vistaPerfil:(f[14]||"").toString(),observacion:(f[15]||"").toString()};}
+function obtenerPermisosUsuario(data){const u=obtenerUsuarioApp(data.usuario),h=asegurarHojaPermisosModulos(),d=h.getDataRange().getValues(),p=normalizarTexto(u.perfil),lista=[];for(let i=1;i<d.length;i++){const x=filaPermisoAObjeto(d[i]);if(x.perfil===p)lista.push(x);}return {ok:true,modulo:"PERMISOS",perfil:p,permisos:lista};}
+function listarPermisosAdministracion(data){const u=obtenerUsuarioApp(data.usuario);if(!esPerfilJefatura(u.perfil))throw new Error("Solo Jefatura puede administrar permisos");const d=asegurarHojaPermisosModulos().getDataRange().getValues(),lista=[];for(let i=1;i<d.length;i++)if(d[i][0]&&d[i][1])lista.push(filaPermisoAObjeto(d[i]));return {ok:true,permisos:lista};}
+function guardarPermisoModulo(data){const u=obtenerUsuarioApp(data.usuario);if(!esPerfilJefatura(u.perfil))throw new Error("Solo Jefatura puede administrar permisos");const h=asegurarHojaPermisosModulos(),d=h.getDataRange().getValues(),p=normalizarTexto(data.perfil),m=normalizarTexto(data.modulo);if(!p||!m)throw new Error("Perfil y módulo son obligatorios");const sn=v=>normalizarTexto(v)==="SI"?"SI":"NO";const fila=[p,m,sn(data.activo||"SI"),Number(data.ordenMenu)||"",sn(data.mostrarModulo),sn(data.ver),sn(data.registrar),sn(data.editar),sn(data.observar),sn(data.aprobar),sn(data.validar),sn(data.descargar),sn(data.administrar),normalizarTexto(data.alcanceDatos||"SIN ACCESO"),(data.vistaPerfil||p).toString(),(data.observacion||"").toString()];let n=0;for(let i=1;i<d.length;i++)if(normalizarTexto(d[i][0])===p&&normalizarTexto(d[i][1])===m){n=i+1;break;}if(n)h.getRange(n,1,1,16).setValues([fila]);else h.appendRow(fila);return {ok:true,perfil:p,modulo:m};}
+function permisoUsuarioAccion(usuario,modulo,accion){const h=asegurarHojaPermisosModulos(),d=h.getDataRange().getValues(),p=normalizarTexto(usuario.perfil),m=normalizarTexto(modulo),col={VER:5,REGISTRAR:6,EDITAR:7,OBSERVAR:8,APROBAR:9,VALIDAR:10,DESCARGAR:11,ADMINISTRAR:12}[normalizarTexto(accion)];if(col===undefined)return false;for(let i=1;i<d.length;i++)if(normalizarTexto(d[i][0])===p&&normalizarTexto(d[i][1])===m)return normalizarTexto(d[i][2]||"SI")==="SI"&&normalizarTexto(d[i][col]||"NO")==="SI";return false;}
+function esOperacionesLima(perfil){return normalizarTexto(perfil)==="OPERACIONES LIMA";}
+
+function obtenerConfiguracionPext(data){
+  const usuario=obtenerUsuarioApp(data.usuario);
+  let encontrado=obtenerFilaConfigModulo("PEXT");
+  if(!encontrado){
+    const hoja=asegurarHojaConfigModulos();
+    const ahora=new Date();
+    hoja.appendRow(["PEXT","DESHABILITADO","","","SISTEMA",ahora,ahora]);
+    const fila=hoja.getLastRow();
+    hoja.getRange(fila,6).setNumberFormat("dd/mm/yyyy");
+    hoja.getRange(fila,7).setNumberFormat("hh:mm:ss");
+    encontrado=obtenerFilaConfigModulo("PEXT");
+  }
+  const d=encontrado.datos;
+  const cfg=evaluarConfigModulo(d[1],"","");
+  return {ok:true,modulo:"PEXT",accion:"OBTENER_CONFIGURACION",perfil:usuario.perfil,configuracion:cfg};
+}
+function guardarConfiguracionPext(data){
+  const usuario=obtenerUsuarioApp(data.usuario);
+  if(!esPerfilJefatura(usuario.perfil))throw new Error("Solo Jefatura puede habilitar o deshabilitar PEXT");
+  const estado=normalizarTexto(data.estado||"DESHABILITADO");
+  if(!["HABILITADO","DESHABILITADO"].includes(estado))throw new Error("Estado no válido");
+  const hoja=asegurarHojaConfigModulos(),encontrado=obtenerFilaConfigModulo("PEXT"),ahora=new Date();
+  const valores=[["PEXT",estado,"","",usuario.usuario,ahora,ahora]];
+  let fila;
+  if(encontrado){fila=encontrado.fila;hoja.getRange(fila,1,1,7).setValues(valores);}else{hoja.appendRow(valores[0]);fila=hoja.getLastRow();}
+  hoja.getRange(fila,6).setNumberFormat("dd/mm/yyyy");
+  hoja.getRange(fila,7).setNumberFormat("hh:mm:ss");
+  return {ok:true,modulo:"PEXT",accion:"GUARDAR_CONFIGURACION",configuracion:evaluarConfigModulo(estado,"","")};
+}
+function pextActivo(){
+  const encontrado=obtenerFilaConfigModulo("PEXT");
+  if(!encontrado)return false;
+  return evaluarConfigModulo(encontrado.datos[1],"","").activo;
+}
+function exigirPextActivo(){if(!pextActivo())throw new Error("El módulo PEXT se encuentra deshabilitado por Administración");}
+
+
+/* =========================
+   PEXT V152
+   Supervisor registra -> Técnico revisa -> Jefatura valida y da conformidad final
+========================= */
+const HOJA_TRABAJOS_CONJUNTA = "TRABAJOS_CONJUNTA";
+
+function encabezadoTrabajosConjunta(){return [[
+  "ID","FECHA_REGISTRO","HORA_REGISTRO","SUPERVISOR_REGISTRA","CUADRILLA","TIPO_TRABAJO",
+  "FECHA_TRABAJO","HORA_INICIO","HORA_FIN","DESCRIPCION_TRABAJO","CTO",
+  "CANTIDAD_CONECTORIZADOS","CODIGOS_CONECTORIZADOS","CANTIDAD_RECABLEADOS","CODIGOS_RECABLEADOS",
+  "CANTIDAD_CUADRAS","ZONA_REFERENCIA","TRABAJOS_ADICIONALES","EVIDENCIA_1","EVIDENCIA_2","EVIDENCIA_3",
+  "PUNTOS_SOLICITADOS","COMENTARIO_FINAL","RESULTADO_TECNICO","OBSERVACION_TECNICO","TECNICO_REVISA_POR",
+  "FECHA_REVISION_TECNICO","HORA_REVISION_TECNICO","RESULTADO_JEFATURA","OBSERVACION_JEFATURA","VALIDADO_POR",
+  "FECHA_VALIDACION","HORA_VALIDACION","CONFORMIDAD_FINAL","ESTADO_GENERAL","VERSION"
+]];}
+
+function asegurarHojaTrabajosConjunta(){
+  const ss=SpreadsheetApp.getActiveSpreadsheet();
+  let h=ss.getSheetByName(HOJA_TRABAJOS_CONJUNTA);
+  if(!h)h=ss.insertSheet(HOJA_TRABAJOS_CONJUNTA);
+  if(h.getMaxColumns()<36)h.insertColumnsAfter(h.getMaxColumns(),36-h.getMaxColumns());
+  if(h.getLastRow()===0||!h.getRange(1,1).getValue())h.getRange(1,1,1,36).setValues(encabezadoTrabajosConjunta());
+  return h;
+}
+function idTrabajoConjunta(){return "TC-"+Utilities.formatDate(new Date(),Session.getScriptTimeZone(),"yyyyMMddHHmmss")+"-"+Math.floor(Math.random()*900+100);}
+function validarPerfilJefaturaConjunta(perfil){return esPerfilJefatura(perfil);}
+function fechaTrabajoConjunta(valor){return fechaGestionActaTexto(valor);}
+function limpiarCodigosConjunta(lista,cantidad,campo){
+  const n=Number(cantidad)||0;if(n<0)throw new Error(campo+" no puede ser negativo");
+  if(n===0)return "";
+  const arr=Array.isArray(lista)?lista.map(x=>(x||"").toString().trim()).filter(Boolean):(lista||"").toString().split(/[|,;\n]+/).map(x=>x.trim()).filter(Boolean);
+  if(arr.length!==n)throw new Error("Debe ingresar "+n+" código(s) para "+campo);
+  return arr.join(" | ");
+}
+const CARPETA_PEXT = "1OoifCtNvwXB7dyLgXfJrvu13hYiYd1g3";
+function carpetaRaizTrabajosConjunta(){
+  return DriveApp.getFolderById(CARPETA_PEXT);
+}
+function guardarEvidenciasTrabajoConjunta(data,id,sede,cuadrilla,tipo,fecha){
+  const evidencias=Array.isArray(data.evidencias)?data.evidencias:[];
+  if(!evidencias.length)throw new Error("Debe adjuntar al menos una evidencia");
+  if(evidencias.length>3)throw new Error("Solo se permiten máximo 3 evidencias");
+  const raiz=carpetaRaizTrabajosConjunta();
+  const carpeta=obtenerOCrearSubcarpetaActividad(obtenerOCrearSubcarpetaActividad(obtenerOCrearSubcarpetaActividad(obtenerOCrearSubcarpetaActividad(raiz,normalizarTexto(tipo)),normalizarTexto(sede)),normalizarCuadrilla(cuadrilla)),fecha);
+  const links=[];
+  evidencias.forEach((ev,i)=>{
+    if(!ev||!ev.base64)return;
+    const original=(ev.nombre||("evidencia_"+(i+1)+".jpg")).toString();
+    const ext=original.includes(".")?original.split(".").pop().toLowerCase():"jpg";
+    const nombre=id+"_EVIDENCIA_"+String(i+1).padStart(2,"0")+"."+ext;
+    const blob=Utilities.newBlob(Utilities.base64Decode(ev.base64),ev.mime||"image/jpeg",nombre);
+    const archivo=carpeta.createFile(blob);archivo.setSharing(DriveApp.Access.ANYONE_WITH_LINK,DriveApp.Permission.VIEW);links.push(archivo.getUrl());
+  });
+  if(!links.length)throw new Error("No se pudo guardar ninguna evidencia");
+  return [links[0]||"",links[1]||"",links[2]||""];
+}
+function buscarTrabajoConjunta(id){
+  const h=asegurarHojaTrabajosConjunta(),d=h.getDataRange().getValues();
+  for(let i=1;i<d.length;i++)if((d[i][0]||"").toString()===(id||"").toString())return {hoja:h,fila:i+1,datos:d[i],item:filaTrabajoConjuntaAObjeto(d[i])};
+  throw new Error("No se encontró el trabajo en conjunta: "+id);
+}
+function filaTrabajoConjuntaAObjeto(f){return {
+  id:f[0],fechaRegistro:f[1],horaRegistro:f[2],supervisorRegistra:f[3],cuadrilla:f[4],tipoTrabajo:f[5],fechaTrabajo:fechaTrabajoConjunta(f[6]),horaInicio:f[7],horaFin:f[8],descripcionTrabajo:f[9],cto:f[10],cantidadConectorizados:f[11],codigosConectorizados:f[12],cantidadRecableados:f[13],codigosRecableados:f[14],cantidadCuadras:f[15],zonaReferencia:f[16],trabajosAdicionales:f[17],evidencia1:f[18],evidencia2:f[19],evidencia3:f[20],puntosSolicitados:f[21],comentarioFinal:f[22],resultadoTecnico:f[23],observacionTecnico:f[24],tecnicoRevisaPor:f[25],fechaRevisionTecnico:f[26],horaRevisionTecnico:f[27],resultadoJefatura:f[28],observacionJefatura:f[29],validadoPor:f[30],fechaValidacion:f[31],horaValidacion:f[32],conformidadFinal:f[33],estadoGeneral:f[34],version:Number(f[35])||1
+};}
+function listarCuadrillasTrabajosConjunta(data){
+  exigirPextActivo();
+  const u=obtenerUsuarioApp(data.usuario);
+  if(normalizarTexto(u.perfil)!=="SUPERVISOR"&&!validarPerfilJefaturaConjunta(u.perfil))throw new Error("Sin acceso a cuadrillas");
+  const base=listarCuadrillasObservacion(data).cuadrillas||[];
+  return {ok:true,modulo:"TRABAJOS_CONJUNTA",accion:"LISTAR_CUADRILLAS",cuadrillas:base};
+}
+function registrarTrabajoConjunta(data){
+  exigirPextActivo();
+  const u=obtenerUsuarioApp(data.usuario);
+  if(normalizarTexto(u.perfil)!=="SUPERVISOR")throw new Error("Solo el Supervisor puede registrar trabajos PEXT");
+  const cuadrilla=normalizarCuadrilla(data.cuadrilla);if(!cuadrilla)throw new Error("Debe seleccionar una cuadrilla");
+  const dc=obtenerDatosCuadrillaApp(cuadrilla);if(normalizarTexto(dc.sede)!==normalizarTexto(u.sede))throw new Error("Supervisor solo puede registrar cuadrillas de su sede");
+  const tipo=normalizarTexto(data.tipoTrabajo);if(!["NORMALIZACION","CONJUNTA PEXT","ORDENAMIENTO"].includes(tipo))throw new Error("Tipo de trabajo no válido");
+  const fecha=fechaTrabajoConjunta(data.fechaTrabajo),inicio=(data.horaInicio||"").toString(),fin=(data.horaFin||"").toString();
+  if(!fecha||!inicio||!fin)throw new Error("Complete fecha, hora de inicio y hora de fin");
+  if(fin<=inicio)throw new Error("La hora de fin debe ser posterior a la hora de inicio");
+  const puntos=Number(data.puntosSolicitados);if(!isFinite(puntos)||puntos<0)throw new Error("Puntos no válidos");
+  const comentario=(data.comentarioFinal||"").toString().trim();if(!comentario)throw new Error("El comentario final es obligatorio");
+  let descripcion="",cto="",cantCon="",codCon="",cantRec="",codRec="",cuadras="",zona="";
+  if(tipo==="NORMALIZACION"){
+    descripcion=(data.descripcionTrabajo||"").toString().trim();if(!descripcion)throw new Error("La descripción del trabajo es obligatoria");
+  }else if(tipo==="CONJUNTA PEXT"){
+    cto=(data.cto||"").toString().trim();if(!cto)throw new Error("La CTO es obligatoria");
+    cantCon=Number(data.cantidadConectorizados)||0;cantRec=Number(data.cantidadRecableados)||0;
+    codCon=limpiarCodigosConjunta(data.codigosConectorizados,cantCon,"conectorizados");codRec=limpiarCodigosConjunta(data.codigosRecableados,cantRec,"recableados");
+  }else{
+    cuadras=Number(data.cantidadCuadras)||0;if(cuadras<=0)throw new Error("La cantidad de cuadras debe ser mayor a cero");
+    zona=(data.zonaReferencia||"").toString().trim();if(!zona)throw new Error("La zona o referencia es obligatoria");
+  }
+  const id=idTrabajoConjunta(),ev=guardarEvidenciasTrabajoConjunta(data,id,dc.sede,cuadrilla,tipo,fecha),ahora=new Date(),h=asegurarHojaTrabajosConjunta();
+  h.appendRow([id,ahora,ahora,u.usuario,cuadrilla,tipo,fecha,inicio,fin,descripcion,cto,cantCon,codCon,cantRec,codRec,cuadras,zona,(data.trabajosAdicionales||"").toString().trim(),ev[0],ev[1],ev[2],puntos,comentario,"","","","","","","","","","","","PENDIENTE DE VISTO BUENO TECNICO",1]);
+  const fila=h.getLastRow();h.getRange(fila,2).setNumberFormat("dd/mm/yyyy");h.getRange(fila,3).setNumberFormat("hh:mm:ss");
+  return {ok:true,modulo:"TRABAJOS_CONJUNTA",accion:"REGISTRAR",id,estado:"PENDIENTE DE VISTO BUENO TECNICO"};
+}
+function listarTrabajosConjunta(data){
+  exigirPextActivo();
+  const u=obtenerUsuarioApp(data.usuario),h=asegurarHojaTrabajosConjunta(),d=h.getDataRange().getValues(),lista=[];
+  for(let i=1;i<d.length;i++){
+    const x=filaTrabajoConjuntaAObjeto(d[i]);let ver=false;
+    if(normalizarTexto(u.perfil)==="TECNICO")ver=normalizarCuadrilla(u.cuadrilla)===normalizarCuadrilla(x.cuadrilla);
+    else if(normalizarTexto(u.perfil)==="SUPERVISOR")ver=normalizarUsuario(u.usuario)===normalizarUsuario(x.supervisorRegistra);
+    else if(validarPerfilJefaturaConjunta(u.perfil)||esOperacionesLima(u.perfil))ver=true;
+    if(!ver)continue;lista.push(x);
+  }
+  lista.reverse();return {ok:true,modulo:"TRABAJOS_CONJUNTA",accion:"LISTAR",perfil:u.perfil,registros:lista.length,trabajos:lista};
+}
+function responderTrabajoConjuntaTecnico(data){
+  exigirPextActivo();
+  const u=obtenerUsuarioApp(data.usuario);if(normalizarTexto(u.perfil)!=="TECNICO")throw new Error("Solo el Técnico puede dar visto bueno u observar");
+  const e=buscarTrabajoConjunta(data.id),x=e.item;if(normalizarCuadrilla(u.cuadrilla)!==normalizarCuadrilla(x.cuadrilla))throw new Error("Este registro no corresponde a su cuadrilla");
+  if(normalizarTexto(x.estadoGeneral)!=="PENDIENTE DE VISTO BUENO TECNICO")throw new Error("El registro ya fue revisado por el Técnico");
+  const resultado=normalizarTexto(data.resultado),obs=(data.observacion||"").toString().trim();if(!["VISTO BUENO","OBSERVADO"].includes(resultado))throw new Error("Resultado técnico no válido");if(resultado==="OBSERVADO"&&!obs)throw new Error("La observación es obligatoria");
+  const ahora=new Date();e.hoja.getRange(e.fila,24).setValue(resultado);e.hoja.getRange(e.fila,25).setValue(obs);e.hoja.getRange(e.fila,26).setValue(u.usuario);e.hoja.getRange(e.fila,27).setValue(ahora).setNumberFormat("dd/mm/yyyy");e.hoja.getRange(e.fila,28).setValue(ahora).setNumberFormat("hh:mm:ss");e.hoja.getRange(e.fila,35).setValue(resultado==="VISTO BUENO"?"PENDIENTE DE VALIDACION JEFATURA":"OBSERVADO POR TECNICO");
+  return {ok:true,modulo:"TRABAJOS_CONJUNTA",accion:"RESPUESTA_TECNICO",id:data.id,resultado};
+}
+function validarTrabajoConjuntaJefatura(data){
+  exigirPextActivo();
+  const u=obtenerUsuarioApp(data.usuario);if(!validarPerfilJefaturaConjunta(u.perfil))throw new Error("Solo Jefatura puede validar");
+  const e=buscarTrabajoConjunta(data.id),estado=normalizarTexto(e.item.estadoGeneral);if(!["PENDIENTE DE VALIDACION JEFATURA","OBSERVADO POR TECNICO"].includes(estado))throw new Error("El registro no está pendiente de validación de Jefatura");
+  const resultado=normalizarTexto(data.resultado),obs=(data.observacion||"").toString().trim();if(!["APROBADO","OBSERVADO","RECHAZADO"].includes(resultado))throw new Error("Resultado de Jefatura no válido");if(resultado!=="APROBADO"&&!obs)throw new Error("El motivo es obligatorio");
+  const ahora=new Date();e.hoja.getRange(e.fila,29).setValue(resultado);e.hoja.getRange(e.fila,30).setValue(obs);e.hoja.getRange(e.fila,31).setValue(u.usuario);e.hoja.getRange(e.fila,32).setValue(ahora).setNumberFormat("dd/mm/yyyy");e.hoja.getRange(e.fila,33).setValue(ahora).setNumberFormat("hh:mm:ss");e.hoja.getRange(e.fila,35).setValue(resultado==="APROBADO"?"PENDIENTE CONFORMIDAD FINAL":(resultado==="OBSERVADO"?"OBSERVADO POR JEFATURA":"RECHAZADO"));
+  return {ok:true,modulo:"TRABAJOS_CONJUNTA",accion:"VALIDAR_JEFATURA",id:data.id,resultado};
+}
+function conformidadFinalTrabajoConjunta(data){
+  exigirPextActivo();
+  const u=obtenerUsuarioApp(data.usuario);if(!validarPerfilJefaturaConjunta(u.perfil))throw new Error("Solo Jefatura puede dar conformidad final");
+  const e=buscarTrabajoConjunta(data.id);if(normalizarTexto(e.item.estadoGeneral)!=="PENDIENTE CONFORMIDAD FINAL")throw new Error("El registro no está pendiente de conformidad final");
+  const resultado=normalizarTexto(data.resultado),obs=(data.observacion||"").toString().trim();if(!["CONFORME","SIN CONFORMIDAD"].includes(resultado))throw new Error("Conformidad final no válida");if(resultado==="SIN CONFORMIDAD"&&!obs)throw new Error("El motivo es obligatorio");
+  const ahora=new Date();e.hoja.getRange(e.fila,30).setValue(obs||e.item.observacionJefatura||"");e.hoja.getRange(e.fila,31).setValue(u.usuario);e.hoja.getRange(e.fila,32).setValue(ahora).setNumberFormat("dd/mm/yyyy");e.hoja.getRange(e.fila,33).setValue(ahora).setNumberFormat("hh:mm:ss");e.hoja.getRange(e.fila,34).setValue(resultado);e.hoja.getRange(e.fila,35).setValue(resultado==="CONFORME"?"CONFORMIDAD FINAL":"SIN CONFORMIDAD");
+  return {ok:true,modulo:"TRABAJOS_CONJUNTA",accion:"CONFORMIDAD_FINAL",id:data.id,resultado};
+}
+
+
 /* =========================
    API PRINCIPAL
 ========================= */
@@ -3895,6 +4135,19 @@ function resumenCoberturaDescansos(data) {
 function doPost(e) {
   try {
     const data = JSON.parse(e.postData.contents);
+
+    if (data.accion === "obtenerPermisosUsuario") return respuestaJson(obtenerPermisosUsuario(data));
+    if (data.accion === "listarPermisosAdministracion") return respuestaJson(listarPermisosAdministracion(data));
+    if (data.accion === "guardarPermisoModulo") return respuestaJson(guardarPermisoModulo(data));
+
+    if (data.accion === "obtenerConfiguracionPext") return respuestaJson(obtenerConfiguracionPext(data));
+    if (data.accion === "guardarConfiguracionPext") return respuestaJson(guardarConfiguracionPext(data));
+    if (data.accion === "listarCuadrillasTrabajosConjunta") return respuestaJson(listarCuadrillasTrabajosConjunta(data));
+    if (data.accion === "registrarTrabajoConjunta") return respuestaJson(registrarTrabajoConjunta(data));
+    if (data.accion === "listarTrabajosConjunta") return respuestaJson(listarTrabajosConjunta(data));
+    if (data.accion === "responderTrabajoConjuntaTecnico") return respuestaJson(responderTrabajoConjuntaTecnico(data));
+    if (data.accion === "validarTrabajoConjuntaJefatura") return respuestaJson(validarTrabajoConjuntaJefatura(data));
+    if (data.accion === "conformidadFinalTrabajoConjunta") return respuestaJson(conformidadFinalTrabajoConjunta(data));
 
 
     if (data.accion === "listarProgramacionDescansos") return respuestaJson(listarProgramacionDescansos(data));
@@ -3908,6 +4161,7 @@ function doPost(e) {
     if (data.accion === "resumenCoberturaDescansos") return respuestaJson(resumenCoberturaDescansos(data));
 
 
+    if (data.accion === "obtenerCatalogoHerramientasChecklist") return respuestaJson(obtenerCatalogoHerramientasChecklist(data));
     if (data.accion === "obtenerConfiguracionChecklistAlmacen") return respuestaJson(obtenerConfiguracionChecklistAlmacen(data));
     if (data.accion === "guardarConfiguracionChecklistAlmacen") return respuestaJson(guardarConfiguracionChecklistAlmacen(data));
     if (data.accion === "registrarChecklistAlmacen") return respuestaJson(registrarChecklistAlmacen(data));
@@ -4167,4 +4421,162 @@ function autorizarDriveActasEscaneadas() {
     url: carpeta.getUrl(),
     prueba: url
   };
+}
+
+
+/* =========================
+   CHECKLIST POR TIPO V140
+   Extensión compatible: conserva las primeras 55 columnas.
+========================= */
+const HOJA_HERRAMIENTAS_DETALLE = "HERRAMIENTAS_DETALLE";
+const HOJA_CATALOGO_HERRAMIENTAS = "CATALOGO_HERRAMIENTAS";
+function obtenerCatalogoHerramientasChecklist(data){
+  const usuario=obtenerUsuarioApp(data.usuario);
+  if(!["TECNICO","SUPERVISOR","ALMACEN","JEFATURA ALMACEN","JEFATURA","ADMIN","ADMINISTRADOR"].includes(normalizarTexto(usuario.perfil))){
+    throw new Error("No tienes acceso al catálogo de herramientas");
+  }
+  const hoja=obtenerHoja(HOJA_CATALOGO_HERRAMIENTAS);
+  const datos=hoja.getDataRange().getValues();
+  if(!datos.length)return {ok:true,modulo:"CHECKLIST_ALMACEN",accion:"CATALOGO_HERRAMIENTAS",herramientas:[]};
+  const encabezados=(datos[0]||[]).map(h=>normalizarTexto(h).replace(/\s+/g,"_"));
+  const idxHerramienta=encabezados.indexOf("HERRAMIENTA");
+  const idxCategoria=encabezados.indexOf("CATEGORIA");
+  const idxSerie=encabezados.indexOf("REQUIERE_SERIE");
+  const idxEstado=encabezados.indexOf("ESTADO");
+  if(idxHerramienta<0)throw new Error("CATALOGO_HERRAMIENTAS debe tener la columna HERRAMIENTA");
+  const herramientas=[];
+  for(let i=1;i<datos.length;i++){
+    const nombre=(datos[i][idxHerramienta]||"").toString().trim();
+    if(!nombre)continue;
+    const estado=idxEstado>=0?normalizarTexto(datos[i][idxEstado]||"ACTIVO"):"ACTIVO";
+    if(estado!=="ACTIVO")continue;
+    herramientas.push({herramienta:nombre,categoria:idxCategoria>=0?(datos[i][idxCategoria]||"").toString().trim():"",requiereSerie:idxSerie>=0?normalizarTexto(datos[i][idxSerie]||"NO"):"NO"});
+  }
+  return {ok:true,modulo:"CHECKLIST_ALMACEN",accion:"CATALOGO_HERRAMIENTAS",registros:herramientas.length,herramientas};
+}
+function encabezadoChecklistAlmacen(){return [["ID","FECHA_REGISTRO","HORA_REGISTRO","USUARIO","NOMBRES_APELLIDOS","SEDE","CUADRILLA","FECHA_GESTION","ESTADO_GENERAL","ONT ZTE","FOTOS SERIES ONT ZTE","ONT HUAWEI","FOTOS SERIES ONT HUAWEI","MESH/REPETIDOR ZTE","FOTO MESH/REPETIDOR ZTE","MESH/REPETIDOR HUAWEI","FOTO MESH/REPETIDOR HUAWEI","WINBOX","FOTO WINBOX","FONOWIN","FOTO FONOWIN","CABLE DROP/BOBINA","PRECONECTORIZADO 50m","PRECONECTORIZADO 100m","PRECONECTORIZADO 150m","PRECONECTORIZADO 200m","ANCLAJE P","CINTA BAND-IT","HEBILLA 3/4","ACOPLADOR","ROSETA","CONECTORES OPTICOS","TEMPLADORES","SPLITTER","CLEVIS","CABLE UTP CAT5","CABLE UTP CAT6","PATCHCORD APC-APC","PATCHCORD UPC-APC","CONECTOR RJ45","RESULTADO_ALMACEN","MOTIVO_ALMACEN","VALIDADO_ALMACEN_POR","FECHA_VALIDACION_ALMACEN","HORA_VALIDACION_ALMACEN","RESULTADO_JEFATURA","MOTIVO_JEFATURA","VALIDADO_JEFATURA_POR","FECHA_VALIDACION_JEFATURA","HORA_VALIDACION_JEFATURA","VERSION","ORIGEN_REGISTRO","REGISTRADO_POR","PERFIL_REGISTRO","COMENTARIO_FINAL","TIPO_CHECKLIST","RESULTADO_HERRAMIENTAS","OBSERVACION_HERRAMIENTAS","FOTO_UNIDAD_FRENTE","FOTO_UNIDAD_POSTERIOR","FOTO_UNIDAD_LADO_IZQUIERDO","FOTO_UNIDAD_LADO_DERECHO","FOTO_EXTINTOR","FOTO_BOTIQUIN","FOTO_REJA_SEPARADORA","FOTO_PARRILLA_1","FOTO_PARRILLA_2","RESULTADO_UNIDAD","OBSERVACION_UNIDAD","LICENCIA_FECHA_VENCIMIENTO","LICENCIA_FOTO_FRENTE","LICENCIA_FOTO_REVERSO","SOAT_FECHA_VENCIMIENTO","SOAT_ARCHIVO","REVISION_TECNICA_FECHA_VENCIMIENTO","REVISION_TECNICA_ARCHIVO","RESULTADO_DOCUMENTACION","OBSERVACION_DOCUMENTACION","FOTO_PERSONAL_COMPLETO","FOTO_BOTAS","FOTO_FOTOCHECK","RESULTADO_EPP","OBSERVACION_EPP"]];}
+function asegurarHojaChecklistAlmacen(){const ss=SpreadsheetApp.getActiveSpreadsheet();let h=ss.getSheetByName(HOJA_CHECKLIST_ALMACEN);if(!h)h=ss.insertSheet(HOJA_CHECKLIST_ALMACEN);if(h.getMaxColumns()<83)h.insertColumnsAfter(h.getMaxColumns(),83-h.getMaxColumns());h.getRange(1,1,1,83).setValues(encabezadoChecklistAlmacen());return h;}
+function asegurarHojaHerramientasDetalle(){const ss=SpreadsheetApp.getActiveSpreadsheet();let h=ss.getSheetByName(HOJA_HERRAMIENTAS_DETALLE);if(!h)h=ss.insertSheet(HOJA_HERRAMIENTAS_DETALLE);const e=[["ID_DETALLE","ID_CHECKLIST","FECHA_REGISTRO","SEDE","CUADRILLA","HERRAMIENTA","CODIGO_SERIE","ESTADO","MOTIVO","FOTO","REGISTRADO_POR","PERFIL_REGISTRO","CANTIDAD"]];if(h.getMaxColumns()<13)h.insertColumnsAfter(h.getMaxColumns(),13-h.getMaxColumns());h.getRange(1,1,1,13).setValues(e);return h;}
+function guardarArchivoChecklistGeneral(carpeta,id,categoria,ev){if(!ev||!ev.base64)return "";const original=(ev.nombre||'archivo').toString();const ext=original.includes('.')?original.split('.').pop().toLowerCase():'jpg';const nombre=id+'_'+categoria+'.'+ext;const blob=Utilities.newBlob(Utilities.base64Decode(ev.base64),ev.mime||'application/octet-stream',nombre);const a=carpeta.createFile(blob);a.setSharing(DriveApp.Access.ANYONE_WITH_LINK,DriveApp.Permission.VIEW);return a.getUrl();}
+function buscarChecklistDuplicado(cuadrilla,fechaGestion,tipoChecklist){const h=asegurarHojaChecklistAlmacen(),n=h.getLastRow();if(n<=1)return null;const d=h.getRange(2,1,n-1,83).getValues(),c=normalizarCuadrilla(cuadrilla),f=fechaGestionActaTexto(fechaGestion),t=normalizarTexto(tipoChecklist||'MATERIALES');for(let i=0;i<d.length;i++){if(normalizarCuadrilla(d[i][6])===c&&fechaGestionActaTexto(d[i][7])===f&&normalizarTexto(d[i][55]||'MATERIALES')===t)return {fila:i+2,id:d[i][0],estado:d[i][8]};}return null;}
+function registrarHerramientasDetalleChecklist(data,id,sede,cuadrilla,carpeta,usuario){const herramientas=Array.isArray(data.herramientas)?data.herramientas:[];if(!herramientas.length)throw new Error('Debe registrar al menos una herramienta');const h=asegurarHojaHerramientasDetalle(),ahora=new Date(),filas=[];let observadas=0;herramientas.forEach((x,i)=>{const nombre=(x.herramienta||'').toString().trim(),cantidad=Number(x.cantidad),estado=normalizarTexto(x.estado||'BUENO'),motivo=(x.motivo||'').toString().trim();if(!nombre)return;if(!isFinite(cantidad)||cantidad<=0)throw new Error('Cantidad obligatoria y mayor a cero en '+nombre);if(!['BUENO','REGULAR','MALO'].includes(estado))throw new Error('Estado no válido en '+nombre);if((estado==='REGULAR'||estado==='MALO')&&!motivo)throw new Error('Motivo obligatorio en '+nombre);if(estado==='MALO'&&(!x.foto||!x.foto.base64))throw new Error('Foto obligatoria en '+nombre);const foto=x.foto?guardarArchivoChecklistGeneral(carpeta,id,'HERRAMIENTA_'+(i+1),x.foto):'';if(estado!=='BUENO')observadas++;filas.push(['HD-'+id+'-'+String(i+1).padStart(2,'0'),id,ahora,sede,cuadrilla,nombre,x.codigoSerie||'',estado,motivo,foto,usuario.usuario,usuario.perfil,cantidad]);});if(filas.length)h.getRange(h.getLastRow()+1,1,filas.length,13).setValues(filas);return {resultado:observadas?'OBSERVADO':'CONFORME',observacion:observadas+' herramienta(s) con estado Regular o Malo'};}
+function registrarChecklistAlmacen(data){if(!checklistAlmacenActivo())throw new Error('El Checklist Almacén no está habilitado');const hoja=asegurarHojaChecklistAlmacen(),usuario=obtenerUsuarioApp(data.usuario),esCampo=usuario.perfil==='SUPERVISOR'&&normalizarTexto(data.origenRegistro)==='ACTIVIDAD_CAMPO';if(!(usuario.perfil==='TECNICO'||esCampo))throw new Error('Solo Técnico o Supervisor desde Actividad en Campo pueden registrar checklist');const cuadrilla=normalizarCuadrilla(esCampo?data.cuadrilla:usuario.cuadrilla);if(!cuadrilla)throw new Error('Debe seleccionar una cuadrilla');const dc=obtenerDatosCuadrillaApp(cuadrilla),sede=normalizarTexto(dc.sede||usuario.sede);if(esCampo&&normalizarTexto(usuario.sede)!==sede)throw new Error('Supervisor solo puede registrar checklist de su sede');const fechaGestion=fechaGestionActaTexto(data.fechaGestion||data.fecha_gestion),tipo=normalizarTexto(data.tipoChecklist||'MATERIALES');if(!['MATERIALES','HERRAMIENTAS','UNIDAD VEHICULAR','DOCUMENTACION','EPP'].includes(tipo))throw new Error('Tipo de checklist no válido');const lock=LockService.getScriptLock();lock.waitLock(30000);try{if(buscarChecklistDuplicado(cuadrilla,fechaGestion,tipo))throw new Error('Ya existe un checklist de '+tipo+' para esta cuadrilla y fecha');const id=idChecklistAlmacen(),raiz=DriveApp.getFolderById(CARPETA_CHECKLIST_ALMACEN),carpeta=obtenerOCrearCarpetaChecklist(obtenerOCrearCarpetaChecklist(obtenerOCrearCarpetaChecklist(obtenerOCrearCarpetaChecklist(raiz,tipo),sede),cuadrilla),fechaGestion);let ontZte={series:'',links:''},ontHuawei={series:'',links:''},meshZte={series:'',links:''},meshHuawei={series:'',links:''},winbox={series:'',links:''},fonowin={series:'',links:''};let extra=Array(28).fill('');if(tipo==='MATERIALES'){ontZte=guardarEquiposChecklist(carpeta,'ONT_ZTE',id,obtenerEquiposChecklistEntrada(data,'ontZte'),10);ontHuawei=guardarEquiposChecklist(carpeta,'ONT_HUAWEI',id,obtenerEquiposChecklistEntrada(data,'ontHuawei'),10);meshZte=guardarEquiposChecklist(carpeta,'MESH_ZTE',id,obtenerEquiposChecklistEntrada(data,'meshZte'),10);meshHuawei=guardarEquiposChecklist(carpeta,'MESH_HUAWEI',id,obtenerEquiposChecklistEntrada(data,'meshHuawei'),10);winbox=guardarEquiposChecklist(carpeta,'WINBOX',id,obtenerEquiposChecklistEntrada(data,'winbox'),5);fonowin=guardarEquiposChecklist(carpeta,'FONOWIN',id,obtenerEquiposChecklistEntrada(data,'fonowin'),5);}else if(tipo==='HERRAMIENTAS'){const r=registrarHerramientasDetalleChecklist(data,id,sede,cuadrilla,carpeta,usuario);extra[0]=r.resultado;extra[1]=r.observacion;}else if(tipo==='UNIDAD VEHICULAR'){const req=[['fotoUnidadFrente',3],['fotoUnidadPosterior',4],['fotoUnidadLadoIzquierdo',5],['fotoUnidadLadoDerecho',6],['fotoExtintor',7],['fotoBotiquin',8],['fotoRejaSeparadora',9],['fotoParrilla1',10],['fotoParrilla2',11]];req.forEach(x=>{if(!data[x[0]]||!data[x[0]].base64)throw new Error('Falta evidencia obligatoria de unidad');extra[x[1]]=guardarArchivoChecklistGeneral(carpeta,id,x[0],data[x[0]]);});extra[12]='CONFORME';extra[13]=data.observacionUnidad||'';}else if(tipo==='DOCUMENTACION'){if(!data.licenciaFechaVencimiento||!data.soatFechaVencimiento||!data.revisionTecnicaFechaVencimiento)throw new Error('Complete las fechas de vencimiento');extra[14]=data.licenciaFechaVencimiento;extra[15]=guardarArchivoChecklistGeneral(carpeta,id,'LICENCIA_FRENTE',data.licenciaFotoFrente);extra[16]=guardarArchivoChecklistGeneral(carpeta,id,'LICENCIA_REVERSO',data.licenciaFotoReverso);extra[17]=data.soatFechaVencimiento;extra[18]=guardarArchivoChecklistGeneral(carpeta,id,'SOAT',data.soatArchivo);extra[19]=data.revisionTecnicaFechaVencimiento;extra[20]=guardarArchivoChecklistGeneral(carpeta,id,'REVISION_TECNICA',data.revisionTecnicaArchivo);if(!extra[15]||!extra[16]||!extra[18]||!extra[20])throw new Error('Faltan archivos de documentación');extra[21]='CONFORME';extra[22]=data.observacionDocumentacion||'';}else{extra[23]=guardarArchivoChecklistGeneral(carpeta,id,'PERSONAL_COMPLETO',data.fotoPersonalCompleto);extra[24]=guardarArchivoChecklistGeneral(carpeta,id,'BOTAS',data.fotoBotas);extra[25]=guardarArchivoChecklistGeneral(carpeta,id,'FOTOCHECK',data.fotoFotocheck);if(!extra[23]||!extra[24]||!extra[25])throw new Error('Faltan evidencias de EPP');extra[26]='CONFORME';extra[27]=data.observacionEpp||'';}const ahora=new Date(),nombres=(data.nombresApellidos||(esCampo?obtenerNombresTecnicosChecklist(cuadrilla):usuario.nombresApellidos)||dc.usuario||usuario.usuario).toString().trim(),estado='PENDIENTE DE VALIDACION POR AREA DE ALMACEN';const fila=[id,Utilities.formatDate(ahora,Session.getScriptTimeZone(),'dd/MM/yyyy'),Utilities.formatDate(ahora,Session.getScriptTimeZone(),'HH:mm:ss'),esCampo?(dc.usuario||cuadrilla):usuario.usuario,nombres,sede,cuadrilla,fechaGestion,estado,ontZte.series,ontZte.links,ontHuawei.series,ontHuawei.links,meshZte.series,meshZte.links,meshHuawei.series,meshHuawei.links,winbox.series,winbox.links,fonowin.series,fonowin.links,numeroChecklist(data.cableDrop),numeroChecklist(data.pre50),numeroChecklist(data.pre100),numeroChecklist(data.pre150),numeroChecklist(data.pre200),numeroChecklist(data.anclajeP),numeroChecklist(data.cintaBandIt),numeroChecklist(data.hebilla),numeroChecklist(data.acoplador),numeroChecklist(data.roseta),numeroChecklist(data.conectoresOpticos),numeroChecklist(data.templadores),numeroChecklist(data.splitter),numeroChecklist(data.clevis),numeroChecklist(data.utpCat5),numeroChecklist(data.utpCat6),numeroChecklist(data.patchApcApc),numeroChecklist(data.patchUpcApc),numeroChecklist(data.rj45),'','','','','','','','','','',1,esCampo?'ACTIVIDAD_CAMPO':'TECNICO',usuario.usuario,usuario.perfil,(data.comentarioFinal||'').toString().trim(),tipo].concat(extra);hoja.appendRow(fila);return {ok:true,modulo:'CHECKLIST_ALMACEN',accion:'REGISTRAR',id,tipoChecklist:tipo,estadoGeneral:estado,sede,cuadrilla,origenRegistro:esCampo?'ACTIVIDAD_CAMPO':'TECNICO',registradoPor:usuario.usuario,comentarioFinal:data.comentarioFinal||''};}finally{lock.releaseLock();}}
+function filaChecklistAObjeto(f){return {id:f[0],fechaRegistro:f[1],horaRegistro:f[2],usuario:f[3],nombresApellidos:f[4],sede:f[5],cuadrilla:f[6],fechaGestion:f[7],estadoGeneral:f[8],ontZte:f[9],fotosOntZte:f[10],ontHuawei:f[11],fotosOntHuawei:f[12],meshZte:f[13],fotosMeshZte:f[14],meshHuawei:f[15],fotosMeshHuawei:f[16],winbox:f[17],fotosWinbox:f[18],fonowin:f[19],fotosFonowin:f[20],cableDrop:f[21],pre50:f[22],pre100:f[23],pre150:f[24],pre200:f[25],anclajeP:f[26],cintaBandIt:f[27],hebilla:f[28],acoplador:f[29],roseta:f[30],conectoresOpticos:f[31],templadores:f[32],splitter:f[33],clevis:f[34],utpCat5:f[35],utpCat6:f[36],patchApcApc:f[37],patchUpcApc:f[38],rj45:f[39],resultadoAlmacen:f[40],motivoAlmacen:f[41],validadoAlmacenPor:f[42],fechaValidacionAlmacen:f[43],horaValidacionAlmacen:f[44],resultadoJefatura:f[45],motivoJefatura:f[46],validadoJefaturaPor:f[47],fechaValidacionJefatura:f[48],horaValidacionJefatura:f[49],version:f[50],origenRegistro:f[51]||'TECNICO',registradoPor:f[52]||f[3],perfilRegistro:f[53]||'TECNICO',comentarioFinal:f[54]||'',tipoChecklist:f[55]||'MATERIALES',resultadoHerramientas:f[56],observacionHerramientas:f[57],fotoUnidadFrente:f[58],fotoUnidadPosterior:f[59],fotoUnidadLadoIzquierdo:f[60],fotoUnidadLadoDerecho:f[61],fotoExtintor:f[62],fotoBotiquin:f[63],fotoRejaSeparadora:f[64],fotoParrilla1:f[65],fotoParrilla2:f[66],resultadoUnidad:f[67],observacionUnidad:f[68],licenciaFechaVencimiento:f[69],licenciaFotoFrente:f[70],licenciaFotoReverso:f[71],soatFechaVencimiento:f[72],soatArchivo:f[73],revisionTecnicaFechaVencimiento:f[74],revisionTecnicaArchivo:f[75],resultadoDocumentacion:f[76],observacionDocumentacion:f[77],fotoPersonalCompleto:f[78],fotoBotas:f[79],fotoFotocheck:f[80],resultadoEpp:f[81],observacionEpp:f[82]};}
+
+
+/* =========================
+   CHECKLIST POR FUNCIÓN V141
+   - Carpeta: TIPO / SEDE / CUADRILLA / FECHA
+   - Visualización y validación según perfil y tipo
+========================= */
+function obtenerHerramientasDetallePorChecklistV141() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const hoja = ss.getSheetByName("HERRAMIENTAS_DETALLE");
+  const mapa = {};
+  if (!hoja || hoja.getLastRow() <= 1) return mapa;
+  const datos = hoja.getDataRange().getValues();
+  for (let i = 1; i < datos.length; i++) {
+    const idChecklist = (datos[i][1] || "").toString().trim();
+    if (!idChecklist) continue;
+    if (!mapa[idChecklist]) mapa[idChecklist] = [];
+    mapa[idChecklist].push({
+      idDetalle: datos[i][0], idChecklist,
+      fechaRegistro: datos[i][2], sede: datos[i][3], cuadrilla: datos[i][4],
+      herramienta: datos[i][5], codigoSerie: datos[i][6], estado: datos[i][7],
+      motivo: datos[i][8], foto: datos[i][9], registradoPor: datos[i][10], perfilRegistro: datos[i][11], cantidad: Number(datos[i][12]) || 0
+    });
+  }
+  return mapa;
+}
+
+function diasParaVencimientoChecklistV141(valor) {
+  if (!valor) return null;
+  let f = null;
+  if (valor instanceof Date && !isNaN(valor.getTime())) f = new Date(valor.getFullYear(), valor.getMonth(), valor.getDate());
+  else {
+    const t = valor.toString().trim();
+    let p = t.split("-");
+    if (p.length === 3) f = new Date(Number(p[0]), Number(p[1])-1, Number(p[2]));
+    else { p = t.split("/"); if (p.length === 3) f = new Date(Number(p[2]), Number(p[1])-1, Number(p[0])); }
+  }
+  if (!f || isNaN(f.getTime())) return null;
+  const hoy = new Date(); hoy.setHours(0,0,0,0);
+  return Math.ceil((f.getTime()-hoy.getTime())/86400000);
+}
+
+function listarChecklistAlmacen(data) {
+  const hoja = asegurarHojaChecklistAlmacen();
+  const datos = hoja.getDataRange().getValues();
+  const usuario = obtenerUsuarioApp(data.usuario);
+  const herramientasMapa = obtenerHerramientasDetallePorChecklistV141();
+  const lista = [];
+  for (let i=1;i<datos.length;i++) {
+    const item = filaChecklistAObjeto(datos[i]);
+    const tipo = normalizarTexto(item.tipoChecklist || "MATERIALES");
+    let permitir = false;
+    if (usuario.perfil === "TECNICO") permitir = normalizarCuadrilla(usuario.cuadrilla) === normalizarCuadrilla(item.cuadrilla);
+    else if (usuario.perfil === "ALMACEN" || usuario.perfil === "SUPERVISOR") permitir = normalizarTexto(usuario.sede) === normalizarTexto(item.sede);
+    else if (esPerfilJefaturaAlmacen(usuario.perfil) || esPerfilJefatura(usuario.perfil)) permitir = true;
+    if (!permitir) continue;
+    if (usuario.perfil === "ALMACEN" && !["MATERIALES","HERRAMIENTAS"].includes(tipo)) continue;
+    if (data.sede && normalizarTexto(data.sede)!==normalizarTexto(item.sede)) continue;
+    if (data.cuadrilla && normalizarCuadrilla(data.cuadrilla)!==normalizarCuadrilla(item.cuadrilla)) continue;
+    if (data.estado && normalizarTexto(data.estado)!==normalizarTexto(item.estadoGeneral)) continue;
+    if (data.tipoChecklist && normalizarTexto(data.tipoChecklist)!==tipo) continue;
+    item.tipoChecklist = tipo;
+    item.herramientasDetalle = herramientasMapa[item.id] || [];
+    item.supervisor = (obtenerDatosCuadrillaApp(item.cuadrilla).usuarioSupervisor || "");
+    const vencimientos = [item.licenciaFechaVencimiento,item.soatFechaVencimiento,item.revisionTecnicaFechaVencimiento]
+      .map(diasParaVencimientoChecklistV141).filter(v=>v!==null);
+    item.diasVencimientoMinimo = vencimientos.length ? Math.min.apply(null,vencimientos) : null;
+    item.estadoVencimiento = item.diasVencimientoMinimo===null ? "NO APLICA" : (item.diasVencimientoMinimo<0 ? "VENCIDO" : (item.diasVencimientoMinimo<=30 ? "PROXIMO A VENCER" : "VIGENTE"));
+    lista.push(item);
+  }
+  lista.reverse();
+  return {ok:true, modulo:"CHECKLIST_ALMACEN", accion:"LISTAR", perfil:usuario.perfil, registros:lista.length, checklist:lista};
+}
+
+function validarChecklistAlmacen(data) {
+  const usuario = obtenerUsuarioApp(data.usuario);
+  const id = (data.id||"").toString().trim();
+  const resultado = normalizarTexto(data.resultado);
+  const motivo = (data.motivo||"").toString().trim();
+  if (!id) throw new Error("ID obligatorio");
+  const e = buscarChecklistAlmacen(id), hoja=e.hoja, fila=e.fila, item=e.item, ahora=new Date();
+  const tipo = normalizarTexto(item.tipoChecklist || "MATERIALES");
+  const esMaterial = ["MATERIALES","HERRAMIENTAS"].includes(tipo);
+  const esOperativo = ["UNIDAD VEHICULAR","DOCUMENTACION","EPP"].includes(tipo);
+
+  if (usuario.perfil === "ALMACEN") {
+    if (!esMaterial) throw new Error("Almacén solo valida Materiales y Herramientas");
+    if (normalizarTexto(usuario.sede)!==normalizarTexto(item.sede)) throw new Error("Almacén solo puede validar checklist de su sede");
+    if (!["VISTO BUENO","OBSERVADO"].includes(resultado)) throw new Error("Resultado no válido para Almacén");
+    if (resultado==="OBSERVADO"&&!motivo) throw new Error("Debe ingresar el motivo");
+    hoja.getRange(fila,41).setValue(resultado); hoja.getRange(fila,42).setValue(resultado==="OBSERVADO"?motivo:""); hoja.getRange(fila,43).setValue(usuario.usuario);
+    hoja.getRange(fila,44).setValue(ahora).setNumberFormat("dd/mm/yyyy"); hoja.getRange(fila,45).setValue(ahora).setNumberFormat("hh:mm:ss");
+    hoja.getRange(fila,9).setValue(resultado==="VISTO BUENO"?"VISTO BUENO ALMACEN":"OBSERVADO ALMACEN");
+  } else if (usuario.perfil === "SUPERVISOR") {
+    if (!esOperativo) throw new Error("Supervisor valida Unidad Vehicular, Documentación y EPP");
+    if (normalizarTexto(usuario.sede)!==normalizarTexto(item.sede)) throw new Error("Supervisor solo puede validar checklist de su sede");
+    if (!["CONFORME","OBSERVADO"].includes(resultado)) throw new Error("Resultado no válido para Supervisor");
+    if (!motivo) throw new Error(resultado==="CONFORME"?"Debe ingresar el comentario de conformidad":"Debe ingresar el motivo de observación");
+    hoja.getRange(fila,41).setValue(resultado); hoja.getRange(fila,42).setValue(motivo); hoja.getRange(fila,43).setValue(usuario.usuario);
+    hoja.getRange(fila,44).setValue(ahora).setNumberFormat("dd/mm/yyyy"); hoja.getRange(fila,45).setValue(ahora).setNumberFormat("hh:mm:ss");
+    hoja.getRange(fila,9).setValue(resultado==="CONFORME"?"CONFORME SUPERVISOR":"OBSERVADO SUPERVISOR");
+  } else if (esPerfilJefaturaAlmacen(usuario.perfil)) {
+    if (!esMaterial) throw new Error("Jefatura de Almacén solo valida Materiales y Herramientas");
+    if (!["CONFORME","OBSERVADO"].includes(resultado)) throw new Error("Resultado no válido para Jefatura de Almacén");
+    if (!motivo) throw new Error(resultado==="CONFORME"?"Debe ingresar el comentario de conformidad":"Debe ingresar el motivo de observación");
+    hoja.getRange(fila,46).setValue(resultado); hoja.getRange(fila,47).setValue(motivo); hoja.getRange(fila,48).setValue(usuario.usuario);
+    hoja.getRange(fila,49).setValue(ahora).setNumberFormat("dd/mm/yyyy"); hoja.getRange(fila,50).setValue(ahora).setNumberFormat("hh:mm:ss");
+    hoja.getRange(fila,9).setValue(resultado==="CONFORME"?"CONFORME":"OBSERVADO JEFATURA");
+  } else if (esPerfilJefatura(usuario.perfil)) {
+    if (!esOperativo) throw new Error("Jefatura General valida Unidad Vehicular, Documentación y EPP");
+    if (!["CONFORME","OBSERVADO"].includes(resultado)) throw new Error("Resultado no válido para Jefatura");
+    if (!motivo) throw new Error(resultado==="CONFORME"?"Debe ingresar el comentario de conformidad":"Debe ingresar el motivo de observación");
+    hoja.getRange(fila,46).setValue(resultado); hoja.getRange(fila,47).setValue(motivo); hoja.getRange(fila,48).setValue(usuario.usuario);
+    hoja.getRange(fila,49).setValue(ahora).setNumberFormat("dd/mm/yyyy"); hoja.getRange(fila,50).setValue(ahora).setNumberFormat("hh:mm:ss");
+    hoja.getRange(fila,9).setValue(resultado==="CONFORME"?"CONFORME":"OBSERVADO JEFATURA");
+  } else throw new Error("No tienes permiso para validar este tipo de checklist");
+  return {ok:true, modulo:"CHECKLIST_ALMACEN", accion:"VALIDAR", id, resultado, tipoChecklist:tipo};
 }

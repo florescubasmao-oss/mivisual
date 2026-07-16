@@ -23,7 +23,7 @@ function usuarioActualActividad(){
 
 function esJefaturaActividad(perfil){
     const p = (perfil || "").toUpperCase();
-    return p === "JEFATURA" || p === "ADMIN" || p === "ADMINISTRADOR";
+    return p === "JEFATURA" || p === "ADMIN" || p === "ADMINISTRADOR" || p === "OPERACIONES LIMA";
 }
 
 async function apiActividadCampo(payload){
@@ -146,7 +146,7 @@ function mostrarActividadCampo(){
                 <p class="act-sub">Registro de auditorías, supervisiones, seguimiento, validaciones, capacitaciones y checklist.</p>
             </div>
             <div class="act-actions">
-                ${u.perfil === "SUPERVISOR" ? `<button class="act-btn ok" onclick="mostrarFormularioActividadCampo()">+ Nueva actividad</button>` : ""}
+                ${u.perfil === "SUPERVISOR" && (typeof pmPuede!=="function" || pmPuede("ACTIVIDAD CAMPO","REGISTRAR")) ? `<button class="act-btn ok" onclick="mostrarFormularioActividadCampo()">+ Nueva actividad</button>` : ""}
                 <button class="act-btn sec" onclick="cargarActividadCampo()">🔄 Actualizar lista</button>
             </div>
             ${esJefaturaActividad(u.perfil) ? `<div class="act-note">Vista Jefatura: consulta y validación visual de registros realizados por supervisores. El registro de nuevas actividades queda habilitado solo para Supervisores.</div>` : ""}

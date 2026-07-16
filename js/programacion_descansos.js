@@ -185,7 +185,7 @@ async function pdSolicitarCambio(){try{const u=pdUser();const fechaDescansoActua
 function pdRenderGestion(){
   const u=pdUser(),per=PD_DATA.periodo||pdPeriodoActual();
   const estadoVista=window.PD_FILTROS||{};
-  const esSupervisor=u.perfil==='SUPERVISOR';
+  const esSupervisor=u.perfil==='SUPERVISOR';const soloLectura=u.perfil==='OPERACIONES LIMA'||(typeof pmPuede==='function'&&!pmPuede('PROGRAMACION DESCANSOS','EDITAR'));
   const esJefatura=!esSupervisor;
   const sedes=esSupervisor?[u.sede]:['TODAS','CHICLAYO','PIURA','TRUJILLO'];
   const sedeSel=sedes.includes(estadoVista.sede)?estadoVista.sede:(esSupervisor?u.sede:'TODAS');
@@ -224,7 +224,7 @@ function pdRenderGestion(){
   <div class="pd-card">
     <div style="display:flex;justify-content:space-between;gap:8px;align-items:center;flex-wrap:wrap">
       <div class="pd-note">Vista operativa: <b>C = En campo</b>, <b>Cᴮ = En campo bolsa</b>, <b>D = Descanso</b>, <b>V = Vacaciones</b>. Supervisores y responsables de almacén no participan en la capacidad operativa.</div>
-      <button id="pdBtnGuardarCambios" class="pd-btn ${esSupervisor?'pd-orange':'pd-green'}" style="display:none" onclick="pdGuardarCambios()">${esSupervisor?'Guardar cambios y enviar a validación':'Guardar cambios'}</button>
+      <button id="pdBtnGuardarCambios" class="pd-btn ${esSupervisor?'pd-orange':'pd-green'}" style="display:none" onclick="pdGuardarCambios()" ${soloLectura?'disabled':''}>${esSupervisor?'Guardar cambios y enviar a validación':'Guardar cambios'}</button>
     </div>
     <div id="pdCalendario" style="margin-top:8px"></div>
   </div>

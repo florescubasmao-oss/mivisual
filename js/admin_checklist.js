@@ -16,7 +16,7 @@
       .adm104-config .ck-config{margin:0;box-shadow:none;border:0;background:transparent;padding:0}
       .adm104-config .ck-config-head{margin-bottom:10px}
       .adm104-config .ck-config-note{color:#334155}
-      .adm104-back{margin-top:16px}.tc-config-admin{display:flex;align-items:center;justify-content:space-between;gap:16px}.tc-config-admin p{margin:4px 0 0;color:#334155;font-size:12px}.tc-config-actions{display:flex;gap:10px;align-items:center}.tc-config-actions select{padding:10px 12px;border-radius:10px;border:1px solid #94a3b8;background:#fff;color:#0f172a;font-weight:700}@media(max-width:700px){.tc-config-admin{align-items:stretch;flex-direction:column}.tc-config-actions{width:100%}.tc-config-actions select{flex:1}}
+      .adm104-back{margin-top:16px}.pm-admin h3{margin:0 0 4px}.pm-admin p{color:#475569}.pm-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}.pm-grid label,.pm-obs{font-size:12px;font-weight:800;display:flex;flex-direction:column;gap:5px}.pm-grid input,.pm-grid select,.pm-obs textarea{padding:9px;border:1px solid #94a3b8;border-radius:9px;background:#fff;color:#111827}.pm-checks{display:flex;gap:10px;flex-wrap:wrap;margin:12px 0}.pm-checks label{background:#e2e8f0;padding:7px 9px;border-radius:9px;font-size:11px;font-weight:800}.pm-actions{display:flex;gap:8px;margin-top:10px}@media(max-width:700px){.pm-grid{grid-template-columns:1fr}}.tc-config-admin{display:flex;align-items:center;justify-content:space-between;gap:16px}.tc-config-admin p{margin:4px 0 0;color:#334155;font-size:12px}.tc-config-actions{display:flex;gap:10px;align-items:center}.tc-config-actions select{padding:10px 12px;border-radius:10px;border:1px solid #94a3b8;background:#fff;color:#0f172a;font-weight:700}@media(max-width:700px){.tc-config-admin{align-items:stretch;flex-direction:column}.tc-config-actions{width:100%}.tc-config-actions select{flex:1}}
       @media(max-width:700px){.adm104-grid{grid-template-columns:1fr}.adm104-card{min-height:88px;padding:14px}.adm104-title{font-size:22px}.adm104-config{grid-column:auto}}
     </style>`;
   }
@@ -48,11 +48,13 @@
         ${cards.map(c=>`<div class="adm104-card" onclick="${c[3]}"><div class="adm104-icon">${c[0]}</div><div><h3>${c[1]}</h3><p>${c[2]}</p></div></div>`).join('')}
         <div class="adm104-config">${ckConfigPanel(cfg)}</div>
         <div class="adm104-config">${typeof tcConfigPanelPext==='function'?tcConfigPanelPext(cfgPext):''}</div>
+        ${typeof pmPanelAdmin==='function'?pmPanelAdmin():''}
       </div>
       <div class="adm104-back"><button class="button_1" onclick="volverInicio()">⬅️ Volver al menú</button></div>
     </div>`;
     mostrarPantalla(html);
     if(typeof setBotonNavegacion==='function')setBotonNavegacion('subpantalla');
+    if(typeof pmInitAdmin==='function')setTimeout(pmInitAdmin,50);
   };
 
   if(oldConfigurarMenu){
