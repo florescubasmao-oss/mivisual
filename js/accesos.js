@@ -1353,85 +1353,129 @@ async function procesarVtrGar(){
 function mostrarImportarUsuarios(){
 
     mostrarPantalla(`
-        <div style="padding:20px;max-width:1000px;margin:auto;">
-            <h2 style="text-align:center;">👥 ACTUALIZAR USUARIOS</h2>
-            <br>
-
-            <div class="card">
-                <h3>📋 Importar base de usuarios</h3>
-                <p>Pega aquí la base de usuarios desde Google Sheets o Excel.</p>
-
-                <textarea
-                    id="textoUsuarios"
-                    style="width:100%;height:260px;border-radius:8px;padding:10px;"
-                    placeholder="Usuario    Correo    Clave    Cuadrilla    Sede    Plataforma    Perfil    Nivel de Acceso    Estado    UsuarioSupervisor"
-                ></textarea>
-
-                <br><br>
-
-                <button class="button_1" onclick="procesarUsuarios()">
-                    👥 PROCESAR USUARIOS
-                </button>
-
-                &nbsp;
-
-                <button class="button_1" onclick="listarUsuariosApp()">
-                    📋 VER USUARIOS
-                </button>
-
-                &nbsp;
-
-                <button class="button_1" onclick="mostrarAdministracion()">
-                    ⬅️ Volver al menú
-                </button>
-
-                <br><br>
-                <div id="vistaPreviaUsuarios"></div>
+        <div style="padding:16px;max-width:1050px;margin:auto;">
+            <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:18px;">
+                <div>
+                    <h2 style="margin:0;">👥 ADMINISTRACIÓN DE USUARIOS</h2>
+                    <p style="margin:6px 0 0;color:#cbd5e1;">Importa usuarios y gestiona sus datos, seguridad y perfil sin cambiar la lógica actual.</p>
+                </div>
+                <button class="button_1" onclick="mostrarAdministracion()">⬅️ Volver a Administración</button>
             </div>
 
-            <br>
+            <details class="card" open style="margin-bottom:16px;">
+                <summary style="cursor:pointer;font-weight:800;font-size:17px;padding:4px 0;">📥 1. Importar y consultar usuarios</summary>
+                <div style="padding-top:16px;">
+                    <p>Pega aquí la base de usuarios desde Google Sheets o Excel.</p>
+                    <textarea
+                        id="textoUsuarios"
+                        style="width:100%;height:220px;border-radius:10px;padding:12px;box-sizing:border-box;"
+                        placeholder="Usuario    Correo    Clave    Cuadrilla    Sede    Plataforma    Perfil    Nivel de Acceso    Estado    UsuarioSupervisor"
+                    ></textarea>
+                    <div style="display:flex;gap:10px;flex-wrap:wrap;justify-content:center;margin-top:14px;">
+                        <button class="button_1" onclick="procesarUsuarios()">📥 Procesar usuarios</button>
+                        <button class="button_1" onclick="listarUsuariosApp()">📋 Ver usuarios</button>
+                    </div>
+                    <div id="vistaPreviaUsuarios" style="margin-top:16px;"></div>
+                </div>
+            </details>
 
-            <div class="card">
-                <h3>⚙️ Gestión rápida de usuario</h3>
-
-                <label>Usuario</label>
-                <input id="usuarioGestion" style="width:100%;padding:10px;border-radius:8px;" placeholder="Ejemplo: P1TRASLADOVISUAL">
-
-                <br><br>
-
-                <label>Nueva clave</label>
-                <input id="claveGestion" style="width:100%;padding:10px;border-radius:8px;" placeholder="Nueva clave">
-
-                <br><br>
-
-                <button class="button_1" onclick="cambiarClaveUsuarioApp()">🔑 Cambiar clave</button>
-                <button class="button_1" onclick="cambiarEstadoUsuarioApp('SUSPENDIDO')">⛔ Suspender</button>
-                <button class="button_1" onclick="cambiarEstadoUsuarioApp('ACTIVO')">✅ Activar</button>
-                <button class="button_1" onclick="cambiarEstadoUsuarioApp('BAJA')">🗑️ Baja</button>
-
-                <br><br>
-
-                <button class="button_1" onclick="cambiarPermisoUsuarioApp('TECNICO','CUADRILLA')">👷 Permiso Técnico</button>
-                <button class="button_1" onclick="cambiarPermisoUsuarioApp('SUPERVISOR','SEDE')">👨‍💼 Permiso Supervisor</button>
-                <button class="button_1" onclick="cambiarPermisoUsuarioApp('ADMIN','ADMIN')">🛡️ Permiso Admin</button>
+            <div class="card" style="margin-bottom:16px;">
+                <h3 style="margin-top:0;">🔎 2. Seleccionar usuario</h3>
+                <p style="margin-top:4px;">Escribe el usuario una sola vez. Este dato se utilizará en Seguridad, Perfil y Datos básicos.</p>
+                <label style="display:block;font-weight:700;margin-bottom:6px;">Usuario obligatorio</label>
+                <input id="usuarioGestion" style="width:100%;padding:12px;border-radius:9px;box-sizing:border-box;" placeholder="Ejemplo: P1TRASLADOVISUAL">
             </div>
 
-            <br>
+            <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:16px;align-items:start;">
+                <details class="card" open>
+                    <summary style="cursor:pointer;font-weight:800;font-size:17px;padding:4px 0;">🔐 3. Cuenta y seguridad</summary>
+                    <div style="padding-top:16px;">
+                        <label style="display:block;font-weight:700;margin-bottom:6px;">Nueva clave</label>
+                        <input id="claveGestion" type="password" style="width:100%;padding:11px;border-radius:8px;box-sizing:border-box;" placeholder="Nueva clave">
+                        <button class="button_1" style="width:100%;margin-top:12px;" onclick="cambiarClaveUsuarioApp()">🔑 Cambiar clave</button>
 
-            <div class="card">
-                <h3>✏️ Editar datos básicos</h3>
-                <p>Llena solo los campos que deseas cambiar. El usuario es obligatorio.</p>
+                        <div style="height:1px;background:#475569;margin:18px 0;"></div>
+                        <p style="font-weight:700;margin-bottom:10px;">Estado de la cuenta</p>
+                        <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;">
+                            <button class="button_1" onclick="cambiarEstadoUsuarioApp('ACTIVO')">✅ Activar</button>
+                            <button class="button_1" onclick="cambiarEstadoUsuarioApp('SUSPENDIDO')">⛔ Suspender</button>
+                            <button class="button_1" onclick="cambiarEstadoUsuarioApp('BAJA')">🗑️ Baja</button>
+                        </div>
+                    </div>
+                </details>
 
-                <input id="editCorreo" style="width:100%;padding:10px;border-radius:8px;" placeholder="Correo"><br><br>
-                <input id="editCuadrilla" style="width:100%;padding:10px;border-radius:8px;" placeholder="Cuadrilla"><br><br>
-                <input id="editSede" style="width:100%;padding:10px;border-radius:8px;" placeholder="Sede"><br><br>
-                <input id="editPlataforma" style="width:100%;padding:10px;border-radius:8px;" placeholder="Plataforma"><br><br>
-                <input id="editUsuarioSupervisor" style="width:100%;padding:10px;border-radius:8px;" placeholder="UsuarioSupervisor"><br><br>
+                <details class="card" open>
+                    <summary style="cursor:pointer;font-weight:800;font-size:17px;padding:4px 0;">🪪 4. Perfil y nivel de acceso</summary>
+                    <div style="padding-top:16px;">
+                        <label style="display:block;font-weight:700;margin-bottom:6px;">Perfil</label>
+                        <select id="perfilGestion" style="width:100%;padding:11px;border-radius:8px;box-sizing:border-box;" onchange="ajustarNivelAccesoPerfilUsuario()">
+                            <option value="TECNICO">TÉCNICO</option>
+                            <option value="SUPERVISOR">SUPERVISOR</option>
+                            <option value="ALMACEN">RESPONSABLE ALMACÉN</option>
+                            <option value="JEFATURA ALMACEN">JEFATURA ALMACÉN</option>
+                            <option value="JEFATURA">JEFATURA</option>
+                            <option value="OPERACIONES LIMA">OPERACIONES LIMA</option>
+                            <option value="ADMIN">ADMIN</option>
+                            <option value="ADMINISTRADOR">ADMINISTRADOR</option>
+                        </select>
 
-                <button class="button_1" onclick="editarUsuarioApp()">💾 Guardar cambios básicos</button>
+                        <label style="display:block;font-weight:700;margin:14px 0 6px;">Nivel de acceso</label>
+                        <select id="nivelGestion" style="width:100%;padding:11px;border-radius:8px;box-sizing:border-box;">
+                            <option value="CUADRILLA">CUADRILLA</option>
+                            <option value="SEDE">SEDE</option>
+                            <option value="ZONA NORTE">ZONA NORTE</option>
+                            <option value="ADMIN">ADMIN</option>
+                        </select>
+
+                        <button class="button_1" style="width:100%;margin-top:14px;" onclick="guardarPerfilUsuarioSeleccionado()">💾 Guardar perfil</button>
+                        <p style="font-size:12px;margin:12px 0 0;color:#cbd5e1;">Los permisos específicos por módulo se administran desde el bloque “Permisos por perfil” de Administración.</p>
+                    </div>
+                </details>
             </div>
+
+            <details class="card" open style="margin-top:16px;">
+                <summary style="cursor:pointer;font-weight:800;font-size:17px;padding:4px 0;">✏️ 5. Editar datos básicos</summary>
+                <div style="padding-top:16px;">
+                    <p>Completa únicamente los datos que deseas cambiar. El usuario se toma del campo superior.</p>
+                    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:12px;">
+                        <label>Correo<input id="editCorreo" style="width:100%;padding:11px;border-radius:8px;box-sizing:border-box;margin-top:5px;" placeholder="Correo"></label>
+                        <label>Cuadrilla<input id="editCuadrilla" style="width:100%;padding:11px;border-radius:8px;box-sizing:border-box;margin-top:5px;" placeholder="Cuadrilla"></label>
+                        <label>Sede<input id="editSede" style="width:100%;padding:11px;border-radius:8px;box-sizing:border-box;margin-top:5px;" placeholder="Sede"></label>
+                        <label>Plataforma<input id="editPlataforma" style="width:100%;padding:11px;border-radius:8px;box-sizing:border-box;margin-top:5px;" placeholder="Plataforma"></label>
+                        <label>Usuario Supervisor<input id="editUsuarioSupervisor" style="width:100%;padding:11px;border-radius:8px;box-sizing:border-box;margin-top:5px;" placeholder="UsuarioSupervisor"></label>
+                    </div>
+                    <div style="text-align:center;margin-top:16px;">
+                        <button class="button_1" onclick="editarUsuarioApp()">💾 Guardar cambios básicos</button>
+                    </div>
+                </div>
+            </details>
         </div>
     `);
+
+    ajustarNivelAccesoPerfilUsuario();
+}
+
+function nivelAccesoSugeridoPerfilUsuario(perfil){
+    const p = normalizarUsuarioTexto(perfil);
+    if(p === "TECNICO") return "CUADRILLA";
+    if(p === "SUPERVISOR" || p === "ALMACEN") return "SEDE";
+    if(p === "JEFATURA" || p === "JEFATURA ALMACEN" || p === "OPERACIONES LIMA") return "ZONA NORTE";
+    if(p === "ADMIN" || p === "ADMINISTRADOR") return "ADMIN";
+    return "CUADRILLA";
+}
+
+function ajustarNivelAccesoPerfilUsuario(){
+    const perfil = document.getElementById("perfilGestion");
+    const nivel = document.getElementById("nivelGestion");
+    if(!perfil || !nivel) return;
+    nivel.value = nivelAccesoSugeridoPerfilUsuario(perfil.value);
+}
+
+function guardarPerfilUsuarioSeleccionado(){
+    const perfil = document.getElementById("perfilGestion");
+    const nivel = document.getElementById("nivelGestion");
+    if(!perfil || !nivel) return;
+    cambiarPermisoUsuarioApp(perfil.value, nivel.value);
 }
 
 function limpiarUsuarioCampo(txt){
