@@ -600,8 +600,25 @@ function cambiarPermisoUsuario(usuarioBuscar, perfilNuevo, nivelNuevo) {
   const perfil = normalizarTexto(perfilNuevo);
   const nivel = normalizarTexto(nivelNuevo);
 
-  if (!["TECNICO", "SUPERVISOR", "JEFATURA", "ADMIN", "ADMINISTRADOR", "ALMACEN", "JEFATURA ALMACEN", "OPERACIONES LIMA"].includes(perfil)) {
-    throw new Error("Perfil no válido");
+  if (!perfil) throw new Error("Debe seleccionar un perfil");
+
+  // Los perfiles ya no se validan con una lista fija.
+  // Se consideran válidos cuando existen en PERMISOS_MODULOS,
+  // permitiendo usar perfiles nuevos creados desde Administración.
+  const hojaPermisos = asegurarHojaPermisosModulos();
+  const ultimaFilaPermisos = hojaPermisos.getLastRow();
+  let perfilExiste = false;
+
+  if (ultimaFilaPermisos > 1) {
+    const perfiles = hojaPermisos
+      .getRange(2, 1, ultimaFilaPermisos - 1, 1)
+      .getValues();
+
+    perfilExiste = perfiles.some(fila => normalizarTexto(fila[0]) === perfil);
+  }
+
+  if (!perfilExiste) {
+    throw new Error("El perfil seleccionado no existe en PERMISOS_MODULOS");
   }
 
   if (!["CUADRILLA", "SEDE", "ZONA", "ZONA NORTE", "ADMIN"].includes(nivel)) {

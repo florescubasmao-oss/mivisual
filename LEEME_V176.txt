@@ -1,0 +1,13 @@
+MI VISUAL V176 - PERFILES DINAMICOS EN USUARIOS
+
+Corrección:
+- Al cambiar el perfil de un usuario, Code.gs ya no usa una lista fija.
+- El perfil se valida directamente contra la hoja PERMISOS_MODULOS.
+- Permite asignar perfiles nuevos creados desde Administración, por ejemplo JEFATURA OPERACIONES.
+- Se mantiene la validación actual de niveles de acceso.
+
+Requiere:
+1. Reemplazar Code.gs completo.
+2. Guardar.
+3. Crear un nuevo despliegue de Apps Script.
+4. Volver a probar el cambio de perfil.
