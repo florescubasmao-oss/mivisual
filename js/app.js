@@ -175,8 +175,10 @@ async function configurarMenu(){
 
     if (pantalla) pantalla.innerHTML = "";
     if (resultado) resultado.innerHTML = "";
-    // Ocultar el menú mientras se consultan permisos y módulos habilitados.
-    if (menu) menu.style.setProperty("display", "none", "important");
+    // Si ya existe contexto en memoria, conservar el menú visible mientras se aplica la configuración.
+    // Esto evita la sensación de pantalla en blanco al volver desde un módulo.
+    const contextoEnMemoria = typeof PM_PERMISOS_CARGADOS !== "undefined" && PM_PERMISOS_CARGADOS;
+    if (menu && !contextoEnMemoria) menu.style.setProperty("display", "none", "important");
     const mv55 = prepararMenuVisual();
     setBotonNavegacion("menu");
 
@@ -311,7 +313,7 @@ async function configurarMenu(){
     let opciones = [...(permisos[perfil] || [])];
     try {
         if (typeof pmCargarPermisosActuales === "function") {
-            await pmCargarPermisosActuales(true);
+            await pmCargarPermisosActuales(false);
             const dinamicos = pmModulosMenu();
             // Si la hoja PERMISOS_MODULOS fue leída, su resultado es autoritativo,
             // incluso cuando devuelve cero módulos. No se mezclan permisos antiguos.
@@ -366,7 +368,9 @@ async function configurarMenu(){
     if (menu) menu.style.setProperty("display", "grid", "important");
 
     if(typeof actualizarIndicadorDescansoMenu === "function") {
-        actualizarIndicadorDescansoMenu();
+        const cargarIndicador = () => actualizarIndicadorDescansoMenu(false);
+        if ("requestIdleCallback" in window) requestIdleCallback(cargarIndicador, {timeout: 1200});
+        else setTimeout(cargarIndicador, 150);
     }
 }
 
@@ -377,5 +381,5 @@ window.addEventListener("load", function () {
         document.getElementById("pantallaCarga").style.display = "none";
         document.getElementById("contenidoApp").style.display = "block";
 
-    },2000);
+    },250);
 });
