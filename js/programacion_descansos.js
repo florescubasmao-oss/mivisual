@@ -105,14 +105,41 @@ async function mostrarMiProgramacionPersonal(){
   return pdAbrirModuloDescansos(true);
 }
 
-async function pdCargar(periodo){
-  const u=pdUser();const per=periodo||document.getElementById("pdPeriodo")?.value||pdPeriodoActual();
-  const [y,m]=per.split("-").map(Number);
-  const periodos=[new Date(y,m-2,1),new Date(y,m-1,1),new Date(y,m,1)].map(d=>`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}`);
-  const respuestas=await Promise.all(periodos.map(x=>pdApi({accion:"listarProgramacionDescansos",usuario:u.usuario,periodo:x})));
-  const centro=respuestas[1];
-  PD_DATA={...centro,periodo:per,programacion:respuestas.flatMap(x=>x.programacion||[]),cuadrillas:centro.cuadrillas||[]};
+async function pdCargar(periodo, forzar){
+  const u=pdUser();
+  const per=periodo||document.getElementById("pdPeriodo")?.value||pdPeriodoActual();
+  const claveCache=`MI_VISUAL_PD_${pdNorm(u.usuario)}_${per}`;
+
+  // La apertura inicial consulta únicamente el periodo seleccionado.
+  // Antes se realizaban tres solicitudes simultáneas (mes anterior, actual y siguiente),
+  // lo que multiplicaba el tiempo de Apps Script y podía superar un minuto.
+  if(!forzar){
+    try{
+      const guardado=sessionStorage.getItem(claveCache);
+      if(guardado){
+        const cache=JSON.parse(guardado);
+        if(cache&&Date.now()-Number(cache.guardadoEn||0)<60000&&cache.data){
+          PD_DATA={...cache.data,periodo:per};
+          PD_CAMBIOS={};PD_MOTIVO_CAMBIO="";
+          return;
+        }
+      }
+    }catch(e){}
+  }
+
+  const respuesta=await pdApi({accion:"listarProgramacionDescansos",usuario:u.usuario,periodo:per});
+  PD_DATA={...respuesta,periodo:per,programacion:respuesta.programacion||[],cuadrillas:respuesta.cuadrillas||[]};
   PD_CAMBIOS={};PD_MOTIVO_CAMBIO="";
+
+  try{
+    sessionStorage.setItem(claveCache,JSON.stringify({guardadoEn:Date.now(),data:PD_DATA}));
+  }catch(e){}
+}
+
+function pdLimpiarCachePeriodo(periodo){
+  const u=pdUser();
+  const per=periodo||PD_DATA.periodo||pdPeriodoActual();
+  try{sessionStorage.removeItem(`MI_VISUAL_PD_${pdNorm(u.usuario)}_${per}`);}catch(e){}
 }
 
 function pdRender(){

@@ -1,0 +1,13 @@
+MI VISUAL V170 - OPTIMIZACIÓN PROGRAMACIÓN DE DESCANSOS
+
+CAMBIO ÚNICO:
+- La apertura inicial consulta solamente el mes seleccionado.
+- Se elimina la carga simultánea de mes anterior, actual y siguiente.
+- Se reutiliza durante 60 segundos la información del mismo usuario y periodo.
+- No se modifica la lógica de aprobación, alertas, capacidad, permisos ni estados.
+
+ARCHIVOS MODIFICADOS:
+- index.html
+- js/programacion_descansos.js
+
+NO REQUIERE CAMBIAR Code.gs NI NUEVO DESPLIEGUE DE APPS SCRIPT.
