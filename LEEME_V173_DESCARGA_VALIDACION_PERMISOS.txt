@@ -1,0 +1,17 @@
+MI VISUAL V173 - DESCARGA VALIDACION TECNICA POR PERMISOS
+
+Cambio puntual:
+- La descarga de Validacion Tecnica respeta PERMISOS_MODULOS.
+- OPERACIONES LIMA puede descargar cuando DESCARGAR = SI.
+- Se fuerza un nombre nuevo del archivo JS para evitar que el navegador cargue una version antigua en cache.
+- No se modifica Code.gs ni la logica de registro/validacion.
+
+Archivos clave modificados:
+- index.html
+- js/validacion_tecnica_v173.js
+
+Instalacion:
+1. Reemplazar los archivos web completos.
+2. Commit y push.
+3. Cerrar sesion y recargar con Ctrl+F5.
+4. No requiere nuevo despliegue de Apps Script.
