@@ -1521,9 +1521,17 @@ function mostrarImportarUsuarios(){
     cargarCatalogosUsuariosAdministracion();
 }
 
+const API_USUARIOS_ADMIN = (window.MI_VISUAL_API_URL || "https://script.google.com/macros/s/AKfycbzcbjCLweJNgZXDerdzmMN7Lwotc1G8NWdzoPkaLNGDivAgpYxDkq78xZwPRioSB4XY/exec");
+
 function apiUsuariosAdmin(payload){
-    const url = "https://script.google.com/macros/s/AKfycbzcbjCLweJNgZXDerdzmMN7Lwotc1G8NWdzoPkaLNGDivAgpYxDkq78xZwPRioSB4XY/exec";
-    return fetch(url,{method:"POST",body:JSON.stringify(payload)}).then(r=>r.json());
+    return fetch(API_USUARIOS_ADMIN,{
+        method:"POST",
+        headers:{"Content-Type":"text/plain;charset=utf-8"},
+        body:JSON.stringify(payload)
+    }).then(async r=>{
+        const texto=await r.text();
+        try{return JSON.parse(texto);}catch(e){throw new Error("La API de usuarios no devolvió una respuesta válida");}
+    });
 }
 
 function escaparOptionUsuario(txt){
@@ -1810,24 +1818,33 @@ async function procesarUsuarios(){
 }
 
 async function enviarAccionUsuario(payload, mensajeOk){
-    const url = "https://script.google.com/macros/s/AKfycbzcbjCLweJNgZXDerdzmMN7Lwotc1G8NWdzoPkaLNGDivAgpYxDkq78xZwPRioSB4XY/exec";
-
     try{
-        const respuesta = await fetch(url, {
-            method: "POST",
-            body: JSON.stringify(payload)
-        });
+        const usuarioSeleccionado = payload.usuario || "";
+        const res = await apiUsuariosAdmin(payload);
 
-        const res = JSON.parse(await respuesta.text());
-
-        if(res.ok){
-            alert("✅ " + mensajeOk);
-        }else{
-            alert("❌ Error: " + res.error);
+        if(!res.ok){
+            alert("❌ Error: " + (res.error || "No se pudo actualizar el usuario"));
+            return null;
         }
+
+        // V177: después de guardar, vuelve a leer USUARIOS desde Sheets.
+        // Esto evita mostrar el perfil anterior que quedó guardado en memoria.
+        await cargarCatalogosUsuariosAdministracion();
+        const selector = document.getElementById("usuarioGestion");
+        if(selector && usuarioSeleccionado){
+            selector.value = usuarioSeleccionado;
+            seleccionarUsuarioGestionApp();
+        }
+
+        const detallePerfil = res.perfil && res.nivelAcceso
+            ? `\n\nConfirmado en USUARIOS: ${res.perfil} / ${res.nivelAcceso}`
+            : "";
+        alert("✅ " + mensajeOk + detallePerfil);
+        return res;
     }catch(err){
         console.error(err);
-        alert("❌ Error al conectar con la API de usuarios.");
+        alert("❌ Error al conectar con la API de usuarios: " + err.message);
+        return null;
     }
 }
 
@@ -1911,15 +1928,8 @@ function editarUsuarioApp(){
 }
 
 async function listarUsuariosApp(){
-    const url = "https://script.google.com/macros/s/AKfycbzcbjCLweJNgZXDerdzmMN7Lwotc1G8NWdzoPkaLNGDivAgpYxDkq78xZwPRioSB4XY/exec";
-
     try{
-        const respuesta = await fetch(url, {
-            method: "POST",
-            body: JSON.stringify({ accion: "listarUsuarios" })
-        });
-
-        const res = JSON.parse(await respuesta.text());
+        const res = await apiUsuariosAdmin({ accion: "listarUsuarios" });
 
         if(!res.ok){
             alert("❌ Error: " + res.error);

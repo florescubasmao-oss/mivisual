@@ -1,0 +1,15 @@
+MI VISUAL V177 - SINCRONIZACIÓN DE PERFIL EN USUARIOS
+
+Cambios puntuales:
+- Administración de usuarios usa una única función de conexión API.
+- El cambio de perfil escribe directamente en las columnas G (Perfil) y H (Nivel de Acceso) de USUARIOS.
+- Se confirma la escritura leyendo nuevamente la hoja antes de responder.
+- Si existe accidentalmente el mismo usuario duplicado, sincroniza todas sus filas.
+- Después de guardar, la pantalla vuelve a consultar USUARIOS y actualiza la ficha seleccionada.
+- No se modifican módulos operativos, permisos por perfil ni flujos existentes.
+
+Instalación:
+1. Reemplazar los archivos web del ZIP.
+2. Reemplazar Code.gs completo.
+3. Guardar y crear un nuevo despliegue de Apps Script.
+4. Recargar con Ctrl + F5.

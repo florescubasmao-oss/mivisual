@@ -599,21 +599,18 @@ function cambiarEstadoUsuario(usuarioBuscar, estadoNuevo) {
 function cambiarPermisoUsuario(usuarioBuscar, perfilNuevo, nivelNuevo) {
   const perfil = normalizarTexto(perfilNuevo);
   const nivel = normalizarTexto(nivelNuevo);
+  const usuarioNormalizado = normalizarUsuario(usuarioBuscar);
 
+  if (!usuarioNormalizado) throw new Error("Debe seleccionar un usuario");
   if (!perfil) throw new Error("Debe seleccionar un perfil");
 
-  // Los perfiles ya no se validan con una lista fija.
-  // Se consideran válidos cuando existen en PERMISOS_MODULOS,
-  // permitiendo usar perfiles nuevos creados desde Administración.
+  // Perfil dinámico: debe existir al menos una vez en PERMISOS_MODULOS.
   const hojaPermisos = asegurarHojaPermisosModulos();
   const ultimaFilaPermisos = hojaPermisos.getLastRow();
   let perfilExiste = false;
 
   if (ultimaFilaPermisos > 1) {
-    const perfiles = hojaPermisos
-      .getRange(2, 1, ultimaFilaPermisos - 1, 1)
-      .getValues();
-
+    const perfiles = hojaPermisos.getRange(2, 1, ultimaFilaPermisos - 1, 1).getValues();
     perfilExiste = perfiles.some(fila => normalizarTexto(fila[0]) === perfil);
   }
 
@@ -625,10 +622,49 @@ function cambiarPermisoUsuario(usuarioBuscar, perfilNuevo, nivelNuevo) {
     throw new Error("Nivel de acceso no válido");
   }
 
-  return editarUsuario(usuarioBuscar, {
-    perfil,
-    nivelAcceso: nivel
+  // Actualiza directamente las columnas G y H de USUARIOS.
+  // Si por error existe el mismo código más de una vez, se sincronizan todas sus filas.
+  const hoja = obtenerHoja(HOJA_USUARIOS);
+  const ultimaFila = hoja.getLastRow();
+  if (ultimaFila <= 1) throw new Error("La hoja USUARIOS no contiene registros");
+
+  const usuarios = hoja.getRange(2, 1, ultimaFila - 1, 1).getValues();
+  const filasCoincidentes = [];
+  usuarios.forEach((fila, indice) => {
+    if (normalizarUsuario(fila[0]) === usuarioNormalizado) filasCoincidentes.push(indice + 2);
   });
+
+  if (!filasCoincidentes.length) {
+    throw new Error("No se encontró el usuario: " + usuarioBuscar);
+  }
+
+  filasCoincidentes.forEach(fila => {
+    hoja.getRange(fila, 7, 1, 2).setValues([[perfil, nivel]]);
+  });
+  SpreadsheetApp.flush();
+
+  // Verificación real después de escribir en Sheets.
+  const confirmado = hoja.getRange(filasCoincidentes[0], 7, 1, 2).getDisplayValues()[0];
+  if (normalizarTexto(confirmado[0]) !== perfil || normalizarTexto(confirmado[1]) !== nivel) {
+    throw new Error("No se pudo confirmar la actualización en la hoja USUARIOS");
+  }
+
+  // Invalida caches de sesión/permisos cuando existan.
+  try {
+    const cache = CacheService.getScriptCache();
+    cache.remove("USUARIO_" + usuarioNormalizado);
+    cache.remove("PERMISOS_" + usuarioNormalizado);
+  } catch (e) {}
+
+  return {
+    ok: true,
+    modulo: "USUARIOS",
+    accion: "CAMBIAR_PERFIL",
+    usuario: usuarioNormalizado,
+    perfil: confirmado[0],
+    nivelAcceso: confirmado[1],
+    filasActualizadas: filasCoincidentes.length
+  };
 }
 
 function listarUsuarios() {
