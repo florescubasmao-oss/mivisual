@@ -1,0 +1,13 @@
+MI VISUAL V180 - TÉCNICOS EN PROGRAMACIÓN DE DESCANSOS
+
+Cambios:
+- Recupera el filtro por técnico.
+- Cada cuadrilla muestra un botón Técnicos (cantidad).
+- Los nombres permanecen ocultos hasta desplegar el botón.
+- Se reutiliza la misma lectura de USUARIOS; no se agregan consultas adicionales al abrir.
+- Mantiene estados, aprobaciones, alertas, capacidad y permisos actuales.
+
+Instalación:
+1. Reemplazar Code.gs completo y desplegar nueva versión de Apps Script.
+2. Subir archivos web a GitHub.
+3. Recargar con Ctrl + F5.

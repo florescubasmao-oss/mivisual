@@ -4004,7 +4004,7 @@ function leerUsuariosDescansosUnaVez(usuario) {
   const perfilSolicitante = normalizarTexto(usuario.perfil);
   const sedeSolicitante = normalizarTexto(usuario.sede);
   const lista = [];
-  const vistos = {};
+  const mapa = {};
 
   datos.forEach(f => {
     const cuadrilla = normalizarCuadrilla(f[3]);
@@ -4013,20 +4013,29 @@ function leerUsuariosDescansosUnaVez(usuario) {
     const perfil = normalizarTexto(f[6]);
     const estado = normalizarTexto(f[8] || "ACTIVO");
 
-    if (!cuadrilla || vistos[cuadrilla]) return;
+    if (!cuadrilla) return;
     if (perfil !== "TECNICO" || estado !== "ACTIVO") return;
     if (!/^P\d+\b/i.test(cuadrilla) || !sede || sede === "TODAS") return;
     if (perfilSolicitante === "SUPERVISOR" && sede !== sedeSolicitante) return;
 
-    lista.push({
-      cuadrilla,
-      sede,
-      plataforma,
-      supervisor: f[9] || "",
-      tecnico: f[0] || ""
-    });
-    vistos[cuadrilla] = true;
+    const nombreTecnico = String(f[10] || f[0] || "").trim();
+    if (!mapa[cuadrilla]) {
+      mapa[cuadrilla] = {
+        cuadrilla,
+        sede,
+        plataforma,
+        supervisor: f[9] || "",
+        tecnico: f[0] || "",
+        tecnicos: []
+      };
+      lista.push(mapa[cuadrilla]);
+    }
+    if (nombreTecnico && mapa[cuadrilla].tecnicos.indexOf(nombreTecnico) === -1) {
+      mapa[cuadrilla].tecnicos.push(nombreTecnico);
+    }
   });
+
+  lista.forEach(item => item.tecnicos.sort((a,b) => a.localeCompare(b)));
 
   lista.sort((a,b) => a.sede.localeCompare(b.sede) || a.plataforma.localeCompare(b.plataforma) || a.cuadrilla.localeCompare(b.cuadrilla));
   return lista;
