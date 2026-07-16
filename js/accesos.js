@@ -1357,20 +1357,77 @@ function mostrarImportarUsuarios(){
             <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:18px;">
                 <div>
                     <h2 style="margin:0;">👥 ADMINISTRACIÓN DE USUARIOS</h2>
-                    <p style="margin:6px 0 0;color:#cbd5e1;">Importa usuarios y gestiona sus datos, seguridad y perfil sin cambiar la lógica actual.</p>
+                    <p style="margin:6px 0 0;color:#cbd5e1;">Crea usuarios, perfiles y gestiona datos sin alterar la lógica actual.</p>
                 </div>
                 <button class="button_1" onclick="mostrarAdministracion()">⬅️ Volver a Administración</button>
             </div>
 
             <details class="card" open style="margin-bottom:16px;">
-                <summary style="cursor:pointer;font-weight:800;font-size:17px;padding:4px 0;">📥 1. Importar y consultar usuarios</summary>
+                <summary style="cursor:pointer;font-weight:800;font-size:17px;padding:4px 0;">👤 1. Crear nuevo usuario</summary>
                 <div style="padding-top:16px;">
-                    <p>Pega aquí la base de usuarios desde Google Sheets o Excel.</p>
-                    <textarea
-                        id="textoUsuarios"
-                        style="width:100%;height:220px;border-radius:10px;padding:12px;box-sizing:border-box;"
-                        placeholder="Usuario    Correo    Clave    Cuadrilla    Sede    Plataforma    Perfil    Nivel de Acceso    Estado    UsuarioSupervisor"
-                    ></textarea>
+                    <p style="margin-top:0;">Completa los datos del usuario. Los campos marcados con * son obligatorios.</p>
+                    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(245px,1fr));gap:12px;">
+                        <label>Usuario *<input id="nuevoUsuario" class="usuario-admin-input" placeholder="Ej. GERENCIALIMA"></label>
+                        <label>Nombres y apellidos *<input id="nuevoNombres" class="usuario-admin-input" placeholder="Nombres completos"></label>
+                        <label>Correo<input id="nuevoCorreo" type="email" class="usuario-admin-input" placeholder="correo@empresa.com"></label>
+                        <label>Clave *<input id="nuevoClave" type="password" class="usuario-admin-input" placeholder="Clave inicial"></label>
+
+                        <label>Cuadrilla
+                            <input id="nuevoCuadrilla" class="usuario-admin-input" list="listaCuadrillasAdmin" placeholder="Seleccione o escriba">
+                        </label>
+                        <label>Sede
+                            <select id="nuevoSede" class="usuario-admin-input"><option value="">SIN SEDE</option></select>
+                        </label>
+                        <label>Plataforma
+                            <select id="nuevoPlataforma" class="usuario-admin-input"><option value="">SIN PLATAFORMA</option></select>
+                        </label>
+                        <label>Perfil *
+                            <select id="nuevoPerfil" class="usuario-admin-input" onchange="ajustarNivelNuevoUsuario()"><option value="">Cargando perfiles...</option></select>
+                        </label>
+                        <label>Nivel de acceso *
+                            <select id="nuevoNivel" class="usuario-admin-input">
+                                <option value="CUADRILLA">CUADRILLA</option>
+                                <option value="SEDE">SEDE</option>
+                                <option value="ZONA NORTE">ZONA NORTE</option>
+                                <option value="ADMIN">ADMIN</option>
+                            </select>
+                        </label>
+                        <label>Supervisor
+                            <select id="nuevoSupervisor" class="usuario-admin-input"><option value="">SIN SUPERVISOR</option></select>
+                        </label>
+                        <label>Estado
+                            <select id="nuevoEstado" class="usuario-admin-input">
+                                <option value="ACTIVO">ACTIVO</option>
+                                <option value="SUSPENDIDO">SUSPENDIDO</option>
+                                <option value="BAJA">BAJA</option>
+                            </select>
+                        </label>
+                    </div>
+                    <datalist id="listaCuadrillasAdmin"></datalist>
+                    <div id="mensajeNuevoUsuario" style="margin-top:12px;font-weight:700;"></div>
+                    <div style="text-align:center;margin-top:16px;">
+                        <button class="button_1" onclick="crearUsuarioIndividualApp()">💾 Crear usuario</button>
+                    </div>
+                </div>
+            </details>
+
+            <details class="card" style="margin-bottom:16px;">
+                <summary style="cursor:pointer;font-weight:800;font-size:17px;padding:4px 0;">🪪 2. Crear nuevo perfil</summary>
+                <div style="padding-top:16px;">
+                    <p style="margin-top:0;">El perfil se creará con todos los módulos deshabilitados. Después configúralo desde “Permisos por perfil”.</p>
+                    <div style="display:grid;grid-template-columns:minmax(240px,1fr) auto;gap:12px;align-items:end;">
+                        <label>Nombre del perfil *<input id="nombrePerfilNuevo" class="usuario-admin-input" placeholder="Ej. GERENCIA GENERAL"></label>
+                        <button class="button_1" onclick="crearPerfilDinamicoApp()">➕ Crear perfil</button>
+                    </div>
+                    <div id="mensajeNuevoPerfil" style="margin-top:12px;font-weight:700;"></div>
+                </div>
+            </details>
+
+            <details class="card" style="margin-bottom:16px;">
+                <summary style="cursor:pointer;font-weight:800;font-size:17px;padding:4px 0;">📥 3. Importación masiva y consulta</summary>
+                <div style="padding-top:16px;">
+                    <p>La importación masiva existente se conserva para actualizaciones amplias.</p>
+                    <textarea id="textoUsuarios" style="width:100%;height:180px;border-radius:10px;padding:12px;box-sizing:border-box;" placeholder="Usuario    Correo    Clave    Cuadrilla    Sede    Plataforma    Perfil    Nivel de Acceso    Estado    UsuarioSupervisor"></textarea>
                     <div style="display:flex;gap:10px;flex-wrap:wrap;justify-content:center;margin-top:14px;">
                         <button class="button_1" onclick="procesarUsuarios()">📥 Procesar usuarios</button>
                         <button class="button_1" onclick="listarUsuariosApp()">📋 Ver usuarios</button>
@@ -1380,7 +1437,7 @@ function mostrarImportarUsuarios(){
             </details>
 
             <div class="card" style="margin-bottom:16px;">
-                <h3 style="margin-top:0;">🔎 2. Seleccionar usuario</h3>
+                <h3 style="margin-top:0;">🔎 4. Gestionar usuario existente</h3>
                 <p style="margin-top:4px;">Escribe el usuario una sola vez. Este dato se utilizará en Seguridad, Perfil y Datos básicos.</p>
                 <label style="display:block;font-weight:700;margin-bottom:6px;">Usuario obligatorio</label>
                 <input id="usuarioGestion" style="width:100%;padding:12px;border-radius:9px;box-sizing:border-box;" placeholder="Ejemplo: P1TRASLADOVISUAL">
@@ -1388,12 +1445,11 @@ function mostrarImportarUsuarios(){
 
             <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:16px;align-items:start;">
                 <details class="card" open>
-                    <summary style="cursor:pointer;font-weight:800;font-size:17px;padding:4px 0;">🔐 3. Cuenta y seguridad</summary>
+                    <summary style="cursor:pointer;font-weight:800;font-size:17px;padding:4px 0;">🔐 5. Cuenta y seguridad</summary>
                     <div style="padding-top:16px;">
                         <label style="display:block;font-weight:700;margin-bottom:6px;">Nueva clave</label>
                         <input id="claveGestion" type="password" style="width:100%;padding:11px;border-radius:8px;box-sizing:border-box;" placeholder="Nueva clave">
                         <button class="button_1" style="width:100%;margin-top:12px;" onclick="cambiarClaveUsuarioApp()">🔑 Cambiar clave</button>
-
                         <div style="height:1px;background:#475569;margin:18px 0;"></div>
                         <p style="font-weight:700;margin-bottom:10px;">Estado de la cuenta</p>
                         <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;">
@@ -1405,36 +1461,22 @@ function mostrarImportarUsuarios(){
                 </details>
 
                 <details class="card" open>
-                    <summary style="cursor:pointer;font-weight:800;font-size:17px;padding:4px 0;">🪪 4. Perfil y nivel de acceso</summary>
+                    <summary style="cursor:pointer;font-weight:800;font-size:17px;padding:4px 0;">🪪 6. Perfil y nivel de acceso</summary>
                     <div style="padding-top:16px;">
                         <label style="display:block;font-weight:700;margin-bottom:6px;">Perfil</label>
-                        <select id="perfilGestion" style="width:100%;padding:11px;border-radius:8px;box-sizing:border-box;" onchange="ajustarNivelAccesoPerfilUsuario()">
-                            <option value="TECNICO">TÉCNICO</option>
-                            <option value="SUPERVISOR">SUPERVISOR</option>
-                            <option value="ALMACEN">RESPONSABLE ALMACÉN</option>
-                            <option value="JEFATURA ALMACEN">JEFATURA ALMACÉN</option>
-                            <option value="JEFATURA">JEFATURA</option>
-                            <option value="OPERACIONES LIMA">OPERACIONES LIMA</option>
-                            <option value="ADMIN">ADMIN</option>
-                            <option value="ADMINISTRADOR">ADMINISTRADOR</option>
-                        </select>
-
+                        <select id="perfilGestion" style="width:100%;padding:11px;border-radius:8px;box-sizing:border-box;" onchange="ajustarNivelAccesoPerfilUsuario()"></select>
                         <label style="display:block;font-weight:700;margin:14px 0 6px;">Nivel de acceso</label>
                         <select id="nivelGestion" style="width:100%;padding:11px;border-radius:8px;box-sizing:border-box;">
-                            <option value="CUADRILLA">CUADRILLA</option>
-                            <option value="SEDE">SEDE</option>
-                            <option value="ZONA NORTE">ZONA NORTE</option>
-                            <option value="ADMIN">ADMIN</option>
+                            <option value="CUADRILLA">CUADRILLA</option><option value="SEDE">SEDE</option><option value="ZONA NORTE">ZONA NORTE</option><option value="ADMIN">ADMIN</option>
                         </select>
-
                         <button class="button_1" style="width:100%;margin-top:14px;" onclick="guardarPerfilUsuarioSeleccionado()">💾 Guardar perfil</button>
-                        <p style="font-size:12px;margin:12px 0 0;color:#cbd5e1;">Los permisos específicos por módulo se administran desde el bloque “Permisos por perfil” de Administración.</p>
+                        <p style="font-size:12px;margin:12px 0 0;color:#cbd5e1;">Los permisos específicos se configuran desde “Permisos por perfil”.</p>
                     </div>
                 </details>
             </div>
 
             <details class="card" open style="margin-top:16px;">
-                <summary style="cursor:pointer;font-weight:800;font-size:17px;padding:4px 0;">✏️ 5. Editar datos básicos</summary>
+                <summary style="cursor:pointer;font-weight:800;font-size:17px;padding:4px 0;">✏️ 7. Editar datos básicos</summary>
                 <div style="padding-top:16px;">
                     <p>Completa únicamente los datos que deseas cambiar. El usuario se toma del campo superior.</p>
                     <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:12px;">
@@ -1444,15 +1486,77 @@ function mostrarImportarUsuarios(){
                         <label>Plataforma<input id="editPlataforma" style="width:100%;padding:11px;border-radius:8px;box-sizing:border-box;margin-top:5px;" placeholder="Plataforma"></label>
                         <label>Usuario Supervisor<input id="editUsuarioSupervisor" style="width:100%;padding:11px;border-radius:8px;box-sizing:border-box;margin-top:5px;" placeholder="UsuarioSupervisor"></label>
                     </div>
-                    <div style="text-align:center;margin-top:16px;">
-                        <button class="button_1" onclick="editarUsuarioApp()">💾 Guardar cambios básicos</button>
-                    </div>
+                    <div style="text-align:center;margin-top:16px;"><button class="button_1" onclick="editarUsuarioApp()">💾 Guardar cambios básicos</button></div>
                 </div>
             </details>
         </div>
+        <style>
+          .usuario-admin-input{width:100%;padding:11px;border-radius:8px;box-sizing:border-box;margin-top:5px;min-height:43px;}
+          @media(max-width:650px){.usuario-admin-input{font-size:16px;}}
+        </style>
     `);
 
-    ajustarNivelAccesoPerfilUsuario();
+    cargarCatalogosUsuariosAdministracion();
+}
+
+function apiUsuariosAdmin(payload){
+    const url = "https://script.google.com/macros/s/AKfycbzcbjCLweJNgZXDerdzmMN7Lwotc1G8NWdzoPkaLNGDivAgpYxDkq78xZwPRioSB4XY/exec";
+    return fetch(url,{method:"POST",body:JSON.stringify(payload)}).then(r=>r.json());
+}
+
+function escaparOptionUsuario(txt){
+    return (txt||"").toString().replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");
+}
+
+async function cargarCatalogosUsuariosAdministracion(){
+    try{
+        const res=await apiUsuariosAdmin({accion:"obtenerCatalogosUsuariosAdministracion",usuarioSesion:localStorage.getItem("usuario")||""});
+        if(!res.ok) throw new Error(res.error||"No se pudieron cargar los catálogos");
+        const perfiles=res.perfiles||[], sedes=res.sedes||[], plataformas=res.plataformas||[], cuadrillas=res.cuadrillas||[], supervisores=res.supervisores||[];
+        const perfilNuevo=document.getElementById("nuevoPerfil"), perfilGestion=document.getElementById("perfilGestion");
+        const opcionesPerfil=perfiles.map(p=>`<option value="${escaparOptionUsuario(p)}">${escaparOptionUsuario(p)}</option>`).join("");
+        if(perfilNuevo) perfilNuevo.innerHTML='<option value="">Seleccione perfil</option>'+opcionesPerfil;
+        if(perfilGestion) perfilGestion.innerHTML=opcionesPerfil;
+        const sede=document.getElementById("nuevoSede"); if(sede) sede.innerHTML='<option value="">SIN SEDE</option>'+sedes.map(x=>`<option>${escaparOptionUsuario(x)}</option>`).join("");
+        const plataforma=document.getElementById("nuevoPlataforma"); if(plataforma) plataforma.innerHTML='<option value="">SIN PLATAFORMA</option>'+plataformas.map(x=>`<option>${escaparOptionUsuario(x)}</option>`).join("");
+        const dl=document.getElementById("listaCuadrillasAdmin"); if(dl) dl.innerHTML=cuadrillas.map(x=>`<option value="${escaparOptionUsuario(x)}"></option>`).join("");
+        const sup=document.getElementById("nuevoSupervisor"); if(sup) sup.innerHTML='<option value="">SIN SUPERVISOR</option>'+supervisores.map(x=>`<option value="${escaparOptionUsuario(x.usuario)}">${escaparOptionUsuario((x.nombresApellidos||x.usuario)+(x.sede?' · '+x.sede:''))}</option>`).join("");
+        ajustarNivelNuevoUsuario(); ajustarNivelAccesoPerfilUsuario();
+    }catch(err){
+        const m=document.getElementById("mensajeNuevoUsuario"); if(m){m.style.color="#fecaca";m.textContent="No se pudieron cargar los catálogos: "+err.message;}
+    }
+}
+
+function ajustarNivelNuevoUsuario(){
+    const perfil=document.getElementById("nuevoPerfil"), nivel=document.getElementById("nuevoNivel");
+    if(perfil&&nivel) nivel.value=nivelAccesoSugeridoPerfilUsuario(perfil.value);
+}
+
+async function crearUsuarioIndividualApp(){
+    const mensaje=document.getElementById("mensajeNuevoUsuario");
+    const valor=id=>{const e=document.getElementById(id);return e?(e.value||"").trim():"";};
+    const payload={accion:"registrarUsuarioIndividual",usuarioSesion:localStorage.getItem("usuario")||"",nuevoUsuario:normalizarUsuarioTexto(valor("nuevoUsuario")).replace(/\s+/g,""),nombresApellidos:valor("nuevoNombres"),correo:valor("nuevoCorreo"),clave:valor("nuevoClave"),cuadrilla:valor("nuevoCuadrilla"),sede:valor("nuevoSede"),plataforma:valor("nuevoPlataforma"),perfil:valor("nuevoPerfil"),nivelAcceso:valor("nuevoNivel"),usuarioSupervisor:valor("nuevoSupervisor"),estado:valor("nuevoEstado")||"ACTIVO"};
+    if(!payload.nuevoUsuario||!payload.nombresApellidos||!payload.clave||!payload.perfil){alert("Completa Usuario, Nombres y apellidos, Clave y Perfil.");return;}
+    if(mensaje){mensaje.style.color="#bfdbfe";mensaje.textContent="Guardando usuario...";}
+    try{
+        const res=await apiUsuariosAdmin(payload); if(!res.ok) throw new Error(res.error||"No se pudo crear el usuario");
+        if(mensaje){mensaje.style.color="#22c55e";mensaje.textContent="Usuario creado correctamente: "+res.usuario;}
+        ["nuevoUsuario","nuevoNombres","nuevoCorreo","nuevoClave","nuevoCuadrilla"].forEach(id=>{const e=document.getElementById(id);if(e)e.value="";});
+    }catch(err){if(mensaje){mensaje.style.color="#ef4444";mensaje.textContent="Error: "+err.message;}else alert(err.message);}
+}
+
+async function crearPerfilDinamicoApp(){
+    const input=document.getElementById("nombrePerfilNuevo"), mensaje=document.getElementById("mensajeNuevoPerfil");
+    const nombre=normalizarUsuarioTexto(input?input.value:"");
+    if(!nombre){alert("Ingresa el nombre del perfil.");return;}
+    if(mensaje){mensaje.style.color="#bfdbfe";mensaje.textContent="Creando perfil...";}
+    try{
+        const res=await apiUsuariosAdmin({accion:"crearPerfilDinamico",usuarioSesion:localStorage.getItem("usuario")||"",nombrePerfil:nombre});
+        if(!res.ok) throw new Error(res.error||"No se pudo crear el perfil");
+        if(mensaje){mensaje.style.color="#22c55e";mensaje.textContent=`Perfil ${res.perfil} creado con ${res.modulosCreados} módulos deshabilitados.`;}
+        if(input) input.value="";
+        await cargarCatalogosUsuariosAdministracion();
+    }catch(err){if(mensaje){mensaje.style.color="#ef4444";mensaje.textContent="Error: "+err.message;}else alert(err.message);}
 }
 
 function nivelAccesoSugeridoPerfilUsuario(perfil){

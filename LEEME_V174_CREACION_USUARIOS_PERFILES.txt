@@ -1,0 +1,14 @@
+MI VISUAL V174 - CREACIÓN DE USUARIOS Y PERFILES
+
+Cambios:
+- Formulario individual para crear usuarios sin reemplazar la base existente.
+- Creación dinámica de perfiles desde Administración.
+- Un perfil nuevo se genera con todos los módulos deshabilitados para configurarlos de forma segura.
+- Se conserva la importación masiva y toda la gestión existente.
+- Se agregan nombres y apellidos en la columna 11 de USUARIOS sin alterar las columnas actuales.
+
+Instalación:
+1. Reemplazar archivos web.
+2. Reemplazar Code.gs completo.
+3. Crear nuevo despliegue de Apps Script.
+4. Recargar con Ctrl+F5.

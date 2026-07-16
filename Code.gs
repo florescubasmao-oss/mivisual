@@ -642,6 +642,153 @@ function listarUsuarios() {
   };
 }
 
+/* =========================
+   CREACIÓN INDIVIDUAL DE USUARIOS Y PERFILES V174
+   Conserva importación masiva y gestión existente.
+========================= */
+
+function asegurarEncabezadoUsuariosCompleto() {
+  const hoja = obtenerHoja(HOJA_USUARIOS);
+  if (hoja.getMaxColumns() < 11) {
+    hoja.insertColumnsAfter(hoja.getMaxColumns(), 11 - hoja.getMaxColumns());
+  }
+  const encabezados = [
+    "Usuario","Correo","Clave","Cuadrilla","Sede","Plataforma",
+    "Perfil","Nivel de Acceso","Estado","UsuarioSupervisor","NOMBRES_APELLIDOS"
+  ];
+  const actual = hoja.getRange(1, 1, 1, 11).getValues()[0];
+  let cambiar = false;
+  for (let i = 0; i < encabezados.length; i++) {
+    if (!actual[i]) { actual[i] = encabezados[i]; cambiar = true; }
+  }
+  if (cambiar) hoja.getRange(1, 1, 1, 11).setValues([actual]);
+  return hoja;
+}
+
+function validarAdministradorUsuarios(usuarioSesion) {
+  const administrador = obtenerUsuarioApp(usuarioSesion);
+  if (!esPerfilJefatura(administrador.perfil)) {
+    throw new Error("Solo Jefatura o Administración puede gestionar usuarios y perfiles");
+  }
+  return administrador;
+}
+
+function registrarUsuarioIndividual(data) {
+  validarAdministradorUsuarios(data.usuarioSesion);
+  const hoja = asegurarEncabezadoUsuariosCompleto();
+
+  const usuario = normalizarTexto(data.nuevoUsuario || data.usuarioNuevo || "").replace(/\s+/g, "");
+  const nombres = (data.nombresApellidos || "").toString().trim();
+  const correo = (data.correo || "").toString().trim();
+  const clave = (data.clave || "").toString().trim();
+  const cuadrilla = normalizarCuadrilla(data.cuadrilla || "");
+  const sede = normalizarTexto(data.sede || "");
+  const plataforma = normalizarTexto(data.plataforma || "");
+  const perfil = normalizarTexto(data.perfil || "TECNICO");
+  const nivelAcceso = normalizarTexto(data.nivelAcceso || "CUADRILLA");
+  const estado = normalizarTexto(data.estado || "ACTIVO");
+  const supervisor = normalizarUsuario(data.usuarioSupervisor || "");
+
+  if (!usuario) throw new Error("El usuario es obligatorio");
+  if (!nombres) throw new Error("Los nombres y apellidos son obligatorios");
+  if (!clave) throw new Error("La clave es obligatoria");
+  if (!perfil) throw new Error("El perfil es obligatorio");
+  if (!["ACTIVO","SUSPENDIDO","BAJA"].includes(estado)) throw new Error("Estado de usuario no válido");
+
+  const datos = hoja.getLastRow() > 1
+    ? hoja.getRange(2, 1, hoja.getLastRow() - 1, 1).getValues()
+    : [];
+  const existe = datos.some(f => normalizarUsuario(f[0]) === normalizarUsuario(usuario));
+  if (existe) throw new Error("Ya existe un usuario con el código: " + usuario);
+
+  // El perfil debe existir en PERMISOS_MODULOS para evitar nombres inconsistentes.
+  const permisos = asegurarHojaPermisosModulos().getDataRange().getValues();
+  const perfilExiste = permisos.slice(1).some(f => normalizarTexto(f[0]) === perfil);
+  if (!perfilExiste) throw new Error("El perfil no existe. Créalo primero en la sección Crear perfil");
+
+  hoja.appendRow([
+    usuario, correo, clave, cuadrilla, sede, plataforma, perfil,
+    nivelAcceso, estado, supervisor, nombres
+  ]);
+
+  return {
+    ok: true, modulo: "USUARIOS", accion: "CREAR_USUARIO",
+    usuario, perfil, nombresApellidos: nombres
+  };
+}
+
+function crearPerfilDinamico(data) {
+  validarAdministradorUsuarios(data.usuarioSesion);
+  const perfil = normalizarTexto(data.nombrePerfil || data.perfilNuevo || "");
+  if (!perfil) throw new Error("El nombre del perfil es obligatorio");
+  if (perfil.length < 3) throw new Error("El nombre del perfil debe tener al menos 3 caracteres");
+
+  const hoja = asegurarHojaPermisosModulos();
+  const datos = hoja.getDataRange().getValues();
+  const yaExiste = datos.slice(1).some(f => normalizarTexto(f[0]) === perfil);
+  if (yaExiste) throw new Error("El perfil ya existe: " + perfil);
+
+  const modulos = [];
+  const vistos = {};
+  for (let i = 1; i < datos.length; i++) {
+    const modulo = normalizarTexto(datos[i][1]);
+    if (!modulo || vistos[modulo]) continue;
+    vistos[modulo] = true;
+    modulos.push(modulo);
+  }
+  if (!modulos.length) throw new Error("No existen módulos base para crear el perfil");
+
+  const filas = modulos.map(modulo => [
+    perfil, modulo, "SI", "", "NO", "NO", "NO", "NO", "NO",
+    "NO", "NO", "NO", "NO", "SIN ACCESO", perfil,
+    "Perfil nuevo. Configure sus permisos desde Administración."
+  ]);
+  hoja.getRange(hoja.getLastRow() + 1, 1, filas.length, 16).setValues(filas);
+
+  return {
+    ok: true, modulo: "PERMISOS", accion: "CREAR_PERFIL",
+    perfil, modulosCreados: filas.length
+  };
+}
+
+function obtenerCatalogosUsuariosAdministracion(data) {
+  validarAdministradorUsuarios(data.usuarioSesion);
+  const hojaUsuarios = asegurarEncabezadoUsuariosCompleto();
+  const usuarios = hojaUsuarios.getDataRange().getValues();
+  const permisos = asegurarHojaPermisosModulos().getDataRange().getValues();
+
+  const perfiles = [], sedes = [], plataformas = [], cuadrillas = [], supervisores = [];
+  const vistos = { perfiles:{}, sedes:{}, plataformas:{}, cuadrillas:{}, supervisores:{} };
+
+  for (let i = 1; i < permisos.length; i++) {
+    const perfil = normalizarTexto(permisos[i][0]);
+    if (perfil && !vistos.perfiles[perfil]) { vistos.perfiles[perfil] = true; perfiles.push(perfil); }
+  }
+
+  for (let i = 1; i < usuarios.length; i++) {
+    const fila = usuarios[i];
+    const usuario = normalizarUsuario(fila[0]);
+    const cuadrilla = normalizarCuadrilla(fila[3]);
+    const sede = normalizarTexto(fila[4]);
+    const plataforma = normalizarTexto(fila[5]);
+    const perfil = normalizarTexto(fila[6]);
+    const estado = normalizarTexto(fila[8] || "ACTIVO");
+    const nombres = (fila[10] || fila[0] || "").toString().trim();
+
+    if (sede && !vistos.sedes[sede]) { vistos.sedes[sede] = true; sedes.push(sede); }
+    if (plataforma && !vistos.plataformas[plataforma]) { vistos.plataformas[plataforma] = true; plataformas.push(plataforma); }
+    if (cuadrilla && !vistos.cuadrillas[cuadrilla]) { vistos.cuadrillas[cuadrilla] = true; cuadrillas.push(cuadrilla); }
+    if (perfil === "SUPERVISOR" && estado === "ACTIVO" && usuario && !vistos.supervisores[usuario]) {
+      vistos.supervisores[usuario] = true;
+      supervisores.push({ usuario, nombresApellidos:nombres, sede });
+    }
+  }
+
+  perfiles.sort(); sedes.sort(); plataformas.sort(); cuadrillas.sort();
+  supervisores.sort((a,b) => (a.nombresApellidos || a.usuario).localeCompare(b.nombresApellidos || b.usuario));
+  return { ok:true, perfiles, sedes, plataformas, cuadrillas, supervisores };
+}
+
 function listarCuadrillasObservacion(data) {
   const usuario = obtenerUsuarioApp(data.usuario);
   const mapaUsuarios = obtenerMapaUsuarios();
@@ -4517,6 +4664,24 @@ function doPost(e) {
     if (data.accion === "listarUsuarios") {
       return ContentService
         .createTextOutput(JSON.stringify(listarUsuarios()))
+        .setMimeType(ContentService.MimeType.JSON);
+    }
+
+    if (data.accion === "registrarUsuarioIndividual") {
+      return ContentService
+        .createTextOutput(JSON.stringify(registrarUsuarioIndividual(data)))
+        .setMimeType(ContentService.MimeType.JSON);
+    }
+
+    if (data.accion === "crearPerfilDinamico") {
+      return ContentService
+        .createTextOutput(JSON.stringify(crearPerfilDinamico(data)))
+        .setMimeType(ContentService.MimeType.JSON);
+    }
+
+    if (data.accion === "obtenerCatalogosUsuariosAdministracion") {
+      return ContentService
+        .createTextOutput(JSON.stringify(obtenerCatalogosUsuariosAdministracion(data)))
         .setMimeType(ContentService.MimeType.JSON);
     }
 
