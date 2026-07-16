@@ -3964,7 +3964,7 @@ function puedeVerDescanso(usuario,item) {
 
 function claveCacheDescansos(usuario, periodo, sede) {
   return [
-    "DESCANSOS_V181",
+    "DESCANSOS_V183",
     normalizarUsuario(usuario.usuario || ""),
     normalizarTexto(usuario.perfil || ""),
     (periodo || "").toString(),
@@ -4263,12 +4263,15 @@ function guardarProgramacionDescansos(data) {
   if (!motivo) throw new Error("El motivo es obligatorio");
   const hoja = asegurarHojaProgramacionDescansos();
   const cambiosTemporales = {};
-  registros.forEach(r=>{const c=normalizarCuadrilla(r.cuadrilla),f=fechaISODescansos(r.fecha);if(c&&f)cambiosTemporales[c+"|"+f]=normalizarTexto(r.estadoDia||"EN CAMPO");});
+  registros.forEach(r=>{const c=normalizarCuadrilla(r.cuadrilla),f=fechaISODescansos(r.fecha);if(c&&f)cambiosTemporales[c+"|"+f]=normalizarEstadoDiaDescansos(r.estadoDia||"EN CAMPO");});
   let guardados=0,alertas=0;
 
   registros.forEach(r=>{
-    const cuadrilla=normalizarCuadrilla(r.cuadrilla),fecha=fechaISODescansos(r.fecha),nuevo=normalizarTexto(r.estadoDia||"EN CAMPO");
-    if(!cuadrilla||!fecha||!["EN CAMPO","DESCANSO"].includes(nuevo))return;
+    const cuadrilla=normalizarCuadrilla(r.cuadrilla);
+    const fecha=fechaISODescansos(r.fecha);
+    const nuevo=normalizarEstadoDiaDescansos(r.estadoDia||"EN CAMPO");
+    const estadosPermitidos=["EN CAMPO","EN CAMPO BOLSA","DESCANSO","VACACIONES"];
+    if(!cuadrilla||!fecha||!estadosPermitidos.includes(nuevo))return;
     const dc=obtenerDatosCuadrillaApp(cuadrilla),sede=normalizarTexto(dc.sede),plataforma=plataformaDescansos(dc.plataforma);
     if(esSupervisor&&sede!==normalizarTexto(usuario.sede))throw new Error("Supervisor solo puede programar su sede");
     const anterior=ultimoEstadoAprobadoDescansos(cuadrilla,fecha);

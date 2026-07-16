@@ -1,0 +1,22 @@
+MI VISUAL V183 - CORRECCIÓN GUARDADO Cᴮ / EN CAMPO BOLSA
+
+Base: V182.
+
+Correcciones:
+- El backend acepta y guarda: EN CAMPO, EN CAMPO BOLSA, DESCANSO y VACACIONES.
+- Cᴮ se envía a Jefatura con el comentario/motivo obligatorio, igual que Descanso.
+- Se normalizan los estados antes de calcular cobertura.
+- Si el backend devuelve 0 cambios, el formulario no borra la selección y muestra una advertencia.
+- Se actualiza la caché de Descansos a V183.
+
+No se modifican:
+- Aprobaciones y validaciones de Jefatura.
+- Alertas y capacidad operativa.
+- Filtros, técnicos, supervisores y almacén.
+- PEXT ni otros módulos.
+
+Instalación:
+1. Reemplazar Code.gs completo.
+2. Guardar y crear un nuevo despliegue de Apps Script.
+3. Subir los archivos web del ZIP.
+4. Recargar con Ctrl + F5.
