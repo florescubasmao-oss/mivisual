@@ -217,6 +217,12 @@ function mostrarValidacionTecnica(){
                 <option value="VTR">VTR</option>
                 <option value="OTRO">Otro</option>
             </select>
+            <select id="vtFiltroSede" onchange="renderHistorialValidacionLocal()">
+                <option value="">Todas las sedes</option>
+                <option value="CHICLAYO">Chiclayo</option>
+                <option value="PIURA">Piura</option>
+                <option value="TRUJILLO">Trujillo</option>
+            </select>
             <select id="vtFiltroEstado" onchange="renderHistorialValidacionLocal()">
                 <option value="">Todos los estados</option>
                 <option value="PENDIENTE">Pendiente</option>
@@ -464,9 +470,10 @@ function renderHistorialValidacionLocal(){
     const u = usuarioActualValidacion();
     const todas = Array.isArray(window.vtValidacionesActuales) ? window.vtValidacionesActuales : [];
     const filtroTipo = (document.getElementById("vtFiltroTipo")?.value || "").toUpperCase();
+    const filtroSede = (document.getElementById("vtFiltroSede")?.value || "").toUpperCase();
     const filtroEstado = (document.getElementById("vtFiltroEstado")?.value || "").toUpperCase();
     const buscarCodigo = (document.getElementById("vtBuscarCodigo")?.value || "").trim().toUpperCase();
-    const esGestion = u.perfil === "SUPERVISOR" || esJefaturaValidacion(u.perfil);
+    const esGestion = u.perfil === "SUPERVISOR" || esJefaturaValidacion(u.perfil) || (typeof esOperacionesLima === "function" && esOperacionesLima(u.perfil));
 
     let lista = esGestion
         ? todas.filter(x => (x.estado || "").toUpperCase() !== "PENDIENTE")
@@ -474,6 +481,9 @@ function renderHistorialValidacionLocal(){
 
     if(filtroTipo){
         lista = lista.filter(x => (x.tipoValidacion || "").toUpperCase() === filtroTipo);
+    }
+    if(filtroSede){
+        lista = lista.filter(x => (x.sede || "").toUpperCase() === filtroSede);
     }
     if(filtroEstado){
         lista = lista.filter(x => (x.estado || "").toUpperCase() === filtroEstado);
@@ -529,7 +539,7 @@ function renderResumenValidaciones(lista){
     });
 
     const totalAprobados = c.APROBADO + c["SIN RESPUESTA"];
-    const esGestion = u.perfil === "SUPERVISOR" || esJefaturaValidacion(u.perfil);
+    const esGestion = u.perfil === "SUPERVISOR" || esJefaturaValidacion(u.perfil) || (typeof esOperacionesLima === "function" && esOperacionesLima(u.perfil));
 
     if(esGestion){
         return `<div class="vt-kpis">
@@ -663,8 +673,11 @@ async function abrirValidarTecnica(id, resultado){
 
 function abrirInformeValidacionTecnica(){
     const u = usuarioActualValidacion();
-    if(!esJefaturaValidacion(u.perfil)){
-        alert("Esta opción es exclusiva para Jefatura.");
+    const puedeDescargar = typeof pmPuede === "function"
+        ? pmPuede("VALIDACION TECNICA", "DESCARGAR")
+        : esJefaturaValidacion(u.perfil);
+    if(!puedeDescargar){
+        alert("No tienes permiso para descargar este informe.");
         return;
     }
 
@@ -1027,8 +1040,11 @@ function prepararHojaExcelVT(XLSX, filas, anchos, autofiltro){
 
 async function generarInformeValidacionTecnicaExcel(btn){
     const u = usuarioActualValidacion();
-    if(!esJefaturaValidacion(u.perfil)){
-        alert("Esta opción es exclusiva para Jefatura.");
+    const puedeDescargar = typeof pmPuede === "function"
+        ? pmPuede("VALIDACION TECNICA", "DESCARGAR")
+        : esJefaturaValidacion(u.perfil);
+    if(!puedeDescargar){
+        alert("No tienes permiso para descargar este informe.");
         return;
     }
 

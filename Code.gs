@@ -898,18 +898,47 @@ function listarObservaciones(data) {
   const hoja = asegurarHojaObservaciones();
   const datos = hoja.getDataRange().getValues();
   const usuario = obtenerUsuarioApp(data.usuario);
-  const permiso = exigirPermisoModulo(usuario, "OBSERVACIONES", "VER");
   const lista = [];
+
   for (let i = 1; i < datos.length; i++) {
     const fila = datos[i];
-    const item = {id:fila[0],fechaRegistro:fila[1],periodo:fila[2],registradoPor:fila[3],perfilRegistro:fila[4],sede:fila[5],plataforma:fila[6],supervisor:fila[7],cuadrilla:fila[8],fuente:fila[9],codigo:fila[10],tipoObservacion:fila[11],descripcion:fila[12],estado:fila[13],monto:fila[14],fechaDescargo:fila[15],descargoTecnico:fila[16],evidenciaTecnico:fila[17],fechaRevision:fila[18],plazo:fila[19]};
-    if (!permisoModuloPuedeVerItem(usuario, permiso, item)) continue;
+    const item = {
+      id: fila[0],
+      fechaRegistro: fila[1],
+      periodo: fila[2],
+      registradoPor: fila[3],
+      perfilRegistro: fila[4],
+      sede: fila[5],
+      plataforma: fila[6],
+      supervisor: fila[7],
+      cuadrilla: fila[8],
+      fuente: fila[9],
+      codigo: fila[10],
+      tipoObservacion: fila[11],
+      descripcion: fila[12],
+      estado: fila[13],
+      monto: fila[14],
+      fechaDescargo: fila[15],
+      descargoTecnico: fila[16],
+      evidenciaTecnico: fila[17],
+      fechaRevision: fila[18],
+      plazo: fila[19]
+    };
+
+    let permitir = false;
+    if (usuario.perfil === "TECNICO") permitir = normalizarCuadrilla(usuario.cuadrilla) === normalizarCuadrilla(item.cuadrilla);
+    if (usuario.perfil === "SUPERVISOR") permitir = normalizarTexto(usuario.sede) === normalizarTexto(item.sede);
+    if (esPerfilJefatura(usuario.perfil) || esOperacionesLima(usuario.perfil)) permitir = true;
+    if (!permitir) continue;
+
     if (data.estado && normalizarTexto(data.estado) !== normalizarTexto(item.estado)) continue;
     if (data.fuente && normalizarTexto(data.fuente) !== normalizarTexto(item.fuente)) continue;
     if (data.sede && normalizarTexto(data.sede) !== normalizarTexto(item.sede)) continue;
+
     lista.push(item);
   }
-  return {ok:true,modulo:"OBSERVACIONES",accion:"LISTAR",perfil:usuario.perfil,alcance:permiso.alcanceDatos,registros:lista.length,observaciones:lista};
+
+  return { ok: true, modulo: "OBSERVACIONES", accion: "LISTAR", registros: lista.length, observaciones: lista };
 }
 
 function buscarFilaObservacion(id) {
@@ -1822,19 +1851,39 @@ function listarActividadCampo(data) {
   const hoja = asegurarHojaActividadCampo();
   const datos = hoja.getDataRange().getValues();
   const usuario = obtenerUsuarioApp(data.usuario);
-  const permiso = exigirPermisoModulo(usuario, "ACTIVIDAD CAMPO", "VER");
   const lista = [];
+
+  if (!(usuario.perfil === "SUPERVISOR" || esPerfilJefatura(usuario.perfil) || esOperacionesLima(usuario.perfil))) {
+    throw new Error("No tienes permiso para ver actividad en campo");
+  }
+
   for (let i = 1; i < datos.length; i++) {
     const item = filaActividadCampoAObjeto(datos[i]);
-    if (!permisoModuloPuedeVerItem(usuario, permiso, item)) continue;
+
+    let permitir = false;
+    if (usuario.perfil === "SUPERVISOR") {
+      permitir = normalizarUsuario(item.supervisor) === normalizarUsuario(usuario.usuario);
+    }
+    if (esPerfilJefatura(usuario.perfil) || esOperacionesLima(usuario.perfil)) permitir = true;
+    if (!permitir) continue;
+
     if (data.sede && normalizarTexto(data.sede) !== normalizarTexto(item.sede)) continue;
     if (data.supervisor && normalizarUsuario(data.supervisor) !== normalizarUsuario(item.supervisor)) continue;
     if (data.cuadrilla && normalizarCuadrilla(data.cuadrilla) !== normalizarCuadrilla(item.cuadrilla)) continue;
     if (data.tipoActividad && normalizarTexto(data.tipoActividad) !== normalizarTexto(item.tipoActividad)) continue;
     if (!cumpleRangoFechaActividad(item.fecha, data.fechaDesde, data.fechaHasta)) continue;
+
     lista.push(item);
   }
-  return {ok:true,modulo:"ACTIVIDAD_CAMPO",accion:"LISTAR",perfil:usuario.perfil,alcance:permiso.alcanceDatos,registros:lista.length,actividades:lista};
+
+  return {
+    ok: true,
+    modulo: "ACTIVIDAD_CAMPO",
+    accion: "LISTAR",
+    perfil: usuario.perfil,
+    registros: lista.length,
+    actividades: lista
+  };
 }
 
 function obtenerResumenActividadCampo(data) {
@@ -2256,21 +2305,47 @@ function filaValidacionTecnicaAObjeto(fila) {
 
 function listarValidacionTecnica(data) {
   procesarValidacionesTecnicasVencidas();
+
   const hoja = asegurarHojaValidacionTecnica();
   const datos = hoja.getDataRange().getValues();
   const usuario = obtenerUsuarioApp(data.usuario);
-  const permiso = exigirPermisoModulo(usuario, "VALIDACION TECNICA", "VER");
   const lista = [];
+
   for (let i = 1; i < datos.length; i++) {
     const item = filaValidacionTecnicaAObjeto(datos[i]);
-    if (!permisoModuloPuedeVerItem(usuario, permiso, item)) continue;
+
+    let permitir = false;
+
+    if (usuario.perfil === "TECNICO") {
+      permitir = normalizarCuadrilla(usuario.cuadrilla) === normalizarCuadrilla(item.cuadrilla);
+    } else if (usuario.perfil === "SUPERVISOR") {
+      permitir = normalizarTexto(usuario.sede) === normalizarTexto(item.sede);
+    } else if (esPerfilJefatura(usuario.perfil) || esOperacionesLima(usuario.perfil)) {
+      permitir = true;
+    }
+
+    if (!permitir) continue;
     if (data.estado && normalizarTexto(data.estado) !== normalizarTexto(item.estado)) continue;
     if (data.tipoValidacion && normalizarTexto(data.tipoValidacion) !== normalizarTexto(item.tipoValidacion)) continue;
     if (data.sede && normalizarTexto(data.sede) !== normalizarTexto(item.sede)) continue;
+
     lista.push(item);
   }
-  lista.sort((a,b)=>{const fa=convertirFechaHoraValidacion(a.fechaRegistro,a.horaRegistro),fb=convertirFechaHoraValidacion(b.fechaRegistro,b.horaRegistro);return (fb?fb.getTime():0)-(fa?fa.getTime():0);});
-  return {ok:true,modulo:"VALIDACION_TECNICA",accion:"LISTAR",perfil:usuario.perfil,alcance:permiso.alcanceDatos,registros:lista.length,validaciones:lista};
+
+  lista.sort((a, b) => {
+    const fa = convertirFechaHoraValidacion(a.fechaRegistro, a.horaRegistro);
+    const fb = convertirFechaHoraValidacion(b.fechaRegistro, b.horaRegistro);
+    return (fb ? fb.getTime() : 0) - (fa ? fa.getTime() : 0);
+  });
+
+  return {
+    ok: true,
+    modulo: "VALIDACION_TECNICA",
+    accion: "LISTAR",
+    perfil: usuario.perfil,
+    registros: lista.length,
+    validaciones: lista
+  };
 }
 
 function validarValidacionTecnica(data) {
@@ -2579,19 +2654,22 @@ function filaActaAObjeto(fila) {
 }
 
 function listarActasEscaneadas(data) {
-  const hoja=asegurarHojaActasEscaneadas(), datos=hoja.getDataRange().getValues(), usuario=obtenerUsuarioApp(data.usuario), lista=[];
-  const permiso=exigirPermisoModulo(usuario,"ACTAS ESCANEADAS","VER");
-  for(let i=1;i<datos.length;i++){
-    const item=filaActaAObjeto(datos[i]);
-    if(!permisoModuloPuedeVerItem(usuario,permiso,item))continue;
-    if(data.sede&&normalizarTexto(data.sede)!==normalizarTexto(item.sede))continue;
-    if(data.cuadrilla&&normalizarCuadrilla(data.cuadrilla)!==normalizarCuadrilla(item.cuadrilla))continue;
-    if(data.estado&&normalizarTexto(data.estado)!==normalizarTexto(item.estado))continue;
-    if(data.tipoEjecucion&&normalizarTexto(data.tipoEjecucion)!==normalizarTexto(item.tipoEjecucion))continue;
+  const hoja = asegurarHojaActasEscaneadas(), datos = hoja.getDataRange().getValues(), usuario = obtenerUsuarioApp(data.usuario), lista=[];
+  for (let i=1;i<datos.length;i++) {
+    const item=filaActaAObjeto(datos[i]); let permitir=false;
+    if(usuario.perfil==="TECNICO") permitir=normalizarCuadrilla(usuario.cuadrilla)===normalizarCuadrilla(item.cuadrilla);
+    if(usuario.perfil==="SUPERVISOR") permitir=normalizarTexto(usuario.sede)===normalizarTexto(item.sede);
+    if(esPerfilAlmacen(usuario.perfil)) permitir=normalizarTexto(usuario.sede)===normalizarTexto(item.sede);
+    if(esPerfilJefatura(usuario.perfil)||esPerfilJefaturaAlmacen(usuario.perfil)) permitir=true;
+    if(!permitir) continue;
+    if(data.sede&&normalizarTexto(data.sede)!==normalizarTexto(item.sede)) continue;
+    if(data.cuadrilla&&normalizarCuadrilla(data.cuadrilla)!==normalizarCuadrilla(item.cuadrilla)) continue;
+    if(data.estado&&normalizarTexto(data.estado)!==normalizarTexto(item.estado)) continue;
+    if(data.tipoEjecucion&&normalizarTexto(data.tipoEjecucion)!==normalizarTexto(item.tipoEjecucion)) continue;
     lista.push(item);
   }
   lista.reverse();
-  return {ok:true,modulo:"ACTAS",accion:"LISTAR",perfil:usuario.perfil,alcance:permiso.alcanceDatos,registros:lista.length,actas:lista};
+  return {ok:true,modulo:"ACTAS",accion:"LISTAR",perfil:usuario.perfil,registros:lista.length,actas:lista};
 }
 
 function buscarActaPorId(id) {
@@ -3012,19 +3090,25 @@ function filaChecklistAObjeto(f) {
   };
 }
 
-function listarChecklistAlmacen_legacy_v168_1(data) {
-  const hoja=asegurarHojaChecklistAlmacen(), datos=hoja.getDataRange().getValues(), usuario=obtenerUsuarioApp(data.usuario), lista=[];
-  const permiso=exigirPermisoModulo(usuario,"CHECKLIST ALMACEN","VER");
-  for(let i=1;i<datos.length;i++){
-    const item=filaChecklistAObjeto(datos[i]);
-    if(!permisoModuloPuedeVerItem(usuario,permiso,item))continue;
-    if(data.sede&&normalizarTexto(data.sede)!==normalizarTexto(item.sede))continue;
-    if(data.cuadrilla&&normalizarCuadrilla(data.cuadrilla)!==normalizarCuadrilla(item.cuadrilla))continue;
-    if(data.estado&&normalizarTexto(data.estado)!==normalizarTexto(item.estadoGeneral))continue;
+function listarChecklistAlmacen(data) {
+  const hoja = asegurarHojaChecklistAlmacen();
+  const datos = hoja.getDataRange().getValues();
+  const usuario = obtenerUsuarioApp(data.usuario);
+  const lista = [];
+  for (let i=1;i<datos.length;i++) {
+    const item = filaChecklistAObjeto(datos[i]);
+    let permitir=false;
+    if (usuario.perfil === "TECNICO") permitir = normalizarCuadrilla(usuario.cuadrilla) === normalizarCuadrilla(item.cuadrilla);
+    else if (usuario.perfil === "ALMACEN" || usuario.perfil === "SUPERVISOR") permitir = normalizarTexto(usuario.sede) === normalizarTexto(item.sede);
+    else if (esPerfilJefaturaAlmacen(usuario.perfil) || esPerfilJefatura(usuario.perfil)) permitir = true;
+    if (!permitir) continue;
+    if (data.sede && normalizarTexto(data.sede)!==normalizarTexto(item.sede)) continue;
+    if (data.cuadrilla && normalizarCuadrilla(data.cuadrilla)!==normalizarCuadrilla(item.cuadrilla)) continue;
+    if (data.estado && normalizarTexto(data.estado)!==normalizarTexto(item.estadoGeneral)) continue;
     lista.push(item);
   }
   lista.reverse();
-  return {ok:true,modulo:"CHECKLIST_ALMACEN",accion:"LISTAR",perfil:usuario.perfil,alcance:permiso.alcanceDatos,registros:lista.length,checklist:lista};
+  return {ok:true, modulo:"CHECKLIST_ALMACEN", accion:"LISTAR", perfil:usuario.perfil, registros:lista.length, checklist:lista};
 }
 
 function buscarChecklistAlmacen(id) {
@@ -3665,64 +3749,182 @@ function normalizarEstadoDiaDescansos(valor) {
 }
 
 function puedeVerDescanso(usuario,item) {
-  const permiso=obtenerPermisoModuloApp(usuario,"PROGRAMACION DESCANSOS");
-  return !!permiso && permisoModuloHabilitado(usuario,"PROGRAMACION DESCANSOS","VER") && permisoModuloPuedeVerItem(usuario,permiso,item);
+  const perfil = normalizarTexto(usuario.perfil);
+  if (perfil === "TECNICO") return normalizarCuadrilla(usuario.cuadrilla) === normalizarCuadrilla(item.cuadrilla);
+  if (perfil === "SUPERVISOR") return normalizarTexto(usuario.sede) === normalizarTexto(item.sede);
+  return esJefaturaDescansos(perfil) || esOperacionesLima(perfil);
+}
+
+function claveCacheDescansos(usuario, periodo, sede) {
+  return [
+    "DESCANSOS_V171",
+    normalizarUsuario(usuario.usuario || ""),
+    normalizarTexto(usuario.perfil || ""),
+    (periodo || "").toString(),
+    normalizarTexto(sede || "TODAS")
+  ].join("|");
+}
+
+function limpiarCacheDescansos() {
+  try {
+    CacheService.getScriptCache().remove("DESCANSOS_VERSION");
+    CacheService.getScriptCache().put("DESCANSOS_VERSION", String(Date.now()), 21600);
+  } catch (e) {
+    // La caché es una optimización; una falla no debe bloquear el módulo.
+  }
+}
+
+function versionCacheDescansos() {
+  try {
+    const cache = CacheService.getScriptCache();
+    let version = cache.get("DESCANSOS_VERSION");
+    if (!version) {
+      version = String(Date.now());
+      cache.put("DESCANSOS_VERSION", version, 21600);
+    }
+    return version;
+  } catch (e) {
+    return "SIN_CACHE";
+  }
+}
+
+function leerUsuariosDescansosUnaVez(usuario) {
+  const hoja = obtenerHoja(HOJA_USUARIOS);
+  const ultimaFila = hoja.getLastRow();
+  if (ultimaFila <= 1) return [];
+
+  const datos = hoja.getRange(2, 1, ultimaFila - 1, Math.min(Math.max(hoja.getLastColumn(), 10), 11)).getValues();
+  const perfilSolicitante = normalizarTexto(usuario.perfil);
+  const sedeSolicitante = normalizarTexto(usuario.sede);
+  const lista = [];
+  const vistos = {};
+
+  datos.forEach(f => {
+    const cuadrilla = normalizarCuadrilla(f[3]);
+    const sede = normalizarTexto(f[4]);
+    const plataforma = plataformaDescansos(f[5]);
+    const perfil = normalizarTexto(f[6]);
+    const estado = normalizarTexto(f[8] || "ACTIVO");
+
+    if (!cuadrilla || vistos[cuadrilla]) return;
+    if (perfil !== "TECNICO" || estado !== "ACTIVO") return;
+    if (!/^P\d+\b/i.test(cuadrilla) || !sede || sede === "TODAS") return;
+    if (perfilSolicitante === "SUPERVISOR" && sede !== sedeSolicitante) return;
+
+    lista.push({
+      cuadrilla,
+      sede,
+      plataforma,
+      supervisor: f[9] || "",
+      tecnico: f[0] || ""
+    });
+    vistos[cuadrilla] = true;
+  });
+
+  lista.sort((a,b) => a.sede.localeCompare(b.sede) || a.plataforma.localeCompare(b.plataforma) || a.cuadrilla.localeCompare(b.cuadrilla));
+  return lista;
+}
+
+function leerProgramacionDescansosPeriodo(periodo) {
+  const hoja = asegurarHojaProgramacionDescansos();
+  const ultimaFila = hoja.getLastRow();
+  if (ultimaFila <= 1) return [];
+
+  const datos = hoja.getRange(2, 1, ultimaFila - 1, 38).getValues();
+  const lista = [];
+
+  for (let i = 0; i < datos.length; i++) {
+    const fila = datos[i];
+    if (!fila[0] && !fila[2] && !fila[5]) continue;
+    const item = filaProgramacionAObjeto(fila);
+    if (item.periodo !== periodo) continue;
+    lista.push({ item, indice: i });
+  }
+
+  return lista;
 }
 
 function listarProgramacionDescansos(data) {
   const usuario = obtenerUsuarioApp(data.usuario);
   if (!esPerfilDescansos(usuario.perfil)) throw new Error("No tienes acceso a Programación de Descansos");
 
-  const periodo = (data.periodo || Utilities.formatDate(new Date(),Session.getScriptTimeZone(),"yyyy-MM")).toString();
-  const filas = obtenerFilasDescansos().filter(x => x.item.periodo === periodo && puedeVerDescanso(usuario,x.item));
-  const filtroSede = normalizarTexto(data.sede || "");
-  const visibles = filas.filter(x => !filtroSede || filtroSede === "TODAS" || normalizarTexto(x.item.sede) === filtroSede);
-  const soloLecturaOperaciones = esOperacionesLima(usuario.perfil);
+  const periodo = (data.periodo || Utilities.formatDate(new Date(), Session.getScriptTimeZone(), "yyyy-MM")).toString();
+  const filtroSede = normalizarTexto(data.sede || "TODAS");
+  const version = versionCacheDescansos();
+  const clave = claveCacheDescansos(usuario, periodo, filtroSede) + "|" + version;
+
+  try {
+    const cache = CacheService.getScriptCache();
+    const guardado = cache.get(clave);
+    if (guardado) return JSON.parse(guardado);
+  } catch (e) {
+    // Continúa sin caché.
+  }
+
+  // Solo dos lecturas de Sheets: USUARIOS y PROGRAMACION_DESCANSOS.
+  const cuadrillas = leerUsuariosDescansosUnaVez(usuario);
+  const registrosPeriodo = leerProgramacionDescansosPeriodo(periodo);
+  const perfil = normalizarTexto(usuario.perfil);
+  const soloLecturaOperaciones = esOperacionesLima(perfil);
+  const esTecnico = perfil === "TECNICO";
+  const esSupervisor = perfil === "SUPERVISOR";
+  const cuadrillaUsuario = normalizarCuadrilla(usuario.cuadrilla);
+  const sedeUsuario = normalizarTexto(usuario.sede);
+
+  const visibles = registrosPeriodo.filter(reg => {
+    const item = reg.item;
+    if (esTecnico && normalizarCuadrilla(item.cuadrilla) !== cuadrillaUsuario) return false;
+    if (esSupervisor && normalizarTexto(item.sede) !== sedeUsuario) return false;
+    if (filtroSede && filtroSede !== "TODAS" && normalizarTexto(item.sede) !== filtroSede) return false;
+    return true;
+  });
 
   const porClave = {};
-  visibles.forEach((registro, indice) => {
-    const item = registro.item;
-    const clave = normalizarCuadrilla(item.cuadrilla) + "|" + item.fecha;
-    if (!porClave[clave]) porClave[clave] = { aprobados: [], pendientes: [] };
+  visibles.forEach(reg => {
+    const item = reg.item;
+    const claveItem = normalizarCuadrilla(item.cuadrilla) + "|" + item.fecha;
+    if (!porClave[claveItem]) porClave[claveItem] = { aprobados: [], pendientes: [] };
 
-    const estado = normalizarTexto(item.estadoValidacion || item.estadoProgramacion).replace(/_/g," ");
+    const estado = normalizarTexto(item.estadoValidacion || item.estadoProgramacion).replace(/_/g, " ");
     const resultadoJefatura = normalizarTexto(item.resultadoJefatura || "");
-    const aprobado = ["APROBADO","APLICADO"].includes(estado) || resultadoJefatura === "APROBADO";
-    const pendiente = ["PENDIENTE JEFATURA","OBSERVADO","PENDIENTE SUPERVISOR"].includes(estado);
+    const aprobado = ["APROBADO", "APLICADO"].includes(estado) || resultadoJefatura === "APROBADO";
+    const pendiente = ["PENDIENTE JEFATURA", "OBSERVADO", "PENDIENTE SUPERVISOR"].includes(estado);
     const orden = Number(item.version) || 0;
+    const registroOrdenado = { item, indice: reg.indice, orden };
 
-    const registroOrdenado = { item, indice, orden };
-    if (aprobado) porClave[clave].aprobados.push(registroOrdenado);
-    else if (pendiente) porClave[clave].pendientes.push(registroOrdenado);
+    if (aprobado) porClave[claveItem].aprobados.push(registroOrdenado);
+    else if (pendiente) porClave[claveItem].pendientes.push(registroOrdenado);
   });
 
   function ultimoRegistro(lista) {
     if (!lista || !lista.length) return null;
-    return lista.slice().sort((a,b) => {
-      if (a.orden !== b.orden) return a.orden - b.orden;
-      return a.indice - b.indice;
-    })[lista.length - 1];
+    let ultimo = lista[0];
+    for (let i = 1; i < lista.length; i++) {
+      const actual = lista[i];
+      if (actual.orden > ultimo.orden || (actual.orden === ultimo.orden && actual.indice > ultimo.indice)) ultimo = actual;
+    }
+    return ultimo;
   }
 
-  const programacion = Object.keys(porClave).map(clave => {
-    const grupo = porClave[clave];
+  const programacion = [];
+  Object.keys(porClave).forEach(claveItem => {
+    const grupo = porClave[claveItem];
     const aprobadoReg = ultimoRegistro(grupo.aprobados);
     const pendienteReg = ultimoRegistro(grupo.pendientes);
     const aprobado = aprobadoReg ? aprobadoReg.item : null;
     const pendiente = pendienteReg ? pendienteReg.item : null;
 
-    // OPERACIONES LIMA visualiza únicamente el estado vigente aprobado.
     if (soloLecturaOperaciones) {
-      if (!aprobado) return null;
+      if (!aprobado) return;
       const a = Object.assign({}, aprobado);
       a.estadoDia = normalizarEstadoDiaDescansos(a.estadoNuevo || a.estadoDia || "EN CAMPO");
       a.estadoProgramacion = "APROBADO";
       a.estadoValidacion = "APROBADO";
       a.solicitudCambio = "";
-      return a;
+      programacion.push(a);
+      return;
     }
 
-    // Para Supervisor/Jefatura se conserva el pendiente, mostrando debajo el estado vigente aprobado.
     if (pendiente) {
       const p = Object.assign({}, pendiente);
       const vigente = aprobado
@@ -3730,8 +3932,9 @@ function listarProgramacionDescansos(data) {
         : "EN CAMPO";
       p.estadoDia = vigente;
       p.solicitudCambio = normalizarEstadoDiaDescansos(p.estadoNuevo || p.solicitudCambio || vigente);
-      p.estadoProgramacion = normalizarTexto(p.estadoValidacion || p.estadoProgramacion).replace(/_/g," ");
-      return p;
+      p.estadoProgramacion = normalizarTexto(p.estadoValidacion || p.estadoProgramacion).replace(/_/g, " ");
+      programacion.push(p);
+      return;
     }
 
     if (aprobado) {
@@ -3740,25 +3943,38 @@ function listarProgramacionDescansos(data) {
       a.estadoProgramacion = "APROBADO";
       a.estadoValidacion = "APROBADO";
       a.solicitudCambio = "";
-      return a;
+      programacion.push(a);
     }
-    return null;
-  }).filter(Boolean);
+  });
 
-  const historial = visibles.map(x => x.item)
-    .sort((a,b) => String(b.id).localeCompare(String(a.id)))
-    .slice(0,250);
+  // Historial inicial limitado: evita devolver cientos de filas y acelera renderizado.
+  const historial = visibles
+    .slice()
+    .sort((a,b) => b.indice - a.indice)
+    .slice(0, 100)
+    .map(x => x.item);
 
-  return {
-    ok:true,
-    modulo:"PROGRAMACION_DESCANSOS",
-    accion:"LISTAR",
-    perfil:usuario.perfil,
+  const respuesta = {
+    ok: true,
+    modulo: "PROGRAMACION_DESCANSOS",
+    accion: "LISTAR",
+    perfil: usuario.perfil,
     periodo,
-    cuadrillas:listaCuadrillasDescansos(usuario),
+    cuadrillas,
     programacion,
-    historial
+    historial,
+    optimizado: true
   };
+
+  try {
+    const texto = JSON.stringify(respuesta);
+    // CacheService limita cada valor a ~100 KB. Solo guarda cuando entra con seguridad.
+    if (texto.length < 90000) CacheService.getScriptCache().put(clave, texto, 60);
+  } catch (e) {
+    // Continúa sin caché.
+  }
+
+  return respuesta;
 }
 
 function construirFilaDescansos(datos) {
@@ -3815,6 +4031,7 @@ function guardarProgramacionDescansos(data) {
     });
     hoja.appendRow(fila);guardados++;
   });
+  limpiarCacheDescansos();
   return {ok:true,modulo:"PROGRAMACION_DESCANSOS",accion:"GUARDAR",guardados,alertas,estado:esJefatura?"APLICADO":"PENDIENTE JEFATURA"};
 }
 
@@ -3852,6 +4069,7 @@ function resolverProgramacionDescansos(data,resultado) {
     }
     actualizados++;
   });
+  limpiarCacheDescansos();
   return {ok:true,modulo:"PROGRAMACION_DESCANSOS",accion:resultado,actualizados};
 }
 
@@ -3873,6 +4091,7 @@ function solicitarCambioDescanso(data) {
     resultadoSupervisor:"",motivoSupervisor:"",validadoSupervisorPor:"",fechaValidacionSupervisor:"",horaValidacionSupervisor:"",resultadoJefatura:"",motivoJefatura:"",validadoJefaturaPor:"",fechaValidacionJefatura:"",horaValidacionJefatura:"",
     coberturaSede:0,estadoCobertura:"",version:1,estadoValidacion:"PENDIENTE_SUPERVISOR",comentarioSupervisor:"",comentarioJefatura:"",fechaValidacion:"",validadoPor:"",tipoRegistro:"SOLICITUD_TECNICO",estadoAnterior:"DESCANSO",estadoNuevo:"DESCANSO",idOrigen:idOrigenDescansos(usuario.cuadrilla,fechaActual)
   }));
+  limpiarCacheDescansos();
   return {ok:true,modulo:"PROGRAMACION_DESCANSOS",accion:"SOLICITAR_CAMBIO",estado:"PENDIENTE SUPERVISOR"};
 }
 
@@ -3886,6 +4105,7 @@ function validarCambioDescansoSupervisor(data) {
   const ahora=new Date();
   reg.hoja.getRange(reg.fila,17).setValue(resultado);reg.hoja.getRange(reg.fila,18).setValue(motivo);reg.hoja.getRange(reg.fila,19).setValue(usuario.usuario);reg.hoja.getRange(reg.fila,20).setValue(ahora);reg.hoja.getRange(reg.fila,21).setValue(ahora);
   reg.hoja.getRange(reg.fila,30).setValue(resultado==="APROBADO"?"PENDIENTE_JEFATURA":"RECHAZADO");reg.hoja.getRange(reg.fila,31).setValue(motivo);reg.hoja.getRange(reg.fila,11).setValue(resultado==="APROBADO"?"PENDIENTE JEFATURA":"RECHAZADO");
+  limpiarCacheDescansos();
   return {ok:true,modulo:"PROGRAMACION_DESCANSOS",accion:"VALIDAR_SUPERVISOR",estado:resultado==="APROBADO"?"PENDIENTE JEFATURA":"RECHAZADO"};
 }
 
@@ -3916,9 +4136,7 @@ function filaPermisoAObjeto(f){return {perfil:normalizarTexto(f[0]),modulo:norma
 function obtenerPermisosUsuario(data){const u=obtenerUsuarioApp(data.usuario),h=asegurarHojaPermisosModulos(),d=h.getDataRange().getValues(),p=normalizarTexto(u.perfil),lista=[];for(let i=1;i<d.length;i++){const x=filaPermisoAObjeto(d[i]);if(x.perfil===p)lista.push(x);}return {ok:true,modulo:"PERMISOS",perfil:p,permisos:lista};}
 function listarPermisosAdministracion(data){const u=obtenerUsuarioApp(data.usuario);if(!esPerfilJefatura(u.perfil))throw new Error("Solo Jefatura puede administrar permisos");const d=asegurarHojaPermisosModulos().getDataRange().getValues(),lista=[];for(let i=1;i<d.length;i++)if(d[i][0]&&d[i][1])lista.push(filaPermisoAObjeto(d[i]));return {ok:true,permisos:lista};}
 function guardarPermisoModulo(data){const u=obtenerUsuarioApp(data.usuario);if(!esPerfilJefatura(u.perfil))throw new Error("Solo Jefatura puede administrar permisos");const h=asegurarHojaPermisosModulos(),d=h.getDataRange().getValues(),p=normalizarTexto(data.perfil),m=normalizarTexto(data.modulo);if(!p||!m)throw new Error("Perfil y módulo son obligatorios");const sn=v=>normalizarTexto(v)==="SI"?"SI":"NO";const fila=[p,m,sn(data.activo||"SI"),Number(data.ordenMenu)||"",sn(data.mostrarModulo),sn(data.ver),sn(data.registrar),sn(data.editar),sn(data.observar),sn(data.aprobar),sn(data.validar),sn(data.descargar),sn(data.administrar),normalizarTexto(data.alcanceDatos||"SIN ACCESO"),(data.vistaPerfil||p).toString(),(data.observacion||"").toString()];let n=0;for(let i=1;i<d.length;i++)if(normalizarTexto(d[i][0])===p&&normalizarTexto(d[i][1])===m){n=i+1;break;}if(n)h.getRange(n,1,1,16).setValues([fila]);else h.appendRow(fila);return {ok:true,perfil:p,modulo:m};}
-function permisoUsuarioAccion(usuario,modulo,accion){
-  return permisoModuloHabilitado(usuario, modulo, accion);
-}
+function permisoUsuarioAccion(usuario,modulo,accion){const h=asegurarHojaPermisosModulos(),d=h.getDataRange().getValues(),p=normalizarTexto(usuario.perfil),m=normalizarTexto(modulo),col={VER:5,REGISTRAR:6,EDITAR:7,OBSERVAR:8,APROBAR:9,VALIDAR:10,DESCARGAR:11,ADMINISTRAR:12}[normalizarTexto(accion)];if(col===undefined)return false;for(let i=1;i<d.length;i++)if(normalizarTexto(d[i][0])===p&&normalizarTexto(d[i][1])===m)return normalizarTexto(d[i][2]||"SI")==="SI"&&normalizarTexto(d[i][col]||"NO")==="SI";return false;}
 function esOperacionesLima(perfil){return normalizarTexto(perfil)==="OPERACIONES LIMA";}
 
 function obtenerConfiguracionPext(data){
@@ -4059,14 +4277,15 @@ function registrarTrabajoConjunta(data){
 }
 function listarTrabajosConjunta(data){
   exigirPextActivo();
-  const u=obtenerUsuarioApp(data.usuario),permiso=exigirPermisoModulo(u,"PEXT","VER"),h=asegurarHojaTrabajosConjunta(),d=h.getDataRange().getValues(),lista=[];
+  const u=obtenerUsuarioApp(data.usuario),h=asegurarHojaTrabajosConjunta(),d=h.getDataRange().getValues(),lista=[];
   for(let i=1;i<d.length;i++){
-    const x=filaTrabajoConjuntaAObjeto(d[i]);
-    if(!permisoModuloPuedeVerItem(u,permiso,x))continue;
-    lista.push(x);
+    const x=filaTrabajoConjuntaAObjeto(d[i]);let ver=false;
+    if(normalizarTexto(u.perfil)==="TECNICO")ver=normalizarCuadrilla(u.cuadrilla)===normalizarCuadrilla(x.cuadrilla);
+    else if(normalizarTexto(u.perfil)==="SUPERVISOR")ver=normalizarUsuario(u.usuario)===normalizarUsuario(x.supervisorRegistra);
+    else if(validarPerfilJefaturaConjunta(u.perfil)||esOperacionesLima(u.perfil))ver=true;
+    if(!ver)continue;lista.push(x);
   }
-  lista.reverse();
-  return {ok:true,modulo:"TRABAJOS_CONJUNTA",accion:"LISTAR",perfil:u.perfil,alcance:permiso.alcanceDatos,registros:lista.length,trabajos:lista};
+  lista.reverse();return {ok:true,modulo:"TRABAJOS_CONJUNTA",accion:"LISTAR",perfil:u.perfil,registros:lista.length,trabajos:lista};
 }
 function responderTrabajoConjuntaTecnico(data){
   exigirPextActivo();
@@ -4094,70 +4313,6 @@ function conformidadFinalTrabajoConjunta(data){
   return {ok:true,modulo:"TRABAJOS_CONJUNTA",accion:"CONFORMIDAD_FINAL",id:data.id,resultado};
 }
 
-
-
-
-/* =========================
-   MOTOR CENTRAL DE PERMISOS V168
-   Fuente única: PERMISOS_MODULOS
-========================= */
-function obtenerPermisoModuloApp(usuario, modulo) {
-  const hoja = asegurarHojaPermisosModulos();
-  const datos = hoja.getDataRange().getValues();
-  const perfil = normalizarTexto(usuario && usuario.perfil);
-  const moduloBuscado = normalizarTexto(modulo);
-  for (let i = 1; i < datos.length; i++) {
-    const permiso = filaPermisoAObjeto(datos[i]);
-    if (permiso.perfil === perfil && permiso.modulo === moduloBuscado) return permiso;
-  }
-  return null;
-}
-
-function permisoModuloHabilitado(usuario, modulo, accion) {
-  const permiso = obtenerPermisoModuloApp(usuario, modulo);
-  if (!permiso) return false;
-  if (normalizarTexto(permiso.activo || "NO") !== "SI") return false;
-  if (accion === "VER") {
-    return normalizarTexto(permiso.mostrarModulo || "NO") === "SI" &&
-      normalizarTexto(permiso.ver || "NO") === "SI" &&
-      normalizarTexto(permiso.alcanceDatos || "SIN ACCESO") !== "SIN ACCESO";
-  }
-  const clave = {
-    REGISTRAR:"registrar", EDITAR:"editar", OBSERVAR:"observar", APROBAR:"aprobar",
-    VALIDAR:"validar", DESCARGAR:"descargar", ADMINISTRAR:"administrar"
-  }[normalizarTexto(accion)];
-  return !!clave && normalizarTexto(permiso[clave] || "NO") === "SI";
-}
-
-function exigirPermisoModulo(usuario, modulo, accion) {
-  if (!permisoModuloHabilitado(usuario, modulo, accion)) {
-    throw new Error("No tienes permiso para " + accion.toLowerCase() + " en " + modulo.toLowerCase());
-  }
-  return obtenerPermisoModuloApp(usuario, modulo);
-}
-
-function permisoModuloPuedeVerItem(usuario, permiso, item) {
-  const alcance = normalizarTexto((permiso && permiso.alcanceDatos) || "SIN ACCESO");
-  if (["ZONA NORTE","ADMIN","SEGUN DESTINO"].includes(alcance)) return true;
-  if (alcance === "SEDE") {
-    if (item && item.sede) return normalizarTexto(usuario.sede) === normalizarTexto(item.sede);
-    if (item && item.cuadrilla) {
-      try { return normalizarTexto(obtenerDatosCuadrillaApp(item.cuadrilla).sede) === normalizarTexto(usuario.sede); } catch(e) { return false; }
-    }
-    return false;
-  }
-  if (alcance === "SEDE / PROPIOS") {
-    if (item && item.supervisor) return normalizarUsuario(item.supervisor) === normalizarUsuario(usuario.usuario);
-    if (item && item.supervisorRegistra) return normalizarUsuario(item.supervisorRegistra) === normalizarUsuario(usuario.usuario);
-    return item && item.sede ? normalizarTexto(usuario.sede) === normalizarTexto(item.sede) : false;
-  }
-  if (alcance === "CUADRILLA") return item && normalizarCuadrilla(usuario.cuadrilla) === normalizarCuadrilla(item.cuadrilla);
-  if (alcance === "PERSONAL") {
-    const propietario = item && (item.usuario || item.tecnico || item.solicitadoPor || item.registradoPor);
-    return propietario ? normalizarUsuario(propietario) === normalizarUsuario(usuario.usuario) : false;
-  }
-  return false;
-}
 
 /* =========================
    API PRINCIPAL
@@ -4540,19 +4695,36 @@ function diasParaVencimientoChecklistV141(valor) {
   return Math.ceil((f.getTime()-hoy.getTime())/86400000);
 }
 
-function listarChecklistAlmacen_legacy_v168_2(data) {
-  const hoja=asegurarHojaChecklistAlmacen(), datos=hoja.getDataRange().getValues(), usuario=obtenerUsuarioApp(data.usuario), lista=[];
-  const permiso=exigirPermisoModulo(usuario,"CHECKLIST ALMACEN","VER");
-  for(let i=1;i<datos.length;i++){
-    const item=filaChecklistAObjeto(datos[i]);
-    if(!permisoModuloPuedeVerItem(usuario,permiso,item))continue;
-    if(data.sede&&normalizarTexto(data.sede)!==normalizarTexto(item.sede))continue;
-    if(data.cuadrilla&&normalizarCuadrilla(data.cuadrilla)!==normalizarCuadrilla(item.cuadrilla))continue;
-    if(data.estado&&normalizarTexto(data.estado)!==normalizarTexto(item.estadoGeneral))continue;
+function listarChecklistAlmacen(data) {
+  const hoja = asegurarHojaChecklistAlmacen();
+  const datos = hoja.getDataRange().getValues();
+  const usuario = obtenerUsuarioApp(data.usuario);
+  const herramientasMapa = obtenerHerramientasDetallePorChecklistV141();
+  const lista = [];
+  for (let i=1;i<datos.length;i++) {
+    const item = filaChecklistAObjeto(datos[i]);
+    const tipo = normalizarTexto(item.tipoChecklist || "MATERIALES");
+    let permitir = false;
+    if (usuario.perfil === "TECNICO") permitir = normalizarCuadrilla(usuario.cuadrilla) === normalizarCuadrilla(item.cuadrilla);
+    else if (usuario.perfil === "ALMACEN" || usuario.perfil === "SUPERVISOR") permitir = normalizarTexto(usuario.sede) === normalizarTexto(item.sede);
+    else if (esPerfilJefaturaAlmacen(usuario.perfil) || esPerfilJefatura(usuario.perfil)) permitir = true;
+    if (!permitir) continue;
+    if (usuario.perfil === "ALMACEN" && !["MATERIALES","HERRAMIENTAS"].includes(tipo)) continue;
+    if (data.sede && normalizarTexto(data.sede)!==normalizarTexto(item.sede)) continue;
+    if (data.cuadrilla && normalizarCuadrilla(data.cuadrilla)!==normalizarCuadrilla(item.cuadrilla)) continue;
+    if (data.estado && normalizarTexto(data.estado)!==normalizarTexto(item.estadoGeneral)) continue;
+    if (data.tipoChecklist && normalizarTexto(data.tipoChecklist)!==tipo) continue;
+    item.tipoChecklist = tipo;
+    item.herramientasDetalle = herramientasMapa[item.id] || [];
+    item.supervisor = (obtenerDatosCuadrillaApp(item.cuadrilla).usuarioSupervisor || "");
+    const vencimientos = [item.licenciaFechaVencimiento,item.soatFechaVencimiento,item.revisionTecnicaFechaVencimiento]
+      .map(diasParaVencimientoChecklistV141).filter(v=>v!==null);
+    item.diasVencimientoMinimo = vencimientos.length ? Math.min.apply(null,vencimientos) : null;
+    item.estadoVencimiento = item.diasVencimientoMinimo===null ? "NO APLICA" : (item.diasVencimientoMinimo<0 ? "VENCIDO" : (item.diasVencimientoMinimo<=30 ? "PROXIMO A VENCER" : "VIGENTE"));
     lista.push(item);
   }
   lista.reverse();
-  return {ok:true,modulo:"CHECKLIST_ALMACEN",accion:"LISTAR",perfil:usuario.perfil,alcance:permiso.alcanceDatos,registros:lista.length,checklist:lista};
+  return {ok:true, modulo:"CHECKLIST_ALMACEN", accion:"LISTAR", perfil:usuario.perfil, registros:lista.length, checklist:lista};
 }
 
 function validarChecklistAlmacen(data) {
@@ -4598,20 +4770,4 @@ function validarChecklistAlmacen(data) {
     hoja.getRange(fila,9).setValue(resultado==="CONFORME"?"CONFORME":"OBSERVADO JEFATURA");
   } else throw new Error("No tienes permiso para validar este tipo de checklist");
   return {ok:true, modulo:"CHECKLIST_ALMACEN", accion:"VALIDAR", id, resultado, tipoChecklist:tipo};
-}
-
-
-function listarChecklistAlmacen(data) {
-  const hoja=asegurarHojaChecklistAlmacen(), datos=hoja.getDataRange().getValues(), usuario=obtenerUsuarioApp(data.usuario), lista=[];
-  const permiso=exigirPermisoModulo(usuario,"CHECKLIST ALMACEN","VER");
-  for(let i=1;i<datos.length;i++){
-    const item=filaChecklistAObjeto(datos[i]);
-    if(!permisoModuloPuedeVerItem(usuario,permiso,item))continue;
-    if(data.sede&&normalizarTexto(data.sede)!==normalizarTexto(item.sede))continue;
-    if(data.cuadrilla&&normalizarCuadrilla(data.cuadrilla)!==normalizarCuadrilla(item.cuadrilla))continue;
-    if(data.estado&&normalizarTexto(data.estado)!==normalizarTexto(item.estadoGeneral))continue;
-    lista.push(item);
-  }
-  lista.reverse();
-  return {ok:true,modulo:"CHECKLIST_ALMACEN",accion:"LISTAR",perfil:usuario.perfil,alcance:permiso.alcanceDatos,registros:lista.length,checklist:lista};
 }

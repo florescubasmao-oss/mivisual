@@ -1,0 +1,19 @@
+MI VISUAL V172 - VALIDACION TECNICA PARA OPERACIONES LIMA
+
+Cambios:
+- OPERACIONES LIMA puede visualizar todos los registros de Validación Técnica de Zona Norte.
+- Se agregó filtro por sede en el historial.
+- El permiso DESCARGAR de PERMISOS_MODULOS habilita la descarga del informe.
+- No se habilitan registrar, observar, aprobar ni validar si esos permisos están en NO.
+- Se conserva la optimización V171 de Programación de Descansos.
+
+Instalación:
+1. Reemplazar los archivos web del ZIP y realizar commit/push.
+2. Reemplazar completamente Code.gs en Apps Script.
+3. Guardar y crear un nuevo despliegue.
+4. Recargar la aplicación con Ctrl + F5.
+
+Configuración recomendada para OPERACIONES LIMA / VALIDACION TECNICA:
+ACTIVO=SI, MOSTRAR_MODULO=SI, VER=SI, DESCARGAR=SI.
+REGISTRAR=NO, EDITAR=NO, OBSERVAR=NO, APROBAR=NO, VALIDAR=NO, ADMINISTRAR=NO.
+ALCANCE_DATOS=ZONA NORTE.
