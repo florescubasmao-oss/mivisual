@@ -1,0 +1,29 @@
+MI VISUAL V195
+
+CORRECCIÓN REAL APLICADA SOBRE EL ZIP mivisual(27).zip:
+
+1. Se eliminó de cerrarSesion() una referencia inválida a la variable perfil.
+   Esa referencia detenía la función y hacía que Cerrar sesión no respondiera.
+
+2. La clase mv192-tecnico-menu ahora se aplica dentro de configurarMenu(),
+   después de leer el perfil activo y antes de mostrar el menú.
+
+3. Se actualizaron las versiones de caché de estilos.css y app.js en index.html.
+
+RESULTADO:
+- Técnico: Producción, Efectividad, % Recableado y % VTR/GAR en una sola fila.
+- Botón Cerrar sesión restaurado.
+- Supervisor, Jefatura y demás perfiles sin cambios visuales.
+
+ARCHIVOS MODIFICADOS:
+- js/app.js
+- index.html
+
+NO MODIFICADO:
+- Code.gs / Apps Script
+- Google Sheets
+- Lógica de módulos o permisos
+
+DESPLIEGUE REQUERIDO:
+- Solo GitHub Pages / frontend.
+- No actualizar Apps Script.

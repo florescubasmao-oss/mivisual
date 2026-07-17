@@ -52,8 +52,7 @@ function cerrarSesion(){
     const pantalla = document.getElementById("pantalla");
     const resultado = document.getElementById("resultadoProduccion");
 
-    // V194: la clase compacta se aplica al construir el menú del perfil Técnico.
-    // No debe ejecutarse dentro de cerrarSesion porque allí no existe la variable perfil.
+    // V195: la clase compacta se aplica al construir el menú y solo para Técnico.
     if (menu) menu.classList.toggle("mv192-tecnico-menu", perfil === "TECNICO");
 
     const btn = document.getElementById("btnInicio");
