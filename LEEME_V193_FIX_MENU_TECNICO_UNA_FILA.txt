@@ -1,0 +1,8 @@
+MI VISUAL V193
+
+Corrección puntual de la vista del menú Técnico.
+
+- La clase de diseño compacto ahora se aplica al construir el menú del usuario Técnico.
+- Producción, Efectividad, % Recableado y % VTR/GAR quedan en una sola fila.
+- No se modifican cálculos, permisos, Apps Script ni vistas de otros perfiles.
+- Se conserva todo lo avanzado hasta V192.

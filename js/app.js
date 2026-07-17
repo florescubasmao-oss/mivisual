@@ -52,9 +52,10 @@ function cerrarSesion(){
     const pantalla = document.getElementById("pantalla");
     const resultado = document.getElementById("resultadoProduccion");
 
-    // V192: vista compacta exclusiva para Técnico.
-    // Mantiene Producción, Efectividad, % Recableado y % VTR/GAR en una sola fila.
+    // V193: aplicar la vista compacta después de identificar el perfil activo.
+    // En V192 esta clase se asignaba al cerrar sesión y no al construir el menú.
     if (menu) menu.classList.toggle("mv192-tecnico-menu", perfil === "TECNICO");
+
     const btn = document.getElementById("btnInicio");
 
     if(panelLogin) panelLogin.style.display = "block";
