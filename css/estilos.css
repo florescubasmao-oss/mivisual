@@ -833,3 +833,59 @@ body{background:linear-gradient(180deg,var(--mv4-bg),var(--mv4-bg2));font-family
 @media(max-width:520px){
   .obs-filtros-jefatura{gap:12px;}
 }
+
+
+/* =====================================================
+   V192 - Técnico: cuatro indicadores principales en una sola fila
+   ===================================================== */
+#menuPrincipal.mv192-tecnico-menu .mv55-main-modules{
+  grid-template-columns:repeat(4,minmax(0,1fr))!important;
+  gap:8px!important;
+}
+#menuPrincipal.mv192-tecnico-menu .mv55-main-modules > .card{
+  grid-column:span 2;
+}
+#menuPrincipal.mv192-tecnico-menu #cardProduccion,
+#menuPrincipal.mv192-tecnico-menu #cardEfectividad,
+#menuPrincipal.mv192-tecnico-menu #cardRecableado,
+#menuPrincipal.mv192-tecnico-menu #cardVTRGAR{
+  grid-column:span 1;
+  min-height:76px!important;
+  padding:9px 4px!important;
+  border-radius:15px!important;
+  gap:4px!important;
+  letter-spacing:0!important;
+}
+#menuPrincipal.mv192-tecnico-menu #cardProduccion span,
+#menuPrincipal.mv192-tecnico-menu #cardEfectividad span,
+#menuPrincipal.mv192-tecnico-menu #cardRecableado span,
+#menuPrincipal.mv192-tecnico-menu #cardVTRGAR span{
+  font-size:21px!important;
+}
+#menuPrincipal.mv192-tecnico-menu #cardProduccion b,
+#menuPrincipal.mv192-tecnico-menu #cardEfectividad b,
+#menuPrincipal.mv192-tecnico-menu #cardRecableado b,
+#menuPrincipal.mv192-tecnico-menu #cardVTRGAR b{
+  font-size:9.5px!important;
+  line-height:1.08!important;
+  overflow-wrap:anywhere;
+}
+@media(max-width:420px){
+  #menuPrincipal.mv192-tecnico-menu .mv55-main-modules{gap:6px!important;}
+  #menuPrincipal.mv192-tecnico-menu #cardProduccion,
+  #menuPrincipal.mv192-tecnico-menu #cardEfectividad,
+  #menuPrincipal.mv192-tecnico-menu #cardRecableado,
+  #menuPrincipal.mv192-tecnico-menu #cardVTRGAR{
+    min-height:70px!important;
+    padding:7px 2px!important;
+    border-radius:13px!important;
+  }
+  #menuPrincipal.mv192-tecnico-menu #cardProduccion span,
+  #menuPrincipal.mv192-tecnico-menu #cardEfectividad span,
+  #menuPrincipal.mv192-tecnico-menu #cardRecableado span,
+  #menuPrincipal.mv192-tecnico-menu #cardVTRGAR span{font-size:19px!important;}
+  #menuPrincipal.mv192-tecnico-menu #cardProduccion b,
+  #menuPrincipal.mv192-tecnico-menu #cardEfectividad b,
+  #menuPrincipal.mv192-tecnico-menu #cardRecableado b,
+  #menuPrincipal.mv192-tecnico-menu #cardVTRGAR b{font-size:8.5px!important;}
+}

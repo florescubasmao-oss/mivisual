@@ -1,0 +1,13 @@
+MI VISUAL V192
+
+AJUSTE VISUAL EXCLUSIVO PARA EL PERFIL TÉCNICO
+
+- Producción, Efectividad, % Recableado y % VTR/GAR aparecen en una sola fila.
+- Se redujo únicamente el tamaño de esas cuatro tarjetas.
+- Las demás tarjetas del Técnico conservan la distribución de dos columnas.
+- Supervisor, Jefatura y demás perfiles no fueron modificados.
+- No se modificaron cálculos, Apps Script, permisos ni otros módulos.
+
+ARCHIVOS MODIFICADOS:
+- js/app.js
+- css/estilos.css

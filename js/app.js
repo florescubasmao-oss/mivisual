@@ -51,6 +51,10 @@ function cerrarSesion(){
     const menu = document.getElementById("menuPrincipal");
     const pantalla = document.getElementById("pantalla");
     const resultado = document.getElementById("resultadoProduccion");
+
+    // V192: vista compacta exclusiva para Técnico.
+    // Mantiene Producción, Efectividad, % Recableado y % VTR/GAR en una sola fila.
+    if (menu) menu.classList.toggle("mv192-tecnico-menu", perfil === "TECNICO");
     const btn = document.getElementById("btnInicio");
 
     if(panelLogin) panelLogin.style.display = "block";
