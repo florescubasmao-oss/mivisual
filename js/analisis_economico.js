@@ -61,7 +61,7 @@ function mostrarCostoMateriales(){
     .mat184-grid{display:grid;grid-template-columns:200px 1fr;gap:12px;align-items:end}.mat184-grid label{font-weight:800;font-size:12px}.mat184-grid input,.mat184-grid select,.mat184-grid textarea{width:100%;box-sizing:border-box;padding:10px;border:1px solid #94a3b8;border-radius:9px}
     .mat184-grid textarea{height:300px;font-family:monospace;white-space:pre}.mat184-status{margin-top:12px;padding:12px;border-radius:10px;background:#eff6ff}.mat184-kpis{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin:12px 0}.mat184-kpi{background:#e0f2fe;border-radius:12px;padding:14px}.mat184-kpi b{font-size:23px;display:block}
     .mat184-table{width:100%;border-collapse:collapse}.mat184-table th,.mat184-table td{padding:8px;border-bottom:1px solid #e2e8f0;text-align:left}.mat184-table th{background:#f1f5f9}
-    .mat184-tabs{align-items:center}.mat184-tabs .mat184-import-mini{margin-left:auto;background:#0ea5e9!important;padding:8px 11px;font-size:12px}.mat184-detalle-btn{border:0;border-radius:7px;padding:6px 9px;font-size:12px;font-weight:800;background:#334155;color:#fff;cursor:pointer}.mat184-detalle-fila{display:none;background:#f8fafc}.mat184-detalle-fila.visible{display:table-row}.mat184-detalle-wrap{padding:10px 6px}.mat184-subtabla{width:100%;border-collapse:collapse}.mat184-subtabla th,.mat184-subtabla td{padding:7px;border-bottom:1px solid #dbeafe;font-size:12px}.mat184-subtabla th{background:#e0f2fe}.mat184-filtros-resumen{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:10px;align-items:end}
+    .mat184-tabs{align-items:center}.mat184-tabs .mat184-import-mini{margin-left:auto;background:#0ea5e9!important;padding:8px 11px;font-size:12px}.mat184-detalle-btn{border:0;border-radius:7px;padding:6px 9px;font-size:12px;font-weight:800;background:#334155;color:#fff;cursor:pointer}.mat184-detalle-fila{display:none;background:#f8fafc}.mat184-detalle-fila.visible{display:table-row}.mat184-detalle-wrap{padding:10px 6px}.mat184-subtabla{width:100%;border-collapse:collapse}.mat184-subtabla th,.mat184-subtabla td{padding:7px;border-bottom:1px solid #dbeafe;font-size:12px}.mat184-subtabla th{background:#e0f2fe}.mat184-filtros-resumen{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:10px;align-items:end}.mat184-modal-fondo{position:fixed;inset:0;background:rgba(2,6,23,.78);display:flex;align-items:center;justify-content:center;padding:18px;z-index:9999}.mat184-modal{background:#fff;color:#0f172a;width:min(980px,96vw);max-height:90vh;overflow:auto;border-radius:18px;padding:18px;box-shadow:0 20px 60px rgba(0,0,0,.45)}.mat184-modal-head{display:flex;justify-content:space-between;gap:12px;align-items:center}.mat184-cerrar{border:0;background:#475569;color:#fff;border-radius:9px;padding:8px 11px;font-weight:800;cursor:pointer}.mat184-cuadrilla-selector{display:grid;grid-template-columns:1fr auto;gap:10px;align-items:end;margin:14px 0}.mat184-cuadrilla-selector select{width:100%;padding:10px;border:1px solid #94a3b8;border-radius:9px}
     @media(max-width:700px){.mat184-grid{grid-template-columns:1fr}.mat184-kpis{grid-template-columns:1fr}.mat184-panel{padding:12px}.mat184-filtros-resumen{grid-template-columns:1fr 1fr}.mat184-tabs .mat184-import-mini{margin-left:0}.mat184-table{min-width:720px}}
   </style>
   <section class="mat184">
@@ -142,6 +142,7 @@ function mat184RenderResumen(){
         <label>Tipo<select id="mat184Tipo"><option>TODOS</option><option>INSTALACION</option><option>VISITA TECNICA</option></select></label>
         <label>Insumo<select id="mat184Insumo"><option value="TODOS">TODOS</option></select></label>
         <button class="mat184-btn" onclick="mat184ConsultarResumen()">Consultar</button>
+        <button class="mat184-btn" style="background:#475569" onclick="mat184AbrirConsultaCuadrilla()">Consultar cuadrilla</button>
       </div>
       <div id="mat184Resumen"><div class="mat184-status">Seleccione filtros y consulte.</div></div>
     </div>`;
@@ -182,6 +183,7 @@ async function mat184ConsultarPromedio(){
       tipoTrabajo:document.getElementById("mat184Tipo")?.value||"TODOS",
       material:document.getElementById("mat184Insumo")?.value||"TODOS"
     });
+    mat184UltimoResumen=r;
     const sel=document.getElementById("mat184Insumo");
     if(sel){
       const valor=sel.value||"TODOS";
@@ -206,6 +208,54 @@ async function mat184ConsultarPromedio(){
   }catch(e){if(c)c.innerHTML='<div class="mat184-status">❌ '+aeEscape(e.message)+'</div>'}
 }
 
+let mat184UltimoResumen=null;
+
+function mat184AbrirConsultaCuadrilla(){
+  const datos=mat184UltimoResumen;
+  if(!datos||!(datos.porCuadrilla||[]).length){
+    alert("Primero pulse Consultar para cargar la información del periodo seleccionado.");
+    return;
+  }
+  const opciones=(datos.porCuadrilla||[]).map((x,i)=>`<option value="${i}">${aeEscape(x.cuadrilla)} · ${aeEscape(x.sede)}</option>`).join("");
+  const fondo=document.createElement("div");
+  fondo.id="mat184ModalCuadrilla";
+  fondo.className="mat184-modal-fondo";
+  fondo.innerHTML=`<div class="mat184-modal" onclick="event.stopPropagation()">
+    <div class="mat184-modal-head"><div><h3 style="margin:0">Consulta por cuadrilla</h3><small>Detalle completo del periodo y filtros seleccionados</small></div><button class="mat184-cerrar" onclick="mat184CerrarConsultaCuadrilla()">Cerrar</button></div>
+    <div class="mat184-cuadrilla-selector"><label><b>Cuadrilla</b><select id="mat184CuadrillaSeleccionada">${opciones}</select></label><button class="mat184-btn" onclick="mat184MostrarCuadrillaSeleccionada()">Ver detalle</button></div>
+    <div id="mat184DetalleCuadrilla"></div>
+  </div>`;
+  fondo.onclick=mat184CerrarConsultaCuadrilla;
+  document.body.appendChild(fondo);
+  mat184MostrarCuadrillaSeleccionada();
+}
+
+function mat184CerrarConsultaCuadrilla(){
+  document.getElementById("mat184ModalCuadrilla")?.remove();
+}
+
+function mat184MostrarCuadrillaSeleccionada(){
+  const datos=mat184UltimoResumen;
+  const indice=Number(document.getElementById("mat184CuadrillaSeleccionada")?.value||0);
+  const x=(datos?.porCuadrilla||[])[indice];
+  const cont=document.getElementById("mat184DetalleCuadrilla");
+  if(!x||!cont)return;
+  const detalle=(x.detalle||[]).map(d=>`<tr><td>${aeEscape(d.material)}</td><td>${aeNumero(d.cantidad)}</td><td>${aeMoneda(d.precioUnitario)}</td><td>${aeMoneda(d.costo)}</td></tr>`).join("");
+  cont.innerHTML=`
+    <div class="mat184-kpis">
+      <div class="mat184-kpi"><span>Costo total</span><b>${aeMoneda(x.costo)}</b></div>
+      <div class="mat184-kpi"><span>Órdenes finalizadas</span><b>${aeNumero(x.ordenesFinalizadas)}</b></div>
+      <div class="mat184-kpi"><span>Costo promedio por orden</span><b>${x.ordenesFinalizadas>0?aeMoneda(x.costoPromedioOrden):"Sin órdenes finalizadas"}</b></div>
+    </div>
+    <div class="mat184-kpis">
+      <div class="mat184-kpi"><span>Cuadrilla</span><b style="font-size:16px">${aeEscape(x.cuadrilla)}</b></div>
+      <div class="mat184-kpi"><span>Sede</span><b style="font-size:18px">${aeEscape(x.sede)}</b></div>
+      <div class="mat184-kpi"><span>Cantidad total</span><b>${aeNumero(x.cantidad)}</b></div>
+    </div>
+    <h3>Detalle completo de insumos</h3>
+    <div style="overflow:auto"><table class="mat184-table"><thead><tr><th>Insumo</th><th>Cantidad</th><th>Costo unitario</th><th>Costo total</th></tr></thead><tbody>${detalle||'<tr><td colspan="4">Sin detalle</td></tr>'}</tbody></table></div>`;
+}
+
 async function mat184ConsultarResumen(){
   const c=document.getElementById("mat184Resumen");if(c)c.innerHTML='<div class="mat184-status">Calculando consumo...</div>';
   try{
@@ -217,6 +267,7 @@ async function mat184ConsultarResumen(){
       tipoTrabajo:document.getElementById("mat184Tipo")?.value||"TODOS",
       material:document.getElementById("mat184Insumo")?.value||"TODOS"
     });
+    mat184UltimoResumen=r;
     const sel=document.getElementById("mat184Insumo");
     if(sel){
       const valor=sel.value||"TODOS";

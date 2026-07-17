@@ -1,0 +1,8 @@
+MI VISUAL V191 - CONSULTA POR CUADRILLA EN MATERIALES
+
+Cambio realizado únicamente en js/analisis_economico.js:
+- Nuevo botón "Consultar cuadrilla" junto al botón Consultar del Resumen de consumo.
+- Abre una ventana con selector de cuadrilla.
+- Muestra costo total, órdenes finalizadas, costo promedio por orden, sede, cantidad total y detalle completo de insumos.
+- Respeta el periodo, sede, tipo e insumo de la consulta general realizada.
+- No modifica Apps Script ni otros módulos.
