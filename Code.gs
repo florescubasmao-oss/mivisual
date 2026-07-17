@@ -4798,10 +4798,78 @@ function indiceEncabezadoV184(encabezados, alternativas) {
   return -1;
 }
 
+function palabrasNombreMaterialesV185(valor) {
+  const ignorar = {"DE":true,"DEL":true,"LA":true,"LAS":true,"LOS":true,"Y":true,"VISUAL":true,"SGI":true,"SGA":true,"TRASLADO":true};
+  return normalizarTexto(valor || "")
+    .replace(/[^A-Z0-9 ]+/g, " ")
+    .split(/\s+/)
+    .filter(function(x){
+      return x && !ignorar[x] && !/^P\d+$/.test(x);
+    });
+}
+
+function distanciaLevenshteinMaterialesV185(a, b) {
+  a = String(a || "");
+  b = String(b || "");
+  if (a === b) return 0;
+  if (!a.length) return b.length;
+  if (!b.length) return a.length;
+  const anterior = [];
+  const actual = [];
+  for (let j=0;j<=b.length;j++) anterior[j] = j;
+  for (let i=1;i<=a.length;i++) {
+    actual[0] = i;
+    for (let j=1;j<=b.length;j++) {
+      const costo = a.charAt(i-1) === b.charAt(j-1) ? 0 : 1;
+      actual[j] = Math.min(actual[j-1]+1, anterior[j]+1, anterior[j-1]+costo);
+    }
+    for (let j=0;j<=b.length;j++) anterior[j] = actual[j];
+  }
+  return anterior[b.length];
+}
+
+function palabrasParecidasMaterialesV185(a, b) {
+  if (a === b) return true;
+  if (a.length >= 4 && b.length >= 4 && (a.indexOf(b) === 0 || b.indexOf(a) === 0)) return true;
+  const maxLen = Math.max(a.length, b.length);
+  if (maxLen < 5) return false;
+  return distanciaLevenshteinMaterialesV185(a, b) <= (maxLen >= 8 ? 2 : 1);
+}
+
+function puntuarNombreMaterialesV185(nombreImportado, registro) {
+  const origen = palabrasNombreMaterialesV185(nombreImportado);
+  const candidato = registro.palabrasBusqueda || [];
+  if (!origen.length || !candidato.length) return {puntaje:0, coincidencias:0};
+
+  const usados = {};
+  let coincidencias = 0;
+  origen.forEach(function(palabra){
+    let mejor = -1;
+    for (let i=0;i<candidato.length;i++) {
+      if (usados[i]) continue;
+      if (palabrasParecidasMaterialesV185(palabra, candidato[i])) {
+        mejor = i;
+        if (palabra === candidato[i]) break;
+      }
+    }
+    if (mejor >= 0) {
+      usados[mejor] = true;
+      coincidencias++;
+    }
+  });
+
+  const coberturaOrigen = coincidencias / origen.length;
+  const coberturaCandidato = coincidencias / Math.min(candidato.length, Math.max(origen.length, 4));
+  return {
+    puntaje: (coberturaOrigen * 0.75) + (coberturaCandidato * 0.25),
+    coincidencias: coincidencias
+  };
+}
+
 function obtenerMapaTecnicosMaterialesV184() {
   const hoja = obtenerHoja(HOJA_USUARIOS);
   const datos = hoja.getDataRange().getValues();
-  if (!datos.length) return {};
+  if (!datos.length) return {exactos:{}, registros:[]};
 
   const cab = datos[0];
   const iUsuario = indiceEncabezadoV184(cab, ["USUARIO"]);
@@ -4812,7 +4880,8 @@ function obtenerMapaTecnicosMaterialesV184() {
   const iEstado = indiceEncabezadoV184(cab, ["ESTADO"]);
   const iNombres = indiceEncabezadoV184(cab, ["NOMBRES_APELLIDOS","NOMBRES Y APELLIDOS","NOMBRES APELLIDOS"]);
 
-  const mapa = {};
+  const exactos = {};
+  const registros = [];
   for (let i=1;i<datos.length;i++) {
     const f = datos[i];
     const estado = normalizarTexto(iEstado >= 0 ? f[iEstado] : "ACTIVO");
@@ -4822,22 +4891,63 @@ function obtenerMapaTecnicosMaterialesV184() {
 
     const nombres = String(iNombres >= 0 ? f[iNombres] : "").trim();
     const usuario = String(iUsuario >= 0 ? f[iUsuario] : "").trim();
-    const clave = normalizarTexto(nombres || usuario);
-    if (!clave) continue;
+    const cuadrilla = normalizarCuadrilla(iCuadrilla >= 0 ? f[iCuadrilla] : "");
+    if (!cuadrilla) continue;
 
     const registro = {
-      tecnico: nombres || usuario,
+      tecnico: nombres || usuario || cuadrilla,
       usuario: usuario,
-      cuadrilla: normalizarCuadrilla(iCuadrilla >= 0 ? f[iCuadrilla] : ""),
+      cuadrilla: cuadrilla,
       sede: normalizarTexto(iSede >= 0 ? f[iSede] : ""),
-      plataforma: normalizarTexto(iPlataforma >= 0 ? f[iPlataforma] : "")
+      plataforma: normalizarTexto(iPlataforma >= 0 ? f[iPlataforma] : ""),
+      palabrasBusqueda: palabrasNombreMaterialesV185([nombres, usuario, cuadrilla].join(" "))
     };
+    registros.push(registro);
 
-    if (!registro.cuadrilla) continue;
-    if (!mapa[clave]) mapa[clave] = [];
-    mapa[clave].push(registro);
+    [nombres, usuario].forEach(function(alias){
+      const clave = normalizarTexto(alias || "");
+      if (!clave) return;
+      if (!exactos[clave]) exactos[clave] = [];
+      exactos[clave].push(registro);
+    });
   }
-  return mapa;
+  return {exactos:exactos, registros:registros};
+}
+
+function resolverTecnicoMaterialesV185(nombreImportado, baseTecnicos) {
+  const claveExacta = normalizarTexto(nombreImportado || "");
+  const exactas = (baseTecnicos.exactos && baseTecnicos.exactos[claveExacta]) || [];
+  if (exactas.length) {
+    const porCuadrilla = {};
+    exactas.forEach(function(x){ porCuadrilla[x.cuadrilla] = x; });
+    const claves = Object.keys(porCuadrilla);
+    if (claves.length === 1) return {estado:"ENCONTRADO", registro:porCuadrilla[claves[0]], metodo:"EXACTO"};
+    return {estado:"AMBIGUO", metodo:"EXACTO"};
+  }
+
+  const mejoresPorCuadrilla = {};
+  (baseTecnicos.registros || []).forEach(function(registro){
+    const evaluacion = puntuarNombreMaterialesV185(nombreImportado, registro);
+    const actual = mejoresPorCuadrilla[registro.cuadrilla];
+    if (!actual || evaluacion.puntaje > actual.puntaje) {
+      mejoresPorCuadrilla[registro.cuadrilla] = {
+        registro:registro,
+        puntaje:evaluacion.puntaje,
+        coincidencias:evaluacion.coincidencias
+      };
+    }
+  });
+
+  const candidatos = Object.keys(mejoresPorCuadrilla)
+    .map(function(k){ return mejoresPorCuadrilla[k]; })
+    .filter(function(x){ return x.coincidencias >= 2 && x.puntaje >= 0.72; })
+    .sort(function(a,b){ return b.puntaje - a.puntaje; });
+
+  if (!candidatos.length) return {estado:"NO_ENCONTRADO"};
+  if (candidatos.length > 1 && (candidatos[0].puntaje - candidatos[1].puntaje) < 0.10) {
+    return {estado:"AMBIGUO", metodo:"COINCIDENCIA", candidatos:candidatos.slice(0,3)};
+  }
+  return {estado:"ENCONTRADO", registro:candidatos[0].registro, metodo:"COINCIDENCIA", puntaje:candidatos[0].puntaje};
 }
 
 function obtenerCatalogoPreciosMaterialesV184() {
@@ -4948,21 +5058,17 @@ function procesarImportacionMaterialesV184(data) {
     const comentario = String(f[iComentario] || "").trim();
     if (!tecnicoOriginal) continue;
 
-    const coincidencias = mapaTecnicos[normalizarTexto(tecnicoOriginal)] || [];
-    if (!coincidencias.length) {
+    const resolucionTecnico = resolverTecnicoMaterialesV185(tecnicoOriginal, mapaTecnicos);
+    if (resolucionTecnico.estado === "NO_ENCONTRADO") {
       erroresTecnico[tecnicoOriginal] = true;
       continue;
     }
-
-    const cuadrillas = {};
-    coincidencias.forEach(x => cuadrillas[x.cuadrilla] = x);
-    const clavesCuadrilla = Object.keys(cuadrillas);
-    if (clavesCuadrilla.length !== 1) {
+    if (resolucionTecnico.estado === "AMBIGUO") {
       ambiguos[tecnicoOriginal] = true;
       continue;
     }
 
-    const datosTecnico = cuadrillas[clavesCuadrilla[0]];
+    const datosTecnico = resolucionTecnico.registro;
     const tipoTrabajo = clasificarTipoTrabajoMaterialesV184(comentario);
 
     const filaRaw = [fechaReferencia,mes,tecnicoOriginal,comentario];
@@ -5050,11 +5156,20 @@ function procesarImportacionMaterialesV184(data) {
     ).setValues(rawSalida);
   }
 
+  // V186: cada importación válida reemplaza completamente la base consolidada anterior.
+  // Se conserva únicamente la fila de encabezados de CONSUMO_MATERIALES.
+  // La limpieza se ejecuta después de validar toda la nueva base para evitar
+  // perder información cuando la importación contiene errores o no genera datos.
+  const ultimaFilaConsumoAnterior = hojas.consumo.getLastRow();
+  if (ultimaFilaConsumoAnterior > 1) {
+    hojas.consumo.getRange(2, 1, ultimaFilaConsumoAnterior - 1, hojas.consumo.getLastColumn()).clearContent();
+  }
+
   hojas.consumo.getRange(
-    hojas.consumo.getLastRow()+1,1,salidaConsumo.length,salidaConsumo[0].length
+    2,1,salidaConsumo.length,salidaConsumo[0].length
   ).setValues(salidaConsumo);
 
-  const inicio = hojas.consumo.getLastRow()-salidaConsumo.length+1;
+  const inicio = 2;
   hojas.consumo.getRange(inicio,1,salidaConsumo.length,1).setNumberFormat("dd/mm/yyyy");
   hojas.consumo.getRange(inicio,11,salidaConsumo.length,3).setNumberFormat('"S/ "0.00');
   hojas.consumo.getRange(inicio,15,salidaConsumo.length,1).setNumberFormat("dd/mm/yyyy hh:mm:ss");

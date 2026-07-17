@@ -1,0 +1,9 @@
+MI VISUAL V186 - REEMPLAZO TOTAL DE CONSUMO DE MATERIALES
+
+Cambio incremental aplicado:
+- Al procesar una nueva importación válida, se elimina toda la información anterior de la hoja CONSUMO_MATERIALES desde la fila 2.
+- Se conserva la fila 1 con los encabezados.
+- La nueva información consolidada se escribe desde la fila 2.
+- La limpieza solo ocurre después de validar que la nueva importación genera consumos válidos.
+- No se modifican IMPORTAR_MATERIALES, CATALOGO_PRECIOS_MATERIALES ni otros módulos.
+- Se mantiene la mejora V185 de coincidencia de técnicos y cuadrillas.
