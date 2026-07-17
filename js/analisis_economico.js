@@ -65,6 +65,7 @@ function mostrarCostoMateriales(){
     <div class="mat184-head"><h2>📦 Costo y consumo de materiales</h2></div>
     <div class="mat184-tabs">
       <button id="matTabResumen" class="activo" onclick="mat184CambiarVista('resumen')">Resumen de consumo</button>
+      <button id="matTabPromedio" onclick="mat184CambiarVista('promedio')">Promedio por cuadrilla</button>
       <button onclick="mostrarAnalisisEconomico()">Volver</button>
       <button id="matTabImportar" class="mat184-import-mini" onclick="mat184CambiarVista('importar')">Subir datos</button>
     </div>
@@ -76,7 +77,10 @@ function mostrarCostoMateriales(){
 function mat184CambiarVista(vista){
   document.getElementById("matTabImportar")?.classList.toggle("activo",vista==="importar");
   document.getElementById("matTabResumen")?.classList.toggle("activo",vista==="resumen");
-  if(vista==="importar")mat184RenderImportar();else mat184RenderResumen();
+  document.getElementById("matTabPromedio")?.classList.toggle("activo",vista==="promedio");
+  if(vista==="importar")mat184RenderImportar();
+  else if(vista==="promedio")mat184RenderPromedio();
+  else mat184RenderResumen();
 }
 
 function mat184RenderImportar(){
@@ -146,6 +150,57 @@ function mat184ToggleDetalle(btn,id){
   const fila=document.getElementById(id);if(!fila)return;
   const abierto=fila.classList.toggle("visible");
   btn.textContent=abierto?"Ocultar":"Detalle";
+}
+
+function mat184RenderPromedio(){
+  document.getElementById("mat184Contenido").innerHTML=`
+    <div class="mat184-panel">
+      <div class="mat184-filtros-resumen">
+        <label>Periodo<select id="mat184Periodo">${aePeriodoMesesMateriales()}</select></label>
+        <label>Sede<select id="mat184Sede"><option>TODAS</option><option>CHICLAYO</option><option>PIURA</option><option>TRUJILLO</option></select></label>
+        <label>Tipo<select id="mat184Tipo"><option>TODOS</option><option>INSTALACION</option><option>VISITA TECNICA</option></select></label>
+        <label>Insumo<select id="mat184Insumo"><option value="TODOS">TODOS</option></select></label>
+        <button class="mat184-btn" onclick="mat184ConsultarPromedio()">Consultar</button>
+      </div>
+      <div id="mat184Promedio" class="mat184-status">Consultando costo promedio por orden finalizada...</div>
+    </div>`;
+  mat184ConsultarPromedio();
+}
+
+async function mat184ConsultarPromedio(){
+  const c=document.getElementById("mat184Promedio");
+  if(c)c.innerHTML='<div class="mat184-status">Cruzando consumo con órdenes finalizadas...</div>';
+  try{
+    const r=await aeApiMateriales({
+      accion:"obtenerResumenMateriales",
+      usuario:localStorage.getItem("usuario"),
+      periodo:document.getElementById("mat184Periodo")?.value||"",
+      sede:document.getElementById("mat184Sede")?.value||"TODAS",
+      tipoTrabajo:document.getElementById("mat184Tipo")?.value||"TODOS",
+      material:document.getElementById("mat184Insumo")?.value||"TODOS"
+    });
+    const sel=document.getElementById("mat184Insumo");
+    if(sel){
+      const valor=sel.value||"TODOS";
+      sel.innerHTML='<option value="TODOS">TODOS</option>'+(r.materiales||[]).map(m=>`<option value="${aeEscape(m)}">${aeEscape(m)}</option>`).join("");
+      if([...sel.options].some(o=>o.value===valor))sel.value=valor;
+    }
+    const filas=(r.porCuadrilla||[]).map(x=>`<tr>
+      <td>${aeEscape(x.cuadrilla)}</td>
+      <td>${aeEscape(x.sede)}</td>
+      <td>${aeMoneda(x.costo)}</td>
+      <td>${aeNumero(x.ordenesFinalizadas)}</td>
+      <td><b>${x.ordenesFinalizadas>0?aeMoneda(x.costoPromedioOrden):'Sin órdenes finalizadas'}</b></td>
+    </tr>`).join("");
+    c.innerHTML=`
+      <div class="mat184-kpis">
+        <div class="mat184-kpi"><span>Costo total filtrado</span><b>${aeMoneda(r.costoTotal)}</b></div>
+        <div class="mat184-kpi"><span>Órdenes finalizadas</span><b>${aeNumero(r.totalOrdenesFinalizadas)}</b></div>
+        <div class="mat184-kpi"><span>Promedio general por orden</span><b>${r.totalOrdenesFinalizadas>0?aeMoneda(r.promedioGeneralOrden):'Sin órdenes finalizadas'}</b></div>
+      </div>
+      <h3>Promedio por cuadrilla</h3>
+      <div style="overflow:auto"><table class="mat184-table"><thead><tr><th>Cuadrilla</th><th>Sede</th><th>Costo total</th><th>Órdenes finalizadas</th><th>Costo promedio por orden</th></tr></thead><tbody>${filas||'<tr><td colspan="5">Sin información</td></tr>'}</tbody></table></div>`;
+  }catch(e){if(c)c.innerHTML='<div class="mat184-status">❌ '+aeEscape(e.message)+'</div>'}
 }
 
 async function mat184ConsultarResumen(){

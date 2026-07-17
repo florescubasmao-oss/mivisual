@@ -1,0 +1,17 @@
+MI VISUAL V189 - PROMEDIO DE MATERIALES POR CUADRILLA
+
+Cambios exclusivos del módulo Costo y consumo de materiales:
+- Nuevo botón Promedio por cuadrilla.
+- Cruce de CONSUMO_MATERIALES con EFECTIVIDAD mediante el campo Cuadrilla.
+- Usa la columna Finalizada de EFECTIVIDAD.
+- Cálculo: costo total filtrado / órdenes finalizadas.
+- Muestra costo total, órdenes finalizadas y costo promedio por orden.
+- Evita división entre cero mostrando Sin órdenes finalizadas.
+- Conserva filtros de periodo, sede, tipo e insumo.
+
+Archivos modificados:
+- js/analisis_economico.js
+- Code.gs
+- apps_script/Code.gs
+
+No se modificaron otros módulos.

@@ -5188,6 +5188,42 @@ function procesarImportacionMaterialesV184(data) {
   };
 }
 
+function obtenerFinalizadasEfectividadMateriales(periodo) {
+  const hoja = obtenerHoja(HOJA_EFECTIVIDAD);
+  const ultimaFila = hoja.getLastRow();
+  const mapa = {};
+  if (ultimaFila <= 1) return mapa;
+
+  const datos = hoja.getRange(2, 1, ultimaFila - 1, Math.min(10, hoja.getLastColumn())).getValues();
+  const meses = {ENERO:"01",FEBRERO:"02",MARZO:"03",ABRIL:"04",MAYO:"05",JUNIO:"06",JULIO:"07",AGOSTO:"08",SEPTIEMBRE:"09",SETIEMBRE:"09",OCTUBRE:"10",NOVIEMBRE:"11",DICIEMBRE:"12"};
+
+  function periodoFila(f) {
+    const id = String(f[0] || "");
+    const partes = id.split("|");
+    if (partes.length >= 2) {
+      const p = normalizarTexto(partes[1]);
+      const m = p.match(/^(ENERO|FEBRERO|MARZO|ABRIL|MAYO|JUNIO|JULIO|AGOSTO|SEPTIEMBRE|SETIEMBRE|OCTUBRE|NOVIEMBRE|DICIEMBRE)\s+(\d{4})$/);
+      if (m) return m[2] + "-" + meses[m[1]];
+      if (/^\d{4}-\d{2}$/.test(partes[1])) return partes[1];
+    }
+    const fecha = f[3];
+    if (fecha instanceof Date && !isNaN(fecha.getTime())) return Utilities.formatDate(fecha, Session.getScriptTimeZone(), "yyyy-MM");
+    const txt = String(fecha || "").trim();
+    const dmy = txt.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+    if (dmy) return dmy[3] + "-" + String(dmy[2]).padStart(2,"0");
+    return "";
+  }
+
+  datos.forEach(f => {
+    const per = periodoFila(f);
+    if (periodo && per && per !== periodo) return;
+    const cuadrilla = normalizarCuadrilla(f[2]);
+    if (!cuadrilla) return;
+    mapa[cuadrilla] = (mapa[cuadrilla] || 0) + (Number(f[4]) || 0);
+  });
+  return mapa;
+}
+
 function obtenerResumenMaterialesV184(data) {
   const usuario = obtenerUsuarioApp(data.usuario);
   if (!esPerfilMaterialesPermitido(usuario.perfil)) {
@@ -5196,7 +5232,7 @@ function obtenerResumenMaterialesV184(data) {
 
   const hojas = asegurarHojasMaterialesV184();
   if (hojas.consumo.getLastRow() <= 1) {
-    return {ok:true,modulo:"MATERIALES",registros:0,costoTotal:0,porSede:[],porTipo:[],porCuadrilla:[],materiales:[]};
+    return {ok:true,modulo:"MATERIALES",registros:0,costoTotal:0,totalOrdenesFinalizadas:0,promedioGeneralOrden:0,porSede:[],porTipo:[],porCuadrilla:[],materiales:[]};
   }
 
   const datos = hojas.consumo.getRange(2,1,hojas.consumo.getLastRow()-1,16).getValues();
@@ -5209,6 +5245,7 @@ function obtenerResumenMaterialesV184(data) {
   const porTipo = {};
   const porCuadrilla = {};
   const materialesDisponibles = {};
+  const finalizadasPorCuadrilla = obtenerFinalizadasEfectividadMateriales(periodo);
   let costoTotal = 0;
   let registros = 0;
 
@@ -5280,14 +5317,20 @@ function obtenerResumenMaterialesV184(data) {
       .map(m => item.detalleMapa[m])
       .sort((a,b) => b.costo - a.costo || a.material.localeCompare(b.material));
     delete item.detalleMapa;
+    item.ordenesFinalizadas = Number(finalizadasPorCuadrilla[item.cuadrilla]) || 0;
+    item.costoPromedioOrden = item.ordenesFinalizadas > 0 ? item.costo / item.ordenesFinalizadas : 0;
     return item;
   }).sort((a,b)=>b.costo-a.costo);
+
+  const totalOrdenesFinalizadas = listaCuadrillas.reduce((suma, item) => suma + (Number(item.ordenesFinalizadas) || 0), 0);
 
   return {
     ok:true,
     modulo:"MATERIALES",
     registros:registros,
     costoTotal:costoTotal,
+    totalOrdenesFinalizadas:totalOrdenesFinalizadas,
+    promedioGeneralOrden:totalOrdenesFinalizadas > 0 ? costoTotal / totalOrdenesFinalizadas : 0,
     materiales:Object.keys(materialesDisponibles).sort(),
     porSede:Object.keys(porSede).map(k=>porSede[k]).sort((a,b)=>b.costo-a.costo),
     porTipo:Object.keys(porTipo).map(k=>porTipo[k]).sort((a,b)=>b.costo-a.costo),
