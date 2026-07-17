@@ -185,6 +185,11 @@ function aplicarPermisosMenuActualizados(){
     const opciones = Array.isArray(dinamicos)
         ? dinamicos.map(x => PM_CARD_MAP[pmNorm(x.modulo)]).filter(Boolean)
         : [];
+    const perfilActual = (localStorage.getItem("perfil") || "").toUpperCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim();
+    // V190: Jefatura de Almacén accede a Análisis Económico únicamente para Materiales.
+    if (perfilActual === "JEFATURA ALMACEN" && !opciones.includes("cardAnalisisEconomico")) {
+        opciones.push("cardAnalisisEconomico");
+    }
     opciones.forEach(id => mostrarCardSeguro(id, true));
     const recursosIds = ['cardAccesos','cardBiblioteca','cardCapacitacion'];
     const recursosTitle = document.getElementById('mv55RecursosTitle');

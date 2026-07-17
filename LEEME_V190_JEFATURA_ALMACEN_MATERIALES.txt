@@ -1,0 +1,13 @@
+MI VISUAL V190 - ACCESO DE JEFATURA ALMACÉN A MATERIALES
+
+Cambios puntuales:
+1. JEFATURA ALMACÉN visualiza la tarjeta Análisis Económico aunque la configuración dinámica anterior no la mostrara.
+2. Dentro de Análisis Económico, JEFATURA ALMACÉN visualiza únicamente Costo y consumo de materiales.
+3. Producción valorizada continúa exclusiva para Jefatura general / Administración.
+4. Se conserva toda la lógica V189: resumen, detalle, filtros y promedio por cuadrilla.
+5. No se modificó ningún otro módulo ni la lógica de Apps Script.
+
+Archivos modificados:
+- js/app.js
+- js/analisis_economico.js
+- index.html (solo versión de caché)

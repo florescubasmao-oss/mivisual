@@ -12,7 +12,10 @@ function aeApiMateriales(payload){
   });
 }
 function aeEscape(v){return String(v==null?"":v).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]))}
-function aePerfilMateriales(){const p=(localStorage.getItem("perfil")||"").toUpperCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"").trim();return ["JEFATURA","JEFATURA GENERAL","JEFATURA ALMACEN","ADMIN","ADMINISTRADOR"].includes(p)}
+function aePerfilActual(){return (localStorage.getItem("perfil")||"").toUpperCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"").trim()}
+function aeEsJefaturaAlmacen(){return aePerfilActual()==="JEFATURA ALMACEN"}
+function aePerfilMateriales(){return ["JEFATURA","JEFATURA GENERAL","JEFATURA ALMACEN","ADMIN","ADMINISTRADOR"].includes(aePerfilActual())}
+function aePerfilProduccionValorizada(){return ["JEFATURA","JEFATURA GENERAL","ADMIN","ADMINISTRADOR"].includes(aePerfilActual())}
 function aePeriodoMesesMateriales(){return aeOpcionesPeriodo()}
 
 function mostrarAnalisisEconomico(){
@@ -36,7 +39,7 @@ function mostrarAnalisisEconomico(){
   <section class="ae184-home">
     <div class="ae184-head"><h2>📊 Análisis Económico</h2><p>Producción valorizada y control económico del consumo de materiales.</p></div>
     <div class="ae184-grid">
-      <button class="ae184-option" onclick="mostrarProduccionValorizada()"><span class="ico">💰</span><b>Producción valorizada</b><p>Valorización mensual, metas, sedes, cuadrillas y tipos de partida.</p></button>
+      ${aePerfilProduccionValorizada()?`<button class="ae184-option" onclick="mostrarProduccionValorizada()"><span class="ico">💰</span><b>Producción valorizada</b><p>Valorización mensual, metas, sedes, cuadrillas y tipos de partida.</p></button>`:""}
       <button class="ae184-option" onclick="mostrarCostoMateriales()"><span class="ico">📦</span><b>Costo y consumo de materiales</b><p>Importación, consolidación por cuadrilla, tipo de trabajo, sede y costo total.</p></button>
     </div>
   </section>`;
@@ -240,8 +243,7 @@ async function mat184ConsultarResumen(){
 const API_ANALISIS_ECONOMICO = "https://script.google.com/macros/s/AKfycbzcbjCLweJNgZXDerdzmMN7Lwotc1G8NWdzoPkaLNGDivAgpYxDkq78xZwPRioSB4XY/exec";
 
 function aePerfilPermitido(){
-  const p=(localStorage.getItem("perfil")||"").toUpperCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"").trim();
-  return ["JEFATURA","JEFATURA GENERAL","JEFATURA ALMACEN","ADMIN","ADMINISTRADOR"].includes(p);
+  return aePerfilMateriales();
 }
 function aeMoneda(v){return new Intl.NumberFormat("es-PE",{style:"currency",currency:"PEN",minimumFractionDigits:2}).format(Number(v)||0)}
 function aeNumero(v){return new Intl.NumberFormat("es-PE",{maximumFractionDigits:2}).format(Number(v)||0)}
@@ -251,7 +253,7 @@ function aePeriodoActual(){const d=new Date();return`${d.getFullYear()}-${String
 function aeOpcionesPeriodo(){const o=[],b=new Date();for(let i=0;i<18;i++){const d=new Date(b.getFullYear(),b.getMonth()-i,1),v=`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}`,l=d.toLocaleDateString("es-PE",{month:"long",year:"numeric"}).toUpperCase();o.push(`<option value="${v}">${l}</option>`)}return o.join("")}
 
 function mostrarProduccionValorizada(){
-  if(!aePerfilPermitido()){alert("Este módulo es exclusivo para Jefatura.");return}
+  if(!aePerfilProduccionValorizada()){alert("La producción valorizada es exclusiva para Jefatura general.");return}
   if(typeof limpiarPantalla==="function")limpiarPantalla();
   const menu=document.getElementById("menuPrincipal");if(menu)menu.style.display="none";
   if(typeof setBotonNavegacion==="function")setBotonNavegacion("modulo");
