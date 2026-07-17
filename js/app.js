@@ -52,8 +52,8 @@ function cerrarSesion(){
     const pantalla = document.getElementById("pantalla");
     const resultado = document.getElementById("resultadoProduccion");
 
-    // V193: aplicar la vista compacta después de identificar el perfil activo.
-    // En V192 esta clase se asignaba al cerrar sesión y no al construir el menú.
+    // V194: la clase compacta se aplica al construir el menú del perfil Técnico.
+    // No debe ejecutarse dentro de cerrarSesion porque allí no existe la variable perfil.
     if (menu) menu.classList.toggle("mv192-tecnico-menu", perfil === "TECNICO");
 
     const btn = document.getElementById("btnInicio");

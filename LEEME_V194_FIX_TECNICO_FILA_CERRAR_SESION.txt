@@ -1,0 +1,8 @@
+MI VISUAL V194
+
+Corrección puntual:
+- La clase visual de Técnico se aplica al construir el menú, no al cerrar sesión.
+- Producción, Efectividad, % Recableado y % VTR/GAR quedan en una sola fila para Técnico.
+- Se restaura el funcionamiento del botón Cerrar sesión, afectado por una referencia a la variable perfil fuera de alcance.
+- Se actualiza la versión de caché de estilos y app.js.
+- No se modifica Apps Script ni otros módulos.
