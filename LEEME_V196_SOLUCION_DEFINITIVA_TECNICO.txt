@@ -1,0 +1,15 @@
+MI VISUAL V196 - SOLUCIÓN DEFINITIVA TÉCNICO
+
+BASE SEGURA: V191.
+
+CAMBIOS ÚNICOS:
+1. Restaura app.js desde V191 para eliminar los errores introducidos en V192-V195.
+2. Corrige Cerrar sesión sin variables inexistentes.
+3. Aplica la clase visual dentro de configurarMenu(), donde corresponde.
+4. Muestra Producción, Efectividad, % Recableado y % VTR/GAR en una sola fila solo para Técnico.
+5. No modifica indicadores.js, login.js, Code.gs ni consultas de Producción.
+
+ACTUALIZACIÓN:
+- Code.gs / Apps Script: NO ACTUALIZAR.
+- Google Sheets: SIN CAMBIOS.
+- GitHub: REEMPLAZAR EL PROYECTO WEB CON ESTE ZIP.

@@ -51,15 +51,14 @@ function cerrarSesion(){
     const menu = document.getElementById("menuPrincipal");
     const pantalla = document.getElementById("pantalla");
     const resultado = document.getElementById("resultadoProduccion");
-
-    // V195: la clase compacta se aplica al construir el menú y solo para Técnico.
-    if (menu) menu.classList.toggle("mv192-tecnico-menu", perfil === "TECNICO");
-
     const btn = document.getElementById("btnInicio");
 
     if(panelLogin) panelLogin.style.display = "block";
     if(usuarioInfo) usuarioInfo.innerHTML = "";
-    if(menu) menu.style.display = "none";
+    if(menu) {
+        menu.classList.remove("mv196-tecnico-menu");
+        menu.style.display = "none";
+    }
     if(pantalla) pantalla.innerHTML = "";
     if(resultado) resultado.innerHTML = "";
     if(btn) btn.style.display = "none";
@@ -218,6 +217,11 @@ async function configurarMenu(){
         console.error("No existe el contenedor menuPrincipal. Se cancela la construcción del menú.");
         return;
     }
+
+    // V196: ajuste visual exclusivo del perfil Técnico.
+    // Se aplica durante la construcción real del menú, sin alterar cargas ni módulos.
+    menu.classList.toggle("mv196-tecnico-menu", perfil === "TECNICO");
+
     if (pantalla) pantalla.innerHTML = "";
     if (resultado) resultado.innerHTML = "";
     // Ocultar el menú mientras se consultan permisos y módulos habilitados.
@@ -393,3 +397,8 @@ window.addEventListener("load", function () {
         if (contenidoApp) contenidoApp.style.display = "block";
     }, 250);
 });
+
+
+// V196: exposición explícita para los botones HTML.
+window.accionBotonNavegacion = accionBotonNavegacion;
+window.cerrarSesion = cerrarSesion;
