@@ -5017,11 +5017,6 @@ function procesarImportacionMaterialesV184(data) {
   const lote = loteMaterialesV184(texto, fechaISO, usuario.usuario);
   const hojas = asegurarHojasMaterialesV184();
 
-  if (hojas.consumo.getLastRow() > 1) {
-    const lotes = hojas.consumo.getRange(2,16,hojas.consumo.getLastRow()-1,1).getDisplayValues().flat();
-    if (lotes.indexOf(lote) >= 0) throw new Error("Esta misma importación ya fue procesada");
-  }
-
   const lineas = texto.split(/\r?\n/).filter(x => String(x).trim() !== "");
   if (lineas.length < 2) throw new Error("La base debe incluir encabezados y registros");
 

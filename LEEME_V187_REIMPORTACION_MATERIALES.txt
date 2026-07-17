@@ -1,0 +1,16 @@
+MI VISUAL V187 - REIMPORTACION DE MATERIALES
+
+AJUSTE UNICO:
+- Se eliminó el bloqueo "Esta misma importación ya fue procesada".
+- Ahora se puede procesar nuevamente la misma base.
+- Cada procesamiento válido reemplaza completamente la información de CONSUMO_MATERIALES, conservando los encabezados.
+- Se mantiene la coincidencia mejorada de técnicos de V185.
+- No se modificaron otros módulos.
+
+ARCHIVOS MODIFICADOS:
+- Code.gs
+- apps_script/Code.gs
+
+IMPORTANTE:
+- El ZIP no incluye la carpeta .git para evitar reemplazar o alterar el historial local de GitHub Desktop.
+- Para Apps Script, copie/actualice Code.gs cuando corresponda y vuelva a implementar la aplicación web si el backend cambió.
