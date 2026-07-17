@@ -1,0 +1,15 @@
+MI VISUAL V185 - COINCIDENCIA DE TÉCNICOS EN COSTO DE MATERIALES
+
+Ajuste incremental sobre V184.
+
+Se mejoró únicamente la identificación del técnico durante la importación de materiales:
+- Mantiene primero la coincidencia exacta.
+- Reconoce nombres y apellidos aunque estén en diferente orden.
+- Ignora tildes, mayúsculas, espacios y palabras operativas de la cuadrilla.
+- Tolera diferencias ortográficas menores y nombres parcialmente escritos.
+- Busca también el nombre dentro del texto de la cuadrilla, útil cuando NOMBRES_APELLIDOS está vacío.
+- Cualquiera de los técnicos registrados permite identificar su cuadrilla.
+- Solo asigna automáticamente cuando existe una cuadrilla claramente única.
+- Los casos dudosos continúan reportándose como ambiguos para evitar asignaciones incorrectas.
+
+No se modificaron permisos, dashboards, descansos, PEXT, checklist, validación técnica ni otros módulos.
