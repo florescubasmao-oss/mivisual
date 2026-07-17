@@ -5196,17 +5196,19 @@ function obtenerResumenMaterialesV184(data) {
 
   const hojas = asegurarHojasMaterialesV184();
   if (hojas.consumo.getLastRow() <= 1) {
-    return {ok:true,modulo:"MATERIALES",registros:0,costoTotal:0,porSede:[],porTipo:[],porCuadrilla:[]};
+    return {ok:true,modulo:"MATERIALES",registros:0,costoTotal:0,porSede:[],porTipo:[],porCuadrilla:[],materiales:[]};
   }
 
   const datos = hojas.consumo.getRange(2,1,hojas.consumo.getLastRow()-1,16).getValues();
   const periodo = String(data.periodo || "").trim();
   const sedeFiltro = normalizarTexto(data.sede || "");
   const tipoFiltro = normalizarTexto(data.tipoTrabajo || "");
+  const materialFiltro = normalizarTexto(data.material || "");
 
   const porSede = {};
   const porTipo = {};
   const porCuadrilla = {};
+  const materialesDisponibles = {};
   let costoTotal = 0;
   let registros = 0;
 
@@ -5216,12 +5218,23 @@ function obtenerResumenMaterialesV184(data) {
     const sede = normalizarTexto(f[2]);
     const cuadrilla = normalizarCuadrilla(f[4]);
     const tipo = normalizarTexto(f[6]);
+    const material = normalizarTexto(f[8]);
     const cantidad = Number(f[9]) || 0;
+    const precioUnitario = Number(f[10]) || 0;
     const costo = Number(f[11]) || 0;
+
+    // El catálogo de insumos se arma respetando periodo, sede y tipo,
+    // pero antes de aplicar el propio filtro de material.
+    if ((!periodo || per === periodo) &&
+        (!sedeFiltro || sedeFiltro === "TODAS" || sede === sedeFiltro) &&
+        (!tipoFiltro || tipoFiltro === "TODOS" || tipo === tipoFiltro) && material) {
+      materialesDisponibles[material] = true;
+    }
 
     if (periodo && per !== periodo) return;
     if (sedeFiltro && sedeFiltro !== "TODAS" && sede !== sedeFiltro) return;
     if (tipoFiltro && tipoFiltro !== "TODOS" && tipo !== tipoFiltro) return;
+    if (materialFiltro && materialFiltro !== "TODOS" && material !== materialFiltro) return;
 
     registros++;
     costoTotal += costo;
@@ -5234,19 +5247,51 @@ function obtenerResumenMaterialesV184(data) {
     porTipo[tipo].cantidad += cantidad;
     porTipo[tipo].costo += costo;
 
-    if (!porCuadrilla[cuadrilla]) porCuadrilla[cuadrilla] = {cuadrilla:cuadrilla,sede:sede,cantidad:0,costo:0};
+    if (!porCuadrilla[cuadrilla]) {
+      porCuadrilla[cuadrilla] = {
+        cuadrilla:cuadrilla,
+        sede:sede,
+        cantidad:0,
+        costo:0,
+        detalleMapa:{}
+      };
+    }
     porCuadrilla[cuadrilla].cantidad += cantidad;
     porCuadrilla[cuadrilla].costo += costo;
+
+    if (!porCuadrilla[cuadrilla].detalleMapa[material]) {
+      porCuadrilla[cuadrilla].detalleMapa[material] = {
+        material:material,
+        cantidad:0,
+        costo:0,
+        precioUnitario:precioUnitario
+      };
+    }
+    const detalle = porCuadrilla[cuadrilla].detalleMapa[material];
+    detalle.cantidad += cantidad;
+    detalle.costo += costo;
+    // Precio promedio ponderado para conservar exactitud si el catálogo cambia.
+    detalle.precioUnitario = detalle.cantidad > 0 ? detalle.costo / detalle.cantidad : precioUnitario;
   });
+
+  const listaCuadrillas = Object.keys(porCuadrilla).map(k => {
+    const item = porCuadrilla[k];
+    item.detalle = Object.keys(item.detalleMapa)
+      .map(m => item.detalleMapa[m])
+      .sort((a,b) => b.costo - a.costo || a.material.localeCompare(b.material));
+    delete item.detalleMapa;
+    return item;
+  }).sort((a,b)=>b.costo-a.costo);
 
   return {
     ok:true,
     modulo:"MATERIALES",
     registros:registros,
     costoTotal:costoTotal,
+    materiales:Object.keys(materialesDisponibles).sort(),
     porSede:Object.keys(porSede).map(k=>porSede[k]).sort((a,b)=>b.costo-a.costo),
     porTipo:Object.keys(porTipo).map(k=>porTipo[k]).sort((a,b)=>b.costo-a.costo),
-    porCuadrilla:Object.keys(porCuadrilla).map(k=>porCuadrilla[k]).sort((a,b)=>b.costo-a.costo)
+    porCuadrilla:listaCuadrillas
   };
 }
 

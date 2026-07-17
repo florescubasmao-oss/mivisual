@@ -1,0 +1,15 @@
+MI VISUAL V188 - AJUSTES RESUMEN DE CONSUMO DE MATERIALES
+
+Cambios incrementales realizados:
+- Se retiró el texto explicativo debajo del título del módulo.
+- La vista abre directamente en Resumen de consumo.
+- El botón para subir datos queda pequeño y alineado al lado derecho.
+- Se agregó filtro por insumo/material.
+- Se agregó detalle desplegable por cuadrilla con insumo, cantidad, costo unitario y costo total.
+- Se conserva la importación, reemplazo total de CONSUMO_MATERIALES y coincidencia mejorada de técnicos.
+- No se modificaron otros módulos.
+
+Archivos modificados:
+- js/analisis_economico.js
+- Code.gs
+- apps_script/Code.gs

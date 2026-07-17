@@ -58,18 +58,19 @@ function mostrarCostoMateriales(){
     .mat184-grid{display:grid;grid-template-columns:200px 1fr;gap:12px;align-items:end}.mat184-grid label{font-weight:800;font-size:12px}.mat184-grid input,.mat184-grid select,.mat184-grid textarea{width:100%;box-sizing:border-box;padding:10px;border:1px solid #94a3b8;border-radius:9px}
     .mat184-grid textarea{height:300px;font-family:monospace;white-space:pre}.mat184-status{margin-top:12px;padding:12px;border-radius:10px;background:#eff6ff}.mat184-kpis{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin:12px 0}.mat184-kpi{background:#e0f2fe;border-radius:12px;padding:14px}.mat184-kpi b{font-size:23px;display:block}
     .mat184-table{width:100%;border-collapse:collapse}.mat184-table th,.mat184-table td{padding:8px;border-bottom:1px solid #e2e8f0;text-align:left}.mat184-table th{background:#f1f5f9}
-    @media(max-width:700px){.mat184-grid{grid-template-columns:1fr}.mat184-kpis{grid-template-columns:1fr}.mat184-panel{padding:12px}}
+    .mat184-tabs{align-items:center}.mat184-tabs .mat184-import-mini{margin-left:auto;background:#0ea5e9!important;padding:8px 11px;font-size:12px}.mat184-detalle-btn{border:0;border-radius:7px;padding:6px 9px;font-size:12px;font-weight:800;background:#334155;color:#fff;cursor:pointer}.mat184-detalle-fila{display:none;background:#f8fafc}.mat184-detalle-fila.visible{display:table-row}.mat184-detalle-wrap{padding:10px 6px}.mat184-subtabla{width:100%;border-collapse:collapse}.mat184-subtabla th,.mat184-subtabla td{padding:7px;border-bottom:1px solid #dbeafe;font-size:12px}.mat184-subtabla th{background:#e0f2fe}.mat184-filtros-resumen{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:10px;align-items:end}
+    @media(max-width:700px){.mat184-grid{grid-template-columns:1fr}.mat184-kpis{grid-template-columns:1fr}.mat184-panel{padding:12px}.mat184-filtros-resumen{grid-template-columns:1fr 1fr}.mat184-tabs .mat184-import-mini{margin-left:0}.mat184-table{min-width:720px}}
   </style>
   <section class="mat184">
-    <div class="mat184-head"><h2>📦 Costo y consumo de materiales</h2><p>El técnico se sincroniza con USUARIOS. INSTALACIÓN se detecta por comentario; cualquier otro comentario o vacío se clasifica como VISITA TÉCNICA.</p></div>
+    <div class="mat184-head"><h2>📦 Costo y consumo de materiales</h2></div>
     <div class="mat184-tabs">
-      <button id="matTabImportar" class="activo" onclick="mat184CambiarVista('importar')">Importar materiales</button>
-      <button id="matTabResumen" onclick="mat184CambiarVista('resumen')">Resumen de consumo</button>
+      <button id="matTabResumen" class="activo" onclick="mat184CambiarVista('resumen')">Resumen de consumo</button>
       <button onclick="mostrarAnalisisEconomico()">Volver</button>
+      <button id="matTabImportar" class="mat184-import-mini" onclick="mat184CambiarVista('importar')">Subir datos</button>
     </div>
     <div id="mat184Contenido"></div>
   </section>`;
-  mat184CambiarVista("importar");
+  mat184CambiarVista("resumen");
 }
 
 function mat184CambiarVista(vista){
@@ -128,16 +129,23 @@ async function mat184Procesar(){
 function mat184RenderResumen(){
   document.getElementById("mat184Contenido").innerHTML=`
     <div class="mat184-panel">
-      <div class="mat184-grid" style="grid-template-columns:repeat(4,minmax(0,1fr))">
+      <div class="mat184-filtros-resumen">
         <label>Periodo<select id="mat184Periodo">${aePeriodoMesesMateriales()}</select></label>
         <label>Sede<select id="mat184Sede"><option>TODAS</option><option>CHICLAYO</option><option>PIURA</option><option>TRUJILLO</option></select></label>
         <label>Tipo<select id="mat184Tipo"><option>TODOS</option><option>INSTALACION</option><option>VISITA TECNICA</option></select></label>
+        <label>Insumo<select id="mat184Insumo"><option value="TODOS">TODOS</option></select></label>
         <button class="mat184-btn" onclick="mat184ConsultarResumen()">Consultar</button>
       </div>
       <div id="mat184Resumen"><div class="mat184-status">Seleccione filtros y consulte.</div></div>
     </div>`;
   document.getElementById("mat184Periodo").value=aePeriodoActual();
   mat184ConsultarResumen();
+}
+
+function mat184ToggleDetalle(btn,id){
+  const fila=document.getElementById(id);if(!fila)return;
+  const abierto=fila.classList.toggle("visible");
+  btn.textContent=abierto?"Ocultar":"Detalle";
 }
 
 async function mat184ConsultarResumen(){
@@ -148,17 +156,28 @@ async function mat184ConsultarResumen(){
       usuario:localStorage.getItem("usuario"),
       periodo:document.getElementById("mat184Periodo")?.value||"",
       sede:document.getElementById("mat184Sede")?.value||"TODAS",
-      tipoTrabajo:document.getElementById("mat184Tipo")?.value||"TODOS"
+      tipoTrabajo:document.getElementById("mat184Tipo")?.value||"TODOS",
+      material:document.getElementById("mat184Insumo")?.value||"TODOS"
     });
-    const filas=(r.porCuadrilla||[]).slice(0,20).map(x=>`<tr><td>${aeEscape(x.cuadrilla)}</td><td>${aeEscape(x.sede)}</td><td>${aeNumero(x.cantidad)}</td><td>${aeMoneda(x.costo)}</td></tr>`).join("");
+    const sel=document.getElementById("mat184Insumo");
+    if(sel){
+      const valor=sel.value||"TODOS";
+      sel.innerHTML='<option value="TODOS">TODOS</option>'+(r.materiales||[]).map(m=>`<option value="${aeEscape(m)}">${aeEscape(m)}</option>`).join("");
+      if([...sel.options].some(o=>o.value===valor))sel.value=valor;
+    }
+    const filas=(r.porCuadrilla||[]).map((x,i)=>{
+      const id=`matDet${i}`;
+      const detalle=(x.detalle||[]).map(d=>`<tr><td>${aeEscape(d.material)}</td><td>${aeNumero(d.cantidad)}</td><td>${aeMoneda(d.precioUnitario)}</td><td>${aeMoneda(d.costo)}</td></tr>`).join("");
+      return `<tr><td>${aeEscape(x.cuadrilla)}</td><td>${aeEscape(x.sede)}</td><td>${aeNumero(x.cantidad)}</td><td>${aeMoneda(x.costo)}</td><td><button class="mat184-detalle-btn" onclick="mat184ToggleDetalle(this,'${id}')">Detalle</button></td></tr><tr id="${id}" class="mat184-detalle-fila"><td colspan="5"><div class="mat184-detalle-wrap"><table class="mat184-subtabla"><thead><tr><th>Insumo</th><th>Cantidad</th><th>Costo unitario</th><th>Costo total</th></tr></thead><tbody>${detalle||'<tr><td colspan="4">Sin detalle</td></tr>'}</tbody></table></div></td></tr>`;
+    }).join("");
     c.innerHTML=`
       <div class="mat184-kpis">
         <div class="mat184-kpi"><span>Costo total</span><b>${aeMoneda(r.costoTotal)}</b></div>
         <div class="mat184-kpi"><span>Registros</span><b>${aeNumero(r.registros)}</b></div>
         <div class="mat184-kpi"><span>Cuadrillas</span><b>${aeNumero((r.porCuadrilla||[]).length)}</b></div>
       </div>
-      <h3>Mayor costo por cuadrilla</h3>
-      <div style="overflow:auto"><table class="mat184-table"><thead><tr><th>Cuadrilla</th><th>Sede</th><th>Cantidad</th><th>Costo</th></tr></thead><tbody>${filas||'<tr><td colspan="4">Sin información</td></tr>'}</tbody></table></div>`;
+      <h3>Consumo por cuadrilla</h3>
+      <div style="overflow:auto"><table class="mat184-table"><thead><tr><th>Cuadrilla</th><th>Sede</th><th>Cantidad</th><th>Costo</th><th></th></tr></thead><tbody>${filas||'<tr><td colspan="5">Sin información</td></tr>'}</tbody></table></div>`;
   }catch(e){if(c)c.innerHTML='<div class="mat184-status">❌ '+aeEscape(e.message)+'</div>'}
 }
 
