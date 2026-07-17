@@ -1,9 +1,173 @@
+
+// V184 - Menú económico con Producción valorizada y Costo de materiales
+function aeApiMateriales(payload){
+  return fetch(API_ANALISIS_ECONOMICO,{
+    method:"POST",
+    headers:{"Content-Type":"text/plain;charset=utf-8"},
+    body:JSON.stringify(payload)
+  }).then(async r=>{
+    const data=await r.json();
+    if(!data.ok)throw new Error(data.error||"Error en materiales");
+    return data;
+  });
+}
+function aeEscape(v){return String(v==null?"":v).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]))}
+function aePerfilMateriales(){const p=(localStorage.getItem("perfil")||"").toUpperCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"").trim();return ["JEFATURA","JEFATURA GENERAL","JEFATURA ALMACEN","ADMIN","ADMINISTRADOR"].includes(p)}
+function aePeriodoMesesMateriales(){return aeOpcionesPeriodo()}
+
+function mostrarAnalisisEconomico(){
+  if(!aePerfilPermitido()){alert("No tienes acceso a Análisis Económico.");return}
+  if(typeof limpiarPantalla==="function")limpiarPantalla();
+  const menu=document.getElementById("menuPrincipal");if(menu)menu.style.display="none";
+  if(typeof setBotonNavegacion==="function")setBotonNavegacion("modulo");
+  const pantalla=document.getElementById("pantalla");
+  if(!pantalla)return;
+  pantalla.innerHTML=`
+  <style>
+    .ae184-home{max-width:1000px;margin:auto;padding:18px;color:#fff}
+    .ae184-head{background:linear-gradient(110deg,#2563eb,#0f766e);padding:20px;border-radius:20px;margin-bottom:16px}
+    .ae184-head h2{margin:0 0 4px}.ae184-head p{margin:0;opacity:.92}
+    .ae184-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:15px}
+    .ae184-option{background:#fff;color:#0f172a;border:2px solid #bfdbfe;border-radius:18px;padding:22px;cursor:pointer;box-shadow:0 10px 22px rgba(2,6,23,.18);min-height:145px;text-align:left}
+    .ae184-option:hover{border-color:#2563eb;transform:translateY(-2px)}
+    .ae184-option .ico{font-size:38px;display:block;margin-bottom:8px}.ae184-option b{font-size:20px}.ae184-option p{font-size:13px;color:#475569}
+    @media(max-width:700px){.ae184-grid{grid-template-columns:1fr}}
+  </style>
+  <section class="ae184-home">
+    <div class="ae184-head"><h2>📊 Análisis Económico</h2><p>Producción valorizada y control económico del consumo de materiales.</p></div>
+    <div class="ae184-grid">
+      <button class="ae184-option" onclick="mostrarProduccionValorizada()"><span class="ico">💰</span><b>Producción valorizada</b><p>Valorización mensual, metas, sedes, cuadrillas y tipos de partida.</p></button>
+      <button class="ae184-option" onclick="mostrarCostoMateriales()"><span class="ico">📦</span><b>Costo y consumo de materiales</b><p>Importación, consolidación por cuadrilla, tipo de trabajo, sede y costo total.</p></button>
+    </div>
+  </section>`;
+  window.scrollTo({top:0,behavior:"smooth"});
+}
+
+function mostrarCostoMateriales(){
+  if(!aePerfilMateriales()){alert("No tienes permiso para consumo de materiales.");return}
+  if(typeof limpiarPantalla==="function")limpiarPantalla();
+  const menu=document.getElementById("menuPrincipal");if(menu)menu.style.display="none";
+  if(typeof setBotonNavegacion==="function")setBotonNavegacion("modulo");
+  const pantalla=document.getElementById("pantalla");if(!pantalla)return;
+  pantalla.innerHTML=`
+  <style>
+    .mat184{max-width:1120px;margin:auto;padding:16px;color:#fff}.mat184-head{background:linear-gradient(110deg,#ea580c,#b45309);padding:18px;border-radius:18px}
+    .mat184-head h2{margin:0}.mat184-tabs{display:flex;gap:8px;flex-wrap:wrap;margin:14px 0}.mat184-tabs button,.mat184-btn{border:0;border-radius:10px;padding:11px 15px;font-weight:800;cursor:pointer;background:#0ea5e9;color:#fff}
+    .mat184-tabs button{background:#334155}.mat184-tabs button.activo{background:#0ea5e9}
+    .mat184-panel{background:#fff;color:#0f172a;border-radius:18px;padding:16px;box-shadow:0 10px 24px rgba(2,6,23,.25)}
+    .mat184-grid{display:grid;grid-template-columns:200px 1fr;gap:12px;align-items:end}.mat184-grid label{font-weight:800;font-size:12px}.mat184-grid input,.mat184-grid select,.mat184-grid textarea{width:100%;box-sizing:border-box;padding:10px;border:1px solid #94a3b8;border-radius:9px}
+    .mat184-grid textarea{height:300px;font-family:monospace;white-space:pre}.mat184-status{margin-top:12px;padding:12px;border-radius:10px;background:#eff6ff}.mat184-kpis{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin:12px 0}.mat184-kpi{background:#e0f2fe;border-radius:12px;padding:14px}.mat184-kpi b{font-size:23px;display:block}
+    .mat184-table{width:100%;border-collapse:collapse}.mat184-table th,.mat184-table td{padding:8px;border-bottom:1px solid #e2e8f0;text-align:left}.mat184-table th{background:#f1f5f9}
+    @media(max-width:700px){.mat184-grid{grid-template-columns:1fr}.mat184-kpis{grid-template-columns:1fr}.mat184-panel{padding:12px}}
+  </style>
+  <section class="mat184">
+    <div class="mat184-head"><h2>📦 Costo y consumo de materiales</h2><p>El técnico se sincroniza con USUARIOS. INSTALACIÓN se detecta por comentario; cualquier otro comentario o vacío se clasifica como VISITA TÉCNICA.</p></div>
+    <div class="mat184-tabs">
+      <button id="matTabImportar" class="activo" onclick="mat184CambiarVista('importar')">Importar materiales</button>
+      <button id="matTabResumen" onclick="mat184CambiarVista('resumen')">Resumen de consumo</button>
+      <button onclick="mostrarAnalisisEconomico()">Volver</button>
+    </div>
+    <div id="mat184Contenido"></div>
+  </section>`;
+  mat184CambiarVista("importar");
+}
+
+function mat184CambiarVista(vista){
+  document.getElementById("matTabImportar")?.classList.toggle("activo",vista==="importar");
+  document.getElementById("matTabResumen")?.classList.toggle("activo",vista==="resumen");
+  if(vista==="importar")mat184RenderImportar();else mat184RenderResumen();
+}
+
+function mat184RenderImportar(){
+  const hoy=new Date().toISOString().slice(0,10);
+  document.getElementById("mat184Contenido").innerHTML=`
+    <div class="mat184-panel">
+      <div class="mat184-grid">
+        <label>Fecha de referencia<input id="mat184Fecha" type="date" value="${hoy}"></label>
+        <div><b>Base original</b><small style="display:block;color:#64748b">Debe incluir las columnas Técnico, Comentario y materiales.</small></div>
+      </div>
+      <textarea id="mat184Texto" style="width:100%;height:330px;margin-top:12px;box-sizing:border-box;border:1px solid #94a3b8;border-radius:10px;padding:10px;font-family:monospace" placeholder="Pegue aquí la base desde Excel o Google Sheets..."></textarea>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:12px">
+        <button class="mat184-btn" onclick="mat184Procesar()">Procesar materiales</button>
+        <button class="mat184-btn" style="background:#475569" onclick="mat184CrearHojas()">Crear/verificar hojas</button>
+      </div>
+      <div id="mat184Estado" class="mat184-status">Listo para recibir información.</div>
+    </div>`;
+}
+
+async function mat184CrearHojas(){
+  const est=document.getElementById("mat184Estado");if(est)est.textContent="Verificando hojas...";
+  try{
+    const r=await aeApiMateriales({accion:"asegurarHojasMateriales",usuario:localStorage.getItem("usuario")});
+    if(est)est.innerHTML=`✅ Hojas listas: <b>${r.hojas.map(aeEscape).join(", ")}</b>`;
+  }catch(e){if(est)est.textContent="❌ "+e.message}
+}
+
+async function mat184Procesar(){
+  const texto=document.getElementById("mat184Texto")?.value||"";
+  const fechaReferencia=document.getElementById("mat184Fecha")?.value||"";
+  const est=document.getElementById("mat184Estado");
+  if(!texto.trim()){alert("Pegue primero la base de materiales.");return}
+  if(est)est.textContent="Procesando y consolidando por cuadrilla...";
+  try{
+    const r=await aeApiMateriales({accion:"procesarImportacionMateriales",usuario:localStorage.getItem("usuario"),fechaReferencia,texto});
+    const noEncontrados=(r.tecnicosNoEncontrados||[]);
+    const ambiguos=(r.tecnicosAmbiguos||[]);
+    const invalidos=(r.valoresInvalidos||[]);
+    if(est)est.innerHTML=`
+      <b>✅ Importación procesada</b><br>
+      Filas origen: ${r.filasOrigen}<br>
+      Registros consolidados: ${r.filasConsolidadas}<br>
+      Técnicos no encontrados: ${noEncontrados.length}${noEncontrados.length?`<br><small>${noEncontrados.map(aeEscape).join(" · ")}</small>`:""}<br>
+      Técnicos ambiguos: ${ambiguos.length}${ambiguos.length?`<br><small>${ambiguos.map(aeEscape).join(" · ")}</small>`:""}<br>
+      Valores no numéricos ignorados: ${r.totalInvalidos||0}${invalidos.length?`<br><small>${invalidos.map(x=>`Fila ${x.fila}: ${aeEscape(x.tecnico)} / ${aeEscape(x.material)} = ${aeEscape(x.valor)}`).join("<br>")}</small>`:""}`;
+    document.getElementById("mat184Texto").value="";
+  }catch(e){if(est)est.textContent="❌ "+e.message}
+}
+
+function mat184RenderResumen(){
+  document.getElementById("mat184Contenido").innerHTML=`
+    <div class="mat184-panel">
+      <div class="mat184-grid" style="grid-template-columns:repeat(4,minmax(0,1fr))">
+        <label>Periodo<select id="mat184Periodo">${aePeriodoMesesMateriales()}</select></label>
+        <label>Sede<select id="mat184Sede"><option>TODAS</option><option>CHICLAYO</option><option>PIURA</option><option>TRUJILLO</option></select></label>
+        <label>Tipo<select id="mat184Tipo"><option>TODOS</option><option>INSTALACION</option><option>VISITA TECNICA</option></select></label>
+        <button class="mat184-btn" onclick="mat184ConsultarResumen()">Consultar</button>
+      </div>
+      <div id="mat184Resumen"><div class="mat184-status">Seleccione filtros y consulte.</div></div>
+    </div>`;
+  document.getElementById("mat184Periodo").value=aePeriodoActual();
+  mat184ConsultarResumen();
+}
+
+async function mat184ConsultarResumen(){
+  const c=document.getElementById("mat184Resumen");if(c)c.innerHTML='<div class="mat184-status">Calculando consumo...</div>';
+  try{
+    const r=await aeApiMateriales({
+      accion:"obtenerResumenMateriales",
+      usuario:localStorage.getItem("usuario"),
+      periodo:document.getElementById("mat184Periodo")?.value||"",
+      sede:document.getElementById("mat184Sede")?.value||"TODAS",
+      tipoTrabajo:document.getElementById("mat184Tipo")?.value||"TODOS"
+    });
+    const filas=(r.porCuadrilla||[]).slice(0,20).map(x=>`<tr><td>${aeEscape(x.cuadrilla)}</td><td>${aeEscape(x.sede)}</td><td>${aeNumero(x.cantidad)}</td><td>${aeMoneda(x.costo)}</td></tr>`).join("");
+    c.innerHTML=`
+      <div class="mat184-kpis">
+        <div class="mat184-kpi"><span>Costo total</span><b>${aeMoneda(r.costoTotal)}</b></div>
+        <div class="mat184-kpi"><span>Registros</span><b>${aeNumero(r.registros)}</b></div>
+        <div class="mat184-kpi"><span>Cuadrillas</span><b>${aeNumero((r.porCuadrilla||[]).length)}</b></div>
+      </div>
+      <h3>Mayor costo por cuadrilla</h3>
+      <div style="overflow:auto"><table class="mat184-table"><thead><tr><th>Cuadrilla</th><th>Sede</th><th>Cantidad</th><th>Costo</th></tr></thead><tbody>${filas||'<tr><td colspan="4">Sin información</td></tr>'}</tbody></table></div>`;
+  }catch(e){if(c)c.innerHTML='<div class="mat184-status">❌ '+aeEscape(e.message)+'</div>'}
+}
+
 // MI VISUAL v70 - Módulo Análisis Económico
 const API_ANALISIS_ECONOMICO = "https://script.google.com/macros/s/AKfycbzcbjCLweJNgZXDerdzmMN7Lwotc1G8NWdzoPkaLNGDivAgpYxDkq78xZwPRioSB4XY/exec";
 
 function aePerfilPermitido(){
   const p=(localStorage.getItem("perfil")||"").toUpperCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"").trim();
-  return ["JEFATURA","ADMIN","ADMINISTRADOR"].includes(p);
+  return ["JEFATURA","JEFATURA GENERAL","JEFATURA ALMACEN","ADMIN","ADMINISTRADOR"].includes(p);
 }
 function aeMoneda(v){return new Intl.NumberFormat("es-PE",{style:"currency",currency:"PEN",minimumFractionDigits:2}).format(Number(v)||0)}
 function aeNumero(v){return new Intl.NumberFormat("es-PE",{maximumFractionDigits:2}).format(Number(v)||0)}
@@ -12,7 +176,7 @@ function aeClaseCumplimiento(v){const p=(Number(v)||0)*100;if(p>=100)return"ae-o
 function aePeriodoActual(){const d=new Date();return`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}`}
 function aeOpcionesPeriodo(){const o=[],b=new Date();for(let i=0;i<18;i++){const d=new Date(b.getFullYear(),b.getMonth()-i,1),v=`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}`,l=d.toLocaleDateString("es-PE",{month:"long",year:"numeric"}).toUpperCase();o.push(`<option value="${v}">${l}</option>`)}return o.join("")}
 
-function mostrarAnalisisEconomico(){
+function mostrarProduccionValorizada(){
   if(!aePerfilPermitido()){alert("Este módulo es exclusivo para Jefatura.");return}
   if(typeof limpiarPantalla==="function")limpiarPantalla();
   const menu=document.getElementById("menuPrincipal");if(menu)menu.style.display="none";

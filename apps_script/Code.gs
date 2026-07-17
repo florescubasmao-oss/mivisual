@@ -4691,6 +4691,456 @@ function conformidadFinalTrabajoConjunta(data){
 }
 
 
+
+/* =========================================================
+   V184 - IMPORTACIÓN Y CONSOLIDACIÓN DE CONSUMO DE MATERIALES
+========================================================= */
+
+const HOJA_IMPORTAR_MATERIALES = "IMPORTAR_MATERIALES";
+const HOJA_CONSUMO_MATERIALES = "CONSUMO_MATERIALES";
+const HOJA_CATALOGO_PRECIOS_MATERIALES = "CATALOGO_PRECIOS_MATERIALES";
+
+const CATALOGO_MATERIALES_V184 = [
+  ["CABLE DROP",0.27],
+  ["ANCLAJE P",1.06],
+  ["CINTA BAND-IT",2.87],
+  ["HEBILLA 3/4",0.82],
+  ["ACLOPADOR",0.76],
+  ["PATCHCORD APC / APC",3.78],
+  ["ROSETA",2.66],
+  ["CONECTORES",3.60],
+  ["TEMPLADORES",1.30],
+  ["CLEVIS",2.36],
+  ["SPLITTER",21.18],
+  ["TELEFONO",0],
+  ["CABLE UTP",0.49],
+  ["PATCHCORD UPC - APC",4.08],
+  ["CONECTOR RJ45",0.38],
+  ["CABLE UTP CAT6",0.64],
+  ["GRAPAS",0.03],
+  ["CINTILLOS",0.04],
+  ["CINTA AISLANTE",3.80],
+  ["CINTA DOBLE CONTACTO",0.04],
+  ["CINTILLOS 3.6X300",0.04],
+  ["FIBRA OPTICA DROP CONECTORIZADO DE 50 MT",0.27],
+  ["FIBRA OPTICA DROP CONECTORIZADO DE 100 M",0.27],
+  ["FIBRA OPTICA DROP CONECTORIZADO DE 150 M",0.27],
+  ["FIBRA OPTICA DROP CONECTORIZADO DE 200 M",0.27]
+];
+
+function esPerfilMaterialesPermitido(perfil) {
+  const p = normalizarTexto(perfil);
+  return p === "JEFATURA" ||
+         p === "JEFATURA GENERAL" ||
+         p === "JEFATURA ALMACEN" ||
+         p === "ADMIN" ||
+         p === "ADMINISTRADOR";
+}
+
+function asegurarHojasMaterialesV184() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+
+  let importar = ss.getSheetByName(HOJA_IMPORTAR_MATERIALES);
+  if (!importar) importar = ss.insertSheet(HOJA_IMPORTAR_MATERIALES);
+
+  const encabezadoImportar = [
+    "FECHA_REFERENCIA","MES","TECNICO","COMENTARIO"
+  ].concat(CATALOGO_MATERIALES_V184.map(x => x[0])).concat([
+    "USUARIO_IMPORTACION","FECHA_IMPORTACION","LOTE_IMPORTACION"
+  ]);
+
+  if (importar.getLastRow() === 0) {
+    importar.getRange(1,1,1,encabezadoImportar.length).setValues([encabezadoImportar]);
+    importar.setFrozenRows(1);
+  }
+
+  let consumo = ss.getSheetByName(HOJA_CONSUMO_MATERIALES);
+  if (!consumo) consumo = ss.insertSheet(HOJA_CONSUMO_MATERIALES);
+
+  const encabezadoConsumo = [
+    "FECHA","MES","SEDE","PLATAFORMA","CUADRILLA","TECNICOS",
+    "TIPO_TRABAJO","FINALIZADAS","MATERIAL","CANTIDAD",
+    "PRECIO_UNITARIO","COSTO_TOTAL","PROMEDIO_X_FINALIZADA",
+    "USUARIO_IMPORTACION","FECHA_IMPORTACION","LOTE_IMPORTACION"
+  ];
+
+  if (consumo.getLastRow() === 0) {
+    consumo.getRange(1,1,1,encabezadoConsumo.length).setValues([encabezadoConsumo]);
+    consumo.setFrozenRows(1);
+  }
+
+  let catalogo = ss.getSheetByName(HOJA_CATALOGO_PRECIOS_MATERIALES);
+  if (!catalogo) catalogo = ss.insertSheet(HOJA_CATALOGO_PRECIOS_MATERIALES);
+
+  if (catalogo.getLastRow() === 0) {
+    catalogo.getRange(1,1,1,4).setValues([["MATERIAL","PRECIO_UNITARIO","ESTADO","OBSERVACION"]]);
+    const filas = CATALOGO_MATERIALES_V184.map(x => [
+      x[0],
+      x[1],
+      x[1] > 0 ? "ACTIVO" : "PENDIENTE",
+      x[1] > 0 ? "" : "Ingresar precio unitario"
+    ]);
+    catalogo.getRange(2,1,filas.length,4).setValues(filas);
+    catalogo.getRange(2,2,filas.length,1).setNumberFormat('"S/ "0.00');
+    catalogo.setFrozenRows(1);
+  }
+
+  return { importar, consumo, catalogo };
+}
+
+function indiceEncabezadoV184(encabezados, alternativas) {
+  const mapa = {};
+  encabezados.forEach((x,i) => mapa[normalizarTexto(x)] = i);
+  for (let i=0;i<alternativas.length;i++) {
+    const clave = normalizarTexto(alternativas[i]);
+    if (mapa.hasOwnProperty(clave)) return mapa[clave];
+  }
+  return -1;
+}
+
+function obtenerMapaTecnicosMaterialesV184() {
+  const hoja = obtenerHoja(HOJA_USUARIOS);
+  const datos = hoja.getDataRange().getValues();
+  if (!datos.length) return {};
+
+  const cab = datos[0];
+  const iUsuario = indiceEncabezadoV184(cab, ["USUARIO"]);
+  const iCuadrilla = indiceEncabezadoV184(cab, ["CUADRILLA"]);
+  const iSede = indiceEncabezadoV184(cab, ["SEDE"]);
+  const iPlataforma = indiceEncabezadoV184(cab, ["PLATAFORMA"]);
+  const iPerfil = indiceEncabezadoV184(cab, ["PERFIL"]);
+  const iEstado = indiceEncabezadoV184(cab, ["ESTADO"]);
+  const iNombres = indiceEncabezadoV184(cab, ["NOMBRES_APELLIDOS","NOMBRES Y APELLIDOS","NOMBRES APELLIDOS"]);
+
+  const mapa = {};
+  for (let i=1;i<datos.length;i++) {
+    const f = datos[i];
+    const estado = normalizarTexto(iEstado >= 0 ? f[iEstado] : "ACTIVO");
+    const perfil = normalizarTexto(iPerfil >= 0 ? f[iPerfil] : "");
+    if (estado && estado !== "ACTIVO") continue;
+    if (perfil && perfil !== "TECNICO") continue;
+
+    const nombres = String(iNombres >= 0 ? f[iNombres] : "").trim();
+    const usuario = String(iUsuario >= 0 ? f[iUsuario] : "").trim();
+    const clave = normalizarTexto(nombres || usuario);
+    if (!clave) continue;
+
+    const registro = {
+      tecnico: nombres || usuario,
+      usuario: usuario,
+      cuadrilla: normalizarCuadrilla(iCuadrilla >= 0 ? f[iCuadrilla] : ""),
+      sede: normalizarTexto(iSede >= 0 ? f[iSede] : ""),
+      plataforma: normalizarTexto(iPlataforma >= 0 ? f[iPlataforma] : "")
+    };
+
+    if (!registro.cuadrilla) continue;
+    if (!mapa[clave]) mapa[clave] = [];
+    mapa[clave].push(registro);
+  }
+  return mapa;
+}
+
+function obtenerCatalogoPreciosMaterialesV184() {
+  const hojas = asegurarHojasMaterialesV184();
+  const datos = hojas.catalogo.getDataRange().getValues();
+  const mapa = {};
+  for (let i=1;i<datos.length;i++) {
+    const material = normalizarTexto(datos[i][0]);
+    if (!material) continue;
+    mapa[material] = {
+      precio: Number(datos[i][1]) || 0,
+      estado: normalizarTexto(datos[i][2] || "ACTIVO")
+    };
+  }
+  return mapa;
+}
+
+function clasificarTipoTrabajoMaterialesV184(comentario) {
+  const c = normalizarTexto(comentario || "");
+  return c.indexOf("INSTALACION") >= 0 ? "INSTALACION" : "VISITA TECNICA";
+}
+
+function mesNombreV184(fecha) {
+  const meses = ["ENERO","FEBRERO","MARZO","ABRIL","MAYO","JUNIO","JULIO","AGOSTO","SEPTIEMBRE","OCTUBRE","NOVIEMBRE","DICIEMBRE"];
+  return meses[fecha.getMonth()];
+}
+
+function parseFechaMaterialesV184(valor) {
+  if (valor instanceof Date && !isNaN(valor)) return valor;
+  const t = String(valor || "").trim();
+  if (!t) return new Date();
+  const m = t.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (m) return new Date(Number(m[1]), Number(m[2])-1, Number(m[3]));
+  const d = t.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+  if (d) return new Date(Number(d[3]), Number(d[2])-1, Number(d[1]));
+  const f = new Date(t);
+  return isNaN(f) ? new Date() : f;
+}
+
+function numeroMaterialV184(valor) {
+  if (typeof valor === "number") return isFinite(valor) ? valor : 0;
+  const t = String(valor == null ? "" : valor).trim().replace(",", ".");
+  if (!t) return 0;
+  if (!/^-?\d+(\.\d+)?$/.test(t)) return null;
+  const n = Number(t);
+  return isFinite(n) ? n : null;
+}
+
+function loteMaterialesV184(texto, fecha, usuario) {
+  const base = [String(fecha),String(usuario),String(texto)].join("|");
+  const digest = Utilities.computeDigest(Utilities.DigestAlgorithm.MD5, base, Utilities.Charset.UTF_8);
+  return digest.map(function(b){ return ("0" + ((b < 0 ? b + 256 : b).toString(16))).slice(-2); }).join("");
+}
+
+function procesarImportacionMaterialesV184(data) {
+  const usuario = obtenerUsuarioApp(data.usuario);
+  if (!esPerfilMaterialesPermitido(usuario.perfil)) {
+    throw new Error("No tienes permiso para importar consumo de materiales");
+  }
+
+  const texto = String(data.texto || "").trim();
+  if (!texto) throw new Error("Pegue primero la base de materiales");
+
+  const fechaReferencia = parseFechaMaterialesV184(data.fechaReferencia);
+  const fechaISO = Utilities.formatDate(fechaReferencia, Session.getScriptTimeZone(), "yyyy-MM-dd");
+  const mes = mesNombreV184(fechaReferencia);
+  const lote = loteMaterialesV184(texto, fechaISO, usuario.usuario);
+  const hojas = asegurarHojasMaterialesV184();
+
+  if (hojas.consumo.getLastRow() > 1) {
+    const lotes = hojas.consumo.getRange(2,16,hojas.consumo.getLastRow()-1,1).getDisplayValues().flat();
+    if (lotes.indexOf(lote) >= 0) throw new Error("Esta misma importación ya fue procesada");
+  }
+
+  const lineas = texto.split(/\r?\n/).filter(x => String(x).trim() !== "");
+  if (lineas.length < 2) throw new Error("La base debe incluir encabezados y registros");
+
+  const separador = lineas[0].indexOf("\t") >= 0 ? "\t" : ";";
+  const matriz = lineas.map(linea => linea.split(separador).map(x => String(x).trim()));
+  const cabOriginal = matriz[0];
+  const cabNorm = cabOriginal.map(normalizarTexto);
+
+  const iTecnico = cabNorm.findIndex(x => x === "TECNICO");
+  const iComentario = cabNorm.findIndex(x => x === "COMENTARIO");
+  if (iTecnico < 0) throw new Error("No se encontró la columna Técnico");
+  if (iComentario < 0) throw new Error("No se encontró la columna Comentario");
+
+  const catalogo = obtenerCatalogoPreciosMaterialesV184();
+  const mapaTecnicos = obtenerMapaTecnicosMaterialesV184();
+  const indicesMateriales = [];
+
+  cabNorm.forEach((nombre, idx) => {
+    if (catalogo[nombre]) indicesMateriales.push({ idx: idx, material: nombre });
+  });
+
+  if (!indicesMateriales.length) throw new Error("No se reconocieron columnas de materiales");
+
+  const erroresTecnico = {};
+  const ambiguos = {};
+  const valoresInvalidos = [];
+  const consolidado = {};
+  const rawSalida = [];
+  const ahora = new Date();
+
+  for (let i=1;i<matriz.length;i++) {
+    const f = matriz[i];
+    const tecnicoOriginal = String(f[iTecnico] || "").trim();
+    const comentario = String(f[iComentario] || "").trim();
+    if (!tecnicoOriginal) continue;
+
+    const coincidencias = mapaTecnicos[normalizarTexto(tecnicoOriginal)] || [];
+    if (!coincidencias.length) {
+      erroresTecnico[tecnicoOriginal] = true;
+      continue;
+    }
+
+    const cuadrillas = {};
+    coincidencias.forEach(x => cuadrillas[x.cuadrilla] = x);
+    const clavesCuadrilla = Object.keys(cuadrillas);
+    if (clavesCuadrilla.length !== 1) {
+      ambiguos[tecnicoOriginal] = true;
+      continue;
+    }
+
+    const datosTecnico = cuadrillas[clavesCuadrilla[0]];
+    const tipoTrabajo = clasificarTipoTrabajoMaterialesV184(comentario);
+
+    const filaRaw = [fechaReferencia,mes,tecnicoOriginal,comentario];
+    CATALOGO_MATERIALES_V184.forEach(mat => {
+      const idx = cabNorm.indexOf(normalizarTexto(mat[0]));
+      filaRaw.push(idx >= 0 ? (f[idx] || 0) : 0);
+    });
+    filaRaw.push(usuario.usuario,ahora,lote);
+    rawSalida.push(filaRaw);
+
+    indicesMateriales.forEach(col => {
+      const cantidad = numeroMaterialV184(f[col.idx]);
+      if (cantidad === null) {
+        valoresInvalidos.push({
+          fila: i + 1,
+          tecnico: tecnicoOriginal,
+          material: col.material,
+          valor: String(f[col.idx] || "")
+        });
+        return;
+      }
+      if (cantidad <= 0) return;
+
+      const clave = [
+        fechaISO,
+        datosTecnico.cuadrilla,
+        tipoTrabajo,
+        col.material
+      ].join("|");
+
+      if (!consolidado[clave]) {
+        consolidado[clave] = {
+          fecha: fechaReferencia,
+          mes: mes,
+          sede: datosTecnico.sede,
+          plataforma: datosTecnico.plataforma,
+          cuadrilla: datosTecnico.cuadrilla,
+          tecnicos: {},
+          tipoTrabajo: tipoTrabajo,
+          material: col.material,
+          cantidad: 0
+        };
+      }
+      consolidado[clave].cantidad += cantidad;
+      consolidado[clave].tecnicos[tecnicoOriginal] = true;
+    });
+  }
+
+  const salidaConsumo = Object.keys(consolidado).map(clave => {
+    const x = consolidado[clave];
+    const cat = catalogo[x.material] || {precio:0,estado:"PENDIENTE"};
+    const precio = cat.estado === "ACTIVO" ? cat.precio : 0;
+    const costo = x.cantidad * precio;
+    return [
+      x.fecha,
+      x.mes,
+      x.sede,
+      x.plataforma,
+      x.cuadrilla,
+      Object.keys(x.tecnicos).sort().join(" / "),
+      x.tipoTrabajo,
+      0,
+      x.material,
+      x.cantidad,
+      precio,
+      costo,
+      0,
+      usuario.usuario,
+      ahora,
+      lote
+    ];
+  }).sort(function(a,b){
+    return String(a[4]).localeCompare(String(b[4]), undefined, {numeric:true}) ||
+           String(a[6]).localeCompare(String(b[6])) ||
+           String(a[8]).localeCompare(String(b[8]));
+  });
+
+  if (!salidaConsumo.length) {
+    throw new Error("No se generaron consumos válidos. Revise técnicos, cantidades y columnas");
+  }
+
+  if (rawSalida.length) {
+    hojas.importar.getRange(
+      hojas.importar.getLastRow()+1,1,rawSalida.length,rawSalida[0].length
+    ).setValues(rawSalida);
+  }
+
+  hojas.consumo.getRange(
+    hojas.consumo.getLastRow()+1,1,salidaConsumo.length,salidaConsumo[0].length
+  ).setValues(salidaConsumo);
+
+  const inicio = hojas.consumo.getLastRow()-salidaConsumo.length+1;
+  hojas.consumo.getRange(inicio,1,salidaConsumo.length,1).setNumberFormat("dd/mm/yyyy");
+  hojas.consumo.getRange(inicio,11,salidaConsumo.length,3).setNumberFormat('"S/ "0.00');
+  hojas.consumo.getRange(inicio,15,salidaConsumo.length,1).setNumberFormat("dd/mm/yyyy hh:mm:ss");
+
+  return {
+    ok: true,
+    modulo: "MATERIALES",
+    accion: "IMPORTAR",
+    lote: lote,
+    filasOrigen: matriz.length - 1,
+    filasConsolidadas: salidaConsumo.length,
+    tecnicosNoEncontrados: Object.keys(erroresTecnico).sort(),
+    tecnicosAmbiguos: Object.keys(ambiguos).sort(),
+    valoresInvalidos: valoresInvalidos.slice(0,100),
+    totalInvalidos: valoresInvalidos.length,
+    hojas: [
+      HOJA_IMPORTAR_MATERIALES,
+      HOJA_CONSUMO_MATERIALES,
+      HOJA_CATALOGO_PRECIOS_MATERIALES
+    ]
+  };
+}
+
+function obtenerResumenMaterialesV184(data) {
+  const usuario = obtenerUsuarioApp(data.usuario);
+  if (!esPerfilMaterialesPermitido(usuario.perfil)) {
+    throw new Error("No tienes permiso para ver consumo de materiales");
+  }
+
+  const hojas = asegurarHojasMaterialesV184();
+  if (hojas.consumo.getLastRow() <= 1) {
+    return {ok:true,modulo:"MATERIALES",registros:0,costoTotal:0,porSede:[],porTipo:[],porCuadrilla:[]};
+  }
+
+  const datos = hojas.consumo.getRange(2,1,hojas.consumo.getLastRow()-1,16).getValues();
+  const periodo = String(data.periodo || "").trim();
+  const sedeFiltro = normalizarTexto(data.sede || "");
+  const tipoFiltro = normalizarTexto(data.tipoTrabajo || "");
+
+  const porSede = {};
+  const porTipo = {};
+  const porCuadrilla = {};
+  let costoTotal = 0;
+  let registros = 0;
+
+  datos.forEach(f => {
+    const fecha = f[0] instanceof Date ? f[0] : new Date(f[0]);
+    const per = isNaN(fecha) ? "" : Utilities.formatDate(fecha, Session.getScriptTimeZone(), "yyyy-MM");
+    const sede = normalizarTexto(f[2]);
+    const cuadrilla = normalizarCuadrilla(f[4]);
+    const tipo = normalizarTexto(f[6]);
+    const cantidad = Number(f[9]) || 0;
+    const costo = Number(f[11]) || 0;
+
+    if (periodo && per !== periodo) return;
+    if (sedeFiltro && sedeFiltro !== "TODAS" && sede !== sedeFiltro) return;
+    if (tipoFiltro && tipoFiltro !== "TODOS" && tipo !== tipoFiltro) return;
+
+    registros++;
+    costoTotal += costo;
+
+    if (!porSede[sede]) porSede[sede] = {sede:sede,cantidad:0,costo:0};
+    porSede[sede].cantidad += cantidad;
+    porSede[sede].costo += costo;
+
+    if (!porTipo[tipo]) porTipo[tipo] = {tipoTrabajo:tipo,cantidad:0,costo:0};
+    porTipo[tipo].cantidad += cantidad;
+    porTipo[tipo].costo += costo;
+
+    if (!porCuadrilla[cuadrilla]) porCuadrilla[cuadrilla] = {cuadrilla:cuadrilla,sede:sede,cantidad:0,costo:0};
+    porCuadrilla[cuadrilla].cantidad += cantidad;
+    porCuadrilla[cuadrilla].costo += costo;
+  });
+
+  return {
+    ok:true,
+    modulo:"MATERIALES",
+    registros:registros,
+    costoTotal:costoTotal,
+    porSede:Object.keys(porSede).map(k=>porSede[k]).sort((a,b)=>b.costo-a.costo),
+    porTipo:Object.keys(porTipo).map(k=>porTipo[k]).sort((a,b)=>b.costo-a.costo),
+    porCuadrilla:Object.keys(porCuadrilla).map(k=>porCuadrilla[k]).sort((a,b)=>b.costo-a.costo)
+  };
+}
+
+
 /* =========================
    API PRINCIPAL
 ========================= */
@@ -4698,6 +5148,15 @@ function conformidadFinalTrabajoConjunta(data){
 function doPost(e) {
   try {
     const data = JSON.parse(e.postData.contents);
+
+    if (data.accion === "procesarImportacionMateriales") return respuestaJson(procesarImportacionMaterialesV184(data));
+    if (data.accion === "obtenerResumenMateriales") return respuestaJson(obtenerResumenMaterialesV184(data));
+    if (data.accion === "asegurarHojasMateriales") {
+      const u = obtenerUsuarioApp(data.usuario);
+      if (!esPerfilMaterialesPermitido(u.perfil)) throw new Error("No tienes permiso");
+      asegurarHojasMaterialesV184();
+      return respuestaJson({ok:true,hojas:[HOJA_IMPORTAR_MATERIALES,HOJA_CONSUMO_MATERIALES,HOJA_CATALOGO_PRECIOS_MATERIALES]});
+    }
 
     if (data.accion === "obtenerContextoMenu") return respuestaJson(obtenerContextoMenu(data));
     if (data.accion === "obtenerPermisosUsuario") return respuestaJson(obtenerPermisosUsuario(data));

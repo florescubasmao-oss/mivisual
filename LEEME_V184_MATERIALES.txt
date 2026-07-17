@@ -1,0 +1,34 @@
+MI VISUAL V184 - IMPORTACIÓN Y CONSOLIDACIÓN DE CONSUMO DE MATERIALES
+
+Base: V183.
+
+Implementado:
+- Análisis Económico ahora tiene:
+  1. Producción valorizada.
+  2. Costo y consumo de materiales.
+- Acceso para Jefatura General, Jefatura de Almacén, Admin y Administrador.
+- Creación automática de hojas:
+  * IMPORTAR_MATERIALES
+  * CONSUMO_MATERIALES
+  * CATALOGO_PRECIOS_MATERIALES
+- Importación por texto pegado desde Excel/Google Sheets.
+- Cruce del nombre del técnico con NOMBRES_APELLIDOS de USUARIOS.
+- Cualquiera de los dos técnicos identifica la misma cuadrilla.
+- Clasificación:
+  * Comentario contiene INSTALACION => INSTALACION.
+  * Cualquier otro comentario o vacío => VISITA TECNICA.
+- Consolidación por FECHA + CUADRILLA + TIPO_TRABAJO + MATERIAL.
+- Suma consumos repetidos de ambos técnicos de la misma cuadrilla.
+- Control de duplicados por lote.
+- Alerta de técnicos no encontrados, ambiguos y valores no numéricos.
+- Resumen inicial por sede, tipo y cuadrilla.
+
+Instalación:
+1. Reemplazar Code.gs completo.
+2. Guardar y crear un nuevo despliegue de Apps Script.
+3. Subir archivos web del ZIP a GitHub.
+4. Recargar con Ctrl + F5.
+
+Nota:
+- El precio de TELEFONO queda en 0/PENDIENTE hasta que sea actualizado en CATALOGO_PRECIOS_MATERIALES.
+- FINALIZADAS y PROMEDIO_X_FINALIZADA quedan preparados para la siguiente etapa de cruce con producción.

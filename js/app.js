@@ -340,7 +340,8 @@ async function configurarMenu(){
         ],
         "JEFATURA ALMACEN": [
             "cardActas",
-            "cardChecklistAlmacen"
+            "cardChecklistAlmacen",
+            "cardAnalisisEconomico"
         ]
     };
 
@@ -353,6 +354,9 @@ async function configurarMenu(){
             // incluso cuando devuelve cero módulos. No se mezclan permisos antiguos.
             if (Array.isArray(dinamicos)) {
                 opciones = dinamicos.map(x => PM_CARD_MAP[pmNorm(x.modulo)]).filter(Boolean);
+            }
+            if (perfil === "JEFATURA ALMACEN" && !opciones.includes("cardAnalisisEconomico")) {
+                opciones.push("cardAnalisisEconomico");
             }
         }
     } catch(e) { console.warn("Se conserva menú anterior", e); }
