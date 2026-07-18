@@ -1,0 +1,20 @@
+MI VISUAL V204 - MESA DE AYUDA
+
+CAMBIOS:
+- Nombre visible cambiado de CONSULTAS Y RECLAMOS a MESA DE AYUDA.
+- Se elimina CERRADO de los estados disponibles.
+- SOLUCIONADO y RECHAZADO son estados finales.
+- Un caso finalizado no permite cambio de estado ni nuevos comentarios.
+- Los registros antiguos en CERRADO se visualizan como SOLUCIONADO y permanecen bloqueados.
+- Se conserva la confidencialidad de casos relacionados con Supervisor.
+- Se conserva el formulario especial de Bono/Producción/Puntaje con fechas, hasta 6 códigos por día, puntos y actas.
+
+ACTUALIZACION OBLIGATORIA:
+- Code.gs / Apps Script: SI.
+- Crear nuevo despliegue de Apps Script: SI.
+- GitHub / frontend: SI.
+- Google Sheets: NO requiere cambios manuales.
+
+NOTA DE COMPATIBILIDAD:
+- Las hojas CONSULTAS_RECLAMOS e HISTORIAL_RECLAMOS conservan sus nombres para no perder datos.
+- PERMISOS_MODULOS acepta tanto CONSULTAS Y RECLAMOS como MESA DE AYUDA para mantener compatibilidad.
