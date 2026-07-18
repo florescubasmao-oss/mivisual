@@ -1,0 +1,14 @@
+MI VISUAL V201 - CONSULTAS Y RECLAMOS EN PANTALLA INDEPENDIENTE
+
+CAMBIO REALIZADO
+- Al presionar CONSULTAS Y RECLAMOS, el menú principal se oculta completamente.
+- El módulo se abre como pantalla independiente.
+- El botón superior cambia a Volver al menú.
+- No se modificó Code.gs ni Apps Script.
+- No se modificaron permisos, cálculos ni otros módulos.
+
+ACTUALIZACIÓN
+- GitHub / frontend: SÍ
+- Code.gs / Apps Script: NO
+- Nuevo despliegue Apps Script: NO
+- Google Sheets: NO
