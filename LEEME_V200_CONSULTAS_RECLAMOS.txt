@@ -1,0 +1,17 @@
+MI VISUAL V200 - CONSULTAS Y RECLAMOS
+
+IMPLEMENTACION:
+- Tarjeta horizontal CONSULTAS Y RECLAMOS visible en todos los perfiles, debajo de Recursos.
+- Registro automático hacia Jefatura General, Jefatura de Operaciones o Jefatura de Almacén según categoría.
+- Historial de comentarios y cambios de estado.
+- Jefatura General visualiza todos los casos, pero solo resuelve los asignados a Jefatura General.
+- Jefatura de Operaciones y Jefatura de Almacén solo visualizan y resuelven sus propios casos.
+- Técnico registra, consulta, comenta y confirma solución.
+- Supervisor visualiza casos de su sede y comenta.
+
+ACTUALIZACION OBLIGATORIA:
+1. CODE.GS / APPS SCRIPT: SI. Copiar el Code.gs incluido y realizar un nuevo despliegue.
+2. GITHUB / FRONTEND: SI. Subir todos los archivos del ZIP.
+3. GOOGLE SHEETS: Las hojas CONSULTAS_RECLAMOS e HISTORIAL_RECLAMOS se crean automáticamente al primer uso. También se incluye la plantilla Excel entregada previamente como referencia, pero no es obligatorio importarla.
+
+IMPORTANTE: Mantener la URL vigente de Apps Script en js/consultas_reclamos.js o actualizarla después del despliegue si Google genera una URL nueva.

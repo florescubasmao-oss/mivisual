@@ -181,7 +181,7 @@ function aplicarPermisosMenuActualizados(){
         'cardObservaciones','cardAccesos','cardBiblioteca','cardCapacitacion',
         'cardDashboardSupervisor','cardDashboardJefatura','cardAnalisisEconomico',
         'cardAdministracion','cardActividadCampo','cardValidacionTecnica','cardActas',
-        'cardChecklistAlmacen','cardProgramacionDescansos','cardTrabajosConjunta'
+        'cardChecklistAlmacen','cardProgramacionDescansos','cardTrabajosConjunta','cardConsultasReclamos'
     ];
     todasLasCards.forEach(id => mostrarCardSeguro(id, false));
     const dinamicos = typeof pmModulosMenu === 'function' ? pmModulosMenu() : null;
@@ -193,8 +193,9 @@ function aplicarPermisosMenuActualizados(){
     if (perfilActual === "JEFATURA ALMACEN" && !opciones.includes("cardAnalisisEconomico")) {
         opciones.push("cardAnalisisEconomico");
     }
+    if(!opciones.includes("cardConsultasReclamos")) opciones.push("cardConsultasReclamos");
     opciones.forEach(id => mostrarCardSeguro(id, true));
-    const recursosIds = ['cardAccesos','cardBiblioteca','cardCapacitacion'];
+    const recursosIds = ['cardAccesos','cardBiblioteca','cardCapacitacion','cardConsultasReclamos'];
     const recursosTitle = document.getElementById('mv55RecursosTitle');
     const recursos = document.getElementById('mv55Recursos');
     const tieneRecursos = recursosIds.some(id => opciones.includes(id));
@@ -248,12 +249,13 @@ async function configurarMenu(){
         "cardActas",
         "cardChecklistAlmacen",
         "cardProgramacionDescansos",
-        "cardTrabajosConjunta"
+        "cardTrabajosConjunta",
+        "cardConsultasReclamos"
     ];
 
     todasLasCards.forEach(id => mostrarCardSeguro(id, false));
 
-    const recursosIds = ["cardAccesos", "cardBiblioteca", "cardCapacitacion"];
+    const recursosIds = ["cardAccesos", "cardBiblioteca", "cardCapacitacion", "cardConsultasReclamos"];
     if(mv55.main && mv55.recursos){
         todasLasCards.forEach(id => {
             const card = document.getElementById(id);

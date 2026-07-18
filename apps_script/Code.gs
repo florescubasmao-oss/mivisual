@@ -5343,10 +5343,118 @@ function obtenerResumenMaterialesV184(data) {
    API PRINCIPAL
 ========================= */
 
+
+
+/* =========================
+   CONSULTAS Y RECLAMOS V200
+========================= */
+const HOJA_CONSULTAS_RECLAMOS = "CONSULTAS_RECLAMOS";
+const HOJA_HISTORIAL_RECLAMOS = "HISTORIAL_RECLAMOS";
+
+function encabezadoConsultasReclamos(){return [[
+  "ID","FECHA_REGISTRO","HORA_REGISTRO","SEDE","CUADRILLA","TECNICO","PERFIL_REGISTRO",
+  "CATEGORIA","SUBCATEGORIA","AREA_RESPONSABLE","CODIGO_PEDIDO","TICKET","CLIENTE","DESCRIPCION",
+  "URGENCIA","ESTADO","ASIGNADO_A","FECHA_PRIMERA_RESPUESTA","FECHA_SOLUCION","RESPUESTA_FINAL",
+  "CONFIRMACION_TECNICO","FECHA_CIERRE","EVIDENCIAS","ULTIMA_ACTUALIZACION"
+]];}
+function encabezadoHistorialReclamos(){return [[
+  "ID_HISTORIAL","ID_CASO","FECHA","HORA","USUARIO","PERFIL","ACCION","ESTADO_ANTERIOR","ESTADO_NUEVO","COMENTARIO","EVIDENCIAS"
+]];}
+function asegurarHojasConsultasReclamos(){
+  const ss=SpreadsheetApp.getActiveSpreadsheet();
+  let h=ss.getSheetByName(HOJA_CONSULTAS_RECLAMOS); if(!h)h=ss.insertSheet(HOJA_CONSULTAS_RECLAMOS);
+  if(h.getMaxColumns()<24)h.insertColumnsAfter(h.getMaxColumns(),24-h.getMaxColumns());
+  if(h.getLastRow()===0||!h.getRange(1,1).getValue())h.getRange(1,1,1,24).setValues(encabezadoConsultasReclamos());
+  let hh=ss.getSheetByName(HOJA_HISTORIAL_RECLAMOS); if(!hh)hh=ss.insertSheet(HOJA_HISTORIAL_RECLAMOS);
+  if(hh.getMaxColumns()<11)hh.insertColumnsAfter(hh.getMaxColumns(),11-hh.getMaxColumns());
+  if(hh.getLastRow()===0||!hh.getRange(1,1).getValue())hh.getRange(1,1,1,11).setValues(encabezadoHistorialReclamos());
+  return {casos:h,historial:hh};
+}
+function areaResponsableReclamo(categoria){
+  const c=normalizarTexto(categoria);
+  if(c.indexOf("ALMACEN")>=0)return "JEFATURA DE ALMACEN";
+  if(c.indexOf("BONO")>=0||c.indexOf("PRODUCCION")>=0||c.indexOf("PUNTAJE")>=0||c.indexOf("BACK")>=0)return "JEFATURA DE OPERACIONES";
+  return "JEFATURA GENERAL";
+}
+function perfilAreaReclamo(perfil){
+  const p=normalizarTexto(perfil);
+  if(p==="JEFATURA ALMACEN"||p==="JEFATURA DE ALMACEN")return "JEFATURA DE ALMACEN";
+  if(p==="JEFATURA OPERACIONES"||p==="JEFATURA DE OPERACIONES"||p==="OPERACIONES")return "JEFATURA DE OPERACIONES";
+  if(esPerfilJefatura(p))return "JEFATURA GENERAL";
+  return "";
+}
+function idReclamo(){return "CR-"+Utilities.formatDate(new Date(),Session.getScriptTimeZone(),"yyyyMMddHHmmss")+"-"+Math.floor(Math.random()*900+100);}
+function filaReclamoObjeto(f){return {id:f[0],fechaRegistro:f[1],horaRegistro:f[2],sede:f[3],cuadrilla:f[4],tecnico:f[5],perfilRegistro:f[6],categoria:f[7],subcategoria:f[8],areaResponsable:f[9],codigoPedido:f[10],ticket:f[11],cliente:f[12],descripcion:f[13],urgencia:f[14],estado:f[15],asignadoA:f[16],fechaPrimeraRespuesta:f[17],fechaSolucion:f[18],respuestaFinal:f[19],confirmacionTecnico:f[20],fechaCierre:f[21],evidencias:f[22],ultimaActualizacion:f[23]};}
+function buscarReclamo(id){const hs=asegurarHojasConsultasReclamos(),d=hs.casos.getDataRange().getValues();for(let i=1;i<d.length;i++)if(String(d[i][0])===String(id))return {hoja:hs.casos,fila:i+1,item:filaReclamoObjeto(d[i])};throw new Error("No se encontró el caso: "+id);}
+function guardarHistorialReclamo(idCaso,usuario,accion,anterior,nuevo,comentario,evidencias){
+  const hs=asegurarHojasConsultasReclamos(),ahora=new Date();
+  hs.historial.appendRow(["HCR-"+Utilities.formatDate(ahora,Session.getScriptTimeZone(),"yyyyMMddHHmmss")+"-"+Math.floor(Math.random()*900+100),idCaso,ahora,ahora,usuario.usuario,usuario.perfil,accion,anterior||"",nuevo||"",comentario||"",evidencias||""]);
+}
+function registrarConsultaReclamo(data){
+  const hs=asegurarHojasConsultasReclamos(),u=obtenerUsuarioApp(data.usuario),categoria=normalizarTexto(data.categoria),sub=normalizarTexto(data.subcategoria),descripcion=String(data.descripcion||"").trim();
+  if(!categoria||!sub||!descripcion)throw new Error("Complete categoría, subcategoría y descripción");
+  const area=areaResponsableReclamo(categoria),ahora=new Date(),id=idReclamo();
+  const sede=normalizarTexto(u.sede||data.sede),cuadrilla=normalizarCuadrilla(u.cuadrilla||data.cuadrilla),urg=normalizarTexto(data.urgencia||"NORMAL");
+  hs.casos.appendRow([id,ahora,ahora,sede,cuadrilla,u.usuario,u.perfil,categoria,sub,area,String(data.codigoPedido||"").trim(),String(data.ticket||"").trim(),String(data.cliente||"").trim(),descripcion,urg,"REGISTRADO","","","","","PENDIENTE","",String(data.evidencias||""),ahora]);
+  guardarHistorialReclamo(id,u,"REGISTRO","","REGISTRADO",descripcion,data.evidencias||"");
+  return {ok:true,modulo:"CONSULTAS_RECLAMOS",accion:"REGISTRAR",id,areaResponsable:area,estado:"REGISTRADO"};
+}
+function puedeVerReclamo(u,item){
+  const p=normalizarTexto(u.perfil),area=perfilAreaReclamo(p);
+  if(esPerfilJefatura(p))return true;
+  if(area)return normalizarTexto(item.areaResponsable)===area;
+  if(p==="SUPERVISOR")return normalizarTexto(item.sede)===normalizarTexto(u.sede);
+  return normalizarUsuario(item.tecnico)===normalizarUsuario(u.usuario)||normalizarCuadrilla(item.cuadrilla)===normalizarCuadrilla(u.cuadrilla);
+}
+function listarConsultasReclamos(data){
+  const hs=asegurarHojasConsultasReclamos(),u=obtenerUsuarioApp(data.usuario),d=hs.casos.getDataRange().getValues(),lista=[];
+  for(let i=1;i<d.length;i++){const x=filaReclamoObjeto(d[i]);if(!x.id||!puedeVerReclamo(u,x))continue;if(data.estado&&normalizarTexto(data.estado)!==normalizarTexto(x.estado))continue;if(data.area&&normalizarTexto(data.area)!==normalizarTexto(x.areaResponsable))continue;if(data.sede&&normalizarTexto(data.sede)!==normalizarTexto(x.sede))continue;lista.push(x);}
+  lista.reverse();
+  const resumen={total:lista.length,registrados:0,enRevision:0,enProceso:0,pendienteInformacion:0,solucionados:0,cerrados:0};
+  lista.forEach(x=>{const e=normalizarTexto(x.estado);if(e==="REGISTRADO")resumen.registrados++;else if(e==="EN REVISION")resumen.enRevision++;else if(e==="EN PROCESO")resumen.enProceso++;else if(e==="PENDIENTE DE INFORMACION")resumen.pendienteInformacion++;else if(e==="SOLUCIONADO")resumen.solucionados++;else if(e==="CERRADO")resumen.cerrados++;});
+  return {ok:true,modulo:"CONSULTAS_RECLAMOS",accion:"LISTAR",perfil:u.perfil,areaPerfil:perfilAreaReclamo(u.perfil),resumen,casos:lista};
+}
+function listarHistorialReclamo(data){
+  const u=obtenerUsuarioApp(data.usuario),caso=buscarReclamo(data.id).item;if(!puedeVerReclamo(u,caso))throw new Error("No tiene permiso para ver este caso");
+  const h=asegurarHojasConsultasReclamos().historial,d=h.getDataRange().getValues(),lista=[];for(let i=1;i<d.length;i++)if(String(d[i][1])===String(data.id))lista.push({id:d[i][0],idCaso:d[i][1],fecha:d[i][2],hora:d[i][3],usuario:d[i][4],perfil:d[i][5],accion:d[i][6],estadoAnterior:d[i][7],estadoNuevo:d[i][8],comentario:d[i][9],evidencias:d[i][10]});
+  return {ok:true,historial:lista};
+}
+function actualizarConsultaReclamo(data){
+  const u=obtenerUsuarioApp(data.usuario),r=buscarReclamo(data.id),x=r.item,p=normalizarTexto(u.perfil),areaUsuario=perfilAreaReclamo(p),areaCaso=normalizarTexto(x.areaResponsable),nuevo=normalizarTexto(data.estado||x.estado),comentario=String(data.comentario||"").trim();
+  const esTecnicoPropio=normalizarUsuario(x.tecnico)===normalizarUsuario(u.usuario);
+  const estados=["EN REVISION","EN PROCESO","PENDIENTE DE INFORMACION","SOLUCIONADO","RECHAZADO","CERRADO","REGISTRADO"];
+  if(!estados.includes(nuevo))throw new Error("Estado no válido");
+  let puedeResolver=false;
+  if(areaUsuario&&areaUsuario===areaCaso)puedeResolver=true;
+  if(esPerfilJefatura(p)&&areaCaso==="JEFATURA GENERAL")puedeResolver=true;
+  if(esPerfilJefatura(p)&&areaCaso!=="JEFATURA GENERAL")puedeResolver=false;
+  if(esTecnicoPropio&&normalizarTexto(x.estado)==="SOLUCIONADO"&&["CERRADO","EN PROCESO"].includes(nuevo))puedeResolver=true;
+  if(!puedeResolver)throw new Error("Puede visualizar el caso, pero no tiene permiso para resolverlo");
+  const ahora=new Date();
+  r.hoja.getRange(r.fila,16).setValue(nuevo);r.hoja.getRange(r.fila,17).setValue(u.usuario);r.hoja.getRange(r.fila,24).setValue(ahora);
+  if(!x.fechaPrimeraRespuesta&&nuevo!=="REGISTRADO")r.hoja.getRange(r.fila,18).setValue(ahora);
+  if(nuevo==="SOLUCIONADO"){r.hoja.getRange(r.fila,19).setValue(ahora);r.hoja.getRange(r.fila,20).setValue(comentario);}
+  if(nuevo==="CERRADO")r.hoja.getRange(r.fila,22).setValue(ahora);
+  if(esTecnicoPropio&&nuevo==="CERRADO")r.hoja.getRange(r.fila,21).setValue("CONFIRMADO");
+  if(esTecnicoPropio&&nuevo==="EN PROCESO")r.hoja.getRange(r.fila,21).setValue("NO CONFORME");
+  guardarHistorialReclamo(x.id,u,"CAMBIO DE ESTADO",x.estado,nuevo,comentario,data.evidencias||"");
+  return {ok:true,modulo:"CONSULTAS_RECLAMOS",accion:"ACTUALIZAR",id:x.id,estado:nuevo};
+}
+function agregarComentarioReclamo(data){
+  const u=obtenerUsuarioApp(data.usuario),r=buscarReclamo(data.id);if(!puedeVerReclamo(u,r.item))throw new Error("No tiene permiso para comentar");const c=String(data.comentario||"").trim();if(!c)throw new Error("Ingrese un comentario");
+  guardarHistorialReclamo(r.item.id,u,"COMENTARIO",r.item.estado,r.item.estado,c,data.evidencias||"");r.hoja.getRange(r.fila,24).setValue(new Date());return {ok:true,accion:"COMENTAR",id:r.item.id};
+}
+
 function doPost(e) {
   try {
     const data = JSON.parse(e.postData.contents);
 
+    if (data.accion === "asegurarHojasConsultasReclamos") return respuestaJson((asegurarHojasConsultasReclamos(), {ok:true,modulo:"CONSULTAS_RECLAMOS",accion:"ASEGURAR_HOJAS"}));
+    if (data.accion === "registrarConsultaReclamo") return respuestaJson(registrarConsultaReclamo(data));
+    if (data.accion === "listarConsultasReclamos") return respuestaJson(listarConsultasReclamos(data));
+    if (data.accion === "listarHistorialReclamo") return respuestaJson(listarHistorialReclamo(data));
+    if (data.accion === "actualizarConsultaReclamo") return respuestaJson(actualizarConsultaReclamo(data));
+    if (data.accion === "agregarComentarioReclamo") return respuestaJson(agregarComentarioReclamo(data));
     if (data.accion === "procesarImportacionMateriales") return respuestaJson(procesarImportacionMaterialesV184(data));
     if (data.accion === "obtenerResumenMateriales") return respuestaJson(obtenerResumenMaterialesV184(data));
     if (data.accion === "asegurarHojasMateriales") {
