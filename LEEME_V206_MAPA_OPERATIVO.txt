@@ -1,0 +1,35 @@
+MI VISUAL V206 - MAPA OPERATIVO
+
+IMPLEMENTADO
+- Nueva opción horizontal MAPA OPERATIVO debajo de Programación de Descansos y PEXT.
+- Acceso exclusivo para Supervisor y Jefatura.
+- Jefatura puede seleccionar un Excel, leerlo, registrar la información y visualizarla.
+- Supervisor solo visualiza las órdenes de las cuadrillas asignadas mediante UsuarioSupervisor.
+- Jefatura visualiza todas las órdenes.
+- Búsqueda por Código de Orden, filtro por Estado y filtro por Cuadrilla.
+- Popup inicial: Tipo de trabajo, Cuadrilla, Estado y Código.
+- Desplegable Detalle con el resto de campos.
+- Al seleccionar otro punto, Leaflet cierra automáticamente el punto anterior.
+- OrdenId actualiza el registro existente; no duplica la orden.
+- F.Soli se separa en fecha y hora.
+- Direccion y Direccion1 se consolidan según las reglas acordadas.
+- IdenServi se registra como PRODUCTO_SERVICIO.
+- Georeferencia se divide en LATITUD y LONGITUD.
+
+HOJA REQUERIDA
+- MAPA_ORDENES, con 28 columnas según la plantilla entregada.
+- Si no existe, Apps Script la crea automáticamente al usar el módulo.
+
+ARCHIVOS MODIFICADOS
+- index.html
+- css/estilos.css
+- js/app.js
+- js/permisos.js
+- js/mapa_operativo.js (nuevo)
+- Code.gs
+- apps_script/Code.gs
+
+IMPORTANTE
+- Requiere publicar una nueva versión del Apps Script porque Code.gs fue actualizado.
+- Después del nuevo deploy, actualizar la URL API del frontend solo si Apps Script entrega una URL distinta.
+- Para permisos dinámicos, agregue MAPA OPERATIVO en PERMISOS_MODULOS para SUPERVISOR y JEFATURA con MOSTRAR_MODULO=SI y VER=SI. Para JEFATURA, REGISTRAR=SI.

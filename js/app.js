@@ -250,6 +250,7 @@ async function configurarMenu(){
         "cardChecklistAlmacen",
         "cardProgramacionDescansos",
         "cardTrabajosConjunta",
+        "cardMapaOperativo",
         "cardConsultasReclamos"
     ];
 
@@ -299,7 +300,8 @@ async function configurarMenu(){
             "cardActas",
             "cardChecklistAlmacen",
             "cardProgramacionDescansos",
-            "cardTrabajosConjunta"
+            "cardTrabajosConjunta",
+            "cardMapaOperativo"
         ],
         JEFATURA: [
             "cardRanking",
@@ -315,7 +317,8 @@ async function configurarMenu(){
             "cardActas",
             "cardChecklistAlmacen",
             "cardProgramacionDescansos",
-            "cardTrabajosConjunta"
+            "cardTrabajosConjunta",
+            "cardMapaOperativo"
         ],
         ADMIN: [
             "cardRanking",
@@ -331,7 +334,8 @@ async function configurarMenu(){
             "cardActas",
             "cardChecklistAlmacen",
             "cardProgramacionDescansos",
-            "cardTrabajosConjunta"
+            "cardTrabajosConjunta",
+            "cardMapaOperativo"
         ],
         ADMINISTRADOR: [
             "cardRanking",
@@ -347,7 +351,8 @@ async function configurarMenu(){
             "cardActas",
             "cardChecklistAlmacen",
             "cardProgramacionDescansos",
-            "cardTrabajosConjunta"
+            "cardTrabajosConjunta",
+            "cardMapaOperativo"
         ],
         ALMACEN: [
             "cardActas",

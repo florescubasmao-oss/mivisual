@@ -4400,7 +4400,7 @@ const HOJA_PERMISOS_MODULOS = "PERMISOS_MODULOS";
 function encabezadoPermisosModulos(){return [["PERFIL","MODULO","ACTIVO","ORDEN_MENU","MOSTRAR_MODULO","VER","REGISTRAR","EDITAR","OBSERVAR","APROBAR","VALIDAR","DESCARGAR","ADMINISTRAR","ALCANCE_DATOS","VISTA_PERFIL","OBSERVACION"]];}
 function asegurarHojaPermisosModulos(){const ss=SpreadsheetApp.getActiveSpreadsheet();let h=ss.getSheetByName(HOJA_PERMISOS_MODULOS);if(!h)h=ss.insertSheet(HOJA_PERMISOS_MODULOS);if(h.getMaxColumns()<16)h.insertColumnsAfter(h.getMaxColumns(),16-h.getMaxColumns());if(h.getLastRow()===0||!h.getRange(1,1).getValue())h.getRange(1,1,1,16).setValues(encabezadoPermisosModulos());return h;}
 function filaPermisoAObjeto(f){return {perfil:normalizarTexto(f[0]),modulo:normalizarTexto(f[1]),activo:normalizarTexto(f[2]||"SI"),ordenMenu:f[3],mostrarModulo:normalizarTexto(f[4]||"NO"),ver:normalizarTexto(f[5]||"NO"),registrar:normalizarTexto(f[6]||"NO"),editar:normalizarTexto(f[7]||"NO"),observar:normalizarTexto(f[8]||"NO"),aprobar:normalizarTexto(f[9]||"NO"),validar:normalizarTexto(f[10]||"NO"),descargar:normalizarTexto(f[11]||"NO"),administrar:normalizarTexto(f[12]||"NO"),alcanceDatos:normalizarTexto(f[13]||"SIN ACCESO"),vistaPerfil:(f[14]||"").toString(),observacion:(f[15]||"").toString()};}
-function obtenerPermisosUsuario(data){const u=obtenerUsuarioApp(data.usuario),h=asegurarHojaPermisosModulos(),d=h.getDataRange().getValues(),p=normalizarTexto(u.perfil),lista=[];for(let i=1;i<d.length;i++){const x=filaPermisoAObjeto(d[i]);if(x.perfil===p)lista.push(x);}return {ok:true,modulo:"PERMISOS",perfil:p,permisos:lista};}
+function obtenerPermisosUsuario(data){asegurarPermisosMapaOperativo();const u=obtenerUsuarioApp(data.usuario),h=asegurarHojaPermisosModulos(),d=h.getDataRange().getValues(),p=normalizarTexto(u.perfil),lista=[];for(let i=1;i<d.length;i++){const x=filaPermisoAObjeto(d[i]);if(x.perfil===p)lista.push(x);}return {ok:true,modulo:"PERMISOS",perfil:p,permisos:lista};}
 function listarPermisosAdministracion(data){const u=obtenerUsuarioApp(data.usuario);if(!esPerfilJefatura(u.perfil))throw new Error("Solo Jefatura puede administrar permisos");const d=asegurarHojaPermisosModulos().getDataRange().getValues(),lista=[];for(let i=1;i<d.length;i++)if(d[i][0]&&d[i][1])lista.push(filaPermisoAObjeto(d[i]));return {ok:true,permisos:lista};}
 function guardarPermisoModulo(data){const u=obtenerUsuarioApp(data.usuario);if(!esPerfilJefatura(u.perfil))throw new Error("Solo Jefatura puede administrar permisos");const h=asegurarHojaPermisosModulos(),d=h.getDataRange().getValues(),p=normalizarTexto(data.perfil),m=normalizarTexto(data.modulo);if(!p||!m)throw new Error("Perfil y módulo son obligatorios");const sn=v=>normalizarTexto(v)==="SI"?"SI":"NO";const fila=[p,m,sn(data.activo||"SI"),Number(data.ordenMenu)||"",sn(data.mostrarModulo),sn(data.ver),sn(data.registrar),sn(data.editar),sn(data.observar),sn(data.aprobar),sn(data.validar),sn(data.descargar),sn(data.administrar),normalizarTexto(data.alcanceDatos||"SIN ACCESO"),(data.vistaPerfil||p).toString(),(data.observacion||"").toString()];let n=0;for(let i=1;i<d.length;i++)if(normalizarTexto(d[i][0])===p&&normalizarTexto(d[i][1])===m){n=i+1;break;}if(n)h.getRange(n,1,1,16).setValues([fila]);else h.appendRow(fila);try{CacheService.getScriptCache().remove("PM_CENTRAL|"+p+"|"+m);}catch(e){}return {ok:true,perfil:p,modulo:m};}
 function permisoUsuarioAccion(usuario,modulo,accion){const h=asegurarHojaPermisosModulos(),d=h.getDataRange().getValues(),p=normalizarTexto(usuario.perfil),m=normalizarTexto(modulo),col={VER:5,REGISTRAR:6,EDITAR:7,OBSERVAR:8,APROBAR:9,VALIDAR:10,DESCARGAR:11,ADMINISTRAR:12}[normalizarTexto(accion)];if(col===undefined)return false;for(let i=1;i<d.length;i++)if(normalizarTexto(d[i][0])===p&&normalizarTexto(d[i][1])===m)return normalizarTexto(d[i][2]||"SI")==="SI"&&normalizarTexto(d[i][col]||"NO")==="SI";return false;}
@@ -5492,9 +5492,174 @@ function agregarComentarioReclamo(data){
   guardarHistorialReclamo(r.item.id,u,"COMENTARIO",r.item.estado,r.item.estado,c,data.evidencias||"");r.hoja.getRange(r.fila,24).setValue(new Date());return {ok:true,modulo:"MESA_AYUDA",accion:"COMENTAR",id:r.item.id};
 }
 
+
+/* =========================
+   MAPA OPERATIVO V206
+   Importación y visualización de órdenes georreferenciadas
+========================= */
+const HOJA_MAPA_OPERATIVO = "MAPA_ORDENES";
+
+function encabezadoMapaOperativo() {
+  return [[
+    "ORDEN_ID","TIPO_TRABAJO","FECHA_SOLICITUD","HORA_SOLICITUD","CLIENTE","TIPO",
+    "PRODUCTO_ORIGEN","CUADRILLA","ESTADO","DIRECCION","DIRECCION_ADICIONAL","FECHA_ULTIMO_ESTADO",
+    "PRODUCTO_SERVICIO","REGION","CODIGO_CLIENTE","NUMERO_DOCUMENTO","TELEFONO_MOVIL","TELEFONO_FIJO",
+    "FECHA_FIN_VISITA","FECHA_INICIO_VISITA","MOTIVO_CANCELACION","MOTIVO_FINALIZACION","MOTIVO_ANULACION",
+    "LATITUD","LONGITUD","DETALLE","FECHA_IMPORTACION","USUARIO_IMPORTACION"
+  ]];
+}
+
+function asegurarHojaMapaOperativo() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  let hoja = ss.getSheetByName(HOJA_MAPA_OPERATIVO);
+  if (!hoja) hoja = ss.insertSheet(HOJA_MAPA_OPERATIVO);
+  if (hoja.getMaxColumns() < 28) hoja.insertColumnsAfter(hoja.getMaxColumns(), 28 - hoja.getMaxColumns());
+  if (hoja.getLastRow() === 0 || !hoja.getRange(1,1).getValue()) {
+    hoja.getRange(1,1,1,28).setValues(encabezadoMapaOperativo());
+    hoja.setFrozenRows(1);
+  }
+  return hoja;
+}
+
+function asegurarPermisosMapaOperativo() {
+  const hoja = asegurarHojaPermisosModulos();
+  const datos = hoja.getDataRange().getValues();
+  const perfiles = [
+    {perfil:"SUPERVISOR", registrar:"NO", alcance:"SUPERVISOR / CUADRILLAS"},
+    {perfil:"JEFATURA", registrar:"SI", alcance:"TODOS"},
+    {perfil:"ADMIN", registrar:"SI", alcance:"TODOS"},
+    {perfil:"ADMINISTRADOR", registrar:"SI", alcance:"TODOS"}
+  ];
+  perfiles.forEach(cfg => {
+    const existe = datos.slice(1).some(f => normalizarTexto(f[0]) === cfg.perfil && normalizarTexto(f[1]) === "MAPA OPERATIVO");
+    if (!existe) hoja.appendRow([cfg.perfil,"MAPA OPERATIVO","SI",19,"SI","SI",cfg.registrar,"NO","NO","NO","NO","NO","NO",cfg.alcance,cfg.perfil,"Módulo de visualización georreferenciada"]);
+  });
+  return hoja;
+}
+
+function esPerfilMapaOperativo(perfil) {
+  const p = normalizarTexto(perfil);
+  return p === "SUPERVISOR" || esPerfilJefatura(p);
+}
+
+function validarAccesoMapaOperativo(usuario, accion) {
+  if (!esPerfilMapaOperativo(usuario.perfil)) throw new Error("El Mapa Operativo es exclusivo para Supervisor y Jefatura");
+  if (accion === "IMPORTAR" && !esPerfilJefatura(usuario.perfil)) throw new Error("Solo Jefatura puede importar información al Mapa Operativo");
+  return true;
+}
+
+function cuadrillasSupervisorMapa(usuarioSupervisor) {
+  const hoja = obtenerHoja(HOJA_USUARIOS);
+  const ultimaFila = hoja.getLastRow();
+  const mapa = {};
+  if (ultimaFila <= 1) return mapa;
+  const datos = hoja.getRange(2,1,ultimaFila-1,Math.min(Math.max(hoja.getLastColumn(),10),11)).getValues();
+  const supervisor = normalizarUsuario(usuarioSupervisor);
+  datos.forEach(f => {
+    const estado = normalizarTexto(f[8] || "ACTIVO");
+    const perfil = normalizarTexto(f[6]);
+    const asignado = normalizarUsuario(f[9]);
+    const cuadrilla = normalizarCuadrilla(f[3]);
+    if (estado === "ACTIVO" && perfil === "TECNICO" && asignado === supervisor && cuadrilla) mapa[cuadrilla] = true;
+  });
+  return mapa;
+}
+
+function numeroMapa(valor) {
+  if (valor === null || valor === undefined || valor === "") return "";
+  const n = Number(String(valor).replace(",","."));
+  return isFinite(n) ? n : "";
+}
+
+function textoMapa(valor) {
+  if (valor instanceof Date && !isNaN(valor.getTime())) return Utilities.formatDate(valor, Session.getScriptTimeZone(), "dd/MM/yyyy HH:mm");
+  return (valor === null || valor === undefined) ? "" : valor.toString().trim();
+}
+
+function importarMapaOperativo(data) {
+  const usuario = obtenerUsuarioApp(data.usuario);
+  validarAccesoMapaOperativo(usuario, "IMPORTAR");
+  const registros = Array.isArray(data.registros) ? data.registros : [];
+  if (!registros.length) throw new Error("No se recibieron registros para importar");
+  if (registros.length > 10000) throw new Error("La importación supera el máximo de 10,000 órdenes por carga");
+
+  const hoja = asegurarHojaMapaOperativo();
+  const lock = LockService.getScriptLock();
+  lock.waitLock(30000);
+  try {
+    const ultimaFila = hoja.getLastRow();
+    const indice = {};
+    if (ultimaFila > 1) {
+      hoja.getRange(2,1,ultimaFila-1,1).getDisplayValues().forEach((f,i) => {
+        const id = textoMapa(f[0]);
+        if (id) indice[id] = i + 2;
+      });
+    }
+
+    const ahora = new Date();
+    const nuevos = [];
+    const actualizaciones = [];
+    let omitidos = 0;
+
+    registros.forEach(r => {
+      const ordenId = textoMapa(r.ordenId || r.ORDEN_ID);
+      if (!ordenId) { omitidos++; return; }
+      const fila = [
+        ordenId, textoMapa(r.tipoTrabajo), textoMapa(r.fechaSolicitud), textoMapa(r.horaSolicitud), textoMapa(r.cliente), textoMapa(r.tipo),
+        textoMapa(r.productoOrigen), normalizarCuadrilla(r.cuadrilla), textoMapa(r.estado), textoMapa(r.direccion), textoMapa(r.direccionAdicional), textoMapa(r.fechaUltimoEstado),
+        textoMapa(r.productoServicio), textoMapa(r.region), textoMapa(r.codigoCliente), textoMapa(r.numeroDocumento), textoMapa(r.telefonoMovil), textoMapa(r.telefonoFijo),
+        textoMapa(r.fechaFinVisita), textoMapa(r.fechaInicioVisita), textoMapa(r.motivoCancelacion), textoMapa(r.motivoFinalizacion), textoMapa(r.motivoAnulacion),
+        numeroMapa(r.latitud), numeroMapa(r.longitud), textoMapa(r.detalle), ahora, usuario.usuario
+      ];
+      if (indice[ordenId]) actualizaciones.push({fila:indice[ordenId], valores:fila});
+      else { indice[ordenId] = -1; nuevos.push(fila); }
+    });
+
+    actualizaciones.forEach(x => hoja.getRange(x.fila,1,1,28).setValues([x.valores]));
+    if (nuevos.length) hoja.getRange(hoja.getLastRow()+1,1,nuevos.length,28).setValues(nuevos);
+    if (hoja.getLastRow() > 1) hoja.getRange(2,27,hoja.getLastRow()-1,1).setNumberFormat("dd/mm/yyyy hh:mm");
+
+    return {ok:true, modulo:"MAPA_OPERATIVO", accion:"IMPORTAR", nuevos:nuevos.length, actualizados:actualizaciones.length, omitidos};
+  } finally {
+    lock.releaseLock();
+  }
+}
+
+function filaMapaOperativoAObjeto(f) {
+  return {
+    ordenId:textoMapa(f[0]), tipoTrabajo:textoMapa(f[1]), fechaSolicitud:textoMapa(f[2]), horaSolicitud:textoMapa(f[3]), cliente:textoMapa(f[4]), tipo:textoMapa(f[5]),
+    productoOrigen:textoMapa(f[6]), cuadrilla:normalizarCuadrilla(f[7]), estado:textoMapa(f[8]), direccion:textoMapa(f[9]), direccionAdicional:textoMapa(f[10]), fechaUltimoEstado:textoMapa(f[11]),
+    productoServicio:textoMapa(f[12]), region:textoMapa(f[13]), codigoCliente:textoMapa(f[14]), numeroDocumento:textoMapa(f[15]), telefonoMovil:textoMapa(f[16]), telefonoFijo:textoMapa(f[17]),
+    fechaFinVisita:textoMapa(f[18]), fechaInicioVisita:textoMapa(f[19]), motivoCancelacion:textoMapa(f[20]), motivoFinalizacion:textoMapa(f[21]), motivoAnulacion:textoMapa(f[22]),
+    latitud:numeroMapa(f[23]), longitud:numeroMapa(f[24]), detalle:textoMapa(f[25])
+  };
+}
+
+function listarMapaOperativo(data) {
+  const usuario = obtenerUsuarioApp(data.usuario);
+  validarAccesoMapaOperativo(usuario, "VER");
+  const hoja = asegurarHojaMapaOperativo();
+  const ultimaFila = hoja.getLastRow();
+  if (ultimaFila <= 1) return {ok:true,modulo:"MAPA_OPERATIVO",accion:"LISTAR",perfil:usuario.perfil,registros:0,ordenes:[]};
+
+  const datos = hoja.getRange(2,1,ultimaFila-1,26).getValues();
+  const permitidas = usuario.perfil === "SUPERVISOR" ? cuadrillasSupervisorMapa(usuario.usuario) : null;
+  const lista = [];
+  datos.forEach(f => {
+    const item = filaMapaOperativoAObjeto(f);
+    if (!item.ordenId) return;
+    if (permitidas && !permitidas[normalizarCuadrilla(item.cuadrilla)]) return;
+    lista.push(item);
+  });
+  return {ok:true,modulo:"MAPA_OPERATIVO",accion:"LISTAR",perfil:usuario.perfil,registros:lista.length,ordenes:lista};
+}
+
 function doPost(e) {
   try {
     const data = JSON.parse(e.postData.contents);
+
+    if (data.accion === "importarMapaOperativo") return respuestaJson(importarMapaOperativo(data));
+    if (data.accion === "listarMapaOperativo") return respuestaJson(listarMapaOperativo(data));
 
     if (data.accion === "asegurarHojasConsultasReclamos") return respuestaJson((asegurarHojasConsultasReclamos(), {ok:true,modulo:"MESA_AYUDA",accion:"ASEGURAR_HOJAS"}));
     if (data.accion === "registrarConsultaReclamo") return respuestaJson(registrarConsultaReclamo(data));
