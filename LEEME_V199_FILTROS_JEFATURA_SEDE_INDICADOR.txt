@@ -1,0 +1,15 @@
+MI VISUAL V199 - FILTROS COMBINADOS EN DASHBOARD JEFATURA
+
+IMPLEMENTACIÓN:
+- Filtro por sede: Todas, Chiclayo, Piura y Trujillo.
+- Filtro por indicador: Producción, Efectividad, % Recableado, % VTR/GAR, Observaciones, Metas y Ranking.
+- Filtro por cuadrilla, adaptado a la sede seleccionada.
+- Listados ordenados según el criterio del indicador.
+- Al seleccionar una fila se abre el resumen y detalle completo de la cuadrilla.
+- El Dashboard Supervisor conserva su filtro anterior sin cambios.
+
+ACTUALIZACIÓN:
+- Code.gs / Apps Script: NO actualizar.
+- Google Sheets: sin cambios.
+- GitHub/frontend: SÍ actualizar.
+- Archivos modificados: js/dashboards.js, css/estilos.css e index.html.

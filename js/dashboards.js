@@ -2280,42 +2280,174 @@ function mv4SedeCard(sede, lista){
     </div>`;
 }
 
-function mv198RenderJefatura(seleccionada){
-    const lista = MV198_DASH_JEFATURA_LISTA || [];
-    const seleccion = seleccionada && seleccionada !== "TODAS" ? lista.find(x=>x.cuadrilla===seleccionada) : null;
-    const grupos = mv4AgruparPorSede(lista);
-    const general = mv4Resumen(lista);
+const MV199_INDICADORES_JEFATURA = [
+    {valor:"RESUMEN", etiqueta:"RESUMEN GENERAL"},
+    {valor:"PRODUCCION", etiqueta:"PRODUCCIÓN"},
+    {valor:"EFECTIVIDAD", etiqueta:"EFECTIVIDAD"},
+    {valor:"RECABLEADO", etiqueta:"% RECABLEADO"},
+    {valor:"VTRGAR", etiqueta:"% VTR/GAR"},
+    {valor:"OBSERVACIONES", etiqueta:"OBSERVACIONES"},
+    {valor:"METAS", etiqueta:"METAS Y CUMPLIMIENTO"},
+    {valor:"RANKING", etiqueta:"RANKING / POSICIÓN"}
+];
+
+let MV199_DASH_JEFATURA_FILTROS = {
+    sede: "TODAS",
+    indicador: "RESUMEN",
+    cuadrilla: "TODAS"
+};
+
+function mv199OpcionesSede(seleccionada){
+    return `<option value="TODAS">TODAS LAS SEDES</option>` + MV591_SEDES_OFICIALES.map(s =>
+        `<option value="${s}" ${s===seleccionada?'selected':''}>${s}</option>`
+    ).join("");
+}
+
+function mv199OpcionesIndicador(seleccionado){
+    return MV199_INDICADORES_JEFATURA.map(x =>
+        `<option value="${x.valor}" ${x.valor===seleccionado?'selected':''}>${x.etiqueta}</option>`
+    ).join("");
+}
+
+function mv199FiltrosJefatura(lista, filtros){
+    const listaSede = filtros.sede === "TODAS"
+        ? lista
+        : lista.filter(x => mv4Norm(x.sede) === filtros.sede);
+    return `<div class="mv199-filtros-jefatura">
+        <div class="mv199-campo-filtro">
+            <label for="mv199FiltroSede">🏢 Sede</label>
+            <select id="mv199FiltroSede" onchange="mv199CambiarFiltroJefatura('sede',this.value)">${mv199OpcionesSede(filtros.sede)}</select>
+        </div>
+        <div class="mv199-campo-filtro">
+            <label for="mv199FiltroIndicador">📊 Indicador</label>
+            <select id="mv199FiltroIndicador" onchange="mv199CambiarFiltroJefatura('indicador',this.value)">${mv199OpcionesIndicador(filtros.indicador)}</select>
+        </div>
+        <div class="mv199-campo-filtro mv199-campo-cuadrilla">
+            <label for="mv199FiltroCuadrilla">🔎 Cuadrilla</label>
+            <select id="mv199FiltroCuadrilla" onchange="mv199CambiarFiltroJefatura('cuadrilla',this.value)">${mv198OpcionesCuadrilla(listaSede, filtros.cuadrilla)}</select>
+        </div>
+    </div>`;
+}
+
+function mv199MetasCuadrilla(x){
+    return mv4Resumen([x]);
+}
+
+function mv199ConfigIndicador(indicador){
+    const configs = {
+        PRODUCCION:{titulo:"Producción", icono:"📈", campo:"produccion", orden:"DESC", valor:x=>`${Number(x.produccion||0).toFixed(1)} pts`, detalle:x=>`${Math.round((Number(x.produccion||0)/META_PRODUCCION_CUADRILLA)*100)}% de meta`},
+        EFECTIVIDAD:{titulo:"Efectividad", icono:"🎯", campo:"efectividad", orden:"DESC", valor:x=>mv4Per(x.efectividad), detalle:x=>`Meta ≥ ${META_EFECTIVIDAD}%`},
+        RECABLEADO:{titulo:"% Recableado", icono:"🔧", campo:"recableado", orden:"ASC", valor:x=>mv4Per(x.recableado), detalle:x=>`${Number(x.detRecableado?.recableados||0)} recableados / ${Number(x.detRecableado?.rojoAsignadas||0)} órdenes VT`},
+        VTRGAR:{titulo:"% VTR/GAR", icono:"📡", campo:"vtrgar", orden:"ASC", valor:x=>mv4Per(x.vtrgar), detalle:x=>`${Number(x.detVtrGar?.totalGarVtr||0)} incidencias`},
+        OBSERVACIONES:{titulo:"Observaciones", icono:"🚨", campo:"montoAfectadoObs", orden:"ASC", valor:x=>mv4Money(x.montoAfectadoObs||0), detalle:x=>`${Number(x.observaciones||0)} observaciones`},
+        METAS:{titulo:"Metas y cumplimiento", icono:"🏆", campo:"cumplimiento", orden:"DESC", valor:x=>`${mv199MetasCuadrilla(x).cumplimiento}%`, detalle:x=>`${mv199MetasCuadrilla(x).ok} de 5 metas cumplidas`},
+        RANKING:{titulo:"Ranking / posición", icono:"🥇", campo:"puestoRegion", orden:"ASC", valor:x=>x.puestoRegion?`#${x.puestoRegion}`:"-", detalle:x=>`Sede #${x.puestoSede||'-'} · Plataforma #${x.puestoPlataforma||'-'}`}
+    };
+    return configs[indicador] || null;
+}
+
+function mv199ValorOrden(x, config){
+    if(config.campo === "cumplimiento") return Number(mv199MetasCuadrilla(x).cumplimiento||0);
+    const n = Number(x[config.campo]);
+    if(config.orden === "ASC" && (!Number.isFinite(n) || n <= 0) && config.campo === "puestoRegion") return 999999;
+    return Number.isFinite(n) ? n : 0;
+}
+
+function mv199ListadoIndicador(lista, indicador, sede){
+    const config = mv199ConfigIndicador(indicador);
+    if(!config) return "";
+    const ordenada = (lista || []).slice().sort((a,b)=>{
+        const va = mv199ValorOrden(a,config), vb = mv199ValorOrden(b,config);
+        if(va === vb) return (a.cuadrilla||"").localeCompare(b.cuadrilla||"",undefined,{numeric:true});
+        return config.orden === "ASC" ? va-vb : vb-va;
+    });
+    const alcance = sede === "TODAS" ? "ZONA NORTE" : sede;
+    if(!ordenada.length) return `<div class="mv4-empty">No existen cuadrillas para los filtros seleccionados.</div>`;
+    return `<div class="mv199-listado-indicador">
+        <div class="mv199-listado-cabecera">
+            <div><b>${config.icono} ${config.titulo}</b><small>${alcance} · ${ordenada.length} cuadrillas</small></div>
+            <span>${config.orden === "ASC" ? "Menor a mayor" : "Mayor a menor"}</span>
+        </div>
+        <div class="mv199-tabla-wrap"><table class="mv199-tabla-indicador">
+            <thead><tr><th>#</th><th>Cuadrilla</th><th>Sede</th><th>${config.titulo}</th><th>Referencia</th></tr></thead>
+            <tbody>${ordenada.map((x,i)=>`<tr onclick="mv199AbrirCuadrilla('${mv198Escapar(x.cuadrilla)}')" title="Ver resumen completo de la cuadrilla">
+                <td><b>${i+1}</b></td>
+                <td><b>${mv198Escapar(x.cuadrilla)}</b><small>${mv198Escapar(x.plataforma||"")}</small></td>
+                <td>${mv198Escapar(x.sede||"")}</td>
+                <td class="mv199-valor-indicador">${config.valor(x)}</td>
+                <td>${config.detalle(x)}</td>
+            </tr>`).join("")}</tbody>
+        </table></div>
+        <div class="mv199-ayuda">Selecciona una fila para abrir el resumen y el detalle completo de la cuadrilla.</div>
+    </div>`;
+}
+
+function mv199CambiarFiltroJefatura(campo, valor){
+    if(!["sede","indicador","cuadrilla"].includes(campo)) return;
+    MV199_DASH_JEFATURA_FILTROS[campo] = valor || (campo === "indicador" ? "RESUMEN" : "TODAS");
+    if(campo === "sede"){
+        const encontrada = (MV198_DASH_JEFATURA_LISTA||[]).find(x => x.cuadrilla === MV199_DASH_JEFATURA_FILTROS.cuadrilla);
+        if(!encontrada || (valor !== "TODAS" && mv4Norm(encontrada.sede) !== valor)) MV199_DASH_JEFATURA_FILTROS.cuadrilla = "TODAS";
+    }
+    if(campo === "indicador" && valor !== "RESUMEN") MV199_DASH_JEFATURA_FILTROS.cuadrilla = "TODAS";
+    mv199RenderJefatura();
+}
+
+function mv199AbrirCuadrilla(cuadrilla){
+    MV199_DASH_JEFATURA_FILTROS.cuadrilla = cuadrilla;
+    MV199_DASH_JEFATURA_FILTROS.indicador = "RESUMEN";
+    const encontrada = (MV198_DASH_JEFATURA_LISTA||[]).find(x=>x.cuadrilla===cuadrilla);
+    if(encontrada) MV199_DASH_JEFATURA_FILTROS.sede = mv4Norm(encontrada.sede);
+    mv199RenderJefatura();
+}
+
+function mv199RenderJefatura(){
+    const listaCompleta = MV198_DASH_JEFATURA_LISTA || [];
+    const f = MV199_DASH_JEFATURA_FILTROS;
+    const listaSede = f.sede === "TODAS" ? listaCompleta : listaCompleta.filter(x=>mv4Norm(x.sede)===f.sede);
+    const seleccion = f.cuadrilla !== "TODAS" ? listaSede.find(x=>x.cuadrilla===f.cuadrilla) : null;
+    const grupos = mv4AgruparPorSede(listaSede);
+    const general = mv4Resumen(listaSede);
+    const tituloZona = f.sede === "TODAS" ? "ZONA NORTE" : f.sede;
     let html = `<div class="mv4-page">
         <div class="mv4-top-card">
             <div class="mv4-top-role">👔 JEFATURA</div>
-            <div class="mv4-top-sede">ZONA NORTE</div>
-            <div class="mv4-top-sub">${lista.length} cuadrillas</div>
+            <div class="mv4-top-sede">${tituloZona}</div>
+            <div class="mv4-top-sub">${listaSede.length} cuadrillas</div>
         </div>
-        ${mv198FiltroCuadrilla(lista, seleccionada || "TODAS", "mv198CambiarCuadrillaJefatura", "Filtrar por cuadrilla")}`;
+        ${mv199FiltrosJefatura(listaCompleta, f)}`;
 
     if(seleccion){
         html += mv198ResumenCuadrilla(seleccion);
+    }else if(f.indicador !== "RESUMEN"){
+        html += mv199ListadoIndicador(listaSede, f.indicador, f.sede);
     }else{
-        html += `${mv591ResumenEjecutivoZona(lista)}
+        const tituloResumen = f.sede === "TODAS" ? "ZONA NORTE" : f.sede;
+        html += `${f.sede === "TODAS" ? mv591ResumenEjecutivoZona(listaSede) : `<div class="mv199-resumen-sede-seleccionada"><div class="mv4-general-title">📊 RESUMEN EJECUTIVO ${tituloResumen}</div>${mv4DashboardKpis(listaSede)}</div>`}
             <div class="mv4-general-card">
-                <div class="mv4-general-title">📋 CUMPLIMIENTO ZONA NORTE</div>
+                <div class="mv4-general-title">📋 CUMPLIMIENTO ${tituloResumen}</div>
                 <div class="mv4-general-value">${general.cumplimiento}%</div>
                 <div class="mv4-progress"><span style="width:${general.cumplimiento}%"></span></div>
                 <div class="mv4-general-sub">${general.ok} de 5 metas cumplidas</div>
             </div>`;
-        MV591_SEDES_OFICIALES.forEach(s => html += mv4SedeCard(s, grupos[s] || []));
+        if(f.sede === "TODAS") MV591_SEDES_OFICIALES.forEach(s => html += mv4SedeCard(s, grupos[s] || []));
     }
     html += `<button class="button_1" onclick="volverInicio()">⬅️ Volver al menú</button></div>`;
     mostrarPantalla(html);
 }
 
-function mv198CambiarCuadrillaJefatura(valor){ mv198RenderJefatura(valor); }
+function mv198RenderJefatura(seleccionada){
+    MV199_DASH_JEFATURA_FILTROS.cuadrilla = seleccionada || "TODAS";
+    mv199RenderJefatura();
+}
+function mv198CambiarCuadrillaJefatura(valor){ mv199CambiarFiltroJefatura("cuadrilla",valor); }
 
 async function mostrarDashboardJefatura(){
     mostrarPantalla(`<div class="mv4-page"><h2 class="mv4-title">👔 JEFATURA</h2><div class="mv4-loading">Cargando Zona Norte...</div></div>`);
     try{
         const listaCompleta = await mv4ObtenerRanking();
         MV198_DASH_JEFATURA_LISTA = mv591ListaZonaNorte(listaCompleta);
-        mv198RenderJefatura("TODAS");
+        MV199_DASH_JEFATURA_FILTROS = {sede:"TODAS", indicador:"RESUMEN", cuadrilla:"TODAS"};
+        mv199RenderJefatura();
     }catch(e){ mostrarPantalla(`<div class="mv4-page"><h2>👔 Jefatura</h2><div class="mv4-error">${e.message}</div></div>`); }
 }
