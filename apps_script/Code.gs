@@ -5350,12 +5350,14 @@ function obtenerResumenMaterialesV184(data) {
 ========================= */
 const HOJA_CONSULTAS_RECLAMOS = "CONSULTAS_RECLAMOS";
 const HOJA_HISTORIAL_RECLAMOS = "HISTORIAL_RECLAMOS";
+const CARPETA_CONSULTAS_RECLAMOS = "1sOrPRSzADJ7eZlk-QhWVKbo8A52JyF6_";
 
 function encabezadoConsultasReclamos(){return [[
   "ID","FECHA_REGISTRO","HORA_REGISTRO","SEDE","CUADRILLA","TECNICO","PERFIL_REGISTRO",
   "CATEGORIA","SUBCATEGORIA","AREA_RESPONSABLE","CODIGO_PEDIDO","TICKET","CLIENTE","DESCRIPCION",
   "URGENCIA","ESTADO","ASIGNADO_A","FECHA_PRIMERA_RESPUESTA","FECHA_SOLUCION","RESPUESTA_FINAL",
-  "CONFIRMACION_TECNICO","FECHA_CIERRE","EVIDENCIAS","ULTIMA_ACTUALIZACION"
+  "CONFIRMACION_TECNICO","FECHA_CIERRE","EVIDENCIAS","ULTIMA_ACTUALIZACION",
+  "CANTIDAD_DIAS","DETALLE_DIAS_JSON","TOTAL_PUNTOS","CARPETA_DRIVE"
 ]];}
 function encabezadoHistorialReclamos(){return [[
   "ID_HISTORIAL","ID_CASO","FECHA","HORA","USUARIO","PERFIL","ACCION","ESTADO_ANTERIOR","ESTADO_NUEVO","COMENTARIO","EVIDENCIAS"
@@ -5363,8 +5365,8 @@ function encabezadoHistorialReclamos(){return [[
 function asegurarHojasConsultasReclamos(){
   const ss=SpreadsheetApp.getActiveSpreadsheet();
   let h=ss.getSheetByName(HOJA_CONSULTAS_RECLAMOS); if(!h)h=ss.insertSheet(HOJA_CONSULTAS_RECLAMOS);
-  if(h.getMaxColumns()<24)h.insertColumnsAfter(h.getMaxColumns(),24-h.getMaxColumns());
-  if(h.getLastRow()===0||!h.getRange(1,1).getValue())h.getRange(1,1,1,24).setValues(encabezadoConsultasReclamos());
+  if(h.getMaxColumns()<28)h.insertColumnsAfter(h.getMaxColumns(),28-h.getMaxColumns());
+  h.getRange(1,1,1,28).setValues(encabezadoConsultasReclamos());
   let hh=ss.getSheetByName(HOJA_HISTORIAL_RECLAMOS); if(!hh)hh=ss.insertSheet(HOJA_HISTORIAL_RECLAMOS);
   if(hh.getMaxColumns()<11)hh.insertColumnsAfter(hh.getMaxColumns(),11-hh.getMaxColumns());
   if(hh.getLastRow()===0||!hh.getRange(1,1).getValue())hh.getRange(1,1,1,11).setValues(encabezadoHistorialReclamos());
@@ -5384,26 +5386,66 @@ function perfilAreaReclamo(perfil){
   return "";
 }
 function idReclamo(){return "CR-"+Utilities.formatDate(new Date(),Session.getScriptTimeZone(),"yyyyMMddHHmmss")+"-"+Math.floor(Math.random()*900+100);}
-function filaReclamoObjeto(f){return {id:f[0],fechaRegistro:f[1],horaRegistro:f[2],sede:f[3],cuadrilla:f[4],tecnico:f[5],perfilRegistro:f[6],categoria:f[7],subcategoria:f[8],areaResponsable:f[9],codigoPedido:f[10],ticket:f[11],cliente:f[12],descripcion:f[13],urgencia:f[14],estado:f[15],asignadoA:f[16],fechaPrimeraRespuesta:f[17],fechaSolucion:f[18],respuestaFinal:f[19],confirmacionTecnico:f[20],fechaCierre:f[21],evidencias:f[22],ultimaActualizacion:f[23]};}
+function parseJsonReclamo(valor,defecto){try{return valor?JSON.parse(valor):defecto;}catch(e){return defecto;}}
+function filaReclamoObjeto(f){return {id:f[0],fechaRegistro:f[1],horaRegistro:f[2],sede:f[3],cuadrilla:f[4],tecnico:f[5],perfilRegistro:f[6],categoria:f[7],subcategoria:f[8],areaResponsable:f[9],codigoPedido:f[10],ticket:f[11],cliente:f[12],descripcion:f[13],urgencia:f[14],estado:f[15],asignadoA:f[16],fechaPrimeraRespuesta:f[17],fechaSolucion:f[18],respuestaFinal:f[19],confirmacionTecnico:f[20],fechaCierre:f[21],evidencias:f[22],ultimaActualizacion:f[23],cantidadDias:Number(f[24])||0,detalleDias:parseJsonReclamo(f[25],[]),totalPuntos:Number(f[26])||0,carpetaDrive:f[27]||""};}
 function buscarReclamo(id){const hs=asegurarHojasConsultasReclamos(),d=hs.casos.getDataRange().getValues();for(let i=1;i<d.length;i++)if(String(d[i][0])===String(id))return {hoja:hs.casos,fila:i+1,item:filaReclamoObjeto(d[i])};throw new Error("No se encontró el caso: "+id);}
 function guardarHistorialReclamo(idCaso,usuario,accion,anterior,nuevo,comentario,evidencias){
   const hs=asegurarHojasConsultasReclamos(),ahora=new Date();
   hs.historial.appendRow(["HCR-"+Utilities.formatDate(ahora,Session.getScriptTimeZone(),"yyyyMMddHHmmss")+"-"+Math.floor(Math.random()*900+100),idCaso,ahora,ahora,usuario.usuario,usuario.perfil,accion,anterior||"",nuevo||"",comentario||"",evidencias||""]);
+}
+function nombreSeguroReclamo(valor){return (valor||"SIN_DATO").toString().toUpperCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"").replace(/[\\/:*?"<>|#%{}~&]+/g," ").replace(/\s+/g," ").trim().substring(0,100)||"SIN_DATO";}
+function obtenerOCrearCarpetaReclamo(padre,nombre){const limpio=nombreSeguroReclamo(nombre),it=padre.getFoldersByName(limpio);return it.hasNext()?it.next():padre.createFolder(limpio);}
+function extensionArchivoReclamo(nombre,mime){const n=(nombre||"").toString();if(n.indexOf(".")>=0)return n.split(".").pop().toLowerCase();if((mime||"").indexOf("pdf")>=0)return "pdf";if((mime||"").indexOf("png")>=0)return "png";return "jpg";}
+function guardarActaReclamo(carpeta,id,fecha,codigo,indice,acta){
+  if(!acta||!acta.base64)return "";
+  const ext=extensionArchivoReclamo(acta.nombre,acta.mime),nombre=id+"_"+fecha.replace(/-/g,"")+"_"+nombreSeguroReclamo(codigo).replace(/\s+/g,"_")+"_"+String(indice+1).padStart(2,"0")+"."+ext;
+  const blob=Utilities.newBlob(Utilities.base64Decode(acta.base64),acta.mime||"application/octet-stream",nombre);
+  const archivo=carpeta.createFile(blob);archivo.setSharing(DriveApp.Access.ANYONE_WITH_LINK,DriveApp.Permission.VIEW);return archivo.getUrl();
+}
+function prepararDetalleDiasReclamo(data,id,sede,cuadrilla){
+  const categoria=normalizarTexto(data.categoria),esProduccion=categoria.indexOf("BONO")>=0||categoria.indexOf("PRODUCCION")>=0||categoria.indexOf("PUNTAJE")>=0;
+  if(!esProduccion)return {cantidadDias:0,detalle:[],totalPuntos:0,carpetaUrl:""};
+  const dias=Array.isArray(data.detalleDias)?data.detalleDias:[];
+  if(!dias.length)throw new Error("Ingrese al menos un día afectado");
+  if(dias.length>31)throw new Error("La cantidad máxima permitida es 31 días");
+  const raiz=DriveApp.getFolderById(CARPETA_CONSULTAS_RECLAMOS);
+  const carpetaCaso=obtenerOCrearCarpetaReclamo(obtenerOCrearCarpetaReclamo(obtenerOCrearCarpetaReclamo(raiz,sede),cuadrilla||"SIN_CUADRILLA"),id);
+  let totalPuntos=0;
+  const detalle=dias.map((dia,di)=>{
+    const fecha=(dia.fecha||"").toString().trim();if(!/^\d{4}-\d{2}-\d{2}$/.test(fecha))throw new Error("Fecha no válida en el día "+(di+1));
+    const codigos=Array.isArray(dia.codigos)?dia.codigos:[];if(!codigos.length)throw new Error("Ingrese al menos un código en el día "+(di+1));if(codigos.length>6)throw new Error("Solo se permiten hasta 6 códigos por fecha");
+    const puntos=Number(dia.puntos)||0;if(puntos<0)throw new Error("Los puntos no pueden ser negativos");totalPuntos+=puntos;
+    const carpetaFecha=obtenerOCrearCarpetaReclamo(carpetaCaso,fecha);
+    const salidaCodigos=codigos.map((c,ci)=>{const codigo=(c.codigo||"").toString().trim();if(!codigo)throw new Error("Código obligatorio en el día "+(di+1));return {codigo,actaUrl:guardarActaReclamo(carpetaFecha,id,fecha,codigo,ci,c.acta),actaNombre:c.acta&&c.acta.nombre?c.acta.nombre:""};});
+    return {fecha,puntos,codigos:salidaCodigos};
+  });
+  return {cantidadDias:detalle.length,detalle,totalPuntos,carpetaUrl:carpetaCaso.getUrl()};
 }
 function registrarConsultaReclamo(data){
   const hs=asegurarHojasConsultasReclamos(),u=obtenerUsuarioApp(data.usuario),categoria=normalizarTexto(data.categoria),sub=normalizarTexto(data.subcategoria),descripcion=String(data.descripcion||"").trim();
   if(!categoria||!sub||!descripcion)throw new Error("Complete categoría, subcategoría y descripción");
   const area=areaResponsableReclamo(categoria),ahora=new Date(),id=idReclamo();
   const sede=normalizarTexto(u.sede||data.sede),cuadrilla=normalizarCuadrilla(u.cuadrilla||data.cuadrilla),urg=normalizarTexto(data.urgencia||"NORMAL");
-  hs.casos.appendRow([id,ahora,ahora,sede,cuadrilla,u.usuario,u.perfil,categoria,sub,area,String(data.codigoPedido||"").trim(),String(data.ticket||"").trim(),String(data.cliente||"").trim(),descripcion,urg,"REGISTRADO","","","","","PENDIENTE","",String(data.evidencias||""),ahora]);
+  const dias=prepararDetalleDiasReclamo(data,id,sede,cuadrilla);
+  hs.casos.appendRow([id,ahora,ahora,sede,cuadrilla,u.usuario,u.perfil,categoria,sub,area,String(data.codigoPedido||"").trim(),String(data.ticket||"").trim(),String(data.cliente||"").trim(),descripcion,urg,"REGISTRADO","","","","","PENDIENTE","",String(data.evidencias||""),ahora,dias.cantidadDias,JSON.stringify(dias.detalle),dias.totalPuntos,dias.carpetaUrl]);
   guardarHistorialReclamo(id,u,"REGISTRO","","REGISTRADO",descripcion,data.evidencias||"");
-  return {ok:true,modulo:"CONSULTAS_RECLAMOS",accion:"REGISTRAR",id,areaResponsable:area,estado:"REGISTRADO"};
+  return {ok:true,modulo:"CONSULTAS_RECLAMOS",accion:"REGISTRAR",id,areaResponsable:area,estado:"REGISTRADO",cantidadDias:dias.cantidadDias,totalPuntos:dias.totalPuntos,carpetaDrive:dias.carpetaUrl};
+}
+function esReclamoContraSupervisor(item){
+  const categoria=normalizarTexto(item&&item.categoria);
+  const subcategoria=normalizarTexto(item&&item.subcategoria);
+  return categoria==="SUPERVISOR" || subcategoria.indexOf("SUPERVISOR")>=0;
 }
 function puedeVerReclamo(u,item){
   const p=normalizarTexto(u.perfil),area=perfilAreaReclamo(p);
   if(esPerfilJefatura(p))return true;
   if(area)return normalizarTexto(item.areaResponsable)===area;
-  if(p==="SUPERVISOR")return normalizarTexto(item.sede)===normalizarTexto(u.sede);
+  if(p==="SUPERVISOR"){
+    // Confidencialidad: los reclamos contra Supervisor se derivan únicamente
+    // a Jefatura General y nunca se muestran al perfil Supervisor.
+    if(esReclamoContraSupervisor(item))return false;
+    return normalizarTexto(item.sede)===normalizarTexto(u.sede);
+  }
   return normalizarUsuario(item.tecnico)===normalizarUsuario(u.usuario)||normalizarCuadrilla(item.cuadrilla)===normalizarCuadrilla(u.cuadrilla);
 }
 function listarConsultasReclamos(data){

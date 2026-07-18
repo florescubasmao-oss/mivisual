@@ -1,0 +1,27 @@
+MI VISUAL V203 - CONSULTAS Y RECLAMOS
+
+IMPLEMENTACION:
+- Para la categoria BONO, PRODUCCION Y PUNTAJE se ocultan Codigo de pedido, Ticket y Cliente generales.
+- Se solicita cantidad de dias afectados (1 a 31).
+- Por cada dia se registra fecha, puntos a considerar y codigos.
+- Cada fecha admite hasta 6 codigos, agregados uno por uno.
+- Cada codigo permite adjuntar un acta opcional (PDF o imagen).
+- Los archivos se guardan en Drive dentro de la carpeta ID 1sOrPRSzADJ7eZlk-QhWVKbo8A52JyF6_.
+- Estructura Drive: SEDE / CUADRILLA / ID_CASO / FECHA.
+- El detalle por fecha, codigos, puntos y enlaces de actas aparece en la vista del caso.
+- Se agregan 4 columnas a CONSULTAS_RECLAMOS: CANTIDAD_DIAS, DETALLE_DIAS_JSON, TOTAL_PUNTOS y CARPETA_DRIVE.
+
+ACTUALIZACION OBLIGATORIA:
+- Code.gs / Apps Script: SI.
+- Nuevo despliegue de Apps Script: SI.
+- GitHub / frontend: SI.
+- Google Sheets: las columnas se crean o actualizan automaticamente.
+
+ARCHIVOS MODIFICADOS:
+- Code.gs
+- apps_script/Code.gs
+- js/consultas_reclamos.js
+- css/estilos.css
+- index.html
+
+No se modificaron otros modulos.
