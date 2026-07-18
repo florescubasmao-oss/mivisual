@@ -1,0 +1,17 @@
+MI VISUAL V198 - FILTRO POR CUADRILLA EN DASHBOARDS
+
+IMPLEMENTACION:
+- Dashboard Jefatura: filtro con todas las cuadrillas de Zona Norte.
+- Dashboard Supervisor: filtro limitado a las cuadrillas de su sede.
+- Opcion TODAS LAS CUADRILLAS conserva el dashboard general actual.
+- Al seleccionar una cuadrilla se muestra su resumen de Produccion, Efectividad, Recableado, VTR/GAR, Observaciones, Metas y cumplimiento.
+- Boton Ver detalle completo despliega informacion operativa y posiciones del ranking.
+
+ARCHIVOS MODIFICADOS:
+- js/dashboards.js
+- css/estilos.css
+- index.html (version de cache)
+
+CODE.GS / APPS SCRIPT: NO ACTUALIZAR.
+GOOGLE SHEETS: SIN CAMBIOS.
+DESPLIEGUE: SOLO GITHUB / FRONTEND.

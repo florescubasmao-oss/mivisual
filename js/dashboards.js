@@ -2121,18 +2121,96 @@ function renderDashboardProduccion(data){
     mostrarPantalla(html);
 }
 
+let MV198_DASH_SUPERVISOR_LISTA = [];
+let MV198_DASH_JEFATURA_LISTA = [];
+
+function mv198Escapar(valor){
+    return (valor ?? "").toString()
+        .replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;")
+        .replace(/"/g,"&quot;").replace(/'/g,"&#039;");
+}
+
+function mv198OpcionesCuadrilla(lista, seleccionada){
+    const ordenada = (lista || []).slice().sort((a,b)=>(a.cuadrilla||"").localeCompare(b.cuadrilla||"", undefined, {numeric:true}));
+    return `<option value="TODAS">TODAS LAS CUADRILLAS</option>` + ordenada.map(x => {
+        const valor = mv198Escapar(x.cuadrilla || "");
+        return `<option value="${valor}" ${x.cuadrilla===seleccionada?'selected':''}>${valor}</option>`;
+    }).join("");
+}
+
+function mv198FiltroCuadrilla(lista, seleccionada, funcionCambio, etiqueta){
+    return `<div class="mv198-filtro-cuadrilla">
+        <label for="mv198FiltroCuadrilla"><b>🔎 ${etiqueta || 'Filtrar por cuadrilla'}</b></label>
+        <select id="mv198FiltroCuadrilla" onchange="${funcionCambio}(this.value)">
+            ${mv198OpcionesCuadrilla(lista, seleccionada)}
+        </select>
+    </div>`;
+}
+
+function mv198DetalleRanking(x){
+    return `<div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;">
+        ${mv58KpiMini("Puesto Zona Norte", x.puestoRegion ? `#${x.puestoRegion}` : "-")}
+        ${mv58KpiMini("Puesto sede", x.puestoSede ? `#${x.puestoSede}` : "-")}
+        ${mv58KpiMini("Puesto plataforma", x.puestoPlataforma ? `#${x.puestoPlataforma}` : "-")}
+        ${mv58KpiMini("Puntaje ranking", Number(x.puntaje || 0).toFixed(2))}
+    </div>`;
+}
+
+function mv198ResumenCuadrilla(x){
+    if(!x) return `<div class="mv4-empty">No se encontró información de la cuadrilla seleccionada.</div>`;
+    const r = mv4Resumen([x]);
+    const id = "mv198_detalle_" + mv58IdSeguro(x.cuadrilla) + "_" + Math.random().toString(36).slice(2);
+    const prodPct = META_PRODUCCION_CUADRILLA > 0 ? Math.round((Number(x.produccion||0)/META_PRODUCCION_CUADRILLA)*100) : 0;
+    return `<div class="mv198-cuadrilla-seleccionada">
+        <div class="mv4-top-card mv198-top-cuadrilla">
+            <div class="mv4-top-role">📌 CUADRILLA SELECCIONADA</div>
+            <div class="mv4-top-sede">${mv198Escapar(x.cuadrilla)}</div>
+            <div class="mv4-top-sub">${mv198Escapar(x.sede)} · ${mv198Escapar(x.plataforma)} · Actualizado: ${mv198Escapar(x.actualizacion || '-')}</div>
+        </div>
+        <div class="mv4-general-card">
+            <div class="mv4-general-title">📊 RESUMEN DE LA CUADRILLA</div>
+            <div class="mv198-resumen-grid">
+                ${mv591MiniResumenCard("📈","Producción",`${Number(x.produccion||0).toFixed(1)} pts`,`${prodPct}% de meta`,mv4Estado("mayor",x.produccion,META_PRODUCCION_CUADRILLA))}
+                ${mv591MiniResumenCard("🎯","Efectividad",mv4Per(x.efectividad),`Meta ≥ ${META_EFECTIVIDAD}%`,mv4Estado("mayor",x.efectividad,META_EFECTIVIDAD))}
+                ${mv591MiniResumenCard("🔧","Recableado",mv4Per(x.recableado),`Meta ≤ ${META_RECABLEADO}%`,mv4Estado("menor",x.recableado,META_RECABLEADO))}
+                ${mv591MiniResumenCard("📡","VTR/GAR",mv4Per(x.vtrgar),`Meta ≤ ${META_VTRGAR}%`,mv4Estado("menor",x.vtrgar,META_VTRGAR))}
+                ${mv591MiniResumenCard("🚨","Observaciones",mv4Money(x.montoAfectadoObs||0),`${Number(x.observaciones||0)} observaciones`,mv4Estado("menor",x.montoAfectadoObs,META_OBSERVACIONES))}
+                ${mv591MiniResumenCard("🏆","Metas",`${r.ok} / 5`,`${r.cumplimiento}% cumplimiento`,r.cumplimiento>=80?"🟢":(r.cumplimiento>=60?"🟡":"🔴"))}
+            </div>
+            <button class="mv4-link-btn mv198-detalle-btn" onclick="toggleDetalle('${id}', this)">▼ Ver detalle completo</button>
+            <div id="${id}" class="mv198-detalle-completo" style="display:none;">
+                <div class="mv198-detalle-bloque"><h4>📈 Producción</h4>${mv58DetalleProduccion(x.detProduccion||{})}</div>
+                <div class="mv198-detalle-bloque"><h4>🎯 Efectividad</h4>${mv58DetalleEfectividad(x.detEfectividad||{})}</div>
+                <div class="mv198-detalle-bloque"><h4>🔧 Recableado</h4>${mv58DetalleRecableado(x.detRecableado||{})}</div>
+                <div class="mv198-detalle-bloque"><h4>📡 VTR / GAR</h4>${mv58DetalleVtrGar(x.detVtrGar||{})}</div>
+                <div class="mv198-detalle-bloque"><h4>🚨 Observaciones</h4>${mv58DetalleObs(x.detObservaciones||{})}</div>
+                <div class="mv198-detalle-bloque"><h4>🏆 Ranking y posición</h4>${mv198DetalleRanking(x)}</div>
+            </div>
+        </div>
+    </div>`;
+}
+
+function mv198RenderSupervisor(seleccionada){
+    const lista = MV198_DASH_SUPERVISOR_LISTA || [];
+    const sede = mv4Norm(localStorage.getItem("sede"));
+    const actualizacion = lista[0]?.actualizacion || "-";
+    const seleccion = seleccionada && seleccionada !== "TODAS" ? lista.find(x=>x.cuadrilla===seleccionada) : null;
+    mostrarPantalla(`<div class="mv4-page">
+        <div class="mv4-top-card"><div class="mv4-top-role">👷 SUPERVISOR</div><div class="mv4-top-sede">${sede || "SEDE"}</div><div class="mv4-top-sub">Actualizado: ${actualizacion}</div></div>
+        ${mv198FiltroCuadrilla(lista, seleccionada || "TODAS", "mv198CambiarCuadrillaSupervisor", "Filtrar cuadrilla de la sede")}
+        ${seleccion ? mv198ResumenCuadrilla(seleccion) : mv4DashboardKpis(lista)}
+        <button class="button_1" onclick="volverInicio()">⬅️ Volver al menú</button>
+    </div>`);
+}
+
+function mv198CambiarCuadrillaSupervisor(valor){ mv198RenderSupervisor(valor); }
+
 async function mostrarDashboardSupervisor(){
     const sede = mv4Norm(localStorage.getItem("sede"));
     mostrarPantalla(`<div class="mv4-page"><h2 class="mv4-title">👷 SUPERVISOR</h2><div class="mv4-loading">Cargando dashboard...</div></div>`);
     try{
-        const lista = (await mv4ObtenerRanking()).filter(x => mv4Norm(x.sede) === sede);
-        const actualizacion = lista[0]?.actualizacion || "-";
-        mostrarPantalla(`
-            <div class="mv4-page">
-                <div class="mv4-top-card"><div class="mv4-top-role">👷 SUPERVISOR</div><div class="mv4-top-sede">${sede || "SEDE"}</div><div class="mv4-top-sub">Actualizado: ${actualizacion}</div></div>
-                ${mv4DashboardKpis(lista)}
-                <button class="button_1" onclick="volverInicio()">⬅️ Volver al menú</button>
-            </div>`);
+        MV198_DASH_SUPERVISOR_LISTA = (await mv4ObtenerRanking()).filter(x => mv4Norm(x.sede) === sede);
+        mv198RenderSupervisor("TODAS");
     }catch(e){ mostrarPantalla(`<div class="mv4-page"><h2>👷 Supervisor</h2><div class="mv4-error">${e.message}</div></div>`); }
 }
 
@@ -2202,20 +2280,23 @@ function mv4SedeCard(sede, lista){
     </div>`;
 }
 
-async function mostrarDashboardJefatura(){
-    mostrarPantalla(`<div class="mv4-page"><h2 class="mv4-title">👔 JEFATURA</h2><div class="mv4-loading">Cargando Zona Norte...</div></div>`);
-    try{
-        const listaCompleta = await mv4ObtenerRanking();
-        const lista = mv591ListaZonaNorte(listaCompleta);
-        const grupos = mv4AgruparPorSede(lista);
-        const general = mv4Resumen(lista);
-        let html = `<div class="mv4-page">
-            <div class="mv4-top-card">
-                <div class="mv4-top-role">👔 JEFATURA</div>
-                <div class="mv4-top-sede">ZONA NORTE</div>
-                <div class="mv4-top-sub">${lista.length} cuadrillas</div>
-            </div>
-            ${mv591ResumenEjecutivoZona(lista)}
+function mv198RenderJefatura(seleccionada){
+    const lista = MV198_DASH_JEFATURA_LISTA || [];
+    const seleccion = seleccionada && seleccionada !== "TODAS" ? lista.find(x=>x.cuadrilla===seleccionada) : null;
+    const grupos = mv4AgruparPorSede(lista);
+    const general = mv4Resumen(lista);
+    let html = `<div class="mv4-page">
+        <div class="mv4-top-card">
+            <div class="mv4-top-role">👔 JEFATURA</div>
+            <div class="mv4-top-sede">ZONA NORTE</div>
+            <div class="mv4-top-sub">${lista.length} cuadrillas</div>
+        </div>
+        ${mv198FiltroCuadrilla(lista, seleccionada || "TODAS", "mv198CambiarCuadrillaJefatura", "Filtrar por cuadrilla")}`;
+
+    if(seleccion){
+        html += mv198ResumenCuadrilla(seleccion);
+    }else{
+        html += `${mv591ResumenEjecutivoZona(lista)}
             <div class="mv4-general-card">
                 <div class="mv4-general-title">📋 CUMPLIMIENTO ZONA NORTE</div>
                 <div class="mv4-general-value">${general.cumplimiento}%</div>
@@ -2223,7 +2304,18 @@ async function mostrarDashboardJefatura(){
                 <div class="mv4-general-sub">${general.ok} de 5 metas cumplidas</div>
             </div>`;
         MV591_SEDES_OFICIALES.forEach(s => html += mv4SedeCard(s, grupos[s] || []));
-        html += `<button class="button_1" onclick="volverInicio()">⬅️ Volver al menú</button></div>`;
-        mostrarPantalla(html);
+    }
+    html += `<button class="button_1" onclick="volverInicio()">⬅️ Volver al menú</button></div>`;
+    mostrarPantalla(html);
+}
+
+function mv198CambiarCuadrillaJefatura(valor){ mv198RenderJefatura(valor); }
+
+async function mostrarDashboardJefatura(){
+    mostrarPantalla(`<div class="mv4-page"><h2 class="mv4-title">👔 JEFATURA</h2><div class="mv4-loading">Cargando Zona Norte...</div></div>`);
+    try{
+        const listaCompleta = await mv4ObtenerRanking();
+        MV198_DASH_JEFATURA_LISTA = mv591ListaZonaNorte(listaCompleta);
+        mv198RenderJefatura("TODAS");
     }catch(e){ mostrarPantalla(`<div class="mv4-page"><h2>👔 Jefatura</h2><div class="mv4-error">${e.message}</div></div>`); }
 }
