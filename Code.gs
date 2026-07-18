@@ -5399,11 +5399,21 @@ function registrarConsultaReclamo(data){
   guardarHistorialReclamo(id,u,"REGISTRO","","REGISTRADO",descripcion,data.evidencias||"");
   return {ok:true,modulo:"CONSULTAS_RECLAMOS",accion:"REGISTRAR",id,areaResponsable:area,estado:"REGISTRADO"};
 }
+function esReclamoContraSupervisor(item){
+  const categoria=normalizarTexto(item&&item.categoria);
+  const subcategoria=normalizarTexto(item&&item.subcategoria);
+  return categoria==="SUPERVISOR" || subcategoria.indexOf("SUPERVISOR")>=0;
+}
 function puedeVerReclamo(u,item){
   const p=normalizarTexto(u.perfil),area=perfilAreaReclamo(p);
   if(esPerfilJefatura(p))return true;
   if(area)return normalizarTexto(item.areaResponsable)===area;
-  if(p==="SUPERVISOR")return normalizarTexto(item.sede)===normalizarTexto(u.sede);
+  if(p==="SUPERVISOR"){
+    // Confidencialidad: los reclamos contra Supervisor se derivan únicamente
+    // a Jefatura General y nunca se muestran al perfil Supervisor.
+    if(esReclamoContraSupervisor(item))return false;
+    return normalizarTexto(item.sede)===normalizarTexto(u.sede);
+  }
   return normalizarUsuario(item.tecnico)===normalizarUsuario(u.usuario)||normalizarCuadrilla(item.cuadrilla)===normalizarCuadrilla(u.cuadrilla);
 }
 function listarConsultasReclamos(data){

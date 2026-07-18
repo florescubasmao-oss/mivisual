@@ -1,0 +1,16 @@
+MI VISUAL V202 - CONFIDENCIALIDAD DE RECLAMOS CONTRA SUPERVISOR
+
+CAMBIO REALIZADO
+- Los casos cuya categoría sea SUPERVISOR no son visibles para ningún usuario con perfil SUPERVISOR.
+- Estos casos continúan visibles para el técnico que los registró y para Jefatura General.
+- Jefatura de Operaciones y Jefatura de Almacén no reciben estos casos porque el área responsable permanece como JEFATURA GENERAL.
+- La misma regla se aplica al detalle e historial del caso mediante la validación central de visibilidad.
+
+ARCHIVO MODIFICADO
+- Code.gs
+
+ACTUALIZACIÓN OBLIGATORIA
+- Apps Script / Code.gs: SÍ
+- Nuevo despliegue de Apps Script: SÍ
+- GitHub / frontend: NO
+- Google Sheets: NO
