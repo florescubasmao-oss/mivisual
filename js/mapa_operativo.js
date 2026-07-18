@@ -26,11 +26,42 @@ async function mostrarMapaOperativo(){
   const menu=document.getElementById('menuPrincipal');
   if(menu) menu.style.setProperty('display','none','important');
   const p=document.getElementById('pantalla');
-  p.innerHTML=`<div class="mo-wrap"><div class="mo-head"><h2 class="mo-title">🗺️ MAPA OPERATIVO</h2><div class="mo-actions"><button class="mo-btn mo-btn-sec" onclick="moCargarDatos()">Actualizar mapa</button></div></div>
-  ${moEsJefatura()?`<div class="mo-panel"><b>Importar información operativa</b><div class="mo-upload-grid" style="margin-top:9px"><div><label class="mo-label">Archivo Excel</label><input id="moArchivo" class="mo-input" type="file" accept=".xlsx,.xls,.csv"></div><button id="moBtnLeer" class="mo-btn" onclick="moLeerArchivo()">Leer archivo</button><button id="moBtnImportar" class="mo-btn" onclick="moRegistrarImportacion()" disabled>Registrar información</button></div><div id="moImportMsg" class="mo-msg">Primero seleccione el archivo, luego registre la información para visualizarla.</div></div>`:''}
-  <div class="mo-panel"><div class="mo-filtros"><div><label class="mo-label">Buscar código de orden</label><input id="moBuscarCodigo" class="mo-input" placeholder="Ej. 1234567" onkeydown="if(event.key==='Enter')moBuscarCodigo()"></div><button class="mo-btn" onclick="moBuscarCodigo()">Buscar</button><div><label class="mo-label">Estado</label><select id="moFiltroEstado" class="mo-select" onchange="moAplicarFiltros()"><option value="">Todos</option></select></div><div><label class="mo-label">Cuadrilla</label><select id="moFiltroCuadrilla" class="mo-select" onchange="moAplicarFiltros()"><option value="">Todas</option></select></div></div><div id="moContador" class="mo-counter"></div></div>
-  <div id="moMapa" class="mo-map"><div class="mo-empty">Cargando mapa...</div></div></div>`;
-  try{await moDependencias();moInicializarMapa();await moCargarDatos()}catch(e){document.getElementById('moMapa').innerHTML=`<div class="mo-empty mo-error">${moEscape(e.message)}</div>`}
+  p.innerHTML=`<div class="mo-wrap"><div class="mo-head"><h2 class="mo-title">🗺️ MAPA OPERATIVO</h2><div class="mo-actions">${moEsJefatura()?'<button class="mo-btn mo-btn-sec" onclick="moMostrarImportacion()">Ingresar datos</button>':''}</div></div>
+  <div id="moVistaFiltros" class="mo-panel">
+    <b>Seleccione la información que desea visualizar</b>
+    <div class="mo-filtros mo-filtros-amplios" style="margin-top:9px">
+      <div><label class="mo-label">Sede</label><select id="moFiltroSede" class="mo-select"><option value="">Todas</option></select></div>
+      <div><label class="mo-label">Fecha</label><input id="moFiltroFecha" class="mo-input" type="date"></div>
+      <div><label class="mo-label">Tipo de trabajo</label><select id="moFiltroTipo" class="mo-select"><option value="">Todos</option></select></div>
+      <div><label class="mo-label">Estado</label><select id="moFiltroEstado" class="mo-select"><option value="">Todos</option></select></div>
+      <div><label class="mo-label">Cuadrilla</label><select id="moFiltroCuadrilla" class="mo-select"><option value="">Todas</option></select></div>
+      <div><label class="mo-label">Código de orden</label><input id="moBuscarCodigo" class="mo-input" placeholder="Ej. 1234567"></div>
+      <button class="mo-btn" onclick="moConsultarMapa()">Ver mapa</button>
+      <button class="mo-btn mo-btn-sec" onclick="moLimpiarFiltros()">Limpiar</button>
+    </div>
+    <div id="moContador" class="mo-counter">Seleccione por lo menos un filtro y presione Ver mapa.</div>
+  </div>
+  <div id="moVistaImportacion" class="mo-panel" style="display:none">
+    <div class="mo-head"><b>Ingresar información operativa</b><button class="mo-btn mo-btn-sec" onclick="moVolverFiltros()">Volver al mapa</button></div>
+    <div class="mo-upload-grid"><div><label class="mo-label">Archivo Excel</label><input id="moArchivo" class="mo-input" type="file" accept=".xlsx,.xls,.csv"></div><button id="moBtnLeer" class="mo-btn" onclick="moLeerArchivo()">Leer archivo</button><button id="moBtnImportar" class="mo-btn" onclick="moRegistrarImportacion()" disabled>Registrar información</button></div>
+    <div id="moImportMsg" class="mo-msg">Seleccione el archivo, léalo y luego registre la información.</div>
+  </div>
+  <div id="moMapa" class="mo-map"><div class="mo-empty">Aplique filtros para visualizar únicamente las órdenes necesarias.</div></div></div>`;
+  try{await moDependencias();moInicializarMapa();await moCargarCatalogos()}catch(e){document.getElementById('moMapa').innerHTML=`<div class="mo-empty mo-error">${moEscape(e.message)}</div>`}
+}
+function moMostrarImportacion(){document.getElementById('moVistaFiltros').style.display='none';document.getElementById('moMapa').style.display='none';document.getElementById('moVistaImportacion').style.display='block'}
+function moVolverFiltros(){document.getElementById('moVistaImportacion').style.display='none';document.getElementById('moVistaFiltros').style.display='block';document.getElementById('moMapa').style.display='block';setTimeout(()=>moMapa&&moMapa.invalidateSize(),50)}
+function moLimpiarFiltros(){['moFiltroSede','moFiltroFecha','moFiltroTipo','moFiltroEstado','moFiltroCuadrilla','moBuscarCodigo'].forEach(id=>{const e=document.getElementById(id);if(e)e.value=''});moRegistros=[];moRenderMarcadores([]);document.getElementById('moContador').textContent='Seleccione por lo menos un filtro y presione Ver mapa.'}
+async function moCargarCatalogos(){
+  const d=await moApi({accion:'catalogosMapaOperativo',usuario:moUsuario()});
+  const llenar=(id,lista,todos)=>{const e=document.getElementById(id);if(e)e.innerHTML=`<option value="">${todos}</option>`+(lista||[]).map(x=>`<option>${moEscape(x)}</option>`).join('')};
+  llenar('moFiltroSede',d.sedes,'Todas');llenar('moFiltroTipo',d.tiposTrabajo,'Todos');llenar('moFiltroEstado',d.estados,'Todos');llenar('moFiltroCuadrilla',d.cuadrillas,'Todas');
+}
+async function moConsultarMapa(){
+  const filtros={sede:moNorm(document.getElementById('moFiltroSede')?.value),fecha:moNorm(document.getElementById('moFiltroFecha')?.value),tipoTrabajo:moNorm(document.getElementById('moFiltroTipo')?.value),estado:moNorm(document.getElementById('moFiltroEstado')?.value),cuadrilla:moNorm(document.getElementById('moFiltroCuadrilla')?.value),codigo:moNorm(document.getElementById('moBuscarCodigo')?.value)};
+  if(!Object.values(filtros).some(Boolean)){document.getElementById('moContador').textContent='Debe seleccionar al menos un filtro para evitar cargar toda la base.';return}
+  document.getElementById('moContador').textContent='Consultando órdenes...';
+  const d=await moApi(Object.assign({accion:'listarMapaOperativo',usuario:moUsuario()},filtros));moRegistros=d.ordenes||[];moRenderMarcadores(moRegistros);
 }
 function moInicializarMapa(){
   if(moMapa){moMapa.remove();moMapa=null}
@@ -65,17 +96,9 @@ async function moLeerArchivo(){
 }
 async function moRegistrarImportacion(){
   if(!moImportacion.length)return;const btn=document.getElementById('moBtnImportar'),msg=document.getElementById('moImportMsg');btn.disabled=true;msg.className='mo-msg';msg.textContent='Registrando información...';
-  try{const d=await moApi({accion:'importarMapaOperativo',usuario:moUsuario(),registros:moImportacion});msg.className='mo-msg mo-ok';msg.textContent=`Registro terminado: ${d.nuevos} nuevos, ${d.actualizados} actualizados, ${d.omitidos||0} omitidos.`;moImportacion=[];await moCargarDatos()}catch(e){msg.className='mo-msg mo-error';msg.textContent=e.message;btn.disabled=false}
+  try{const d=await moApi({accion:'importarMapaOperativo',usuario:moUsuario(),registros:moImportacion});msg.className='mo-msg mo-ok';msg.textContent=`Registro terminado: ${d.nuevos} nuevos, ${d.actualizados} actualizados, ${d.omitidos||0} omitidos.`;moImportacion=[];await moCargarCatalogos()}catch(e){msg.className='mo-msg mo-error';msg.textContent=e.message;btn.disabled=false}
 }
-async function moCargarDatos(){
-  const d=await moApi({accion:'listarMapaOperativo',usuario:moUsuario()});moRegistros=d.ordenes||[];moLlenarFiltros();moAplicarFiltros();
-}
-function moLlenarFiltros(){
-  const est=[...new Set(moRegistros.map(x=>moNorm(x.estado)).filter(Boolean))].sort(),cua=[...new Set(moRegistros.map(x=>moNorm(x.cuadrilla)).filter(Boolean))].sort();
-  const e=document.getElementById('moFiltroEstado'),c=document.getElementById('moFiltroCuadrilla');if(e)e.innerHTML='<option value="">Todos</option>'+est.map(x=>`<option>${moEscape(x)}</option>`).join('');if(c)c.innerHTML='<option value="">Todas</option>'+cua.map(x=>`<option>${moEscape(x)}</option>`).join('');
-}
-function moAplicarFiltros(){const e=moNorm(document.getElementById('moFiltroEstado')?.value),c=moNorm(document.getElementById('moFiltroCuadrilla')?.value);const lista=moRegistros.filter(x=>(!e||moNorm(x.estado)===e)&&(!c||moNorm(x.cuadrilla)===c));moRenderMarcadores(lista)}
 function moMotivo(x){return x.motivoCancelacion||x.motivoFinalizacion||x.motivoAnulacion||''}
 function moPopup(x){const fields=[['Fecha',x.fechaSolicitud],['Hora',x.horaSolicitud],['Cliente',x.cliente],['Tipo',x.tipo],['Producto',x.productoServicio||x.productoOrigen],['Dirección',x.direccion],['Dirección adicional',x.direccionAdicional],['Región',x.region],['Código de cliente',x.codigoCliente],['Documento',x.numeroDocumento],['Teléfono móvil',x.telefonoMovil],['Teléfono fijo',x.telefonoFijo],['Inicio de visita',x.fechaInicioVisita],['Fin de visita',x.fechaFinVisita],['Motivo',moMotivo(x)],['Detalle',x.detalle]].filter(y=>moNorm(y[1]));return `<div class="mo-popup"><div class="mo-main-row"><b>Tipo de trabajo</b><span>${moEscape(x.tipoTrabajo)}</span></div><div class="mo-main-row"><b>Cuadrilla</b><span>${moEscape(x.cuadrilla)}</span></div><div class="mo-main-row"><b>Estado</b><span>${moEscape(x.estado)}</span></div><div class="mo-main-row"><b>Código</b><span>${moEscape(x.ordenId)}</span></div><details class="mo-detalle"><summary>Detalle</summary><div class="mo-detalle-grid">${fields.map(y=>`<b>${moEscape(y[0])}</b><span>${moEscape(y[1])}</span>`).join('')}</div></details></div>`}
 function moRenderMarcadores(lista){if(!moMapa||!moCapa)return;moCapa.clearLayers();moMarcadores={};const bounds=[];let validos=0;lista.forEach(x=>{const lat=Number(x.latitud),lng=Number(x.longitud);if(!Number.isFinite(lat)||!Number.isFinite(lng))return;const m=L.marker([lat,lng]).bindPopup(moPopup(x),{autoClose:true,closeOnClick:true,maxWidth:310});m.on('click',()=>{moMapa.panTo([lat,lng]);});m.addTo(moCapa);moMarcadores[moNorm(x.ordenId)]=m;bounds.push([lat,lng]);validos++});if(bounds.length)moMapa.fitBounds(bounds,{padding:[25,25],maxZoom:16});document.getElementById('moContador').textContent=`${validos} puntos visibles de ${lista.length} órdenes filtradas.`}
-function moBuscarCodigo(){const cod=moNorm(document.getElementById('moBuscarCodigo')?.value);if(!cod)return;let m=moMarcadores[cod];if(!m){const x=moRegistros.find(r=>moNorm(r.ordenId)===cod);if(x){document.getElementById('moFiltroEstado').value='';document.getElementById('moFiltroCuadrilla').value='';moRenderMarcadores(moRegistros);m=moMarcadores[cod]}}if(!m){alert('No se encontró una orden visible con ese código.');return}moMapa.setView(m.getLatLng(),17);m.openPopup()}
+function moBuscarCodigo(){moConsultarMapa()}

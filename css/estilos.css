@@ -993,3 +993,7 @@ body{background:linear-gradient(180deg,var(--mv4-bg),var(--mv4-bg2));font-family
 .mo-btn{border:0;border-radius:8px;padding:9px 12px;font-weight:700;cursor:pointer;background:#1769aa;color:#fff}.mo-btn:disabled{opacity:.55;cursor:not-allowed}.mo-btn-sec{background:#64748b}.mo-msg{font-size:12px;margin-top:7px}.mo-ok{color:#166534}.mo-error{color:#b91c1c}.mo-map{height:62vh;min-height:420px;border-radius:12px;border:1px solid #cbd5e1;overflow:hidden;background:#e8eef5}
 .mo-popup{min-width:220px;max-width:290px}.mo-main-row{display:grid;grid-template-columns:110px 1fr;gap:6px;padding:3px 0;border-bottom:1px solid #edf2f7}.mo-main-row b{color:#163a5f}.mo-detalle summary{cursor:pointer;font-weight:800;color:#1769aa;padding:8px 0 3px}.mo-detalle-grid{display:grid;grid-template-columns:105px 1fr;gap:5px;font-size:12px;padding-top:5px}.mo-detalle-grid b{color:#475569}.mo-empty{padding:28px;text-align:center;color:#64748b}.mo-counter{font-size:12px;color:#475569;margin-top:7px}
 @media(max-width:720px){.mo-head{align-items:flex-start;flex-direction:column}.mo-upload-grid,.mo-filtros{grid-template-columns:1fr}.mo-map{height:64vh;min-height:390px}.card-mapa-operativo{grid-column:1/-1}.mo-popup{min-width:205px;max-width:240px}}
+/* V208 - Mapa Operativo: filtros previos y carga separada */
+.mo-filtros-amplios{grid-template-columns:repeat(4,minmax(0,1fr))}
+@media(max-width:900px){.mo-filtros-amplios{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:720px){.mo-filtros-amplios{grid-template-columns:1fr}}

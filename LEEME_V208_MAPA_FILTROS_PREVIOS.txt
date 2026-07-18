@@ -1,0 +1,12 @@
+MI VISUAL V208 - MAPA OPERATIVO
+
+Cambios:
+- El mapa ya no carga toda la base al abrir.
+- Primero se selecciona al menos un filtro: sede, fecha, tipo de trabajo, estado, cuadrilla o código.
+- Solo después de presionar VER MAPA se consultan y muestran las órdenes coincidentes.
+- El ingreso de datos queda en una pantalla separada mediante el botón INGRESAR DATOS.
+- La pantalla de importación incluye VOLVER AL MAPA.
+- Acceso de importación exclusivo para Jefatura.
+- El menú principal permanece oculto mientras está abierto el módulo.
+
+Requiere actualizar frontend y Code.gs, además de realizar nuevo deploy de Apps Script.

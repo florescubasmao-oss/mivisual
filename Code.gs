@@ -5635,9 +5635,53 @@ function filaMapaOperativoAObjeto(f) {
   };
 }
 
+function catalogosMapaOperativo(data) {
+  const usuario = obtenerUsuarioApp(data.usuario);
+  validarAccesoMapaOperativo(usuario, "VER");
+  const hoja = asegurarHojaMapaOperativo();
+  const ultimaFila = hoja.getLastRow();
+  const salida = {ok:true,modulo:"MAPA_OPERATIVO",accion:"CATALOGOS",sedes:[],tiposTrabajo:[],estados:[],cuadrillas:[]};
+  if (ultimaFila <= 1) return salida;
+  const datos = hoja.getRange(2,1,ultimaFila-1,26).getDisplayValues();
+  const permitidas = usuario.perfil === "SUPERVISOR" ? cuadrillasSupervisorMapa(usuario.usuario) : null;
+  const setSede={}, setTipo={}, setEstado={}, setCuadrilla={};
+  datos.forEach(f => {
+    const cuadrilla = normalizarCuadrilla(f[7]);
+    if (permitidas && !permitidas[cuadrilla]) return;
+    const sede = textoMapa(f[13]);
+    const tipo = textoMapa(f[1]);
+    const estado = textoMapa(f[8]);
+    if (sede) setSede[sede]=true;
+    if (tipo) setTipo[tipo]=true;
+    if (estado) setEstado[estado]=true;
+    if (cuadrilla) setCuadrilla[cuadrilla]=true;
+  });
+  salida.sedes=Object.keys(setSede).sort();
+  salida.tiposTrabajo=Object.keys(setTipo).sort();
+  salida.estados=Object.keys(setEstado).sort();
+  salida.cuadrillas=Object.keys(setCuadrilla).sort();
+  return salida;
+}
+
+function fechaMapaISO(valor) {
+  const t = textoMapa(valor);
+  const m = t.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})/);
+  if (m) return m[3] + "-" + m[2].padStart(2,"0") + "-" + m[1].padStart(2,"0");
+  return /^\d{4}-\d{2}-\d{2}/.test(t) ? t.substring(0,10) : t;
+}
+
 function listarMapaOperativo(data) {
   const usuario = obtenerUsuarioApp(data.usuario);
   validarAccesoMapaOperativo(usuario, "VER");
+  const filtros = {
+    sede: normalizarTexto(data.sede || ""),
+    fecha: fechaMapaISO(data.fecha || ""),
+    tipoTrabajo: normalizarTexto(data.tipoTrabajo || ""),
+    estado: normalizarTexto(data.estado || ""),
+    cuadrilla: normalizarCuadrilla(data.cuadrilla || ""),
+    codigo: textoMapa(data.codigo || "")
+  };
+  if (!Object.keys(filtros).some(k => filtros[k])) throw new Error("Debe seleccionar al menos un filtro para consultar el mapa");
   const hoja = asegurarHojaMapaOperativo();
   const ultimaFila = hoja.getLastRow();
   if (ultimaFila <= 1) return {ok:true,modulo:"MAPA_OPERATIVO",accion:"LISTAR",perfil:usuario.perfil,registros:0,ordenes:[]};
@@ -5648,7 +5692,14 @@ function listarMapaOperativo(data) {
   datos.forEach(f => {
     const item = filaMapaOperativoAObjeto(f);
     if (!item.ordenId) return;
-    if (permitidas && !permitidas[normalizarCuadrilla(item.cuadrilla)]) return;
+    const cuad = normalizarCuadrilla(item.cuadrilla);
+    if (permitidas && !permitidas[cuad]) return;
+    if (filtros.sede && normalizarTexto(item.region) !== filtros.sede) return;
+    if (filtros.fecha && fechaMapaISO(item.fechaSolicitud) !== filtros.fecha) return;
+    if (filtros.tipoTrabajo && normalizarTexto(item.tipoTrabajo) !== filtros.tipoTrabajo) return;
+    if (filtros.estado && normalizarTexto(item.estado) !== filtros.estado) return;
+    if (filtros.cuadrilla && cuad !== filtros.cuadrilla) return;
+    if (filtros.codigo && textoMapa(item.ordenId) !== filtros.codigo) return;
     lista.push(item);
   });
   return {ok:true,modulo:"MAPA_OPERATIVO",accion:"LISTAR",perfil:usuario.perfil,registros:lista.length,ordenes:lista};
@@ -5660,6 +5711,7 @@ function doPost(e) {
 
     if (data.accion === "importarMapaOperativo") return respuestaJson(importarMapaOperativo(data));
     if (data.accion === "listarMapaOperativo") return respuestaJson(listarMapaOperativo(data));
+    if (data.accion === "catalogosMapaOperativo") return respuestaJson(catalogosMapaOperativo(data));
 
     if (data.accion === "asegurarHojasConsultasReclamos") return respuestaJson((asegurarHojasConsultasReclamos(), {ok:true,modulo:"MESA_AYUDA",accion:"ASEGURAR_HOJAS"}));
     if (data.accion === "registrarConsultaReclamo") return respuestaJson(registrarConsultaReclamo(data));
