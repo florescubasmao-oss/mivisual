@@ -1,0 +1,22 @@
+MI VISUAL V205 - MEJORA DE CONTRASTE EN RESUMEN EJECUTIVO POR SEDE
+
+CAMBIO REALIZADO
+- Se mejoró únicamente el contraste visual del resumen ejecutivo mostrado al filtrar una sede.
+- Se corrigió la visibilidad del título RESUMEN EJECUTIVO.
+- Se corrigió la visibilidad del porcentaje de cumplimiento.
+- Se reforzó el contraste de títulos, valores, metas y textos secundarios dentro de las tarjetas.
+- Se aclaró el fondo de la barra de progreso para diferenciar mejor el avance.
+
+NO SE MODIFICÓ
+- Lógica del dashboard.
+- Filtros.
+- Cálculos.
+- Code.gs.
+- Google Sheets.
+- Otros módulos.
+
+ACTUALIZACIÓN REQUERIDA
+Code.gs / Apps Script: No
+Frontend GitHub: Sí
+Google Sheets: No
+Nuevo Deploy Apps Script: No

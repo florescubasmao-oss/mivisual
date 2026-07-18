@@ -945,3 +945,38 @@ body{background:linear-gradient(180deg,var(--mv4-bg),var(--mv4-bg2));font-family
 .cr-general-fields{margin-top:10px}.cr-special{margin:12px 0}.cr-cantidad-dias{display:flex;flex-direction:column;gap:5px;font-weight:800;max-width:220px}.cr-cantidad-dias input,.cr-dia input{padding:9px;border:1px solid #b8c4d3;border-radius:7px}.cr-dia{background:#eef5fc;border:1px solid #cbd8e7;border-radius:12px;padding:12px;margin:10px 0}.cr-dia-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:9px}.cr-dia-head span{font-size:12px;color:#5b6d82}.cr-codigo-row{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:8px 0}.cr-codigo-row label,.cr-dia>label{display:flex;flex-direction:column;gap:4px;font-weight:700}.cr-add-code{border:0;border-radius:7px;background:#dbeafe;color:#12345a;font-weight:800;padding:8px 11px;cursor:pointer;margin:4px 0 10px}.cr-days-detail>div{background:#eef5fc;border-radius:9px;padding:10px;margin:8px 0}.cr-days-detail p{margin:5px 0}.cr-days-detail a{font-weight:800;color:#0369a1}@media(max-width:700px){.cr-codigo-row{grid-template-columns:1fr}.cr-dia-head{align-items:flex-start}}
 
 .cr-final-note{margin-top:14px;padding:12px 14px;border-radius:8px;background:#e8eef7;color:#173457;font-weight:700;border:1px solid #b9c8dc}
+
+/* =========================================================
+   V205 - CONTRASTE RESUMEN EJECUTIVO POR SEDE
+   Ajuste visual exclusivo del dashboard de Jefatura.
+   No modifica lógica, estructura ni otros módulos.
+   ========================================================= */
+.mv199-resumen-sede-seleccionada > .mv4-general-title{
+  color:#0f2f57 !important;
+  font-weight:950 !important;
+  opacity:1 !important;
+}
+.mv199-resumen-sede-seleccionada .mv4-general-card,
+.mv199-resumen-sede-seleccionada .mv4-kpi-card{
+  color:#ffffff !important;
+}
+.mv199-resumen-sede-seleccionada .mv4-general-card .mv4-general-title{
+  color:#f8fafc !important;
+  font-weight:950 !important;
+  opacity:1 !important;
+}
+.mv199-resumen-sede-seleccionada .mv4-general-value,
+.mv199-resumen-sede-seleccionada .mv4-kpi-value,
+.mv199-resumen-sede-seleccionada .mv4-kpi-head b{
+  color:#ffffff !important;
+  opacity:1 !important;
+}
+.mv199-resumen-sede-seleccionada .mv4-general-sub,
+.mv199-resumen-sede-seleccionada .mv4-kpi-meta{
+  color:#e2e8f0 !important;
+  opacity:1 !important;
+}
+.mv199-resumen-sede-seleccionada .mv4-progress{
+  background:#1e3a5f !important;
+  border:1px solid rgba(255,255,255,.12) !important;
+}
