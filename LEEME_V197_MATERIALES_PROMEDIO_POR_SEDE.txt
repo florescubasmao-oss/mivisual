@@ -1,0 +1,22 @@
+MI VISUAL V197 - MATERIALES: PROMEDIO POR SEDE Y CUADRILLA
+
+CAMBIO REALIZADO
+- En Costo y consumo de materiales > Promedio por cuadrilla, la información ahora se agrupa por sede.
+- Cada sede muestra: costo total, órdenes finalizadas, promedio por orden y participación dentro del costo general.
+- Cada sede tiene un desplegable con sus cuadrillas.
+- Cada cuadrilla muestra el porcentaje que representa dentro del costo total de su sede.
+- Se mantienen los filtros actuales de periodo, sede, tipo e insumo.
+
+ARCHIVOS MODIFICADOS
+- js/analisis_economico.js
+- index.html (actualización de versión de caché)
+
+NO MODIFICADO
+- Code.gs / Apps Script
+- Google Sheets
+- Importación y cálculos existentes
+- Otros módulos y permisos
+
+ACTUALIZACIÓN NECESARIA
+- Reemplazar archivos del frontend en GitHub y publicar los cambios.
+- No es necesario actualizar ni desplegar Apps Script.

@@ -61,8 +61,8 @@ function mostrarCostoMateriales(){
     .mat184-grid{display:grid;grid-template-columns:200px 1fr;gap:12px;align-items:end}.mat184-grid label{font-weight:800;font-size:12px}.mat184-grid input,.mat184-grid select,.mat184-grid textarea{width:100%;box-sizing:border-box;padding:10px;border:1px solid #94a3b8;border-radius:9px}
     .mat184-grid textarea{height:300px;font-family:monospace;white-space:pre}.mat184-status{margin-top:12px;padding:12px;border-radius:10px;background:#eff6ff}.mat184-kpis{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin:12px 0}.mat184-kpi{background:#e0f2fe;border-radius:12px;padding:14px}.mat184-kpi b{font-size:23px;display:block}
     .mat184-table{width:100%;border-collapse:collapse}.mat184-table th,.mat184-table td{padding:8px;border-bottom:1px solid #e2e8f0;text-align:left}.mat184-table th{background:#f1f5f9}
-    .mat184-tabs{align-items:center}.mat184-tabs .mat184-import-mini{margin-left:auto;background:#0ea5e9!important;padding:8px 11px;font-size:12px}.mat184-detalle-btn{border:0;border-radius:7px;padding:6px 9px;font-size:12px;font-weight:800;background:#334155;color:#fff;cursor:pointer}.mat184-detalle-fila{display:none;background:#f8fafc}.mat184-detalle-fila.visible{display:table-row}.mat184-detalle-wrap{padding:10px 6px}.mat184-subtabla{width:100%;border-collapse:collapse}.mat184-subtabla th,.mat184-subtabla td{padding:7px;border-bottom:1px solid #dbeafe;font-size:12px}.mat184-subtabla th{background:#e0f2fe}.mat184-filtros-resumen{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:10px;align-items:end}.mat184-modal-fondo{position:fixed;inset:0;background:rgba(2,6,23,.78);display:flex;align-items:center;justify-content:center;padding:18px;z-index:9999}.mat184-modal{background:#fff;color:#0f172a;width:min(980px,96vw);max-height:90vh;overflow:auto;border-radius:18px;padding:18px;box-shadow:0 20px 60px rgba(0,0,0,.45)}.mat184-modal-head{display:flex;justify-content:space-between;gap:12px;align-items:center}.mat184-cerrar{border:0;background:#475569;color:#fff;border-radius:9px;padding:8px 11px;font-weight:800;cursor:pointer}.mat184-cuadrilla-selector{display:grid;grid-template-columns:1fr auto;gap:10px;align-items:end;margin:14px 0}.mat184-cuadrilla-selector select{width:100%;padding:10px;border:1px solid #94a3b8;border-radius:9px}
-    @media(max-width:700px){.mat184-grid{grid-template-columns:1fr}.mat184-kpis{grid-template-columns:1fr}.mat184-panel{padding:12px}.mat184-filtros-resumen{grid-template-columns:1fr 1fr}.mat184-tabs .mat184-import-mini{margin-left:0}.mat184-table{min-width:720px}}
+    .mat184-tabs{align-items:center}.mat184-tabs .mat184-import-mini{margin-left:auto;background:#0ea5e9!important;padding:8px 11px;font-size:12px}.mat184-detalle-btn{border:0;border-radius:7px;padding:6px 9px;font-size:12px;font-weight:800;background:#334155;color:#fff;cursor:pointer}.mat184-detalle-fila{display:none;background:#f8fafc}.mat184-detalle-fila.visible{display:table-row}.mat184-detalle-wrap{padding:10px 6px}.mat184-subtabla{width:100%;border-collapse:collapse}.mat184-subtabla th,.mat184-subtabla td{padding:7px;border-bottom:1px solid #dbeafe;font-size:12px}.mat184-subtabla th{background:#e0f2fe}.mat184-filtros-resumen{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:10px;align-items:end}.mat184-modal-fondo{position:fixed;inset:0;background:rgba(2,6,23,.78);display:flex;align-items:center;justify-content:center;padding:18px;z-index:9999}.mat184-modal{background:#fff;color:#0f172a;width:min(980px,96vw);max-height:90vh;overflow:auto;border-radius:18px;padding:18px;box-shadow:0 20px 60px rgba(0,0,0,.45)}.mat184-modal-head{display:flex;justify-content:space-between;gap:12px;align-items:center}.mat184-cerrar{border:0;background:#475569;color:#fff;border-radius:9px;padding:8px 11px;font-weight:800;cursor:pointer}.mat184-cuadrilla-selector{display:grid;grid-template-columns:1fr auto;gap:10px;align-items:end;margin:14px 0}.mat184-cuadrilla-selector select{width:100%;padding:10px;border:1px solid #94a3b8;border-radius:9px}.mat197-sede{margin:14px 0;border:1px solid #bfdbfe;border-radius:14px;overflow:hidden;background:#fff}.mat197-sede summary{list-style:none;cursor:pointer;padding:14px 16px;background:#e0f2fe;display:grid;grid-template-columns:minmax(180px,1.4fr) repeat(4,minmax(120px,1fr));gap:12px;align-items:center}.mat197-sede summary::-webkit-details-marker{display:none}.mat197-sede summary:before{content:"▶";font-size:12px;margin-right:8px}.mat197-sede[open] summary:before{content:"▼"}.mat197-sede-titulo{font-weight:900;font-size:16px}.mat197-sede-metrica span{display:block;font-size:11px;color:#475569}.mat197-sede-metrica b{font-size:15px}.mat197-participacion{font-weight:900}.mat197-barra{height:7px;background:#dbeafe;border-radius:999px;overflow:hidden;margin-top:4px}.mat197-barra i{display:block;height:100%;background:#0ea5e9}.mat197-tabla-wrap{overflow:auto;padding:10px 12px 14px}.mat197-tabla-wrap .mat184-table{min-width:850px}
+    @media(max-width:700px){.mat184-grid{grid-template-columns:1fr}.mat184-kpis{grid-template-columns:1fr}.mat184-panel{padding:12px}.mat184-filtros-resumen{grid-template-columns:1fr 1fr}.mat184-tabs .mat184-import-mini{margin-left:0}.mat184-table{min-width:720px}.mat197-sede summary{grid-template-columns:1fr 1fr;padding:12px}.mat197-sede-titulo{grid-column:1/-1}.mat197-sede-metrica b{font-size:14px}}
   </style>
   <section class="mat184">
     <div class="mat184-head"><h2>📦 Costo y consumo de materiales</h2></div>
@@ -190,21 +190,48 @@ async function mat184ConsultarPromedio(){
       sel.innerHTML='<option value="TODOS">TODOS</option>'+(r.materiales||[]).map(m=>`<option value="${aeEscape(m)}">${aeEscape(m)}</option>`).join("");
       if([...sel.options].some(o=>o.value===valor))sel.value=valor;
     }
-    const filas=(r.porCuadrilla||[]).map(x=>`<tr>
-      <td>${aeEscape(x.cuadrilla)}</td>
-      <td>${aeEscape(x.sede)}</td>
-      <td>${aeMoneda(x.costo)}</td>
-      <td>${aeNumero(x.ordenesFinalizadas)}</td>
-      <td><b>${x.ordenesFinalizadas>0?aeMoneda(x.costoPromedioOrden):'Sin órdenes finalizadas'}</b></td>
-    </tr>`).join("");
+    const grupos={};
+    (r.porCuadrilla||[]).forEach(x=>{
+      const sede=(x.sede||"SIN SEDE").toString();
+      if(!grupos[sede])grupos[sede]={sede,costo:0,ordenes:0,cuadrillas:[]};
+      grupos[sede].costo+=Number(x.costo)||0;
+      grupos[sede].ordenes+=Number(x.ordenesFinalizadas)||0;
+      grupos[sede].cuadrillas.push(x);
+    });
+    const sedes=Object.values(grupos).sort((a,b)=>b.costo-a.costo);
+    const bloques=sedes.map((g,indice)=>{
+      const promedioSede=g.ordenes>0?g.costo/g.ordenes:0;
+      const participacionGeneral=Number(r.costoTotal)>0?(g.costo/Number(r.costoTotal))*100:0;
+      const filas=g.cuadrillas.sort((a,b)=>b.costo-a.costo).map(x=>{
+        const participacionSede=g.costo>0?(Number(x.costo)/g.costo)*100:0;
+        return `<tr>
+          <td>${aeEscape(x.cuadrilla)}</td>
+          <td>${aeMoneda(x.costo)}</td>
+          <td>${aeNumero(x.ordenesFinalizadas)}</td>
+          <td><b>${x.ordenesFinalizadas>0?aeMoneda(x.costoPromedioOrden):'Sin órdenes finalizadas'}</b></td>
+          <td class="mat197-participacion">${participacionSede.toFixed(2)}%<div class="mat197-barra"><i style="width:${Math.min(participacionSede,100).toFixed(2)}%"></i></div></td>
+        </tr>`;
+      }).join("");
+      return `<details class="mat197-sede" ${indice===0?'open':''}>
+        <summary>
+          <div class="mat197-sede-titulo">${aeEscape(g.sede)} · ${g.cuadrillas.length} cuadrilla${g.cuadrillas.length===1?'':'s'}</div>
+          <div class="mat197-sede-metrica"><span>Costo total sede</span><b>${aeMoneda(g.costo)}</b></div>
+          <div class="mat197-sede-metrica"><span>Órdenes finalizadas</span><b>${aeNumero(g.ordenes)}</b></div>
+          <div class="mat197-sede-metrica"><span>Promedio por orden</span><b>${g.ordenes>0?aeMoneda(promedioSede):'Sin órdenes'}</b></div>
+          <div class="mat197-sede-metrica"><span>% del costo general</span><b>${participacionGeneral.toFixed(2)}%</b></div>
+        </summary>
+        <div class="mat197-tabla-wrap"><table class="mat184-table"><thead><tr><th>Cuadrilla</th><th>Costo total</th><th>Órdenes finalizadas</th><th>Costo promedio por orden</th><th>% del costo de la sede</th></tr></thead><tbody>${filas||'<tr><td colspan="5">Sin información</td></tr>'}</tbody></table></div>
+      </details>`;
+    }).join("");
     c.innerHTML=`
       <div class="mat184-kpis">
         <div class="mat184-kpi"><span>Costo total filtrado</span><b>${aeMoneda(r.costoTotal)}</b></div>
         <div class="mat184-kpi"><span>Órdenes finalizadas</span><b>${aeNumero(r.totalOrdenesFinalizadas)}</b></div>
         <div class="mat184-kpi"><span>Promedio general por orden</span><b>${r.totalOrdenesFinalizadas>0?aeMoneda(r.promedioGeneralOrden):'Sin órdenes finalizadas'}</b></div>
       </div>
-      <h3>Promedio por cuadrilla</h3>
-      <div style="overflow:auto"><table class="mat184-table"><thead><tr><th>Cuadrilla</th><th>Sede</th><th>Costo total</th><th>Órdenes finalizadas</th><th>Costo promedio por orden</th></tr></thead><tbody>${filas||'<tr><td colspan="5">Sin información</td></tr>'}</tbody></table></div>`;
+      <h3>Promedio por sede y cuadrilla</h3>
+      <div class="mat184-status" style="margin-bottom:10px">Cada sede consolida el costo y las órdenes de todas sus cuadrillas. Abra una sede para comparar cuánto representa cada cuadrilla dentro del costo total de esa sede.</div>
+      ${bloques||'<div class="mat184-status">Sin información</div>'}`;
   }catch(e){if(c)c.innerHTML='<div class="mat184-status">❌ '+aeEscape(e.message)+'</div>'}
 }
 
