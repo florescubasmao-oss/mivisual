@@ -1,0 +1,8 @@
+MI VISUAL V207 - FIX MAPA OPERATIVO
+
+CAMBIOS:
+1. El lector busca automáticamente la fila real de encabezados dentro de las primeras 30 filas.
+2. Compatible con el archivo exportado que contiene títulos previos y encabezados en la fila 8.
+3. Al abrir MAPA OPERATIVO se oculta completamente el menú principal.
+4. Se mantiene el flujo Leer archivo > Registrar información > visualizar puntos.
+5. No requiere cambios adicionales en Code.gs respecto de V206.
