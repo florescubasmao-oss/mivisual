@@ -32,7 +32,7 @@ async function mostrarMapaOperativo(){
     <div class="mo-filtros mo-filtros-amplios" style="margin-top:9px">
       <div><label class="mo-label">Sede</label><select id="moFiltroSede" class="mo-select"><option value="">Todas</option></select></div>
       <div><label class="mo-label">Fecha</label><input id="moFiltroFecha" class="mo-input" type="date"></div>
-      <div><label class="mo-label">Tipo de trabajo</label><select id="moFiltroTipo" class="mo-select"><option value="">Todos</option></select></div>
+      <div><label class="mo-label">Grupo de trabajo</label><select id="moFiltroGrupo" class="mo-select"><option value="">Todos</option></select></div>
       <div><label class="mo-label">Estado</label><select id="moFiltroEstado" class="mo-select"><option value="">Todos</option></select></div>
       <div><label class="mo-label">Cuadrilla</label><select id="moFiltroCuadrilla" class="mo-select"><option value="">Todas</option></select></div>
       <div><label class="mo-label">Código de orden</label><input id="moBuscarCodigo" class="mo-input" placeholder="Ej. 1234567"></div>
@@ -51,14 +51,14 @@ async function mostrarMapaOperativo(){
 }
 function moMostrarImportacion(){document.getElementById('moVistaFiltros').style.display='none';document.getElementById('moMapa').style.display='none';document.getElementById('moVistaImportacion').style.display='block'}
 function moVolverFiltros(){document.getElementById('moVistaImportacion').style.display='none';document.getElementById('moVistaFiltros').style.display='block';document.getElementById('moMapa').style.display='block';setTimeout(()=>moMapa&&moMapa.invalidateSize(),50)}
-function moLimpiarFiltros(){['moFiltroSede','moFiltroFecha','moFiltroTipo','moFiltroEstado','moFiltroCuadrilla','moBuscarCodigo'].forEach(id=>{const e=document.getElementById(id);if(e)e.value=''});moRegistros=[];moRenderMarcadores([]);document.getElementById('moContador').textContent='Seleccione por lo menos un filtro y presione Ver mapa.'}
+function moLimpiarFiltros(){['moFiltroSede','moFiltroFecha','moFiltroGrupo','moFiltroEstado','moFiltroCuadrilla','moBuscarCodigo'].forEach(id=>{const e=document.getElementById(id);if(e)e.value=''});moRegistros=[];moRenderMarcadores([]);document.getElementById('moContador').textContent='Seleccione por lo menos un filtro y presione Ver mapa.'}
 async function moCargarCatalogos(){
   const d=await moApi({accion:'catalogosMapaOperativo',usuario:moUsuario()});
   const llenar=(id,lista,todos)=>{const e=document.getElementById(id);if(e)e.innerHTML=`<option value="">${todos}</option>`+(lista||[]).map(x=>`<option>${moEscape(x)}</option>`).join('')};
-  llenar('moFiltroSede',d.sedes,'Todas');llenar('moFiltroTipo',d.tiposTrabajo,'Todos');llenar('moFiltroEstado',d.estados,'Todos');llenar('moFiltroCuadrilla',d.cuadrillas,'Todas');
+  llenar('moFiltroSede',d.sedes,'Todas');llenar('moFiltroGrupo',d.gruposTrabajo,'Todos');llenar('moFiltroEstado',d.estados,'Todos');llenar('moFiltroCuadrilla',d.cuadrillas,'Todas');
 }
 async function moConsultarMapa(){
-  const filtros={sede:moNorm(document.getElementById('moFiltroSede')?.value),fecha:moNorm(document.getElementById('moFiltroFecha')?.value),tipoTrabajo:moNorm(document.getElementById('moFiltroTipo')?.value),estado:moNorm(document.getElementById('moFiltroEstado')?.value),cuadrilla:moNorm(document.getElementById('moFiltroCuadrilla')?.value),codigo:moNorm(document.getElementById('moBuscarCodigo')?.value)};
+  const filtros={sede:moNorm(document.getElementById('moFiltroSede')?.value),fecha:moNorm(document.getElementById('moFiltroFecha')?.value),grupoTrabajo:moNorm(document.getElementById('moFiltroGrupo')?.value),estado:moNorm(document.getElementById('moFiltroEstado')?.value),cuadrilla:moNorm(document.getElementById('moFiltroCuadrilla')?.value),codigo:moNorm(document.getElementById('moBuscarCodigo')?.value)};
   if(!Object.values(filtros).some(Boolean)){document.getElementById('moContador').textContent='Debe seleccionar al menos un filtro para evitar cargar toda la base.';return}
   document.getElementById('moContador').textContent='Consultando órdenes...';
   const d=await moApi(Object.assign({accion:'listarMapaOperativo',usuario:moUsuario()},filtros));moRegistros=d.ordenes||[];moRenderMarcadores(moRegistros);
@@ -100,5 +100,20 @@ async function moRegistrarImportacion(){
 }
 function moMotivo(x){return x.motivoCancelacion||x.motivoFinalizacion||x.motivoAnulacion||''}
 function moPopup(x){const fields=[['Fecha',x.fechaSolicitud],['Hora',x.horaSolicitud],['Cliente',x.cliente],['Tipo',x.tipo],['Producto',x.productoServicio||x.productoOrigen],['Dirección',x.direccion],['Dirección adicional',x.direccionAdicional],['Región',x.region],['Código de cliente',x.codigoCliente],['Documento',x.numeroDocumento],['Teléfono móvil',x.telefonoMovil],['Teléfono fijo',x.telefonoFijo],['Inicio de visita',x.fechaInicioVisita],['Fin de visita',x.fechaFinVisita],['Motivo',moMotivo(x)],['Detalle',x.detalle]].filter(y=>moNorm(y[1]));return `<div class="mo-popup"><div class="mo-main-row"><b>Tipo de trabajo</b><span>${moEscape(x.tipoTrabajo)}</span></div><div class="mo-main-row"><b>Cuadrilla</b><span>${moEscape(x.cuadrilla)}</span></div><div class="mo-main-row"><b>Estado</b><span>${moEscape(x.estado)}</span></div><div class="mo-main-row"><b>Código</b><span>${moEscape(x.ordenId)}</span></div><details class="mo-detalle"><summary>Detalle</summary><div class="mo-detalle-grid">${fields.map(y=>`<b>${moEscape(y[0])}</b><span>${moEscape(y[1])}</span>`).join('')}</div></details></div>`}
-function moRenderMarcadores(lista){if(!moMapa||!moCapa)return;moCapa.clearLayers();moMarcadores={};const bounds=[];let validos=0;lista.forEach(x=>{const lat=Number(x.latitud),lng=Number(x.longitud);if(!Number.isFinite(lat)||!Number.isFinite(lng))return;const m=L.marker([lat,lng]).bindPopup(moPopup(x),{autoClose:true,closeOnClick:true,maxWidth:310});m.on('click',()=>{moMapa.panTo([lat,lng]);});m.addTo(moCapa);moMarcadores[moNorm(x.ordenId)]=m;bounds.push([lat,lng]);validos++});if(bounds.length)moMapa.fitBounds(bounds,{padding:[25,25],maxZoom:16});document.getElementById('moContador').textContent=`${validos} puntos visibles de ${lista.length} órdenes filtradas.`}
+function moColorEstado(estado){
+  const e=moNormCab(estado);
+  if(e.includes('FINALIZ'))return '#16a34a';
+  if(e.includes('CANCEL'))return '#dc2626';
+  if(e.includes('REPROGRAM'))return '#eab308';
+  if(e.includes('REGEST'))return '#f97316';
+  if(e.includes('ANUL'))return '#64748b';
+  if(e.includes('PROCESO')||e.includes('ATENCION'))return '#7c3aed';
+  if(e.includes('AGEND')||e.includes('ASIGN')||e.includes('PENDIENT'))return '#2563eb';
+  return '#0891b2';
+}
+function moIconoEstado(estado){
+  const color=moColorEstado(estado);
+  return L.divIcon({className:'mo-marker-wrap',html:`<span class="mo-marker" style="--mo-color:${color}"></span>`,iconSize:[22,30],iconAnchor:[11,29],popupAnchor:[0,-27]});
+}
+function moRenderMarcadores(lista){if(!moMapa||!moCapa)return;moCapa.clearLayers();moMarcadores={};const bounds=[];let validos=0;lista.forEach(x=>{const lat=Number(x.latitud),lng=Number(x.longitud);if(!Number.isFinite(lat)||!Number.isFinite(lng))return;const m=L.marker([lat,lng],{icon:moIconoEstado(x.estado)}).bindPopup(moPopup(x),{autoClose:true,closeOnClick:true,maxWidth:310});m.on('click',()=>{moMapa.panTo([lat,lng]);});m.addTo(moCapa);moMarcadores[moNorm(x.ordenId)]=m;bounds.push([lat,lng]);validos++});if(bounds.length)moMapa.fitBounds(bounds,{padding:[25,25],maxZoom:16});document.getElementById('moContador').innerHTML=`${validos} puntos visibles de ${lista.length} órdenes filtradas.<div class="mo-leyenda"><span><i style="--c:#16a34a"></i>Finalizada</span><span><i style="--c:#dc2626"></i>Cancelada</span><span><i style="--c:#eab308"></i>Reprogramada</span><span><i style="--c:#f97316"></i>Regestión</span><span><i style="--c:#64748b"></i>Anulada</span><span><i style="--c:#2563eb"></i>Pendiente/Agendada</span><span><i style="--c:#7c3aed"></i>En proceso</span></div>`}
 function moBuscarCodigo(){moConsultarMapa()}

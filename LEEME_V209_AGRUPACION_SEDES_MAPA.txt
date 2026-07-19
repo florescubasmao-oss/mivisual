@@ -1,0 +1,9 @@
+MI VISUAL V209 - AGRUPACIÓN DE SEDES EN MAPA OPERATIVO
+
+Ajuste aplicado:
+- Toda región que contenga CHICLAYO se agrupa como CHICLAYO.
+- Toda región que contenga LAMBAYEQUE se agrupa como CHICLAYO.
+- Toda región que contenga PIURA se agrupa como PIURA.
+- Toda región que contenga TRUJILLO se agrupa como TRUJILLO.
+- Las demás regiones no se muestran ni se consideran en el mapa.
+- La normalización aplica a registros ya cargados y a nuevas importaciones.

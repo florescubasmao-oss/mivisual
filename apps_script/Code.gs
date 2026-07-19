@@ -5576,6 +5576,15 @@ function textoMapa(valor) {
   return (valor === null || valor === undefined) ? "" : valor.toString().trim();
 }
 
+function sedeMapaOperativo(valor) {
+  const region = normalizarTexto(valor || "");
+  if (!region) return "";
+  if (region.indexOf("CHICLAYO") >= 0 || region.indexOf("LAMBAYEQUE") >= 0) return "CHICLAYO";
+  if (region.indexOf("PIURA") >= 0) return "PIURA";
+  if (region.indexOf("TRUJILLO") >= 0) return "TRUJILLO";
+  return "";
+}
+
 function importarMapaOperativo(data) {
   const usuario = obtenerUsuarioApp(data.usuario);
   validarAccesoMapaOperativo(usuario, "IMPORTAR");
@@ -5607,7 +5616,7 @@ function importarMapaOperativo(data) {
       const fila = [
         ordenId, textoMapa(r.tipoTrabajo), textoMapa(r.fechaSolicitud), textoMapa(r.horaSolicitud), textoMapa(r.cliente), textoMapa(r.tipo),
         textoMapa(r.productoOrigen), normalizarCuadrilla(r.cuadrilla), textoMapa(r.estado), textoMapa(r.direccion), textoMapa(r.direccionAdicional), textoMapa(r.fechaUltimoEstado),
-        textoMapa(r.productoServicio), textoMapa(r.region), textoMapa(r.codigoCliente), textoMapa(r.numeroDocumento), textoMapa(r.telefonoMovil), textoMapa(r.telefonoFijo),
+        textoMapa(r.productoServicio), sedeMapaOperativo(r.region), textoMapa(r.codigoCliente), textoMapa(r.numeroDocumento), textoMapa(r.telefonoMovil), textoMapa(r.telefonoFijo),
         textoMapa(r.fechaFinVisita), textoMapa(r.fechaInicioVisita), textoMapa(r.motivoCancelacion), textoMapa(r.motivoFinalizacion), textoMapa(r.motivoAnulacion),
         numeroMapa(r.latitud), numeroMapa(r.longitud), textoMapa(r.detalle), ahora, usuario.usuario
       ];
@@ -5635,29 +5644,80 @@ function filaMapaOperativoAObjeto(f) {
   };
 }
 
+function grupoTrabajoMapaOperativo(tipoTrabajo) {
+  const t = normalizarTexto(tipoTrabajo);
+  const grupos = {
+    "INSTALACIONES": [
+      "INSTALACION", "INSTALACION POSIBLE FRAUDE"
+    ],
+    "RECABLEADOS - VISITA TECNICA": [
+      "RECABLEADO", "RECABLEADO + 1 MESH", "RECABLEADO + CABLEADO MESH",
+      "LOS ROJO", "LOS ROJOS", "INTERMITENCIA LOS ROJO", "INTERMITENCIA LOS ROJOS"
+    ],
+    "TRASLADOS": [
+      "TRASLADO", "TRASLADO + 1 MESH", "TRASLADO + CAMBIO DE ONT",
+      "TRASLADO + CABLEADO MESH + 1 MESH"
+    ],
+    "POSTVENTA / EQUIPOS ADICIONALES": [
+      "1 MESH", "1 MESH + 2 WIN BOX", "1 WIN BOX", "CABLEADO DE MESH",
+      "CABLEADO 02 MESH", "CABLEADO MESH + 1 MESH", "CABLEADO 02 MESH + 1 MESH",
+      "CAMBIO DE ONT", "CAMBIO DE ONT + 1 WIN BOX",
+      "CABLEADO MESH + 1 MESH + CAMBIO DE ONT", "WINBOX EN COMODATO",
+      "PENDIENTE DE ENTREGA MESH"
+    ],
+    "DESCARTES Y MEJORAS TECNOLOGICAS": [
+      "DESCARTE DE ONT", "DESCARTE DE MESH", "DESCARTE DE TELEFONO",
+      "DESCARTE DE WINBOX", "DESCARTE LOOP", "DESCARTE DE MESH + MEJORA TECNOLOGICA",
+      "MEJORA TECNOLOGICA ONT", "MEJORA TECNOLOGICA MESH"
+    ],
+    "ULTIMA MILLA / OTRAS ATENCIONES": [
+      "PATCHCORD", "REUBICACION", "ASISTENCIA DGO", "ASISTENCIA WIN TV",
+      "DEGRADACION DE POTENCIAS", "PROBLEMAS ESTETICOS"
+    ],
+    "VTR Y GAR": ["GARANTIA", "REITERADA"]
+  };
+  const nombres = Object.keys(grupos);
+  for (let i = 0; i < nombres.length; i++) {
+    if (grupos[nombres[i]].includes(t)) return nombres[i];
+  }
+  return "";
+}
+
+function ordenGruposTrabajoMapa() {
+  return [
+    "INSTALACIONES",
+    "RECABLEADOS - VISITA TECNICA",
+    "TRASLADOS",
+    "POSTVENTA / EQUIPOS ADICIONALES",
+    "DESCARTES Y MEJORAS TECNOLOGICAS",
+    "ULTIMA MILLA / OTRAS ATENCIONES",
+    "VTR Y GAR"
+  ];
+}
+
 function catalogosMapaOperativo(data) {
   const usuario = obtenerUsuarioApp(data.usuario);
   validarAccesoMapaOperativo(usuario, "VER");
   const hoja = asegurarHojaMapaOperativo();
   const ultimaFila = hoja.getLastRow();
-  const salida = {ok:true,modulo:"MAPA_OPERATIVO",accion:"CATALOGOS",sedes:[],tiposTrabajo:[],estados:[],cuadrillas:[]};
+  const salida = {ok:true,modulo:"MAPA_OPERATIVO",accion:"CATALOGOS",sedes:[],gruposTrabajo:[],estados:[],cuadrillas:[]};
   if (ultimaFila <= 1) return salida;
   const datos = hoja.getRange(2,1,ultimaFila-1,26).getDisplayValues();
   const permitidas = usuario.perfil === "SUPERVISOR" ? cuadrillasSupervisorMapa(usuario.usuario) : null;
-  const setSede={}, setTipo={}, setEstado={}, setCuadrilla={};
+  const setSede={}, setGrupo={}, setEstado={}, setCuadrilla={};
   datos.forEach(f => {
     const cuadrilla = normalizarCuadrilla(f[7]);
     if (permitidas && !permitidas[cuadrilla]) return;
-    const sede = textoMapa(f[13]);
-    const tipo = textoMapa(f[1]);
+    const sede = sedeMapaOperativo(f[13]);
+    const grupo = grupoTrabajoMapaOperativo(f[1]);
     const estado = textoMapa(f[8]);
     if (sede) setSede[sede]=true;
-    if (tipo) setTipo[tipo]=true;
+    if (grupo) setGrupo[grupo]=true;
     if (estado) setEstado[estado]=true;
     if (cuadrilla) setCuadrilla[cuadrilla]=true;
   });
   salida.sedes=Object.keys(setSede).sort();
-  salida.tiposTrabajo=Object.keys(setTipo).sort();
+  salida.gruposTrabajo=ordenGruposTrabajoMapa().filter(g => setGrupo[g]);
   salida.estados=Object.keys(setEstado).sort();
   salida.cuadrillas=Object.keys(setCuadrilla).sort();
   return salida;
@@ -5676,7 +5736,7 @@ function listarMapaOperativo(data) {
   const filtros = {
     sede: normalizarTexto(data.sede || ""),
     fecha: fechaMapaISO(data.fecha || ""),
-    tipoTrabajo: normalizarTexto(data.tipoTrabajo || ""),
+    grupoTrabajo: normalizarTexto(data.grupoTrabajo || ""),
     estado: normalizarTexto(data.estado || ""),
     cuadrilla: normalizarCuadrilla(data.cuadrilla || ""),
     codigo: textoMapa(data.codigo || "")
@@ -5694,9 +5754,12 @@ function listarMapaOperativo(data) {
     if (!item.ordenId) return;
     const cuad = normalizarCuadrilla(item.cuadrilla);
     if (permitidas && !permitidas[cuad]) return;
-    if (filtros.sede && normalizarTexto(item.region) !== filtros.sede) return;
+    const sedeItem = sedeMapaOperativo(item.region);
+    if (!sedeItem) return;
+    item.region = sedeItem;
+    if (filtros.sede && sedeItem !== filtros.sede) return;
     if (filtros.fecha && fechaMapaISO(item.fechaSolicitud) !== filtros.fecha) return;
-    if (filtros.tipoTrabajo && normalizarTexto(item.tipoTrabajo) !== filtros.tipoTrabajo) return;
+    if (filtros.grupoTrabajo && grupoTrabajoMapaOperativo(item.tipoTrabajo) !== filtros.grupoTrabajo) return;
     if (filtros.estado && normalizarTexto(item.estado) !== filtros.estado) return;
     if (filtros.cuadrilla && cuad !== filtros.cuadrilla) return;
     if (filtros.codigo && textoMapa(item.ordenId) !== filtros.codigo) return;

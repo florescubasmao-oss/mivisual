@@ -1,0 +1,28 @@
+MI VISUAL V210 - MAPA OPERATIVO
+
+Cambios:
+1. El filtro Tipo de trabajo fue reemplazado por Grupo de trabajo.
+2. Agrupaciones configuradas:
+   - INSTALACIONES
+   - RECABLEADOS - VISITA TECNICA
+   - TRASLADOS
+   - POSTVENTA / EQUIPOS ADICIONALES
+   - DESCARTES Y MEJORAS TECNOLOGICAS
+   - ULTIMA MILLA / OTRAS ATENCIONES
+   - VTR Y GAR
+3. Los tipos no incluidos en estos grupos no aparecen al aplicar el filtro agrupado.
+4. Los marcadores cambian de color según estado:
+   - Finalizada: verde
+   - Cancelada: rojo
+   - Reprogramada: amarillo
+   - Regestión: naranja
+   - Anulada: gris
+   - Pendiente/Agendada/Asignada: azul
+   - En proceso/Atención: morado
+   - Otros: celeste
+5. Se añadió una leyenda de colores debajo del contador del mapa.
+
+IMPLEMENTACIÓN:
+- Reemplazar Code.gs y realizar nuevo despliegue de Apps Script.
+- Reemplazar frontend en GitHub.
+- No requiere modificar las hojas de Google Sheets.
