@@ -1,0 +1,12 @@
+MI VISUAL V212 - CÓMO LLEGAR DESDE MAPA OPERATIVO
+
+Cambio realizado:
+- Se añadió el botón "Cómo llegar en Google Maps" en el detalle de cada punto.
+- Abre Google Maps con la coordenada exacta como destino.
+- En celular permite iniciar navegación desde la ubicación actual.
+- No modifica Code.gs, Google Sheets ni los datos registrados.
+
+Actualización requerida:
+- Frontend GitHub: SÍ
+- Code.gs / Apps Script: NO
+- Nuevo deploy Apps Script: NO
