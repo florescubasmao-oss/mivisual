@@ -1,0 +1,10 @@
+MI VISUAL V211
+
+Ajuste realizado:
+- Botón MAPA OPERATIVO reducido al 50% del ancho y centrado.
+- Borde dorado y brillo suave.
+- Efecto hover dorado.
+- Ajuste adaptable para móviles.
+
+No cambia Code.gs, Google Sheets ni requiere nuevo deploy de Apps Script.
+Solo actualizar frontend en GitHub.

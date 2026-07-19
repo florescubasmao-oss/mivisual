@@ -1004,3 +1004,29 @@ body{background:linear-gradient(180deg,var(--mv4-bg),var(--mv4-bg2));font-family
 .mo-marker:after{content:"";position:absolute;width:6px;height:6px;background:#fff;border-radius:50%;left:7px;top:7px}
 .mo-leyenda{display:flex;flex-wrap:wrap;gap:8px 12px;margin-top:7px;font-size:11px;color:#334155}
 .mo-leyenda span{display:inline-flex;align-items:center;gap:4px}.mo-leyenda i{width:10px;height:10px;border-radius:50%;background:var(--c);display:inline-block;border:1px solid rgba(15,23,42,.2)}
+
+/* V211 - Botón Mapa Operativo compacto con borde dorado */
+.card-mapa-operativo{
+  grid-column:1/-1 !important;
+  width:50% !important;
+  max-width:50% !important;
+  min-width:260px;
+  justify-self:center !important;
+  box-sizing:border-box !important;
+  border:2px solid #d4af37 !important;
+  border-radius:8px !important;
+  box-shadow:0 0 10px rgba(212,175,55,.28) !important;
+  transition:transform .18s ease,box-shadow .18s ease,border-color .18s ease !important;
+}
+.card-mapa-operativo:hover{
+  border-color:#f7d774 !important;
+  box-shadow:0 0 16px rgba(247,215,116,.48) !important;
+  transform:translateY(-2px);
+}
+@media(max-width:720px){
+  .card-mapa-operativo{
+    width:82% !important;
+    max-width:82% !important;
+    min-width:0;
+  }
+}
