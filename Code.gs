@@ -2080,7 +2080,7 @@ function listarActividadCampo(data) {
     if (usuario.perfil === "SUPERVISOR") {
       permitir = normalizarUsuario(item.supervisor) === normalizarUsuario(usuario.usuario);
     }
-    if (esPerfilJefatura(usuario.perfil) || esPerfilGerenciaLima(usuario.perfil) || esOperacionesLima(usuario.perfil)) permitir = true;
+    if (esPerfilJefatura(usuario.perfil) || esOperacionesLima(usuario.perfil)) permitir = true;
     if (!permitir) continue;
 
     if (data.sede && normalizarTexto(data.sede) !== normalizarTexto(item.sede)) continue;
@@ -5539,7 +5539,7 @@ function asegurarPermisosMapaOperativo() {
 
 function esPerfilMapaOperativo(perfil) {
   const p = normalizarTexto(perfil);
-  return p === "SUPERVISOR" || esPerfilJefatura(p);
+  return p === "SUPERVISOR" || esPerfilJefatura(p) || esPerfilGerenciaLima(p);
 }
 
 function validarAccesoMapaOperativo(usuario, accion) {

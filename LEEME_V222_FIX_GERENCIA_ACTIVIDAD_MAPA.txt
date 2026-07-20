@@ -1,0 +1,31 @@
+MI VISUAL V222 - FIX GERENCIA LIMA: ACTIVIDAD EN CAMPO Y MAPA OPERATIVO
+
+CAMBIOS APLICADOS
+1. Actividad en Campo
+   - GERENCIA LIMA puede consultar y visualizar todos los registros.
+   - No se habilitan acciones de registro, edición, aprobación ni validación.
+
+2. Mapa Operativo
+   - GERENCIA LIMA puede cargar catálogos, filtros y visualizar órdenes/puntos.
+   - Mantiene alcance general equivalente a Jefatura para consulta.
+   - No se habilita el botón ni la acción de importar información.
+
+ARCHIVOS MODIFICADOS
+- Code.gs
+- apps_script/Code.gs
+
+NO SE MODIFICÓ
+- Frontend GitHub
+- Menús
+- Estilos
+- Otros módulos
+- Otros perfiles
+- Google Sheets
+
+APLICACIÓN
+1. Reemplazar Code.gs en Apps Script por el archivo actualizado.
+2. Guardar el proyecto.
+3. Crear una nueva versión y actualizar el despliegue web.
+4. Probar con GERENCIA LIMA:
+   - Actividad en Campo
+   - Mapa Operativo y sus filtros
