@@ -155,7 +155,7 @@ function factorImpactoObs(estado){
 
 function esVistaJefaturaObs(u){
     const perfil = ((u && u.perfil) || "").toString().toUpperCase().trim();
-    return perfil === "JEFATURA" || perfil === "ADMIN" || perfil === "ADMINISTRADOR";
+    return perfil === "JEFATURA" || perfil === "GERENCIA LIMA" || perfil === "ADMIN" || perfil === "ADMINISTRADOR";
 }
 
 function pintarResumenObservacionesPorSede(lista){

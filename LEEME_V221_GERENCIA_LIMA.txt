@@ -1,0 +1,34 @@
+MI VISUAL V221 - PERFIL GERENCIA LIMA
+
+Base aplicada: versión estable posterior a V220.
+
+ALCANCE
+- Vista agrupada similar a Jefatura General.
+- Sin Administración.
+- Análisis Económico: solo Costo y consumo de materiales.
+- Producción valorizada: bloqueada.
+- Solo lectura en:
+  * Checklist Almacén
+  * Programación de Descansos
+  * PEXT
+  * Validación Técnica
+  * Observaciones
+  * Mesa de Ayuda
+- Descarga habilitada en los módulos que cuentan con esa función.
+- Mapa Operativo y Recursos visibles.
+- Alcance de datos: Zona Norte / todas las sedes.
+
+CONFIGURACIÓN AUTOMÁTICA
+Al iniciar sesión con un usuario cuyo perfil sea GERENCIA LIMA, Apps Script sincroniza sus filas en PERMISOS_MODULOS tomando como base Jefatura y aplicando las restricciones indicadas.
+
+INSTALACIÓN
+1. Reemplazar únicamente los archivos incluidos respetando las carpetas.
+2. Copiar Code.gs en Apps Script.
+3. Guardar y crear un NUEVO DEPLOY de Apps Script.
+4. Actualizar la URL del frontend solo si el despliegue genera una URL distinta.
+5. Subir los archivos frontend a GitHub y hacer commit.
+6. Iniciar sesión con GERENCIA LIMA para sincronizar permisos.
+
+IMPORTANTE
+- No contiene .git ni .github.
+- No modifica Técnico, Supervisor, Almacén, Jefatura de Almacén, Operaciones Lima ni otros perfiles.

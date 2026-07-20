@@ -14,7 +14,7 @@ function usuarioActualValidacion(){
 
 function esJefaturaValidacion(perfil){
     const p = (perfil || "").toUpperCase();
-    return p === "JEFATURA" || p === "ADMIN" || p === "ADMINISTRADOR";
+    return p === "JEFATURA" || p === "GERENCIA LIMA" || p === "ADMIN" || p === "ADMINISTRADOR";
 }
 
 async function apiValidacionTecnica(payload){

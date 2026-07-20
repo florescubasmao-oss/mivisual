@@ -121,7 +121,7 @@ function obtenerNombrePerfilMenu(){
     if(perfil === "ALMACEN"){
         detalle = "RESPONSABLE DE ALMACÉN • " + sede;
     }
-    if(perfil === "JEFATURA" || perfil === "JEFATURA GENERAL" || perfil === "ADMIN" || perfil === "ADMINISTRADOR"){
+    if(perfil === "JEFATURA" || perfil === "JEFATURA GENERAL" || perfil === "GERENCIA LIMA" || perfil === "ADMIN" || perfil === "ADMINISTRADOR"){
         detalle = perfil + " • TODAS";
     }
 
@@ -216,10 +216,11 @@ function limpiarAgrupacionMenuV218(mv55){
     const menu = document.getElementById("menuPrincipal");
     const panelJefatura = document.getElementById("mv213JefaturaSections");
     const panelSupervisor = document.getElementById("mv218SupervisorSections");
+    const panelGerencia = document.getElementById("mv221GerenciaSections");
     const recursosIds = ["cardAccesos","cardBiblioteca","cardCapacitacion","cardConsultasReclamos"];
 
     // Antes de retirar los paneles, devolver las tarjetas a sus contenedores originales.
-    [panelJefatura, panelSupervisor].forEach(panel => {
+    [panelJefatura, panelSupervisor, panelGerencia].forEach(panel => {
         if(!panel) return;
         Array.from(panel.querySelectorAll(".card")).forEach(card => {
             card.classList.remove("mv213-card", "mv218-supervisor-card");
@@ -263,18 +264,19 @@ function organizarMenuPorPerfilV218(mv55, perfil){
 
     const perfilNormalizado = normalizarPerfilApp(perfil);
     const esJefatura = ["JEFATURA","JEFATURA GENERAL","ADMIN","ADMINISTRADOR"].includes(perfilNormalizado);
+    const esGerencia = perfilNormalizado === "GERENCIA LIMA";
     const esSupervisor = perfilNormalizado === "SUPERVISOR";
 
     // Alcance estricto V219: solo Jefatura General y Supervisor.
     // Los demás perfiles conservan exactamente su estructura y tamaños existentes.
-    if(!esJefatura && !esSupervisor){
+    if(!esJefatura && !esGerencia && !esSupervisor){
         const botonAdministracion = document.getElementById("btnAdministracionJefatura");
         if(botonAdministracion) botonAdministracion.remove();
         return;
     }
 
     limpiarAgrupacionMenuV218(mv55);
-    configurarBotonAdministracionJefatura(perfilNormalizado);
+    configurarBotonAdministracionJefatura(esGerencia ? "GERENCIA LIMA" : perfilNormalizado);
 
     if(mv55.main) mv55.main.style.setProperty("display", "none", "important");
     if(mv55.recursosTitle) mv55.recursosTitle.style.setProperty("display", "none", "important");
@@ -284,9 +286,9 @@ function organizarMenuPorPerfilV218(mv55, perfil){
     panel.className = "mv213-sections";
     mv55.welcome.after(panel);
 
-    if(esJefatura){
+    if(esJefatura || esGerencia){
         menu.classList.add("mv213-menu-jefatura");
-        panel.id = "mv213JefaturaSections";
+        panel.id = esGerencia ? "mv221GerenciaSections" : "mv213JefaturaSections";
         crearSeccionesMenuV218(panel, [
             { titulo:"📊 Gestión", clase:"mv213-grid-3", ids:["cardDashboardJefatura","cardRanking","cardAnalisisEconomico"] },
             { titulo:"📋 Control Operativo", clase:"mv213-grid-4", ids:["cardActividadCampo","cardValidacionTecnica","cardActas","cardObservaciones"] },
@@ -314,7 +316,7 @@ function aplicarPermisosMenuActualizados(){
         'cardObservaciones','cardAccesos','cardBiblioteca','cardCapacitacion',
         'cardDashboardSupervisor','cardDashboardJefatura','cardAnalisisEconomico',
         'cardAdministracion','cardActividadCampo','cardValidacionTecnica','cardActas',
-        'cardChecklistAlmacen','cardProgramacionDescansos','cardTrabajosConjunta','cardConsultasReclamos'
+        'cardChecklistAlmacen','cardProgramacionDescansos','cardTrabajosConjunta','cardMapaOperativo','cardConsultasReclamos'
     ];
     todasLasCards.forEach(id => mostrarCardSeguro(id, false));
     const dinamicos = typeof pmModulosMenu === 'function' ? pmModulosMenu() : null;
@@ -462,6 +464,22 @@ async function configurarMenu(){
             "cardDashboardJefatura",
             "cardAnalisisEconomico",
             "cardAdministracion",
+            "cardActividadCampo",
+            "cardValidacionTecnica",
+            "cardActas",
+            "cardChecklistAlmacen",
+            "cardProgramacionDescansos",
+            "cardTrabajosConjunta",
+            "cardMapaOperativo"
+        ],
+        "GERENCIA LIMA": [
+            "cardRanking",
+            "cardObservaciones",
+            "cardAccesos",
+            "cardBiblioteca",
+            "cardCapacitacion",
+            "cardDashboardJefatura",
+            "cardAnalisisEconomico",
             "cardActividadCampo",
             "cardValidacionTecnica",
             "cardActas",
