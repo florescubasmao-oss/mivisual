@@ -1,0 +1,16 @@
+MI VISUAL V221.1 - CORRECCIÓN GERENCIA LIMA / ACTIVIDAD EN CAMPO
+
+CAMBIO APLICADO
+- Se agregó GERENCIA LIMA al permiso backend de listado de Actividad en Campo.
+- GERENCIA LIMA puede visualizar todos los registros de Actividad en Campo.
+- No se habilitó registro, edición, aprobación ni validación.
+
+ALCANCE ESTRICTO
+- Archivo modificado: Code.gs
+- Frontend: sin cambios
+- Google Sheets: sin cambios
+- Otros módulos y perfiles: sin cambios
+
+DESPLIEGUE
+- Reemplazar Code.gs en Apps Script.
+- Guardar y crear una nueva versión del despliegue web.
