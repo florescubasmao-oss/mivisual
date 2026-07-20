@@ -992,6 +992,10 @@ function esPerfilJefatura(perfil) {
   return p === "JEFATURA" || p === "ADMIN" || p === "ADMINISTRADOR";
 }
 
+function esPerfilGerenciaLima(perfil) {
+  return normalizarTexto(perfil) === "GERENCIA LIMA";
+}
+
 function obtenerDatosCuadrillaApp(cuadrillaBuscar) {
   const mapa = obtenerMapaUsuarios();
   const cuadrilla = normalizarCuadrilla(cuadrillaBuscar);
@@ -1144,7 +1148,7 @@ function listarObservaciones(data) {
     let permitir = false;
     if (usuario.perfil === "TECNICO") permitir = normalizarCuadrilla(usuario.cuadrilla) === normalizarCuadrilla(item.cuadrilla);
     if (usuario.perfil === "SUPERVISOR") permitir = normalizarTexto(usuario.sede) === normalizarTexto(item.sede);
-    if (esPerfilJefatura(usuario.perfil) || esOperacionesLima(usuario.perfil)) permitir = true;
+    if (esPerfilJefatura(usuario.perfil) || esPerfilGerenciaLima(usuario.perfil) || esOperacionesLima(usuario.perfil)) permitir = true;
     if (!permitir) continue;
 
     if (data.estado && normalizarTexto(data.estado) !== normalizarTexto(item.estado)) continue;
@@ -2080,7 +2084,7 @@ function listarActividadCampo(data) {
     if (usuario.perfil === "SUPERVISOR") {
       permitir = normalizarUsuario(item.supervisor) === normalizarUsuario(usuario.usuario);
     }
-    if (esPerfilJefatura(usuario.perfil) || esOperacionesLima(usuario.perfil)) permitir = true;
+    if (esPerfilJefatura(usuario.perfil) || esPerfilGerenciaLima(usuario.perfil) || esOperacionesLima(usuario.perfil)) permitir = true;
     if (!permitir) continue;
 
     if (data.sede && normalizarTexto(data.sede) !== normalizarTexto(item.sede)) continue;
@@ -5526,6 +5530,7 @@ function asegurarPermisosMapaOperativo() {
   const datos = hoja.getDataRange().getValues();
   const perfiles = [
     {perfil:"SUPERVISOR", registrar:"NO", alcance:"SUPERVISOR / CUADRILLAS"},
+    {perfil:"GERENCIA LIMA", registrar:"NO", alcance:"TODOS"},
     {perfil:"JEFATURA", registrar:"SI", alcance:"TODOS"},
     {perfil:"ADMIN", registrar:"SI", alcance:"TODOS"},
     {perfil:"ADMINISTRADOR", registrar:"SI", alcance:"TODOS"}

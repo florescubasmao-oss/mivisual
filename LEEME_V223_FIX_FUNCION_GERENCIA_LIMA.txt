@@ -1,0 +1,17 @@
+MI VISUAL V223 - FIX DEFINITIVO FUNCIÓN GERENCIA LIMA
+
+CORRECCIÓN REALIZADA
+1. Se añadió la función faltante esPerfilGerenciaLima(perfil) en Code.gs.
+2. Actividad en Campo reconoce GERENCIA LIMA tanto en la validación inicial como en el alcance de lectura.
+3. Mapa Operativo reconoce GERENCIA LIMA para visualizar catálogos, filtros y órdenes.
+4. GERENCIA LIMA se registra en los permisos base de Mapa Operativo con VER=SI y REGISTRAR=NO.
+5. No se habilita importación, edición, aprobación, validación ni administración.
+
+ARCHIVOS MODIFICADOS
+- Code.gs
+- apps_script/Code.gs
+
+APLICACIÓN
+- Reemplazar Code.gs en Apps Script.
+- Guardar y crear una nueva versión del despliegue.
+- No requiere cambios en GitHub ni Google Sheets.
