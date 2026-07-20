@@ -996,6 +996,11 @@ function esPerfilGerenciaLima(perfil) {
   return normalizarTexto(perfil) === "GERENCIA LIMA";
 }
 
+function esPerfilJefaturaOperaciones(perfil) {
+  const p = normalizarTexto(perfil);
+  return p === "JEFATURA OPERACIONES" || p === "JEFATURA DE OPERACIONES" || p === "OPERACIONES";
+}
+
 function obtenerDatosCuadrillaApp(cuadrillaBuscar) {
   const mapa = obtenerMapaUsuarios();
   const cuadrilla = normalizarCuadrilla(cuadrillaBuscar);
@@ -2084,7 +2089,7 @@ function listarActividadCampo(data) {
     if (usuario.perfil === "SUPERVISOR") {
       permitir = normalizarUsuario(item.supervisor) === normalizarUsuario(usuario.usuario);
     }
-    if (esPerfilJefatura(usuario.perfil) || esPerfilGerenciaLima(usuario.perfil) || esOperacionesLima(usuario.perfil)) permitir = true;
+    if (esPerfilJefatura(usuario.perfil) || esOperacionesLima(usuario.perfil)) permitir = true;
     if (!permitir) continue;
 
     if (data.sede && normalizarTexto(data.sede) !== normalizarTexto(item.sede)) continue;
@@ -5530,7 +5535,6 @@ function asegurarPermisosMapaOperativo() {
   const datos = hoja.getDataRange().getValues();
   const perfiles = [
     {perfil:"SUPERVISOR", registrar:"NO", alcance:"SUPERVISOR / CUADRILLAS"},
-    {perfil:"GERENCIA LIMA", registrar:"NO", alcance:"TODOS"},
     {perfil:"JEFATURA", registrar:"SI", alcance:"TODOS"},
     {perfil:"ADMIN", registrar:"SI", alcance:"TODOS"},
     {perfil:"ADMINISTRADOR", registrar:"SI", alcance:"TODOS"}
@@ -5544,11 +5548,11 @@ function asegurarPermisosMapaOperativo() {
 
 function esPerfilMapaOperativo(perfil) {
   const p = normalizarTexto(perfil);
-  return p === "SUPERVISOR" || esPerfilJefatura(p) || esPerfilGerenciaLima(p);
+  return p === "SUPERVISOR" || esPerfilJefatura(p) || esPerfilGerenciaLima(p) || esPerfilJefaturaOperaciones(p);
 }
 
 function validarAccesoMapaOperativo(usuario, accion) {
-  if (!esPerfilMapaOperativo(usuario.perfil)) throw new Error("El Mapa Operativo es exclusivo para Supervisor y Jefatura");
+  if (!esPerfilMapaOperativo(usuario.perfil)) throw new Error("No tienes permiso para visualizar el Mapa Operativo");
   if (accion === "IMPORTAR" && !esPerfilJefatura(usuario.perfil)) throw new Error("Solo Jefatura puede importar información al Mapa Operativo");
   return true;
 }

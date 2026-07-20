@@ -56,7 +56,7 @@ function cerrarSesion(){
     if(panelLogin) panelLogin.style.display = "block";
     if(usuarioInfo) usuarioInfo.innerHTML = "";
     if(menu) {
-        menu.classList.remove("mv196-tecnico-menu");
+        menu.classList.remove("mv196-tecnico-menu", "mv224-jefatura-operaciones-menu");
         menu.style.display = "none";
     }
     if(pantalla) pantalla.innerHTML = "";
@@ -357,6 +357,10 @@ async function configurarMenu(){
     // V196: ajuste visual exclusivo del perfil Técnico.
     // Se aplica durante la construcción real del menú, sin alterar cargas ni módulos.
     menu.classList.toggle("mv196-tecnico-menu", perfil === "TECNICO");
+    menu.classList.toggle(
+        "mv224-jefatura-operaciones-menu",
+        ["JEFATURA OPERACIONES", "JEFATURA DE OPERACIONES", "OPERACIONES"].includes(perfil)
+    );
 
     if (pantalla) pantalla.innerHTML = "";
     if (resultado) resultado.innerHTML = "";

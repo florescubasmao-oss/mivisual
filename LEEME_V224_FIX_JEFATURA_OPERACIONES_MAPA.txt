@@ -1,0 +1,18 @@
+MI VISUAL V224 - CORRECCIÓN JEFATURA OPERACIONES / MAPA OPERATIVO
+
+CAMBIOS PUNTUALES
+1. Se autoriza al perfil JEFATURA OPERACIONES / JEFATURA DE OPERACIONES / OPERACIONES para visualizar Mapa Operativo y aplicar filtros.
+2. El acceso es de consulta. No se habilita importación de datos.
+3. Solo para ese perfil, la tarjeta Mapa Operativo adopta el mismo tamaño, color y distribución que las demás tarjetas del menú.
+4. Se conserva el acceso previamente habilitado para GERENCIA LIMA.
+
+ARCHIVOS MODIFICADOS
+- Code.gs
+- apps_script/Code.gs
+- js/app.js
+- css/estilos.css
+
+APLICACIÓN
+- Apps Script: reemplazar Code.gs, guardar y crear una nueva versión del despliegue.
+- GitHub: reemplazar js/app.js y css/estilos.css, hacer commit y push.
+- Google Sheets: sin cambios.
