@@ -1,0 +1,21 @@
+MI VISUAL V218 - AJUSTE VISUAL JEFATURA Y SUPERVISOR
+
+CAMBIOS:
+1. Jefatura: Administración deja de mostrarse como tarjeta grande.
+2. Jefatura: se agrega acceso compacto de Administración con engranaje en la cabecera, junto a Cerrar sesión.
+3. Jefatura: Gestión queda con Dashboard Jefatura, Ranking y Análisis Económico.
+4. Supervisor: menú agrupado por Gestión, Control Operativo, Operación, Recursos y Soporte.
+5. Técnico: no se modifica su visualización.
+
+ARCHIVOS MODIFICADOS:
+- index.html
+- js/app.js
+- css/estilos.css
+
+NO MODIFICADO:
+- Code.gs / Apps Script
+- Google Sheets
+- Módulos funcionales
+- Permisos
+
+No incluye .git ni .github.

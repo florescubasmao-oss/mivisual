@@ -1188,3 +1188,70 @@ body{background:linear-gradient(180deg,var(--mv4-bg),var(--mv4-bg2));font-family
   #menuPrincipal.mv213-menu-jefatura .mv213-grid-4,
   #menuPrincipal.mv213-menu-jefatura .mv213-grid-3{grid-template-columns:1fr!important;}
 }
+
+/* =====================================================
+   V218 - Administración superior y agrupación Supervisor
+   ===================================================== */
+.mv55-topbar{gap:10px;}
+.mv218-admin-top-btn{
+  margin-left:auto;
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  gap:6px;
+  min-height:40px;
+  padding:8px 12px;
+  border:1px solid rgba(255,255,255,.24);
+  border-radius:11px;
+  background:#334155;
+  color:#fff;
+  font-weight:850;
+  cursor:pointer;
+  box-shadow:0 4px 12px rgba(0,0,0,.18);
+}
+.mv218-admin-top-btn:hover{background:#475569;transform:translateY(-1px);}
+.mv218-admin-top-btn span:first-child{font-size:18px;line-height:1;}
+
+#menuPrincipal.menu.mv218-menu-supervisor{
+  max-width:760px!important;
+  width:100%!important;
+  grid-template-columns:1fr!important;
+  gap:10px!important;
+}
+#menuPrincipal.mv218-menu-supervisor .mv55-welcome{width:100%!important;box-sizing:border-box!important;}
+#menuPrincipal.mv218-menu-supervisor .mv213-sections{display:flex!important;flex-direction:column!important;gap:12px!important;width:100%!important;}
+#menuPrincipal.mv218-menu-supervisor .mv213-grid{display:grid!important;width:100%!important;gap:10px!important;}
+#menuPrincipal.mv218-menu-supervisor .mv218-grid-2{grid-template-columns:repeat(2,minmax(0,1fr))!important;}
+#menuPrincipal.mv218-menu-supervisor .mv218-grid-3{grid-template-columns:repeat(3,minmax(0,1fr))!important;}
+#menuPrincipal.mv218-menu-supervisor .card.mv218-supervisor-card{
+  display:flex!important;
+  width:100%!important;
+  max-width:none!important;
+  min-width:0!important;
+  min-height:72px!important;
+  height:72px!important;
+  margin:0!important;
+  padding:9px 6px!important;
+  border-radius:15px!important;
+  box-sizing:border-box!important;
+  gap:4px!important;
+}
+#menuPrincipal.mv218-menu-supervisor .card.mv218-supervisor-card span{font-size:22px!important;line-height:1!important;margin:0!important;}
+#menuPrincipal.mv218-menu-supervisor .card.mv218-supervisor-card b{font-size:10px!important;line-height:1.15!important;text-align:center!important;}
+#menuPrincipal.mv218-menu-supervisor .mv213-grid-support .card.mv218-supervisor-card{
+  min-height:54px!important;height:54px!important;flex-direction:row!important;gap:8px!important;
+}
+#menuPrincipal.mv218-menu-supervisor #cardMapaOperativo{width:100%!important;max-width:none!important;min-width:0!important;justify-self:stretch!important;}
+
+@media(max-width:760px){
+  .mv218-admin-top-text{display:none;}
+  .mv218-admin-top-btn{min-width:42px;padding:8px 10px;}
+  #menuPrincipal.menu.mv218-menu-supervisor{max-width:100%!important;padding-left:10px!important;padding-right:10px!important;}
+  #menuPrincipal.mv218-menu-supervisor .mv218-grid-2,
+  #menuPrincipal.mv218-menu-supervisor .mv218-grid-3{grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:8px!important;}
+  #menuPrincipal.mv218-menu-supervisor .card.mv218-supervisor-card{height:70px!important;min-height:70px!important;}
+}
+@media(max-width:340px){
+  #menuPrincipal.mv218-menu-supervisor .mv218-grid-2,
+  #menuPrincipal.mv218-menu-supervisor .mv218-grid-3{grid-template-columns:1fr!important;}
+}

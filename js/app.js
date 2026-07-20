@@ -177,50 +177,70 @@ function prepararMenuVisual(){
 
 
 /* =====================================================
-   V216 - Dashboard categorizado exclusivo para Jefatura
+   V218 - Menú categorizado para Jefatura y Supervisor
+   Técnico y demás perfiles conservan su visualización.
    ===================================================== */
-function organizarMenuJefaturaV213(mv55, perfil){
-    const menu = document.getElementById("menuPrincipal");
-    if(!menu || !mv55 || !mv55.welcome) return;
-
+function configurarBotonAdministracionJefatura(perfil){
     const perfilNormalizado = normalizarPerfilApp(perfil);
-    const esJefaturaGeneral = (
-        perfilNormalizado === "JEFATURA" ||
-        perfilNormalizado === "JEFATURA GENERAL" ||
-        perfilNormalizado === "ADMIN" ||
-        perfilNormalizado === "ADMINISTRADOR"
-    );
+    const mostrar = ["JEFATURA","JEFATURA GENERAL","ADMIN","ADMINISTRADOR"].includes(perfilNormalizado);
+    const topbar = document.querySelector(".mv55-topbar");
+    const cardAdministracion = document.getElementById("cardAdministracion");
+    let boton = document.getElementById("btnAdministracionJefatura");
 
-    let panel = document.getElementById("mv213JefaturaSections");
-
-    if(!esJefaturaGeneral){
-        if(panel) panel.remove();
-        if(mv55.main) mv55.main.style.removeProperty("display");
-        if(mv55.recursosTitle) mv55.recursosTitle.style.removeProperty("display");
-        if(mv55.recursos) mv55.recursos.style.removeProperty("display");
-        menu.classList.remove("mv213-menu-jefatura");
+    if(!mostrar){
+        if(boton) boton.remove();
         return;
     }
 
-    menu.classList.add("mv213-menu-jefatura");
-    if(mv55.main) mv55.main.style.setProperty("display", "none", "important");
-    if(mv55.recursosTitle) mv55.recursosTitle.style.setProperty("display", "none", "important");
-    if(mv55.recursos) mv55.recursos.style.setProperty("display", "none", "important");
+    if(!topbar || !cardAdministracion) return;
 
-    if(panel) panel.remove();
-    panel = document.createElement("div");
-    panel.id = "mv213JefaturaSections";
-    panel.className = "mv213-sections";
-    mv55.welcome.after(panel);
+    if(!boton){
+        boton = document.createElement("button");
+        boton.id = "btnAdministracionJefatura";
+        boton.type = "button";
+        boton.className = "mv218-admin-top-btn";
+        boton.innerHTML = '<span aria-hidden="true">⚙️</span><span class="mv218-admin-top-text">Administración</span>';
+        boton.addEventListener("click", function(){
+            if(typeof mostrarAdministracion === "function") mostrarAdministracion();
+        });
+        const nav = document.getElementById("btnInicio");
+        if(nav && nav.parentElement === topbar) topbar.insertBefore(boton, nav);
+        else topbar.appendChild(boton);
+    }
 
-    const secciones = [
-        { titulo:"📊 Gestión", clase:"mv213-grid-4", ids:["cardDashboardJefatura","cardRanking","cardAnalisisEconomico","cardAdministracion"] },
-        { titulo:"📋 Control Operativo", clase:"mv213-grid-4", ids:["cardActividadCampo","cardValidacionTecnica","cardActas","cardObservaciones"] },
-        { titulo:"🏢 Operación", clase:"mv213-grid-4", ids:["cardChecklistAlmacen","cardProgramacionDescansos","cardTrabajosConjunta","cardMapaOperativo"] },
-        { titulo:"📚 Recursos", clase:"mv213-grid-3", ids:["cardAccesos","cardBiblioteca","cardCapacitacion"] },
-        { titulo:"💬 Soporte", clase:"mv213-grid-support", ids:["cardConsultasReclamos"] }
-    ];
+    // La tarjeta grande deja de mostrarse para Jefatura; el acceso queda en la cabecera.
+    cardAdministracion.style.setProperty("display", "none", "important");
+}
 
+function limpiarAgrupacionMenuV218(mv55){
+    const menu = document.getElementById("menuPrincipal");
+    const panelJefatura = document.getElementById("mv213JefaturaSections");
+    const panelSupervisor = document.getElementById("mv218SupervisorSections");
+    const recursosIds = ["cardAccesos","cardBiblioteca","cardCapacitacion","cardConsultasReclamos"];
+
+    // Antes de retirar los paneles, devolver las tarjetas a sus contenedores originales.
+    [panelJefatura, panelSupervisor].forEach(panel => {
+        if(!panel) return;
+        Array.from(panel.querySelectorAll(".card")).forEach(card => {
+            card.classList.remove("mv213-card", "mv218-supervisor-card");
+            if(recursosIds.includes(card.id) && mv55 && mv55.recursos){
+                card.classList.add("mv55-resource-card");
+                mv55.recursos.appendChild(card);
+            }else if(mv55 && mv55.main){
+                card.classList.add("mv55-main-card");
+                mv55.main.appendChild(card);
+            }
+        });
+        panel.remove();
+    });
+
+    if(mv55 && mv55.main) mv55.main.style.removeProperty("display");
+    if(mv55 && mv55.recursosTitle) mv55.recursosTitle.style.removeProperty("display");
+    if(mv55 && mv55.recursos) mv55.recursos.style.removeProperty("display");
+    if(menu) menu.classList.remove("mv213-menu-jefatura", "mv218-menu-supervisor");
+}
+
+function crearSeccionesMenuV218(panel, secciones, claseCard){
     secciones.forEach(sec => {
         const bloque = document.createElement("section");
         bloque.className = "mv213-section";
@@ -228,13 +248,59 @@ function organizarMenuJefaturaV213(mv55, perfil){
         const grid = bloque.querySelector(".mv213-grid");
         sec.ids.forEach(id => {
             const card = document.getElementById(id);
-            if(!card) return;
-            card.classList.remove("mv55-main-card", "mv55-resource-card");
-            card.classList.add("mv213-card");
+            if(!card || getComputedStyle(card).display === "none") return;
+            card.classList.remove("mv55-main-card", "mv55-resource-card", "mv213-card", "mv218-supervisor-card");
+            card.classList.add(claseCard);
             grid.appendChild(card);
         });
-        panel.appendChild(bloque);
+        if(grid.children.length) panel.appendChild(bloque);
     });
+}
+
+function organizarMenuPorPerfilV218(mv55, perfil){
+    const menu = document.getElementById("menuPrincipal");
+    if(!menu || !mv55 || !mv55.welcome) return;
+
+    const perfilNormalizado = normalizarPerfilApp(perfil);
+    const esJefatura = ["JEFATURA","JEFATURA GENERAL","ADMIN","ADMINISTRADOR"].includes(perfilNormalizado);
+    const esSupervisor = perfilNormalizado === "SUPERVISOR";
+
+    limpiarAgrupacionMenuV218(mv55);
+    configurarBotonAdministracionJefatura(perfilNormalizado);
+
+    // Técnico y demás perfiles quedan exactamente con el menú existente.
+    if(!esJefatura && !esSupervisor) return;
+
+    if(mv55.main) mv55.main.style.setProperty("display", "none", "important");
+    if(mv55.recursosTitle) mv55.recursosTitle.style.setProperty("display", "none", "important");
+    if(mv55.recursos) mv55.recursos.style.setProperty("display", "none", "important");
+
+    const panel = document.createElement("div");
+    panel.className = "mv213-sections";
+    mv55.welcome.after(panel);
+
+    if(esJefatura){
+        menu.classList.add("mv213-menu-jefatura");
+        panel.id = "mv213JefaturaSections";
+        crearSeccionesMenuV218(panel, [
+            { titulo:"📊 Gestión", clase:"mv213-grid-3", ids:["cardDashboardJefatura","cardRanking","cardAnalisisEconomico"] },
+            { titulo:"📋 Control Operativo", clase:"mv213-grid-4", ids:["cardActividadCampo","cardValidacionTecnica","cardActas","cardObservaciones"] },
+            { titulo:"🏢 Operación", clase:"mv213-grid-4", ids:["cardChecklistAlmacen","cardProgramacionDescansos","cardTrabajosConjunta","cardMapaOperativo"] },
+            { titulo:"📚 Recursos", clase:"mv213-grid-3", ids:["cardAccesos","cardBiblioteca","cardCapacitacion"] },
+            { titulo:"💬 Soporte", clase:"mv213-grid-support", ids:["cardConsultasReclamos"] }
+        ], "mv213-card");
+        return;
+    }
+
+    menu.classList.add("mv218-menu-supervisor");
+    panel.id = "mv218SupervisorSections";
+    crearSeccionesMenuV218(panel, [
+        { titulo:"📊 Gestión", clase:"mv218-grid-2", ids:["cardDashboardSupervisor","cardRanking"] },
+        { titulo:"📋 Control Operativo", clase:"mv218-grid-3", ids:["cardActividadCampo","cardValidacionTecnica","cardActas","cardObservaciones"] },
+        { titulo:"🏢 Operación", clase:"mv218-grid-2", ids:["cardChecklistAlmacen","cardProgramacionDescansos","cardTrabajosConjunta","cardMapaOperativo"] },
+        { titulo:"📚 Recursos", clase:"mv218-grid-3", ids:["cardAccesos","cardBiblioteca","cardCapacitacion"] },
+        { titulo:"💬 Soporte", clase:"mv213-grid-support", ids:["cardConsultasReclamos"] }
+    ], "mv218-supervisor-card");
 }
 
 function aplicarPermisosMenuActualizados(){
@@ -465,7 +531,7 @@ async function configurarMenu(){
     // La visibilidad depende únicamente de PERMISOS_MODULOS.
 
     aplicarPermisosMenuActualizados();
-    organizarMenuJefaturaV213(mv55, perfil);
+    organizarMenuPorPerfilV218(mv55, perfil);
 
     if (menu) menu.style.setProperty("display", "grid", "important");
 
