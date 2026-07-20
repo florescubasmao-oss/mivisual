@@ -1,0 +1,16 @@
+MI VISUAL V227 - FIX GERENCIA LIMA / ACTIVIDAD EN CAMPO
+
+Corrección puntual:
+- GERENCIA LIMA ahora visualiza todos los registros históricos de Actividad en Campo.
+- Se habilitan en su vista los filtros de Sede y Supervisor.
+- El perfil continúa en modo consulta: no se habilita el registro de nuevas actividades.
+- No se modifican otros módulos, perfiles, estilos ni estructuras de Google Sheets.
+
+Archivos modificados:
+- Code.gs
+- apps_script/Code.gs
+- js/actividad_campo.js
+
+Implementación:
+- Backend: GERENCIA LIMA se considera perfil con alcance total al construir el listado.
+- Frontend: GERENCIA LIMA se considera vista de jefatura para mostrar filtros completos y nota de solo lectura.

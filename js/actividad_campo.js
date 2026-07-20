@@ -23,7 +23,7 @@ function usuarioActualActividad(){
 
 function esJefaturaActividad(perfil){
     const p = (perfil || "").toUpperCase();
-    return p === "JEFATURA" || p === "ADMIN" || p === "ADMINISTRADOR" || p === "OPERACIONES LIMA";
+    return p === "JEFATURA" || p === "ADMIN" || p === "ADMINISTRADOR" || p === "OPERACIONES LIMA" || p === "GERENCIA LIMA";
 }
 
 async function apiActividadCampo(payload){
