@@ -1,0 +1,15 @@
+MI VISUAL V219 - ALCANCE ESTRICTO DE VISUALIZACION
+
+Cambios aplicados:
+- La nueva agrupación se ejecuta únicamente para SUPERVISOR.
+- La nueva agrupación y el botón superior de Administración se ejecutan únicamente para JEFATURA GENERAL/JEFATURA/ADMIN.
+- Técnico, Responsable de Almacén, Jefatura de Almacén, Jefatura de Operaciones, Operaciones Lima y cualquier otro perfil no son reorganizados ni redimensionados.
+
+Archivos modificados:
+- js/app.js
+- index.html (solo actualización de versión de caché)
+
+Code.gs / Apps Script: NO
+Google Sheets: NO
+Nuevo deploy Apps Script: NO
+.git incluido: NO

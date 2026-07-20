@@ -265,11 +265,16 @@ function organizarMenuPorPerfilV218(mv55, perfil){
     const esJefatura = ["JEFATURA","JEFATURA GENERAL","ADMIN","ADMINISTRADOR"].includes(perfilNormalizado);
     const esSupervisor = perfilNormalizado === "SUPERVISOR";
 
+    // Alcance estricto V219: solo Jefatura General y Supervisor.
+    // Los demás perfiles conservan exactamente su estructura y tamaños existentes.
+    if(!esJefatura && !esSupervisor){
+        const botonAdministracion = document.getElementById("btnAdministracionJefatura");
+        if(botonAdministracion) botonAdministracion.remove();
+        return;
+    }
+
     limpiarAgrupacionMenuV218(mv55);
     configurarBotonAdministracionJefatura(perfilNormalizado);
-
-    // Técnico y demás perfiles quedan exactamente con el menú existente.
-    if(!esJefatura && !esSupervisor) return;
 
     if(mv55.main) mv55.main.style.setProperty("display", "none", "important");
     if(mv55.recursosTitle) mv55.recursosTitle.style.setProperty("display", "none", "important");
