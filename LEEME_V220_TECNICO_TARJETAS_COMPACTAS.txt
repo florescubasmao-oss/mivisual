@@ -1,0 +1,27 @@
+MI VISUAL V220 - TARJETAS COMPACTAS SOLO PARA TÉCNICO
+
+CAMBIO APLICADO
+- Se reduce aproximadamente 40% la altura de estas tarjetas del menú Técnico:
+  * Ranking
+  * Observaciones
+  * Validación Técnica
+  * Checklist Almacén
+
+ALCANCE
+- Solo perfil TÉCNICO, mediante la clase existente mv196-tecnico-menu.
+- No se modifica Supervisor.
+- No se modifica Jefatura General.
+- No se modifica Responsable de Almacén.
+- No se modifica Jefatura de Almacén.
+- No se modifica Jefatura de Operaciones ni Operaciones Lima.
+- No se modifica la lógica, permisos, módulos ni Apps Script.
+
+ARCHIVOS
+- css/estilos.css
+- index.html (solo actualización de caché V220)
+
+Code.gs / Apps Script: No
+Frontend GitHub: Sí
+Google Sheets: No
+Nuevo Deploy Apps Script: No
+.git incluido: No

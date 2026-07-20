@@ -1255,3 +1255,55 @@ body{background:linear-gradient(180deg,var(--mv4-bg),var(--mv4-bg2));font-family
   #menuPrincipal.mv218-menu-supervisor .mv218-grid-2,
   #menuPrincipal.mv218-menu-supervisor .mv218-grid-3{grid-template-columns:1fr!important;}
 }
+
+/* =====================================================
+   V220 - Técnico: reducir 40% la altura de cuatro tarjetas
+   Alcance exclusivo: RANKING, OBSERVACIONES, VALIDACIÓN TÉCNICA y CHECKLIST ALMACÉN.
+   No modifica Supervisor, Jefaturas, Almacén ni otros perfiles.
+   ===================================================== */
+#menuPrincipal.mv196-tecnico-menu #cardRanking,
+#menuPrincipal.mv196-tecnico-menu #cardObservaciones,
+#menuPrincipal.mv196-tecnico-menu #cardValidacionTecnica,
+#menuPrincipal.mv196-tecnico-menu #cardChecklistAlmacen{
+  min-height:78px!important;
+  height:78px!important;
+  padding:8px 8px!important;
+  border-radius:16px!important;
+  gap:5px!important;
+  box-sizing:border-box!important;
+}
+#menuPrincipal.mv196-tecnico-menu #cardRanking span,
+#menuPrincipal.mv196-tecnico-menu #cardObservaciones span,
+#menuPrincipal.mv196-tecnico-menu #cardValidacionTecnica span,
+#menuPrincipal.mv196-tecnico-menu #cardChecklistAlmacen span{
+  font-size:25px!important;
+  line-height:1!important;
+  margin:0!important;
+}
+#menuPrincipal.mv196-tecnico-menu #cardRanking b,
+#menuPrincipal.mv196-tecnico-menu #cardObservaciones b,
+#menuPrincipal.mv196-tecnico-menu #cardValidacionTecnica b,
+#menuPrincipal.mv196-tecnico-menu #cardChecklistAlmacen b{
+  font-size:11px!important;
+  line-height:1.1!important;
+  text-align:center!important;
+}
+@media(max-width:420px){
+  #menuPrincipal.mv196-tecnico-menu #cardRanking,
+  #menuPrincipal.mv196-tecnico-menu #cardValidacionTecnica,
+  #menuPrincipal.mv196-tecnico-menu #cardChecklistAlmacen{
+    min-height:74px!important;
+    height:74px!important;
+    padding:7px 6px!important;
+  }
+  #menuPrincipal.mv196-tecnico-menu #cardRanking span,
+  #menuPrincipal.mv196-tecnico-menu #cardValidacionTecnica span,
+  #menuPrincipal.mv196-tecnico-menu #cardChecklistAlmacen span{
+    font-size:23px!important;
+  }
+  #menuPrincipal.mv196-tecnico-menu #cardRanking b,
+  #menuPrincipal.mv196-tecnico-menu #cardValidacionTecnica b,
+  #menuPrincipal.mv196-tecnico-menu #cardChecklistAlmacen b{
+    font-size:10px!important;
+  }
+}
