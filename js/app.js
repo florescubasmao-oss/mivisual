@@ -172,21 +172,28 @@ function prepararMenuVisual(){
         <div class="mv55-welcome-detail">${info.detalle}</div>
     `;
 
-    return { menu, welcome, main, recursos, recursosTitle };
+    return { menu, main, recursos, recursosTitle };
 }
 
 
 /* =====================================================
-   V213 - Dashboard visual categorizado exclusivo Jefatura
+   V216 - Dashboard categorizado exclusivo para Jefatura
    ===================================================== */
 function organizarMenuJefaturaV213(mv55, perfil){
     const menu = document.getElementById("menuPrincipal");
     if(!menu || !mv55 || !mv55.welcome) return;
 
-    const esJefatura = ["JEFATURA", "ADMIN", "ADMINISTRADOR"].includes(perfil);
+    const perfilNormalizado = normalizarPerfilApp(perfil);
+    const esJefaturaGeneral = (
+        perfilNormalizado === "JEFATURA" ||
+        perfilNormalizado === "JEFATURA GENERAL" ||
+        perfilNormalizado === "ADMIN" ||
+        perfilNormalizado === "ADMINISTRADOR"
+    );
+
     let panel = document.getElementById("mv213JefaturaSections");
 
-    if(!esJefatura){
+    if(!esJefaturaGeneral){
         if(panel) panel.remove();
         if(mv55.main) mv55.main.style.removeProperty("display");
         if(mv55.recursosTitle) mv55.recursosTitle.style.removeProperty("display");

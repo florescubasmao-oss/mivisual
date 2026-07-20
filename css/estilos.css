@@ -1145,3 +1145,46 @@ body{background:linear-gradient(180deg,var(--mv4-bg),var(--mv4-bg2));font-family
   .card.mv213-card{height:68px!important;min-height:68px!important;flex-direction:row!important;gap:9px!important;}
   .card.mv213-card span{font-size:21px!important;}
 }
+
+
+/* =====================================================
+   V216 - Ajuste definitivo dashboard Jefatura
+   Solo cambia la pantalla principal de Jefatura.
+   ===================================================== */
+#menuPrincipal.menu.mv213-menu-jefatura{
+  max-width:1040px!important;
+  width:100%!important;
+  grid-template-columns:1fr!important;
+  gap:10px!important;
+}
+#menuPrincipal.mv213-menu-jefatura .mv55-welcome{width:100%!important;box-sizing:border-box!important;}
+#menuPrincipal.mv213-menu-jefatura .mv213-sections{display:flex!important;flex-direction:column!important;gap:12px!important;width:100%!important;}
+#menuPrincipal.mv213-menu-jefatura .mv213-section{display:block!important;width:100%!important;}
+#menuPrincipal.mv213-menu-jefatura .mv213-grid{display:grid!important;width:100%!important;gap:10px!important;}
+#menuPrincipal.mv213-menu-jefatura .mv213-grid-4{grid-template-columns:repeat(4,minmax(0,1fr))!important;}
+#menuPrincipal.mv213-menu-jefatura .mv213-grid-3{grid-template-columns:repeat(3,minmax(0,1fr))!important;}
+#menuPrincipal.mv213-menu-jefatura .mv213-grid-support{grid-template-columns:1fr!important;}
+#menuPrincipal.mv213-menu-jefatura .card.mv213-card{
+  display:flex;
+  width:100%!important;
+  max-width:none!important;
+  min-width:0!important;
+  min-height:78px!important;
+  height:78px!important;
+  margin:0!important;
+  padding:10px 6px!important;
+  border-radius:16px!important;
+  box-sizing:border-box!important;
+}
+#menuPrincipal.mv213-menu-jefatura #cardMapaOperativo{width:100%!important;max-width:none!important;}
+#menuPrincipal.mv213-menu-jefatura .mv213-grid-support .card.mv213-card{height:58px!important;min-height:58px!important;}
+@media(max-width:760px){
+  #menuPrincipal.menu.mv213-menu-jefatura{max-width:100%!important;padding-left:10px!important;padding-right:10px!important;}
+  #menuPrincipal.mv213-menu-jefatura .mv213-grid-4,
+  #menuPrincipal.mv213-menu-jefatura .mv213-grid-3{grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:8px!important;}
+  #menuPrincipal.mv213-menu-jefatura .card.mv213-card{height:76px!important;min-height:76px!important;}
+}
+@media(max-width:340px){
+  #menuPrincipal.mv213-menu-jefatura .mv213-grid-4,
+  #menuPrincipal.mv213-menu-jefatura .mv213-grid-3{grid-template-columns:1fr!important;}
+}

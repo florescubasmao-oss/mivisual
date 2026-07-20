@@ -1,0 +1,29 @@
+MI VISUAL V216 - PARCHE DEFINITIVO DASHBOARD JEFATURA
+
+ARCHIVOS INCLUIDOS (SOLO 2):
+- js/app.js
+- css/estilos.css
+
+NO INCLUYE:
+- carpeta .git
+- index.html
+- Code.gs
+- Google Sheets
+- otros módulos
+
+APLICACIÓN:
+1. Primero cancelar cualquier merge pendiente en GitHub Desktop.
+2. Restaurar el repositorio estable.
+3. Copiar estas carpetas js y css dentro del proyecto y aceptar reemplazar SOLO los dos archivos.
+4. Revisar Changes: deben aparecer únicamente js/app.js y css/estilos.css.
+5. Commit y Push.
+6. Recargar con Ctrl+F5. En celular cerrar la app y borrar caché del sitio si fuera necesario.
+
+ALCANCE:
+- Solo Jefatura/Jefatura General/Admin.
+- Gestión: 4 tarjetas.
+- Control Operativo: 4 tarjetas.
+- Operación: 4 tarjetas en una sola fila en PC.
+- Recursos: 3 tarjetas.
+- Soporte: Mesa de Ayuda.
+- Celular: 2 tarjetas por fila.
