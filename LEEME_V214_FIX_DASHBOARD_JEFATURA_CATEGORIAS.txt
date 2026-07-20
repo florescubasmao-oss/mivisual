@@ -1,0 +1,27 @@
+MI VISUAL V214 - FIX REAL DASHBOARD JEFATURA POR CATEGORÍAS
+
+CAMBIO APLICADO
+- Se corrigió la referencia interna del contenedor de bienvenida que impedía ejecutar el rediseño V213.
+- El cambio se aplica exclusivamente a JEFATURA / ADMIN / ADMINISTRADOR.
+- Supervisor, Técnico, Responsable de Almacén y Jefatura de Almacén conservan su diseño actual.
+
+DISTRIBUCIÓN JEFATURA
+1. GESTIÓN: Dashboard Jefatura, Ranking, Análisis Económico, Administración.
+2. CONTROL OPERATIVO: Actividad en Campo, Validación Técnica, Gestión de Actas, Observaciones.
+3. OPERACIÓN: Checklist Almacén, Programación de Descansos, PEXT y Mapa Operativo.
+4. RECURSOS: Accesos, Biblioteca y Capacitación.
+5. SOPORTE: Mesa de Ayuda.
+
+RESPONSIVE
+- PC: Operación muestra las cuatro tarjetas en una sola fila.
+- Celular/tablet: las tarjetas se adaptan a dos columnas.
+- Pantallas muy estrechas: una columna para mantener legibilidad.
+
+ARCHIVOS MODIFICADOS
+- js/app.js
+- index.html (actualización de versión para evitar caché)
+
+NO SE MODIFICÓ
+- Code.gs / Apps Script
+- Google Sheets
+- Lógica interna de los módulos

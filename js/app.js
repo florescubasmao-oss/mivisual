@@ -172,7 +172,7 @@ function prepararMenuVisual(){
         <div class="mv55-welcome-detail">${info.detalle}</div>
     `;
 
-    return { menu, main, recursos, recursosTitle };
+    return { menu, welcome, main, recursos, recursosTitle };
 }
 
 
