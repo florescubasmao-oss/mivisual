@@ -175,6 +175,61 @@ function prepararMenuVisual(){
     return { menu, main, recursos, recursosTitle };
 }
 
+
+/* =====================================================
+   V213 - Dashboard visual categorizado exclusivo Jefatura
+   ===================================================== */
+function organizarMenuJefaturaV213(mv55, perfil){
+    const menu = document.getElementById("menuPrincipal");
+    if(!menu || !mv55 || !mv55.welcome) return;
+
+    const esJefatura = ["JEFATURA", "ADMIN", "ADMINISTRADOR"].includes(perfil);
+    let panel = document.getElementById("mv213JefaturaSections");
+
+    if(!esJefatura){
+        if(panel) panel.remove();
+        if(mv55.main) mv55.main.style.removeProperty("display");
+        if(mv55.recursosTitle) mv55.recursosTitle.style.removeProperty("display");
+        if(mv55.recursos) mv55.recursos.style.removeProperty("display");
+        menu.classList.remove("mv213-menu-jefatura");
+        return;
+    }
+
+    menu.classList.add("mv213-menu-jefatura");
+    if(mv55.main) mv55.main.style.setProperty("display", "none", "important");
+    if(mv55.recursosTitle) mv55.recursosTitle.style.setProperty("display", "none", "important");
+    if(mv55.recursos) mv55.recursos.style.setProperty("display", "none", "important");
+
+    if(panel) panel.remove();
+    panel = document.createElement("div");
+    panel.id = "mv213JefaturaSections";
+    panel.className = "mv213-sections";
+    mv55.welcome.after(panel);
+
+    const secciones = [
+        { titulo:"📊 Gestión", clase:"mv213-grid-4", ids:["cardDashboardJefatura","cardRanking","cardAnalisisEconomico","cardAdministracion"] },
+        { titulo:"📋 Control Operativo", clase:"mv213-grid-4", ids:["cardActividadCampo","cardValidacionTecnica","cardActas","cardObservaciones"] },
+        { titulo:"🏢 Operación", clase:"mv213-grid-4", ids:["cardChecklistAlmacen","cardProgramacionDescansos","cardTrabajosConjunta","cardMapaOperativo"] },
+        { titulo:"📚 Recursos", clase:"mv213-grid-3", ids:["cardAccesos","cardBiblioteca","cardCapacitacion"] },
+        { titulo:"💬 Soporte", clase:"mv213-grid-support", ids:["cardConsultasReclamos"] }
+    ];
+
+    secciones.forEach(sec => {
+        const bloque = document.createElement("section");
+        bloque.className = "mv213-section";
+        bloque.innerHTML = `<div class="mv213-section-title"><span>${sec.titulo}</span></div><div class="mv213-grid ${sec.clase}"></div>`;
+        const grid = bloque.querySelector(".mv213-grid");
+        sec.ids.forEach(id => {
+            const card = document.getElementById(id);
+            if(!card) return;
+            card.classList.remove("mv55-main-card", "mv55-resource-card");
+            card.classList.add("mv213-card");
+            grid.appendChild(card);
+        });
+        panel.appendChild(bloque);
+    });
+}
+
 function aplicarPermisosMenuActualizados(){
     const todasLasCards = [
         'cardProduccion','cardEfectividad','cardRecableado','cardVTRGAR','cardRanking',
@@ -386,6 +441,7 @@ async function configurarMenu(){
     // La visibilidad depende únicamente de PERMISOS_MODULOS.
 
     aplicarPermisosMenuActualizados();
+    organizarMenuJefaturaV213(mv55, perfil);
 
     if (menu) menu.style.setProperty("display", "grid", "important");
 

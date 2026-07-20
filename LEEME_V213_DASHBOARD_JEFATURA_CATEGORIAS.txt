@@ -1,0 +1,11 @@
+MI VISUAL V213 - DASHBOARD JEFATURA POR CATEGORÍAS
+
+CAMBIO EXCLUSIVO PARA JEFATURA / ADMIN:
+- Módulos agrupados en Gestión, Control Operativo, Operación, Recursos y Soporte.
+- Tarjetas uniformes y compactas, con tamaño equivalente a Recursos.
+- Operación muestra 4 tarjetas en una sola fila en computadora.
+- Control Operativo y Gestión también aprovechan 4 columnas en computadora.
+- En celular el diseño cambia automáticamente a 2 tarjetas por fila.
+- En pantallas extremadamente estrechas se muestra 1 tarjeta por fila.
+- No se modifican los dashboards de Supervisor, Técnico, Almacén ni Jefatura Almacén.
+- No se modificó Apps Script ni Google Sheets.

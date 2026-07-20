@@ -1056,3 +1056,92 @@ body{background:linear-gradient(180deg,var(--mv4-bg),var(--mv4-bg2));font-family
 .mo-como-llegar:active{
   transform:translateY(0);
 }
+
+/* =====================================================
+   V213 - Menú categorizado exclusivo para Jefatura
+   ===================================================== */
+#menuPrincipal.menu.mv213-menu-jefatura{
+  max-width:980px!important;
+  gap:12px!important;
+}
+.mv213-sections{
+  display:flex;
+  flex-direction:column;
+  gap:13px;
+  width:100%;
+}
+.mv213-section{
+  width:100%;
+}
+.mv213-section-title{
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  gap:11px;
+  color:#e8f1ff;
+  font-size:12px;
+  font-weight:950;
+  letter-spacing:.75px;
+  text-transform:uppercase;
+  margin:1px 0 8px;
+}
+.mv213-section-title::before,
+.mv213-section-title::after{
+  content:"";
+  flex:1;
+  height:1px;
+  background:linear-gradient(90deg,transparent,rgba(117,158,215,.48));
+}
+.mv213-section-title::after{transform:scaleX(-1);}
+.mv213-grid{
+  display:grid;
+  gap:10px;
+  width:100%;
+}
+.mv213-grid-4{grid-template-columns:repeat(4,minmax(0,1fr));}
+.mv213-grid-3{grid-template-columns:repeat(3,minmax(0,1fr));}
+.mv213-grid-support{grid-template-columns:1fr;}
+.card.mv213-card{
+  width:100%!important;
+  min-width:0!important;
+  min-height:78px!important;
+  height:78px!important;
+  margin:0!important;
+  padding:10px 6px!important;
+  border-radius:16px!important;
+  gap:4px!important;
+  box-sizing:border-box!important;
+  transition:transform .16s ease,box-shadow .16s ease,filter .16s ease!important;
+}
+.card.mv213-card:hover{
+  transform:translateY(-3px) scale(1.015);
+  box-shadow:0 12px 25px rgba(0,0,0,.26)!important;
+  filter:brightness(1.06);
+}
+.card.mv213-card span{font-size:23px!important;line-height:1!important;margin:0!important;}
+.card.mv213-card b{font-size:10.5px!important;line-height:1.15!important;text-align:center!important;}
+.mv213-grid-support .card.mv213-card{height:58px!important;min-height:58px!important;flex-direction:row!important;gap:8px!important;}
+.mv213-grid-support .card.mv213-card span{font-size:19px!important;}
+/* El Mapa Operativo conserva su identidad, pero adopta el tamaño uniforme. */
+.mv213-menu-jefatura #cardMapaOperativo{
+  max-width:none!important;
+  justify-self:stretch!important;
+}
+
+@media(max-width:700px){
+  #menuPrincipal.menu.mv213-menu-jefatura{padding-left:10px!important;padding-right:10px!important;}
+  .mv213-sections{gap:12px;}
+  .mv213-grid-4,.mv213-grid-3{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;}
+  .card.mv213-card{height:76px!important;min-height:76px!important;border-radius:15px!important;padding:9px 5px!important;}
+  .card.mv213-card span{font-size:22px!important;}
+  .card.mv213-card b{font-size:10px!important;}
+  .mv213-grid-support{grid-template-columns:1fr;}
+  .mv213-grid-support .card.mv213-card{height:56px!important;min-height:56px!important;}
+  .mv213-section-title{font-size:11px;margin-bottom:7px;}
+}
+
+@media(max-width:360px){
+  .mv213-grid-4,.mv213-grid-3{grid-template-columns:1fr;}
+  .card.mv213-card{height:68px!important;min-height:68px!important;flex-direction:row!important;gap:9px!important;}
+  .card.mv213-card span{font-size:21px!important;}
+}
