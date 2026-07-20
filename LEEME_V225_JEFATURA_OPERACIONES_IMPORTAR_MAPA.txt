@@ -1,0 +1,24 @@
+MI VISUAL V225 - JEFATURA OPERACIONES: ACTUALIZAR MAPA OPERATIVO
+
+AJUSTE ÚNICO
+- JEFATURA OPERACIONES puede abrir Ingresar datos en Mapa Operativo.
+- Puede leer un archivo Excel y registrar/actualizar la base del mapa.
+- Se aceptan también los nombres equivalentes JEFATURA DE OPERACIONES y OPERACIONES.
+
+NO MODIFICADO
+- GERENCIA LIMA continúa solo lectura.
+- Supervisor continúa solo lectura.
+- No se modificaron otros módulos, estilos, menús ni perfiles.
+
+APLICACIÓN
+1. Reemplazar Code.gs en Apps Script.
+2. Guardar y crear una nueva versión del despliegue.
+3. Reemplazar js/mapa_operativo.js en GitHub.
+4. Commit y push.
+5. Cerrar sesión, volver a ingresar y probar la carga Excel.
+
+RESUMEN
+Code.gs / Apps Script: Sí
+Frontend GitHub: Sí
+Google Sheets: No
+Nuevo Deploy Apps Script: Sí

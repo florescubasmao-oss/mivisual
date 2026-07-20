@@ -11,7 +11,7 @@ function moNormCab(v){return moNorm(v).toUpperCase().normalize('NFD').replace(/[
 function moEscape(v){return moNorm(v).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]))}
 function moUsuario(){return localStorage.getItem('usuario')||''}
 function moPerfil(){return moNormCab(localStorage.getItem('perfil'))}
-function moEsJefatura(){return ['JEFATURA','ADMIN','ADMINISTRADOR'].includes(moPerfil())}
+function moPuedeImportar(){return ['JEFATURA','ADMIN','ADMINISTRADOR','JEFATURAOPERACIONES','JEFATURADEOPERACIONES','OPERACIONES'].includes(moPerfil())}
 
 function moCargarScript(src,globalName){return new Promise((resolve,reject)=>{if(globalName&&window[globalName])return resolve(window[globalName]);const s=document.createElement('script');s.src=src;s.onload=()=>resolve(globalName?window[globalName]:true);s.onerror=()=>reject(new Error('No se pudo cargar un componente del mapa'));document.head.appendChild(s)})}
 function moCargarCss(href){if([...document.styleSheets].some(x=>x.href&&x.href.includes('leaflet')))return;const l=document.createElement('link');l.rel='stylesheet';l.href=href;document.head.appendChild(l)}
@@ -26,7 +26,7 @@ async function mostrarMapaOperativo(){
   const menu=document.getElementById('menuPrincipal');
   if(menu) menu.style.setProperty('display','none','important');
   const p=document.getElementById('pantalla');
-  p.innerHTML=`<div class="mo-wrap"><div class="mo-head"><h2 class="mo-title">🗺️ MAPA OPERATIVO</h2><div class="mo-actions">${moEsJefatura()?'<button class="mo-btn mo-btn-sec" onclick="moMostrarImportacion()">Ingresar datos</button>':''}</div></div>
+  p.innerHTML=`<div class="mo-wrap"><div class="mo-head"><h2 class="mo-title">🗺️ MAPA OPERATIVO</h2><div class="mo-actions">${moPuedeImportar()?'<button class="mo-btn mo-btn-sec" onclick="moMostrarImportacion()">Ingresar datos</button>':''}</div></div>
   <div id="moVistaFiltros" class="mo-panel">
     <b>Seleccione la información que desea visualizar</b>
     <div class="mo-filtros mo-filtros-amplios" style="margin-top:9px">

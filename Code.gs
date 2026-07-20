@@ -5553,7 +5553,7 @@ function esPerfilMapaOperativo(perfil) {
 
 function validarAccesoMapaOperativo(usuario, accion) {
   if (!esPerfilMapaOperativo(usuario.perfil)) throw new Error("No tienes permiso para visualizar el Mapa Operativo");
-  if (accion === "IMPORTAR" && !esPerfilJefatura(usuario.perfil)) throw new Error("Solo Jefatura puede importar información al Mapa Operativo");
+  if (accion === "IMPORTAR" && !(esPerfilJefatura(usuario.perfil) || esPerfilJefaturaOperaciones(usuario.perfil))) throw new Error("Solo Jefatura o Jefatura Operaciones pueden importar información al Mapa Operativo");
   return true;
 }
 
