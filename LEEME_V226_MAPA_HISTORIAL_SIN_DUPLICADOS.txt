@@ -1,0 +1,37 @@
+MI VISUAL V226 - MAPA OPERATIVO ACUMULATIVO Y SIN DUPLICADOS
+
+AJUSTE IMPLEMENTADO
+- Cada nueva carga conserva todo el historial ya registrado.
+- Las órdenes nuevas se agregan sin borrar cargas anteriores.
+- Una coincidencia del mismo día se actualiza con la información más reciente.
+- La fecha de la visita se obtiene primero de FechaIniVisi y, si está vacía, de F.Soli.
+- La coincidencia principal es fecha de visita + OrdenId.
+- Como respaldo, se compara fecha + documento/código de cliente + coordenadas normalizadas.
+- Si ambas filas tienen OrdenId distintos, no se fusionan aunque compartan documento y coordenadas.
+- El mismo cliente u OrdenId en días diferentes se conserva como visitas independientes.
+- Los registros repetidos dentro del mismo Excel se consolidan y prevalece la última información.
+- Los duplicados históricos exactos del mismo día se consolidan durante la siguiente carga.
+
+NO MODIFICADO
+- Permisos y perfiles existentes.
+- Diseño del Mapa Operativo.
+- Filtros, marcadores, colores y navegación.
+- Otros módulos del proyecto.
+
+ARCHIVOS MODIFICADOS
+- Code.gs
+- apps_script/Code.gs
+- js/mapa_operativo.js
+
+APLICACIÓN
+1. Reemplazar Code.gs en Apps Script.
+2. Guardar y crear una nueva versión del despliegue.
+3. Reemplazar js/mapa_operativo.js en GitHub.
+4. Hacer commit y push.
+5. Cerrar sesión, volver a ingresar y probar dos archivos de fechas diferentes.
+
+RESUMEN
+Code.gs / Apps Script: Sí
+Frontend GitHub: Sí
+Google Sheets: No
+Nuevo Deploy Apps Script: Sí

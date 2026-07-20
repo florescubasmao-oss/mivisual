@@ -5594,6 +5594,113 @@ function sedeMapaOperativo(valor) {
   return "";
 }
 
+
+function normalizarIdentificadorMapa(valor) {
+  return normalizarTexto(textoMapa(valor)).replace(/[^A-Z0-9]/g, "");
+}
+
+function fechaClaveMapa(valor) {
+  if (valor instanceof Date && !isNaN(valor.getTime())) {
+    return Utilities.formatDate(valor, Session.getScriptTimeZone(), "yyyy-MM-dd");
+  }
+  const texto = textoMapa(valor);
+  if (!texto) return "";
+
+  let m = texto.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})/);
+  if (m) return m[3] + "-" + m[2].padStart(2,"0") + "-" + m[1].padStart(2,"0");
+
+  m = texto.match(/^(\d{4})[\/\-](\d{1,2})[\/\-](\d{1,2})/);
+  if (m) return m[1] + "-" + m[2].padStart(2,"0") + "-" + m[3].padStart(2,"0");
+
+  const fecha = new Date(texto);
+  return isNaN(fecha.getTime()) ? "" : Utilities.formatDate(fecha, Session.getScriptTimeZone(), "yyyy-MM-dd");
+}
+
+function coordenadasClaveMapa(latitud, longitud) {
+  const lat = numeroMapa(latitud);
+  const lng = numeroMapa(longitud);
+  if (lat === "" || lng === "") return "";
+  return Number(lat).toFixed(6) + "|" + Number(lng).toFixed(6);
+}
+
+function datosCoincidenciaMapa(item) {
+  const fecha = fechaClaveMapa(item.fechaInicioVisita) || fechaClaveMapa(item.fechaSolicitud);
+  const orden = normalizarIdentificadorMapa(item.ordenId);
+  const documento = normalizarIdentificadorMapa(item.numeroDocumento);
+  const codigoCliente = normalizarIdentificadorMapa(item.codigoCliente);
+  const coordenadas = coordenadasClaveMapa(item.latitud, item.longitud);
+
+  return {
+    fecha: fecha,
+    orden: orden,
+    documento: documento,
+    codigoCliente: codigoCliente,
+    coordenadas: coordenadas,
+    claveOrdenFecha: fecha && orden ? "FECHA|" + fecha + "|ORDEN|" + orden : "",
+    clavesAlternas: [
+      fecha && documento && coordenadas ? "FECHA|" + fecha + "|DOCUMENTO|" + documento + "|COORD|" + coordenadas : "",
+      fecha && codigoCliente && coordenadas ? "FECHA|" + fecha + "|CLIENTE|" + codigoCliente + "|COORD|" + coordenadas : "",
+      !fecha && orden && documento && coordenadas ? "SIN_FECHA|ORDEN|" + orden + "|DOCUMENTO|" + documento + "|COORD|" + coordenadas : "",
+      !fecha && orden && codigoCliente && coordenadas ? "SIN_FECHA|ORDEN|" + orden + "|CLIENTE|" + codigoCliente + "|COORD|" + coordenadas : ""
+    ].filter(function(x){ return x; })
+  };
+}
+
+function crearIndicesCoincidenciaMapa() {
+  return { porOrdenFecha:{}, alternos:{} };
+}
+
+function agregarIndiceAlternoMapa(indices, clave, posicion) {
+  if (!indices.alternos[clave]) indices.alternos[clave] = [];
+  if (indices.alternos[clave].indexOf(posicion) === -1) indices.alternos[clave].push(posicion);
+}
+
+function registrarIndiceCoincidenciaMapa(indices, meta, posicion) {
+  if (meta.claveOrdenFecha) indices.porOrdenFecha[meta.claveOrdenFecha] = posicion;
+  meta.clavesAlternas.forEach(function(clave){ agregarIndiceAlternoMapa(indices, clave, posicion); });
+}
+
+function retirarIndiceCoincidenciaMapa(indices, meta, posicion) {
+  if (meta.claveOrdenFecha && indices.porOrdenFecha[meta.claveOrdenFecha] === posicion) {
+    delete indices.porOrdenFecha[meta.claveOrdenFecha];
+  }
+  meta.clavesAlternas.forEach(function(clave){
+    const lista = indices.alternos[clave] || [];
+    const filtrada = lista.filter(function(x){ return x !== posicion; });
+    if (filtrada.length) indices.alternos[clave] = filtrada;
+    else delete indices.alternos[clave];
+  });
+}
+
+function ordenesCompatiblesMapa(metaA, metaB) {
+  return !metaA.orden || !metaB.orden || metaA.orden === metaB.orden;
+}
+
+function buscarCoincidenciaMapa(indices, metas, meta) {
+  if (meta.claveOrdenFecha && indices.porOrdenFecha.hasOwnProperty(meta.claveOrdenFecha)) {
+    return indices.porOrdenFecha[meta.claveOrdenFecha];
+  }
+
+  for (let i = 0; i < meta.clavesAlternas.length; i++) {
+    const candidatos = indices.alternos[meta.clavesAlternas[i]] || [];
+    for (let j = candidatos.length - 1; j >= 0; j--) {
+      const posicion = candidatos[j];
+      if (metas[posicion] && ordenesCompatiblesMapa(meta, metas[posicion])) return posicion;
+    }
+  }
+  return -1;
+}
+
+function filaImportacionMapa(r, ahora, usuario) {
+  return [
+    textoMapa(r.ordenId || r.ORDEN_ID), textoMapa(r.tipoTrabajo), textoMapa(r.fechaSolicitud), textoMapa(r.horaSolicitud), textoMapa(r.cliente), textoMapa(r.tipo),
+    textoMapa(r.productoOrigen), normalizarCuadrilla(r.cuadrilla), textoMapa(r.estado), textoMapa(r.direccion), textoMapa(r.direccionAdicional), textoMapa(r.fechaUltimoEstado),
+    textoMapa(r.productoServicio), sedeMapaOperativo(r.region), textoMapa(r.codigoCliente), textoMapa(r.numeroDocumento), textoMapa(r.telefonoMovil), textoMapa(r.telefonoFijo),
+    textoMapa(r.fechaFinVisita), textoMapa(r.fechaInicioVisita), textoMapa(r.motivoCancelacion), textoMapa(r.motivoFinalizacion), textoMapa(r.motivoAnulacion),
+    numeroMapa(r.latitud), numeroMapa(r.longitud), textoMapa(r.detalle), ahora, usuario.usuario
+  ];
+}
+
 function importarMapaOperativo(data) {
   const usuario = obtenerUsuarioApp(data.usuario);
   validarAccesoMapaOperativo(usuario, "IMPORTAR");
@@ -5606,38 +5713,81 @@ function importarMapaOperativo(data) {
   lock.waitLock(30000);
   try {
     const ultimaFila = hoja.getLastRow();
-    const indice = {};
-    if (ultimaFila > 1) {
-      hoja.getRange(2,1,ultimaFila-1,1).getDisplayValues().forEach((f,i) => {
-        const id = textoMapa(f[0]);
-        if (id) indice[id] = i + 2;
-      });
-    }
+    const filasExistentes = ultimaFila > 1 ? hoja.getRange(2,1,ultimaFila-1,28).getValues() : [];
+    const resultado = [];
+    const metas = [];
+    const indices = crearIndicesCoincidenciaMapa();
+    let consolidadosExistentes = 0;
 
-    const ahora = new Date();
-    const nuevos = [];
-    const actualizaciones = [];
-    let omitidos = 0;
-
-    registros.forEach(r => {
-      const ordenId = textoMapa(r.ordenId || r.ORDEN_ID);
-      if (!ordenId) { omitidos++; return; }
-      const fila = [
-        ordenId, textoMapa(r.tipoTrabajo), textoMapa(r.fechaSolicitud), textoMapa(r.horaSolicitud), textoMapa(r.cliente), textoMapa(r.tipo),
-        textoMapa(r.productoOrigen), normalizarCuadrilla(r.cuadrilla), textoMapa(r.estado), textoMapa(r.direccion), textoMapa(r.direccionAdicional), textoMapa(r.fechaUltimoEstado),
-        textoMapa(r.productoServicio), sedeMapaOperativo(r.region), textoMapa(r.codigoCliente), textoMapa(r.numeroDocumento), textoMapa(r.telefonoMovil), textoMapa(r.telefonoFijo),
-        textoMapa(r.fechaFinVisita), textoMapa(r.fechaInicioVisita), textoMapa(r.motivoCancelacion), textoMapa(r.motivoFinalizacion), textoMapa(r.motivoAnulacion),
-        numeroMapa(r.latitud), numeroMapa(r.longitud), textoMapa(r.detalle), ahora, usuario.usuario
-      ];
-      if (indice[ordenId]) actualizaciones.push({fila:indice[ordenId], valores:fila});
-      else { indice[ordenId] = -1; nuevos.push(fila); }
+    filasExistentes.forEach(function(fila){
+      const item = filaMapaOperativoAObjeto(fila);
+      if (!item.ordenId) return;
+      const meta = datosCoincidenciaMapa(item);
+      const posicion = buscarCoincidenciaMapa(indices, metas, meta);
+      if (posicion >= 0) {
+        retirarIndiceCoincidenciaMapa(indices, metas[posicion], posicion);
+        resultado[posicion] = fila;
+        metas[posicion] = meta;
+        registrarIndiceCoincidenciaMapa(indices, meta, posicion);
+        consolidadosExistentes++;
+      } else {
+        const nuevaPosicion = resultado.length;
+        resultado.push(fila);
+        metas.push(meta);
+        registrarIndiceCoincidenciaMapa(indices, meta, nuevaPosicion);
+      }
     });
 
-    actualizaciones.forEach(x => hoja.getRange(x.fila,1,1,28).setValues([x.valores]));
-    if (nuevos.length) hoja.getRange(hoja.getLastRow()+1,1,nuevos.length,28).setValues(nuevos);
-    if (hoja.getLastRow() > 1) hoja.getRange(2,27,hoja.getLastRow()-1,1).setNumberFormat("dd/mm/yyyy hh:mm");
+    const ahora = new Date();
+    let nuevos = 0;
+    let actualizados = 0;
+    let omitidos = 0;
+    let repetidosCarga = 0;
+    const posicionesActualizadasEnCarga = {};
 
-    return {ok:true, modulo:"MAPA_OPERATIVO", accion:"IMPORTAR", nuevos:nuevos.length, actualizados:actualizaciones.length, omitidos};
+    registros.forEach(function(r){
+      const fila = filaImportacionMapa(r, ahora, usuario);
+      const item = filaMapaOperativoAObjeto(fila);
+      if (!item.ordenId) { omitidos++; return; }
+
+      const meta = datosCoincidenciaMapa(item);
+      const posicion = buscarCoincidenciaMapa(indices, metas, meta);
+      if (posicion >= 0) {
+        if (posicionesActualizadasEnCarga[posicion]) repetidosCarga++;
+        else actualizados++;
+        posicionesActualizadasEnCarga[posicion] = true;
+        retirarIndiceCoincidenciaMapa(indices, metas[posicion], posicion);
+        resultado[posicion] = fila;
+        metas[posicion] = meta;
+        registrarIndiceCoincidenciaMapa(indices, meta, posicion);
+      } else {
+        const nuevaPosicion = resultado.length;
+        resultado.push(fila);
+        metas.push(meta);
+        registrarIndiceCoincidenciaMapa(indices, meta, nuevaPosicion);
+        posicionesActualizadasEnCarga[nuevaPosicion] = true;
+        nuevos++;
+      }
+    });
+
+    if (resultado.length) hoja.getRange(2,1,resultado.length,28).setValues(resultado);
+    const filasAnteriores = Math.max(ultimaFila - 1, 0);
+    if (filasAnteriores > resultado.length) {
+      hoja.getRange(resultado.length + 2, 1, filasAnteriores - resultado.length, 28).clearContent();
+    }
+    if (resultado.length) hoja.getRange(2,27,resultado.length,1).setNumberFormat("dd/mm/yyyy hh:mm");
+
+    return {
+      ok:true,
+      modulo:"MAPA_OPERATIVO",
+      accion:"IMPORTAR",
+      nuevos:nuevos,
+      actualizados:actualizados,
+      omitidos:omitidos,
+      repetidosCarga:repetidosCarga,
+      consolidadosExistentes:consolidadosExistentes,
+      totalGuardado:resultado.length
+    };
   } finally {
     lock.releaseLock();
   }
