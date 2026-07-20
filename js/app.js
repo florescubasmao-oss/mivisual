@@ -121,7 +121,7 @@ function obtenerNombrePerfilMenu(){
     if(perfil === "ALMACEN"){
         detalle = "RESPONSABLE DE ALMACÉN • " + sede;
     }
-    if(perfil === "JEFATURA" || perfil === "ADMIN" || perfil === "ADMINISTRADOR"){
+    if(perfil === "JEFATURA" || perfil === "JEFATURA GENERAL" || perfil === "ADMIN" || perfil === "ADMINISTRADOR"){
         detalle = perfil + " • TODAS";
     }
 
@@ -172,7 +172,7 @@ function prepararMenuVisual(){
         <div class="mv55-welcome-detail">${info.detalle}</div>
     `;
 
-    return { menu, main, recursos, recursosTitle };
+    return { menu, welcome, main, recursos, recursosTitle };
 }
 
 
@@ -366,6 +366,23 @@ async function configurarMenu(){
             "cardMapaOperativo"
         ],
         JEFATURA: [
+            "cardRanking",
+            "cardObservaciones",
+            "cardAccesos",
+            "cardBiblioteca",
+            "cardCapacitacion",
+            "cardDashboardJefatura",
+            "cardAnalisisEconomico",
+            "cardAdministracion",
+            "cardActividadCampo",
+            "cardValidacionTecnica",
+            "cardActas",
+            "cardChecklistAlmacen",
+            "cardProgramacionDescansos",
+            "cardTrabajosConjunta",
+            "cardMapaOperativo"
+        ],
+        "JEFATURA GENERAL": [
             "cardRanking",
             "cardObservaciones",
             "cardAccesos",

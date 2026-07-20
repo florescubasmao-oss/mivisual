@@ -1,0 +1,20 @@
+MI VISUAL V217 - FIX VISUALIZACION JEFATURA
+
+Base utilizada: mivisual(30).zip (carpeta recién clonada).
+
+Archivo modificado:
+- js/app.js
+
+Correcciones:
+1. prepararMenuVisual() ahora devuelve el elemento welcome requerido por el organizador del dashboard.
+2. Se reconoce también el perfil JEFATURA GENERAL.
+3. Se mantiene el dashboard categorizado exclusivo para Jefatura.
+
+No se modificó:
+- Code.gs / Apps Script
+- index.html
+- css/estilos.css
+- Google Sheets
+- módulos operativos
+
+El ZIP no contiene .git ni .github.
