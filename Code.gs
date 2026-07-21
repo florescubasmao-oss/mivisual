@@ -6218,6 +6218,9 @@ function crearMatricesBaseOperativa(registros, corte, usuarioCarga) {
   const mapaEfectividad = {};
   const mapaRecableado = {};
   const incidenciasMapa = {};
+  const detalleNoClasificadasMapa = {};
+  let totalFinalizadasBase = 0;
+  let totalProduccionClasificada = 0;
 
   function asegurarCuadrilla(mapa, cuadrilla, base) {
     if (!mapa[cuadrilla]) mapa[cuadrilla] = Object.assign({ cuadrilla }, base || {});
@@ -6235,12 +6238,24 @@ function crearMatricesBaseOperativa(registros, corte, usuarioCarga) {
       cat = catalogo.porTipo[tipoPartidaResuelta] || null;
     }
     if (r.estado === "FINALIZADA") {
+      totalFinalizadasBase++;
       if (cat) {
         const clave = [r.cuadrilla, fechaIsoBaseOperativa(r.fecha), cat.codigo].join("|");
         if (!mapaProduccion[clave]) mapaProduccion[clave] = { cuadrilla:r.cuadrilla, fecha:r.fecha, codigo:cat.codigo, cantidad:0 };
         mapaProduccion[clave].cantidad++;
-      } else if (tipoPartidaResuelta) {
-        partidasNoEncontradas[tipoPartidaResuelta] = true;
+        totalProduccionClasificada++;
+      } else {
+        const nombreNoClasificado = tipoPartidaResuelta || "SIN PARTIDA";
+        partidasNoEncontradas[nombreNoClasificado] = true;
+        if (!detalleNoClasificadasMapa[nombreNoClasificado]) {
+          detalleNoClasificadasMapa[nombreNoClasificado] = {
+            tipoPartida: nombreNoClasificado,
+            cantidad: 0,
+            cuadrillas: {}
+          };
+        }
+        detalleNoClasificadasMapa[nombreNoClasificado].cantidad++;
+        detalleNoClasificadasMapa[nombreNoClasificado].cuadrillas[r.cuadrilla] = true;
       }
     }
 
@@ -6336,9 +6351,22 @@ function crearMatricesBaseOperativa(registros, corte, usuarioCarga) {
     inc.cuadrillaEjecutora, inc.cuadrillaContabilizada, inc.asignacionManual, corte, periodo
   ]));
 
+  const detalleNoClasificadas = Object.keys(detalleNoClasificadasMapa)
+    .sort()
+    .map(tipo => ({
+      tipoPartida: detalleNoClasificadasMapa[tipo].tipoPartida,
+      cantidad: detalleNoClasificadasMapa[tipo].cantidad,
+      cuadrillas: Object.keys(detalleNoClasificadasMapa[tipo].cuadrillas).sort()
+    }));
+
   return {
     periodo, actualizadoAl, corte, produccion, efectividad, recableado, vtrgar,
-    baseIncidencias, partidasNoEncontradas: Object.keys(partidasNoEncontradas).sort(),
+    baseIncidencias,
+    totalFinalizadasBase,
+    totalProduccionClasificada,
+    finalizadasSinCatalogo: Math.max(totalFinalizadasBase - totalProduccionClasificada, 0),
+    detalleNoClasificadas,
+    partidasNoEncontradas: Object.keys(partidasNoEncontradas).sort(),
     cuadrillasNoEncontradas: Object.keys(cuadrillasNoEncontradas).sort(), cuadrillas: usuarios
   };
 }
@@ -6477,6 +6505,10 @@ function previsualizarBaseOperativa(data) {
     recableado: matrices.recableado.length - 1,
     vtrgar: matrices.vtrgar.length - 1,
     incidencias: matrices.baseIncidencias.length - 1,
+    totalFinalizadasBase: matrices.totalFinalizadasBase,
+    totalProduccionClasificada: matrices.totalProduccionClasificada,
+    finalizadasSinCatalogo: matrices.finalizadasSinCatalogo,
+    detalleNoClasificadas: matrices.detalleNoClasificadas,
     partidasNoEncontradas: matrices.partidasNoEncontradas,
     cuadrillasNoEncontradas: matrices.cuadrillasNoEncontradas,
     actual: resumenActualBaseOperativa(),
@@ -6493,6 +6525,25 @@ function procesarBaseOperativa(data) {
     const preparado = prepararRegistrosBaseOperativa(data.registros);
     const corte = obtenerCorteBaseOperativa(preparado.registros);
     const matrices = crearMatricesBaseOperativa(preparado.registros, corte, usuario.usuario);
+
+    if (matrices.finalizadasSinCatalogo > 0) {
+      const detalle = (matrices.detalleNoClasificadas || [])
+        .slice(0, 20)
+        .map(x => x.tipoPartida + " (" + x.cantidad + ")")
+        .join(", ");
+      throw new Error(
+        "No se modificó ninguna hoja. Existen " + matrices.finalizadasSinCatalogo +
+        " órdenes FINALIZADAS sin clasificación en CATALOGO_ORDENES. " + detalle
+      );
+    }
+
+    if (matrices.totalProduccionClasificada !== matrices.totalFinalizadasBase) {
+      throw new Error(
+        "No se modificó ninguna hoja. La validación no coincide: " +
+        matrices.totalFinalizadasBase + " finalizadas y " +
+        matrices.totalProduccionClasificada + " clasificadas en Producción."
+      );
+    }
 
     const hojas = [
       obtenerHoja(HOJA_PRODUCCION), obtenerHoja(HOJA_EFECTIVIDAD), obtenerHoja(HOJA_RECABLEADO),

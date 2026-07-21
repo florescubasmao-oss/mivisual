@@ -1,4 +1,4 @@
-// MI VISUAL V229 - Carga única de Base Operativa + soporte XLS con carpeta complementaria
+// MI VISUAL V230 - Lectura HTML directa + control estricto Finalizadas vs Producción
 const API_BASE_OPERATIVA = (window.MI_VISUAL_API_URL || "https://script.google.com/macros/s/AKfycbzcbjCLweJNgZXDerdzmMN7Lwotc1G8NWdzoPkaLNGDivAgpYxDkq78xZwPRioSB4XY/exec");
 let BO_REGISTROS = [];
 let BO_ARCHIVO = "";
@@ -126,6 +126,75 @@ function boEsIndiceExcelHtml(texto){
   const t=(texto||"").slice(0,50000);
   return /Excel Workbook Frameset/i.test(t) && /sheet\d+\.html?/i.test(t);
 }
+
+function boTablaHtmlAMatriz(texto){
+  const doc=new DOMParser().parseFromString(texto||"","text/html");
+  const tablas=Array.from(doc.querySelectorAll("table"));
+  if(!tablas.length) throw new Error("El archivo HTML no contiene tablas.");
+
+  let mejor=null;
+  tablas.forEach(tabla=>{
+    const filas=Array.from(tabla.querySelectorAll("tr"));
+    const matriz=[];
+    const pendientes={};
+
+    filas.forEach(tr=>{
+      const salida=[];
+      let columna=0;
+
+      function aplicarPendientes(){
+        while(pendientes[columna]&&pendientes[columna].filas>0){
+          const p=pendientes[columna];
+          salida[columna]=p.valor;
+          p.filas--;
+          if(p.filas<=0) delete pendientes[columna];
+          columna++;
+        }
+      }
+
+      aplicarPendientes();
+      Array.from(tr.children).filter(c=>/^(TD|TH)$/i.test(c.tagName)).forEach(celda=>{
+        aplicarPendientes();
+        const valor=(celda.textContent||"").replace(/\u00a0/g," ").replace(/\s+/g," ").trim();
+        const colspan=Math.max(Number(celda.getAttribute("colspan"))||1,1);
+        const rowspan=Math.max(Number(celda.getAttribute("rowspan"))||1,1);
+
+        for(let c=0;c<colspan;c++){
+          salida[columna+c]=c===0?valor:"";
+          if(rowspan>1){
+            pendientes[columna+c]={valor:c===0?valor:"",filas:rowspan-1};
+          }
+        }
+        columna+=colspan;
+      });
+      aplicarPendientes();
+      matriz.push(salida);
+    });
+
+    const max=Math.min(matriz.length,20);
+    for(let i=0;i<max;i++){
+      const heads=(matriz[i]||[]).map(boNorm);
+      const score=["CUADRILLA","FECHA","ESTADO","TIPO DE PARTIDA"].filter(h=>heads.includes(h)).length;
+      if(!mejor||score>mejor.score) mejor={rows:matriz,filaEnc:i,heads,score};
+    }
+  });
+
+  if(!mejor||mejor.score<4){
+    throw new Error("No se encontró una tabla HTML con los encabezados requeridos.");
+  }
+  return mejor;
+}
+
+function boLeerHtmlDirecto(texto,archivo,detalleOrigen){
+  const sel=boTablaHtmlAMatriz(texto);
+  const resultado=boExtraerRegistros(sel.rows,sel.filaEnc,sel.heads);
+  boAplicarLecturaLocal(
+    resultado,
+    archivo,
+    (detalleOrigen||"")+`${detalleOrigen?"\n":""}Lectura directa de tabla HTML`
+  );
+  return resultado;
+}
 function boExtraerRegistros(rows,filaEnc,heads){
   const idx=boIndiceEncabezados(heads);
   const faltan=["cuadrilla","fecha","estado","tipoPartida"].filter(k=>idx[k]<0);
@@ -176,14 +245,18 @@ async function boLeerArchivo(){
       msg.textContent=`El archivo ${file.name} es solo el índice del reporte y no contiene las filas.\nSeleccione debajo la carpeta complementaria que termina en _archivos. El sistema leerá automáticamente sheet001.htm.`;
       return;
     }
-    let wb;
     if(/\.html?$/i.test(file.name) || /^\s*<html/i.test(muestra)){
       const texto=new TextDecoder("utf-8").decode(buffer);
-      wb=XLSX.read(texto,{type:"string",cellDates:true});
+      try{
+        boLeerHtmlDirecto(texto,file.name,"");
+      }catch(errorHtml){
+        const wbHtml=XLSX.read(texto,{type:"string",cellDates:true});
+        boLeerWorkbookLocal(wbHtml,file.name,"Lectura alternativa con lector Excel");
+      }
     }else{
-      wb=XLSX.read(buffer,{type:"array",cellDates:true});
+      const wb=XLSX.read(buffer,{type:"array",cellDates:true});
+      boLeerWorkbookLocal(wb,file.name,"");
     }
-    boLeerWorkbookLocal(wb,file.name,"");
   }catch(e){
     BO_REGISTROS=[];document.getElementById("boProcesar").disabled=true;msg.className="bo-msg bo-error";
     msg.textContent=e.message+" Si el reporte viene con una carpeta _archivos, selecciónela en la opción abierta debajo.";
@@ -205,8 +278,13 @@ async function boLeerCarpetaReporte(){
       try{
         const texto=await archivo.text();
         if(boEsIndiceExcelHtml(texto))continue;
-        const wb=XLSX.read(texto,{type:"string",cellDates:true});
-        boLeerWorkbookLocal(wb,archivo.name,`Carpeta: ${archivo.webkitRelativePath||"carpeta seleccionada"}`);
+        const detalle=`Carpeta: ${archivo.webkitRelativePath||"carpeta seleccionada"}`;
+        try{
+          boLeerHtmlDirecto(texto,archivo.name,detalle);
+        }catch(errorHtml){
+          const wb=XLSX.read(texto,{type:"string",cellDates:true});
+          boLeerWorkbookLocal(wb,archivo.name,detalle+"\nLectura alternativa con lector Excel");
+        }
         return;
       }catch(e){ultimoError=e;}
     }
@@ -251,12 +329,17 @@ async function boProcesarBase(){
     btn.disabled=true;msg.className="bo-msg";msg.textContent="Validando resultados antes de reemplazar las hojas...";
     const vista=await boApi({accion:"previsualizarBaseOperativa",usuario:boUsuario(),archivo:BO_ARCHIVO,registros:BO_REGISTROS});
     const a=vista.actual||{},n=vista.nuevo||{},partidas=vista.partidasNoEncontradas||[],cuadrillas=vista.cuadrillasNoEncontradas||[];
+    const noClasificadas=vista.detalleNoClasificadas||[];
+    const totalFinalizadas=Number(vista.totalFinalizadasBase||n.finalizadas||0);
+    const totalClasificadas=Number(vista.totalProduccionClasificada||n.produccionOrdenes||0);
+    const totalSinCatalogo=Number(vista.finalizadasSinCatalogo||Math.max(totalFinalizadas-totalClasificadas,0));
     const advertencias=[];
     if(partidas.length)advertencias.push(`Partidas sin catálogo: ${partidas.length}`);
     if(cuadrillas.length)advertencias.push(`Cuadrillas no encontradas en USUARIOS: ${cuadrillas.length}`);
     resumen.innerHTML+=`<div class="bo-card" style="margin-top:12px"><h3>Previsualización antes de reemplazar</h3><div class="bo-table-wrap"><table class="bo-table"><thead><tr><th>Indicador</th><th>Actual</th><th>Nuevo</th></tr></thead><tbody>
-      <tr><td>Órdenes de Producción</td><td>${a.produccionOrdenes||0}</td><td>${n.produccionOrdenes||0}</td></tr>
-      <tr><td>Finalizadas</td><td>${a.finalizadas||0}</td><td>${n.finalizadas||0}</td></tr>
+      <tr><td>Órdenes clasificadas en Producción</td><td>${a.produccionOrdenes||0}</td><td>${totalClasificadas}</td></tr>
+      <tr><td>Finalizadas detectadas</td><td>${a.finalizadas||0}</td><td>${totalFinalizadas}</td></tr>
+      <tr><td>Finalizadas sin partida de catálogo</td><td>-</td><td><b>${totalSinCatalogo}</b></td></tr>
       <tr><td>Canceladas</td><td>${a.canceladas||0}</td><td>${n.canceladas||0}</td></tr>
       <tr><td>Regestiones</td><td>${a.regestiones||0}</td><td>${n.regestiones||0}</td></tr>
       <tr><td>Reprogramadas</td><td>${a.reprogramadas||0}</td><td>${n.reprogramadas||0}</td></tr>
@@ -264,8 +347,18 @@ async function boProcesarBase(){
       <tr><td>Recableados VT</td><td>${a.recableados||0}</td><td>${n.recableados||0}</td></tr>
       <tr><td>GAR</td><td>${a.gar||0}</td><td>${n.gar||0}</td></tr>
       <tr><td>VTR</td><td>${a.vtr||0}</td><td>${n.vtr||0}</td></tr>
-    </tbody></table></div>${advertencias.length?`<div class="bo-msg bo-warn"><b>Advertencias:</b><br>${advertencias.map(boEsc).join("<br>")}${partidas.length?`<br><br><b>Partidas:</b><br>${partidas.slice(0,30).map(boEsc).join("<br>")}`:""}${cuadrillas.length?`<br><br><b>Cuadrillas:</b><br>${cuadrillas.map(boEsc).join("<br>")}`:""}</div>`:""}</div>`;
-    const detalle=`Corte: ${vista.actualizadoAl}\nProducción: ${n.produccionOrdenes||0}\nFinalizadas: ${n.finalizadas||0}\nLos Rojos: ${n.losRojos||0}\nRecableados VT: ${n.recableados||0}\nGAR: ${n.gar||0}\nVTR: ${n.vtr||0}\nDuplicados consolidados: ${vista.duplicados||0}`;
+    </tbody></table></div>${advertencias.length||totalSinCatalogo?`<div class="bo-msg bo-warn"><b>Validaciones:</b><br>${advertencias.map(boEsc).join("<br>")}${partidas.length?`<br><br><b>Partidas:</b><br>${partidas.slice(0,30).map(boEsc).join("<br>")}`:""}${noClasificadas.length?`<br><br><b>Finalizadas no clasificadas:</b><br>${noClasificadas.slice(0,40).map(x=>`${boEsc(x.tipoPartida||"SIN PARTIDA")} · ${Number(x.cantidad)||0} orden(es)`).join("<br>")}`:""}${cuadrillas.length?`<br><br><b>Cuadrillas:</b><br>${cuadrillas.map(boEsc).join("<br>")}`:""}</div>`:""}</div>`;
+    const detalle=`Corte: ${vista.actualizadoAl}\nFinalizadas detectadas: ${totalFinalizadas}\nClasificadas en Producción: ${totalClasificadas}\nSin catálogo: ${totalSinCatalogo}\nLos Rojos: ${n.losRojos||0}\nRecableados VT: ${n.recableados||0}\nGAR: ${n.gar||0}\nVTR: ${n.vtr||0}\nDuplicados consolidados: ${vista.duplicados||0}`;
+    if(totalSinCatalogo>0){
+      msg.className="bo-msg bo-error";
+      msg.textContent=`NO SE MODIFICÓ NINGUNA HOJA.\nSe detectaron ${totalSinCatalogo} órdenes FINALIZADAS que no pudieron clasificarse en CATALOGO_ORDENES.\nComplete el catálogo y vuelva a cargar la base.`;
+      return;
+    }
+    if(totalClasificadas!==totalFinalizadas){
+      msg.className="bo-msg bo-error";
+      msg.textContent=`NO SE MODIFICÓ NINGUNA HOJA.\nLa validación no coincide: ${totalFinalizadas} finalizadas y ${totalClasificadas} clasificadas en Producción.`;
+      return;
+    }
     if(!confirm(`PREVISUALIZACIÓN DE LA NUEVA BASE\n\n${detalle}\n\nEsta operación reemplazará completamente las cuatro hojas actuales y actualizará el Ranking. ¿Confirmar?`)){
       msg.className="bo-msg bo-warn";msg.textContent="Validación realizada. No se modificó ninguna hoja.";return;
     }

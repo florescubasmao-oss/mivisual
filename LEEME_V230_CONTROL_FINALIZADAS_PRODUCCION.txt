@@ -1,0 +1,35 @@
+MI VISUAL V230 - CONTROL FINALIZADAS VS PRODUCCION
+
+OBJETIVO
+Corregir la lectura del reporte HTML (sheet001.htm) y evitar que una carga incompleta reemplace las hojas actuales.
+
+CAMBIOS
+1. El reporte HTML de la carpeta _archivos se lee primero directamente desde la tabla HTML.
+2. Se conserva el lector Excel como respaldo si la lectura directa no es posible.
+3. Antes de reemplazar las hojas se compara:
+   - Total de órdenes FINALIZADAS detectadas.
+   - Total de órdenes clasificadas en PRODUCCION_APP.
+   - Total de FINALIZADAS sin partida configurada en CATALOGO_ORDENES.
+4. Si existe una sola orden FINALIZADA sin clasificación, no se modifica ninguna hoja.
+5. La previsualización muestra la partida pendiente y la cantidad de órdenes afectadas.
+6. El backend repite la misma validación para impedir una actualización parcial aunque se omita la confirmación del frontend.
+
+ARCHIVOS MODIFICADOS
+- Code.gs
+- apps_script/Code.gs
+- js/base_operativa.js
+
+NO SE MODIFICARON
+- Dashboards
+- Análisis Económico
+- Ranking
+- Producción, Efectividad, Recableados o VTR/GAR como visualizaciones
+- Usuarios, permisos ni otros módulos
+
+APLICACION
+- Reemplazar Code.gs en Apps Script y crear un nuevo despliegue.
+- Reemplazar js/base_operativa.js en GitHub.
+- Volver a cargar la base madre.
+
+IMPORTANTE
+La carga quedará bloqueada cuando CATALOGO_ORDENES no contenga alguna partida FINALIZADA. Esto evita que Análisis Económico y las demás opciones muestren menos órdenes que Efectividad.
