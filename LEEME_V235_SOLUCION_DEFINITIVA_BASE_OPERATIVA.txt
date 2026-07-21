@@ -1,0 +1,35 @@
+MI VISUAL V235 - SOLUCION DEFINITIVA BASE OPERATIVA
+
+Problema corregido
+------------------
+La hoja PRODUCCION_APP tenia un filtro activo y filas ocultas. Ese estado se conservaba al reemplazar la informacion y podia impedir que parte de las filas, especialmente las de P1 TRASLADO VISUAL DANY ELVIS ATENCIO RELUZ, se escribieran correctamente. La conciliacion detectaba la diferencia, pero el mismo filtro tambien podia afectar la restauracion del respaldo.
+
+Correccion aplicada
+-------------------
+1. Antes de escribir o restaurar cualquier hoja de indicadores, el sistema:
+   - elimina el filtro activo;
+   - muestra todas las filas;
+   - muestra todas las columnas.
+2. PRODUCCION_APP se escribe en una sola operacion completa, sin bloques.
+3. Se mantiene la conciliacion posterior obligatoria:
+   - Finalizadas de la base;
+   - ordenes escritas en PRODUCCION_APP;
+   - Finalizadas escritas en EFECTIVIDAD;
+   - cuadrilla + fecha + codigo;
+   - monto calculado con CATALOGO_ORDENES.
+4. Si la primera conciliacion falla, se reescribe PRODUCCION_APP automaticamente una vez y se vuelve a validar.
+5. Si aun falla, se restauran las hojas anteriores despues de eliminar filtros y filas ocultas, conservando tambien los formatos numericos.
+6. Ranking solo se actualiza cuando la conciliacion termina correctamente.
+
+Importante
+----------
+- No se muestra el monto esperado antes de confirmar.
+- No se modifican las estructuras de PRODUCCION_APP, EFECTIVIDAD, PORCENTAJE REC, POR VTRGAR ni RANKING.
+- No se modifican dashboards, permisos, perfiles ni otros modulos.
+- Al volver a cargar la base madre, la hoja PRODUCCION_APP actualmente incompleta se reemplazara completamente con la nueva informacion validada.
+
+Archivos modificados
+--------------------
+- Code.gs
+- apps_script/Code.gs
+- js/base_operativa.js (solo identificacion de version)

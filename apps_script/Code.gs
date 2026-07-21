@@ -5934,7 +5934,7 @@ function listarMapaOperativo(data) {
 }
 
 /* =========================
-   BASE OPERATIVA UNIFICADA V234
+   BASE OPERATIVA UNIFICADA V235
    Reemplaza únicamente las hojas de indicadores actuales.
 ========================= */
 const HOJA_ASIGNACION_VTR_GAR = "ASIGNACION_VTR_GAR";
@@ -6403,43 +6403,95 @@ function crearMatricesBaseOperativa(registros, corte, usuarioCarga) {
   };
 }
 
+function prepararHojaParaReemplazoBaseOperativa(hoja) {
+  let filtroEliminado = false;
+
+  // Un filtro activo o filas ocultas pueden impedir que una escritura masiva
+  // reemplace todas las filas de PRODUCCION_APP. Se limpian antes de escribir
+  // o restaurar para garantizar que toda la matriz sea aplicada.
+  try {
+    const filtro = hoja.getFilter();
+    if (filtro) {
+      filtro.remove();
+      filtroEliminado = true;
+    }
+  } catch (e) {}
+
+  try {
+    const filas = hoja.getMaxRows();
+    if (filas > 0) hoja.showRows(1, filas);
+  } catch (e) {}
+
+  try {
+    const columnas = hoja.getMaxColumns();
+    if (columnas > 0) hoja.showColumns(1, columnas);
+  } catch (e) {}
+
+  return { filtroEliminado };
+}
+
 function snapshotHojaBaseOperativa(hoja) {
+  const filas = Math.max(hoja.getLastRow(), 1);
+  const columnas = Math.max(hoja.getLastColumn(), 1);
+  const rango = hoja.getRange(1, 1, filas, columnas);
   return {
     hoja,
-    filas: Math.max(hoja.getLastRow(), 1),
-    columnas: Math.max(hoja.getLastColumn(), 1),
-    valores: hoja.getRange(1, 1, Math.max(hoja.getLastRow(), 1), Math.max(hoja.getLastColumn(), 1)).getValues()
+    filas,
+    columnas,
+    valores: rango.getValues(),
+    formatosNumero: rango.getNumberFormats()
   };
 }
 
 function restaurarSnapshotBaseOperativa(snapshot) {
   const hoja = snapshot.hoja;
+  prepararHojaParaReemplazoBaseOperativa(hoja);
+
+  const filas = snapshot.valores && snapshot.valores.length ? snapshot.valores.length : 1;
+  const columnas = snapshot.valores && snapshot.valores[0] ? snapshot.valores[0].length : 1;
+
+  if (hoja.getMaxColumns() < columnas) {
+    hoja.insertColumnsAfter(hoja.getMaxColumns(), columnas - hoja.getMaxColumns());
+  }
+  if (hoja.getMaxRows() < filas) {
+    hoja.insertRowsAfter(hoja.getMaxRows(), filas - hoja.getMaxRows());
+  }
+
   hoja.clearContents();
   if (snapshot.valores && snapshot.valores.length && snapshot.valores[0].length) {
-    hoja.getRange(1, 1, snapshot.valores.length, snapshot.valores[0].length).setValues(snapshot.valores);
+    const rango = hoja.getRange(1, 1, filas, columnas);
+    rango.setValues(snapshot.valores);
+    if (snapshot.formatosNumero && snapshot.formatosNumero.length === filas) {
+      rango.setNumberFormats(snapshot.formatosNumero);
+    }
   }
 }
 
 function reemplazarHojaBaseOperativa(hoja, matriz) {
-  if (!matriz || !matriz.length || !matriz[0].length) throw new Error("Matriz de actualización vacía");
-  if (hoja.getMaxColumns() < matriz[0].length) hoja.insertColumnsAfter(hoja.getMaxColumns(), matriz[0].length - hoja.getMaxColumns());
-  if (hoja.getMaxRows() < matriz.length) hoja.insertRowsAfter(hoja.getMaxRows(), matriz.length - hoja.getMaxRows());
+  if (!matriz || !matriz.length || !matriz[0].length) {
+    throw new Error("Matriz de actualización vacía");
+  }
+
+  const control = prepararHojaParaReemplazoBaseOperativa(hoja);
+  const columnas = matriz[0].length;
+
+  if (hoja.getMaxColumns() < columnas) {
+    hoja.insertColumnsAfter(hoja.getMaxColumns(), columnas - hoja.getMaxColumns());
+  }
+  if (hoja.getMaxRows() < matriz.length) {
+    hoja.insertRowsAfter(hoja.getMaxRows(), matriz.length - hoja.getMaxRows());
+  }
+
   hoja.clearContents();
-  hoja.getRange(1, 1, matriz.length, matriz[0].length).setValues(matriz);
+  // Una sola escritura evita que un bloque quede fuera por filtros o filas ocultas.
+  hoja.getRange(1, 1, matriz.length, columnas).setValues(matriz);
+  return control;
 }
 
 function reemplazarHojaBaseOperativaPorBloques(hoja, matriz, tamanoBloque) {
-  if (!matriz || !matriz.length || !matriz[0].length) throw new Error("Matriz de actualización vacía");
-  const columnas = matriz[0].length;
-  const bloque = Math.max(50, Number(tamanoBloque) || 200);
-  if (hoja.getMaxColumns() < columnas) hoja.insertColumnsAfter(hoja.getMaxColumns(), columnas - hoja.getMaxColumns());
-  if (hoja.getMaxRows() < matriz.length) hoja.insertRowsAfter(hoja.getMaxRows(), matriz.length - hoja.getMaxRows());
-  hoja.clearContents();
-  hoja.getRange(1, 1, 1, columnas).setValues([matriz[0]]);
-  for (let inicio = 1; inicio < matriz.length; inicio += bloque) {
-    const lote = matriz.slice(inicio, Math.min(inicio + bloque, matriz.length));
-    hoja.getRange(inicio + 1, 1, lote.length, columnas).setValues(lote);
-  }
+  // Se conserva el nombre por compatibilidad, pero V235 realiza una escritura
+  // única y completa porque las matrices de indicadores son pequeñas.
+  return reemplazarHojaBaseOperativa(hoja, matriz);
 }
 
 function mapaConciliacionProduccionMatrizBaseOperativa(matriz) {
@@ -6529,7 +6581,7 @@ function validarConciliacionPostEscrituraBaseOperativa(matrices) {
   const finalizadasEscritas = sumarFinalizadasEscritasBaseOperativa();
   const montoEsperado = montoConciliacionProduccionBaseOperativa(esperado);
   const montoActual = montoConciliacionProduccionBaseOperativa(actual);
-  const diferencias = diferenciasConciliacionProduccionBaseOperativa(esperado, actual, 20);
+  const diferencias = diferenciasConciliacionProduccionBaseOperativa(esperado, actual, 8);
   const totalBase = Number(matrices.totalFinalizadasBase) || 0;
   const montoCoincide = Math.abs(montoEsperado - montoActual) < 0.01;
 
@@ -6538,12 +6590,10 @@ function validarConciliacionPostEscrituraBaseOperativa(matrices) {
       ? diferencias.map(x => x.cuadrilla + " · " + x.fecha + " · " + x.codigo + " · esperado " + x.esperado + " / escrito " + x.actual).join("; ")
       : "Sin detalle de clave; revise los totales escritos.";
     throw new Error(
-      "Falló la conciliación posterior a la escritura. Finalizadas de la base: " + totalBase +
-      ", Producción esperada: " + esperado.total +
+      "Falló la conciliación posterior. Finalizadas base: " + totalBase +
       ", Producción escrita: " + actual.total +
-      ", Finalizadas escritas en Efectividad: " + finalizadasEscritas +
-      ", Monto calculado esperado: S/ " + montoEsperado.toFixed(2) +
-      ", Monto calculado escrito: S/ " + montoActual.toFixed(2) +
+      ", Efectividad escrita: " + finalizadasEscritas +
+      ", monto escrito: S/ " + montoActual.toFixed(2) +
       ". Diferencias: " + detalle
     );
   }
@@ -6555,6 +6605,37 @@ function validarConciliacionPostEscrituraBaseOperativa(matrices) {
     finalizadasEfectividad: finalizadasEscritas,
     montoCalculado: montoActual
   };
+}
+
+function escribirIndicadoresYConciliarBaseOperativa(hojas, matrices) {
+  const controles = [];
+
+  controles.push(reemplazarHojaBaseOperativa(hojas[0], matrices.produccion));
+  controles.push(reemplazarHojaBaseOperativa(hojas[1], matrices.efectividad));
+  controles.push(reemplazarHojaBaseOperativa(hojas[2], matrices.recableado));
+  controles.push(reemplazarHojaBaseOperativa(hojas[3], matrices.vtrgar));
+  controles.push(reemplazarHojaBaseOperativa(hojas[4], matrices.baseIncidencias));
+
+  aplicarFormatosBaseOperativa(matrices);
+  SpreadsheetApp.flush();
+
+  try {
+    const conciliacion = validarConciliacionPostEscrituraBaseOperativa(matrices);
+    conciliacion.filtrosEliminados = controles.filter(x => x && x.filtroEliminado).length;
+    conciliacion.reintentoProduccion = false;
+    return conciliacion;
+  } catch (primerError) {
+    // Reintento automático de PRODUCCION_APP. Esto cubre hojas que tenían un
+    // filtro activo o filas ocultas antes de la carga.
+    reemplazarHojaBaseOperativa(hojas[0], matrices.produccion);
+    aplicarFormatosBaseOperativa(matrices);
+    SpreadsheetApp.flush();
+
+    const conciliacion = validarConciliacionPostEscrituraBaseOperativa(matrices);
+    conciliacion.filtrosEliminados = controles.filter(x => x && x.filtroEliminado).length;
+    conciliacion.reintentoProduccion = true;
+    return conciliacion;
+  }
 }
 
 function aplicarFormatosBaseOperativa(matrices) {
@@ -6765,19 +6846,10 @@ function procesarBaseOperativa(data) {
     ];
     snapshots = hojas.map(snapshotHojaBaseOperativa);
 
-    // Producción se escribe por bloques para evitar una escritura parcial silenciosa.
-    reemplazarHojaBaseOperativaPorBloques(hojas[0], matrices.produccion, 150);
-    reemplazarHojaBaseOperativa(hojas[1], matrices.efectividad);
-    reemplazarHojaBaseOperativa(hojas[2], matrices.recableado);
-    reemplazarHojaBaseOperativa(hojas[3], matrices.vtrgar);
-    reemplazarHojaBaseOperativa(hojas[4], matrices.baseIncidencias);
-    aplicarFormatosBaseOperativa(matrices);
-    SpreadsheetApp.flush();
-
-    // V234: solo después de escribir se valida que Producción, Efectividad y el
-    // monto calculado con el catálogo coincidan exactamente. Si falla, el catch
-    // restaura las hojas anteriores y Ranking no se actualiza.
-    const conciliacion = validarConciliacionPostEscrituraBaseOperativa(matrices);
+    // V235: elimina filtros y filas ocultas antes de escribir, usa una sola
+    // escritura completa y realiza un reintento automático de Producción si la
+    // primera conciliación no coincide.
+    const conciliacion = escribirIndicadoresYConciliarBaseOperativa(hojas, matrices);
 
     const ranking = actualizarRanking(matrices.periodo, matrices.actualizadoAl);
     registrarHistorialCargaBaseOperativa(usuario, data.archivo, preparado, matrices, "OK");
@@ -6806,10 +6878,22 @@ function procesarBaseOperativa(data) {
     };
   } catch (e) {
     if (snapshots.length) {
+      const erroresRestauracion = [];
       snapshots.forEach(s => {
-        try { restaurarSnapshotBaseOperativa(s); } catch (err) {}
+        try {
+          restaurarSnapshotBaseOperativa(s);
+        } catch (err) {
+          erroresRestauracion.push(s.hoja.getName() + ": " + err.message);
+        }
       });
       try { SpreadsheetApp.flush(); } catch (err) {}
+
+      if (erroresRestauracion.length) {
+        throw new Error(
+          e.message + " | Atención: no se pudo restaurar completamente el respaldo: " +
+          erroresRestauracion.join("; ")
+        );
+      }
     }
     throw e;
   } finally {

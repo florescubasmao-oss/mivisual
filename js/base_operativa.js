@@ -1,4 +1,4 @@
-// MI VISUAL V234 - Conciliación posterior obligatoria de Producción y montos
+// MI VISUAL V235 - Conciliación posterior obligatoria de Producción y montos
 const API_BASE_OPERATIVA = (window.MI_VISUAL_API_URL || "https://script.google.com/macros/s/AKfycbzcbjCLweJNgZXDerdzmMN7Lwotc1G8NWdzoPkaLNGDivAgpYxDkq78xZwPRioSB4XY/exec");
 let BO_REGISTROS = [];
 let BO_ARCHIVO = "";
