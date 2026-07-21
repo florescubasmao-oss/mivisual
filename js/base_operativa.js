@@ -1,4 +1,4 @@
-// MI VISUAL V228 - Carga única de Base Operativa
+// MI VISUAL V229 - Carga única de Base Operativa + soporte XLS con carpeta complementaria
 const API_BASE_OPERATIVA = (window.MI_VISUAL_API_URL || "https://script.google.com/macros/s/AKfycbzcbjCLweJNgZXDerdzmMN7Lwotc1G8NWdzoPkaLNGDivAgpYxDkq78xZwPRioSB4XY/exec");
 let BO_REGISTROS = [];
 let BO_ARCHIVO = "";
@@ -77,9 +77,14 @@ function mostrarActualizarBaseOperativa(){
   mostrarPantalla(boCss()+`<div class="bo-wrap">
     <div class="bo-head"><h2>📤 Actualizar base operativa</h2><p>Una sola carga reemplaza completamente Producción, Efectividad, % Recableado y VTR/GAR del periodo detectado.</p></div>
     <div class="bo-card">
-      <div class="bo-grid"><div><label><b>Archivo base madre</b></label><input id="boArchivo" class="bo-file" type="file" accept=".xlsx,.xls,.csv"></div><button id="boLeer" class="bo-btn" onclick="boLeerArchivo()">Leer archivo</button></div>
+      <div class="bo-grid"><div><label><b>Archivo base madre</b></label><input id="boArchivo" class="bo-file" type="file" accept=".xlsx,.xls,.csv,.htm,.html"></div><button id="boLeer" class="bo-btn" onclick="boLeerArchivo()">Leer archivo</button></div>
       <p class="bo-note">La fecha oficial será el último día con órdenes en estado FINALIZADA. Las órdenes posteriores a ese corte no se mezclarán. Antes de escribir, el sistema valida toda la carga y conserva un respaldo para restaurar si ocurre un error.</p>
-      <details style="margin:12px 0"><summary style="cursor:pointer;font-weight:800">El archivo .xls no abre o viene acompañado de una carpeta</summary><p class="bo-note">Copie toda la tabla del reporte, incluidos los encabezados, y péguela aquí. No necesita preparar tablas dinámicas.</p><textarea id="boTextoBase" class="bo-text" rows="7" placeholder="Pegue aquí toda la base madre..."></textarea><div class="bo-actions"><button class="bo-btn" onclick="boLeerTextoPegado()">Leer texto pegado</button></div></details>
+      <details id="boCompatibilidad" style="margin:12px 0"><summary style="cursor:pointer;font-weight:800">El archivo .xls no abre o viene acompañado de una carpeta</summary>
+        <p class="bo-note"><b>Opción recomendada para este reporte:</b> seleccione la carpeta cuyo nombre termina en <b>_archivos</b>. El sistema buscará y leerá automáticamente <b>sheet001.htm</b>, que contiene la base real.</p>
+        <div class="bo-grid"><div><label><b>Carpeta complementaria del reporte</b></label><input id="boCarpetaReporte" class="bo-file" type="file" webkitdirectory directory multiple></div><button id="boLeerCarpeta" class="bo-btn" onclick="boLeerCarpetaReporte()">Leer carpeta</button></div>
+        <p class="bo-note" style="margin-top:14px">Alternativamente, abra el reporte en Excel y guárdelo como <b>.xlsx</b>, o copie toda la tabla, incluidos los encabezados, y péguela debajo.</p>
+        <textarea id="boTextoBase" class="bo-text" rows="7" placeholder="Pegue aquí toda la base madre..."></textarea><div class="bo-actions"><button class="bo-btn" onclick="boLeerTextoPegado()">Leer texto pegado</button></div>
+      </details>
       <div id="boMensaje" class="bo-msg">Seleccione el archivo descargado del sistema central o pegue toda la tabla.</div>
       <div id="boResumen"></div>
       <div class="bo-actions"><button id="boProcesar" class="bo-btn warn" onclick="boProcesarBase()" disabled>Reemplazar información actual</button><button class="bo-btn alt" onclick="mostrarAdministracion()">⬅️ Volver</button></div>
@@ -117,37 +122,99 @@ function boIndiceEncabezados(heads){
   });
   return out;
 }
+function boEsIndiceExcelHtml(texto){
+  const t=(texto||"").slice(0,50000);
+  return /Excel Workbook Frameset/i.test(t) && /sheet\d+\.html?/i.test(t);
+}
+function boExtraerRegistros(rows,filaEnc,heads){
+  const idx=boIndiceEncabezados(heads);
+  const faltan=["cuadrilla","fecha","estado","tipoPartida"].filter(k=>idx[k]<0);
+  if(faltan.length) throw new Error("Faltan columnas obligatorias: "+faltan.join(", "));
+  const registros=[];let omitidas=0;
+  for(let i=filaEnc+1;i<rows.length;i++){
+    const f=rows[i]||[],fecha=boFechaISO(f[idx.fecha]),cuadrilla=(f[idx.cuadrilla]||"").toString().trim(),estado=(f[idx.estado]||"").toString().trim();
+    if(!fecha||!cuadrilla||!estado){omitidas++;continue;}
+    registros.push({
+      tipoTrabajo:idx.tipoTrabajo>=0?f[idx.tipoTrabajo]:"",cuadrilla,fecha,estado,
+      codigoPedido:idx.codigoPedido>=0?f[idx.codigoPedido]:"",ticket:idx.ticket>=0?f[idx.ticket]:"",
+      codigoLiquidacion:idx.codigoLiquidacion>=0?f[idx.codigoLiquidacion]:"",
+      tipoAtencion:idx.tipoAtencion>=0?f[idx.tipoAtencion]:"",tipoPartida:f[idx.tipoPartida],tipoPartidaAlterna:idx.tipoPartidaAlterna>=0?f[idx.tipoPartidaAlterna]:""
+    });
+  }
+  if(!registros.length) throw new Error("No se encontraron filas válidas.");
+  const finalizadas=registros.filter(r=>boNorm(r.estado)==="FINALIZADA"&&r.fecha).map(r=>r.fecha).sort();
+  if(!finalizadas.length) throw new Error("La base no contiene órdenes FINALIZADAS; no se puede definir la fecha de corte.");
+  return {registros,omitidas,corte:finalizadas[finalizadas.length-1]};
+}
+function boAplicarLecturaLocal(resultado,archivo,detalleOrigen){
+  const {registros,omitidas,corte}=resultado;
+  BO_REGISTROS=registros;BO_ARCHIVO=archivo||"BASE_OPERATIVA";
+  document.getElementById("boResumen").innerHTML=`<div class="bo-kpis"><div class="bo-kpi"><b>${registros.length}</b><span>Filas válidas</span></div><div class="bo-kpi"><b>${boFechaVisible(corte)}</b><span>Último día finalizado</span></div><div class="bo-kpi"><b>${new Set(registros.map(r=>boNorm(r.cuadrilla))).size}</b><span>Cuadrillas detectadas</span></div><div class="bo-kpi"><b>${omitidas}</b><span>Filas omitidas</span></div></div>`;
+  const msg=document.getElementById("boMensaje");
+  msg.className="bo-msg bo-ok";
+  msg.textContent=`Base lista: ${archivo||"BASE OPERATIVA"}${detalleOrigen?`\n${detalleOrigen}`:""}\nLa información actual será reemplazada completamente al confirmar.`;
+  document.getElementById("boProcesar").disabled=false;
+}
+function boLeerWorkbookLocal(wb,archivo,detalleOrigen){
+  const sel=boBuscarHojaValida(wb);
+  const resultado=boExtraerRegistros(sel.rows,sel.filaEnc,sel.heads);
+  boAplicarLecturaLocal(resultado,archivo,(detalleOrigen||"")+`${detalleOrigen?"\n":""}Hoja detectada: ${sel.nombre}`);
+  return resultado;
+}
 async function boLeerArchivo(){
   const msg=document.getElementById("boMensaje"),file=document.getElementById("boArchivo").files[0];
   if(!file){msg.className="bo-msg bo-error";msg.textContent="Seleccione un archivo.";return;}
   try{
     document.getElementById("boLeer").disabled=true;msg.className="bo-msg";msg.textContent="Leyendo y validando archivo...";
     await boCargarXlsx();
-    const wb=XLSX.read(await file.arrayBuffer(),{type:"array",cellDates:true});
-    const sel=boBuscarHojaValida(wb),idx=boIndiceEncabezados(sel.heads);
-    const faltan=["cuadrilla","fecha","estado","tipoPartida"].filter(k=>idx[k]<0);
-    if(faltan.length) throw new Error("Faltan columnas obligatorias: "+faltan.join(", "));
-    const registros=[];let omitidas=0;
-    for(let i=sel.filaEnc+1;i<sel.rows.length;i++){
-      const f=sel.rows[i]||[],fecha=boFechaISO(f[idx.fecha]),cuadrilla=(f[idx.cuadrilla]||"").toString().trim(),estado=(f[idx.estado]||"").toString().trim();
-      if(!fecha||!cuadrilla||!estado){omitidas++;continue;}
-      registros.push({
-        tipoTrabajo:idx.tipoTrabajo>=0?f[idx.tipoTrabajo]:"",cuadrilla,fecha,estado,
-        codigoPedido:idx.codigoPedido>=0?f[idx.codigoPedido]:"",ticket:idx.ticket>=0?f[idx.ticket]:"",
-        codigoLiquidacion:idx.codigoLiquidacion>=0?f[idx.codigoLiquidacion]:"",
-        tipoAtencion:idx.tipoAtencion>=0?f[idx.tipoAtencion]:"",tipoPartida:f[idx.tipoPartida],tipoPartidaAlterna:idx.tipoPartidaAlterna>=0?f[idx.tipoPartidaAlterna]:""
-      });
+    const buffer=await file.arrayBuffer();
+    const muestra=new TextDecoder("utf-8").decode(buffer.slice(0,Math.min(buffer.byteLength,50000)));
+    if(boEsIndiceExcelHtml(muestra)){
+      BO_REGISTROS=[];document.getElementById("boProcesar").disabled=true;
+      const detalles=document.getElementById("boCompatibilidad");if(detalles)detalles.open=true;
+      msg.className="bo-msg bo-warn";
+      msg.textContent=`El archivo ${file.name} es solo el índice del reporte y no contiene las filas.\nSeleccione debajo la carpeta complementaria que termina en _archivos. El sistema leerá automáticamente sheet001.htm.`;
+      return;
     }
-    if(!registros.length) throw new Error("No se encontraron filas válidas.");
-    const finalizadas=registros.filter(r=>boNorm(r.estado)==="FINALIZADA"&&r.fecha).map(r=>r.fecha).sort();
-    if(!finalizadas.length) throw new Error("La base no contiene órdenes FINALIZADAS; no se puede definir la fecha de corte.");
-    const corte=finalizadas[finalizadas.length-1];
-    BO_REGISTROS=registros;BO_ARCHIVO=file.name;
-    document.getElementById("boResumen").innerHTML=`<div class="bo-kpis"><div class="bo-kpi"><b>${registros.length}</b><span>Filas válidas</span></div><div class="bo-kpi"><b>${boFechaVisible(corte)}</b><span>Último día finalizado</span></div><div class="bo-kpi"><b>${new Set(registros.map(r=>boNorm(r.cuadrilla))).size}</b><span>Cuadrillas detectadas</span></div><div class="bo-kpi"><b>${omitidas}</b><span>Filas omitidas</span></div></div>`;
-    msg.className="bo-msg bo-ok";msg.textContent=`Archivo listo: ${file.name}\nHoja detectada: ${sel.nombre}\nLa información actual será reemplazada completamente al confirmar.`;
-    document.getElementById("boProcesar").disabled=false;
-  }catch(e){BO_REGISTROS=[];document.getElementById("boProcesar").disabled=true;msg.className="bo-msg bo-error";msg.textContent=e.message+" Si su .xls depende de una carpeta externa, use la opción de pegar toda la base.";}
-  finally{document.getElementById("boLeer").disabled=false;}
+    let wb;
+    if(/\.html?$/i.test(file.name) || /^\s*<html/i.test(muestra)){
+      const texto=new TextDecoder("utf-8").decode(buffer);
+      wb=XLSX.read(texto,{type:"string",cellDates:true});
+    }else{
+      wb=XLSX.read(buffer,{type:"array",cellDates:true});
+    }
+    boLeerWorkbookLocal(wb,file.name,"");
+  }catch(e){
+    BO_REGISTROS=[];document.getElementById("boProcesar").disabled=true;msg.className="bo-msg bo-error";
+    msg.textContent=e.message+" Si el reporte viene con una carpeta _archivos, selecciónela en la opción abierta debajo.";
+  }finally{document.getElementById("boLeer").disabled=false;}
+}
+
+async function boLeerCarpetaReporte(){
+  const msg=document.getElementById("boMensaje"),input=document.getElementById("boCarpetaReporte");
+  const archivos=Array.from((input&&input.files)||[]);
+  if(!archivos.length){msg.className="bo-msg bo-error";msg.textContent="Seleccione la carpeta complementaria del reporte, la que termina en _archivos.";return;}
+  const boton=document.getElementById("boLeerCarpeta");
+  try{
+    boton.disabled=true;msg.className="bo-msg";msg.textContent="Buscando la hoja con la base dentro de la carpeta...";
+    await boCargarXlsx();
+    const candidatos=archivos.filter(f=>/sheet\d+\.html?$/i.test(f.name)).concat(archivos.filter(f=>/\.html?$/i.test(f.name)&&!/sheet\d+\.html?$/i.test(f.name)));
+    if(!candidatos.length)throw new Error("La carpeta seleccionada no contiene sheet001.htm ni otra hoja HTML del reporte.");
+    let ultimoError=null;
+    for(const archivo of candidatos){
+      try{
+        const texto=await archivo.text();
+        if(boEsIndiceExcelHtml(texto))continue;
+        const wb=XLSX.read(texto,{type:"string",cellDates:true});
+        boLeerWorkbookLocal(wb,archivo.name,`Carpeta: ${archivo.webkitRelativePath||"carpeta seleccionada"}`);
+        return;
+      }catch(e){ultimoError=e;}
+    }
+    throw ultimoError||new Error("No se encontró dentro de la carpeta una hoja con los encabezados requeridos.");
+  }catch(e){
+    BO_REGISTROS=[];document.getElementById("boProcesar").disabled=true;msg.className="bo-msg bo-error";
+    msg.textContent="No se pudo leer la carpeta. "+e.message;
+  }finally{boton.disabled=false;}
 }
 
 function boLeerTextoPegado(){

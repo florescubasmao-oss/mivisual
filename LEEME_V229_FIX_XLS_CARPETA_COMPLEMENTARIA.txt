@@ -1,0 +1,23 @@
+MI VISUAL V229 - CORRECCIÓN DE REPORTE XLS CON CARPETA COMPLEMENTARIA
+
+Problema corregido:
+- El archivo Reporte_Seguimiento_....xls descargado por el sistema central es un índice HTML de aproximadamente 10 KB.
+- Ese archivo no contiene las filas; enlaza a la carpeta Reporte_Seguimiento_..._archivos y a sheet001.htm.
+- Por ello V228 mostraba que no encontraba Cuadrilla, Fecha, Estado y Tipo de Partida.
+
+Cambio aplicado:
+- La pantalla detecta automáticamente cuando el .xls es solo el índice.
+- Abre la opción de compatibilidad y solicita seleccionar la carpeta que termina en _archivos.
+- Busca y procesa automáticamente sheet001.htm.
+- También acepta seleccionar sheet001.htm directamente, un .xlsx, un .csv o pegar la tabla.
+- No cambia el backend ni la forma de llenar las hojas.
+- La actualización continúa reemplazando totalmente PRODUCCION_APP, EFECTIVIDAD, PORCENTAJE REC y POR VTR/GAR, y luego recalcula RANKING.
+
+Archivos modificados:
+- js/base_operativa.js
+- index.html (solo versión de caché del script)
+
+Apps Script / Code.gs: NO
+Google Sheets: NO
+Nuevo deploy Apps Script: NO
+Frontend GitHub: SÍ
