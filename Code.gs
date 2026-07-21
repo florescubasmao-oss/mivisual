@@ -384,7 +384,7 @@ function convertirRegistrosVtrGar(registros) {
 }
 
 function procesarVtrGar(registros, periodoManual, actualizadoAlManual) {
-  const hoja = obtenerHoja(HOJA_VTRGAR);
+  const hoja = obtenerHojaVtrGarFlexible();
 
   const baseEfectividad = obtenerBaseEfectividad();
   const baseLista = baseEfectividad.lista;
@@ -1506,7 +1506,7 @@ function obtenerRecableadoPorCuadrilla() {
 }
 
 function obtenerVtrGarPorCuadrilla() {
-  const hoja = obtenerHoja(HOJA_VTRGAR);
+  const hoja = obtenerHojaVtrGarFlexible();
   const datos = hoja.getDataRange().getValues();
   const mapa = {};
 
@@ -5927,9 +5927,817 @@ function listarMapaOperativo(data) {
   return {ok:true,modulo:"MAPA_OPERATIVO",accion:"LISTAR",perfil:usuario.perfil,registros:lista.length,ordenes:lista};
 }
 
+/* =========================
+   BASE OPERATIVA UNIFICADA V228
+   Reemplaza únicamente las hojas de indicadores actuales.
+========================= */
+const HOJA_ASIGNACION_VTR_GAR = "ASIGNACION_VTR_GAR";
+const HOJA_BASE_VTR_GAR_DETECTADA = "BASE_VTR_GAR_DETECTADA";
+const HOJA_HISTORIAL_CARGA_OPERATIVA = "HISTORIAL_CARGA_OPERATIVA";
+
+function validarAdministracionBaseOperativa(usuarioSesion) {
+  const usuario = obtenerUsuarioApp(usuarioSesion);
+  if (!esPerfilJefatura(usuario.perfil)) {
+    throw new Error("Solo Jefatura o Administración puede actualizar la base operativa");
+  }
+  return usuario;
+}
+
+function obtenerHojaVtrGarFlexible() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const nombres = [HOJA_VTRGAR, "POR VTRGAR", "POR VTR GAR"];
+  for (let i = 0; i < nombres.length; i++) {
+    const hoja = ss.getSheetByName(nombres[i]);
+    if (hoja) return hoja;
+  }
+  throw new Error("No existe la hoja de VTR/GAR");
+}
+
+function asegurarHojaBaseOperativa(nombre, encabezados, ocultar) {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  let hoja = ss.getSheetByName(nombre);
+  if (!hoja) hoja = ss.insertSheet(nombre);
+  if (hoja.getMaxColumns() < encabezados.length) {
+    hoja.insertColumnsAfter(hoja.getMaxColumns(), encabezados.length - hoja.getMaxColumns());
+  }
+  if (hoja.getLastRow() === 0 || !hoja.getRange(1, 1).getValue()) {
+    hoja.getRange(1, 1, 1, encabezados.length).setValues([encabezados]);
+  }
+  if (ocultar) {
+    try { hoja.hideSheet(); } catch (e) {}
+  }
+  return hoja;
+}
+
+function asegurarHojaAsignacionVtrGar() {
+  return asegurarHojaBaseOperativa(HOJA_ASIGNACION_VTR_GAR, [
+    "ID", "FECHA_INCIDENCIA", "TIPO", "TICKET_INCIDENCIA", "CODIGO_PEDIDO_INCIDENCIA",
+    "CUADRILLA_EJECUTORA", "CUADRILLA_ORIGEN", "FECHA_TRABAJO_ORIGEN", "CODIGO_PEDIDO_ORIGEN",
+    "OBSERVACION", "ESTADO", "REGISTRADO_POR", "FECHA_REGISTRO", "HORA_REGISTRO"
+  ], false);
+}
+
+function asegurarHojaBaseVtrGarDetectada() {
+  return asegurarHojaBaseOperativa(HOJA_BASE_VTR_GAR_DETECTADA, [
+    "CLAVE", "FECHA_INCIDENCIA", "TIPO", "TICKET", "CODIGO_PEDIDO", "CODIGO_LIQUIDACION",
+    "CUADRILLA_EJECUTORA", "CUADRILLA_CONTABILIZADA", "ASIGNACION_MANUAL", "FECHA_CORTE", "PERIODO"
+  ], true);
+}
+
+function asegurarHojaHistorialCargaOperativa() {
+  return asegurarHojaBaseOperativa(HOJA_HISTORIAL_CARGA_OPERATIVA, [
+    "ID", "FECHA_CARGA", "HORA_CARGA", "USUARIO", "ARCHIVO", "PERIODO", "FECHA_CORTE",
+    "FILAS_RECIBIDAS", "FILAS_UNICAS", "DUPLICADOS", "PRODUCCION", "EFECTIVIDAD",
+    "RECABLEADO", "VTR_GAR", "PARTIDAS_NO_ENCONTRADAS", "ESTADO"
+  ], true);
+}
+
+function fechaBaseOperativa(valor) {
+  if (valor instanceof Date && !isNaN(valor.getTime())) {
+    return new Date(valor.getFullYear(), valor.getMonth(), valor.getDate());
+  }
+  const texto = (valor || "").toString().trim();
+  if (!texto) return null;
+  let p = texto.split("-");
+  if (p.length === 3 && p[0].length === 4) {
+    const f = new Date(Number(p[0]), Number(p[1]) - 1, Number(p[2]));
+    return isNaN(f.getTime()) ? null : f;
+  }
+  p = texto.split("/");
+  if (p.length === 3) {
+    const f = new Date(Number(p[2]), Number(p[1]) - 1, Number(p[0]));
+    return isNaN(f.getTime()) ? null : f;
+  }
+  return null;
+}
+
+function fechaIsoBaseOperativa(fecha) {
+  if (!(fecha instanceof Date) || isNaN(fecha.getTime())) return "";
+  return Utilities.formatDate(fecha, Session.getScriptTimeZone(), "yyyy-MM-dd");
+}
+
+function fechaVisibleBaseOperativa(fecha) {
+  if (!(fecha instanceof Date) || isNaN(fecha.getTime())) return "";
+  return Utilities.formatDate(fecha, Session.getScriptTimeZone(), "dd/MM/yyyy");
+}
+
+function nombrePeriodoBaseOperativa(fecha) {
+  const meses = ["ENERO", "FEBRERO", "MARZO", "ABRIL", "MAYO", "JUNIO", "JULIO", "AGOSTO", "SEPTIEMBRE", "OCTUBRE", "NOVIEMBRE", "DICIEMBRE"];
+  return meses[fecha.getMonth()];
+}
+
+function textoValidoBaseOperativa(valor) {
+  const t = (valor || "").toString().trim();
+  if (!t || t === "-" || t === "." || t === "#N/A" || t === "#REF!") return "";
+  return t;
+}
+
+function claveRegistroBaseOperativa(registro) {
+  const liq = normalizarTexto(textoValidoBaseOperativa(registro.codigoLiquidacion));
+  if (liq) return "LIQ|" + liq;
+  const ticket = normalizarTexto(textoValidoBaseOperativa(registro.ticket));
+  if (ticket) return "TICKET|" + ticket;
+  return [
+    "BASE", fechaIsoBaseOperativa(registro.fecha), normalizarCuadrilla(registro.cuadrilla),
+    normalizarTexto(registro.codigoPedido), normalizarTexto(registro.tipoPartida), normalizarTexto(registro.estado)
+  ].join("|");
+}
+
+function prepararRegistrosBaseOperativa(registros) {
+  if (!Array.isArray(registros) || registros.length === 0) {
+    throw new Error("No se recibieron registros de la base operativa");
+  }
+  const mapa = {};
+  let validos = 0;
+  registros.forEach((r, indice) => {
+    const fecha = fechaBaseOperativa(r.fecha);
+    const cuadrilla = normalizarCuadrilla(r.cuadrilla);
+    const estado = normalizarTexto(r.estado);
+    if (!fecha || !cuadrilla || !estado) return;
+    const item = {
+      orden: indice,
+      fecha,
+      cuadrilla,
+      estado,
+      tipoTrabajo: normalizarTexto(r.tipoTrabajo),
+      codigoPedido: textoValidoBaseOperativa(r.codigoPedido),
+      ticket: textoValidoBaseOperativa(r.ticket),
+      codigoLiquidacion: textoValidoBaseOperativa(r.codigoLiquidacion),
+      tipoAtencion: normalizarTexto(r.tipoAtencion),
+      tipoPartida: normalizarTexto(r.tipoPartida),
+      tipoPartidaAlterna: normalizarTexto(r.tipoPartidaAlterna)
+    };
+    mapa[claveRegistroBaseOperativa(item)] = item;
+    validos++;
+  });
+  const unicos = Object.keys(mapa).map(k => mapa[k]).sort((a, b) => a.orden - b.orden);
+  if (!unicos.length) throw new Error("No se encontraron filas válidas en la base operativa");
+  return { registros: unicos, recibidos: registros.length, validos, duplicados: Math.max(validos - unicos.length, 0) };
+}
+
+function obtenerCorteBaseOperativa(registros) {
+  let corte = null;
+  registros.forEach(r => {
+    if (r.estado !== "FINALIZADA") return;
+    if (!corte || r.fecha > corte) corte = r.fecha;
+  });
+  if (!corte) throw new Error("No existen órdenes FINALIZADAS para determinar la fecha de corte");
+  return corte;
+}
+
+function registroEnPeriodoBaseOperativa(registro, corte) {
+  return registro.fecha.getFullYear() === corte.getFullYear() &&
+    registro.fecha.getMonth() === corte.getMonth() && registro.fecha <= corte;
+}
+
+function catalogoPartidasBaseOperativa() {
+  const hoja = obtenerHoja(HOJA_CATALOGO_ORDENES);
+  const datos = hoja.getDataRange().getValues();
+  const porTipo = {};
+  const lista = [];
+  for (let i = 1; i < datos.length; i++) {
+    const codigo = textoValidoBaseOperativa(datos[i][0]);
+    const tipoOrden = normalizarTexto(datos[i][1]);
+    if (!codigo || !tipoOrden) continue;
+    const item = {
+      codigo,
+      tipoOrden,
+      plataforma: normalizarTexto(datos[i][2]),
+      puntaje: numeroProduccion(datos[i][3]),
+      grupo: normalizarTexto(datos[i][4]),
+      monto: numeroProduccion(datos[i][5]),
+      estado: normalizarTexto(datos[i][6] || "ACTIVO")
+    };
+    porTipo[tipoOrden] = item;
+    lista.push(item);
+  }
+  if (!lista.length) throw new Error("CATALOGO_ORDENES no contiene partidas configuradas");
+  return { porTipo, lista };
+}
+
+function cuadrillasTecnicasBaseOperativa() {
+  const hoja = obtenerHoja(HOJA_USUARIOS);
+  const datos = hoja.getDataRange().getValues();
+  const mapa = {};
+  for (let i = 1; i < datos.length; i++) {
+    const cuadrilla = normalizarCuadrilla(datos[i][3]);
+    const perfil = normalizarTexto(datos[i][6]);
+    const estado = normalizarTexto(datos[i][8] || "ACTIVO");
+    if (!cuadrilla || perfil !== "TECNICO" || estado !== "ACTIVO") continue;
+    mapa[cuadrilla] = {
+      cuadrilla,
+      usuario: normalizarUsuario(datos[i][0]) || "ADMIN",
+      sede: normalizarTexto(datos[i][4]),
+      plataforma: normalizarTexto(datos[i][5])
+    };
+  }
+  return mapa;
+}
+
+function esRecableadoVisitaTecnicaBase(registro, catalogoItem) {
+  if (catalogoItem && catalogoItem.grupo === "RECABLEADO_VT") return true;
+  const partida = normalizarTexto(registro.tipoPartida);
+  return partida.indexOf("RECABLEADO") >= 0 && partida.indexOf("VISITA TECNICA") >= 0 &&
+    partida.indexOf("POST VENTA") < 0 && partida.indexOf("POSVENTA") < 0;
+}
+
+function tipoIncidenciaBaseOperativa(registro) {
+  const ticket = normalizarTexto(registro.ticket).replace(/\s+/g, "");
+  if (ticket.indexOf("VTR-") === 0) return "VTR";
+  if (ticket.indexOf("GAR-") === 0) return "GAR";
+  if (registro.estado === "VTR - BONO" || registro.estado === "VTR BONO") return "VTR";
+  if (registro.estado === "GAR - BONO" || registro.estado === "GAR BONO") return "GAR";
+  if (registro.tipoAtencion === "GARANTIA" || registro.tipoAtencion === "GARANTÍA") return "GAR";
+  return "";
+}
+
+function claveIncidenciaBaseOperativa(tipo, ticket, fecha, codigoPedido, codigoLiquidacion) {
+  const t = normalizarTexto(textoValidoBaseOperativa(ticket)).replace(/\s+/g, "");
+  if (t) return "TICKET|" + t;
+  const liq = normalizarTexto(textoValidoBaseOperativa(codigoLiquidacion));
+  if (liq) return "LIQ|" + liq;
+  return ["INC", tipo, fechaIsoBaseOperativa(fecha), normalizarTexto(codigoPedido)].join("|");
+}
+
+function filaAsignacionAObjetoBase(fila) {
+  return {
+    id: fila[0],
+    fechaIncidencia: fechaVisibleBaseOperativa(fechaBaseOperativa(fila[1])) || (fila[1] || "").toString(),
+    fechaIncidenciaISO: fechaIsoBaseOperativa(fechaBaseOperativa(fila[1])),
+    tipo: normalizarTexto(fila[2]),
+    ticket: (fila[3] || "").toString(),
+    codigoPedidoIncidencia: (fila[4] || "").toString(),
+    cuadrillaEjecutora: normalizarCuadrilla(fila[5]),
+    cuadrillaOrigen: normalizarCuadrilla(fila[6]),
+    fechaTrabajoOrigen: fechaVisibleBaseOperativa(fechaBaseOperativa(fila[7])) || (fila[7] || "").toString(),
+    fechaTrabajoOrigenISO: fechaIsoBaseOperativa(fechaBaseOperativa(fila[7])),
+    codigoPedidoOrigen: (fila[8] || "").toString(),
+    observacion: (fila[9] || "").toString(),
+    estado: normalizarTexto(fila[10] || "ACTIVO"),
+    registradoPor: fila[11],
+    fechaRegistro: fila[12],
+    horaRegistro: fila[13]
+  };
+}
+
+function obtenerAsignacionesActivasBaseOperativa() {
+  const hoja = asegurarHojaAsignacionVtrGar();
+  const datos = hoja.getDataRange().getValues();
+  const porTicket = {};
+  const porFallback = {};
+  const lista = [];
+  for (let i = 1; i < datos.length; i++) {
+    const item = filaAsignacionAObjetoBase(datos[i]);
+    if (!item.id) continue;
+    lista.push(item);
+    if (item.estado !== "ACTIVO" || !item.cuadrillaOrigen) continue;
+    const ticket = normalizarTexto(item.ticket).replace(/\s+/g, "");
+    if (ticket) porTicket[ticket] = item;
+    const clave = [item.tipo, item.fechaIncidenciaISO, normalizarTexto(item.codigoPedidoIncidencia)].join("|");
+    porFallback[clave] = item;
+  }
+  return { porTicket, porFallback, lista };
+}
+
+function obtenerAsignacionIncidenciaBase(tipo, ticket, fecha, codigoPedido, asignaciones) {
+  const ticketNorm = normalizarTexto(ticket).replace(/\s+/g, "");
+  if (ticketNorm && asignaciones.porTicket[ticketNorm]) return asignaciones.porTicket[ticketNorm];
+  return asignaciones.porFallback[[tipo, fechaIsoBaseOperativa(fecha), normalizarTexto(codigoPedido)].join("|")] || null;
+}
+
+function crearMatricesBaseOperativa(registros, corte, usuarioCarga) {
+  const catalogo = catalogoPartidasBaseOperativa();
+  const usuarios = cuadrillasTecnicasBaseOperativa();
+  const periodo = nombrePeriodoBaseOperativa(corte);
+  const actualizadoAl = fechaVisibleBaseOperativa(corte);
+  const delPeriodo = registros.filter(r => registroEnPeriodoBaseOperativa(r, corte));
+  const partidasNoEncontradas = {};
+  const cuadrillasNoEncontradas = {};
+
+  const mapaProduccion = {};
+  const mapaEfectividad = {};
+  const mapaRecableado = {};
+  const incidenciasMapa = {};
+
+  function asegurarCuadrilla(mapa, cuadrilla, base) {
+    if (!mapa[cuadrilla]) mapa[cuadrilla] = Object.assign({ cuadrilla }, base || {});
+    return mapa[cuadrilla];
+  }
+
+  delPeriodo.forEach(r => {
+    if (!usuarios[r.cuadrilla]) cuadrillasNoEncontradas[r.cuadrilla] = true;
+    let tipoPartidaResuelta = r.tipoPartida;
+    let cat = catalogo.porTipo[tipoPartidaResuelta] || null;
+    if (!cat && r.tipoPartidaAlterna && (
+      catalogo.porTipo[r.tipoPartidaAlterna] || ["", "AVERIA", "INSTALACION"].includes(r.tipoPartida)
+    )) {
+      tipoPartidaResuelta = r.tipoPartidaAlterna;
+      cat = catalogo.porTipo[tipoPartidaResuelta] || null;
+    }
+    if (r.estado === "FINALIZADA") {
+      if (cat) {
+        const clave = [r.cuadrilla, fechaIsoBaseOperativa(r.fecha), cat.codigo].join("|");
+        if (!mapaProduccion[clave]) mapaProduccion[clave] = { cuadrilla:r.cuadrilla, fecha:r.fecha, codigo:cat.codigo, cantidad:0 };
+        mapaProduccion[clave].cantidad++;
+      } else if (tipoPartidaResuelta) {
+        partidasNoEncontradas[tipoPartidaResuelta] = true;
+      }
+    }
+
+    if (["FINALIZADA", "CANCELADA", "REGESTION", "REPROGRAMADO"].includes(r.estado)) {
+      const ef = asegurarCuadrilla(mapaEfectividad, r.cuadrilla, { finalizada:0, cancelada:0, regestion:0, reprogramado:0 });
+      if (r.estado === "FINALIZADA") ef.finalizada++;
+      if (r.estado === "CANCELADA") ef.cancelada++;
+      if (r.estado === "REGESTION") ef.regestion++;
+      if (r.estado === "REPROGRAMADO") ef.reprogramado++;
+    }
+
+    const rec = asegurarCuadrilla(mapaRecableado, r.cuadrilla, { rojoAsignadas:0, recableados:0 });
+    if (r.estado === "FINALIZADA" && (r.tipoAtencion === "LOS ROJO" || r.tipoAtencion === "INTERMITENCIA LOS ROJO")) rec.rojoAsignadas++;
+    if (r.estado === "FINALIZADA" && esRecableadoVisitaTecnicaBase(Object.assign({}, r, {tipoPartida:tipoPartidaResuelta}), cat)) rec.recableados++;
+
+    const tipoIncidencia = tipoIncidenciaBaseOperativa(r);
+    if (tipoIncidencia) {
+      const claveInc = claveIncidenciaBaseOperativa(tipoIncidencia, r.ticket, r.fecha, r.codigoPedido, r.codigoLiquidacion);
+      incidenciasMapa[claveInc] = {
+        clave: claveInc,
+        fecha: r.fecha,
+        tipo: tipoIncidencia,
+        ticket: r.ticket,
+        codigoPedido: r.codigoPedido,
+        codigoLiquidacion: r.codigoLiquidacion,
+        cuadrillaEjecutora: r.cuadrilla
+      };
+    }
+  });
+
+  const produccion = [["Usuario", "Cuadrilla", "FECHA", "CÓDIGO", "Cantidad", "ID", "FECHA_ACTUALIZACION"]];
+  Object.keys(mapaProduccion).map(k => mapaProduccion[k]).sort((a,b) =>
+    a.cuadrilla.localeCompare(b.cuadrilla) || a.fecha - b.fecha || a.codigo.localeCompare(b.codigo)
+  ).forEach(item => {
+    produccion.push([
+      usuarioCarga, item.cuadrilla, item.fecha, item.codigo, item.cantidad,
+      generarID(item.cuadrilla, item.fecha, item.codigo), corte
+    ]);
+  });
+  if (produccion.length <= 1) throw new Error("La base no generó registros de Producción. Revise CATALOGO_ORDENES y Tipo de Partida");
+
+  const cuadrillasEfectividad = Object.keys(mapaEfectividad).filter(c => {
+    const x = mapaEfectividad[c];
+    return x.finalizada + x.cancelada + x.regestion + x.reprogramado > 0;
+  }).sort();
+  if (!cuadrillasEfectividad.length) throw new Error("La base no generó registros de Efectividad");
+
+  const efectividad = [["ID", "Usuario", "Cuadrilla", "ACTUALIZACION", "Finalizada", "Cancelada", "Regestión", "Reprogramado", "Total General", "Efectividad"]];
+  cuadrillasEfectividad.forEach((cuadrilla, i) => {
+    const x = mapaEfectividad[cuadrilla];
+    const total = x.finalizada + x.cancelada + x.regestion + x.reprogramado;
+    efectividad.push([
+      cuadrilla + "|" + periodo + "|" + (i + 1), usuarioCarga, cuadrilla, corte,
+      x.finalizada, x.cancelada, x.regestion, x.reprogramado, total, total > 0 ? x.finalizada / total : 0
+    ]);
+  });
+
+  const recableado = [["ID", "Usuario", "Cuadrilla", "ACTUALIZACION", "los rojo asignadas", "Recableados", "PORCENTAJE"]];
+  cuadrillasEfectividad.forEach((cuadrilla, i) => {
+    const x = mapaRecableado[cuadrilla] || { rojoAsignadas:0, recableados:0 };
+    recableado.push([
+      cuadrilla + "|" + periodo + "|" + (i + 1), usuarioCarga, cuadrilla, corte,
+      x.rojoAsignadas, x.recableados, x.rojoAsignadas > 0 ? x.recableados / x.rojoAsignadas : 0
+    ]);
+  });
+
+  const asignaciones = obtenerAsignacionesActivasBaseOperativa();
+  const mapaVtrGar = {};
+  const incidencias = Object.keys(incidenciasMapa).map(k => incidenciasMapa[k]).sort((a,b) => a.fecha - b.fecha || a.clave.localeCompare(b.clave));
+  incidencias.forEach(inc => {
+    const asignacion = obtenerAsignacionIncidenciaBase(inc.tipo, inc.ticket, inc.fecha, inc.codigoPedido, asignaciones);
+    inc.cuadrillaContabilizada = asignacion ? normalizarCuadrilla(asignacion.cuadrillaOrigen) : inc.cuadrillaEjecutora;
+    inc.asignacionManual = asignacion ? "SI" : "NO";
+    const x = asegurarCuadrilla(mapaVtrGar, inc.cuadrillaContabilizada, { gar:0, vtr:0 });
+    if (inc.tipo === "GAR") x.gar++;
+    if (inc.tipo === "VTR") x.vtr++;
+  });
+
+  const vtrgar = [["ID", "Usuario", "Cuadrilla", "ACTUALIZACION", "Total Ordenes FINALIZADAS", "GAR", "VTR", "TOTAL GAR/VTR", "% VTR/GAR"]];
+  cuadrillasEfectividad.forEach((cuadrilla, i) => {
+    const ef = mapaEfectividad[cuadrilla];
+    const x = mapaVtrGar[cuadrilla] || { gar:0, vtr:0 };
+    const total = x.gar + x.vtr;
+    vtrgar.push([
+      cuadrilla + "|" + periodo + "|" + (i + 1), usuarioCarga, cuadrilla, corte,
+      ef.finalizada, x.gar, x.vtr, total, ef.finalizada > 0 ? total / ef.finalizada : 0
+    ]);
+  });
+
+  const baseIncidencias = [["CLAVE", "FECHA_INCIDENCIA", "TIPO", "TICKET", "CODIGO_PEDIDO", "CODIGO_LIQUIDACION", "CUADRILLA_EJECUTORA", "CUADRILLA_CONTABILIZADA", "ASIGNACION_MANUAL", "FECHA_CORTE", "PERIODO"]];
+  incidencias.forEach(inc => baseIncidencias.push([
+    inc.clave, inc.fecha, inc.tipo, inc.ticket, inc.codigoPedido, inc.codigoLiquidacion,
+    inc.cuadrillaEjecutora, inc.cuadrillaContabilizada, inc.asignacionManual, corte, periodo
+  ]));
+
+  return {
+    periodo, actualizadoAl, corte, produccion, efectividad, recableado, vtrgar,
+    baseIncidencias, partidasNoEncontradas: Object.keys(partidasNoEncontradas).sort(),
+    cuadrillasNoEncontradas: Object.keys(cuadrillasNoEncontradas).sort(), cuadrillas: usuarios
+  };
+}
+
+function snapshotHojaBaseOperativa(hoja) {
+  return {
+    hoja,
+    filas: Math.max(hoja.getLastRow(), 1),
+    columnas: Math.max(hoja.getLastColumn(), 1),
+    valores: hoja.getRange(1, 1, Math.max(hoja.getLastRow(), 1), Math.max(hoja.getLastColumn(), 1)).getValues()
+  };
+}
+
+function restaurarSnapshotBaseOperativa(snapshot) {
+  const hoja = snapshot.hoja;
+  hoja.clearContents();
+  if (snapshot.valores && snapshot.valores.length && snapshot.valores[0].length) {
+    hoja.getRange(1, 1, snapshot.valores.length, snapshot.valores[0].length).setValues(snapshot.valores);
+  }
+}
+
+function reemplazarHojaBaseOperativa(hoja, matriz) {
+  if (!matriz || !matriz.length || !matriz[0].length) throw new Error("Matriz de actualización vacía");
+  if (hoja.getMaxColumns() < matriz[0].length) hoja.insertColumnsAfter(hoja.getMaxColumns(), matriz[0].length - hoja.getMaxColumns());
+  if (hoja.getMaxRows() < matriz.length) hoja.insertRowsAfter(hoja.getMaxRows(), matriz.length - hoja.getMaxRows());
+  hoja.clearContents();
+  hoja.getRange(1, 1, matriz.length, matriz[0].length).setValues(matriz);
+}
+
+function aplicarFormatosBaseOperativa(matrices) {
+  const hp = obtenerHoja(HOJA_PRODUCCION);
+  if (matrices.produccion.length > 1) {
+    hp.getRange(2, 3, matrices.produccion.length - 1, 1).setNumberFormat("dd/mm/yyyy");
+    hp.getRange(2, 7, matrices.produccion.length - 1, 1).setNumberFormat("dd/mm/yyyy");
+  }
+  const he = obtenerHoja(HOJA_EFECTIVIDAD);
+  if (matrices.efectividad.length > 1) {
+    he.getRange(2, 4, matrices.efectividad.length - 1, 1).setNumberFormat("dd/mm/yyyy");
+    he.getRange(2, 10, matrices.efectividad.length - 1, 1).setNumberFormat("0.00%");
+  }
+  const hr = obtenerHoja(HOJA_RECABLEADO);
+  if (matrices.recableado.length > 1) {
+    hr.getRange(2, 4, matrices.recableado.length - 1, 1).setNumberFormat("dd/mm/yyyy");
+    hr.getRange(2, 7, matrices.recableado.length - 1, 1).setNumberFormat("0.00%");
+  }
+  const hv = obtenerHojaVtrGarFlexible();
+  if (matrices.vtrgar.length > 1) {
+    hv.getRange(2, 4, matrices.vtrgar.length - 1, 1).setNumberFormat("dd/mm/yyyy");
+    hv.getRange(2, 9, matrices.vtrgar.length - 1, 1).setNumberFormat("0.00%");
+  }
+  const hi = asegurarHojaBaseVtrGarDetectada();
+  if (matrices.baseIncidencias.length > 1) {
+    hi.getRange(2, 2, matrices.baseIncidencias.length - 1, 1).setNumberFormat("dd/mm/yyyy");
+    hi.getRange(2, 10, matrices.baseIncidencias.length - 1, 1).setNumberFormat("dd/mm/yyyy");
+  }
+}
+
+function registrarHistorialCargaBaseOperativa(usuario, archivo, preparado, matrices, estado) {
+  const hoja = asegurarHojaHistorialCargaOperativa();
+  const ahora = new Date();
+  hoja.appendRow([
+    "BO-" + Utilities.formatDate(ahora, Session.getScriptTimeZone(), "yyyyMMddHHmmss"),
+    ahora, ahora, usuario.usuario, archivo || "", matrices.periodo, matrices.corte,
+    preparado.recibidos, preparado.registros.length, preparado.duplicados,
+    matrices.produccion.length - 1, matrices.efectividad.length - 1,
+    matrices.recableado.length - 1, matrices.vtrgar.length - 1,
+    matrices.partidasNoEncontradas.length, estado
+  ]);
+  const fila = hoja.getLastRow();
+  hoja.getRange(fila, 2).setNumberFormat("dd/mm/yyyy");
+  hoja.getRange(fila, 3).setNumberFormat("hh:mm:ss");
+  hoja.getRange(fila, 7).setNumberFormat("dd/mm/yyyy");
+}
+
+
+function resumenActualBaseOperativa() {
+  function sumarColumna(hoja, columna) {
+    const ultima = hoja.getLastRow();
+    if (ultima <= 1) return 0;
+    return hoja.getRange(2, columna, ultima - 1, 1).getValues().reduce((s, f) => s + (Number(f[0]) || 0), 0);
+  }
+  const hp = obtenerHoja(HOJA_PRODUCCION);
+  const he = obtenerHoja(HOJA_EFECTIVIDAD);
+  const hr = obtenerHoja(HOJA_RECABLEADO);
+  const hv = obtenerHojaVtrGarFlexible();
+  return {
+    produccionOrdenes: sumarColumna(hp, 5),
+    finalizadas: sumarColumna(he, 5),
+    canceladas: sumarColumna(he, 6),
+    regestiones: sumarColumna(he, 7),
+    reprogramadas: sumarColumna(he, 8),
+    totalGeneral: sumarColumna(he, 9),
+    losRojos: sumarColumna(hr, 5),
+    recableados: sumarColumna(hr, 6),
+    gar: sumarColumna(hv, 6),
+    vtr: sumarColumna(hv, 7)
+  };
+}
+
+function resumenNuevoBaseOperativa(matrices) {
+  function sumar(matriz, columna) {
+    let total = 0;
+    for (let i = 1; i < matriz.length; i++) total += Number(matriz[i][columna]) || 0;
+    return total;
+  }
+  return {
+    produccionOrdenes: sumar(matrices.produccion, 4),
+    finalizadas: sumar(matrices.efectividad, 4),
+    canceladas: sumar(matrices.efectividad, 5),
+    regestiones: sumar(matrices.efectividad, 6),
+    reprogramadas: sumar(matrices.efectividad, 7),
+    totalGeneral: sumar(matrices.efectividad, 8),
+    losRojos: sumar(matrices.recableado, 4),
+    recableados: sumar(matrices.recableado, 5),
+    gar: sumar(matrices.vtrgar, 5),
+    vtr: sumar(matrices.vtrgar, 6)
+  };
+}
+
+function previsualizarBaseOperativa(data) {
+  const usuario = validarAdministracionBaseOperativa(data.usuario);
+  const preparado = prepararRegistrosBaseOperativa(data.registros);
+  const corte = obtenerCorteBaseOperativa(preparado.registros);
+  const matrices = crearMatricesBaseOperativa(preparado.registros, corte, usuario.usuario);
+  return {
+    ok: true,
+    modulo: "BASE_OPERATIVA",
+    accion: "PREVISUALIZAR",
+    periodo: matrices.periodo,
+    actualizadoAl: matrices.actualizadoAl,
+    filasRecibidas: preparado.recibidos,
+    filasUnicas: preparado.registros.length,
+    duplicados: preparado.duplicados,
+    produccion: matrices.produccion.length - 1,
+    efectividad: matrices.efectividad.length - 1,
+    recableado: matrices.recableado.length - 1,
+    vtrgar: matrices.vtrgar.length - 1,
+    incidencias: matrices.baseIncidencias.length - 1,
+    partidasNoEncontradas: matrices.partidasNoEncontradas,
+    cuadrillasNoEncontradas: matrices.cuadrillasNoEncontradas,
+    actual: resumenActualBaseOperativa(),
+    nuevo: resumenNuevoBaseOperativa(matrices)
+  };
+}
+
+function procesarBaseOperativa(data) {
+  const usuario = validarAdministracionBaseOperativa(data.usuario);
+  const lock = LockService.getScriptLock();
+  lock.waitLock(30000);
+  let snapshots = [];
+  try {
+    const preparado = prepararRegistrosBaseOperativa(data.registros);
+    const corte = obtenerCorteBaseOperativa(preparado.registros);
+    const matrices = crearMatricesBaseOperativa(preparado.registros, corte, usuario.usuario);
+
+    const hojas = [
+      obtenerHoja(HOJA_PRODUCCION), obtenerHoja(HOJA_EFECTIVIDAD), obtenerHoja(HOJA_RECABLEADO),
+      obtenerHojaVtrGarFlexible(), asegurarHojaBaseVtrGarDetectada(), obtenerHoja(HOJA_RANKING)
+    ];
+    snapshots = hojas.map(snapshotHojaBaseOperativa);
+
+    reemplazarHojaBaseOperativa(hojas[0], matrices.produccion);
+    reemplazarHojaBaseOperativa(hojas[1], matrices.efectividad);
+    reemplazarHojaBaseOperativa(hojas[2], matrices.recableado);
+    reemplazarHojaBaseOperativa(hojas[3], matrices.vtrgar);
+    reemplazarHojaBaseOperativa(hojas[4], matrices.baseIncidencias);
+    aplicarFormatosBaseOperativa(matrices);
+    SpreadsheetApp.flush();
+
+    const ranking = actualizarRanking(matrices.periodo, matrices.actualizadoAl);
+    registrarHistorialCargaBaseOperativa(usuario, data.archivo, preparado, matrices, "OK");
+
+    return {
+      ok: true,
+      modulo: "BASE_OPERATIVA",
+      periodo: matrices.periodo,
+      actualizadoAl: matrices.actualizadoAl,
+      produccion: matrices.produccion.length - 1,
+      efectividad: matrices.efectividad.length - 1,
+      recableado: matrices.recableado.length - 1,
+      vtrgar: matrices.vtrgar.length - 1,
+      incidencias: matrices.baseIncidencias.length - 1,
+      duplicados: preparado.duplicados,
+      partidasNoEncontradas: matrices.partidasNoEncontradas,
+      cuadrillasNoEncontradas: matrices.cuadrillasNoEncontradas,
+      ranking: !!(ranking && ranking.ok),
+      reemplazoTotal: true
+    };
+  } catch (e) {
+    if (snapshots.length) {
+      snapshots.forEach(s => {
+        try { restaurarSnapshotBaseOperativa(s); } catch (err) {}
+      });
+      try { SpreadsheetApp.flush(); } catch (err) {}
+    }
+    throw e;
+  } finally {
+    lock.releaseLock();
+  }
+}
+
+function leerBaseVtrGarDetectada() {
+  const hoja = asegurarHojaBaseVtrGarDetectada();
+  const datos = hoja.getDataRange().getValues();
+  const lista = [];
+  for (let i = 1; i < datos.length; i++) {
+    if (!datos[i][0]) continue;
+    const fecha = fechaBaseOperativa(datos[i][1]);
+    lista.push({
+      clave: datos[i][0],
+      fecha: fechaVisibleBaseOperativa(fecha),
+      fechaISO: fechaIsoBaseOperativa(fecha),
+      tipo: datos[i][2],
+      ticket: datos[i][3],
+      codigoPedido: datos[i][4],
+      codigoLiquidacion: datos[i][5],
+      cuadrillaEjecutora: normalizarCuadrilla(datos[i][6]),
+      cuadrillaContabilizada: normalizarCuadrilla(datos[i][7]),
+      asignacionManual: normalizarTexto(datos[i][8]) === "SI",
+      fechaCorte: datos[i][9],
+      periodo: datos[i][10]
+    });
+  }
+  return lista;
+}
+
+function listarAsignacionesVtrGar(data) {
+  validarAdministracionBaseOperativa(data.usuario);
+  const asignaciones = obtenerAsignacionesActivasBaseOperativa().lista;
+  const incidencias = leerBaseVtrGarDetectada();
+  const mapa = cuadrillasTecnicasBaseOperativa();
+  const cuadrillas = Object.keys(mapa).sort().map(c => mapa[c]);
+  return { ok:true, modulo:"ASIGNACION_VTR_GAR", asignaciones, incidencias, cuadrillas };
+}
+
+function generarIdAsignacionVtrGar() {
+  return "AVG-" + Utilities.formatDate(new Date(), Session.getScriptTimeZone(), "yyyyMMddHHmmss") + "-" + Math.floor(Math.random() * 900 + 100);
+}
+
+function buscarIncidenciaDetectadaBase(tipo, ticket, fechaIncidencia, codigoPedido) {
+  const incidencias = leerBaseVtrGarDetectada();
+  const ticketNorm = normalizarTexto(ticket).replace(/\s+/g, "");
+  for (let i = 0; i < incidencias.length; i++) {
+    const inc = incidencias[i];
+    if (ticketNorm && normalizarTexto(inc.ticket).replace(/\s+/g, "") === ticketNorm) return inc;
+  }
+  const fechaISO = fechaIsoBaseOperativa(fechaBaseOperativa(fechaIncidencia));
+  for (let i = 0; i < incidencias.length; i++) {
+    const inc = incidencias[i];
+    if (normalizarTexto(inc.tipo) === normalizarTexto(tipo) && inc.fechaISO === fechaISO &&
+        normalizarTexto(inc.codigoPedido) === normalizarTexto(codigoPedido)) return inc;
+  }
+  return null;
+}
+
+function guardarAsignacionVtrGar(data) {
+  const usuario = validarAdministracionBaseOperativa(data.usuario);
+  const tipo = normalizarTexto(data.tipo);
+  if (!["VTR", "GAR"].includes(tipo)) throw new Error("Tipo de incidencia no válido");
+  const ticket = textoValidoBaseOperativa(data.ticket);
+  const fechaIncidencia = fechaBaseOperativa(data.fechaIncidencia);
+  const codigoPedidoIncidencia = textoValidoBaseOperativa(data.codigoPedidoIncidencia);
+  const cuadrillaOrigen = normalizarCuadrilla(data.cuadrillaOrigen);
+  if (!ticket && (!fechaIncidencia || !codigoPedidoIncidencia)) {
+    throw new Error("Ingrese el ticket o la fecha y código de pedido de la incidencia");
+  }
+  if (!cuadrillaOrigen) throw new Error("Debe seleccionar la cuadrilla que originó la incidencia");
+  const usuarios = cuadrillasTecnicasBaseOperativa();
+  if (!usuarios[cuadrillaOrigen]) throw new Error("La cuadrilla origen no existe o no está activa en USUARIOS");
+
+  const incidencia = buscarIncidenciaDetectadaBase(tipo, ticket, data.fechaIncidencia, codigoPedidoIncidencia);
+  const cuadrillaEjecutora = normalizarCuadrilla(data.cuadrillaEjecutora || (incidencia ? incidencia.cuadrillaEjecutora : ""));
+  const fechaIncFinal = fechaIncidencia || (incidencia ? fechaBaseOperativa(incidencia.fechaISO) : null);
+  const codigoIncFinal = codigoPedidoIncidencia || (incidencia ? incidencia.codigoPedido : "");
+  const fechaOrigen = fechaBaseOperativa(data.fechaTrabajoOrigen);
+  if (fechaOrigen && fechaIncFinal) {
+    const dias = Math.floor((fechaIncFinal.getTime() - fechaOrigen.getTime()) / 86400000);
+    if (dias < 0) throw new Error("La fecha del trabajo origen no puede ser posterior a la incidencia");
+    if (dias > 30) throw new Error("La incidencia supera los 30 días desde el trabajo origen");
+  }
+
+  const hoja = asegurarHojaAsignacionVtrGar();
+  const datos = hoja.getDataRange().getValues();
+  const ticketNorm = normalizarTexto(ticket || (incidencia ? incidencia.ticket : "")).replace(/\s+/g, "");
+  let filaExistente = 0;
+  for (let i = 1; i < datos.length; i++) {
+    const item = filaAsignacionAObjetoBase(datos[i]);
+    const mismoTicket = ticketNorm && normalizarTexto(item.ticket).replace(/\s+/g, "") === ticketNorm;
+    const mismoFallback = !ticketNorm && item.tipo === tipo && item.fechaIncidenciaISO === fechaIsoBaseOperativa(fechaIncFinal) &&
+      normalizarTexto(item.codigoPedidoIncidencia) === normalizarTexto(codigoIncFinal);
+    if (mismoTicket || mismoFallback) { filaExistente = i + 1; break; }
+  }
+  const ahora = new Date();
+  const fila = [[
+    filaExistente ? hoja.getRange(filaExistente, 1).getValue() : generarIdAsignacionVtrGar(),
+    fechaIncFinal || "", tipo, ticket || (incidencia ? incidencia.ticket : ""), codigoIncFinal,
+    cuadrillaEjecutora, cuadrillaOrigen, fechaOrigen || "", textoValidoBaseOperativa(data.codigoPedidoOrigen),
+    (data.observacion || "").toString().trim(), "ACTIVO", usuario.usuario, ahora, ahora
+  ]];
+  if (filaExistente) hoja.getRange(filaExistente, 1, 1, 14).setValues(fila);
+  else hoja.appendRow(fila[0]);
+  const n = filaExistente || hoja.getLastRow();
+  hoja.getRange(n, 2).setNumberFormat("dd/mm/yyyy");
+  hoja.getRange(n, 8).setNumberFormat("dd/mm/yyyy");
+  hoja.getRange(n, 13).setNumberFormat("dd/mm/yyyy");
+  hoja.getRange(n, 14).setNumberFormat("hh:mm:ss");
+
+  const recalculo = recalcularVtrGarDesdeBaseOperativa(usuario.usuario);
+  return { ok:true, modulo:"ASIGNACION_VTR_GAR", accion:"GUARDAR", id:fila[0][0], recalculo };
+}
+
+function anularAsignacionVtrGar(data) {
+  const usuario = validarAdministracionBaseOperativa(data.usuario);
+  const id = (data.id || "").toString().trim();
+  if (!id) throw new Error("ID obligatorio");
+  const hoja = asegurarHojaAsignacionVtrGar();
+  const datos = hoja.getDataRange().getValues();
+  let fila = 0;
+  for (let i = 1; i < datos.length; i++) {
+    if ((datos[i][0] || "").toString() === id) { fila = i + 1; break; }
+  }
+  if (!fila) throw new Error("No se encontró la asignación");
+  hoja.getRange(fila, 11).setValue("ANULADO");
+  hoja.getRange(fila, 12).setValue(usuario.usuario);
+  hoja.getRange(fila, 13).setValue(new Date()).setNumberFormat("dd/mm/yyyy");
+  hoja.getRange(fila, 14).setValue(new Date()).setNumberFormat("hh:mm:ss");
+  const recalculo = recalcularVtrGarDesdeBaseOperativa(usuario.usuario);
+  return { ok:true, modulo:"ASIGNACION_VTR_GAR", accion:"ANULAR", id, recalculo };
+}
+
+function recalcularVtrGarDesdeBaseOperativa(usuarioCarga) {
+  const incidencias = leerBaseVtrGarDetectada();
+  if (!incidencias.length) {
+    return { ok:true, registros:0, mensaje:"No existe una base VTR/GAR detectada para recalcular" };
+  }
+  const asignaciones = obtenerAsignacionesActivasBaseOperativa();
+  const mapa = {};
+  incidencias.forEach(inc => {
+    const fecha = fechaBaseOperativa(inc.fechaISO);
+    const asig = obtenerAsignacionIncidenciaBase(inc.tipo, inc.ticket, fecha, inc.codigoPedido, asignaciones);
+    const cuadrilla = asig ? normalizarCuadrilla(asig.cuadrillaOrigen) : normalizarCuadrilla(inc.cuadrillaEjecutora);
+    if (!mapa[cuadrilla]) mapa[cuadrilla] = { gar:0, vtr:0 };
+    if (normalizarTexto(inc.tipo) === "GAR") mapa[cuadrilla].gar++;
+    if (normalizarTexto(inc.tipo) === "VTR") mapa[cuadrilla].vtr++;
+    inc.cuadrillaContabilizada = cuadrilla;
+    inc.asignacionManual = asig ? true : false;
+  });
+
+  const hojaEf = obtenerHoja(HOJA_EFECTIVIDAD);
+  const datosEf = hojaEf.getDataRange().getValues();
+  if (datosEf.length <= 1) throw new Error("EFECTIVIDAD no contiene datos para recalcular VTR/GAR");
+  const periodo = incidencias[0].periodo || "";
+  const corte = fechaBaseOperativa(incidencias[0].fechaCorte) || fechaBaseOperativa(datosEf[1][3]);
+  const salida = [["ID", "Usuario", "Cuadrilla", "ACTUALIZACION", "Total Ordenes FINALIZADAS", "GAR", "VTR", "TOTAL GAR/VTR", "% VTR/GAR"]];
+  for (let i = 1; i < datosEf.length; i++) {
+    const cuadrilla = normalizarCuadrilla(datosEf[i][2]);
+    if (!cuadrilla) continue;
+    const finalizadas = Number(datosEf[i][4]) || 0;
+    const x = mapa[cuadrilla] || { gar:0, vtr:0 };
+    const total = x.gar + x.vtr;
+    salida.push([
+      cuadrilla + "|" + periodo + "|" + i, usuarioCarga || datosEf[i][1] || "ADMIN", cuadrilla,
+      corte || datosEf[i][3], finalizadas, x.gar, x.vtr, total, finalizadas > 0 ? total / finalizadas : 0
+    ]);
+  }
+  const hojaVtr = obtenerHojaVtrGarFlexible();
+  reemplazarHojaBaseOperativa(hojaVtr, salida);
+  if (salida.length > 1) {
+    hojaVtr.getRange(2, 4, salida.length - 1, 1).setNumberFormat("dd/mm/yyyy");
+    hojaVtr.getRange(2, 9, salida.length - 1, 1).setNumberFormat("0.00%");
+  }
+
+  const base = [["CLAVE", "FECHA_INCIDENCIA", "TIPO", "TICKET", "CODIGO_PEDIDO", "CODIGO_LIQUIDACION", "CUADRILLA_EJECUTORA", "CUADRILLA_CONTABILIZADA", "ASIGNACION_MANUAL", "FECHA_CORTE", "PERIODO"]];
+  incidencias.forEach(inc => base.push([
+    inc.clave, fechaBaseOperativa(inc.fechaISO), inc.tipo, inc.ticket, inc.codigoPedido, inc.codigoLiquidacion,
+    inc.cuadrillaEjecutora, inc.cuadrillaContabilizada, inc.asignacionManual ? "SI" : "NO", corte, periodo
+  ]));
+  reemplazarHojaBaseOperativa(asegurarHojaBaseVtrGarDetectada(), base);
+  SpreadsheetApp.flush();
+  actualizarRanking(periodo, fechaVisibleBaseOperativa(corte));
+  return { ok:true, registros:salida.length - 1, actualizadoAl:fechaVisibleBaseOperativa(corte) };
+}
+
+function listarCatalogoPartidasOperativas(data) {
+  validarAdministracionBaseOperativa(data.usuario);
+  return { ok:true, modulo:"CATALOGO_ORDENES", catalogo:catalogoPartidasBaseOperativa().lista };
+}
+
+
 function doPost(e) {
   try {
     const data = JSON.parse(e.postData.contents);
+
+    if (data.accion === "previsualizarBaseOperativa") return respuestaJson(previsualizarBaseOperativa(data));
+    if (data.accion === "procesarBaseOperativa") return respuestaJson(procesarBaseOperativa(data));
+    if (data.accion === "listarAsignacionesVtrGar") return respuestaJson(listarAsignacionesVtrGar(data));
+    if (data.accion === "guardarAsignacionVtrGar") return respuestaJson(guardarAsignacionVtrGar(data));
+    if (data.accion === "anularAsignacionVtrGar") return respuestaJson(anularAsignacionVtrGar(data));
+    if (data.accion === "listarCatalogoPartidasOperativas") return respuestaJson(listarCatalogoPartidasOperativas(data));
 
     if (data.accion === "importarMapaOperativo") return respuestaJson(importarMapaOperativo(data));
     if (data.accion === "listarMapaOperativo") return respuestaJson(listarMapaOperativo(data));

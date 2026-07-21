@@ -26,12 +26,11 @@
 
 
     const cards=[
-      ['📥','ACTUALIZAR PRODUCCIÓN','Importar producción desde la hoja IMPORTAR_PRODUCCION','mostrarImportarProduccion()'],
-      ['📊','ACTUALIZAR EFECTIVIDAD','Importar efectividad desde base pegada','mostrarImportarEfectividad()'],
-      ['🔁','ACTUALIZAR % RECABLEADO','Importar recableado desde base pegada','mostrarImportarRecableado()'],
-      ['🛡️','ACTUALIZAR VTR/GAR','Importar VTR/GAR desde base pegada','mostrarImportarVtrGar()'],
+      ['📤','ACTUALIZAR BASE OPERATIVA','Cargar la base madre y reemplazar Producción, Efectividad, Recableados y VTR/GAR','mostrarActualizarBaseOperativa()'],
+      ['🔀','ASIGNACIONES VTR/GAR','Reasignar incidencias a la cuadrilla que originó la reincidencia','mostrarAsignacionesVtrGar()'],
+      ['📚','CATÁLOGO DE PARTIDAS','Consultar códigos, plataformas, puntajes y grupos utilizados en Producción','mostrarCatalogoPartidasOperativas()'],
       ['👥','ACTUALIZAR USUARIOS','Importar, editar, suspender y cambiar permisos','mostrarImportarUsuarios()'],
-      ['🏆','ACTUALIZAR RANKING','Generar ranking operativo consolidado','mostrarImportarRanking()']
+      ['🏆','ACTUALIZAR RANKING','Regenerar el ranking con las hojas actuales como respaldo manual','mostrarImportarRanking()']
     ];
 
     const html=admStyle()+`<div class="adm104-wrap">

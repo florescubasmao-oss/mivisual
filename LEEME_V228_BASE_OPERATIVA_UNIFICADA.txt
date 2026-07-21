@@ -1,0 +1,96 @@
+MI VISUAL V228 - BASE OPERATIVA UNIFICADA
+==========================================
+
+OBJETIVO
+--------
+Reemplazar las cuatro cargas manuales independientes por una sola carga de la base madre,
+sin cambiar las hojas, los encabezados ni las visualizaciones actuales.
+
+ADMINISTRACIÓN
+--------------
+Se reemplazaron las tarjetas individuales de Producción, Efectividad, Recableados y VTR/GAR por:
+
+1. ACTUALIZAR BASE OPERATIVA
+2. ASIGNACIONES VTR/GAR
+3. CATÁLOGO DE PARTIDAS
+4. ACTUALIZAR USUARIOS
+5. ACTUALIZAR RANKING
+
+HOJAS ACTUALES QUE SE REEMPLAZAN COMPLETAMENTE
+-----------------------------------------------
+- PRODUCCION_APP
+- EFECTIVIDAD
+- PORCENTAJE REC
+- POR VTR/GAR o POR VTRGAR (compatibilidad automática)
+- RANKING se recalcula automáticamente después de una carga correcta.
+
+No se modifican los nombres ni los encabezados que consume el aplicativo.
+
+FECHA DE CORTE
+--------------
+La fecha de actualización es la fecha máxima de la base con Estado = Finalizada.
+Solo se procesa el mes de esa fecha y los registros menores o iguales al corte.
+
+REGLAS
+------
+PRODUCCIÓN
+- Solo Estado = Finalizada.
+- Cuadrilla + Fecha + Tipo de Partida.
+- El código, plataforma, grupo y puntaje salen de CATALOGO_ORDENES.
+- Si la exportación antigua desplaza Tipo de Partida una columna, se recupera desde
+  "Observación Adicional o de la Cancelación" cuando corresponde.
+
+EFECTIVIDAD
+- Finalizada, Cancelada, Regestión y Reprogramado.
+- Anulada, Agendada y Reserva no se consideran.
+- Total General = suma de los cuatro estados.
+
+RECABLEADOS
+- Los Rojos: Estado Finalizada y Tipo de Atención LOS ROJO o INTERMITENCIA LOS ROJO.
+- Recableados: Estado Finalizada y partida clasificada como RECABLEADO_VT.
+- Los recableados postventa se excluyen.
+
+VTR/GAR
+- VTR: ticket VTR- o estado VTR - BONO.
+- GAR: ticket GAR- o Tipo de Atención GARANTIA como respaldo.
+- Por defecto se contabiliza a la cuadrilla que atiende.
+- ASIGNACIONES VTR/GAR permite trasladar la incidencia a la cuadrilla que la originó.
+- Al guardar o anular una asignación se recalculan VTR/GAR y Ranking.
+
+SEGURIDAD
+---------
+- Se usa LockService para impedir cargas simultáneas.
+- Se valida toda la base antes de escribir.
+- Se muestra una comparación Actual vs. Nuevo antes de confirmar.
+- Los registros duplicados se consolidan por Código de Liquidación; como respaldo se usa Ticket.
+- Si ocurre un error durante la escritura, se restauran Producción, Efectividad,
+  Recableados, VTR/GAR, base detectada y Ranking.
+- Las partidas y cuadrillas no encontradas se muestran como advertencias.
+
+HOJAS AUXILIARES CREADAS AUTOMÁTICAMENTE
+----------------------------------------
+- ASIGNACION_VTR_GAR (visible para gestión manual)
+- BASE_VTR_GAR_DETECTADA (oculta)
+- HISTORIAL_CARGA_OPERATIVA (oculta)
+
+ARCHIVOS MODIFICADOS
+--------------------
+- Code.gs
+- apps_script/Code.gs
+- index.html
+- js/admin_checklist.js
+- js/base_operativa.js (nuevo)
+
+IMPLEMENTACIÓN
+--------------
+1. Reemplazar Code.gs en Apps Script.
+2. Crear una nueva versión del despliegue de Apps Script.
+3. Subir el frontend a GitHub y realizar commit/push.
+4. Ingresar como Jefatura > Administración > Actualizar base operativa.
+5. Leer el archivo o pegar toda la tabla si el .xls depende de una carpeta externa.
+6. Revisar la comparación Actual vs. Nuevo y confirmar.
+
+Code.gs / Apps Script: SÍ
+Frontend GitHub: SÍ
+Google Sheets: SÍ (hojas auxiliares automáticas; hojas actuales conservan estructura)
+Nuevo Deploy Apps Script: SÍ
