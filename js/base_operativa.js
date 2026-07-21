@@ -1,4 +1,4 @@
-// MI VISUAL V232 - Lectura íntegra de finalizadas y control de conciliación
+// MI VISUAL V233 - Revisión obligatoria de posibles duplicados antes de actualizar
 const API_BASE_OPERATIVA = (window.MI_VISUAL_API_URL || "https://script.google.com/macros/s/AKfycbzcbjCLweJNgZXDerdzmMN7Lwotc1G8NWdzoPkaLNGDivAgpYxDkq78xZwPRioSB4XY/exec");
 let BO_REGISTROS = [];
 let BO_ARCHIVO = "";
@@ -8,6 +8,10 @@ let BO_CUADRILLAS = [];
 let BO_PREVISTA = null;
 let BO_CATALOGO_OPCIONES = {plataformas:[],grupos:[],estados:[]};
 let BO_CONTROL_LECTURA = {registrosValidos:0,finalizadasPeriodo:0,finalizadasLeidas:0,duplicadosExactos:0};
+let BO_REGISTROS_ORIGINALES = [];
+let BO_DUPLICADOS_REVISION = [];
+let BO_DUPLICADOS_REVISADOS = true;
+let BO_FILAS_OMITIDAS = 0;
 
 function boNorm(v){
   return (v == null ? "" : String(v)).toUpperCase().normalize("NFD")
@@ -70,13 +74,13 @@ function boCss(){
   .bo-msg{padding:11px;border-radius:10px;margin-top:12px;background:#0f172a;color:#dbeafe;white-space:pre-line}.bo-ok{background:#064e3b}.bo-error{background:#7f1d1d}.bo-warn{background:#78350f}
   .bo-kpis{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin-top:12px}.bo-kpi{background:#0f172a;border:1px solid #334155;border-radius:12px;padding:12px}.bo-kpi b{font-size:21px;display:block}.bo-kpi span{font-size:11px;color:#cbd5e1}
   .bo-table-wrap{overflow:auto;max-height:520px;border-radius:12px}.bo-table{width:100%;border-collapse:collapse;font-size:12px;background:#fff;color:#111827}.bo-table th{position:sticky;top:0;background:#1e3a5f;color:#fff;text-align:left;padding:9px;z-index:1}.bo-table td{padding:8px;border-bottom:1px solid #e2e8f0;vertical-align:top}.bo-table tr:nth-child(even){background:#f8fafc}
-  .bo-form{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}.bo-form label{font-size:12px;font-weight:800;color:#dbeafe;display:flex;flex-direction:column;gap:5px}.bo-wide{grid-column:1/-1}.bo-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}.bo-note{font-size:12px;color:#fcd34d;line-height:1.5}.bo-badge{display:inline-block;padding:4px 7px;border-radius:999px;background:#dbeafe;color:#1e3a8a;font-size:10px;font-weight:800}.bo-missing{border:1px solid #f59e0b;background:#111827;border-radius:13px;padding:13px;margin-top:10px}.bo-missing h4{margin:0 0 7px;color:#fde68a}.bo-match{font-size:11px;color:#cbd5e1;margin:5px 0}.bo-new-form{margin-top:12px;padding-top:12px;border-top:1px dashed #64748b}.bo-hidden{display:none!important}
+  .bo-form{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}.bo-form label{font-size:12px;font-weight:800;color:#dbeafe;display:flex;flex-direction:column;gap:5px}.bo-wide{grid-column:1/-1}.bo-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}.bo-note{font-size:12px;color:#fcd34d;line-height:1.5}.bo-badge{display:inline-block;padding:4px 7px;border-radius:999px;background:#dbeafe;color:#1e3a8a;font-size:10px;font-weight:800}.bo-missing{border:1px solid #f59e0b;background:#111827;border-radius:13px;padding:13px;margin-top:10px}.bo-missing h4{margin:0 0 7px;color:#fde68a}.bo-match{font-size:11px;color:#cbd5e1;margin:5px 0}.bo-new-form{margin-top:12px;padding-top:12px;border-top:1px dashed #64748b}.bo-hidden{display:none!important}.bo-dup{border:1px solid #f59e0b;background:#111827;border-radius:13px;padding:13px;margin-top:10px}.bo-dup h4{margin:0 0 7px;color:#fde68a}.bo-dup-grid{display:grid;grid-template-columns:1fr 250px;gap:12px;align-items:center}.bo-dup small{color:#cbd5e1;line-height:1.45}.bo-dup select{width:100%}
   @media(max-width:760px){.bo-grid,.bo-form{grid-template-columns:1fr}.bo-kpis{grid-template-columns:repeat(2,minmax(0,1fr))}.bo-wide{grid-column:auto}}
   </style>`;
 }
 
 function mostrarActualizarBaseOperativa(){
-  BO_REGISTROS=[]; BO_ARCHIVO=""; BO_CONTROL_LECTURA={registrosValidos:0,finalizadasPeriodo:0,finalizadasLeidas:0,duplicadosExactos:0};
+  BO_REGISTROS=[]; BO_REGISTROS_ORIGINALES=[]; BO_DUPLICADOS_REVISION=[]; BO_DUPLICADOS_REVISADOS=true; BO_FILAS_OMITIDAS=0; BO_ARCHIVO=""; BO_CONTROL_LECTURA={registrosValidos:0,finalizadasPeriodo:0,finalizadasLeidas:0,duplicadosExactos:0};
   mostrarPantalla(boCss()+`<div class="bo-wrap">
     <div class="bo-head"><h2>📤 Actualizar base operativa</h2><p>Una sola carga reemplaza completamente Producción, Efectividad, % Recableado y VTR/GAR del periodo detectado.</p></div>
     <div class="bo-card">
@@ -263,27 +267,52 @@ function boClaveExactaLocal(r){
   ].join("|");
 }
 
+function boDetectarDuplicadosLocal(registros){
+  const grupos={};
+  registros.forEach((r,i)=>{
+    const clave=boClaveExactaLocal(r);
+    if(!grupos[clave])grupos[clave]={clave,indices:[],muestra:r};
+    grupos[clave].indices.push(i);
+  });
+  return Object.values(grupos).filter(g=>g.indices.length>1).map((g,i)=>({
+    id:`DUP-${i+1}`,
+    clave:g.clave,
+    indices:g.indices,
+    cantidad:g.indices.length,
+    fecha:g.muestra.fecha||"",
+    cuadrilla:g.muestra.cuadrilla||"",
+    estado:g.muestra.estado||"",
+    codigoPedido:g.muestra.codigoPedido||"",
+    ticket:g.muestra.ticket||"",
+    codigoLiquidacion:g.muestra.codigoLiquidacion||"",
+    tipoAtencion:g.muestra.tipoAtencion||"",
+    tipoPartida:g.muestra.tipoPartida||""
+  }));
+}
+
 function boCalcularControlLectura(registros,finalizadasLeidas,corte){
   const p=(corte||"").split("-");
   const anio=p.length===3?Number(p[0]):0;
   const mes=p.length===3?Number(p[1]):0;
   let finalizadasPeriodo=0;
-  const vistos={};
-  let duplicadosExactos=0;
   registros.forEach(r=>{
     if(boNorm(r.estado)==="FINALIZADA"){
       const fp=(r.fecha||"").split("-");
       if(fp.length===3 && Number(fp[0])===anio && Number(fp[1])===mes && r.fecha<=corte)finalizadasPeriodo++;
     }
-    const k=boClaveExactaLocal(r);
-    if(vistos[k])duplicadosExactos++;
-    vistos[k]=true;
   });
+  const duplicadosDetalle=boDetectarDuplicadosLocal(registros);
+  const duplicadosExactos=duplicadosDetalle.reduce((s,g)=>s+(g.cantidad-1),0);
   return {
     registrosValidos:registros.length,
     finalizadasPeriodo,
     finalizadasLeidas:Number(finalizadasLeidas)||0,
-    duplicadosExactos
+    duplicadosExactos,
+    duplicadosDetectados:duplicadosExactos,
+    duplicadosConservados:duplicadosExactos,
+    duplicadosOmitidos:0,
+    duplicadosRevisados:duplicadosExactos===0,
+    duplicadosDetalle
   };
 }
 
@@ -323,22 +352,83 @@ function boExtraerRegistros(rows,filaEnc,heads){
   return {registros,omitidas,corte,control};
 }
 
-function boAplicarLecturaLocal(resultado,archivo,detalleOrigen){
-  const {registros,omitidas,corte,control}=resultado;
-  BO_REGISTROS=registros;BO_ARCHIVO=archivo||"BASE_OPERATIVA";
-  BO_CONTROL_LECTURA=control||boCalcularControlLectura(registros,0,corte);
-  document.getElementById("boResumen").innerHTML=`<div class="bo-kpis">
-    <div class="bo-kpi"><b>${registros.length}</b><span>Filas válidas</span></div>
-    <div class="bo-kpi"><b>${BO_CONTROL_LECTURA.finalizadasPeriodo}</b><span>Finalizadas del periodo</span></div>
+function boRenderResumenLectura(registros,omitidas,corte,control){
+  const revisados=control.duplicadosRevisados===true;
+  const detectados=Number(control.duplicadosDetectados||control.duplicadosExactos||0);
+  return `<div class="bo-kpis">
+    <div class="bo-kpi"><b>${registros.length}</b><span>Filas válidas a procesar</span></div>
+    <div class="bo-kpi"><b>${control.finalizadasPeriodo}</b><span>Finalizadas del periodo</span></div>
     <div class="bo-kpi"><b>${boFechaVisible(corte)}</b><span>Último día finalizado</span></div>
     <div class="bo-kpi"><b>${new Set(registros.map(r=>boNorm(r.cuadrilla))).size}</b><span>Cuadrillas detectadas</span></div>
-    <div class="bo-kpi"><b>${omitidas}</b><span>Filas omitidas</span></div>
-    <div class="bo-kpi"><b>${BO_CONTROL_LECTURA.duplicadosExactos}</b><span>Duplicados exactos detectados</span></div>
+    <div class="bo-kpi"><b>${omitidas}</b><span>Filas omitidas por datos inválidos</span></div>
+    <div class="bo-kpi"><b>${detectados}</b><span>Copias exactas detectadas${detectados?revisados?" · revisadas":" · pendientes":""}</span></div>
   </div>`;
-  const msg=document.getElementById("boMensaje");
-  msg.className="bo-msg bo-ok";
-  msg.textContent=`Base lista: ${archivo||"BASE OPERATIVA"}${detalleOrigen?`\n${detalleOrigen}`:""}\nFinalizadas del periodo leídas: ${BO_CONTROL_LECTURA.finalizadasPeriodo}.\nLa información actual será reemplazada completamente al confirmar.`;
+}
+
+function boRenderRevisionDuplicados(){
+  if(!BO_DUPLICADOS_REVISION.length)return "";
+  return `<div id="boRevisionDuplicados" class="bo-card" style="margin-top:12px;border-color:#f59e0b">
+    <h3 style="margin-top:0;color:#fde68a">Revisión obligatoria de posibles duplicados</h3>
+    <p class="bo-note"><b>Las atenciones del mismo cliente en fechas diferentes nunca se consideran duplicadas y siempre se contabilizan por separado.</b> Aquí solo aparecen filas completamente iguales del mismo día. Debe indicar si ambas atenciones son válidas o si una es una copia del archivo.</p>
+    <div class="bo-actions"><button class="bo-btn" onclick="boMarcarTodosDuplicados('CONSERVAR')">Contar todos</button><button class="bo-btn warn" onclick="boMarcarTodosDuplicados('OMITIR')">Excluir todas las copias exactas</button></div>
+    ${BO_DUPLICADOS_REVISION.map((g,i)=>`<div class="bo-dup"><div class="bo-dup-grid"><div><h4>${boEsc(g.cuadrilla)} · ${boFechaVisible(g.fecha)}</h4><small><b>${boEsc(g.estado)}</b> · Pedido: ${boEsc(g.codigoPedido||"-")} · Ticket: ${boEsc(g.ticket||"-")} · Liquidación: ${boEsc(g.codigoLiquidacion||"-")}<br>${boEsc(g.tipoPartida||g.tipoAtencion||"SIN PARTIDA")}<br><b>${g.cantidad} filas completamente iguales</b></small></div><select id="boDupDecision_${i}" class="bo-select"><option value="">Seleccione una decisión...</option><option value="CONSERVAR">Contar las ${g.cantidad} filas</option><option value="OMITIR">Contar 1 y excluir ${g.cantidad-1} copia(s)</option></select></div></div>`).join("")}
+    <div class="bo-actions"><button class="bo-btn" onclick="boConfirmarDuplicados()">Confirmar decisiones y continuar</button></div>
+  </div>`;
+}
+
+function boMarcarTodosDuplicados(valor){
+  BO_DUPLICADOS_REVISION.forEach((_,i)=>{const el=document.getElementById(`boDupDecision_${i}`);if(el)el.value=valor;});
+}
+
+function boConfirmarDuplicados(){
+  const decisiones=[];
+  for(let i=0;i<BO_DUPLICADOS_REVISION.length;i++){
+    const el=document.getElementById(`boDupDecision_${i}`);
+    const valor=el&&el.value;
+    if(!valor){alert("Debe decidir qué hacer con cada grupo de filas iguales.");return;}
+    decisiones.push(valor);
+  }
+  const excluir=new Set();
+  let conservados=0;
+  BO_DUPLICADOS_REVISION.forEach((g,i)=>{
+    if(decisiones[i]==="OMITIR")g.indices.slice(1).forEach(n=>excluir.add(n));
+    else conservados+=g.cantidad-1;
+  });
+  BO_REGISTROS=BO_REGISTROS_ORIGINALES.filter((_,i)=>!excluir.has(i));
+  const finalizadas=BO_REGISTROS.filter(r=>boNorm(r.estado)==="FINALIZADA"&&r.fecha).map(r=>r.fecha).sort();
+  const corte=finalizadas[finalizadas.length-1]||"";
+  const control=boCalcularControlLectura(BO_REGISTROS,BO_CONTROL_LECTURA.finalizadasLeidas,corte);
+  control.duplicadosDetectados=BO_DUPLICADOS_REVISION.reduce((s,g)=>s+(g.cantidad-1),0);
+  control.duplicadosConservados=conservados;
+  control.duplicadosOmitidos=excluir.size;
+  control.duplicadosRevisados=true;
+  control.decisionesDuplicados=BO_DUPLICADOS_REVISION.map((g,i)=>({clave:g.clave,decision:decisiones[i],cantidad:g.cantidad}));
+  BO_CONTROL_LECTURA=control;
+  BO_DUPLICADOS_REVISADOS=true;
+  document.getElementById("boResumen").innerHTML=boRenderResumenLectura(BO_REGISTROS,BO_FILAS_OMITIDAS,corte,control)+`<div class="bo-msg bo-ok">Duplicados revisados: ${control.duplicadosDetectados}. Conservados: ${control.duplicadosConservados}. Copias excluidas: ${control.duplicadosOmitidos}.<br>Las visitas realizadas en fechas diferentes continúan contabilizándose por separado.</div>`;
+  const msg=document.getElementById("boMensaje");msg.className="bo-msg bo-ok";msg.textContent=`Revisión de duplicados completada. Finalizadas del periodo: ${control.finalizadasPeriodo}. Ya puede continuar con la previsualización.`;
   document.getElementById("boProcesar").disabled=false;
+}
+
+function boAplicarLecturaLocal(resultado,archivo,detalleOrigen){
+  const {registros,omitidas,corte,control}=resultado;
+  BO_FILAS_OMITIDAS=Number(omitidas)||0;
+  BO_REGISTROS_ORIGINALES=registros.map(r=>Object.assign({},r));
+  BO_REGISTROS=BO_REGISTROS_ORIGINALES.map(r=>Object.assign({},r));
+  BO_ARCHIVO=archivo||"BASE_OPERATIVA";
+  BO_CONTROL_LECTURA=control||boCalcularControlLectura(registros,0,corte);
+  BO_DUPLICADOS_REVISION=BO_CONTROL_LECTURA.duplicadosDetalle||[];
+  BO_DUPLICADOS_REVISADOS=BO_DUPLICADOS_REVISION.length===0;
+  document.getElementById("boResumen").innerHTML=boRenderResumenLectura(BO_REGISTROS,omitidas,corte,BO_CONTROL_LECTURA)+boRenderRevisionDuplicados();
+  const msg=document.getElementById("boMensaje");
+  if(BO_DUPLICADOS_REVISADOS){
+    msg.className="bo-msg bo-ok";
+    msg.textContent=`Base lista: ${archivo||"BASE OPERATIVA"}${detalleOrigen?`\n${detalleOrigen}`:""}\nFinalizadas del periodo leídas: ${BO_CONTROL_LECTURA.finalizadasPeriodo}.\nLa información actual será reemplazada completamente al confirmar.`;
+  }else{
+    msg.className="bo-msg bo-warn";
+    msg.textContent=`Base leída correctamente. Se detectaron ${BO_CONTROL_LECTURA.duplicadosExactos} copia(s) exacta(s). Revise cada caso antes de continuar. Las visitas del mismo cliente en días diferentes no aparecen como duplicadas y se contabilizan ambas.`;
+  }
+  document.getElementById("boProcesar").disabled=!BO_DUPLICADOS_REVISADOS;
 }
 
 function boLeerWorkbookLocal(wb,archivo,detalleOrigen){
@@ -505,6 +595,7 @@ async function boGuardarNuevaPartida(i){
 
 async function boProcesarBase(){
   if(!BO_REGISTROS.length){alert("Primero lea un archivo válido.");return;}
+  if(BO_DUPLICADOS_REVISION.length && !BO_DUPLICADOS_REVISADOS){alert("Revise y confirme los posibles duplicados antes de continuar.");const el=document.getElementById("boRevisionDuplicados");if(el)el.scrollIntoView({behavior:"smooth",block:"start"});return;}
   const btn=document.getElementById("boProcesar"),msg=document.getElementById("boMensaje"),resumen=document.getElementById("boResumen");
   try{
     btn.disabled=true;msg.className="bo-msg";msg.textContent="Validando resultados antes de reemplazar las hojas...";
@@ -531,7 +622,7 @@ async function boProcesarBase(){
       <tr><td>GAR</td><td>${a.gar||0}</td><td>${n.gar||0}</td></tr>
       <tr><td>VTR</td><td>${a.vtr||0}</td><td>${n.vtr||0}</td></tr>
     </tbody></table></div>${advertencias.length||totalSinCatalogo?`<div class="bo-msg bo-warn"><b>Validaciones:</b><br>${advertencias.map(boEsc).join("<br>")}${partidas.length?`<br><br><b>Partidas pendientes:</b><br>${partidas.slice(0,30).map(boEsc).join("<br>")}`:""}${noClasificadas.length?`<br><br><b>Finalizadas no clasificadas:</b><br>${noClasificadas.slice(0,40).map(x=>`${boEsc(x.tipoPartida||"SIN PARTIDA")} · ${Number(x.cantidad)||0} orden(es)`).join("<br>")}`:""}${cuadrillas.length?`<br><br><b>Cuadrillas:</b><br>${cuadrillas.map(boEsc).join("<br>")}`:""}</div>`:""}</div>`);
-    const detalle=`Corte: ${vista.actualizadoAl}\nFinalizadas detectadas: ${totalFinalizadas}\nClasificadas en Producción: ${totalClasificadas}\nSin catálogo: ${totalSinCatalogo}\nLos Rojos: ${n.losRojos||0}\nRecableados VT: ${n.recableados||0}\nGAR: ${n.gar||0}\nVTR: ${n.vtr||0}\nDuplicados exactos detectados y conservados: ${vista.duplicados||0}`;
+    const detalle=`Corte: ${vista.actualizadoAl}\nFinalizadas detectadas: ${totalFinalizadas}\nClasificadas en Producción: ${totalClasificadas}\nSin catálogo: ${totalSinCatalogo}\nLos Rojos: ${n.losRojos||0}\nRecableados VT: ${n.recableados||0}\nGAR: ${n.gar||0}\nVTR: ${n.vtr||0}\nDuplicados revisados: ${BO_CONTROL_LECTURA.duplicadosDetectados||0} · conservados: ${BO_CONTROL_LECTURA.duplicadosConservados||0} · omitidos: ${BO_CONTROL_LECTURA.duplicadosOmitidos||0}`;
     if(totalSinCatalogo>0){
       resumen.insertAdjacentHTML("beforeend",boRenderResolucionPartidas(vista));
       msg.className="bo-msg bo-warn";
@@ -551,7 +642,9 @@ async function boProcesarBase(){
     const r=await boApi({accion:"procesarBaseOperativa",usuario:boUsuario(),archivo:BO_ARCHIVO,registros:BO_REGISTROS,controlLectura:BO_CONTROL_LECTURA});
     const desconocidas=(r.partidasNoEncontradas||[]),cuadNo=(r.cuadrillasNoEncontradas||[]);
     msg.className="bo-msg bo-ok";
-    msg.textContent=`BASE OPERATIVA ACTUALIZADA\nCorte: ${r.actualizadoAl}\nFinalizadas cargadas: ${r.finalizadas||0}\nÓrdenes registradas en Producción: ${r.produccionOrdenes||0}\nProducción: ${r.produccion} filas agrupadas\nEfectividad: ${r.efectividad} cuadrillas\nRecableados: ${r.recableado} cuadrillas\nVTR/GAR: ${r.vtrgar} cuadrillas\nDuplicados exactos detectados y conservados: ${r.duplicados}\nRanking actualizado: ${r.ranking?"Sí":"No"}`;
+    msg.textContent=`BASE OPERATIVA ACTUALIZADA\nCorte: ${r.actualizadoAl}\nFinalizadas cargadas: ${r.finalizadas||0}\nÓrdenes registradas en Producción: ${r.produccionOrdenes||0}\nProducción: ${r.produccion} filas agrupadas\nEfectividad: ${r.efectividad} cuadrillas\nRecableados: ${r.recableado} cuadrillas\nVTR/GAR: ${r.vtrgar} cuadrillas\nDuplicados revisados: ${r.duplicadosDetectados||0}
+Copias conservadas: ${r.duplicadosConservados||0}
+Copias omitidas: ${r.duplicadosOmitidos||0}\nRanking actualizado: ${r.ranking?"Sí":"No"}`;
     if(desconocidas.length||cuadNo.length)resumen.insertAdjacentHTML("beforeend",`<div class="bo-msg bo-warn bo-preview-generated">${desconocidas.length?`<b>Partidas no encontradas (${desconocidas.length}):</b><br>${desconocidas.slice(0,30).map(boEsc).join("<br>")}`:""}${cuadNo.length?`<br><br><b>Cuadrillas no encontradas en USUARIOS:</b><br>${cuadNo.map(boEsc).join("<br>")}`:""}</div>`);
   }catch(e){msg.className="bo-msg bo-error";msg.textContent="No se modificó la información. "+e.message;}
   finally{btn.disabled=false;}

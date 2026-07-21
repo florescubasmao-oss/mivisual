@@ -1,0 +1,20 @@
+MI VISUAL V233 - REVISIÓN OBLIGATORIA DE POSIBLES DUPLICADOS
+
+Base: V232 FINALIZADAS COMPLETAS.
+
+Cambio puntual:
+- Las atenciones del mismo cliente en fechas diferentes nunca se consideran duplicadas y se contabilizan por separado.
+- Solo se muestran como posibles duplicados las filas completamente iguales del mismo día.
+- Antes de previsualizar o reemplazar las hojas, Jefatura debe decidir por cada grupo:
+  1) Contar todas las filas.
+  2) Contar una y excluir las copias exactas.
+- El botón de actualización permanece bloqueado hasta confirmar todas las decisiones.
+- Apps Script valida que la revisión haya sido completada y que las cantidades coincidan.
+- Se informa cuántas copias fueron detectadas, conservadas y omitidas.
+
+No se modificaron:
+- Estructura de Google Sheets.
+- Dashboards ni visualizaciones.
+- Ranking.
+- Análisis Económico.
+- Permisos ni perfiles.

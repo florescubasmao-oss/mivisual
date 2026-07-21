@@ -6540,6 +6540,24 @@ function validarControlLecturaBaseOperativa(control, preparado, matrices) {
       matrices.totalFinalizadasBase + ". La carga quedó incompleta."
     );
   }
+
+  const duplicadosDetectados = Number(control.duplicadosDetectados || control.duplicadosExactos || 0);
+  if (isFinite(duplicadosDetectados) && duplicadosDetectados > 0) {
+    if (control.duplicadosRevisados !== true) {
+      throw new Error("No se modificó ninguna hoja. Existen posibles duplicados pendientes de revisión.");
+    }
+    const duplicadosConservados = Number(control.duplicadosConservados || 0);
+    const duplicadosOmitidos = Number(control.duplicadosOmitidos || 0);
+    if (duplicadosDetectados !== duplicadosConservados + duplicadosOmitidos) {
+      throw new Error("No se modificó ninguna hoja. La revisión de duplicados está incompleta o no coincide.");
+    }
+    if (preparado.duplicados !== duplicadosConservados) {
+      throw new Error(
+        "No se modificó ninguna hoja. Después de la revisión debían conservarse " +
+        duplicadosConservados + " copia(s), pero Apps Script detectó " + preparado.duplicados + "."
+      );
+    }
+  }
 }
 
 function previsualizarBaseOperativa(data) {
@@ -6549,6 +6567,7 @@ function previsualizarBaseOperativa(data) {
   const matrices = crearMatricesBaseOperativa(preparado.registros, corte, usuario.usuario);
   validarControlLecturaBaseOperativa(data.controlLectura, preparado, matrices);
   const catalogoVista = catalogoPartidasBaseOperativa();
+  const controlDuplicados = data.controlLectura || {};
   return {
     ok: true,
     modulo: "BASE_OPERATIVA",
@@ -6558,6 +6577,10 @@ function previsualizarBaseOperativa(data) {
     filasRecibidas: preparado.recibidos,
     filasUnicas: preparado.registros.length,
     duplicados: preparado.duplicados,
+    duplicadosDetectados: Number(controlDuplicados.duplicadosDetectados || controlDuplicados.duplicadosExactos || preparado.duplicados || 0),
+    duplicadosConservados: Number(controlDuplicados.duplicadosConservados || preparado.duplicados || 0),
+    duplicadosOmitidos: Number(controlDuplicados.duplicadosOmitidos || 0),
+    duplicadosRevisados: controlDuplicados.duplicadosRevisados === true,
     produccion: matrices.produccion.length - 1,
     efectividad: matrices.efectividad.length - 1,
     recableado: matrices.recableado.length - 1,
@@ -6586,6 +6609,7 @@ function procesarBaseOperativa(data) {
     const corte = obtenerCorteBaseOperativa(preparado.registros);
     const matrices = crearMatricesBaseOperativa(preparado.registros, corte, usuario.usuario);
     validarControlLecturaBaseOperativa(data.controlLectura, preparado, matrices);
+    const controlDuplicados = data.controlLectura || {};
 
     if (matrices.finalizadasSinCatalogo > 0) {
       const detalle = (matrices.detalleNoClasificadas || [])
@@ -6636,6 +6660,9 @@ function procesarBaseOperativa(data) {
       finalizadas: matrices.totalFinalizadasBase,
       produccionOrdenes: matrices.totalProduccionClasificada,
       duplicados: preparado.duplicados,
+      duplicadosDetectados: Number(controlDuplicados.duplicadosDetectados || controlDuplicados.duplicadosExactos || preparado.duplicados || 0),
+      duplicadosConservados: Number(controlDuplicados.duplicadosConservados || preparado.duplicados || 0),
+      duplicadosOmitidos: Number(controlDuplicados.duplicadosOmitidos || 0),
       partidasNoEncontradas: matrices.partidasNoEncontradas,
       cuadrillasNoEncontradas: matrices.cuadrillasNoEncontradas,
       ranking: !!(ranking && ranking.ok),
