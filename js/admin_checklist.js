@@ -27,7 +27,7 @@
 
     const cards=[
       ['📤','ACTUALIZAR BASE OPERATIVA','Cargar la base madre y reemplazar Producción, Efectividad, Recableados y VTR/GAR','mostrarActualizarBaseOperativa()'],
-      ['🔀','ASIGNACIONES VTR/GAR','Reasignar incidencias a la cuadrilla que originó la reincidencia','mostrarAsignacionesVtrGar()'],
+      ['📡','CALIFICAR VTR/GAR','Confirmar, reasignar, anular y consultar el historial por sede','mostrarAsignacionesVtrGar()'],
       ['📚','CATÁLOGO DE PARTIDAS','Consultar códigos, plataformas, puntajes y grupos utilizados en Producción','mostrarCatalogoPartidasOperativas()'],
       ['👥','ACTUALIZAR USUARIOS','Importar, editar, suspender y cambiar permisos','mostrarImportarUsuarios()'],
       ['🏆','ACTUALIZAR RANKING','Regenerar el ranking con las hojas actuales como respaldo manual','mostrarImportarRanking()']

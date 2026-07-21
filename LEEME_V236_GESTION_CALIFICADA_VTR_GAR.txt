@@ -1,0 +1,65 @@
+MI VISUAL V236 – GESTIÓN CALIFICADA E HISTORIAL VTR/GAR
+
+BASE ESTABLE UTILIZADA
+- MI_VISUAL V235 (solución definitiva de Base Operativa).
+- No se modificaron Producción, Efectividad, Recableados, Análisis Económico ni las visualizaciones generales fuera de lo indicado.
+
+CAMBIOS IMPLEMENTADOS
+1. La carga de la base madre copia también para VTR/GAR:
+   - Número de Documento (DNI)
+   - Cliente
+   - Código de Pedido
+   - Tipo de Partida
+   - Ticket, fecha, cuadrilla ejecutora y sede
+
+2. Actualización acumulativa de incidencias:
+   - Una incidencia existente actualiza sus datos sin perder su calificación.
+   - Una incidencia nueva se registra como PENDIENTE.
+   - El historial anterior no se elimina al cargar una nueva base.
+
+3. Calificación obligatoria por Jefatura:
+   - CONFIRMADO: corresponde a la cuadrilla que atendió.
+   - REASIGNADO: se selecciona la cuadrilla que originó la incidencia.
+   - ANULADO: queda fuera del indicador, pero permanece en el historial.
+   - Solo CONFIRMADO y REASIGNADO se contabilizan en POR VTR/GAR.
+
+4. Pantalla de Jefatura:
+   - Pendientes e historial agrupados por sede.
+   - Datos del cliente visibles en cada tarjeta.
+   - Punto rojo pequeño para editar nuevamente un registro histórico.
+   - Se puede confirmar, reasignar, reactivar o anular.
+   - Cada cambio recalcula POR VTR/GAR y RANKING.
+
+5. Visualización del Técnico:
+   - Debajo de la visualización actual de Efectividad aparece “Detalle de VTR/GAR asignado”.
+   - Muestra únicamente las incidencias confirmadas/reasignadas a su cuadrilla del periodo vigente.
+   - Datos: DNI, cliente, código de pedido, ticket y tipo de partida.
+
+HOJAS
+- BASE_VTR_GAR_DETECTADA: se amplía automáticamente y conserva el historial acumulado.
+- HISTORIAL_VTR_GAR: se crea automáticamente para auditoría de cambios.
+- ASIGNACION_VTR_GAR: se conserva para compatibilidad; no se elimina.
+- POR VTR/GAR: mantiene su estructura actual.
+
+APLICACIÓN
+1. Reemplazar Code.gs en Apps Script.
+2. Crear un nuevo despliegue de Apps Script.
+3. Reemplazar en GitHub:
+   - index.html
+   - js/base_operativa.js
+   - js/indicadores.js
+   - js/admin_checklist.js
+4. Cargar nuevamente la base madre para completar DNI, cliente y tipo de partida en las incidencias.
+5. Ingresar a Administración > CALIFICAR VTR/GAR.
+
+ARCHIVOS MODIFICADOS
+- Code.gs
+- apps_script/Code.gs
+- index.html
+- js/base_operativa.js
+- js/indicadores.js
+- js/admin_checklist.js
+
+NO INCLUIDO
+- .git
+- .github

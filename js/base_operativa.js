@@ -1,4 +1,4 @@
-// MI VISUAL V235 - Conciliación posterior obligatoria de Producción y montos
+// MI VISUAL V236 - Gestión calificada e historial VTR/GAR
 const API_BASE_OPERATIVA = (window.MI_VISUAL_API_URL || "https://script.google.com/macros/s/AKfycbzcbjCLweJNgZXDerdzmMN7Lwotc1G8NWdzoPkaLNGDivAgpYxDkq78xZwPRioSB4XY/exec");
 let BO_REGISTROS = [];
 let BO_ARCHIVO = "";
@@ -75,6 +75,10 @@ function boCss(){
   .bo-kpis{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin-top:12px}.bo-kpi{background:#0f172a;border:1px solid #334155;border-radius:12px;padding:12px}.bo-kpi b{font-size:21px;display:block}.bo-kpi span{font-size:11px;color:#cbd5e1}
   .bo-table-wrap{overflow:auto;max-height:520px;border-radius:12px}.bo-table{width:100%;border-collapse:collapse;font-size:12px;background:#fff;color:#111827}.bo-table th{position:sticky;top:0;background:#1e3a5f;color:#fff;text-align:left;padding:9px;z-index:1}.bo-table td{padding:8px;border-bottom:1px solid #e2e8f0;vertical-align:top}.bo-table tr:nth-child(even){background:#f8fafc}
   .bo-form{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}.bo-form label{font-size:12px;font-weight:800;color:#dbeafe;display:flex;flex-direction:column;gap:5px}.bo-wide{grid-column:1/-1}.bo-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}.bo-note{font-size:12px;color:#fcd34d;line-height:1.5}.bo-badge{display:inline-block;padding:4px 7px;border-radius:999px;background:#dbeafe;color:#1e3a8a;font-size:10px;font-weight:800}.bo-missing{border:1px solid #f59e0b;background:#111827;border-radius:13px;padding:13px;margin-top:10px}.bo-missing h4{margin:0 0 7px;color:#fde68a}.bo-match{font-size:11px;color:#cbd5e1;margin:5px 0}.bo-new-form{margin-top:12px;padding-top:12px;border-top:1px dashed #64748b}.bo-hidden{display:none!important}.bo-dup{border:1px solid #f59e0b;background:#111827;border-radius:13px;padding:13px;margin-top:10px}.bo-dup h4{margin:0 0 7px;color:#fde68a}.bo-dup-grid{display:grid;grid-template-columns:1fr 250px;gap:12px;align-items:center}.bo-dup small{color:#cbd5e1;line-height:1.45}.bo-dup select{width:100%}
+  .bo-vg-kpis{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:9px;margin-bottom:14px}.bo-vg-kpi{background:#0f172a;border:1px solid #334155;border-radius:12px;padding:10px}.bo-vg-kpi b{display:block;font-size:21px}.bo-vg-kpi span{font-size:10px;color:#cbd5e1}
+  .bo-sede{border:1px solid #425979;border-radius:14px;margin:12px 0;overflow:hidden}.bo-sede>summary{cursor:pointer;padding:12px 14px;background:#10213b;font-weight:900}.bo-sede-cuerpo{padding:10px}
+  .bo-inc-card{position:relative;background:#f8fafc;color:#0f172a;border-left:5px solid #f59e0b;border-radius:12px;padding:12px;margin:9px 0}.bo-inc-card.hist{border-left-color:#0f766e}.bo-inc-head{display:flex;justify-content:space-between;gap:8px;align-items:center;margin-bottom:8px}.bo-inc-type{font-weight:900}.bo-inc-data{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px 12px;font-size:12px}.bo-inc-data span{color:#475569}.bo-inc-data b{display:block;color:#111827}.bo-inc-actions{display:flex;gap:7px;flex-wrap:wrap;margin-top:10px}.bo-mini-btn{border:0;border-radius:9px;padding:8px 10px;font-weight:800;cursor:pointer;color:#fff;background:#047857}.bo-mini-btn.alt{background:#1d4ed8}.bo-mini-btn.warn{background:#b45309}.bo-mini-btn.danger{background:#991b1b}.bo-edit-dot{position:absolute;right:8px;top:8px;width:20px;height:20px;border-radius:50%;border:2px solid #fff;background:#ef4444;color:#ef4444;box-shadow:0 0 0 1px #7f1d1d;cursor:pointer;padding:0;font-size:0}.bo-state{display:inline-block;padding:4px 8px;border-radius:999px;font-size:10px;font-weight:900;background:#dbeafe;color:#1e3a8a}.bo-state.anulado{background:#fee2e2;color:#991b1b}.bo-state.reasignado{background:#fef3c7;color:#92400e}.bo-editor{border:2px solid #ef4444;background:#111827;border-radius:14px;padding:14px;margin:12px 0}
+  @media(max-width:760px){.bo-vg-kpis{grid-template-columns:repeat(2,minmax(0,1fr))}.bo-inc-data{grid-template-columns:1fr}}
   @media(max-width:760px){.bo-grid,.bo-form{grid-template-columns:1fr}.bo-kpis{grid-template-columns:repeat(2,minmax(0,1fr))}.bo-wide{grid-column:auto}}
   </style>`;
 }
@@ -140,6 +144,7 @@ function boBuscarHojaValida(wb){
 function boIndiceEncabezados(heads){
   const alias={
     tipoTrabajo:["TIPO DE TRABAJO"],cuadrilla:["CUADRILLA"],fecha:["FECHA"],estado:["ESTADO"],
+    numeroDocumento:["NUMERO DE DOCUMENTO"],cliente:["CLIENTE"],sede:["SEDE"],
     codigoPedido:["CODIGO DE PEDIDO"],ticket:["TICKET"],codigoLiquidacion:["CODIGO DE LIQUIDACION"],
     tipoAtencion:["TIPO DE ATENCION / PAQUETE DE SERVICIO","TIPO DE ATENCION/PAQUETE DE SERVICIO"],tipoPartida:["TIPO DE PARTIDA"],tipoPartidaAlterna:["OBSERVACION ADICIONAL O DE LA CANCELACION"]
   };
@@ -262,6 +267,7 @@ function boLeerHtmlCompleto(texto,archivo,detalleOrigen){
 function boClaveExactaLocal(r){
   return [
     r.fecha||"",boNorm(r.cuadrilla),boNorm(r.estado),boNorm(r.tipoTrabajo),
+    boNorm(r.numeroDocumento),boNorm(r.cliente),boNorm(r.sede),
     boNorm(r.codigoPedido),boNorm(r.ticket),boNorm(r.codigoLiquidacion),
     boNorm(r.tipoAtencion),boNorm(r.tipoPartida),boNorm(r.tipoPartidaAlterna)
   ].join("|");
@@ -335,6 +341,8 @@ function boExtraerRegistros(rows,filaEnc,heads){
     }
     registros.push({
       tipoTrabajo:idx.tipoTrabajo>=0?f[idx.tipoTrabajo]:"",cuadrilla,fecha,estado:estadoRaw,
+      numeroDocumento:idx.numeroDocumento>=0?f[idx.numeroDocumento]:"",cliente:idx.cliente>=0?f[idx.cliente]:"",
+      sede:idx.sede>=0?f[idx.sede]:"",
       codigoPedido:idx.codigoPedido>=0?f[idx.codigoPedido]:"",ticket:idx.ticket>=0?f[idx.ticket]:"",
       codigoLiquidacion:idx.codigoLiquidacion>=0?f[idx.codigoLiquidacion]:"",
       tipoAtencion:idx.tipoAtencion>=0?f[idx.tipoAtencion]:"",tipoPartida:f[idx.tipoPartida],
@@ -651,52 +659,88 @@ Copias omitidas: ${r.duplicadosOmitidos||0}\nConciliación posterior: ${r.concil
 }
 
 async function mostrarAsignacionesVtrGar(){
-  mostrarPantalla(boCss()+`<div class="bo-wrap"><div class="bo-head"><h2>🔀 Asignaciones VTR/GAR</h2><p>Reasigna una incidencia a la cuadrilla que originó la reincidencia. La cuadrilla que la atendió no será perjudicada.</p></div><div id="boAsigContenido" class="bo-card"><div class="bo-msg">Cargando incidencias...</div></div><div class="bo-actions"><button class="bo-btn alt" onclick="mostrarAdministracion()">⬅️ Volver</button></div></div>`);
+  mostrarPantalla(boCss()+`<div class="bo-wrap">
+    <div class="bo-head"><h2>📡 Calificación VTR/GAR</h2><p>Todos los registros deben ser calificados. Solo los confirmados o reasignados ingresan al porcentaje VTR/GAR.</p></div>
+    <div id="boAsigContenido" class="bo-card"><div class="bo-msg">Cargando incidencias...</div></div>
+    <div class="bo-actions"><button class="bo-btn alt" onclick="mostrarAdministracion()">⬅️ Volver</button></div>
+  </div>`);
   try{
-    const r=await boApi({accion:"listarAsignacionesVtrGar",usuario:boUsuario()});
-    BO_INCIDENCIAS=r.incidencias||[];BO_ASIGNACIONES=r.asignaciones||[];BO_CUADRILLAS=r.cuadrillas||[];
-    boRenderAsignaciones();
+    const r=await boApi({accion:"listarGestionVtrGar",usuario:boUsuario()});
+    BO_INCIDENCIAS=r.incidencias||[];BO_CUADRILLAS=r.cuadrillas||[];BO_PREVISTA=r.resumen||{};
+    boRenderGestionVtrGar();
   }catch(e){document.getElementById("boAsigContenido").innerHTML=`<div class="bo-msg bo-error">${boEsc(e.message)}</div>`;}
 }
 function boOpcionesCuadrilla(valor){
-  return `<option value="">Seleccione...</option>`+BO_CUADRILLAS.map(c=>`<option value="${boEsc(c.cuadrilla)}" ${boNorm(c.cuadrilla)===boNorm(valor)?"selected":""}>${boEsc(c.cuadrilla)} · ${boEsc(c.sede||"")}</option>`).join("");
+  const grupos={};
+  BO_CUADRILLAS.forEach(c=>{const sede=c.sede||"SIN SEDE";(grupos[sede]||(grupos[sede]=[])).push(c);});
+  return `<option value="">Seleccione...</option>`+Object.keys(grupos).sort().map(sede=>`<optgroup label="${boEsc(sede)}">${grupos[sede].map(c=>`<option value="${boEsc(c.cuadrilla)}" ${boNorm(c.cuadrilla)===boNorm(valor)?"selected":""}>${boEsc(c.cuadrilla)}</option>`).join("")}</optgroup>`).join("");
 }
-function boRenderAsignaciones(){
-  const pendientes=BO_INCIDENCIAS.filter(x=>!x.asignacionManual);
-  const contenido=document.getElementById("boAsigContenido");
-  contenido.innerHTML=`
-    <div class="bo-form">
-      <label>Tipo<select id="boAsTipo" class="bo-select"><option>VTR</option><option>GAR</option></select></label>
-      <label>Ticket<input id="boAsTicket" class="bo-input" placeholder="VTR-... o GAR-..."></label>
-      <label>Fecha incidencia<input id="boAsFechaInc" type="date" class="bo-input"></label>
-      <label>Código pedido incidencia<input id="boAsCodigoInc" class="bo-input"></label>
-      <label class="bo-wide">Cuadrilla que atendió<select id="boAsEjecutora" class="bo-select">${boOpcionesCuadrilla("")}</select></label>
-      <label class="bo-wide">Cuadrilla que originó<select id="boAsOrigen" class="bo-select">${boOpcionesCuadrilla("")}</select></label>
-      <label>Fecha trabajo origen<input id="boAsFechaOrigen" type="date" class="bo-input"></label>
-      <label>Código pedido origen<input id="boAsCodigoOrigen" class="bo-input"></label>
-      <label class="bo-wide">Observación<textarea id="boAsObs" class="bo-text" rows="3"></textarea></label>
-    </div>
-    <div class="bo-actions"><button class="bo-btn" onclick="boGuardarAsignacion()">Guardar y recalcular</button></div>
-    <h3>Incidencias detectadas sin reasignación (${pendientes.length})</h3>
-    <div class="bo-table-wrap"><table class="bo-table"><thead><tr><th>Tipo</th><th>Fecha</th><th>Ticket</th><th>Pedido</th><th>Cuadrilla que atendió</th><th></th></tr></thead><tbody>${pendientes.map((x,i)=>`<tr><td><span class="bo-badge">${boEsc(x.tipo)}</span></td><td>${boEsc(x.fecha)}</td><td>${boEsc(x.ticket||"-")}</td><td>${boEsc(x.codigoPedido||"-")}</td><td>${boEsc(x.cuadrillaEjecutora)}</td><td><button class="bo-btn" onclick="boSeleccionarIncidencia(${BO_INCIDENCIAS.indexOf(x)})">Asignar</button></td></tr>`).join("")||`<tr><td colspan="6">No hay incidencias pendientes.</td></tr>`}</tbody></table></div>
-    <h3>Asignaciones activas (${BO_ASIGNACIONES.filter(x=>boNorm(x.estado)==="ACTIVO").length})</h3>
-    <div class="bo-table-wrap"><table class="bo-table"><thead><tr><th>Tipo</th><th>Ticket</th><th>Ejecutora</th><th>Origen</th><th>Trabajo origen</th><th>Observación</th><th></th></tr></thead><tbody>${BO_ASIGNACIONES.map((x,i)=>`<tr><td>${boEsc(x.tipo)}</td><td>${boEsc(x.ticket||x.codigoPedidoIncidencia||"-")}</td><td>${boEsc(x.cuadrillaEjecutora||"-")}</td><td>${boEsc(x.cuadrillaOrigen)}</td><td>${boEsc(x.fechaTrabajoOrigen||"")} ${boEsc(x.codigoPedidoOrigen||"")}</td><td>${boEsc(x.observacion||"")}</td><td>${boNorm(x.estado)==="ACTIVO"?`<button class="bo-btn warn" onclick="boAnularAsignacion('${boEsc(x.id)}')">Anular</button>`:boEsc(x.estado)}</td></tr>`).join("")||`<tr><td colspan="7">Sin asignaciones.</td></tr>`}</tbody></table></div>`;
+function boEstadoVg(estado){
+  const e=boNorm(estado||"PENDIENTE");
+  const cls=e==="ANULADO"?"anulado":e==="REASIGNADO"?"reasignado":"";
+  return `<span class="bo-state ${cls}">${boEsc(e)}</span>`;
 }
-function boSeleccionarIncidencia(i){
+function boDetalleVg(x){
+  return `<div class="bo-inc-data">
+    <div><span>Fecha</span><b>${boEsc(x.fecha||"-")}</b></div><div><span>Ticket</span><b>${boEsc(x.ticket||"-")}</b></div>
+    <div><span>DNI</span><b>${boEsc(x.numeroDocumento||"-")}</b></div><div><span>Cliente</span><b>${boEsc(x.cliente||"-")}</b></div>
+    <div><span>Código de pedido</span><b>${boEsc(x.codigoPedido||"-")}</b></div><div><span>Tipo de partida</span><b>${boEsc(x.tipoPartida||"-")}</b></div>
+    <div><span>Cuadrilla que atendió</span><b>${boEsc(x.cuadrillaEjecutora||"-")}</b></div><div><span>Responsable</span><b>${boEsc(x.cuadrillaResponsable||"PENDIENTE")}</b></div>
+  </div>`;
+}
+function boTarjetaVg(i,historial){
+  const x=BO_INCIDENCIAS[i];
+  return `<div class="bo-inc-card ${historial?"hist":""}">
+    ${historial?`<button class="bo-edit-dot" title="Editar asignación" onclick="boAbrirEditorVtrGar(${i})">Editar</button>`:""}
+    <div class="bo-inc-head"><span class="bo-inc-type">${boEsc(x.tipo)} · ${boEsc(x.sedeEjecutora||"SIN SEDE")}</span>${boEstadoVg(x.estadoCalificacion)}</div>
+    ${boDetalleVg(x)}
+    ${x.observacion?`<div class="bo-match"><b>Observación:</b> ${boEsc(x.observacion)}</div>`:""}
+    ${!historial?`<div class="bo-inc-actions"><button class="bo-mini-btn" onclick="boCalificarVtrGar(${i},'CORRESPONDE')">Sí corresponde</button><button class="bo-mini-btn alt" onclick="boAbrirEditorVtrGar(${i})">Asignar a otra cuadrilla</button><button class="bo-mini-btn danger" onclick="boCalificarVtrGar(${i},'ANULAR')">Anular</button></div>`:""}
+  </div>`;
+}
+function boAgruparIndicesVg(indices,historial){
+  const grupos={};
+  indices.forEach(i=>{const x=BO_INCIDENCIAS[i];const sede=(historial?(x.sedeResponsable||x.sedeEjecutora):x.sedeEjecutora)||"SIN SEDE";(grupos[sede]||(grupos[sede]=[])).push(i);});
+  return Object.keys(grupos).sort().map(sede=>`<details class="bo-sede" open><summary>${boEsc(sede)} · ${grupos[sede].length} registro(s)</summary><div class="bo-sede-cuerpo">${grupos[sede].map(i=>boTarjetaVg(i,historial)).join("")}</div></details>`).join("")||`<div class="bo-msg">No hay registros.</div>`;
+}
+function boRenderGestionVtrGar(){
+  const pendiente=[],historial=[];
+  BO_INCIDENCIAS.forEach((x,i)=>boNorm(x.estadoCalificacion)==="PENDIENTE"?pendiente.push(i):historial.push(i));
+  historial.sort((a,b)=>(BO_INCIDENCIAS[b].fechaISO||"").localeCompare(BO_INCIDENCIAS[a].fechaISO||""));
+  const r=BO_PREVISTA||{};
+  document.getElementById("boAsigContenido").innerHTML=`
+    <div class="bo-vg-kpis"><div class="bo-vg-kpi"><b>${r.pendientes||0}</b><span>Pendientes</span></div><div class="bo-vg-kpi"><b>${r.confirmados||0}</b><span>Confirmados</span></div><div class="bo-vg-kpi"><b>${r.reasignados||0}</b><span>Reasignados</span></div><div class="bo-vg-kpi"><b>${r.anulados||0}</b><span>Anulados</span></div></div>
+    <div id="boEditorVtrGar"></div>
+    <h3>🔴 Pendientes de calificar (${pendiente.length})</h3>${boAgruparIndicesVg(pendiente,false)}
+    <h3 style="margin-top:20px">📚 Historial calificado (${historial.length})</h3><p class="bo-note">El punto rojo permite editar, reasignar, reactivar o anular nuevamente.</p>${boAgruparIndicesVg(historial,true)}`;
+}
+function boAbrirEditorVtrGar(i){
   const x=BO_INCIDENCIAS[i];if(!x)return;
-  document.getElementById("boAsTipo").value=x.tipo||"VTR";document.getElementById("boAsTicket").value=x.ticket||"";
-  document.getElementById("boAsFechaInc").value=x.fechaISO||"";document.getElementById("boAsCodigoInc").value=x.codigoPedido||"";
-  document.getElementById("boAsEjecutora").value=x.cuadrillaEjecutora||"";document.getElementById("boAsOrigen").focus();
-  window.scrollTo({top:0,behavior:"smooth"});
+  const decision=boNorm(x.estadoCalificacion)==="ANULADO"?"CORRESPONDE":(x.cuadrillaResponsable&&boNorm(x.cuadrillaResponsable)!==boNorm(x.cuadrillaEjecutora)?"REASIGNAR":"CORRESPONDE");
+  const div=document.getElementById("boEditorVtrGar");
+  div.innerHTML=`<div class="bo-editor"><h3 style="margin-top:0">✏️ Editar VTR/GAR</h3>${boDetalleVg(x)}<div class="bo-form" style="margin-top:12px">
+    <label>Decisión<select id="boVgDecision" class="bo-select" onchange="boCambiarDecisionVg()"><option value="CORRESPONDE" ${decision==="CORRESPONDE"?"selected":""}>Sí corresponde a la cuadrilla que atendió</option><option value="REASIGNAR" ${decision==="REASIGNAR"?"selected":""}>No corresponde / asignar otra cuadrilla</option><option value="ANULAR">Anular registro</option></select></label>
+    <label id="boVgResponsableLabel">Cuadrilla responsable<select id="boVgResponsable" class="bo-select">${boOpcionesCuadrilla(x.cuadrillaResponsable||"")}</select></label>
+    <label class="bo-wide">Observación<textarea id="boVgObs" class="bo-text" rows="3">${boEsc(x.observacion||"")}</textarea></label>
+  </div><div class="bo-actions"><button class="bo-btn" onclick="boGuardarCalificacionVg(${i})">Guardar y recalcular</button><button class="bo-btn alt" onclick="document.getElementById('boEditorVtrGar').innerHTML=''">Cancelar</button></div></div>`;
+  boCambiarDecisionVg();div.scrollIntoView({behavior:"smooth",block:"start"});
 }
-async function boGuardarAsignacion(){
-  const payload={accion:"guardarAsignacionVtrGar",usuario:boUsuario(),tipo:document.getElementById("boAsTipo").value,ticket:document.getElementById("boAsTicket").value,fechaIncidencia:document.getElementById("boAsFechaInc").value,codigoPedidoIncidencia:document.getElementById("boAsCodigoInc").value,cuadrillaEjecutora:document.getElementById("boAsEjecutora").value,cuadrillaOrigen:document.getElementById("boAsOrigen").value,fechaTrabajoOrigen:document.getElementById("boAsFechaOrigen").value,codigoPedidoOrigen:document.getElementById("boAsCodigoOrigen").value,observacion:document.getElementById("boAsObs").value};
-  if(!payload.cuadrillaOrigen){alert("Seleccione la cuadrilla que originó la incidencia.");return;}
-  try{await boApi(payload);alert("Asignación guardada. VTR/GAR y Ranking fueron recalculados.");mostrarAsignacionesVtrGar();}catch(e){alert(e.message);}
+function boCambiarDecisionVg(){const d=document.getElementById("boVgDecision");const l=document.getElementById("boVgResponsableLabel");if(l)l.style.display=d&&d.value==="REASIGNAR"?"flex":"none";}
+async function boCalificarVtrGar(i,decision){
+  const x=BO_INCIDENCIAS[i];if(!x)return;
+  if(decision==="ANULAR"&&!confirm("¿Anular esta incidencia? Dejará de contabilizarse, pero permanecerá en el historial."))return;
+  if(decision==="CORRESPONDE"&&!confirm(`¿Confirmar que ${x.cuadrillaEjecutora} es responsable de esta ${x.tipo}?`))return;
+  try{await boApi({accion:"calificarIncidenciaVtrGar",usuario:boUsuario(),clave:x.clave,decision,observacion:""});mostrarAsignacionesVtrGar();}catch(e){alert(e.message);}
 }
-async function boAnularAsignacion(id){
-  if(!confirm("¿Anular esta asignación y volver a contabilizar la incidencia a la cuadrilla que la atendió?"))return;
-  try{await boApi({accion:"anularAsignacionVtrGar",usuario:boUsuario(),id});mostrarAsignacionesVtrGar();}catch(e){alert(e.message);}
+async function boGuardarCalificacionVg(i){
+  const x=BO_INCIDENCIAS[i];if(!x)return;
+  const decision=document.getElementById("boVgDecision").value;
+  const responsable=document.getElementById("boVgResponsable").value;
+  if(decision==="REASIGNAR"&&!responsable){alert("Seleccione la cuadrilla responsable.");return;}
+  try{
+    await boApi({accion:"calificarIncidenciaVtrGar",usuario:boUsuario(),clave:x.clave,decision,cuadrillaResponsable:responsable,observacion:document.getElementById("boVgObs").value});
+    alert("Calificación guardada. VTR/GAR y Ranking fueron recalculados.");mostrarAsignacionesVtrGar();
+  }catch(e){alert(e.message);}
 }
 
 async function mostrarCatalogoPartidasOperativas(){
