@@ -1,0 +1,15 @@
+MI VISUAL V240 - FILTROS GERENCIA LIMA
+
+Base: V239 estable.
+
+Cambio exclusivo de frontend:
+- El perfil GERENCIA LIMA usa en Dashboard Jefatura exactamente los mismos filtros de Jefatura General:
+  sede, indicador y cuadrilla.
+- El perfil GERENCIA LIMA usa en Ranking exactamente el mismo filtro por sede de Jefatura General.
+- La cabecera identifica la vista como GERENCIA LIMA para evitar confusión.
+- Se mantienen intactos cálculos, datos, Apps Script, Google Sheets y demás módulos.
+
+Archivos modificados:
+- index.html
+- js/dashboards.js
+- js/ranking.js

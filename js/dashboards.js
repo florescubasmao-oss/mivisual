@@ -2473,9 +2473,24 @@ function mv199AbrirCuadrilla(cuadrilla){
     mv199RenderJefatura();
 }
 
+function mv240PerfilEjecutivoActual(){
+    return mv4Norm(localStorage.getItem("perfil") || "");
+}
+
+function mv240EsGerenciaLima(){
+    return mv240PerfilEjecutivoActual() === "GERENCIA LIMA";
+}
+
+function mv240RotuloVistaEjecutiva(){
+    return mv240EsGerenciaLima()
+        ? {icono:"🏢", titulo:"GERENCIA LIMA"}
+        : {icono:"👔", titulo:"JEFATURA"};
+}
+
 function mv199RenderJefatura(){
     const listaCompleta = MV198_DASH_JEFATURA_LISTA || [];
     const f = MV199_DASH_JEFATURA_FILTROS;
+    const rotuloVista = mv240RotuloVistaEjecutiva();
     const listaSede = f.sede === "TODAS" ? listaCompleta : listaCompleta.filter(x=>mv4Norm(x.sede)===f.sede);
     const seleccion = f.cuadrilla !== "TODAS" ? listaSede.find(x=>x.cuadrilla===f.cuadrilla) : null;
     const grupos = mv4AgruparPorSede(listaSede);
@@ -2483,7 +2498,7 @@ function mv199RenderJefatura(){
     const tituloZona = f.sede === "TODAS" ? "ZONA NORTE" : f.sede;
     let html = `<div class="mv4-page">
         <div class="mv4-top-card">
-            <div class="mv4-top-role">👔 JEFATURA</div>
+            <div class="mv4-top-role">${rotuloVista.icono} ${rotuloVista.titulo}</div>
             <div class="mv4-top-sede">${tituloZona}</div>
             <div class="mv4-top-sub">${listaSede.length} cuadrillas</div>
         </div>
@@ -2515,11 +2530,15 @@ function mv198RenderJefatura(seleccionada){
 function mv198CambiarCuadrillaJefatura(valor){ mv199CambiarFiltroJefatura("cuadrilla",valor); }
 
 async function mostrarDashboardJefatura(){
-    mostrarPantalla(`<div class="mv4-page"><h2 class="mv4-title">👔 JEFATURA</h2><div class="mv4-loading">Cargando Zona Norte...</div></div>`);
+    const rotuloVista = mv240RotuloVistaEjecutiva();
+    mostrarPantalla(`<div class="mv4-page"><h2 class="mv4-title">${rotuloVista.icono} ${rotuloVista.titulo}</h2><div class="mv4-loading">Cargando Zona Norte...</div></div>`);
     try{
         const listaCompleta = await mv4ObtenerRanking();
         MV198_DASH_JEFATURA_LISTA = mv591ListaZonaNorte(listaCompleta);
         MV199_DASH_JEFATURA_FILTROS = {sede:"TODAS", indicador:"RESUMEN", cuadrilla:"TODAS"};
         mv199RenderJefatura();
-    }catch(e){ mostrarPantalla(`<div class="mv4-page"><h2>👔 Jefatura</h2><div class="mv4-error">${e.message}</div></div>`); }
+    }catch(e){
+        const rotuloError = mv240RotuloVistaEjecutiva();
+        mostrarPantalla(`<div class="mv4-page"><h2>${rotuloError.icono} ${rotuloError.titulo}</h2><div class="mv4-error">${e.message}</div></div>`);
+    }
 }

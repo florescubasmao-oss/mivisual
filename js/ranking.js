@@ -297,7 +297,16 @@ let MV239_RANKING_JEFATURA_SEDE = "TODAS";
 
 function mv239EsVistaJefaturaRanking(perfil){
     const p = normalizarTextoRanking(perfil);
+    // V240: Gerencia Lima usa exactamente la misma vista ejecutiva y filtros
+    // que Jefatura General. Se conserva el alcance previo para los demás
+    // perfiles ejecutivos que ya utilizaban esta pantalla.
+    if(p === "GERENCIA LIMA") return true;
     return p !== "TECNICO" && p !== "SUPERVISOR";
+}
+
+function mv240RotuloRankingEjecutivo(){
+    const perfil = normalizarTextoRanking(localStorage.getItem("perfil") || "");
+    return perfil === "GERENCIA LIMA" ? "GERENCIA LIMA" : "JEFATURA";
 }
 
 function mv239SedesRanking(lista){
@@ -353,10 +362,12 @@ function mv239RenderRankingJefatura(){
     const ordenada = mv239OrdenarRanking(listaFiltrada, tipoPuesto);
     const referencia = ordenada[0] || listaCompleta[0];
     const titulo = sede === "TODAS" ? "🌎 RANKING ZONA NORTE" : `🏢 RANKING SEDE ${sede}`;
+    const rotuloPerfil = mv240RotuloRankingEjecutivo();
 
     let html = `
         <div style="padding:18px;max-width:980px;margin:auto;">
             <h2 style="text-align:center;margin-bottom:6px;">${titulo}</h2>
+            <div style="text-align:center;font-size:12px;font-weight:800;opacity:.72;margin-bottom:8px;">VISTA ${rotuloPerfil}</div>
             ${encabezadoPeriodoRanking(referencia)}
             ${mv239FiltroSedeRanking(listaCompleta, sede)}
             ${listaTarjetasRanking(ordenada, tipoPuesto)}
