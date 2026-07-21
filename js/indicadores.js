@@ -483,33 +483,108 @@ async function mostrarRecableado(){
 
 async function mostrarVTRGAR(){
     document.getElementById("menuPrincipal").style.display = "none";
-    const cuadrilla = localStorage.getItem("cuadrilla");
+    const cuadrilla = localStorage.getItem("cuadrilla") || "";
+    const usuario = localStorage.getItem("usuario") || localStorage.getItem("correo") || "";
     const url = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRpVkCmSvopgPByWsEX6nkuAT6mf3yD2_Cywpl9pFSZEqYpxmprDePPeV0KNgT14YpEP6gkVlvOAtZy/pub?gid=1778246699&single=true&output=csv";
+    const api = window.MI_VISUAL_API_URL || "https://script.google.com/macros/s/AKfycbzcbjCLweJNgZXDerdzmMN7Lwotc1G8NWdzoPkaLNGDivAgpYxDkq78xZwPRioSB4XY/exec";
+
     mostrarPantalla(`<div class="mv4-page"><h2 class="mv4-title">📡 VTR / GAR</h2><div class="mv4-loading">Cargando información...</div></div>`);
-    const respuesta = await fetch(url + "&t=" + Date.now());
-    const filas = (await respuesta.text()).split("\n");
-    const registros=[]; let totalGar=0,totalVtr=0,totalOrd=0;
+
+    let filas = [];
+    let detalleVtrGar = [];
+    let errorDetalle = false;
+
+    try{
+        const resultados = await Promise.allSettled([
+            fetch(url + "&t=" + Date.now()).then(r => r.text()),
+            fetch(api, {
+                method: "POST",
+                headers: {"Content-Type":"text/plain;charset=utf-8"},
+                body: JSON.stringify({accion:"listarDetalleVtrGarTecnico", usuario})
+            }).then(r => r.json())
+        ]);
+
+        if(resultados[0].status === "fulfilled"){
+            filas = resultados[0].value.split("\n");
+        }
+
+        if(resultados[1].status === "fulfilled" && resultados[1].value && resultados[1].value.ok){
+            detalleVtrGar = resultados[1].value.incidencias || [];
+        }else{
+            errorDetalle = true;
+        }
+    }catch(e){
+        errorDetalle = true;
+    }
+
+    const registros=[];
+    let totalGar=0,totalVtr=0,totalOrd=0;
+
     for(let i=1;i<filas.length;i++){
         const d=filas[i].split(",");
         if(d[2] && d[2].trim() === cuadrilla.trim()){
             const fecha=d[3], ordenes=Number(d[4])||0, gar=Number(d[5])||0, vtr=Number(d[6])||0, pct=indParsePct(d[8]);
-            registros.push({fecha,ordenes,gar,vtr,pct}); totalGar+=gar; totalVtr+=vtr; totalOrd+=ordenes;
+            registros.push({fecha,ordenes,gar,vtr,pct});
+            totalGar+=gar;
+            totalVtr+=vtr;
+            totalOrd+=ordenes;
         }
     }
+
     const pctMes = totalOrd>0 ? ((totalGar+totalVtr)/totalOrd)*100 : 0;
+    const esc = v => (v == null ? "" : String(v)).replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+
     let html = indHero("📡", "VTR / GAR", `${indSemaforo("vtrgar", pctMes)} ${pctMes.toFixed(2)}%`, "≤ 3%", "") + `
+        <style>
+            .ind-vg-list{display:grid;gap:10px}
+            .ind-vg-card{background:#fff;color:#0f172a;border-left:5px solid #ef4444;border-radius:13px;padding:12px;box-shadow:0 7px 18px rgba(2,6,23,.18)}
+            .ind-vg-head{display:flex;justify-content:space-between;gap:8px;font-weight:900;margin-bottom:8px}
+            .ind-vg-type{display:inline-flex;align-items:center;gap:6px}
+            .ind-vg-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px 12px;font-size:12px}
+            .ind-vg-grid span{color:#64748b;display:block;margin-bottom:2px}
+            .ind-vg-grid b{color:#111827;word-break:break-word}
+            @media(max-width:650px){.ind-vg-grid{grid-template-columns:1fr}}
+        </style>
         <div class="mv4-kpi-grid">
             ${indMini("🛡️","GAR",totalGar)}
             ${indMini("📺","VTR",totalVtr)}
             ${indMini("✅","Finalizadas",totalOrd)}
         </div>
         <h2 class="mv4-section-title">📅 Historial</h2>`;
+
     registros.reverse().forEach(r=>{
         html += indHist(r.fecha, r.pct.toFixed(2)+"%", indSemaforo("vtrgar", r.pct), `
             <div class="mv4-day-row"><span>GAR</span><b>${r.gar}</b></div>
             <div class="mv4-day-row"><span>VTR</span><b>${r.vtr}</b></div>
             <div class="mv4-day-row"><span>Finalizadas</span><b>${r.ordenes}</b></div>`);
     });
-    html += `<button class="button_1" onclick="volverInicio()">⬅️ Volver al menú</button></div>`;
+
+    html += `<h2 class="mv4-section-title">👤 Clientes asociados a tus VTR/GAR</h2><div class="ind-vg-list">`;
+
+    if(detalleVtrGar.length){
+        detalleVtrGar.forEach(x=>{
+            const icono = String(x.tipo || "").toUpperCase() === "GAR" ? "🛡️" : "📺";
+            html += `<div class="ind-vg-card">
+                <div class="ind-vg-head">
+                    <span class="ind-vg-type">${icono} ${esc(x.tipo || "VTR/GAR")}</span>
+                    <span>📅 ${esc(x.fecha || "-")}</span>
+                </div>
+                <div class="ind-vg-grid">
+                    <div><span>Número de documento (DNI)</span><b>${esc(x.numeroDocumento || "-")}</b></div>
+                    <div><span>Cliente</span><b>${esc(x.cliente || "-")}</b></div>
+                    <div><span>Código de pedido / cliente</span><b>${esc(x.codigoPedido || "-")}</b></div>
+                    <div><span>Ticket</span><b>${esc(x.ticket || "-")}</b></div>
+                    <div style="grid-column:1/-1"><span>Tipo de partida</span><b>${esc(x.tipoPartida || "-")}</b></div>
+                </div>
+            </div>`;
+        });
+    }else if(errorDetalle){
+        html += `<div class="mv4-day-card"><div class="mv4-day-row"><span>No se pudo cargar el detalle de clientes. Vuelve a ingresar a esta opción.</span></div></div>`;
+    }else{
+        html += `<div class="mv4-day-card"><div class="mv4-day-row"><span>No tienes VTR/GAR confirmados o reasignados a tu cuadrilla.</span></div></div>`;
+    }
+
+    html += `</div><button class="button_1" onclick="volverInicio()">⬅️ Volver al menú</button></div>`;
     mostrarPantalla(html);
 }
+

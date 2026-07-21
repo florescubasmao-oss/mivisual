@@ -1,0 +1,15 @@
+MI VISUAL V237 - DETALLE DE CLIENTES EN VTR/GAR DEL TÉCNICO
+
+Base: V236 estable.
+
+Cambio puntual:
+- En la opción VTR/GAR del perfil Técnico, debajo del resumen e historial existente, se muestran las incidencias confirmadas o reasignadas a su cuadrilla.
+- Datos mostrados: tipo VTR/GAR, fecha, DNI, cliente, código de pedido/cliente, ticket y tipo de partida.
+- No se modifica el cálculo de VTR/GAR, Producción, Efectividad, Recableados, Ranking ni Análisis Económico.
+
+Archivos modificados:
+- js/indicadores.js
+- index.html (solo versión de caché)
+
+Apps Script: no requiere cambios.
+Nuevo despliegue Apps Script: no.
