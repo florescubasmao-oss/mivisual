@@ -1,4 +1,4 @@
-// MI VISUAL V231 - Resolución asistida de partidas sin catálogo
+// MI VISUAL V232 - Lectura íntegra de finalizadas y control de conciliación
 const API_BASE_OPERATIVA = (window.MI_VISUAL_API_URL || "https://script.google.com/macros/s/AKfycbzcbjCLweJNgZXDerdzmMN7Lwotc1G8NWdzoPkaLNGDivAgpYxDkq78xZwPRioSB4XY/exec");
 let BO_REGISTROS = [];
 let BO_ARCHIVO = "";
@@ -7,6 +7,7 @@ let BO_ASIGNACIONES = [];
 let BO_CUADRILLAS = [];
 let BO_PREVISTA = null;
 let BO_CATALOGO_OPCIONES = {plataformas:[],grupos:[],estados:[]};
+let BO_CONTROL_LECTURA = {registrosValidos:0,finalizadasPeriodo:0,finalizadasLeidas:0,duplicadosExactos:0};
 
 function boNorm(v){
   return (v == null ? "" : String(v)).toUpperCase().normalize("NFD")
@@ -75,7 +76,7 @@ function boCss(){
 }
 
 function mostrarActualizarBaseOperativa(){
-  BO_REGISTROS=[]; BO_ARCHIVO="";
+  BO_REGISTROS=[]; BO_ARCHIVO=""; BO_CONTROL_LECTURA={registrosValidos:0,finalizadasPeriodo:0,finalizadasLeidas:0,duplicadosExactos:0};
   mostrarPantalla(boCss()+`<div class="bo-wrap">
     <div class="bo-head"><h2>📤 Actualizar base operativa</h2><p>Una sola carga reemplaza completamente Producción, Efectividad, % Recableado y VTR/GAR del periodo detectado.</p></div>
     <div class="bo-card">
@@ -94,23 +95,44 @@ function mostrarActualizarBaseOperativa(){
   </div>`);
 }
 
+function boWorksheetAMatrizCompleta(ws){
+  if(!ws || !ws["!ref"]) return [];
+  const rango=XLSX.utils.decode_range(ws["!ref"]);
+  const filas=[];
+  for(let r=rango.s.r;r<=rango.e.r;r++){
+    const fila=[];
+    for(let c=rango.s.c;c<=rango.e.c;c++){
+      const celda=ws[XLSX.utils.encode_cell({r,c})];
+      if(!celda){fila.push("");continue;}
+      let valor=celda.v;
+      if(valor==null && celda.w!=null)valor=celda.w;
+      fila.push(valor==null?"":valor);
+    }
+    filas.push(fila);
+  }
+  return filas;
+}
+
 function boBuscarHojaValida(wb){
   const requeridos=["CUADRILLA","FECHA","ESTADO","TIPO DE PARTIDA"];
   let mejor=null;
   wb.SheetNames.forEach(nombre=>{
     const ws=wb.Sheets[nombre];
-    const rows=XLSX.utils.sheet_to_json(ws,{header:1,defval:"",raw:true});
+    const rows=boWorksheetAMatrizCompleta(ws);
     if(!rows.length) return;
-    const max=Math.min(rows.length,15);
+    const max=Math.min(rows.length,25);
     for(let i=0;i<max;i++){
       const heads=(rows[i]||[]).map(boNorm);
       const score=requeridos.filter(h=>heads.includes(h)).length;
-      if(!mejor || score>mejor.score) mejor={nombre,rows,filaEnc:i,heads,score};
+      if(!mejor || score>mejor.score || (score===mejor.score && rows.length>(mejor.rows||[]).length)){
+        mejor={nombre,rows,filaEnc:i,heads,score};
+      }
     }
   });
   if(!mejor || mejor.score<4) throw new Error("No se encontraron los encabezados Cuadrilla, Fecha, Estado y Tipo de Partida");
   return mejor;
 }
+
 function boIndiceEncabezados(heads){
   const alias={
     tipoTrabajo:["TIPO DE TRABAJO"],cuadrilla:["CUADRILLA"],fecha:["FECHA"],estado:["ESTADO"],
@@ -187,50 +209,142 @@ function boTablaHtmlAMatriz(texto){
   return mejor;
 }
 
-function boLeerHtmlDirecto(texto,archivo,detalleOrigen){
+function boResultadoHtmlDirecto(texto){
   const sel=boTablaHtmlAMatriz(texto);
-  const resultado=boExtraerRegistros(sel.rows,sel.filaEnc,sel.heads);
-  boAplicarLecturaLocal(
-    resultado,
-    archivo,
-    (detalleOrigen||"")+`${detalleOrigen?"\n":""}Lectura directa de tabla HTML`
-  );
-  return resultado;
+  return boExtraerRegistros(sel.rows,sel.filaEnc,sel.heads);
 }
+
+function boResultadoWorkbookLocal(wb){
+  const sel=boBuscarHojaValida(wb);
+  return {resultado:boExtraerRegistros(sel.rows,sel.filaEnc,sel.heads),nombre:sel.nombre};
+}
+
+function boPuntajeResultadoLectura(resultado){
+  const c=(resultado&&resultado.control)||{};
+  return (Number(c.finalizadasPeriodo)||0)*1000000+(Number(resultado&&resultado.registros&&resultado.registros.length)||0);
+}
+
+function boLeerHtmlCompleto(texto,archivo,detalleOrigen){
+  let directo=null,alterno=null,errorDirecto=null,errorAlterno=null;
+  try{directo=boResultadoHtmlDirecto(texto);}catch(e){errorDirecto=e;}
+  try{
+    const wb=XLSX.read(texto,{type:"string",cellDates:true});
+    alterno=boResultadoWorkbookLocal(wb);
+  }catch(e){errorAlterno=e;}
+
+  if(!directo && !alterno){
+    throw errorDirecto||errorAlterno||new Error("No se pudo leer la tabla HTML.");
+  }
+
+  let elegido,detalle;
+  if(directo && alterno){
+    if(boPuntajeResultadoLectura(alterno.resultado)>boPuntajeResultadoLectura(directo)){
+      elegido=alterno.resultado;
+      detalle=`Lectura Excel HTML completa · Hoja: ${alterno.nombre}`;
+    }else{
+      elegido=directo;
+      detalle="Lectura directa de tabla HTML";
+    }
+  }else if(directo){
+    elegido=directo;detalle="Lectura directa de tabla HTML";
+  }else{
+    elegido=alterno.resultado;detalle=`Lectura Excel HTML completa · Hoja: ${alterno.nombre}`;
+  }
+
+  boAplicarLecturaLocal(elegido,archivo,(detalleOrigen||"")+`${detalleOrigen?"\n":""}${detalle}`);
+  return elegido;
+}
+
+function boClaveExactaLocal(r){
+  return [
+    r.fecha||"",boNorm(r.cuadrilla),boNorm(r.estado),boNorm(r.tipoTrabajo),
+    boNorm(r.codigoPedido),boNorm(r.ticket),boNorm(r.codigoLiquidacion),
+    boNorm(r.tipoAtencion),boNorm(r.tipoPartida),boNorm(r.tipoPartidaAlterna)
+  ].join("|");
+}
+
+function boCalcularControlLectura(registros,finalizadasLeidas,corte){
+  const p=(corte||"").split("-");
+  const anio=p.length===3?Number(p[0]):0;
+  const mes=p.length===3?Number(p[1]):0;
+  let finalizadasPeriodo=0;
+  const vistos={};
+  let duplicadosExactos=0;
+  registros.forEach(r=>{
+    if(boNorm(r.estado)==="FINALIZADA"){
+      const fp=(r.fecha||"").split("-");
+      if(fp.length===3 && Number(fp[0])===anio && Number(fp[1])===mes && r.fecha<=corte)finalizadasPeriodo++;
+    }
+    const k=boClaveExactaLocal(r);
+    if(vistos[k])duplicadosExactos++;
+    vistos[k]=true;
+  });
+  return {
+    registrosValidos:registros.length,
+    finalizadasPeriodo,
+    finalizadasLeidas:Number(finalizadasLeidas)||0,
+    duplicadosExactos
+  };
+}
+
 function boExtraerRegistros(rows,filaEnc,heads){
   const idx=boIndiceEncabezados(heads);
   const faltan=["cuadrilla","fecha","estado","tipoPartida"].filter(k=>idx[k]<0);
   if(faltan.length) throw new Error("Faltan columnas obligatorias: "+faltan.join(", "));
-  const registros=[];let omitidas=0;
+  const registros=[];let omitidas=0,finalizadasLeidas=0,finalizadasOmitidas=0;
   for(let i=filaEnc+1;i<rows.length;i++){
-    const f=rows[i]||[],fecha=boFechaISO(f[idx.fecha]),cuadrilla=(f[idx.cuadrilla]||"").toString().trim(),estado=(f[idx.estado]||"").toString().trim();
-    if(!fecha||!cuadrilla||!estado){omitidas++;continue;}
+    const f=rows[i]||[];
+    const estadoRaw=(f[idx.estado]||"").toString().trim();
+    const esFinalizada=boNorm(estadoRaw)==="FINALIZADA";
+    if(esFinalizada)finalizadasLeidas++;
+    const fecha=boFechaISO(f[idx.fecha]);
+    const cuadrilla=(f[idx.cuadrilla]||"").toString().trim();
+    if(!fecha||!cuadrilla||!estadoRaw){
+      omitidas++;
+      if(esFinalizada)finalizadasOmitidas++;
+      continue;
+    }
     registros.push({
-      tipoTrabajo:idx.tipoTrabajo>=0?f[idx.tipoTrabajo]:"",cuadrilla,fecha,estado,
+      tipoTrabajo:idx.tipoTrabajo>=0?f[idx.tipoTrabajo]:"",cuadrilla,fecha,estado:estadoRaw,
       codigoPedido:idx.codigoPedido>=0?f[idx.codigoPedido]:"",ticket:idx.ticket>=0?f[idx.ticket]:"",
       codigoLiquidacion:idx.codigoLiquidacion>=0?f[idx.codigoLiquidacion]:"",
-      tipoAtencion:idx.tipoAtencion>=0?f[idx.tipoAtencion]:"",tipoPartida:f[idx.tipoPartida],tipoPartidaAlterna:idx.tipoPartidaAlterna>=0?f[idx.tipoPartidaAlterna]:""
+      tipoAtencion:idx.tipoAtencion>=0?f[idx.tipoAtencion]:"",tipoPartida:f[idx.tipoPartida],
+      tipoPartidaAlterna:idx.tipoPartidaAlterna>=0?f[idx.tipoPartidaAlterna]:""
     });
   }
   if(!registros.length) throw new Error("No se encontraron filas válidas.");
   const finalizadas=registros.filter(r=>boNorm(r.estado)==="FINALIZADA"&&r.fecha).map(r=>r.fecha).sort();
   if(!finalizadas.length) throw new Error("La base no contiene órdenes FINALIZADAS; no se puede definir la fecha de corte.");
-  return {registros,omitidas,corte:finalizadas[finalizadas.length-1]};
+  const corte=finalizadas[finalizadas.length-1];
+  const control=boCalcularControlLectura(registros,finalizadasLeidas,corte);
+  if(finalizadasOmitidas>0){
+    throw new Error(`La lectura quedó incompleta: ${finalizadasOmitidas} orden(es) FINALIZADAS no tienen Fecha o Cuadrilla válida. No se modificó ninguna hoja.`);
+  }
+  return {registros,omitidas,corte,control};
 }
+
 function boAplicarLecturaLocal(resultado,archivo,detalleOrigen){
-  const {registros,omitidas,corte}=resultado;
+  const {registros,omitidas,corte,control}=resultado;
   BO_REGISTROS=registros;BO_ARCHIVO=archivo||"BASE_OPERATIVA";
-  document.getElementById("boResumen").innerHTML=`<div class="bo-kpis"><div class="bo-kpi"><b>${registros.length}</b><span>Filas válidas</span></div><div class="bo-kpi"><b>${boFechaVisible(corte)}</b><span>Último día finalizado</span></div><div class="bo-kpi"><b>${new Set(registros.map(r=>boNorm(r.cuadrilla))).size}</b><span>Cuadrillas detectadas</span></div><div class="bo-kpi"><b>${omitidas}</b><span>Filas omitidas</span></div></div>`;
+  BO_CONTROL_LECTURA=control||boCalcularControlLectura(registros,0,corte);
+  document.getElementById("boResumen").innerHTML=`<div class="bo-kpis">
+    <div class="bo-kpi"><b>${registros.length}</b><span>Filas válidas</span></div>
+    <div class="bo-kpi"><b>${BO_CONTROL_LECTURA.finalizadasPeriodo}</b><span>Finalizadas del periodo</span></div>
+    <div class="bo-kpi"><b>${boFechaVisible(corte)}</b><span>Último día finalizado</span></div>
+    <div class="bo-kpi"><b>${new Set(registros.map(r=>boNorm(r.cuadrilla))).size}</b><span>Cuadrillas detectadas</span></div>
+    <div class="bo-kpi"><b>${omitidas}</b><span>Filas omitidas</span></div>
+    <div class="bo-kpi"><b>${BO_CONTROL_LECTURA.duplicadosExactos}</b><span>Duplicados exactos detectados</span></div>
+  </div>`;
   const msg=document.getElementById("boMensaje");
   msg.className="bo-msg bo-ok";
-  msg.textContent=`Base lista: ${archivo||"BASE OPERATIVA"}${detalleOrigen?`\n${detalleOrigen}`:""}\nLa información actual será reemplazada completamente al confirmar.`;
+  msg.textContent=`Base lista: ${archivo||"BASE OPERATIVA"}${detalleOrigen?`\n${detalleOrigen}`:""}\nFinalizadas del periodo leídas: ${BO_CONTROL_LECTURA.finalizadasPeriodo}.\nLa información actual será reemplazada completamente al confirmar.`;
   document.getElementById("boProcesar").disabled=false;
 }
+
 function boLeerWorkbookLocal(wb,archivo,detalleOrigen){
-  const sel=boBuscarHojaValida(wb);
-  const resultado=boExtraerRegistros(sel.rows,sel.filaEnc,sel.heads);
-  boAplicarLecturaLocal(resultado,archivo,(detalleOrigen||"")+`${detalleOrigen?"\n":""}Hoja detectada: ${sel.nombre}`);
-  return resultado;
+  const local=boResultadoWorkbookLocal(wb);
+  boAplicarLecturaLocal(local.resultado,archivo,(detalleOrigen||"")+`${detalleOrigen?"\n":""}Hoja detectada: ${local.nombre} · lectura completa por rango`);
+  return local.resultado;
 }
 async function boLeerArchivo(){
   const msg=document.getElementById("boMensaje"),file=document.getElementById("boArchivo").files[0];
@@ -249,12 +363,7 @@ async function boLeerArchivo(){
     }
     if(/\.html?$/i.test(file.name) || /^\s*<html/i.test(muestra)){
       const texto=new TextDecoder("utf-8").decode(buffer);
-      try{
-        boLeerHtmlDirecto(texto,file.name,"");
-      }catch(errorHtml){
-        const wbHtml=XLSX.read(texto,{type:"string",cellDates:true});
-        boLeerWorkbookLocal(wbHtml,file.name,"Lectura alternativa con lector Excel");
-      }
+      boLeerHtmlCompleto(texto,file.name,"");
     }else{
       const wb=XLSX.read(buffer,{type:"array",cellDates:true});
       boLeerWorkbookLocal(wb,file.name,"");
@@ -281,12 +390,7 @@ async function boLeerCarpetaReporte(){
         const texto=await archivo.text();
         if(boEsIndiceExcelHtml(texto))continue;
         const detalle=`Carpeta: ${archivo.webkitRelativePath||"carpeta seleccionada"}`;
-        try{
-          boLeerHtmlDirecto(texto,archivo.name,detalle);
-        }catch(errorHtml){
-          const wb=XLSX.read(texto,{type:"string",cellDates:true});
-          boLeerWorkbookLocal(wb,archivo.name,detalle+"\nLectura alternativa con lector Excel");
-        }
+        boLeerHtmlCompleto(texto,archivo.name,detalle);
         return;
       }catch(e){ultimoError=e;}
     }
@@ -304,24 +408,18 @@ function boLeerTextoPegado(){
     const rows=texto.split(/\r?\n/).filter(x=>x.trim()).map(x=>x.split("\t"));
     if(rows.length<2||rows[0].length<4)throw new Error("El texto no conserva las columnas. Copie directamente desde Excel usando Ctrl+C.");
     let mejor=null;
-    for(let i=0;i<Math.min(rows.length,10);i++){
-      const heads=(rows[i]||[]).map(boNorm),score=["CUADRILLA","FECHA","ESTADO","TIPO DE PARTIDA"].filter(h=>heads.includes(h)).length;
+    for(let i=0;i<Math.min(rows.length,20);i++){
+      const heads=(rows[i]||[]).map(boNorm);
+      const score=["CUADRILLA","FECHA","ESTADO","TIPO DE PARTIDA"].filter(h=>heads.includes(h)).length;
       if(!mejor||score>mejor.score)mejor={filaEnc:i,heads,score};
     }
     if(!mejor||mejor.score<4)throw new Error("No se encontraron los encabezados obligatorios.");
-    const idx=boIndiceEncabezados(mejor.heads),registros=[];let omitidas=0;
-    for(let i=mejor.filaEnc+1;i<rows.length;i++){
-      const f=rows[i]||[],fecha=boFechaISO(f[idx.fecha]),cuadrilla=(f[idx.cuadrilla]||"").toString().trim(),estado=(f[idx.estado]||"").toString().trim();
-      if(!fecha||!cuadrilla||!estado){omitidas++;continue;}
-      registros.push({tipoTrabajo:idx.tipoTrabajo>=0?f[idx.tipoTrabajo]:"",cuadrilla,fecha,estado,codigoPedido:idx.codigoPedido>=0?f[idx.codigoPedido]:"",ticket:idx.ticket>=0?f[idx.ticket]:"",codigoLiquidacion:idx.codigoLiquidacion>=0?f[idx.codigoLiquidacion]:"",tipoAtencion:idx.tipoAtencion>=0?f[idx.tipoAtencion]:"",tipoPartida:f[idx.tipoPartida],tipoPartidaAlterna:idx.tipoPartidaAlterna>=0?f[idx.tipoPartidaAlterna]:""});
-    }
-    if(!registros.length)throw new Error("No se encontraron filas válidas.");
-    const finalizadas=registros.filter(r=>boNorm(r.estado)==="FINALIZADA"&&r.fecha).map(r=>r.fecha).sort();
-    if(!finalizadas.length)throw new Error("La base no contiene órdenes FINALIZADAS.");
-    const corte=finalizadas[finalizadas.length-1];BO_REGISTROS=registros;BO_ARCHIVO="BASE_PEGADA";
-    document.getElementById("boResumen").innerHTML=`<div class="bo-kpis"><div class="bo-kpi"><b>${registros.length}</b><span>Filas válidas</span></div><div class="bo-kpi"><b>${boFechaVisible(corte)}</b><span>Último día finalizado</span></div><div class="bo-kpi"><b>${new Set(registros.map(r=>boNorm(r.cuadrilla))).size}</b><span>Cuadrillas detectadas</span></div><div class="bo-kpi"><b>${omitidas}</b><span>Filas omitidas</span></div></div>`;
-    msg.className="bo-msg bo-ok";msg.textContent="Texto validado. La información actual será reemplazada completamente al confirmar.";document.getElementById("boProcesar").disabled=false;
-  }catch(e){BO_REGISTROS=[];document.getElementById("boProcesar").disabled=true;msg.className="bo-msg bo-error";msg.textContent=e.message;}
+    const resultado=boExtraerRegistros(rows,mejor.filaEnc,mejor.heads);
+    boAplicarLecturaLocal(resultado,"BASE_PEGADA","Lectura completa desde tabla pegada");
+  }catch(e){
+    BO_REGISTROS=[];BO_CONTROL_LECTURA={registrosValidos:0,finalizadasPeriodo:0,finalizadasLeidas:0,duplicadosExactos:0};
+    document.getElementById("boProcesar").disabled=true;msg.className="bo-msg bo-error";msg.textContent=e.message;
+  }
 }
 
 function boOpcionesDatalist(id, valores){
@@ -411,7 +509,7 @@ async function boProcesarBase(){
   try{
     btn.disabled=true;msg.className="bo-msg";msg.textContent="Validando resultados antes de reemplazar las hojas...";
     document.querySelectorAll(".bo-preview-generated").forEach(el=>el.remove());
-    const vista=await boApi({accion:"previsualizarBaseOperativa",usuario:boUsuario(),archivo:BO_ARCHIVO,registros:BO_REGISTROS});
+    const vista=await boApi({accion:"previsualizarBaseOperativa",usuario:boUsuario(),archivo:BO_ARCHIVO,registros:BO_REGISTROS,controlLectura:BO_CONTROL_LECTURA});
     BO_PREVISTA=vista;BO_CATALOGO_OPCIONES=vista.catalogoOpciones||{plataformas:[],grupos:[],estados:[]};
     const a=vista.actual||{},n=vista.nuevo||{},partidas=vista.partidasNoEncontradas||[],cuadrillas=vista.cuadrillasNoEncontradas||[];
     const noClasificadas=vista.detalleNoClasificadas||[];
@@ -433,7 +531,7 @@ async function boProcesarBase(){
       <tr><td>GAR</td><td>${a.gar||0}</td><td>${n.gar||0}</td></tr>
       <tr><td>VTR</td><td>${a.vtr||0}</td><td>${n.vtr||0}</td></tr>
     </tbody></table></div>${advertencias.length||totalSinCatalogo?`<div class="bo-msg bo-warn"><b>Validaciones:</b><br>${advertencias.map(boEsc).join("<br>")}${partidas.length?`<br><br><b>Partidas pendientes:</b><br>${partidas.slice(0,30).map(boEsc).join("<br>")}`:""}${noClasificadas.length?`<br><br><b>Finalizadas no clasificadas:</b><br>${noClasificadas.slice(0,40).map(x=>`${boEsc(x.tipoPartida||"SIN PARTIDA")} · ${Number(x.cantidad)||0} orden(es)`).join("<br>")}`:""}${cuadrillas.length?`<br><br><b>Cuadrillas:</b><br>${cuadrillas.map(boEsc).join("<br>")}`:""}</div>`:""}</div>`);
-    const detalle=`Corte: ${vista.actualizadoAl}\nFinalizadas detectadas: ${totalFinalizadas}\nClasificadas en Producción: ${totalClasificadas}\nSin catálogo: ${totalSinCatalogo}\nLos Rojos: ${n.losRojos||0}\nRecableados VT: ${n.recableados||0}\nGAR: ${n.gar||0}\nVTR: ${n.vtr||0}\nDuplicados consolidados: ${vista.duplicados||0}`;
+    const detalle=`Corte: ${vista.actualizadoAl}\nFinalizadas detectadas: ${totalFinalizadas}\nClasificadas en Producción: ${totalClasificadas}\nSin catálogo: ${totalSinCatalogo}\nLos Rojos: ${n.losRojos||0}\nRecableados VT: ${n.recableados||0}\nGAR: ${n.gar||0}\nVTR: ${n.vtr||0}\nDuplicados exactos detectados y conservados: ${vista.duplicados||0}`;
     if(totalSinCatalogo>0){
       resumen.insertAdjacentHTML("beforeend",boRenderResolucionPartidas(vista));
       msg.className="bo-msg bo-warn";
@@ -450,10 +548,10 @@ async function boProcesarBase(){
       msg.className="bo-msg bo-warn";msg.textContent="Validación realizada. No se modificó ninguna hoja.";return;
     }
     msg.className="bo-msg";msg.textContent="Procesando base y actualizando hojas. No cierre esta pantalla...";
-    const r=await boApi({accion:"procesarBaseOperativa",usuario:boUsuario(),archivo:BO_ARCHIVO,registros:BO_REGISTROS});
+    const r=await boApi({accion:"procesarBaseOperativa",usuario:boUsuario(),archivo:BO_ARCHIVO,registros:BO_REGISTROS,controlLectura:BO_CONTROL_LECTURA});
     const desconocidas=(r.partidasNoEncontradas||[]),cuadNo=(r.cuadrillasNoEncontradas||[]);
     msg.className="bo-msg bo-ok";
-    msg.textContent=`BASE OPERATIVA ACTUALIZADA\nCorte: ${r.actualizadoAl}\nProducción: ${r.produccion} registros\nEfectividad: ${r.efectividad} cuadrillas\nRecableados: ${r.recableado} cuadrillas\nVTR/GAR: ${r.vtrgar} cuadrillas\nDuplicados consolidados: ${r.duplicados}\nRanking actualizado: ${r.ranking?"Sí":"No"}`;
+    msg.textContent=`BASE OPERATIVA ACTUALIZADA\nCorte: ${r.actualizadoAl}\nFinalizadas cargadas: ${r.finalizadas||0}\nÓrdenes registradas en Producción: ${r.produccionOrdenes||0}\nProducción: ${r.produccion} filas agrupadas\nEfectividad: ${r.efectividad} cuadrillas\nRecableados: ${r.recableado} cuadrillas\nVTR/GAR: ${r.vtrgar} cuadrillas\nDuplicados exactos detectados y conservados: ${r.duplicados}\nRanking actualizado: ${r.ranking?"Sí":"No"}`;
     if(desconocidas.length||cuadNo.length)resumen.insertAdjacentHTML("beforeend",`<div class="bo-msg bo-warn bo-preview-generated">${desconocidas.length?`<b>Partidas no encontradas (${desconocidas.length}):</b><br>${desconocidas.slice(0,30).map(boEsc).join("<br>")}`:""}${cuadNo.length?`<br><br><b>Cuadrillas no encontradas en USUARIOS:</b><br>${cuadNo.map(boEsc).join("<br>")}`:""}</div>`);
   }catch(e){msg.className="bo-msg bo-error";msg.textContent="No se modificó la información. "+e.message;}
   finally{btn.disabled=false;}

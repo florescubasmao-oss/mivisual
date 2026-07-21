@@ -3629,6 +3629,7 @@ function obtenerAnalisisEconomico(data) {
 
   let montoTotal = 0;
   let ordenesEjecutadas = 0;
+  let ordenesValorizadas = 0;
 
   for (let i = 1; i < produccion.length; i++) {
     const fila = produccion[i];
@@ -3639,6 +3640,10 @@ function obtenerAnalisisEconomico(data) {
 
     if (!cuadrilla || !fecha || !codigo || cantidad <= 0) continue;
     if (fecha.getFullYear() !== periodo.anio || (fecha.getMonth() + 1) !== periodo.mes) continue;
+
+    // Todas las filas válidas de PRODUCCION_APP cuentan como órdenes ejecutadas,
+    // incluso cuando una partida todavía no tiene tarifa activa.
+    ordenesEjecutadas += cantidad;
 
     const cat = obtenerCatalogoEconomicoPorCodigo(codigo, catalogo);
     if (!cat || cat.estadoTarifa !== "ACTIVO" || cat.monto <= 0) {
@@ -3668,7 +3673,7 @@ function obtenerAnalisisEconomico(data) {
     const fechaVisible = Utilities.formatDate(fecha, Session.getScriptTimeZone(), "dd/MM/yyyy");
 
     montoTotal += montoLinea;
-    ordenesEjecutadas += cantidad;
+    ordenesValorizadas += cantidad;
     diasConProduccion[fechaClave] = true;
 
     sumarEconomico(porSede, sede, cantidad, montoLinea, { sede });
@@ -3748,7 +3753,8 @@ function obtenerAnalisisEconomico(data) {
       metaTotal,
       cumplimiento: metaTotal > 0 ? montoTotal / metaTotal : 0,
       ordenesEjecutadas,
-      ticketPromedio: ordenesEjecutadas > 0 ? montoTotal / ordenesEjecutadas : 0,
+      ordenesValorizadas,
+      ticketPromedio: ordenesValorizadas > 0 ? montoTotal / ordenesValorizadas : 0,
       diasConProduccion: diasTrabajados,
       proyeccionCierre,
       diferenciaMeta: montoTotal - metaTotal,
@@ -5928,7 +5934,7 @@ function listarMapaOperativo(data) {
 }
 
 /* =========================
-   BASE OPERATIVA UNIFICADA V231
+   BASE OPERATIVA UNIFICADA V232
    Reemplaza únicamente las hojas de indicadores actuales.
 ========================= */
 const HOJA_ASIGNACION_VTR_GAR = "ASIGNACION_VTR_GAR";
@@ -6047,13 +6053,18 @@ function prepararRegistrosBaseOperativa(registros) {
   if (!Array.isArray(registros) || registros.length === 0) {
     throw new Error("No se recibieron registros de la base operativa");
   }
-  const mapa = {};
+
+  const lista = [];
+  const vistosExactos = {};
   let validos = 0;
+  let duplicadosExactos = 0;
+
   registros.forEach((r, indice) => {
     const fecha = fechaBaseOperativa(r.fecha);
     const cuadrilla = normalizarCuadrilla(r.cuadrilla);
     const estado = normalizarTexto(r.estado);
     if (!fecha || !cuadrilla || !estado) return;
+
     const item = {
       orden: indice,
       fecha,
@@ -6067,12 +6078,33 @@ function prepararRegistrosBaseOperativa(registros) {
       tipoPartida: normalizarTexto(r.tipoPartida),
       tipoPartidaAlterna: normalizarTexto(r.tipoPartidaAlterna)
     };
-    mapa[claveRegistroBaseOperativa(item)] = item;
+
+    // La base operativa reemplaza por completo el periodo. Por eso se conserva
+    // cada fila válida tal como aparece en la base madre. Los duplicados exactos
+    // solo se informan como control, pero no se eliminan ni se consolidan.
+    const claveExacta = [
+      fechaIsoBaseOperativa(item.fecha), item.cuadrilla, item.estado,
+      item.tipoTrabajo, normalizarTexto(item.codigoPedido),
+      normalizarTexto(item.ticket), normalizarTexto(item.codigoLiquidacion),
+      item.tipoAtencion, item.tipoPartida, item.tipoPartidaAlterna
+    ].join("|");
+
+    if (vistosExactos[claveExacta]) duplicadosExactos++;
+    vistosExactos[claveExacta] = true;
+
+    lista.push(item);
     validos++;
   });
-  const unicos = Object.keys(mapa).map(k => mapa[k]).sort((a, b) => a.orden - b.orden);
-  if (!unicos.length) throw new Error("No se encontraron filas válidas en la base operativa");
-  return { registros: unicos, recibidos: registros.length, validos, duplicados: Math.max(validos - unicos.length, 0) };
+
+  lista.sort((a, b) => a.orden - b.orden);
+  if (!lista.length) throw new Error("No se encontraron filas válidas en la base operativa");
+
+  return {
+    registros: lista,
+    recibidos: registros.length,
+    validos,
+    duplicados: duplicadosExactos
+  };
 }
 
 function obtenerCorteBaseOperativa(registros) {
@@ -6486,11 +6518,36 @@ function resumenNuevoBaseOperativa(matrices) {
   };
 }
 
+function validarControlLecturaBaseOperativa(control, preparado, matrices) {
+  if (!control || typeof control !== "object") return;
+
+  const registrosValidosCliente = Number(control.registrosValidos);
+  if (isFinite(registrosValidosCliente) && registrosValidosCliente > 0 &&
+      registrosValidosCliente !== preparado.registros.length) {
+    throw new Error(
+      "No se modificó ninguna hoja. El navegador leyó " + registrosValidosCliente +
+      " filas válidas, pero Apps Script recibió " + preparado.registros.length +
+      ". Vuelva a cargar el archivo .xlsx."
+    );
+  }
+
+  const finalizadasPeriodoCliente = Number(control.finalizadasPeriodo);
+  if (isFinite(finalizadasPeriodoCliente) && finalizadasPeriodoCliente >= 0 &&
+      finalizadasPeriodoCliente !== matrices.totalFinalizadasBase) {
+    throw new Error(
+      "No se modificó ninguna hoja. El archivo contiene " + finalizadasPeriodoCliente +
+      " órdenes FINALIZADAS para el periodo, pero Apps Script recibió " +
+      matrices.totalFinalizadasBase + ". La carga quedó incompleta."
+    );
+  }
+}
+
 function previsualizarBaseOperativa(data) {
   const usuario = validarAdministracionBaseOperativa(data.usuario);
   const preparado = prepararRegistrosBaseOperativa(data.registros);
   const corte = obtenerCorteBaseOperativa(preparado.registros);
   const matrices = crearMatricesBaseOperativa(preparado.registros, corte, usuario.usuario);
+  validarControlLecturaBaseOperativa(data.controlLectura, preparado, matrices);
   const catalogoVista = catalogoPartidasBaseOperativa();
   return {
     ok: true,
@@ -6528,6 +6585,7 @@ function procesarBaseOperativa(data) {
     const preparado = prepararRegistrosBaseOperativa(data.registros);
     const corte = obtenerCorteBaseOperativa(preparado.registros);
     const matrices = crearMatricesBaseOperativa(preparado.registros, corte, usuario.usuario);
+    validarControlLecturaBaseOperativa(data.controlLectura, preparado, matrices);
 
     if (matrices.finalizadasSinCatalogo > 0) {
       const detalle = (matrices.detalleNoClasificadas || [])
@@ -6575,6 +6633,8 @@ function procesarBaseOperativa(data) {
       recableado: matrices.recableado.length - 1,
       vtrgar: matrices.vtrgar.length - 1,
       incidencias: matrices.baseIncidencias.length - 1,
+      finalizadas: matrices.totalFinalizadasBase,
+      produccionOrdenes: matrices.totalProduccionClasificada,
       duplicados: preparado.duplicados,
       partidasNoEncontradas: matrices.partidasNoEncontradas,
       cuadrillasNoEncontradas: matrices.cuadrillasNoEncontradas,

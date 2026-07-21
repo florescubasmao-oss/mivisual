@@ -1,0 +1,54 @@
+MI VISUAL V232 - FINALIZADAS COMPLETAS Y CONCILIACION DE PRODUCCION
+
+Base estable utilizada: MI VISUAL V231.
+
+OBJETIVO
+Corregir la diferencia entre las ordenes FINALIZADAS de la base madre y las ordenes registradas en PRODUCCION_APP, sin modificar la estructura de las hojas ni las visualizaciones existentes.
+
+CORRECCIONES
+1. Lectura completa de archivos .xlsx:
+   - Recorre directamente todo el rango fisico de la hoja.
+   - No depende solamente de sheet_to_json.
+   - Muestra cuantas FINALIZADAS del periodo fueron leidas antes de actualizar.
+
+2. Lectura de reportes HTML / carpeta _archivos:
+   - Compara la lectura directa HTML con la lectura mediante el motor Excel.
+   - Conserva automaticamente la lectura que contiene mas filas y mas FINALIZADAS.
+
+3. Control obligatorio navegador vs Apps Script:
+   - Compara filas validas y FINALIZADAS del periodo.
+   - Si la carga llega incompleta, no modifica ninguna hoja.
+
+4. Reemplazo total sin eliminar filas de la base madre:
+   - Cada fila valida del reporte se conserva.
+   - Los duplicados exactos se detectan e informan, pero no se eliminan.
+   - Esto reproduce el mismo conteo que una tabla dinamica sobre la base madre.
+
+5. Análisis Económico:
+   - La tarjeta ORDENES EJECUTADAS ahora cuenta todas las ordenes registradas en PRODUCCION_APP.
+   - Las partidas sin tarifa siguen sin sumar monto.
+   - El ticket promedio se calcula solo con las ordenes valorizadas, para no alterar el monto promedio.
+
+CONTROL REAL CON LOS ARCHIVOS RECIBIDOS
+- Base madre: 1,532 filas.
+- FINALIZADAS: 955.
+- PRODUCCION_APP antes de esta correccion: 900 ordenes.
+- Diferencia: 55 ordenes.
+- P1 TRASLADO DANY ATENCIO: 62 finalizadas vs 8 registradas = 54 faltantes.
+- P9 SGA PEDRO ZAPATA: 65 finalizadas vs 64 registradas = 1 faltante.
+
+ARCHIVOS MODIFICADOS
+- Code.gs
+- apps_script/Code.gs
+- js/base_operativa.js
+- js/analisis_economico.js
+- index.html
+
+APLICACION
+- Apps Script: reemplazar Code.gs y realizar nuevo despliegue.
+- GitHub: reemplazar index.html, js/base_operativa.js y js/analisis_economico.js.
+- Google Sheets: no crear ni cambiar columnas manualmente.
+
+NO MODIFICADO
+- Nombres y estructura de PRODUCCION_APP, EFECTIVIDAD, PORCENTAJE REC, POR VTR/GAR y RANKING.
+- Dashboards, filtros, permisos, perfiles y otros modulos.
