@@ -1,4 +1,4 @@
-// MI VISUAL V233 - Revisión obligatoria de posibles duplicados antes de actualizar
+// MI VISUAL V234 - Conciliación posterior obligatoria de Producción y montos
 const API_BASE_OPERATIVA = (window.MI_VISUAL_API_URL || "https://script.google.com/macros/s/AKfycbzcbjCLweJNgZXDerdzmMN7Lwotc1G8NWdzoPkaLNGDivAgpYxDkq78xZwPRioSB4XY/exec");
 let BO_REGISTROS = [];
 let BO_ARCHIVO = "";
@@ -644,7 +644,7 @@ async function boProcesarBase(){
     msg.className="bo-msg bo-ok";
     msg.textContent=`BASE OPERATIVA ACTUALIZADA\nCorte: ${r.actualizadoAl}\nFinalizadas cargadas: ${r.finalizadas||0}\nÓrdenes registradas en Producción: ${r.produccionOrdenes||0}\nProducción: ${r.produccion} filas agrupadas\nEfectividad: ${r.efectividad} cuadrillas\nRecableados: ${r.recableado} cuadrillas\nVTR/GAR: ${r.vtrgar} cuadrillas\nDuplicados revisados: ${r.duplicadosDetectados||0}
 Copias conservadas: ${r.duplicadosConservados||0}
-Copias omitidas: ${r.duplicadosOmitidos||0}\nRanking actualizado: ${r.ranking?"Sí":"No"}`;
+Copias omitidas: ${r.duplicadosOmitidos||0}\nConciliación posterior: ${r.conciliacion&&r.conciliacion.ok?"OK":"No confirmada"}\nRanking actualizado: ${r.ranking?"Sí":"No"}`;
     if(desconocidas.length||cuadNo.length)resumen.insertAdjacentHTML("beforeend",`<div class="bo-msg bo-warn bo-preview-generated">${desconocidas.length?`<b>Partidas no encontradas (${desconocidas.length}):</b><br>${desconocidas.slice(0,30).map(boEsc).join("<br>")}`:""}${cuadNo.length?`<br><br><b>Cuadrillas no encontradas en USUARIOS:</b><br>${cuadNo.map(boEsc).join("<br>")}`:""}</div>`);
   }catch(e){msg.className="bo-msg bo-error";msg.textContent="No se modificó la información. "+e.message;}
   finally{btn.disabled=false;}

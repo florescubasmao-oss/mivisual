@@ -5934,7 +5934,7 @@ function listarMapaOperativo(data) {
 }
 
 /* =========================
-   BASE OPERATIVA UNIFICADA V232
+   BASE OPERATIVA UNIFICADA V234
    Reemplaza únicamente las hojas de indicadores actuales.
 ========================= */
 const HOJA_ASIGNACION_VTR_GAR = "ASIGNACION_VTR_GAR";
@@ -6428,6 +6428,135 @@ function reemplazarHojaBaseOperativa(hoja, matriz) {
   hoja.getRange(1, 1, matriz.length, matriz[0].length).setValues(matriz);
 }
 
+function reemplazarHojaBaseOperativaPorBloques(hoja, matriz, tamanoBloque) {
+  if (!matriz || !matriz.length || !matriz[0].length) throw new Error("Matriz de actualización vacía");
+  const columnas = matriz[0].length;
+  const bloque = Math.max(50, Number(tamanoBloque) || 200);
+  if (hoja.getMaxColumns() < columnas) hoja.insertColumnsAfter(hoja.getMaxColumns(), columnas - hoja.getMaxColumns());
+  if (hoja.getMaxRows() < matriz.length) hoja.insertRowsAfter(hoja.getMaxRows(), matriz.length - hoja.getMaxRows());
+  hoja.clearContents();
+  hoja.getRange(1, 1, 1, columnas).setValues([matriz[0]]);
+  for (let inicio = 1; inicio < matriz.length; inicio += bloque) {
+    const lote = matriz.slice(inicio, Math.min(inicio + bloque, matriz.length));
+    hoja.getRange(inicio + 1, 1, lote.length, columnas).setValues(lote);
+  }
+}
+
+function mapaConciliacionProduccionMatrizBaseOperativa(matriz) {
+  const mapa = {};
+  let total = 0;
+  for (let i = 1; i < matriz.length; i++) {
+    const fila = matriz[i];
+    const cuadrilla = normalizarCuadrilla(fila[1]);
+    const fecha = fechaBaseOperativa(fila[2]);
+    const codigo = (fila[3] || "").toString().trim();
+    const cantidad = Number(fila[4]) || 0;
+    if (!cuadrilla || !fecha || !codigo || cantidad <= 0) continue;
+    const clave = [cuadrilla, fechaIsoBaseOperativa(fecha), normalizarTexto(codigo)].join("|");
+    if (!mapa[clave]) mapa[clave] = { cuadrilla, fecha, codigo, cantidad: 0 };
+    mapa[clave].cantidad += cantidad;
+    total += cantidad;
+  }
+  return { mapa, total };
+}
+
+function mapaConciliacionProduccionHojaBaseOperativa(hoja) {
+  const mapa = {};
+  let total = 0;
+  const ultima = hoja.getLastRow();
+  if (ultima <= 1) return { mapa, total };
+  const datos = hoja.getRange(2, 1, ultima - 1, Math.max(7, hoja.getLastColumn())).getValues();
+  datos.forEach(fila => {
+    const cuadrilla = normalizarCuadrilla(fila[1]);
+    const fecha = fechaBaseOperativa(fila[2]);
+    const codigo = (fila[3] || "").toString().trim();
+    const cantidad = Number(fila[4]) || 0;
+    if (!cuadrilla || !fecha || !codigo || cantidad <= 0) return;
+    const clave = [cuadrilla, fechaIsoBaseOperativa(fecha), normalizarTexto(codigo)].join("|");
+    if (!mapa[clave]) mapa[clave] = { cuadrilla, fecha, codigo, cantidad: 0 };
+    mapa[clave].cantidad += cantidad;
+    total += cantidad;
+  });
+  return { mapa, total };
+}
+
+function montoConciliacionProduccionBaseOperativa(resultadoMapa) {
+  const catalogo = obtenerCatalogoEconomico();
+  let monto = 0;
+  Object.keys(resultadoMapa.mapa).forEach(clave => {
+    const item = resultadoMapa.mapa[clave];
+    const cat = obtenerCatalogoEconomicoPorCodigo(item.codigo, catalogo);
+    if (!cat || cat.estadoTarifa !== "ACTIVO" || Number(cat.monto) <= 0) return;
+    monto += item.cantidad * Number(cat.monto);
+  });
+  return Math.round(monto * 100) / 100;
+}
+
+function diferenciasConciliacionProduccionBaseOperativa(esperado, actual, limite) {
+  const claves = {};
+  Object.keys(esperado.mapa).forEach(k => claves[k] = true);
+  Object.keys(actual.mapa).forEach(k => claves[k] = true);
+  const salida = [];
+  Object.keys(claves).sort().forEach(clave => {
+    const e = esperado.mapa[clave] || null;
+    const a = actual.mapa[clave] || null;
+    const cantidadEsperada = e ? e.cantidad : 0;
+    const cantidadActual = a ? a.cantidad : 0;
+    if (cantidadEsperada === cantidadActual) return;
+    const ref = e || a;
+    salida.push({
+      cuadrilla: ref.cuadrilla,
+      fecha: fechaVisibleBaseOperativa(ref.fecha),
+      codigo: ref.codigo,
+      esperado: cantidadEsperada,
+      actual: cantidadActual
+    });
+  });
+  return salida.slice(0, Math.max(1, Number(limite) || 20));
+}
+
+function sumarFinalizadasEscritasBaseOperativa() {
+  const hoja = obtenerHoja(HOJA_EFECTIVIDAD);
+  const ultima = hoja.getLastRow();
+  if (ultima <= 1) return 0;
+  return hoja.getRange(2, 5, ultima - 1, 1).getValues().reduce((s, fila) => s + (Number(fila[0]) || 0), 0);
+}
+
+function validarConciliacionPostEscrituraBaseOperativa(matrices) {
+  const hojaProduccion = obtenerHoja(HOJA_PRODUCCION);
+  const esperado = mapaConciliacionProduccionMatrizBaseOperativa(matrices.produccion);
+  const actual = mapaConciliacionProduccionHojaBaseOperativa(hojaProduccion);
+  const finalizadasEscritas = sumarFinalizadasEscritasBaseOperativa();
+  const montoEsperado = montoConciliacionProduccionBaseOperativa(esperado);
+  const montoActual = montoConciliacionProduccionBaseOperativa(actual);
+  const diferencias = diferenciasConciliacionProduccionBaseOperativa(esperado, actual, 20);
+  const totalBase = Number(matrices.totalFinalizadasBase) || 0;
+  const montoCoincide = Math.abs(montoEsperado - montoActual) < 0.01;
+
+  if (esperado.total !== totalBase || actual.total !== totalBase || finalizadasEscritas !== totalBase || !montoCoincide || diferencias.length) {
+    const detalle = diferencias.length
+      ? diferencias.map(x => x.cuadrilla + " · " + x.fecha + " · " + x.codigo + " · esperado " + x.esperado + " / escrito " + x.actual).join("; ")
+      : "Sin detalle de clave; revise los totales escritos.";
+    throw new Error(
+      "Falló la conciliación posterior a la escritura. Finalizadas de la base: " + totalBase +
+      ", Producción esperada: " + esperado.total +
+      ", Producción escrita: " + actual.total +
+      ", Finalizadas escritas en Efectividad: " + finalizadasEscritas +
+      ", Monto calculado esperado: S/ " + montoEsperado.toFixed(2) +
+      ", Monto calculado escrito: S/ " + montoActual.toFixed(2) +
+      ". Diferencias: " + detalle
+    );
+  }
+
+  return {
+    ok: true,
+    finalizadasBase: totalBase,
+    produccionEscrita: actual.total,
+    finalizadasEfectividad: finalizadasEscritas,
+    montoCalculado: montoActual
+  };
+}
+
 function aplicarFormatosBaseOperativa(matrices) {
   const hp = obtenerHoja(HOJA_PRODUCCION);
   if (matrices.produccion.length > 1) {
@@ -6636,13 +6765,19 @@ function procesarBaseOperativa(data) {
     ];
     snapshots = hojas.map(snapshotHojaBaseOperativa);
 
-    reemplazarHojaBaseOperativa(hojas[0], matrices.produccion);
+    // Producción se escribe por bloques para evitar una escritura parcial silenciosa.
+    reemplazarHojaBaseOperativaPorBloques(hojas[0], matrices.produccion, 150);
     reemplazarHojaBaseOperativa(hojas[1], matrices.efectividad);
     reemplazarHojaBaseOperativa(hojas[2], matrices.recableado);
     reemplazarHojaBaseOperativa(hojas[3], matrices.vtrgar);
     reemplazarHojaBaseOperativa(hojas[4], matrices.baseIncidencias);
     aplicarFormatosBaseOperativa(matrices);
     SpreadsheetApp.flush();
+
+    // V234: solo después de escribir se valida que Producción, Efectividad y el
+    // monto calculado con el catálogo coincidan exactamente. Si falla, el catch
+    // restaura las hojas anteriores y Ranking no se actualiza.
+    const conciliacion = validarConciliacionPostEscrituraBaseOperativa(matrices);
 
     const ranking = actualizarRanking(matrices.periodo, matrices.actualizadoAl);
     registrarHistorialCargaBaseOperativa(usuario, data.archivo, preparado, matrices, "OK");
@@ -6666,6 +6801,7 @@ function procesarBaseOperativa(data) {
       partidasNoEncontradas: matrices.partidasNoEncontradas,
       cuadrillasNoEncontradas: matrices.cuadrillasNoEncontradas,
       ranking: !!(ranking && ranking.ok),
+      conciliacion: conciliacion,
       reemplazoTotal: true
     };
   } catch (e) {

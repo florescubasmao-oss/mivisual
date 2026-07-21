@@ -1,0 +1,35 @@
+MI VISUAL V234 - CONCILIACIÓN POSTERIOR A LA ESCRITURA
+
+Base estable utilizada: V233.
+
+CAMBIO APLICADO
+- No se muestra ningún monto esperado antes de confirmar la actualización.
+- PRODUCCION_APP se escribe por bloques para evitar escrituras parciales.
+- Después de escribir, antes de actualizar Ranking, el sistema vuelve a leer las hojas.
+- Se valida que coincidan exactamente:
+  1. Finalizadas de la base madre.
+  2. Cantidad total escrita en PRODUCCION_APP.
+  3. Finalizadas escritas en EFECTIVIDAD.
+  4. Distribución por cuadrilla, fecha y código.
+  5. Monto calculado con el catálogo sobre la matriz esperada y sobre lo realmente escrito.
+- Si existe cualquier diferencia, se restauran las hojas anteriores y Ranking no se actualiza.
+- El error informa cuadrilla, fecha, código, cantidad esperada y cantidad escrita.
+
+ARCHIVOS MODIFICADOS
+- Code.gs
+- apps_script/Code.gs
+- js/base_operativa.js
+
+NO MODIFICADO
+- Estructura de Google Sheets.
+- Dashboards.
+- Ranking.
+- Análisis Económico.
+- Permisos.
+- Otros módulos.
+
+APLICACIÓN
+1. Reemplazar Code.gs en Apps Script.
+2. Crear un nuevo despliegue.
+3. Reemplazar js/base_operativa.js en GitHub.
+4. Volver a cargar la base madre.
