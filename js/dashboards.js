@@ -2190,27 +2190,98 @@ function mv198ResumenCuadrilla(x){
     </div>`;
 }
 
+/* =========================
+   V239 - FILTRO POR INDICADOR EN DASHBOARD SUPERVISOR
+========================= */
+
+let MV239_DASH_SUPERVISOR_FILTROS = {
+    indicador: "RESUMEN",
+    cuadrilla: "TODAS"
+};
+
+function mv239FiltrosSupervisor(lista, filtros){
+    return `<div class="mv199-filtros-jefatura mv239-filtros-supervisor">
+        <div class="mv199-campo-filtro">
+            <label for="mv239FiltroIndicadorSupervisor">📊 Indicador</label>
+            <select id="mv239FiltroIndicadorSupervisor" onchange="mv239CambiarFiltroSupervisor('indicador',this.value)">
+                ${mv199OpcionesIndicador(filtros.indicador)}
+            </select>
+        </div>
+        <div class="mv199-campo-filtro">
+            <label for="mv239FiltroCuadrillaSupervisor">🔎 Cuadrilla</label>
+            <select id="mv239FiltroCuadrillaSupervisor" onchange="mv239CambiarFiltroSupervisor('cuadrilla',this.value)">
+                ${mv198OpcionesCuadrilla(lista, filtros.cuadrilla)}
+            </select>
+        </div>
+    </div>`;
+}
+
+function mv239CambiarFiltroSupervisor(campo, valor){
+    if(!["indicador","cuadrilla"].includes(campo)) return;
+    MV239_DASH_SUPERVISOR_FILTROS[campo] = valor || (campo === "indicador" ? "RESUMEN" : "TODAS");
+
+    if(campo === "indicador" && valor !== "RESUMEN"){
+        MV239_DASH_SUPERVISOR_FILTROS.cuadrilla = "TODAS";
+    }
+
+    if(campo === "cuadrilla" && valor !== "TODAS"){
+        MV239_DASH_SUPERVISOR_FILTROS.indicador = "RESUMEN";
+    }
+
+    mv198RenderSupervisor();
+}
+
+function mv239AbrirCuadrillaSupervisor(cuadrilla){
+    MV239_DASH_SUPERVISOR_FILTROS.cuadrilla = cuadrilla || "TODAS";
+    MV239_DASH_SUPERVISOR_FILTROS.indicador = "RESUMEN";
+    mv198RenderSupervisor();
+}
+
 function mv198RenderSupervisor(seleccionada){
     const lista = MV198_DASH_SUPERVISOR_LISTA || [];
     const sede = mv4Norm(localStorage.getItem("sede"));
     const actualizacion = lista[0]?.actualizacion || "-";
-    const seleccion = seleccionada && seleccionada !== "TODAS" ? lista.find(x=>x.cuadrilla===seleccionada) : null;
+
+    if(seleccionada !== undefined){
+        MV239_DASH_SUPERVISOR_FILTROS.cuadrilla = seleccionada || "TODAS";
+        if(MV239_DASH_SUPERVISOR_FILTROS.cuadrilla !== "TODAS"){
+            MV239_DASH_SUPERVISOR_FILTROS.indicador = "RESUMEN";
+        }
+    }
+
+    const filtros = MV239_DASH_SUPERVISOR_FILTROS;
+    const seleccion = filtros.cuadrilla !== "TODAS"
+        ? lista.find(x=>x.cuadrilla===filtros.cuadrilla)
+        : null;
+
+    let contenido = "";
+    if(seleccion){
+        contenido = mv198ResumenCuadrilla(seleccion);
+    }else if(filtros.indicador !== "RESUMEN"){
+        contenido = mv199ListadoIndicador(lista, filtros.indicador, sede, "mv239AbrirCuadrillaSupervisor");
+    }else{
+        contenido = mv4DashboardKpis(lista);
+    }
+
     mostrarPantalla(`<div class="mv4-page">
         <div class="mv4-top-card"><div class="mv4-top-role">👷 SUPERVISOR</div><div class="mv4-top-sede">${sede || "SEDE"}</div><div class="mv4-top-sub">Actualizado: ${actualizacion}</div></div>
-        ${mv198FiltroCuadrilla(lista, seleccionada || "TODAS", "mv198CambiarCuadrillaSupervisor", "Filtrar cuadrilla de la sede")}
-        ${seleccion ? mv198ResumenCuadrilla(seleccion) : mv4DashboardKpis(lista)}
+        ${mv239FiltrosSupervisor(lista, filtros)}
+        ${contenido}
         <button class="button_1" onclick="volverInicio()">⬅️ Volver al menú</button>
     </div>`);
 }
 
-function mv198CambiarCuadrillaSupervisor(valor){ mv198RenderSupervisor(valor); }
+function mv198CambiarCuadrillaSupervisor(valor){
+    mv239CambiarFiltroSupervisor("cuadrilla", valor);
+}
 
 async function mostrarDashboardSupervisor(){
     const sede = mv4Norm(localStorage.getItem("sede"));
     mostrarPantalla(`<div class="mv4-page"><h2 class="mv4-title">👷 SUPERVISOR</h2><div class="mv4-loading">Cargando dashboard...</div></div>`);
     try{
         MV198_DASH_SUPERVISOR_LISTA = (await mv4ObtenerRanking()).filter(x => mv4Norm(x.sede) === sede);
-        mv198RenderSupervisor("TODAS");
+        MV239_DASH_SUPERVISOR_FILTROS = {indicador:"RESUMEN", cuadrilla:"TODAS"};
+        mv198RenderSupervisor();
     }catch(e){ mostrarPantalla(`<div class="mv4-page"><h2>👷 Supervisor</h2><div class="mv4-error">${e.message}</div></div>`); }
 }
 
@@ -2353,9 +2424,10 @@ function mv199ValorOrden(x, config){
     return Number.isFinite(n) ? n : 0;
 }
 
-function mv199ListadoIndicador(lista, indicador, sede){
+function mv199ListadoIndicador(lista, indicador, sede, funcionAbrir){
     const config = mv199ConfigIndicador(indicador);
     if(!config) return "";
+    const abrirCuadrilla = funcionAbrir || "mv199AbrirCuadrilla";
     const ordenada = (lista || []).slice().sort((a,b)=>{
         const va = mv199ValorOrden(a,config), vb = mv199ValorOrden(b,config);
         if(va === vb) return (a.cuadrilla||"").localeCompare(b.cuadrilla||"",undefined,{numeric:true});
@@ -2370,7 +2442,7 @@ function mv199ListadoIndicador(lista, indicador, sede){
         </div>
         <div class="mv199-tabla-wrap"><table class="mv199-tabla-indicador">
             <thead><tr><th>#</th><th>Cuadrilla</th><th>Sede</th><th>${config.titulo}</th><th>Referencia</th></tr></thead>
-            <tbody>${ordenada.map((x,i)=>`<tr onclick="mv199AbrirCuadrilla('${mv198Escapar(x.cuadrilla)}')" title="Ver resumen completo de la cuadrilla">
+            <tbody>${ordenada.map((x,i)=>`<tr onclick="${abrirCuadrilla}('${mv198Escapar(x.cuadrilla)}')" title="Ver resumen completo de la cuadrilla">
                 <td><b>${i+1}</b></td>
                 <td><b>${mv198Escapar(x.cuadrilla)}</b><small>${mv198Escapar(x.plataforma||"")}</small></td>
                 <td>${mv198Escapar(x.sede||"")}</td>

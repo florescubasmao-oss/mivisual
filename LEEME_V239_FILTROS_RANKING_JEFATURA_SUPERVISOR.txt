@@ -1,0 +1,21 @@
+MI VISUAL V239 - FILTROS RANKING JEFATURA Y DASHBOARD SUPERVISOR
+
+CAMBIOS REALIZADOS
+1. Ranking de Jefatura:
+   - Se agregó filtro por sede.
+   - Opciones: Todas las sedes, Chiclayo, Piura y Trujillo según disponibilidad.
+   - Al elegir una sede, las tarjetas se ordenan por puesto dentro de esa sede.
+   - La vista general conserva el Ranking Zona Norte.
+
+2. Dashboard de Supervisor:
+   - Se agregó filtro por indicador, equivalente al usado por Jefatura.
+   - Indicadores: Resumen, Producción, Efectividad, % Recableado, % VTR/GAR, Observaciones, Metas y Ranking.
+   - Se conserva el filtro por cuadrilla.
+   - El supervisor solo visualiza las cuadrillas de su propia sede.
+   - Al seleccionar una fila de un indicador, se abre el resumen completo de esa cuadrilla.
+
+ALCANCE
+- Solo frontend.
+- No se modificó Code.gs.
+- No se modificaron Google Sheets.
+- No se modificaron cálculos, metas, ranking, VTR/GAR, Producción, Efectividad ni otros módulos.

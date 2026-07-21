@@ -287,6 +287,92 @@ function listaTarjetasRanking(lista, tipoPuesto){
     return lista.map(r => tarjetaCuadrillaRanking(r, tipoPuesto)).join("");
 }
 
+
+/* =========================
+   V239 - FILTRO DE SEDE EN RANKING JEFATURA
+========================= */
+
+let MV239_RANKING_JEFATURA_LISTA = [];
+let MV239_RANKING_JEFATURA_SEDE = "TODAS";
+
+function mv239EsVistaJefaturaRanking(perfil){
+    const p = normalizarTextoRanking(perfil);
+    return p !== "TECNICO" && p !== "SUPERVISOR";
+}
+
+function mv239SedesRanking(lista){
+    const ordenOficial = ["CHICLAYO", "PIURA", "TRUJILLO"];
+    const presentes = {};
+    (lista || []).forEach(x => {
+        const sede = normalizarTextoRanking(x.sede || "");
+        if(sede) presentes[sede] = true;
+    });
+
+    const oficiales = ordenOficial.filter(s => presentes[s]);
+    const adicionales = Object.keys(presentes)
+        .filter(s => !ordenOficial.includes(s))
+        .sort((a,b)=>a.localeCompare(b));
+
+    return oficiales.concat(adicionales);
+}
+
+function mv239OpcionesSedeRanking(lista, seleccionada){
+    return `<option value="TODAS" ${seleccionada === "TODAS" ? "selected" : ""}>TODAS LAS SEDES</option>` +
+        mv239SedesRanking(lista).map(sede =>
+            `<option value="${sede}" ${sede === seleccionada ? "selected" : ""}>${sede}</option>`
+        ).join("");
+}
+
+function mv239FiltroSedeRanking(lista, seleccionada){
+    return `
+        <div class="mv239-filtro-sede-ranking">
+            <label for="mv239FiltroSedeRanking">🏢 Filtrar por sede</label>
+            <select id="mv239FiltroSedeRanking" onchange="mv239CambiarSedeRanking(this.value)">${mv239OpcionesSedeRanking(lista, seleccionada)}</select>
+        </div>
+    `;
+}
+
+function mv239OrdenarRanking(lista, tipoPuesto){
+    const campo = tipoPuesto === "sede" ? "puestoSede" : "puestoRegion";
+    return (lista || []).slice().sort((a,b) => {
+        const pa = Number(a[campo]) || 999999;
+        const pb = Number(b[campo]) || 999999;
+        if(pa !== pb) return pa - pb;
+        return (a.cuadrilla || "").localeCompare(b.cuadrilla || "", undefined, {numeric:true});
+    });
+}
+
+function mv239RenderRankingJefatura(){
+    const listaCompleta = MV239_RANKING_JEFATURA_LISTA || [];
+    const sede = MV239_RANKING_JEFATURA_SEDE || "TODAS";
+    const listaFiltrada = sede === "TODAS"
+        ? listaCompleta
+        : listaCompleta.filter(x => normalizarTextoRanking(x.sede) === sede);
+
+    const tipoPuesto = sede === "TODAS" ? "region" : "sede";
+    const ordenada = mv239OrdenarRanking(listaFiltrada, tipoPuesto);
+    const referencia = ordenada[0] || listaCompleta[0];
+    const titulo = sede === "TODAS" ? "🌎 RANKING ZONA NORTE" : `🏢 RANKING SEDE ${sede}`;
+
+    let html = `
+        <div style="padding:18px;max-width:980px;margin:auto;">
+            <h2 style="text-align:center;margin-bottom:6px;">${titulo}</h2>
+            ${encabezadoPeriodoRanking(referencia)}
+            ${mv239FiltroSedeRanking(listaCompleta, sede)}
+            ${listaTarjetasRanking(ordenada, tipoPuesto)}
+            <br>
+            <button class="button_1" onclick="volverInicio()">⬅️ Volver al menú</button>
+        </div>
+    `;
+
+    mostrarPantalla(html);
+}
+
+function mv239CambiarSedeRanking(valor){
+    MV239_RANKING_JEFATURA_SEDE = normalizarTextoRanking(valor || "TODAS") || "TODAS";
+    mv239RenderRankingJefatura();
+}
+
 function vistaTecnicoRanking(item){
     return `
         <div style="padding:18px;max-width:720px;margin:auto;">
@@ -363,6 +449,13 @@ async function mostrarRanking(){
             }
 
             mostrarPantalla(vistaTecnicoRanking(item));
+            return;
+        }
+
+        if(mv239EsVistaJefaturaRanking(perfil)){
+            MV239_RANKING_JEFATURA_LISTA = lista.slice();
+            MV239_RANKING_JEFATURA_SEDE = "TODAS";
+            mv239RenderRankingJefatura();
             return;
         }
 

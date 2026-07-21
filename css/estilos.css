@@ -1334,3 +1334,14 @@ body{background:linear-gradient(180deg,var(--mv4-bg),var(--mv4-bg2));font-family
 }
 #menuPrincipal.mv224-jefatura-operaciones-menu #cardMapaOperativo span{font-size:30px!important;}
 #menuPrincipal.mv224-jefatura-operaciones-menu #cardMapaOperativo b{font-size:13px!important;line-height:1.15!important;}
+
+
+/* V239 - filtros Ranking Jefatura y Dashboard Supervisor */
+.mv239-filtro-sede-ranking{margin:12px 0 18px;padding:12px;background:#132845;border:1px solid rgba(255,255,255,.10);border-radius:14px;display:grid;grid-template-columns:minmax(150px,auto) minmax(220px,1fr);align-items:center;gap:12px;color:#fff}
+.mv239-filtro-sede-ranking label{font-size:13px;color:#dbeafe;font-weight:900}
+.mv239-filtro-sede-ranking select{width:100%;min-height:42px;border-radius:10px;border:1px solid #3b82f6;background:#fff;color:#0f172a;padding:8px 10px;font-weight:800}
+.mv199-filtros-jefatura.mv239-filtros-supervisor{grid-template-columns:repeat(2,minmax(0,1fr))}
+@media(max-width:700px){
+  .mv239-filtro-sede-ranking{grid-template-columns:1fr;gap:7px}
+  .mv199-filtros-jefatura.mv239-filtros-supervisor{grid-template-columns:1fr}
+}
