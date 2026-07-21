@@ -1,4 +1,4 @@
-// MI VISUAL V236 - Gestión calificada e historial VTR/GAR
+// MI VISUAL V238 - Sincronización de bono VTR/GAR con similitud de ticket
 const API_BASE_OPERATIVA = (window.MI_VISUAL_API_URL || "https://script.google.com/macros/s/AKfycbzcbjCLweJNgZXDerdzmMN7Lwotc1G8NWdzoPkaLNGDivAgpYxDkq78xZwPRioSB4XY/exec");
 let BO_REGISTROS = [];
 let BO_ARCHIVO = "";
@@ -77,7 +77,7 @@ function boCss(){
   .bo-form{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}.bo-form label{font-size:12px;font-weight:800;color:#dbeafe;display:flex;flex-direction:column;gap:5px}.bo-wide{grid-column:1/-1}.bo-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}.bo-note{font-size:12px;color:#fcd34d;line-height:1.5}.bo-badge{display:inline-block;padding:4px 7px;border-radius:999px;background:#dbeafe;color:#1e3a8a;font-size:10px;font-weight:800}.bo-missing{border:1px solid #f59e0b;background:#111827;border-radius:13px;padding:13px;margin-top:10px}.bo-missing h4{margin:0 0 7px;color:#fde68a}.bo-match{font-size:11px;color:#cbd5e1;margin:5px 0}.bo-new-form{margin-top:12px;padding-top:12px;border-top:1px dashed #64748b}.bo-hidden{display:none!important}.bo-dup{border:1px solid #f59e0b;background:#111827;border-radius:13px;padding:13px;margin-top:10px}.bo-dup h4{margin:0 0 7px;color:#fde68a}.bo-dup-grid{display:grid;grid-template-columns:1fr 250px;gap:12px;align-items:center}.bo-dup small{color:#cbd5e1;line-height:1.45}.bo-dup select{width:100%}
   .bo-vg-kpis{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:9px;margin-bottom:14px}.bo-vg-kpi{background:#0f172a;border:1px solid #334155;border-radius:12px;padding:10px}.bo-vg-kpi b{display:block;font-size:21px}.bo-vg-kpi span{font-size:10px;color:#cbd5e1}
   .bo-sede{border:1px solid #425979;border-radius:14px;margin:12px 0;overflow:hidden}.bo-sede>summary{cursor:pointer;padding:12px 14px;background:#10213b;font-weight:900}.bo-sede-cuerpo{padding:10px}
-  .bo-inc-card{position:relative;background:#f8fafc;color:#0f172a;border-left:5px solid #f59e0b;border-radius:12px;padding:12px;margin:9px 0}.bo-inc-card.hist{border-left-color:#0f766e}.bo-inc-head{display:flex;justify-content:space-between;gap:8px;align-items:center;margin-bottom:8px}.bo-inc-type{font-weight:900}.bo-inc-data{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px 12px;font-size:12px}.bo-inc-data span{color:#475569}.bo-inc-data b{display:block;color:#111827}.bo-inc-actions{display:flex;gap:7px;flex-wrap:wrap;margin-top:10px}.bo-mini-btn{border:0;border-radius:9px;padding:8px 10px;font-weight:800;cursor:pointer;color:#fff;background:#047857}.bo-mini-btn.alt{background:#1d4ed8}.bo-mini-btn.warn{background:#b45309}.bo-mini-btn.danger{background:#991b1b}.bo-edit-dot{position:absolute;right:8px;top:8px;width:20px;height:20px;border-radius:50%;border:2px solid #fff;background:#ef4444;color:#ef4444;box-shadow:0 0 0 1px #7f1d1d;cursor:pointer;padding:0;font-size:0}.bo-state{display:inline-block;padding:4px 8px;border-radius:999px;font-size:10px;font-weight:900;background:#dbeafe;color:#1e3a8a}.bo-state.anulado{background:#fee2e2;color:#991b1b}.bo-state.reasignado{background:#fef3c7;color:#92400e}.bo-editor{border:2px solid #ef4444;background:#111827;border-radius:14px;padding:14px;margin:12px 0}
+  .bo-inc-card{position:relative;background:#f8fafc;color:#0f172a;border-left:5px solid #f59e0b;border-radius:12px;padding:12px;margin:9px 0}.bo-inc-card.hist{border-left-color:#0f766e}.bo-inc-card.hist .bo-inc-head{padding-right:24px}.bo-inc-head{display:flex;justify-content:space-between;gap:8px;align-items:center;margin-bottom:8px}.bo-inc-type{font-weight:900}.bo-inc-statuses{display:flex;align-items:center;gap:7px;flex-wrap:wrap;justify-content:flex-end}.bo-bono-ind{display:inline-flex;align-items:center;gap:5px;font-size:10px;font-weight:900;color:#334155}.bo-bono-dot{width:13px;height:13px;border-radius:50%;display:inline-block;border:2px solid rgba(255,255,255,.95);box-shadow:0 0 0 1px rgba(15,23,42,.35)}.bo-bono-dot.verde{background:#22c55e}.bo-bono-dot.amarillo{background:#facc15}.bo-bono-dot.naranja{background:#f97316}.bo-bono-dot.plomo{background:#94a3b8}.bo-bono-legend{display:flex;gap:10px;flex-wrap:wrap;padding:10px;border-radius:11px;background:#e2e8f0;color:#0f172a;margin:10px 0 14px}.bo-bono-legend span{display:inline-flex;align-items:center;gap:5px;font-size:11px;font-weight:800}.bo-inc-data{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px 12px;font-size:12px}.bo-inc-data span{color:#475569}.bo-inc-data b{display:block;color:#111827}.bo-inc-actions{display:flex;gap:7px;flex-wrap:wrap;margin-top:10px}.bo-mini-btn{border:0;border-radius:9px;padding:8px 10px;font-weight:800;cursor:pointer;color:#fff;background:#047857}.bo-mini-btn.alt{background:#1d4ed8}.bo-mini-btn.warn{background:#b45309}.bo-mini-btn.danger{background:#991b1b}.bo-edit-dot{position:absolute;right:8px;top:8px;width:20px;height:20px;border-radius:50%;border:2px solid #fff;background:#ef4444;color:#ef4444;box-shadow:0 0 0 1px #7f1d1d;cursor:pointer;padding:0;font-size:0}.bo-state{display:inline-block;padding:4px 8px;border-radius:999px;font-size:10px;font-weight:900;background:#dbeafe;color:#1e3a8a}.bo-state.anulado{background:#fee2e2;color:#991b1b}.bo-state.reasignado{background:#fef3c7;color:#92400e}.bo-editor{border:2px solid #ef4444;background:#111827;border-radius:14px;padding:14px;margin:12px 0}
   @media(max-width:760px){.bo-vg-kpis{grid-template-columns:repeat(2,minmax(0,1fr))}.bo-inc-data{grid-template-columns:1fr}}
   @media(max-width:760px){.bo-grid,.bo-form{grid-template-columns:1fr}.bo-kpis{grid-template-columns:repeat(2,minmax(0,1fr))}.bo-wide{grid-column:auto}}
   </style>`;
@@ -680,6 +680,14 @@ function boEstadoVg(estado){
   const cls=e==="ANULADO"?"anulado":e==="REASIGNADO"?"reasignado":"";
   return `<span class="bo-state ${cls}">${boEsc(e)}</span>`;
 }
+function boEstadoBonoVg(x){
+  const color=boNorm(x&&x.colorBono||"NARANJA").toLowerCase();
+  const etiqueta=x&&x.etiquetaBono?x.etiquetaBono:"Sin registro";
+  const detalle=x&&x.coincidenciaBono==="TICKET"&&Number(x.similitudTicketBono)>0
+    ?` · ticket ${Number(x.similitudTicketBono).toFixed(0)}%`
+    :(x&&x.coincidenciaBono==="DATOS_RESPALDO"?" · coincidencia por datos":"");
+  return `<span class="bo-bono-ind" title="${boEsc(etiqueta+detalle)}"><i class="bo-bono-dot ${boEsc(color)}"></i>${boEsc(etiqueta)}</span>`;
+}
 function boDetalleVg(x){
   return `<div class="bo-inc-data">
     <div><span>Fecha</span><b>${boEsc(x.fecha||"-")}</b></div><div><span>Ticket</span><b>${boEsc(x.ticket||"-")}</b></div>
@@ -692,7 +700,7 @@ function boTarjetaVg(i,historial){
   const x=BO_INCIDENCIAS[i];
   return `<div class="bo-inc-card ${historial?"hist":""}">
     ${historial?`<button class="bo-edit-dot" title="Editar asignación" onclick="boAbrirEditorVtrGar(${i})">Editar</button>`:""}
-    <div class="bo-inc-head"><span class="bo-inc-type">${boEsc(x.tipo)} · ${boEsc(x.sedeEjecutora||"SIN SEDE")}</span>${boEstadoVg(x.estadoCalificacion)}</div>
+    <div class="bo-inc-head"><span class="bo-inc-type">${boEsc(x.tipo)} · ${boEsc(x.sedeEjecutora||"SIN SEDE")}</span><span class="bo-inc-statuses">${boEstadoBonoVg(x)}${boEstadoVg(x.estadoCalificacion)}</span></div>
     ${boDetalleVg(x)}
     ${x.observacion?`<div class="bo-match"><b>Observación:</b> ${boEsc(x.observacion)}</div>`:""}
     ${!historial?`<div class="bo-inc-actions"><button class="bo-mini-btn" onclick="boCalificarVtrGar(${i},'CORRESPONDE')">Sí corresponde</button><button class="bo-mini-btn alt" onclick="boAbrirEditorVtrGar(${i})">Asignar a otra cuadrilla</button><button class="bo-mini-btn danger" onclick="boCalificarVtrGar(${i},'ANULAR')">Anular</button></div>`:""}
@@ -710,6 +718,7 @@ function boRenderGestionVtrGar(){
   const r=BO_PREVISTA||{};
   document.getElementById("boAsigContenido").innerHTML=`
     <div class="bo-vg-kpis"><div class="bo-vg-kpi"><b>${r.pendientes||0}</b><span>Pendientes</span></div><div class="bo-vg-kpi"><b>${r.confirmados||0}</b><span>Confirmados</span></div><div class="bo-vg-kpi"><b>${r.reasignados||0}</b><span>Reasignados</span></div><div class="bo-vg-kpi"><b>${r.anulados||0}</b><span>Anulados</span></div></div>
+    <div class="bo-bono-legend"><span><i class="bo-bono-dot verde"></i>Bono validado</span><span><i class="bo-bono-dot amarillo"></i>Validada sin bono</span><span><i class="bo-bono-dot naranja"></i>Sin registro</span><span><i class="bo-bono-dot plomo"></i>Registrada pendiente</span></div>
     <div id="boEditorVtrGar"></div>
     <h3>🔴 Pendientes de calificar (${pendiente.length})</h3>${boAgruparIndicesVg(pendiente,false)}
     <h3 style="margin-top:20px">📚 Historial calificado (${historial.length})</h3><p class="bo-note">El punto rojo permite editar, reasignar, reactivar o anular nuevamente.</p>${boAgruparIndicesVg(historial,true)}`;

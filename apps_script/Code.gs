@@ -5934,7 +5934,7 @@ function listarMapaOperativo(data) {
 }
 
 /* =========================
-   BASE OPERATIVA UNIFICADA V236
+   BASE OPERATIVA UNIFICADA V238
    Reemplaza únicamente las hojas de indicadores actuales.
 ========================= */
 const HOJA_ASIGNACION_VTR_GAR = "ASIGNACION_VTR_GAR";
@@ -6302,6 +6302,242 @@ function filaObjetoGestionVtrGar(item) {
 function estadoVtrGarContabilizable(estado) {
   const e = normalizarTexto(estado);
   return e === "CONFIRMADO" || e === "REASIGNADO";
+}
+
+
+/* =========================
+   SINCRONIZACIÓN SOLICITUD DE BONO VTR/GAR V238
+   Solo usa registros GAR/VTR de VALIDACION_TECNICA.
+========================= */
+function normalizarTicketBonoVtrGar(valor) {
+  return normalizarTexto(textoValidoBaseOperativa(valor)).replace(/[^A-Z0-9]/g, "");
+}
+
+function variantesTicketBonoVtrGar(valor) {
+  const texto = textoValidoBaseOperativa(valor);
+  if (!texto) return [];
+  const vistos = {};
+  const salida = [];
+  const partes = [texto].concat(texto.split(/[\/|,;]+/));
+  partes.forEach(parte => {
+    const normalizado = normalizarTicketBonoVtrGar(parte);
+    if (normalizado.length < 5 || vistos[normalizado]) return;
+    vistos[normalizado] = true;
+    salida.push(normalizado);
+  });
+  return salida;
+}
+
+function distanciaLevenshteinBonoVtrGar(a, b) {
+  const x = (a || "").toString();
+  const y = (b || "").toString();
+  if (x === y) return 0;
+  if (!x.length) return y.length;
+  if (!y.length) return x.length;
+
+  let anterior = [];
+  let actual = [];
+  for (let j = 0; j <= y.length; j++) anterior[j] = j;
+
+  for (let i = 1; i <= x.length; i++) {
+    actual = [i];
+    for (let j = 1; j <= y.length; j++) {
+      const costo = x.charAt(i - 1) === y.charAt(j - 1) ? 0 : 1;
+      actual[j] = Math.min(
+        actual[j - 1] + 1,
+        anterior[j] + 1,
+        anterior[j - 1] + costo
+      );
+    }
+    anterior = actual;
+  }
+  return anterior[y.length];
+}
+
+function similitudTicketBonoVtrGar(a, b) {
+  const x = normalizarTicketBonoVtrGar(a);
+  const y = normalizarTicketBonoVtrGar(b);
+  if (!x || !y) return 0;
+  const mayor = Math.max(x.length, y.length);
+  if (!mayor) return 0;
+  if (Math.abs(x.length - y.length) / mayor > 0.10) return 0;
+  return Math.max(0, Math.round((1 - (distanciaLevenshteinBonoVtrGar(x, y) / mayor)) * 10000) / 100);
+}
+
+function fechaHoraVisibleBonoVtrGar(fecha, hora) {
+  const f = convertirFechaHoraValidacion(fecha, hora);
+  if (!f) return "";
+  return Utilities.formatDate(f, Session.getScriptTimeZone(), "dd/MM/yyyy HH:mm");
+}
+
+function leerSolicitudesBonoVtrGar() {
+  const hoja = asegurarHojaValidacionTecnica();
+  const datos = hoja.getDataRange().getValues();
+  const lista = [];
+  const exactos = {};
+
+  for (let i = 1; i < datos.length; i++) {
+    const fila = datos[i];
+    const tipo = normalizarTexto(fila[6]);
+    if (tipo !== "VTR" && tipo !== "GAR") continue;
+
+    const ticket = textoValidoBaseOperativa(fila[10]) ||
+      ((fila[8] || "").toString() + (fila[9] || "").toString());
+    const item = {
+      id: (fila[0] || "").toString(),
+      tipo,
+      ticket,
+      variantesTicket: variantesTicketBonoVtrGar(ticket),
+      codigoPedido: textoValidoBaseOperativa(fila[7]),
+      cuadrilla: normalizarCuadrilla(fila[5]),
+      fechaISO: fechaIsoBaseOperativa(fechaBaseOperativa(fila[1])),
+      numeroDocumento: textoValidoBaseOperativa(fila[11]),
+      estado: normalizarTexto(fila[13] || "PENDIENTE"),
+      resultado: normalizarTexto(fila[14] || ""),
+      validadoPor: (fila[15] || "").toString(),
+      fechaSolicitud: fechaHoraVisibleBonoVtrGar(fila[1], fila[2]),
+      fechaValidacion: fechaHoraVisibleBonoVtrGar(fila[17], fila[18]),
+      motivoValidacion: (fila[19] || "").toString()
+    };
+
+    const indiceLista = lista.length;
+    lista.push(item);
+    item.variantesTicket.forEach(t => {
+      if (!exactos[t]) exactos[t] = [];
+      exactos[t].push(indiceLista);
+    });
+  }
+
+  return { lista, exactos };
+}
+
+function clasificarEstadoBonoVtrGar(solicitud, coincidencia, similitud) {
+  if (!solicitud) {
+    return {
+      estadoBono: "SIN_REGISTRO",
+      colorBono: "NARANJA",
+      etiquetaBono: "Sin registro",
+      coincidenciaBono: "",
+      similitudTicketBono: 0,
+      validacionBono: null
+    };
+  }
+
+  const resultado = normalizarTexto(solicitud.resultado);
+  const estado = normalizarTexto(solicitud.estado);
+  let estadoBono = "PENDIENTE";
+  let colorBono = "PLOMO";
+  let etiquetaBono = "Registrada pendiente";
+
+  if (resultado === "BONO" || estado === "BONO") {
+    estadoBono = "VALIDADA_BONO";
+    colorBono = "VERDE";
+    etiquetaBono = "Bono validado";
+  } else if (resultado === "NO BONO" || estado === "NO BONO") {
+    estadoBono = "VALIDADA_NO_BONO";
+    colorBono = "AMARILLO";
+    etiquetaBono = "Validada sin bono";
+  }
+
+  return {
+    estadoBono,
+    colorBono,
+    etiquetaBono,
+    coincidenciaBono: coincidencia || "",
+    similitudTicketBono: Number(similitud) || 0,
+    validacionBono: {
+      id: solicitud.id,
+      tipo: solicitud.tipo,
+      ticket: solicitud.ticket,
+      codigoPedido: solicitud.codigoPedido,
+      cuadrilla: solicitud.cuadrilla,
+      estado: solicitud.estado,
+      resultado: solicitud.resultado,
+      validadoPor: solicitud.validadoPor,
+      fechaSolicitud: solicitud.fechaSolicitud,
+      fechaValidacion: solicitud.fechaValidacion,
+      motivoValidacion: solicitud.motivoValidacion
+    }
+  };
+}
+
+function buscarSolicitudBonoParaIncidenciaVtrGar(incidencia, indice) {
+  const variantesIncidencia = variantesTicketBonoVtrGar(incidencia.ticket);
+  let mejor = null;
+  let mejorSimilitud = 0;
+
+  // 1. Ticket exacto o con similitud >= 90 %. Al cumplir este umbral,
+  // no se evalúa ningún otro dato.
+  for (let i = 0; i < variantesIncidencia.length; i++) {
+    const exactos = indice.exactos[variantesIncidencia[i]] || [];
+    if (exactos.length) {
+      const solicitudExacta = indice.lista[exactos[exactos.length - 1]];
+      return clasificarEstadoBonoVtrGar(solicitudExacta, "TICKET", 100);
+    }
+  }
+
+  if (variantesIncidencia.length) {
+    for (let s = 0; s < indice.lista.length; s++) {
+      const solicitud = indice.lista[s];
+      for (let i = 0; i < variantesIncidencia.length; i++) {
+        for (let j = 0; j < solicitud.variantesTicket.length; j++) {
+          const sim = similitudTicketBonoVtrGar(variantesIncidencia[i], solicitud.variantesTicket[j]);
+          if (sim >= 90 && sim > mejorSimilitud) {
+            mejor = solicitud;
+            mejorSimilitud = sim;
+          }
+        }
+      }
+    }
+  }
+
+  if (mejor) return clasificarEstadoBonoVtrGar(mejor, "TICKET", mejorSimilitud);
+
+  // 2. Respaldo solo cuando el ticket no coincide: mismo tipo y código,
+  // acompañado por fecha, cuadrilla o DNI para evitar cruces incorrectos.
+  const tipo = normalizarTexto(incidencia.tipo);
+  const codigo = normalizarTexto(incidencia.codigoPedido);
+  const cuadrilla = normalizarCuadrilla(incidencia.cuadrillaEjecutora);
+  const fechaISO = incidencia.fechaISO || fechaIsoBaseOperativa(fechaBaseOperativa(incidencia.fecha));
+  const dni = normalizarTexto(incidencia.numeroDocumento);
+  let mejorRespaldo = null;
+  let mejorPuntaje = -1;
+  let empate = false;
+
+  if (tipo && codigo) {
+    indice.lista.forEach(solicitud => {
+      if (solicitud.tipo !== tipo) return;
+      if (normalizarTexto(solicitud.codigoPedido) !== codigo) return;
+      let puntaje = 0;
+      if (cuadrilla && solicitud.cuadrilla === cuadrilla) puntaje += 2;
+      if (fechaISO && solicitud.fechaISO === fechaISO) puntaje += 2;
+      if (dni && normalizarTexto(solicitud.numeroDocumento) === dni) puntaje += 1;
+      if (puntaje < 2) return;
+      if (puntaje > mejorPuntaje) {
+        mejorPuntaje = puntaje;
+        mejorRespaldo = solicitud;
+        empate = false;
+      } else if (puntaje === mejorPuntaje) {
+        empate = true;
+      }
+    });
+  }
+
+  if (mejorRespaldo && !empate) {
+    return clasificarEstadoBonoVtrGar(mejorRespaldo, "DATOS_RESPALDO", 0);
+  }
+
+  return clasificarEstadoBonoVtrGar(null, "", 0);
+}
+
+function agregarEstadoBonoGestionVtrGar(lista) {
+  const indice = leerSolicitudesBonoVtrGar();
+  return (lista || []).map(item => {
+    const salida = Object.assign({}, item);
+    const estadoBono = buscarSolicitudBonoParaIncidenciaVtrGar(item, indice);
+    Object.keys(estadoBono).forEach(k => salida[k] = estadoBono[k]);
+    return salida;
+  });
 }
 
 function filaAsignacionAObjetoBase(fila) {
@@ -7030,7 +7266,7 @@ function leerBaseVtrGarDetectada() {
 
 function listarGestionVtrGar(data) {
   validarAdministracionBaseOperativa(data.usuario);
-  const gestion = obtenerGestionVtrGarExistente().lista;
+  const gestion = agregarEstadoBonoGestionVtrGar(obtenerGestionVtrGarExistente().lista);
   const mapa = cuadrillasTecnicasBaseOperativa();
   const cuadrillas = Object.keys(mapa).sort().map(c => mapa[c]);
   const pendientes = gestion.filter(x => x.estadoCalificacion === "PENDIENTE").length;
@@ -7227,7 +7463,7 @@ function listarDetalleVtrGarTecnico(data) {
     }
   } catch (e) {}
 
-  const lista = obtenerGestionVtrGarExistente().lista.filter(item => {
+  const lista = agregarEstadoBonoGestionVtrGar(obtenerGestionVtrGarExistente().lista).filter(item => {
     if (!estadoVtrGarContabilizable(item.estadoCalificacion)) return false;
     if (normalizarCuadrilla(item.cuadrillaResponsable) !== cuadrilla) return false;
     const fecha = fechaBaseOperativa(item.fechaISO || item.fecha);
@@ -7242,7 +7478,11 @@ function listarDetalleVtrGarTecnico(data) {
       clave:item.clave, fecha:item.fecha, fechaISO:item.fechaISO, tipo:item.tipo,
       ticket:item.ticket, numeroDocumento:item.numeroDocumento, cliente:item.cliente,
       codigoPedido:item.codigoPedido, tipoPartida:item.tipoPartida,
-      estadoCalificacion:item.estadoCalificacion
+      estadoCalificacion:item.estadoCalificacion,
+      estadoBono:item.estadoBono, colorBono:item.colorBono,
+      etiquetaBono:item.etiquetaBono, coincidenciaBono:item.coincidenciaBono,
+      similitudTicketBono:item.similitudTicketBono,
+      validacionBono:item.validacionBono
     }))
   };
 }

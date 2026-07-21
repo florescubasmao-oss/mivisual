@@ -538,8 +538,13 @@ async function mostrarVTRGAR(){
         <style>
             .ind-vg-list{display:grid;gap:10px}
             .ind-vg-card{background:#fff;color:#0f172a;border-left:5px solid #ef4444;border-radius:13px;padding:12px;box-shadow:0 7px 18px rgba(2,6,23,.18)}
-            .ind-vg-head{display:flex;justify-content:space-between;gap:8px;font-weight:900;margin-bottom:8px}
+            .ind-vg-head{display:flex;justify-content:space-between;gap:8px;font-weight:900;margin-bottom:8px;align-items:center;flex-wrap:wrap}
             .ind-vg-type{display:inline-flex;align-items:center;gap:6px}
+            .ind-vg-bono{display:inline-flex;align-items:center;gap:6px;font-size:11px;font-weight:900;color:#334155}
+            .ind-vg-dot{width:14px;height:14px;border-radius:50%;display:inline-block;border:2px solid #fff;box-shadow:0 0 0 1px rgba(15,23,42,.3)}
+            .ind-vg-dot.verde{background:#22c55e}.ind-vg-dot.amarillo{background:#facc15}.ind-vg-dot.naranja{background:#f97316}.ind-vg-dot.plomo{background:#94a3b8}
+            .ind-vg-legend{display:flex;gap:9px;flex-wrap:wrap;background:#e2e8f0;color:#0f172a;border-radius:12px;padding:9px 10px;margin:10px 0 14px}
+            .ind-vg-legend span{display:inline-flex;align-items:center;gap:5px;font-size:10px;font-weight:800}
             .ind-vg-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px 12px;font-size:12px}
             .ind-vg-grid span{color:#64748b;display:block;margin-bottom:2px}
             .ind-vg-grid b{color:#111827;word-break:break-word}
@@ -559,14 +564,22 @@ async function mostrarVTRGAR(){
             <div class="mv4-day-row"><span>Finalizadas</span><b>${r.ordenes}</b></div>`);
     });
 
-    html += `<h2 class="mv4-section-title">👤 Clientes asociados a tus VTR/GAR</h2><div class="ind-vg-list">`;
+    html += `<h2 class="mv4-section-title">👤 Clientes asociados a tus VTR/GAR</h2>
+        <div class="ind-vg-legend"><span><i class="ind-vg-dot verde"></i>Bono validado</span><span><i class="ind-vg-dot amarillo"></i>Validada sin bono</span><span><i class="ind-vg-dot naranja"></i>Sin registro</span><span><i class="ind-vg-dot plomo"></i>Registrada pendiente</span></div>
+        <div class="ind-vg-list">`;
 
     if(detalleVtrGar.length){
         detalleVtrGar.forEach(x=>{
             const icono = String(x.tipo || "").toUpperCase() === "GAR" ? "🛡️" : "📺";
+            const colorBono = String(x.colorBono || "NARANJA").toLowerCase();
+            const etiquetaBono = x.etiquetaBono || "Sin registro";
+            const detalleCoincidencia = x.coincidenciaBono === "TICKET" && Number(x.similitudTicketBono) > 0
+                ? ` · ticket ${Number(x.similitudTicketBono).toFixed(0)}%`
+                : (x.coincidenciaBono === "DATOS_RESPALDO" ? " · coincidencia por datos" : "");
             html += `<div class="ind-vg-card">
                 <div class="ind-vg-head">
                     <span class="ind-vg-type">${icono} ${esc(x.tipo || "VTR/GAR")}</span>
+                    <span class="ind-vg-bono" title="${esc(etiquetaBono + detalleCoincidencia)}"><i class="ind-vg-dot ${esc(colorBono)}"></i>${esc(etiquetaBono)}</span>
                     <span>📅 ${esc(x.fecha || "-")}</span>
                 </div>
                 <div class="ind-vg-grid">

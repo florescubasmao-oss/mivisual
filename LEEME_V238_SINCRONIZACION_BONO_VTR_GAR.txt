@@ -1,0 +1,28 @@
+MI VISUAL V238 - SINCRONIZACIÓN DE SOLICITUD DE BONO VTR/GAR
+
+ALCANCE
+- Parte de la versión estable V237.
+- No modifica Producción, Efectividad, Recableado, Análisis Económico ni la lógica del Ranking.
+- Solo cruza incidencias calificadas VTR/GAR con solicitudes VTR/GAR de VALIDACION_TECNICA.
+- Los registros de RECABLEADO quedan excluidos.
+
+REGLA DE COINCIDENCIA
+1. El ticket se normaliza eliminando espacios, guiones y caracteres especiales.
+2. Si el ticket coincide con similitud igual o mayor a 90 %, se vincula directamente y no se revisan otros campos.
+3. Solo si el ticket no coincide, se usa respaldo conservador: mismo tipo VTR/GAR y mismo código de pedido, acompañado por fecha, cuadrilla o DNI.
+4. Si el respaldo queda ambiguo, se mantiene como Sin registro.
+
+COLORES
+- Verde: solicitud validada con BONO.
+- Amarillo: solicitud validada con NO BONO.
+- Naranja: no existe solicitud relacionada.
+- Plomo: existe solicitud, pero sigue pendiente.
+
+VISUALIZACIÓN
+- Jefatura: círculos de estado dentro de Calificación VTR/GAR, tanto en pendientes como en historial, agrupado por sede.
+- Técnico: círculos de estado dentro de la opción VTR/GAR, junto al detalle del cliente.
+
+APLICACIÓN
+- Reemplazar Code.gs en Apps Script y crear un nuevo despliegue.
+- Reemplazar en GitHub: index.html, js/base_operativa.js y js/indicadores.js.
+- No se crean hojas nuevas ni se cambia la estructura de las hojas existentes.
