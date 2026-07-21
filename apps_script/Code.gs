@@ -5928,7 +5928,7 @@ function listarMapaOperativo(data) {
 }
 
 /* =========================
-   BASE OPERATIVA UNIFICADA V228
+   BASE OPERATIVA UNIFICADA V231
    Reemplaza únicamente las hojas de indicadores actuales.
 ========================= */
 const HOJA_ASIGNACION_VTR_GAR = "ASIGNACION_VTR_GAR";
@@ -6491,6 +6491,7 @@ function previsualizarBaseOperativa(data) {
   const preparado = prepararRegistrosBaseOperativa(data.registros);
   const corte = obtenerCorteBaseOperativa(preparado.registros);
   const matrices = crearMatricesBaseOperativa(preparado.registros, corte, usuario.usuario);
+  const catalogoVista = catalogoPartidasBaseOperativa();
   return {
     ok: true,
     modulo: "BASE_OPERATIVA",
@@ -6509,6 +6510,8 @@ function previsualizarBaseOperativa(data) {
     totalProduccionClasificada: matrices.totalProduccionClasificada,
     finalizadasSinCatalogo: matrices.finalizadasSinCatalogo,
     detalleNoClasificadas: matrices.detalleNoClasificadas,
+    sugerenciasNoClasificadas: sugerenciasCatalogoBaseOperativa(matrices.detalleNoClasificadas, catalogoVista.lista),
+    catalogoOpciones: opcionesCatalogoBaseOperativa(catalogoVista.lista),
     partidasNoEncontradas: matrices.partidasNoEncontradas,
     cuadrillasNoEncontradas: matrices.cuadrillasNoEncontradas,
     actual: resumenActualBaseOperativa(),
@@ -6773,6 +6776,153 @@ function recalcularVtrGarDesdeBaseOperativa(usuarioCarga) {
   return { ok:true, registros:salida.length - 1, actualizadoAl:fechaVisibleBaseOperativa(corte) };
 }
 
+
+function tokensPartidaBaseOperativa(texto) {
+  const stop = {
+    "DE":true,"DEL":true,"LA":true,"EL":true,"LOS":true,"LAS":true,"EN":true,
+    "Y":true,"A":true,"AL":true,"POR":true,"PARA":true,"CON":true,"SIN":true,
+    "UN":true,"UNA":true,"SERVICIO":true,"COMPLETO":true,"ABONADO":true
+  };
+  const vistos = {};
+  const salida = [];
+  normalizarTexto(texto).split(/[^A-Z0-9]+/).forEach(token => {
+    if (!token || stop[token] || vistos[token]) return;
+    vistos[token] = true;
+    salida.push(token);
+  });
+  return salida;
+}
+
+function similitudPartidasBaseOperativa(origen, candidato) {
+  const a = tokensPartidaBaseOperativa(origen);
+  const b = tokensPartidaBaseOperativa(candidato);
+  if (!a.length || !b.length) return 0;
+  const mapaB = {};
+  b.forEach(x => mapaB[x] = true);
+  let comunes = 0;
+  a.forEach(x => { if (mapaB[x]) comunes++; });
+  let score = (2 * comunes) / (a.length + b.length);
+
+  const na = normalizarTexto(origen);
+  const nb = normalizarTexto(candidato);
+  if (na.indexOf(nb) >= 0 || nb.indexOf(na) >= 0) score += 0.12;
+
+  const claves = ["RECABLEADO","RESIDENCIAL","CONDOMINIO","VISITA","TECNICA","POST","VENTA","UTP","ONT","MESH","TRASLADO","INSTALACION"];
+  claves.forEach(k => {
+    const enA = a.indexOf(k) >= 0;
+    const enB = b.indexOf(k) >= 0;
+    if (enA && enB) score += 0.025;
+  });
+
+  // Diferencias críticas bajan la sugerencia, pero nunca producen una asignación automática.
+  if ((a.indexOf("RESIDENCIAL") >= 0) !== (b.indexOf("RESIDENCIAL") >= 0)) score -= 0.06;
+  if ((a.indexOf("CONDOMINIO") >= 0) !== (b.indexOf("CONDOMINIO") >= 0)) score -= 0.06;
+  const postA = a.indexOf("POST") >= 0 || a.indexOf("POSVENTA") >= 0;
+  const postB = b.indexOf("POST") >= 0 || b.indexOf("POSVENTA") >= 0;
+  if (postA !== postB) score -= 0.08;
+
+  return Math.max(0, Math.min(score, 1));
+}
+
+function sugerenciasCatalogoBaseOperativa(detalleNoClasificadas, catalogoLista) {
+  return (detalleNoClasificadas || []).map(detalle => {
+    const sugerencias = (catalogoLista || []).map(item => ({
+      codigo: item.codigo,
+      tipoOrden: item.tipoOrden,
+      plataforma: item.plataforma,
+      puntaje: item.puntaje,
+      grupo: item.grupo,
+      monto: item.monto,
+      estado: item.estado,
+      similitud: Math.round(similitudPartidasBaseOperativa(detalle.tipoPartida, item.tipoOrden) * 100)
+    }))
+    .filter(item => item.similitud >= 35)
+    .sort((a, b) => b.similitud - a.similitud || a.tipoOrden.localeCompare(b.tipoOrden))
+    .slice(0, 5);
+
+    return {
+      tipoPartida: detalle.tipoPartida,
+      cantidad: detalle.cantidad,
+      cuadrillas: detalle.cuadrillas || [],
+      sugerencias
+    };
+  });
+}
+
+function opcionesCatalogoBaseOperativa(catalogoLista) {
+  const plataformas = {}, grupos = {}, estados = {};
+  (catalogoLista || []).forEach(item => {
+    if (item.plataforma) plataformas[item.plataforma] = true;
+    if (item.grupo) grupos[item.grupo] = true;
+    if (item.estado) estados[item.estado] = true;
+  });
+  return {
+    plataformas: Object.keys(plataformas).sort(),
+    grupos: Object.keys(grupos).sort(),
+    estados: Object.keys(estados).sort()
+  };
+}
+
+function registrarPartidaCatalogoOperativa(data) {
+  const usuario = validarAdministracionBaseOperativa(data.usuario);
+  const hoja = obtenerHoja(HOJA_CATALOGO_ORDENES);
+  const tipoPartida = (data.tipoPartida || "").toString().trim();
+  const tipoNorm = normalizarTexto(tipoPartida);
+  if (!tipoNorm) throw new Error("La partida es obligatoria");
+
+  const catalogo = catalogoPartidasBaseOperativa();
+  if (catalogo.porTipo[tipoNorm]) {
+    return {
+      ok:true,
+      modulo:"CATALOGO_ORDENES",
+      accion:"YA_EXISTE",
+      yaExistia:true,
+      partida:catalogo.porTipo[tipoNorm]
+    };
+  }
+
+  let codigo = textoValidoBaseOperativa(data.codigo);
+  let plataforma = normalizarTexto(data.plataforma);
+  let puntaje = Number(data.puntaje);
+  let grupo = normalizarTexto(data.grupo);
+  let monto = Number(data.monto);
+  let estado = normalizarTexto(data.estado || "ACTIVO");
+  const referenciaNorm = normalizarTexto(data.tipoPartidaReferencia || "");
+
+  if (referenciaNorm) {
+    const referencia = catalogo.porTipo[referenciaNorm];
+    if (!referencia) throw new Error("La partida de referencia ya no existe en CATALOGO_ORDENES");
+    codigo = referencia.codigo;
+    plataforma = referencia.plataforma;
+    puntaje = referencia.puntaje;
+    grupo = referencia.grupo;
+    monto = referencia.monto;
+    estado = referencia.estado || "ACTIVO";
+  }
+
+  if (!codigo) throw new Error("Debe ingresar el código de la partida");
+  if (!plataforma) throw new Error("Debe ingresar la plataforma de la partida");
+  if (!grupo) throw new Error("Debe ingresar el grupo de la partida");
+  if (!isFinite(puntaje) || puntaje < 0) throw new Error("El puntaje no es válido");
+  if (!isFinite(monto) || monto < 0) throw new Error("El monto no es válido");
+  if (!estado) estado = "ACTIVO";
+
+  if (hoja.getMaxColumns() < 7) hoja.insertColumnsAfter(hoja.getMaxColumns(), 7 - hoja.getMaxColumns());
+  hoja.appendRow([codigo, tipoPartida, plataforma, puntaje, grupo, monto, estado]);
+  const fila = hoja.getLastRow();
+  hoja.getRange(fila, 4).setNumberFormat("0.00");
+  hoja.getRange(fila, 6).setNumberFormat('"S/ "0.00');
+  SpreadsheetApp.flush();
+
+  return {
+    ok:true,
+    modulo:"CATALOGO_ORDENES",
+    accion:referenciaNorm ? "COPIAR_COINCIDENCIA" : "REGISTRAR_NUEVA",
+    registradoPor:usuario.usuario,
+    partida:{ codigo, tipoOrden:tipoPartida, plataforma, puntaje, grupo, monto, estado }
+  };
+}
+
 function listarCatalogoPartidasOperativas(data) {
   validarAdministracionBaseOperativa(data.usuario);
   return { ok:true, modulo:"CATALOGO_ORDENES", catalogo:catalogoPartidasBaseOperativa().lista };
@@ -6789,6 +6939,7 @@ function doPost(e) {
     if (data.accion === "guardarAsignacionVtrGar") return respuestaJson(guardarAsignacionVtrGar(data));
     if (data.accion === "anularAsignacionVtrGar") return respuestaJson(anularAsignacionVtrGar(data));
     if (data.accion === "listarCatalogoPartidasOperativas") return respuestaJson(listarCatalogoPartidasOperativas(data));
+    if (data.accion === "registrarPartidaCatalogoOperativa") return respuestaJson(registrarPartidaCatalogoOperativa(data));
 
     if (data.accion === "importarMapaOperativo") return respuestaJson(importarMapaOperativo(data));
     if (data.accion === "listarMapaOperativo") return respuestaJson(listarMapaOperativo(data));

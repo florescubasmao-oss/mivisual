@@ -1,0 +1,40 @@
+MI VISUAL V231 - CATÁLOGO DE PARTIDAS ASISTIDO
+
+Base utilizada:
+- MI_VISUAL_V230_CONTROL_FINALIZADAS_PRODUCCION.zip
+
+Objetivo:
+- Resolver partidas FINALIZADAS que no tengan coincidencia exacta en CATALOGO_ORDENES sin modificar los dashboards ni la estructura de las hojas actuales.
+
+Cambios aplicados:
+1. La previsualización busca coincidencias similares en CATALOGO_ORDENES.
+2. Las coincidencias son solo sugerencias y nunca se asignan automáticamente.
+3. Jefatura puede confirmar una sugerencia. El sistema agrega la nueva descripción al catálogo copiando código, plataforma, puntaje, grupo, monto y estado de la partida confirmada.
+4. Cuando ninguna sugerencia corresponde, Jefatura puede registrar desde la misma pantalla únicamente la partida nueva con:
+   - Código
+   - Plataforma
+   - Puntaje
+   - Grupo
+   - Monto
+   - Estado
+5. Después de guardar la partida, la base cargada se vuelve a validar sin necesidad de seleccionar nuevamente el archivo.
+6. Mientras exista una orden FINALIZADA sin clasificación, no se reemplaza ninguna hoja.
+7. Se mantiene el control estricto: Total de FINALIZADAS debe coincidir con órdenes clasificadas en Producción.
+
+Archivos modificados:
+- Code.gs
+- apps_script/Code.gs
+- js/base_operativa.js
+- index.html (solo versión del archivo JS para evitar caché)
+
+No se modificaron:
+- Dashboards
+- Análisis Económico
+- Ranking
+- Producción, Efectividad, Recableados o VTR/GAR en su estructura
+- Usuarios, permisos ni otros módulos
+
+Aplicación:
+- Apps Script: reemplazar Code.gs y crear un nuevo despliegue.
+- GitHub: actualizar index.html y js/base_operativa.js.
+- Google Sheets: no se crean hojas nuevas; solo se agregan filas a CATALOGO_ORDENES cuando Jefatura confirma.

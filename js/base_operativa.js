@@ -1,10 +1,12 @@
-// MI VISUAL V230 - Lectura HTML directa + control estricto Finalizadas vs Producción
+// MI VISUAL V231 - Resolución asistida de partidas sin catálogo
 const API_BASE_OPERATIVA = (window.MI_VISUAL_API_URL || "https://script.google.com/macros/s/AKfycbzcbjCLweJNgZXDerdzmMN7Lwotc1G8NWdzoPkaLNGDivAgpYxDkq78xZwPRioSB4XY/exec");
 let BO_REGISTROS = [];
 let BO_ARCHIVO = "";
 let BO_INCIDENCIAS = [];
 let BO_ASIGNACIONES = [];
 let BO_CUADRILLAS = [];
+let BO_PREVISTA = null;
+let BO_CATALOGO_OPCIONES = {plataformas:[],grupos:[],estados:[]};
 
 function boNorm(v){
   return (v == null ? "" : String(v)).toUpperCase().normalize("NFD")
@@ -67,7 +69,7 @@ function boCss(){
   .bo-msg{padding:11px;border-radius:10px;margin-top:12px;background:#0f172a;color:#dbeafe;white-space:pre-line}.bo-ok{background:#064e3b}.bo-error{background:#7f1d1d}.bo-warn{background:#78350f}
   .bo-kpis{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin-top:12px}.bo-kpi{background:#0f172a;border:1px solid #334155;border-radius:12px;padding:12px}.bo-kpi b{font-size:21px;display:block}.bo-kpi span{font-size:11px;color:#cbd5e1}
   .bo-table-wrap{overflow:auto;max-height:520px;border-radius:12px}.bo-table{width:100%;border-collapse:collapse;font-size:12px;background:#fff;color:#111827}.bo-table th{position:sticky;top:0;background:#1e3a5f;color:#fff;text-align:left;padding:9px;z-index:1}.bo-table td{padding:8px;border-bottom:1px solid #e2e8f0;vertical-align:top}.bo-table tr:nth-child(even){background:#f8fafc}
-  .bo-form{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}.bo-form label{font-size:12px;font-weight:800;color:#dbeafe;display:flex;flex-direction:column;gap:5px}.bo-wide{grid-column:1/-1}.bo-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}.bo-note{font-size:12px;color:#fcd34d;line-height:1.5}.bo-badge{display:inline-block;padding:4px 7px;border-radius:999px;background:#dbeafe;color:#1e3a8a;font-size:10px;font-weight:800}
+  .bo-form{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}.bo-form label{font-size:12px;font-weight:800;color:#dbeafe;display:flex;flex-direction:column;gap:5px}.bo-wide{grid-column:1/-1}.bo-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}.bo-note{font-size:12px;color:#fcd34d;line-height:1.5}.bo-badge{display:inline-block;padding:4px 7px;border-radius:999px;background:#dbeafe;color:#1e3a8a;font-size:10px;font-weight:800}.bo-missing{border:1px solid #f59e0b;background:#111827;border-radius:13px;padding:13px;margin-top:10px}.bo-missing h4{margin:0 0 7px;color:#fde68a}.bo-match{font-size:11px;color:#cbd5e1;margin:5px 0}.bo-new-form{margin-top:12px;padding-top:12px;border-top:1px dashed #64748b}.bo-hidden{display:none!important}
   @media(max-width:760px){.bo-grid,.bo-form{grid-template-columns:1fr}.bo-kpis{grid-template-columns:repeat(2,minmax(0,1fr))}.bo-wide{grid-column:auto}}
   </style>`;
 }
@@ -322,12 +324,95 @@ function boLeerTextoPegado(){
   }catch(e){BO_REGISTROS=[];document.getElementById("boProcesar").disabled=true;msg.className="bo-msg bo-error";msg.textContent=e.message;}
 }
 
+function boOpcionesDatalist(id, valores){
+  return `<datalist id="${id}">${(valores||[]).map(v=>`<option value="${boEsc(v)}"></option>`).join("")}</datalist>`;
+}
+
+function boRenderResolucionPartidas(vista){
+  const faltantes=(vista.sugerenciasNoClasificadas||[]);
+  if(!faltantes.length)return "";
+  const plataformas=(vista.catalogoOpciones&&vista.catalogoOpciones.plataformas)||[];
+  const grupos=(vista.catalogoOpciones&&vista.catalogoOpciones.grupos)||[];
+  const estados=(vista.catalogoOpciones&&vista.catalogoOpciones.estados)||["ACTIVO"];
+  return `<div class="bo-card bo-preview-generated" id="boResolverPartidas"><h3>Resolver partidas sin catálogo</h3>
+    <p class="bo-note">Revise cada sugerencia. Nada se asigna automáticamente. Puede copiar los datos de una coincidencia confirmada o registrar únicamente la nueva partida con sus datos correctos.</p>
+    ${boOpcionesDatalist("boListaPlataformas",plataformas)}${boOpcionesDatalist("boListaGrupos",grupos)}
+    ${faltantes.map((f,i)=>{
+      const sugerencias=f.sugerencias||[];
+      return `<div class="bo-missing">
+        <h4>${boEsc(f.tipoPartida||"SIN PARTIDA")}</h4>
+        <div class="bo-match"><b>${Number(f.cantidad)||0}</b> orden(es) · Cuadrillas: ${boEsc((f.cuadrillas||[]).join(", ")||"-")}</div>
+        ${sugerencias.length?`<label style="display:block;margin-top:9px"><b>Coincidencias sugeridas</b><select id="boSug_${i}" class="bo-select" style="margin-top:5px">${sugerencias.map((x,j)=>`<option value="${j}">${x.similitud}% · ${boEsc(x.codigo)} · ${boEsc(x.tipoOrden)} · ${boEsc(x.plataforma)} · ${boEsc(x.puntaje)} pt · S/ ${Number(x.monto||0).toFixed(2)}</option>`).join("")}</select></label>
+          <div class="bo-actions"><button class="bo-btn" onclick="boUsarCoincidenciaPartida(${i})">Usar coincidencia seleccionada</button><button class="bo-btn alt" onclick="boMostrarNuevaPartida(${i})">No coincide: registrar nueva</button></div>`:
+          `<div class="bo-msg bo-warn">No se encontró una coincidencia suficientemente cercana.</div><div class="bo-actions"><button class="bo-btn" onclick="boMostrarNuevaPartida(${i})">Registrar nueva partida</button></div>`}
+        <div id="boNueva_${i}" class="bo-new-form bo-hidden">
+          <div class="bo-form">
+            <label class="bo-wide">Tipo de partida detectado<input class="bo-input" value="${boEsc(f.tipoPartida||"")}" readonly></label>
+            <label>Código<input id="boNuevoCodigo_${i}" class="bo-input" placeholder="Ej.: SRPVUTP5"></label>
+            <label>Plataforma<input id="boNuevaPlataforma_${i}" class="bo-input" list="boListaPlataformas" placeholder="Plataforma"></label>
+            <label>Puntaje<input id="boNuevoPuntaje_${i}" class="bo-input" type="number" min="0" step="0.01" placeholder="0.00"></label>
+            <label>Grupo<input id="boNuevoGrupo_${i}" class="bo-input" list="boListaGrupos" placeholder="Grupo"></label>
+            <label>Monto / tarifa<input id="boNuevoMonto_${i}" class="bo-input" type="number" min="0" step="0.01" placeholder="0.00"></label>
+            <label>Estado<select id="boNuevoEstado_${i}" class="bo-select">${(estados.length?estados:["ACTIVO"]).map(e=>`<option value="${boEsc(e)}" ${boNorm(e)==="ACTIVO"?"selected":""}>${boEsc(e)}</option>`).join("")}</select></label>
+          </div>
+          <div class="bo-actions"><button class="bo-btn" onclick="boGuardarNuevaPartida(${i})">Guardar partida y volver a validar</button><button class="bo-btn alt" onclick="boMostrarNuevaPartida(${i},true)">Cancelar</button></div>
+        </div>
+      </div>`;
+    }).join("")}
+  </div>`;
+}
+
+function boMostrarNuevaPartida(i,cerrar){
+  const el=document.getElementById(`boNueva_${i}`);if(!el)return;
+  if(cerrar)el.classList.add("bo-hidden");else el.classList.toggle("bo-hidden");
+}
+
+async function boUsarCoincidenciaPartida(i){
+  const faltantes=(BO_PREVISTA&&BO_PREVISTA.sugerenciasNoClasificadas)||[];
+  const f=faltantes[i];if(!f)return;
+  const select=document.getElementById(`boSug_${i}`);
+  const sugerencia=(f.sugerencias||[])[Number(select&&select.value)||0];
+  if(!sugerencia){alert("Seleccione una coincidencia válida.");return;}
+  const detalle=`Partida nueva:\n${f.tipoPartida}\n\nSe copiarán los datos de:\n${sugerencia.tipoOrden}\nCódigo: ${sugerencia.codigo}\nPlataforma: ${sugerencia.plataforma}\nPuntaje: ${sugerencia.puntaje}\nGrupo: ${sugerencia.grupo}\nMonto: S/ ${Number(sugerencia.monto||0).toFixed(2)}\n\nLa partida nueva se agregará al catálogo. ¿Confirmar?`;
+  if(!confirm(detalle))return;
+  try{
+    await boApi({accion:"registrarPartidaCatalogoOperativa",usuario:boUsuario(),tipoPartida:f.tipoPartida,tipoPartidaReferencia:sugerencia.tipoOrden});
+    const msg=document.getElementById("boMensaje");msg.className="bo-msg bo-ok";msg.textContent="Partida agregada al catálogo. Volviendo a validar la base cargada...";
+    await boProcesarBase();
+  }catch(e){alert(e.message);}
+}
+
+async function boGuardarNuevaPartida(i){
+  const faltantes=(BO_PREVISTA&&BO_PREVISTA.sugerenciasNoClasificadas)||[];
+  const f=faltantes[i];if(!f)return;
+  const payload={
+    accion:"registrarPartidaCatalogoOperativa",usuario:boUsuario(),tipoPartida:f.tipoPartida,
+    codigo:(document.getElementById(`boNuevoCodigo_${i}`)||{}).value||"",
+    plataforma:(document.getElementById(`boNuevaPlataforma_${i}`)||{}).value||"",
+    puntaje:(document.getElementById(`boNuevoPuntaje_${i}`)||{}).value||"",
+    grupo:(document.getElementById(`boNuevoGrupo_${i}`)||{}).value||"",
+    monto:(document.getElementById(`boNuevoMonto_${i}`)||{}).value||"",
+    estado:(document.getElementById(`boNuevoEstado_${i}`)||{}).value||"ACTIVO"
+  };
+  if(!payload.codigo||!payload.plataforma||payload.puntaje===""||!payload.grupo||payload.monto===""){
+    alert("Complete Código, Plataforma, Puntaje, Grupo y Monto.");return;
+  }
+  if(!confirm(`Se agregará únicamente esta partida a CATALOGO_ORDENES:\n\n${f.tipoPartida}\nCódigo: ${payload.codigo}\nPlataforma: ${payload.plataforma}\nPuntaje: ${payload.puntaje}\nGrupo: ${payload.grupo}\nMonto: S/ ${Number(payload.monto||0).toFixed(2)}\n\n¿Confirmar?`))return;
+  try{
+    await boApi(payload);
+    const msg=document.getElementById("boMensaje");msg.className="bo-msg bo-ok";msg.textContent="Nueva partida guardada. Volviendo a validar la base cargada...";
+    await boProcesarBase();
+  }catch(e){alert(e.message);}
+}
+
 async function boProcesarBase(){
   if(!BO_REGISTROS.length){alert("Primero lea un archivo válido.");return;}
   const btn=document.getElementById("boProcesar"),msg=document.getElementById("boMensaje"),resumen=document.getElementById("boResumen");
   try{
     btn.disabled=true;msg.className="bo-msg";msg.textContent="Validando resultados antes de reemplazar las hojas...";
+    document.querySelectorAll(".bo-preview-generated").forEach(el=>el.remove());
     const vista=await boApi({accion:"previsualizarBaseOperativa",usuario:boUsuario(),archivo:BO_ARCHIVO,registros:BO_REGISTROS});
+    BO_PREVISTA=vista;BO_CATALOGO_OPCIONES=vista.catalogoOpciones||{plataformas:[],grupos:[],estados:[]};
     const a=vista.actual||{},n=vista.nuevo||{},partidas=vista.partidasNoEncontradas||[],cuadrillas=vista.cuadrillasNoEncontradas||[];
     const noClasificadas=vista.detalleNoClasificadas||[];
     const totalFinalizadas=Number(vista.totalFinalizadasBase||n.finalizadas||0);
@@ -336,7 +421,7 @@ async function boProcesarBase(){
     const advertencias=[];
     if(partidas.length)advertencias.push(`Partidas sin catálogo: ${partidas.length}`);
     if(cuadrillas.length)advertencias.push(`Cuadrillas no encontradas en USUARIOS: ${cuadrillas.length}`);
-    resumen.innerHTML+=`<div class="bo-card" style="margin-top:12px"><h3>Previsualización antes de reemplazar</h3><div class="bo-table-wrap"><table class="bo-table"><thead><tr><th>Indicador</th><th>Actual</th><th>Nuevo</th></tr></thead><tbody>
+    resumen.insertAdjacentHTML("beforeend",`<div class="bo-card bo-preview-generated" style="margin-top:12px"><h3>Previsualización antes de reemplazar</h3><div class="bo-table-wrap"><table class="bo-table"><thead><tr><th>Indicador</th><th>Actual</th><th>Nuevo</th></tr></thead><tbody>
       <tr><td>Órdenes clasificadas en Producción</td><td>${a.produccionOrdenes||0}</td><td>${totalClasificadas}</td></tr>
       <tr><td>Finalizadas detectadas</td><td>${a.finalizadas||0}</td><td>${totalFinalizadas}</td></tr>
       <tr><td>Finalizadas sin partida de catálogo</td><td>-</td><td><b>${totalSinCatalogo}</b></td></tr>
@@ -347,11 +432,13 @@ async function boProcesarBase(){
       <tr><td>Recableados VT</td><td>${a.recableados||0}</td><td>${n.recableados||0}</td></tr>
       <tr><td>GAR</td><td>${a.gar||0}</td><td>${n.gar||0}</td></tr>
       <tr><td>VTR</td><td>${a.vtr||0}</td><td>${n.vtr||0}</td></tr>
-    </tbody></table></div>${advertencias.length||totalSinCatalogo?`<div class="bo-msg bo-warn"><b>Validaciones:</b><br>${advertencias.map(boEsc).join("<br>")}${partidas.length?`<br><br><b>Partidas:</b><br>${partidas.slice(0,30).map(boEsc).join("<br>")}`:""}${noClasificadas.length?`<br><br><b>Finalizadas no clasificadas:</b><br>${noClasificadas.slice(0,40).map(x=>`${boEsc(x.tipoPartida||"SIN PARTIDA")} · ${Number(x.cantidad)||0} orden(es)`).join("<br>")}`:""}${cuadrillas.length?`<br><br><b>Cuadrillas:</b><br>${cuadrillas.map(boEsc).join("<br>")}`:""}</div>`:""}</div>`;
+    </tbody></table></div>${advertencias.length||totalSinCatalogo?`<div class="bo-msg bo-warn"><b>Validaciones:</b><br>${advertencias.map(boEsc).join("<br>")}${partidas.length?`<br><br><b>Partidas pendientes:</b><br>${partidas.slice(0,30).map(boEsc).join("<br>")}`:""}${noClasificadas.length?`<br><br><b>Finalizadas no clasificadas:</b><br>${noClasificadas.slice(0,40).map(x=>`${boEsc(x.tipoPartida||"SIN PARTIDA")} · ${Number(x.cantidad)||0} orden(es)`).join("<br>")}`:""}${cuadrillas.length?`<br><br><b>Cuadrillas:</b><br>${cuadrillas.map(boEsc).join("<br>")}`:""}</div>`:""}</div>`);
     const detalle=`Corte: ${vista.actualizadoAl}\nFinalizadas detectadas: ${totalFinalizadas}\nClasificadas en Producción: ${totalClasificadas}\nSin catálogo: ${totalSinCatalogo}\nLos Rojos: ${n.losRojos||0}\nRecableados VT: ${n.recableados||0}\nGAR: ${n.gar||0}\nVTR: ${n.vtr||0}\nDuplicados consolidados: ${vista.duplicados||0}`;
     if(totalSinCatalogo>0){
-      msg.className="bo-msg bo-error";
-      msg.textContent=`NO SE MODIFICÓ NINGUNA HOJA.\nSe detectaron ${totalSinCatalogo} órdenes FINALIZADAS que no pudieron clasificarse en CATALOGO_ORDENES.\nComplete el catálogo y vuelva a cargar la base.`;
+      resumen.insertAdjacentHTML("beforeend",boRenderResolucionPartidas(vista));
+      msg.className="bo-msg bo-warn";
+      msg.textContent=`NO SE MODIFICÓ NINGUNA HOJA.\nHay ${totalSinCatalogo} órdenes FINALIZADAS pendientes de catálogo. Revise las coincidencias sugeridas o registre la partida nueva en esta misma pantalla.`;
+      const resolver=document.getElementById("boResolverPartidas");if(resolver)resolver.scrollIntoView({behavior:"smooth",block:"start"});
       return;
     }
     if(totalClasificadas!==totalFinalizadas){
@@ -367,7 +454,7 @@ async function boProcesarBase(){
     const desconocidas=(r.partidasNoEncontradas||[]),cuadNo=(r.cuadrillasNoEncontradas||[]);
     msg.className="bo-msg bo-ok";
     msg.textContent=`BASE OPERATIVA ACTUALIZADA\nCorte: ${r.actualizadoAl}\nProducción: ${r.produccion} registros\nEfectividad: ${r.efectividad} cuadrillas\nRecableados: ${r.recableado} cuadrillas\nVTR/GAR: ${r.vtrgar} cuadrillas\nDuplicados consolidados: ${r.duplicados}\nRanking actualizado: ${r.ranking?"Sí":"No"}`;
-    if(desconocidas.length||cuadNo.length)resumen.innerHTML+=`<div class="bo-msg bo-warn">${desconocidas.length?`<b>Partidas no encontradas (${desconocidas.length}):</b><br>${desconocidas.slice(0,30).map(boEsc).join("<br>")}`:""}${cuadNo.length?`<br><br><b>Cuadrillas no encontradas en USUARIOS:</b><br>${cuadNo.map(boEsc).join("<br>")}`:""}</div>`;
+    if(desconocidas.length||cuadNo.length)resumen.insertAdjacentHTML("beforeend",`<div class="bo-msg bo-warn bo-preview-generated">${desconocidas.length?`<b>Partidas no encontradas (${desconocidas.length}):</b><br>${desconocidas.slice(0,30).map(boEsc).join("<br>")}`:""}${cuadNo.length?`<br><br><b>Cuadrillas no encontradas en USUARIOS:</b><br>${cuadNo.map(boEsc).join("<br>")}`:""}</div>`);
   }catch(e){msg.className="bo-msg bo-error";msg.textContent="No se modificó la información. "+e.message;}
   finally{btn.disabled=false;}
 }
