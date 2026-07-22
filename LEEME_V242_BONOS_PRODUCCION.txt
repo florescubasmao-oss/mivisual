@@ -1,0 +1,57 @@
+MI VISUAL V242 - MÓDULO BONOS DE PRODUCCIÓN
+============================================
+
+BASE UTILIZADA
+- V241 estable.
+- No se modificó Apps Script ni la estructura de Google Sheets.
+- No se alteraron Producción, Ranking, Efectividad, Recableados, VTR/GAR ni Análisis Económico.
+
+REGLA DEL BONO
+- La medición es diaria por cuadrilla.
+- Menos de 4.5 puntos: no genera bono.
+- 4.5 puntos: S/ 15.00 para la cuadrilla y S/ 7.50 por técnico.
+- Fórmula desde 4.5 puntos: (puntos diarios - 4) x S/ 30.00.
+- El monto de la cuadrilla se divide entre sus dos técnicos.
+- El total semanal es la suma de los bonos calculados día por día.
+
+CALENDARIO
+- Periodo: lunes a domingo.
+- Fecha referencial: lunes de la semana subsiguiente.
+- Ejemplo: producción del 06/07/2026 al 12/07/2026 -> referencia 20/07/2026.
+- MI VISUAL no registra ni valida pagos.
+- Estados informativos: SEMANA EN CURSO y SEMANA CERRADA.
+
+PERFIL TÉCNICO
+- Dentro de Producción se añadió el botón BONOS a la derecha.
+- Muestra el bono referencial próximo.
+- Muestra el avance de la semana en curso.
+- Muestra puntos, bono de cuadrilla, monto por técnico, días con bono y fecha referencial.
+- Incluye historial semanal y detalle diario.
+
+PERFIL SUPERVISOR
+- Se añadió la tarjeta BONOS junto a Dashboard Supervisor y Ranking.
+- Solo consulta las cuadrillas de su sede.
+- Filtros por periodo y cuadrilla.
+- Detalle diario por cada cuadrilla.
+
+JEFATURA / GERENCIA LIMA
+- Se añadió la tarjeta BONOS dentro de Gestión.
+- Filtros por periodo, sede y cuadrilla.
+- Información agrupada por Chiclayo, Piura y Trujillo.
+- Gerencia Lima conserva el mismo alcance de consulta de Jefatura General.
+
+ARCHIVOS MODIFICADOS
+- index.html
+- css/estilos.css
+- js/dashboards.js
+- js/app.js
+- js/permisos.js
+
+ARCHIVO NUEVO
+- js/bonos.js
+
+APLICACIÓN
+- Frontend GitHub: Sí.
+- Code.gs / Apps Script: No.
+- Google Sheets: No.
+- Nuevo despliegue Apps Script: No.

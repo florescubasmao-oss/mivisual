@@ -290,7 +290,7 @@ function organizarMenuPorPerfilV218(mv55, perfil){
         menu.classList.add("mv213-menu-jefatura");
         panel.id = esGerencia ? "mv221GerenciaSections" : "mv213JefaturaSections";
         crearSeccionesMenuV218(panel, [
-            { titulo:"📊 Gestión", clase:"mv213-grid-3", ids:["cardDashboardJefatura","cardRanking","cardAnalisisEconomico"] },
+            { titulo:"📊 Gestión", clase:"mv213-grid-4", ids:["cardDashboardJefatura","cardRanking","cardBonos","cardAnalisisEconomico"] },
             { titulo:"📋 Control Operativo", clase:"mv213-grid-4", ids:["cardActividadCampo","cardValidacionTecnica","cardActas","cardObservaciones"] },
             { titulo:"🏢 Operación", clase:"mv213-grid-4", ids:["cardChecklistAlmacen","cardProgramacionDescansos","cardTrabajosConjunta","cardMapaOperativo"] },
             { titulo:"📚 Recursos", clase:"mv213-grid-3", ids:["cardAccesos","cardBiblioteca","cardCapacitacion"] },
@@ -302,7 +302,7 @@ function organizarMenuPorPerfilV218(mv55, perfil){
     menu.classList.add("mv218-menu-supervisor");
     panel.id = "mv218SupervisorSections";
     crearSeccionesMenuV218(panel, [
-        { titulo:"📊 Gestión", clase:"mv218-grid-2", ids:["cardDashboardSupervisor","cardRanking"] },
+        { titulo:"📊 Gestión", clase:"mv218-grid-3", ids:["cardDashboardSupervisor","cardRanking","cardBonos"] },
         { titulo:"📋 Control Operativo", clase:"mv218-grid-3", ids:["cardActividadCampo","cardValidacionTecnica","cardActas","cardObservaciones"] },
         { titulo:"🏢 Operación", clase:"mv218-grid-2", ids:["cardChecklistAlmacen","cardProgramacionDescansos","cardTrabajosConjunta","cardMapaOperativo"] },
         { titulo:"📚 Recursos", clase:"mv218-grid-3", ids:["cardAccesos","cardBiblioteca","cardCapacitacion"] },
@@ -312,7 +312,7 @@ function organizarMenuPorPerfilV218(mv55, perfil){
 
 function aplicarPermisosMenuActualizados(){
     const todasLasCards = [
-        'cardProduccion','cardEfectividad','cardRecableado','cardVTRGAR','cardRanking',
+        'cardProduccion','cardEfectividad','cardRecableado','cardVTRGAR','cardRanking','cardBonos',
         'cardObservaciones','cardAccesos','cardBiblioteca','cardCapacitacion',
         'cardDashboardSupervisor','cardDashboardJefatura','cardAnalisisEconomico',
         'cardAdministracion','cardActividadCampo','cardValidacionTecnica','cardActas',
@@ -329,6 +329,17 @@ function aplicarPermisosMenuActualizados(){
         opciones.push("cardAnalisisEconomico");
     }
     if(!opciones.includes("cardConsultasReclamos")) opciones.push("cardConsultasReclamos");
+    // V242: Bonos es una vista derivada de Producción. Se habilita para Supervisor,
+    // Jefatura General, Gerencia Lima y Administración sin crear una hoja adicional.
+    if (["SUPERVISOR","JEFATURA","JEFATURA GENERAL","GERENCIA LIMA","ADMIN","ADMINISTRADOR"].includes(perfilActual)
+        && !opciones.includes("cardBonos")) {
+        opciones.push("cardBonos");
+    }
+    // El Técnico accede a Bonos únicamente desde el botón ubicado dentro de Producción.
+    if (perfilActual === "TECNICO") {
+        const indiceBonos = opciones.indexOf("cardBonos");
+        if (indiceBonos >= 0) opciones.splice(indiceBonos, 1);
+    }
     opciones.forEach(id => mostrarCardSeguro(id, true));
     const recursosIds = ['cardAccesos','cardBiblioteca','cardCapacitacion','cardConsultasReclamos'];
     const recursosTitle = document.getElementById('mv55RecursosTitle');
@@ -375,6 +386,7 @@ async function configurarMenu(){
         "cardRecableado",
         "cardVTRGAR",
         "cardRanking",
+        "cardBonos",
         "cardObservaciones",
         "cardAccesos",
         "cardBiblioteca",
@@ -429,6 +441,7 @@ async function configurarMenu(){
         ],
         SUPERVISOR: [
             "cardRanking",
+            "cardBonos",
             "cardObservaciones",
             "cardAccesos",
             "cardBiblioteca",
@@ -444,6 +457,7 @@ async function configurarMenu(){
         ],
         JEFATURA: [
             "cardRanking",
+            "cardBonos",
             "cardObservaciones",
             "cardAccesos",
             "cardBiblioteca",
@@ -461,6 +475,7 @@ async function configurarMenu(){
         ],
         "JEFATURA GENERAL": [
             "cardRanking",
+            "cardBonos",
             "cardObservaciones",
             "cardAccesos",
             "cardBiblioteca",
@@ -478,6 +493,7 @@ async function configurarMenu(){
         ],
         "GERENCIA LIMA": [
             "cardRanking",
+            "cardBonos",
             "cardObservaciones",
             "cardAccesos",
             "cardBiblioteca",
@@ -494,6 +510,7 @@ async function configurarMenu(){
         ],
         ADMIN: [
             "cardRanking",
+            "cardBonos",
             "cardObservaciones",
             "cardAccesos",
             "cardBiblioteca",
@@ -511,6 +528,7 @@ async function configurarMenu(){
         ],
         ADMINISTRADOR: [
             "cardRanking",
+            "cardBonos",
             "cardObservaciones",
             "cardAccesos",
             "cardBiblioteca",

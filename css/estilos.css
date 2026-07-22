@@ -1345,3 +1345,67 @@ body{background:linear-gradient(180deg,var(--mv4-bg),var(--mv4-bg2));font-family
   .mv239-filtro-sede-ranking{grid-template-columns:1fr;gap:7px}
   .mv199-filtros-jefatura.mv239-filtros-supervisor{grid-template-columns:1fr}
 }
+
+/* =====================================================
+   MI VISUAL V242 - BONOS DE PRODUCCIÓN
+===================================================== */
+.card-bonos{background:linear-gradient(135deg,#065f46,#10b981)}
+.mb242-pagina{max-width:1100px;margin:0 auto;padding:14px;color:#f8fafc}
+.mb242-cabecera{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:12px}
+.mb242-cabecera h2{margin:0;font-size:25px}
+.mb242-cabecera p{margin:4px 0 0;color:#9fb7d8;font-size:13px}
+.mb242-regla{background:linear-gradient(135deg,#17365d,#0f766e);border:1px solid rgba(255,255,255,.16);border-radius:14px;padding:12px 14px;margin-bottom:14px;line-height:1.5;font-size:13px;box-shadow:0 5px 14px rgba(0,0,0,.18)}
+.mb242-bloque,.mb242-sede{background:#14243b;border:1px solid rgba(255,255,255,.1);border-radius:18px;padding:14px;margin:14px 0;box-shadow:0 8px 20px rgba(0,0,0,.18)}
+.mb242-bloque.mb242-proximo{border-color:rgba(250,204,21,.55)}
+.mb242-bloque.mb242-actual{border-color:rgba(34,197,94,.5)}
+.mb242-bloque-head,.mb242-sede-head{display:flex;justify-content:space-between;align-items:flex-start;gap:10px;margin-bottom:12px}
+.mb242-bloque-head h3,.mb242-sede-head h3{margin:0;font-size:18px}
+.mb242-bloque-head p,.mb242-sede-head p{margin:4px 0 0;color:#9fb7d8;font-size:12px}
+.mb242-estado{display:inline-flex;align-items:center;justify-content:center;border-radius:999px;padding:6px 10px;font-size:10px;font-weight:900;letter-spacing:.4px;white-space:nowrap}
+.mb242-estado.curso{background:#14532d;color:#bbf7d0}.mb242-estado.cerrada{background:#1e3a8a;color:#dbeafe}
+.mb242-kpis{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin:12px 0}
+.mb242-kpi{background:#0f1f35;border:1px solid rgba(255,255,255,.07);border-radius:14px;padding:12px;min-height:88px}
+.mb242-kpi-titulo{display:flex;align-items:center;gap:6px;font-size:10px;color:#9fb7d8;font-weight:900;text-transform:uppercase;letter-spacing:.4px}
+.mb242-kpi-valor{font-size:22px;font-weight:900;margin-top:8px;color:#fff;line-height:1.15}
+.mb242-kpi-detalle{font-size:10px;color:#9fb7d8;margin-top:5px;line-height:1.25}
+.mb242-dias{display:grid;gap:8px;margin-top:12px}
+.mb242-dia,.mb242-cuadrilla-detalle{background:#0f1f35;border:1px solid rgba(255,255,255,.08);border-radius:13px;overflow:hidden}
+.mb242-dia summary,.mb242-cuadrilla-detalle summary{cursor:pointer;list-style:none;display:grid;align-items:center;gap:10px;padding:11px 12px}
+.mb242-dia summary{grid-template-columns:minmax(135px,1.2fr) .7fr 1fr}
+.mb242-dia summary::-webkit-details-marker,.mb242-cuadrilla-detalle summary::-webkit-details-marker{display:none}
+.mb242-dia summary span{font-weight:800}.mb242-dia summary b{text-align:center;color:#facc15}.mb242-dia summary em{text-align:right;font-style:normal;font-size:11px;font-weight:900;border-radius:999px;padding:5px 8px}
+.mb242-dia summary em.genera{background:#14532d;color:#bbf7d0}.mb242-dia summary em.no-genera{background:#3f3f46;color:#e4e4e7}
+.mb242-dia-contenido,.mb242-cuadrilla-contenido{padding:12px;border-top:1px solid rgba(255,255,255,.08);font-size:12px;line-height:1.55;color:#dbeafe}
+.mb242-dia-contenido ul{margin:8px 0 0;padding-left:18px;color:#9fb7d8}
+.mb242-vacio,.mb242-cargando{background:#0f1f35;border-radius:13px;padding:16px;text-align:center;color:#9fb7d8;margin-top:10px}
+.mb242-cargando{font-weight:800;color:#f8fafc}
+.mb242-filtro-unico{display:grid;gap:6px;color:#9fb7d8;font-size:11px;font-weight:800;margin-bottom:12px}
+.mb242-filtro-unico select,.mb242-filtros select{width:100%;background:#0f1f35;color:#fff;border:1px solid #315272;border-radius:10px;padding:10px;font-weight:700}
+.mb242-consulta-resumen{display:flex;justify-content:space-between;align-items:center;gap:12px;background:#0f1f35;border-radius:13px;padding:12px;margin-top:8px}
+.mb242-consulta-resumen>div{display:grid;gap:3px}.mb242-consulta-resumen span{font-size:11px;color:#9fb7d8}.mb242-consulta-montos{text-align:right}
+.mb242-filtros{display:grid;grid-template-columns:1.3fr .8fr 1.1fr;gap:10px;background:#14243b;border:1px solid rgba(255,255,255,.1);border-radius:16px;padding:12px;margin:14px 0}
+.mb242-filtros label{display:grid;gap:6px;color:#9fb7d8;font-size:11px;font-weight:900}
+.mb242-filtros select:disabled{opacity:.75}
+.mb242-periodo-info{display:flex;align-items:center;gap:10px;flex-wrap:wrap;background:#0f1f35;border-radius:13px;padding:11px 13px;margin-bottom:12px}
+.mb242-periodo-info b{font-size:14px}.mb242-periodo-info span{background:#1e3a8a;border-radius:999px;padding:5px 9px;font-size:10px;font-weight:900}.mb242-periodo-info em{margin-left:auto;font-size:11px;color:#facc15;font-style:normal;font-weight:800}
+.mb242-sede-head{align-items:center;border-bottom:1px solid rgba(255,255,255,.08);padding-bottom:10px}.mb242-sede-head>b{font-size:20px;color:#86efac}
+.mb242-cuadrilla-detalle{margin:8px 0}
+.mb242-cuadrilla-detalle summary{grid-template-columns:1.4fr .8fr 1fr}
+.mb242-cuadrilla-detalle summary>div{display:grid;gap:3px}.mb242-cuadrilla-detalle summary span{font-size:10px;color:#9fb7d8}.mb242-cuadrilla-detalle summary>div:nth-child(2),.mb242-cuadrilla-detalle summary>div:nth-child(3){text-align:right}.mb242-cuadrilla-detalle summary>div:nth-child(3) b{color:#86efac}
+.mb242-nota{background:#2b2110;border:1px solid #7c5b18;border-radius:12px;padding:11px 13px;color:#fde68a;font-size:11px;line-height:1.45;margin:14px 0}
+.mb242-error{display:grid;gap:6px;background:#451a1a;border:1px solid #991b1b;color:#fecaca;border-radius:14px;padding:16px;margin:12px 0}
+.mb242-btn-produccion{background:linear-gradient(135deg,#065f46,#10b981);border:0;color:#fff;border-radius:999px;padding:9px 14px;font-weight:900;cursor:pointer;box-shadow:0 5px 12px rgba(0,0,0,.22);white-space:nowrap}
+.mb242-produccion-head{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:14px}.mb242-produccion-head h2{margin:0;text-align:left!important}
+@media(max-width:760px){
+  .mb242-kpis{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .mb242-filtros{grid-template-columns:1fr}
+  .mb242-dia summary{grid-template-columns:1fr .55fr}.mb242-dia summary em{grid-column:1/-1;text-align:center}
+  .mb242-cuadrilla-detalle summary{grid-template-columns:1fr 1fr}.mb242-cuadrilla-detalle summary>div:nth-child(3){grid-column:1/-1;text-align:left;display:flex;justify-content:space-between;align-items:center}
+  .mb242-periodo-info em{margin-left:0;width:100%}
+}
+@media(max-width:480px){
+  .mb242-pagina{padding:10px}.mb242-cabecera{align-items:flex-start}.mb242-cabecera h2{font-size:21px}
+  .mb242-kpis{grid-template-columns:1fr 1fr;gap:7px}.mb242-kpi{padding:10px;min-height:82px}.mb242-kpi-valor{font-size:18px}
+  .mb242-consulta-resumen{align-items:flex-start;flex-direction:column}.mb242-consulta-montos{text-align:left}
+  .mb242-produccion-head{align-items:center}.mb242-btn-produccion{padding:8px 11px;font-size:12px}
+}

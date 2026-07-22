@@ -403,7 +403,10 @@ function renderDashboardProduccion(data){
     let html = `
     <div style="padding:16px;max-width:920px;margin:auto;">
 
-        <h2 style="text-align:center;margin-bottom:14px;">📊 MI PRODUCCIÓN</h2>
+        <div class="mb242-produccion-head">
+            <h2>📊 MI PRODUCCIÓN</h2>
+            <button type="button" class="mb242-btn-produccion" onclick="mostrarBonos()">🎁 BONOS</button>
+        </div>
 
         <div style="
             background:linear-gradient(135deg,#123c69,#0f766e);
