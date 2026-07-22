@@ -1,0 +1,13 @@
+MI VISUAL V259 - PLACA LATERAL DE CUADRILLA EN MAPA OPERATIVO
+
+Cambio exclusivo del Mapa Operativo:
+- El color del marcador continúa representando el estado de la orden.
+- La identificación de la cuadrilla se muestra en una placa lateral, a la derecha del marcador.
+- La placa utiliza fondo sólido, borde negro, contorno blanco y sombra para mejorar el contraste.
+- La trama se conserva únicamente en una franja lateral, evitando que interfiera con el texto.
+- En zoom normal se muestra el código completo: P8-SGI, P5-SGA, P10-TR, etc.
+- En zoom muy alejado se muestra el código mínimo: P8, P5, P10, etc.
+- Al tocar el marcador continúa apareciendo el nombre completo de la cuadrilla.
+- Se conserva el control para mostrar u ocultar las identificaciones.
+
+No se modificaron datos, filtros, importación, estados, historial, Google Sheets ni Apps Script.

@@ -69,6 +69,15 @@ function moActualizarEtiquetasCuadrilla(){
   try{localStorage.setItem(MO_ETIQUETAS_CUADRILLA_KEY,activo?'1':'0')}catch(err){}
   document.querySelectorAll('#moMapa .mo-cuadrilla-label').forEach(x=>x.classList.toggle('is-hidden',!activo));
 }
+function moAplicarModoZoomEtiquetas(){
+  const contenedor=document.getElementById('moMapa');
+  if(!contenedor||!moMapa)return;
+  contenedor.classList.toggle('mo-zoom-lejano',moMapa.getZoom()<=11);
+}
+function moCodigoMinimoCuadrilla(cuadrilla){
+  const p=moNorm(cuadrilla).match(/\bP\s*(\d+)\b/i);
+  return p?`P${p[1]}`:moCodigoCortoCuadrilla(cuadrilla).split('-')[0];
+}
 function moPintarUltimaActualizacion(texto){
   const e=document.getElementById('moUltimaActualizacion');
   if(!e)return;
@@ -134,6 +143,8 @@ function moInicializarMapa(){
   moMapa=L.map('moMapa',{zoomControl:true}).setView([-7.5,-79.0],7);
   L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,attribution:'© OpenStreetMap'}).addTo(moMapa);
   moCapa=L.layerGroup().addTo(moMapa);
+  moMapa.on('zoomend',moAplicarModoZoomEtiquetas);
+  moAplicarModoZoomEtiquetas();
 }
 function moFechaExcel(v){
   if(v instanceof Date&&!isNaN(v))return v;
@@ -179,9 +190,9 @@ function moColorEstado(estado){
   return '#0891b2';
 }
 function moIconoEstado(estado,cuadrilla){
-  const color=moColorEstado(estado),estilo=moEstiloCuadrilla(cuadrilla),codigo=moCodigoCortoCuadrilla(cuadrilla),oculta=moEtiquetasCuadrillaActivas()?'':' is-hidden';
-  const etiqueta=`<span class="mo-cuadrilla-label mo-patron-${estilo.patron}${oculta}" style="--mo-cuadrilla-color:${estilo.color}" title="${moEscape(cuadrilla)}">${moEscape(codigo)}</span>`;
-  return L.divIcon({className:'mo-marker-wrap',html:`<span class="mo-marker-stack">${etiqueta}<span class="mo-marker" style="--mo-color:${color}"></span></span>`,iconSize:[96,49],iconAnchor:[48,48],popupAnchor:[0,-43]});
+  const color=moColorEstado(estado),estilo=moEstiloCuadrilla(cuadrilla),codigo=moCodigoCortoCuadrilla(cuadrilla),codigoMinimo=moCodigoMinimoCuadrilla(cuadrilla),oculta=moEtiquetasCuadrillaActivas()?'':' is-hidden';
+  const etiqueta=`<span class="mo-cuadrilla-label${oculta}" style="--mo-cuadrilla-color:${estilo.color}" title="${moEscape(cuadrilla)}" aria-label="Cuadrilla ${moEscape(cuadrilla)}"><i class="mo-cuadrilla-trama mo-patron-${estilo.patron}" aria-hidden="true"></i><span class="mo-cuadrilla-codigo mo-cuadrilla-codigo-completo">${moEscape(codigo)}</span><span class="mo-cuadrilla-codigo mo-cuadrilla-codigo-minimo">${moEscape(codigoMinimo)}</span></span>`;
+  return L.divIcon({className:'mo-marker-wrap',html:`<span class="mo-marker-stack"><span class="mo-marker" style="--mo-color:${color}"></span>${etiqueta}</span>`,iconSize:[145,49],iconAnchor:[25,48],popupAnchor:[0,-43]});
 }
 function moLeyendaCuadrillas(lista){
   const nombres=[...new Set((lista||[]).map(x=>moNorm(x.cuadrilla)).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'es'));
@@ -189,5 +200,5 @@ function moLeyendaCuadrillas(lista){
   const chips=nombres.map(nombre=>{const e=moEstiloCuadrilla(nombre);return `<span class="mo-cuadrilla-chip mo-patron-${e.patron}" style="--mo-cuadrilla-color:${e.color}" title="${moEscape(nombre)}">${moEscape(moCodigoCortoCuadrilla(nombre))}</span>`}).join('');
   return `<details class="mo-leyenda-cuadrillas"><summary>Cuadrillas visibles (${nombres.length})</summary><div>${chips}</div></details>`;
 }
-function moRenderMarcadores(lista){if(!moMapa||!moCapa)return;moCapa.clearLayers();moMarcadores={};const bounds=[];let validos=0;moConstruirEstilosCuadrillas((lista||[]).map(x=>x.cuadrilla));lista.forEach(x=>{const lat=Number(x.latitud),lng=Number(x.longitud);if(!Number.isFinite(lat)||!Number.isFinite(lng))return;const m=L.marker([lat,lng],{icon:moIconoEstado(x.estado,x.cuadrilla),riseOnHover:true}).bindPopup(moPopup(x),{autoClose:true,closeOnClick:true,maxWidth:310});m.on('click',()=>{moMapa.panTo([lat,lng]);});m.addTo(moCapa);moMarcadores[moNorm(x.ordenId)]=m;bounds.push([lat,lng]);validos++});if(bounds.length)moMapa.fitBounds(bounds,{padding:[25,25],maxZoom:16});document.getElementById('moContador').innerHTML=`${validos} puntos visibles de ${lista.length} órdenes filtradas.<div class="mo-leyenda"><span><i style="--c:#16a34a"></i>Finalizada</span><span><i style="--c:#dc2626"></i>Cancelada</span><span><i style="--c:#eab308"></i>Reprogramada</span><span><i style="--c:#f97316"></i>Regestión</span><span><i style="--c:#64748b"></i>Anulada</span><span><i style="--c:#2563eb"></i>Pendiente/Agendada</span><span><i style="--c:#7c3aed"></i>En proceso</span></div>${moLeyendaCuadrillas(lista)}`}
+function moRenderMarcadores(lista){if(!moMapa||!moCapa)return;moCapa.clearLayers();moMarcadores={};const bounds=[];let validos=0;moConstruirEstilosCuadrillas((lista||[]).map(x=>x.cuadrilla));lista.forEach(x=>{const lat=Number(x.latitud),lng=Number(x.longitud);if(!Number.isFinite(lat)||!Number.isFinite(lng))return;const m=L.marker([lat,lng],{icon:moIconoEstado(x.estado,x.cuadrilla),riseOnHover:true}).bindPopup(moPopup(x),{autoClose:true,closeOnClick:true,maxWidth:310});m.on('click',()=>{moMapa.panTo([lat,lng]);});m.addTo(moCapa);moMarcadores[moNorm(x.ordenId)]=m;bounds.push([lat,lng]);validos++});if(bounds.length)moMapa.fitBounds(bounds,{padding:[25,25],maxZoom:16});setTimeout(moAplicarModoZoomEtiquetas,0);document.getElementById('moContador').innerHTML=`${validos} puntos visibles de ${lista.length} órdenes filtradas.<div class="mo-leyenda"><span><i style="--c:#16a34a"></i>Finalizada</span><span><i style="--c:#dc2626"></i>Cancelada</span><span><i style="--c:#eab308"></i>Reprogramada</span><span><i style="--c:#f97316"></i>Regestión</span><span><i style="--c:#64748b"></i>Anulada</span><span><i style="--c:#2563eb"></i>Pendiente/Agendada</span><span><i style="--c:#7c3aed"></i>En proceso</span></div>${moLeyendaCuadrillas(lista)}`}
 function moBuscarCodigo(){moConsultarMapa()}
