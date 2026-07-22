@@ -1,5 +1,5 @@
 /* =====================================================
-   MI VISUAL V244 - BONOS DE PRODUCCIÓN
+   MI VISUAL V245 - BONOS DE PRODUCCIÓN
    - Cálculo diario desde PRODUCCION_APP + CATALOGO_ORDENES
    - Semana de lunes a domingo
    - Fecha referencial: lunes de la semana subsiguiente
@@ -383,8 +383,11 @@ function mb242DetalleDiario(item){
   }).join("")}</div>`;
 }
 
-function mb242OpcionesPeriodo(datos, seleccionado){
-  return datos.listaPeriodos.map(p => `<option value="${p.clave}" ${p.clave===seleccionado?"selected":""}>${mb242PeriodoEtiqueta(p)}</option>`).join("");
+function mb242OpcionesPeriodo(datos, seleccionado, incluirPlaceholder){
+  const placeholder = incluirPlaceholder
+    ? `<option value="" ${seleccionado ? "" : "selected"}>SELECCIONAR PERIODO</option>`
+    : "";
+  return placeholder + datos.listaPeriodos.map(p => `<option value="${p.clave}" ${p.clave===seleccionado?"selected":""}>${mb242PeriodoEtiqueta(p)}</option>`).join("");
 }
 
 function mb242RenderTecnico(datos){
@@ -394,8 +397,8 @@ function mb242RenderTecnico(datos){
   const proximo = mb242BuscarPeriodoProximo(datos);
   const itemActual = mb242ObtenerCuadrilla(actual, cuadrilla, meta);
   const itemProximo = mb242ObtenerCuadrilla(proximo, cuadrilla, meta);
-  const periodoConsulta = datos.periodos[MB242_FILTROS.periodo] || proximo || actual;
-  const itemConsulta = mb242ObtenerCuadrilla(periodoConsulta, cuadrilla, meta);
+  const periodoConsulta = MB242_FILTROS.periodo ? datos.periodos[MB242_FILTROS.periodo] : null;
+  const itemConsulta = periodoConsulta ? mb242ObtenerCuadrilla(periodoConsulta, cuadrilla, meta) : null;
 
   const html = `<div class="mb242-pagina">
     <div class="mb242-cabecera"><div><h2>🎁 Bonos</h2><p>${mb242Escapar(cuadrilla)}</p></div><button class="button_1" onclick="volverInicio()">⬅ Volver</button></div>
@@ -403,8 +406,8 @@ function mb242RenderTecnico(datos){
     ${mb242ResumenPeriodoTecnico("Bono referencial próximo", proximo, itemProximo, "mb242-proximo")}
     <section class="mb242-bloque">
       <div class="mb242-bloque-head"><div><h3>Historial de bonos</h3><p>Consulta cualquier semana registrada.</p></div></div>
-      <label class="mb242-filtro-unico">Periodo semanal<select onchange="mb242CambiarPeriodoTecnico(this.value)">${mb242OpcionesPeriodo(datos, periodoConsulta?.clave || "")}</select></label>
-      <div id="mb242HistorialTecnico">${mb242ResumenConsultaTecnico(periodoConsulta, itemConsulta)}</div>
+      <label class="mb242-filtro-unico">Periodo semanal<select onchange="mb242CambiarPeriodoTecnico(this.value)">${mb242OpcionesPeriodo(datos, periodoConsulta?.clave || "", true)}</select></label>
+      <div id="mb242HistorialTecnico">${periodoConsulta ? mb242ResumenConsultaTecnico(periodoConsulta, itemConsulta) : ""}</div>
     </section>
     <div class="mb242-nota">La fecha indicada es referencial. MI VISUAL calcula el bono desde Producción, pero no registra ni valida pagos.</div>
   </div>`;
@@ -420,12 +423,17 @@ function mb242ResumenConsultaTecnico(periodo, item){
 }
 
 function mb242CambiarPeriodoTecnico(clave){
-  MB242_FILTROS.periodo = clave;
+  MB242_FILTROS.periodo = clave || "";
+  const cont = document.getElementById("mb242HistorialTecnico");
+  if(!cont) return;
+  if(!clave){
+    cont.innerHTML = "";
+    return;
+  }
   const periodo = MB242_DATOS?.periodos?.[clave];
   const cuadrilla = mb242Cuadrilla(localStorage.getItem("cuadrilla"));
   const item = mb242ObtenerCuadrilla(periodo, cuadrilla, MB242_DATOS?.metaCuadrillas?.[cuadrilla]);
-  const cont = document.getElementById("mb242HistorialTecnico");
-  if(cont) cont.innerHTML = mb242ResumenConsultaTecnico(periodo, item);
+  cont.innerHTML = mb242ResumenConsultaTecnico(periodo, item);
 }
 
 function mb242PerfilEsJefatura(perfil){
@@ -552,6 +560,9 @@ async function mostrarBonos(){
     MB242_FILTROS = {periodo:actual?.clave || "", sede:"TODAS", cuadrilla:"TODAS"};
 
     if(perfil === "TECNICO"){
+      // El historial inicia cerrado: solo se muestra el desplegable.
+      // El detalle se carga después de seleccionar un periodo.
+      MB242_FILTROS.periodo = "";
       mb242RenderTecnico(datos);
       return;
     }

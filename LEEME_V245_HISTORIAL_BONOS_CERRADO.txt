@@ -1,0 +1,14 @@
+MI VISUAL V245 - HISTORIAL DE BONOS CERRADO
+
+Cambio aplicado:
+- En el perfil Técnico, el Historial de bonos ya no muestra automáticamente el detalle de la semana al ingresar.
+- Al abrir Bonos solo aparece el desplegable de Periodo semanal.
+- El detalle semanal se muestra únicamente después de seleccionar un periodo.
+- Al volver a ingresar al módulo, el historial vuelve a iniciar cerrado.
+
+Sin cambios en:
+- Cálculo de bonos.
+- Tarifas generales y especiales.
+- Producción.
+- Dashboard de Supervisor, Jefatura y Gerencia Lima.
+- Google Apps Script y Google Sheets.
