@@ -1,0 +1,15 @@
+MI VISUAL V258 - ETIQUETAS DE CUADRILLA 22% MÁS GRANDES
+
+Cambio exclusivo en Mapa Operativo:
+- Etiqueta de cuadrilla aumentada aproximadamente 22%.
+- Texto aumentado proporcionalmente para ocupar mejor el interior.
+- Texto conserva peso normal (sin negrita).
+- Delineado negro reforzado para mejorar contraste sobre colores y tramas.
+- Ajuste equivalente en vista móvil.
+- Sin cambios en marcadores, colores de estado, filtros, importación o demás módulos.
+
+Aplicación:
+- Code.gs / Apps Script: No
+- Frontend GitHub: Sí
+- Google Sheets: No
+- Nuevo Deploy Apps Script: No
