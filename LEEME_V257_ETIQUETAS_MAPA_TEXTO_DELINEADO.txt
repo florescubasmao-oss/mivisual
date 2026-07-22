@@ -1,0 +1,20 @@
+MI VISUAL V257 - ETIQUETAS DEL MAPA CON TEXTO DE MAYOR APROVECHAMIENTO Y DELINEADO
+
+Cambio puntual sobre V256:
+- El texto de las etiquetas de cuadrilla ocupa mejor el espacio interno.
+- Se redujo el relleno interior sin aumentar significativamente el tamaño total de la etiqueta.
+- La tipografía continúa sin negrita.
+- Se agregó delineado/sombra de contraste para mejorar la lectura sobre colores y tramas.
+- El ajuste también aplica en pantallas móviles.
+
+Sin cambios en:
+- Colores y tramas de cuadrillas.
+- Colores de estado de los marcadores.
+- Filtros, datos, importación e historial del Mapa Operativo.
+- Programación de Descansos y demás módulos.
+
+Aplicación:
+- Code.gs / Apps Script: NO
+- Frontend GitHub: SÍ
+- Google Sheets: NO
+- Nuevo Deploy Apps Script: NO

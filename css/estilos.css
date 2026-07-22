@@ -1560,23 +1560,24 @@ body{background:linear-gradient(180deg,var(--mv4-bg),var(--mv4-bg2));font-family
   left:50%;
   bottom:29px;
   transform:translateX(-50%);
-  min-width:28px;
-  max-width:55px;
-  padding:2px 4px;
-  border:1px solid rgba(255,255,255,.96);
+  min-width:25px;
+  max-width:52px;
+  padding:1px 2px;
+  border:1px solid rgba(255,255,255,.98);
   border-radius:4px;
   background-color:var(--mo-cuadrilla-color);
   color:#fff;
-  font-size:5.4px;
-  line-height:1.05;
+  font-size:7px;
+  line-height:1;
   font-weight:400;
-  letter-spacing:.08px;
+  letter-spacing:0;
   text-align:center;
   white-space:nowrap;
   overflow:hidden;
   text-overflow:ellipsis;
-  box-shadow:0 1px 3px rgba(15,23,42,.42),0 0 0 1px rgba(15,23,42,.2);
-  text-shadow:0 1px 1px rgba(0,0,0,.7);
+  box-shadow:0 1px 3px rgba(15,23,42,.46),0 0 0 1px rgba(15,23,42,.28);
+  -webkit-text-stroke:.22px rgba(15,23,42,.95);
+  text-shadow:-.45px 0 rgba(15,23,42,.95),.45px 0 rgba(15,23,42,.95),0 -.45px rgba(15,23,42,.95),0 .45px rgba(15,23,42,.95),0 1px 1px rgba(0,0,0,.72);
   pointer-events:auto;
   transition:opacity .14s ease,transform .14s ease;
 }
@@ -1596,7 +1597,7 @@ body{background:linear-gradient(180deg,var(--mv4-bg),var(--mv4-bg2));font-family
 @media(max-width:720px){
   .mo-identificacion-control{align-items:flex-start;flex-direction:column}
   .mo-identificacion-control small{text-align:left}
-  .mo-cuadrilla-label{font-size:5.1px;min-width:26px;max-width:49px;padding:2px 3px;font-weight:400}
+  .mo-cuadrilla-label{font-size:6.7px;min-width:24px;max-width:48px;padding:1px 2px;font-weight:400;letter-spacing:0}
 }
 
 /* V256 - Notificaciones de solicitudes en Programación de Descansos */
