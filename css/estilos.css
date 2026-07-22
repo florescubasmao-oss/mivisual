@@ -1467,3 +1467,68 @@ body{background:linear-gradient(180deg,var(--mv4-bg),var(--mv4-bg2));font-family
   .mo-update-status{width:100%;white-space:normal}
   .mo-actions .mo-btn{width:100%}
 }
+
+/* =====================================================
+   V252 - Técnico: Validación, Actas y Checklist en una fila
+   Ajuste exclusivamente visual para el perfil TÉCNICO.
+   ===================================================== */
+#menuPrincipal.mv196-tecnico-menu #mv55MainModules{
+  grid-template-columns:repeat(12,minmax(0,1fr))!important;
+}
+#menuPrincipal.mv196-tecnico-menu #mv55MainModules > .card{
+  grid-column:span 6;
+}
+#menuPrincipal.mv196-tecnico-menu #cardProduccion,
+#menuPrincipal.mv196-tecnico-menu #cardEfectividad,
+#menuPrincipal.mv196-tecnico-menu #cardRecableado,
+#menuPrincipal.mv196-tecnico-menu #cardVTRGAR{
+  grid-column:span 3!important;
+}
+#menuPrincipal.mv196-tecnico-menu #cardValidacionTecnica,
+#menuPrincipal.mv196-tecnico-menu #cardActas,
+#menuPrincipal.mv196-tecnico-menu #cardChecklistAlmacen{
+  grid-column:span 4!important;
+  min-width:0!important;
+  min-height:72px!important;
+  height:72px!important;
+  padding:8px 5px!important;
+  border-radius:16px!important;
+  gap:4px!important;
+  box-sizing:border-box!important;
+}
+#menuPrincipal.mv196-tecnico-menu #cardValidacionTecnica span,
+#menuPrincipal.mv196-tecnico-menu #cardActas span,
+#menuPrincipal.mv196-tecnico-menu #cardChecklistAlmacen span{
+  font-size:22px!important;
+  line-height:1!important;
+  margin:0!important;
+}
+#menuPrincipal.mv196-tecnico-menu #cardValidacionTecnica b,
+#menuPrincipal.mv196-tecnico-menu #cardActas b,
+#menuPrincipal.mv196-tecnico-menu #cardChecklistAlmacen b{
+  font-size:9px!important;
+  line-height:1.08!important;
+  text-align:center!important;
+  overflow-wrap:anywhere;
+}
+@media(max-width:420px){
+  #menuPrincipal.mv196-tecnico-menu #mv55MainModules{gap:5px!important;}
+  #menuPrincipal.mv196-tecnico-menu #cardValidacionTecnica,
+  #menuPrincipal.mv196-tecnico-menu #cardActas,
+  #menuPrincipal.mv196-tecnico-menu #cardChecklistAlmacen{
+    min-height:68px!important;
+    height:68px!important;
+    padding:6px 3px!important;
+    border-radius:14px!important;
+  }
+  #menuPrincipal.mv196-tecnico-menu #cardValidacionTecnica span,
+  #menuPrincipal.mv196-tecnico-menu #cardActas span,
+  #menuPrincipal.mv196-tecnico-menu #cardChecklistAlmacen span{
+    font-size:20px!important;
+  }
+  #menuPrincipal.mv196-tecnico-menu #cardValidacionTecnica b,
+  #menuPrincipal.mv196-tecnico-menu #cardActas b,
+  #menuPrincipal.mv196-tecnico-menu #cardChecklistAlmacen b{
+    font-size:8px!important;
+  }
+}

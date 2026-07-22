@@ -1,0 +1,18 @@
+MI VISUAL V252
+
+CORRECCIÓN APLICADA
+- Exclusivamente en el perfil TÉCNICO.
+- Las tarjetas Validación Técnica, Gestión de Actas y Checklist Almacén se redujeron a formato compacto.
+- Las tres tarjetas se muestran alineadas en una sola fila.
+- Se conservaron los colores, iconos, permisos, accesos y funcionamiento de cada módulo.
+- No se modificaron las vistas de Supervisor, Jefatura, Gerencia Lima ni perfiles de Almacén.
+
+ARCHIVOS MODIFICADOS
+- css/estilos.css
+- index.html
+
+APLICACIÓN
+- Code.gs / Apps Script: NO
+- Frontend GitHub: SÍ
+- Google Sheets: NO
+- Nuevo Deploy Apps Script: NO
