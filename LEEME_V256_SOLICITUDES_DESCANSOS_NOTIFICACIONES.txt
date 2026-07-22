@@ -1,0 +1,56 @@
+MI VISUAL V256
+PROGRAMACIÓN DE DESCANSOS: CALENDARIO DEL TÉCNICO, SOLICITUDES Y NOTIFICACIONES
+
+IMPLEMENTACIÓN
+
+1. PERFIL TÉCNICO
+- El indicador EN CAMPO / DESCANSO conserva su funcionamiento actual.
+- Al pulsar "Ver programación" se abre la programación propia de la cuadrilla.
+- Se muestra un calendario mensual amigable con días de campo, descanso y vacaciones.
+- Se puede cambiar el mes consultado.
+- Se muestra el próximo descanso y el total de descansos del periodo.
+- Se habilita "Solicitar cambio de descanso" cuando existe un descanso futuro aprobado.
+- La solicitud registra fecha actual, nueva fecha y motivo.
+- Solo se permite una solicitud pendiente por cuadrilla.
+- El técnico puede consultar el historial y estado de sus solicitudes.
+
+2. FLUJO DE VALIDACIÓN
+- Técnico registra -> PENDIENTE SUPERVISOR.
+- Supervisor aprueba -> PENDIENTE JEFATURA.
+- Supervisor rechaza -> RECHAZADO.
+- Jefatura General puede aprobar o rechazar aun cuando continúe PENDIENTE SUPERVISOR.
+- Al aprobarse, el descanso anterior pasa a EN CAMPO y la nueva fecha pasa a DESCANSO.
+- Se conserva la trazabilidad de la solicitud original y de los dos movimientos aplicados.
+
+3. VALIDACIONES OPERATIVAS
+- La nueva fecha no puede estar en el pasado ni ser igual a la anterior.
+- El descanso original debe continuar vigente.
+- No se permite duplicar un descanso de la misma cuadrilla.
+- No se permite que otra cuadrilla de la misma plataforma tenga descanso en la nueva fecha.
+- Se valida la cobertura mínima de la sede antes de aplicar el cambio.
+
+4. NOTIFICACIONES
+- Supervisor recibe contador rojo por solicitudes PENDIENTE SUPERVISOR de su sede.
+- Jefatura General recibe contador por PENDIENTE SUPERVISOR, PENDIENTE JEFATURA y OBSERVADO.
+- La tarjeta Programación de Descansos se enmarca en rojo cuando existen pendientes.
+- También aparece un aviso clicable en el menú principal para ingresar a revisar.
+- El contador se actualiza al abrir el menú y después de validar o registrar cambios.
+
+5. CONSERVACIÓN DEL PROYECTO
+- No se modifican Producción, Efectividad, Ranking, Bonos, VTR/GAR, Recableados, Mapa Operativo ni Gestión de Actas.
+- No se modifica la estructura de PROGRAMACION_DESCANSOS.
+- No se crean hojas nuevas.
+- Se mantienen las reglas y el historial existentes.
+
+ARCHIVOS MODIFICADOS
+- Code.gs
+- apps_script/Code.gs
+- js/programacion_descansos.js
+- css/estilos.css
+- index.html
+
+APLICACIÓN
+- Code.gs / Apps Script: SÍ
+- Frontend GitHub: SÍ
+- Google Sheets: NO
+- Nuevo Deploy Apps Script: SÍ

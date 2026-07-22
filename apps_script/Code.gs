@@ -4140,11 +4140,11 @@ function asegurarHojaProgramacionDescansos() {
 }
 
 function esPerfilDescansos(perfil) {
-  return ["TECNICO","SUPERVISOR","JEFATURA","ADMIN","ADMINISTRADOR","OPERACIONES LIMA"].includes(normalizarTexto(perfil));
+  return ["TECNICO","SUPERVISOR","JEFATURA","JEFATURA GENERAL","ADMIN","ADMINISTRADOR","OPERACIONES LIMA"].includes(normalizarTexto(perfil));
 }
 
 function esJefaturaDescansos(perfil) {
-  return ["JEFATURA","ADMIN","ADMINISTRADOR"].includes(normalizarTexto(perfil));
+  return ["JEFATURA","JEFATURA GENERAL","ADMIN","ADMINISTRADOR"].includes(normalizarTexto(perfil));
 }
 
 function plataformaDescansos(valor) {
@@ -4462,7 +4462,10 @@ function leerProgramacionDescansosPeriodo(periodo) {
 
 function listarProgramacionDescansos(data) {
   const usuario = obtenerUsuarioApp(data.usuario);
-  const permisoDescansos = exigirPermisoModuloCentral(usuario, "PROGRAMACION DESCANSOS", "VER");
+  const esTecnicoDescansos = normalizarTexto(usuario.perfil) === "TECNICO";
+  const permisoDescansos = esTecnicoDescansos
+    ? {existe:true,activo:true,mostrar:true,ver:true,registrar:true,editar:false,observar:false,aprobar:false,validar:false,descargar:false,administrar:false,alcanceDatos:"CUADRILLA",vistaPerfil:"TECNICO"}
+    : exigirPermisoModuloCentral(usuario, "PROGRAMACION DESCANSOS", "VER");
 
   const periodo = (data.periodo || Utilities.formatDate(new Date(), Session.getScriptTimeZone(), "yyyy-MM")).toString();
   const filtroSede = normalizarTexto(data.sede || "TODAS");
@@ -4588,6 +4591,33 @@ function listarProgramacionDescansos(data) {
   return respuesta;
 }
 
+function obtenerNotificacionesDescansos(data) {
+  const usuario = obtenerUsuarioApp(data.usuario);
+  const perfil = normalizarTexto(usuario.perfil);
+  const esSupervisor = perfil === "SUPERVISOR";
+  const esJefatura = esJefaturaDescansos(perfil);
+  if (!esSupervisor && !esJefatura) return {ok:true,modulo:"PROGRAMACION_DESCANSOS",accion:"NOTIFICACIONES",pendientes:0,solicitudes:[]};
+  const cacheKey = "PD_NOTIF|" + perfil + "|" + normalizarTexto(usuario.sede||"") + "|" + versionCacheDescansos();
+  try { const guardado=CacheService.getScriptCache().get(cacheKey); if(guardado)return JSON.parse(guardado); } catch(e) {}
+
+  const estadosJefatura = ["PENDIENTE SUPERVISOR","PENDIENTE JEFATURA","OBSERVADO"];
+  const solicitudes = obtenerFilasDescansos().map(x=>x.item).filter(item => {
+    const estado = normalizarTexto(item.estadoValidacion || item.estadoProgramacion).replace(/_/g," ");
+    if (esSupervisor) return estado === "PENDIENTE SUPERVISOR" && normalizarTexto(item.sede) === normalizarTexto(usuario.sede);
+    return estadosJefatura.includes(estado);
+  }).sort((a,b)=>String(b.fechaSolicitud||b.fechaRegistro||"").localeCompare(String(a.fechaSolicitud||a.fechaRegistro||"")));
+
+  const respuesta = {
+    ok:true,
+    modulo:"PROGRAMACION_DESCANSOS",
+    accion:"NOTIFICACIONES",
+    pendientes:solicitudes.length,
+    solicitudes:solicitudes.slice(0,20).map(x=>({id:x.id,cuadrilla:x.cuadrilla,sede:x.sede,fecha:x.fecha,solicitudCambio:x.solicitudCambio,estado:x.estadoValidacion||x.estadoProgramacion,tipoRegistro:x.tipoRegistro}))
+  };
+  try { CacheService.getScriptCache().put(cacheKey,JSON.stringify(respuesta),60); } catch(e) {}
+  return respuesta;
+}
+
 function construirFilaDescansos(datos) {
   return [
     datos.id,datos.periodo,datos.fecha,datos.diaSemana,datos.sede,datos.cuadrilla,datos.plataforma,
@@ -4649,18 +4679,89 @@ function guardarProgramacionDescansos(data) {
   return {ok:true,modulo:"PROGRAMACION_DESCANSOS",accion:"GUARDAR",guardados,alertas,estado:esJefatura?"APLICADO":"PENDIENTE JEFATURA"};
 }
 
+function esSolicitudTecnicoDescansos(item) {
+  return normalizarTexto(item && item.tipoRegistro) === "SOLICITUD_TECNICO";
+}
+
+function aplicarSolicitudTecnicoAprobadaDescansos(item, usuario, motivo) {
+  const cuadrilla = normalizarCuadrilla(item.cuadrilla);
+  const fechaAnterior = fechaISODescansos(item.fecha);
+  const fechaNueva = fechaISODescansos(item.solicitudCambio);
+  if (!cuadrilla || !fechaAnterior || !fechaNueva) throw new Error("La solicitud no contiene fechas válidas");
+  if (fechaAnterior === fechaNueva) throw new Error("La nueva fecha debe ser diferente al descanso actual");
+  const hoy = Utilities.formatDate(new Date(), "America/Lima", "yyyy-MM-dd");
+  if (fechaNueva < hoy) throw new Error("La nueva fecha de descanso no puede estar en el pasado");
+  if (ultimoEstadoAprobadoDescansos(cuadrilla, fechaAnterior) !== "DESCANSO") throw new Error("El descanso original ya no se encuentra vigente");
+
+  const estadoNuevaFecha = ultimoEstadoAprobadoDescansos(cuadrilla, fechaNueva);
+  if (estadoNuevaFecha === "DESCANSO") throw new Error("La cuadrilla ya tiene descanso aprobado en la nueva fecha");
+  if (estadoNuevaFecha === "VACACIONES") throw new Error("La nueva fecha coincide con vacaciones de la cuadrilla");
+
+  const dc = obtenerDatosCuadrillaApp(cuadrilla);
+  const sede = normalizarTexto(dc.sede || item.sede);
+  const plataforma = plataformaDescansos(dc.plataforma || item.plataforma);
+  const otrasEnDescanso = listaCuadrillasDescansos({perfil:"JEFATURA",sede:""}).filter(c =>
+    normalizarTexto(c.sede) === sede &&
+    plataformaDescansos(c.plataforma) === plataforma &&
+    normalizarCuadrilla(c.cuadrilla) !== cuadrilla &&
+    ultimoEstadoAprobadoDescansos(c.cuadrilla, fechaNueva) === "DESCANSO"
+  );
+  if (otrasEnDescanso.length) throw new Error("Ya existe otra cuadrilla de la misma plataforma en descanso el " + fechaNueva + ": " + otrasEnDescanso[0].cuadrilla);
+
+  const cambios = {};
+  cambios[cuadrilla + "|" + fechaAnterior] = "EN CAMPO";
+  cambios[cuadrilla + "|" + fechaNueva] = "DESCANSO";
+  const cobertura = calcularCoberturaDescansos(fechaNueva, sede, plataforma, cambios);
+  if (cobertura.estado === "ROJO") throw new Error("El cambio no cumple la cobertura mínima de la sede para la nueva fecha");
+
+  const filas = obtenerFilasDescansos();
+  const ahora = new Date();
+  const supervisorValidado = normalizarTexto(item.resultadoSupervisor) === "APROBADO" || normalizarTexto(item.estadoValidacion).replace(/_/g," ") === "PENDIENTE JEFATURA";
+  const resultadoSupervisor = supervisorValidado ? "APROBADO" : "OMITIDO POR JEFATURA";
+  const supervisorPor = supervisorValidado ? (item.validadoSupervisorPor || "") : "";
+  const supervisorFecha = supervisorValidado ? (item.fechaValidacionSupervisor || "") : "";
+  const hoja = asegurarHojaProgramacionDescansos();
+
+  function filaAplicada(fecha, anterior, nuevo, tipoRegistro) {
+    const origen = idOrigenDescansos(cuadrilla, fecha);
+    const version = filas.filter(x=>normalizarTexto(x.item.idOrigen)===normalizarTexto(origen)).length + 1;
+    const coberturaDia = calcularCoberturaDescansos(fecha, sede, plataforma, cambios);
+    return construirFilaDescansos({
+      id:idMovimientoDescansos(cuadrilla,fecha),periodo:periodoDescansos(fecha),fecha,diaSemana:diaSemanaDescansos(fecha),sede,cuadrilla,plataforma,
+      supervisor:item.supervisor||dc.usuarioSupervisor||"",tecnicosAfectados:item.tecnicosAfectados||dc.usuario||item.solicitadoPor||"",
+      estadoDia:nuevo,estadoProgramacion:"APROBADO",solicitudCambio:"",motivoSolicitud:motivo,solicitadoPor:item.solicitadoPor||"",fechaSolicitud:item.fechaSolicitud||ahora,horaSolicitud:item.horaSolicitud||ahora,
+      resultadoSupervisor,motivoSupervisor:item.motivoSupervisor||item.comentarioSupervisor||"",validadoSupervisorPor:supervisorPor,fechaValidacionSupervisor:supervisorFecha,horaValidacionSupervisor:item.horaValidacionSupervisor||"",
+      resultadoJefatura:"APROBADO",motivoJefatura:motivo,validadoJefaturaPor:usuario.usuario,fechaValidacionJefatura:ahora,horaValidacionJefatura:ahora,
+      coberturaSede:coberturaDia.porcentaje,estadoCobertura:coberturaDia.estado,version,estadoValidacion:"APROBADO",comentarioSupervisor:item.comentarioSupervisor||"",comentarioJefatura:motivo,
+      fechaValidacion:ahora,validadoPor:usuario.usuario,tipoRegistro,estadoAnterior:anterior,estadoNuevo:nuevo,idOrigen:origen
+    });
+  }
+
+  const filasNuevas = [
+    filaAplicada(fechaAnterior,"DESCANSO","EN CAMPO","CAMBIO_DESCANSO_TECNICO_SALIDA"),
+    filaAplicada(fechaNueva,estadoNuevaFecha,"DESCANSO","CAMBIO_DESCANSO_TECNICO_NUEVA_FECHA")
+  ];
+  hoja.getRange(hoja.getLastRow()+1,1,filasNuevas.length,38).setValues(filasNuevas);
+  return {fechaAnterior,fechaNueva,cobertura};
+}
+
 function resolverProgramacionDescansos(data,resultado) {
   const usuario=obtenerUsuarioApp(data.usuario);
   if(!esJefaturaDescansos(usuario.perfil))throw new Error("Solo Jefatura puede resolver la programación");
   const ids=Array.isArray(data.ids)?data.ids:[];
   const motivo=(data.motivo||"").toString().trim();
   if(!motivo)throw new Error("Debe ingresar el comentario de Jefatura");
-  const ahora=new Date();let actualizados=0;
+  const ahora=new Date();let actualizados=0,solicitudesAplicadas=0;
   const filas=obtenerFilasDescansos();
   filas.forEach(reg=>{
     const item=reg.item;
     if(ids.length&&!ids.includes((item.id||"").toString()))return;
-    if(!ids.length&&!['PENDIENTE JEFATURA','PENDIENTE_JEFATURA','OBSERVADO'].includes(normalizarTexto(item.estadoValidacion||item.estadoProgramacion)))return;
+    if(!ids.length&&!['PENDIENTE JEFATURA','OBSERVADO'].includes(normalizarTexto(item.estadoValidacion||item.estadoProgramacion).replace(/_/g,' ')))return;
+    const solicitudTecnico=esSolicitudTecnicoDescansos(item);
+    if(resultado==="APROBADO"&&solicitudTecnico){
+      aplicarSolicitudTecnicoAprobadaDescansos(item,usuario,motivo);
+      solicitudesAplicadas++;
+    }
     reg.hoja.getRange(reg.fila,22).setValue(resultado);
     reg.hoja.getRange(reg.fila,23).setValue(motivo);
     reg.hoja.getRange(reg.fila,24).setValue(usuario.usuario);
@@ -4670,9 +4771,11 @@ function resolverProgramacionDescansos(data,resultado) {
     reg.hoja.getRange(reg.fila,33).setValue(ahora);
     reg.hoja.getRange(reg.fila,34).setValue(usuario.usuario);
     if(resultado==="APROBADO"){
-      reg.hoja.getRange(reg.fila,10).setValue(normalizarTexto(item.estadoNuevo||item.solicitudCambio||item.estadoDia));
+      if(!solicitudTecnico){
+        reg.hoja.getRange(reg.fila,10).setValue(normalizarTexto(item.estadoNuevo||item.solicitudCambio||item.estadoDia));
+        reg.hoja.getRange(reg.fila,12).setValue("");
+      }
       reg.hoja.getRange(reg.fila,11).setValue("APROBADO");
-      reg.hoja.getRange(reg.fila,12).setValue("");
       reg.hoja.getRange(reg.fila,30).setValue("APROBADO");
     }else if(resultado==="OBSERVADO"){
       reg.hoja.getRange(reg.fila,11).setValue("OBSERVADO");
@@ -4684,7 +4787,7 @@ function resolverProgramacionDescansos(data,resultado) {
     actualizados++;
   });
   limpiarCacheDescansos();
-  return {ok:true,modulo:"PROGRAMACION_DESCANSOS",accion:resultado,actualizados};
+  return {ok:true,modulo:"PROGRAMACION_DESCANSOS",accion:resultado,actualizados,solicitudesAplicadas};
 }
 
 function aprobarProgramacionDescansos(data){return resolverProgramacionDescansos(data,"APROBADO");}
@@ -4696,7 +4799,15 @@ function solicitarCambioDescanso(data) {
   if(normalizarTexto(usuario.perfil)!=="TECNICO")throw new Error("Solo el técnico puede solicitar cambio de descanso");
   const fechaActual=fechaISODescansos(data.fechaDescansoActual),nuevaFecha=fechaISODescansos(data.nuevaFecha),motivo=(data.motivo||"").toString().trim();
   if(!fechaActual||!nuevaFecha||!motivo)throw new Error("Complete las fechas y el motivo");
+  if(fechaActual===nuevaFecha)throw new Error("La nueva fecha debe ser diferente al descanso actual");
+  const hoy=Utilities.formatDate(new Date(),"America/Lima","yyyy-MM-dd");
+  if(nuevaFecha<hoy)throw new Error("La nueva fecha no puede estar en el pasado");
   if(ultimoEstadoAprobadoDescansos(usuario.cuadrilla,fechaActual)!=="DESCANSO")throw new Error("La fecha seleccionada no es un descanso aprobado");
+  const pendientes=obtenerFilasDescansos().some(x=>{
+    const item=x.item,estado=normalizarTexto(item.estadoValidacion||item.estadoProgramacion).replace(/_/g," ");
+    return normalizarCuadrilla(item.cuadrilla)===normalizarCuadrilla(usuario.cuadrilla)&&esSolicitudTecnicoDescansos(item)&&["PENDIENTE SUPERVISOR","PENDIENTE JEFATURA","OBSERVADO"].includes(estado);
+  });
+  if(pendientes)throw new Error("Ya existe una solicitud de cambio pendiente para esta cuadrilla");
   const dc=obtenerDatosCuadrillaApp(usuario.cuadrilla),ahora=new Date(),hoja=asegurarHojaProgramacionDescansos();
   hoja.appendRow(construirFilaDescansos({
     id:idMovimientoDescansos(usuario.cuadrilla,fechaActual),periodo:periodoDescansos(fechaActual),fecha:fechaActual,diaSemana:diaSemanaDescansos(fechaActual),
@@ -8110,6 +8221,7 @@ function doPost(e) {
 
 
     if (data.accion === "listarProgramacionDescansos") return respuestaJson(listarProgramacionDescansos(data));
+    if (data.accion === "obtenerNotificacionesDescansos") return respuestaJson(obtenerNotificacionesDescansos(data));
     if (data.accion === "guardarProgramacionDescansos") return respuestaJson(guardarProgramacionDescansos(data));
     if (data.accion === "aprobarProgramacionDescansos") return respuestaJson(aprobarProgramacionDescansos(data));
     if (data.accion === "rechazarProgramacionDescansos") return respuestaJson(rechazarProgramacionDescansos(data));
