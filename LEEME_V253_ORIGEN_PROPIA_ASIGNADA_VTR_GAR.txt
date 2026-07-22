@@ -1,0 +1,20 @@
+MI VISUAL V253 - ORIGEN PROPIA / ASIGNADA EN GAR Y VTR
+
+CAMBIOS APLICADOS
+- En Validación Técnica, GAR- completa automáticamente GAR y VTR- completa automáticamente VTR.
+- Para GAR y VTR el técnico debe seleccionar ORIGEN DE LA ORDEN: PROPIA o ASIGNADA.
+- Para Recableado y Otros el campo no aparece ni se guarda.
+- La información se muestra a Jefatura antes de calificar Bono o No Bono y también en el historial.
+- Jefatura cuenta con consolidado GAR/VTR: total, propias, asignadas y sin registro, con desglose GAR/VTR.
+- Se añadieron filtros de periodo, cuadrilla y origen para Jefatura dentro de Validación Técnica.
+- Calificación VTR/GAR muestra el origen en cada incidencia y permite filtrar Propias, Asignadas o Sin registro.
+- Los registros anteriores muestran SIN REGISTRO y no cambian de estado, bono ni historial.
+- El informe Excel de Validación Técnica incluye ORIGEN ORDEN.
+
+GOOGLE SHEETS
+- Code.gs agrega automáticamente al final de VALIDACION_TECNICA la columna ORIGEN_ORDEN.
+- No se desplaza ni modifica ninguna columna anterior.
+
+DESPLIEGUE
+- Reemplazar Code.gs y publicar una nueva versión del Apps Script.
+- Subir el frontend actualizado a GitHub Pages.

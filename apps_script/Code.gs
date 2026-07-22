@@ -2209,7 +2209,8 @@ function encabezadoValidacionTecnica() {
     "HORA_VALIDACION",
     "MOTIVO_VALIDACION",
     "LINK_TELEGRAM",
-    "HORA_LIMITE"
+    "HORA_LIMITE",
+    "ORIGEN_ORDEN"
   ]];
 }
 
@@ -2221,11 +2222,22 @@ function asegurarHojaValidacionTecnica() {
     hoja = ss.insertSheet(HOJA_VALIDACION_TECNICA);
   }
 
+  const encabezados = encabezadoValidacionTecnica()[0];
+  if (hoja.getMaxColumns() < encabezados.length) {
+    hoja.insertColumnsAfter(hoja.getMaxColumns(), encabezados.length - hoja.getMaxColumns());
+  }
+
   if (hoja.getLastRow() === 0) {
-    hoja.getRange(1, 1, 1, 22).setValues(encabezadoValidacionTecnica());
+    hoja.getRange(1, 1, 1, encabezados.length).setValues([encabezados]);
   } else {
     const primero = hoja.getRange(1, 1).getValue();
-    if (!primero) hoja.getRange(1, 1, 1, 22).setValues(encabezadoValidacionTecnica());
+    if (!primero) {
+      hoja.getRange(1, 1, 1, encabezados.length).setValues([encabezados]);
+    } else if (!hoja.getRange(1, 23).getValue()) {
+      // Migración segura: los registros anteriores conservan sus 22 columnas
+      // y la nueva información se agrega al final.
+      hoja.getRange(1, 23).setValue("ORIGEN_ORDEN");
+    }
   }
 
   return hoja;
@@ -2264,6 +2276,13 @@ function obtenerTipoValidacionPorTicket(tipoTicket) {
   if (ticket === "VTR-") return "VTR";
   if (ticket === "NO APLICA") return "OTRO";
   throw new Error("No se pudo determinar el tipo de validación");
+}
+
+function normalizarOrigenOrdenValidacion(origen, permitirVacio) {
+  const valor = normalizarTexto(origen);
+  if (!valor && permitirVacio) return "";
+  if (valor === "PROPIA" || valor === "ASIGNADA") return valor;
+  throw new Error("Debe seleccionar si la orden GAR/VTR es PROPIA o ASIGNADA");
 }
 
 function generarIdValidacionTecnica(codigo, tipoValidacion) {
@@ -2410,6 +2429,9 @@ function registrarValidacionTecnica(data) {
   const datosCuadrilla = obtenerDatosCuadrillaApp(cuadrilla);
   const tipoTicket = normalizarTipoTicketValidacion(data.tipoTicket || data.tipo_ticket);
   const tipoValidacion = obtenerTipoValidacionPorTicket(tipoTicket);
+  const origenOrden = (tipoValidacion === "GAR" || tipoValidacion === "VTR")
+    ? normalizarOrigenOrdenValidacion(data.origenOrden || data.origen_orden, false)
+    : "";
   const codigo = (data.codigo || "").toString().trim();
   const id = generarIdValidacionTecnica(codigo, tipoValidacion);
 
@@ -2461,7 +2483,8 @@ function registrarValidacionTecnica(data) {
     "",
     "",
     linkTelegram,
-    horaLimite
+    horaLimite,
+    origenOrden
   ]);
 
   const fila = hoja.getLastRow();
@@ -2488,6 +2511,7 @@ function registrarValidacionTecnica(data) {
     motivoTecnico: motivo,
     estado: "PENDIENTE",
     resultadoFinal: "",
+    origenOrden,
     linkTelegram,
     horaLimite: tipoValidacion === "RECABLEADO" ? Utilities.formatDate(horaLimite, Session.getScriptTimeZone(), "dd/MM/yyyy HH:mm:ss") : ""
   };
@@ -2525,6 +2549,9 @@ function filaValidacionTecnicaAObjeto(fila) {
     motivoValidacion: fila[19],
     linkTelegram: fila[20],
     horaLimite: fila[21],
+    origenOrden: (normalizarTexto(fila[6]) === "GAR" || normalizarTexto(fila[6]) === "VTR")
+      ? (normalizarTexto(fila[22]) || "SIN REGISTRO")
+      : "",
     estadoVisibleTecnico,
     resultadoVisibleTecnico
   };
@@ -6786,7 +6813,8 @@ function leerSolicitudesBonoVtrGar() {
       validadoPor: (fila[15] || "").toString(),
       fechaSolicitud: fechaHoraVisibleBonoVtrGar(fila[1], fila[2]),
       fechaValidacion: fechaHoraVisibleBonoVtrGar(fila[17], fila[18]),
-      motivoValidacion: (fila[19] || "").toString()
+      motivoValidacion: (fila[19] || "").toString(),
+      origenOrden: normalizarTexto(fila[22]) || "SIN REGISTRO"
     };
 
     const indiceLista = lista.length;
@@ -6808,6 +6836,7 @@ function clasificarEstadoBonoVtrGar(solicitud, coincidencia, similitud) {
       etiquetaBono: "Sin registro",
       coincidenciaBono: "",
       similitudTicketBono: 0,
+      origenOrden: "SIN REGISTRO",
       validacionBono: null
     };
   }
@@ -6834,6 +6863,7 @@ function clasificarEstadoBonoVtrGar(solicitud, coincidencia, similitud) {
     etiquetaBono,
     coincidenciaBono: coincidencia || "",
     similitudTicketBono: Number(similitud) || 0,
+    origenOrden: solicitud.origenOrden || "SIN REGISTRO",
     validacionBono: {
       id: solicitud.id,
       tipo: solicitud.tipo,
@@ -6845,7 +6875,8 @@ function clasificarEstadoBonoVtrGar(solicitud, coincidencia, similitud) {
       validadoPor: solicitud.validadoPor,
       fechaSolicitud: solicitud.fechaSolicitud,
       fechaValidacion: solicitud.fechaValidacion,
-      motivoValidacion: solicitud.motivoValidacion
+      motivoValidacion: solicitud.motivoValidacion,
+      origenOrden: solicitud.origenOrden || "SIN REGISTRO"
     }
   };
 }

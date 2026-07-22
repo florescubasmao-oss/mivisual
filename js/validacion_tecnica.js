@@ -1,4 +1,4 @@
-// MI VISUAL - Módulo Validación Técnica v60.3
+// MI VISUAL - Módulo Validación Técnica V253 · Origen PROPIA / ASIGNADA
 
 const API_VALIDACION_TECNICA = "https://script.google.com/macros/s/AKfycbzcbjCLweJNgZXDerdzmMN7Lwotc1G8NWdzoPkaLNGDivAgpYxDkq78xZwPRioSB4XY/exec";
 
@@ -59,6 +59,17 @@ function estiloValidacionTecnica(){
     .vt-badge.BONO{background:#dbeafe;color:#1d4ed8}
     .vt-badge.NO_BONO{background:#e5e7eb;color:#111827}
     .vt-badge.SIN_RESPUESTA{background:#f1f5f9;color:#475569}
+    .vt-origin-badge{display:inline-flex;align-items:center;gap:5px;margin-top:5px;padding:4px 8px;border-radius:999px;font-size:10px;font-weight:900;letter-spacing:.03em;background:#e2e8f0;color:#334155}
+    .vt-origin-badge.PROPIA{background:#dcfce7;color:#166534;border:1px solid #86efac}
+    .vt-origin-badge.ASIGNADA{background:#dbeafe;color:#1d4ed8;border:1px solid #93c5fd}
+    .vt-origin-badge.SIN_REGISTRO{background:#e5e7eb;color:#475569;border:1px solid #cbd5e1}
+    .vt-origin-summary{margin:10px 0 14px;padding:12px;border:1px solid #f3d28a;border-radius:15px;background:linear-gradient(135deg,#fffbeb,#fff7d6)}
+    .vt-origin-summary h4{margin:0 0 9px;color:#713f12;font-size:14px}
+    .vt-origin-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px}
+    .vt-origin-card{background:#fff;border:1px solid #fde68a;border-radius:12px;padding:9px;text-align:center}
+    .vt-origin-card b{display:block;color:#92400e;font-size:19px}
+    .vt-origin-card span{display:block;color:#78350f;font-size:10px;font-weight:900;text-transform:uppercase}
+    .vt-origin-card small{display:block;color:#92400e;margin-top:3px;font-size:10px}
     .vt-detail{display:none;margin-top:10px;border-top:1px solid #e5e7eb;padding-top:10px;font-size:13px;color:#334155;line-height:1.55}
     .vt-detail b{color:#0f172a}
     .vt-confirm{background:#fff;border-radius:22px;padding:18px;box-shadow:0 12px 28px rgba(15,23,42,.14);border:2px dashed #2563eb;text-align:left}
@@ -69,8 +80,9 @@ function estiloValidacionTecnica(){
     .vt-kpi{background:#f8fafc;border:1px solid #e5e7eb;border-radius:14px;padding:10px;text-align:center}
     .vt-kpi b{display:block;font-size:18px;color:#0f172a}
     .vt-kpi span{font-size:11px;color:#64748b;font-weight:800;text-transform:uppercase}
-    .vt-history-tools{display:grid;grid-template-columns:minmax(180px,1fr) auto auto auto;gap:8px;align-items:center;margin-bottom:10px}
-    .vt-search{width:100%;box-sizing:border-box;border:1px solid #cbd5e1;border-radius:12px;padding:11px;font-size:14px;background:#fff;outline:none}
+    .vt-history-tools{display:grid;grid-template-columns:repeat(auto-fit,minmax(145px,1fr));gap:8px;align-items:center;margin-bottom:10px}
+    .vt-history-tools select{width:100%;box-sizing:border-box;border:1px solid #cbd5e1;border-radius:12px;padding:10px;font-size:13px;background:#fff;color:#0f172a}
+    .vt-search{width:100%;box-sizing:border-box;border:1px solid #cbd5e1;border-radius:12px;padding:11px;font-size:14px;background:#fff;outline:none;grid-column:span 2}
     .vt-group{border:1px solid #dbe3ee;border-radius:14px;background:#f8fafc;margin-top:10px;overflow:hidden}
     .vt-group summary{cursor:pointer;list-style:none;padding:12px 14px;font-weight:900;color:#0f172a;display:flex;justify-content:space-between;align-items:center;background:#eef4fb}
     .vt-group summary::-webkit-details-marker{display:none}
@@ -89,6 +101,7 @@ function estiloValidacionTecnica(){
     @media(max-width:640px){
         .vt-grid{grid-template-columns:1fr}
         .vt-kpis{grid-template-columns:repeat(2,minmax(0,1fr))}
+        .vt-origin-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
         .vt-history-tools{grid-template-columns:1fr 1fr}
         .vt-history-tools .vt-search{grid-column:1/-1}
         .vt-header{border-radius:18px;padding:15px}
@@ -140,14 +153,18 @@ function actualizarTipoValidacionPorTicket(){
     const tipoValidacion = document.getElementById("vtTipoValidacion");
     const numeroWrap = document.getElementById("vtNumeroTicketWrap");
     const numeroInput = document.getElementById("vtNumeroTicket");
+    const origenWrap = document.getElementById("vtOrigenOrdenWrap");
+    const origenSelect = document.getElementById("vtOrigenOrden");
     const motivoLabel = document.getElementById("vtMotivoLabel");
     const motivo = document.getElementById("vtMotivo");
+    const tipoAutomatico = obtenerTipoValidacionPorTicket(tipoTicket);
 
     if(tipoValidacion){
-        tipoValidacion.value = obtenerTipoValidacionPorTicket(tipoTicket);
+        tipoValidacion.value = tipoAutomatico;
     }
 
     const esOtro = tipoTicket === "NO APLICA";
+    const requiereOrigen = tipoAutomatico === "GAR" || tipoAutomatico === "VTR";
 
     if(numeroWrap){
         numeroWrap.style.display = esOtro ? "none" : "block";
@@ -155,6 +172,14 @@ function actualizarTipoValidacionPorTicket(){
 
     if(esOtro && numeroInput){
         numeroInput.value = "";
+    }
+
+    if(origenWrap){
+        origenWrap.style.display = requiereOrigen ? "block" : "none";
+    }
+    if(origenSelect){
+        origenSelect.required = requiereOrigen;
+        if(!requiereOrigen) origenSelect.value = "";
     }
 
     if(motivoLabel){
@@ -223,6 +248,22 @@ function mostrarValidacionTecnica(){
                 <option value="PIURA">Piura</option>
                 <option value="TRUJILLO">Trujillo</option>
             </select>
+            ${esJefaturaValidacion(u.perfil) ? `
+            <select id="vtFiltroPeriodo" onchange="renderHistorialValidacionLocal()">
+                <option value="TODO">Todos los periodos</option>
+                <option value="HOY">Hoy</option>
+                <option value="SEMANA">Últimos 7 días</option>
+                <option value="MES">Mes actual</option>
+            </select>
+            <select id="vtFiltroCuadrilla" onchange="renderHistorialValidacionLocal()">
+                <option value="">Todas las cuadrillas</option>
+            </select>
+            <select id="vtFiltroOrigen" onchange="renderHistorialValidacionLocal()">
+                <option value="">Propias y asignadas</option>
+                <option value="PROPIA">Propias</option>
+                <option value="ASIGNADA">Asignadas</option>
+                <option value="SIN REGISTRO">Sin registro</option>
+            </select>` : ""}
             <select id="vtFiltroEstado" onchange="renderHistorialValidacionLocal()">
                 <option value="">Todos los estados</option>
                 <option value="PENDIENTE">Pendiente</option>
@@ -267,6 +308,14 @@ function renderFormularioValidacionTecnica(){
                 <label>Tipo de validación</label>
                 <input id="vtTipoValidacion" type="text" value="RECABLEADO" readonly aria-readonly="true">
             </div>
+            <div class="vt-field" id="vtOrigenOrdenWrap" style="display:none">
+                <label>Origen de la orden</label>
+                <select id="vtOrigenOrden">
+                    <option value="">Seleccione...</option>
+                    <option value="PROPIA">PROPIA</option>
+                    <option value="ASIGNADA">ASIGNADA</option>
+                </select>
+            </div>
             <div class="vt-field">
                 <label>Código</label>
                 <input id="vtCodigo" type="text" placeholder="Ejemplo: 3030002">
@@ -292,6 +341,7 @@ async function guardarValidacionTecnica(btn){
     const codigo = document.getElementById("vtCodigo")?.value.trim() || "";
     const tipoTicket = document.getElementById("vtTipoTicket")?.value || "";
     const numeroTicket = document.getElementById("vtNumeroTicket")?.value.trim() || "";
+    const origenOrden = document.getElementById("vtOrigenOrden")?.value || "";
     const dniCliente = document.getElementById("vtDniCliente")?.value.trim() || "";
     const motivo = document.getElementById("vtMotivo")?.value.trim() || "";
 
@@ -301,6 +351,10 @@ async function guardarValidacionTecnica(btn){
     }
     if(tipoTicket !== "NO APLICA" && !numeroTicket){
         alert("Ingresa el número de ticket o selecciona NO APLICA.");
+        return;
+    }
+    if((tipoValidacion === "GAR" || tipoValidacion === "VTR") && !origenOrden){
+        alert("Seleccione si la orden es PROPIA o ASIGNADA.");
         return;
     }
 
@@ -314,6 +368,7 @@ async function guardarValidacionTecnica(btn){
             codigo,
             tipoTicket,
             numeroTicket,
+            origenOrden,
             dniCliente,
             motivoTecnico: motivo
         });
@@ -401,6 +456,7 @@ function mostrarConfirmacionValidacionTecnica(r){
                 ${filaResumenValidacion("Sede", r.sede)}
                 ${filaResumenValidacion("Cuadrilla", r.cuadrilla)}
                 ${filaResumenValidacion("Tipo validación", r.tipoValidacion)}
+                ${(r.tipoValidacion === "GAR" || r.tipoValidacion === "VTR") ? filaResumenValidacion("Origen de la orden", r.origenOrden || "SIN REGISTRO") : ""}
                 ${filaResumenValidacion("Código", r.codigo)}
                 ${filaResumenValidacion("Ticket", r.ticketFinal)}
                 ${filaResumenValidacion("DNI cliente", r.dniCliente)}
@@ -415,7 +471,8 @@ function mostrarConfirmacionValidacionTecnica(r){
                 <div class="vt-reporte-title">📋 Texto para reportar</div>
                 <div id="vtTextoReporte" class="vt-reporte-texto">Código: ${safeValidacion(r.codigo)}
 Ticket: ${safeValidacion(r.ticketFinal)}
-Tipo de validación: ${safeValidacion(r.tipoValidacion)}</div>
+Tipo de validación: ${safeValidacion(r.tipoValidacion)}${(r.tipoValidacion === "GAR" || r.tipoValidacion === "VTR") ? `
+Origen: ${safeValidacion(r.origenOrden || "SIN REGISTRO")}` : ""}</div>
                 <button class="vt-btn primary" style="margin-top:7px;width:100%;padding:9px 12px" onclick="copiarTextoReporteValidacion()">📋 Copiar texto</button>
                 <div class="vt-reporte-ayuda"><b>Indicación:</b> Copie el texto, tome una captura de esta pantalla y reporte ambos junto con sus evidencias en el grupo de Telegram de su sede.</div>
             </div>
@@ -445,6 +502,7 @@ async function cargarValidacionesTecnicas(){
         if(!r.ok) throw new Error(r.error || "No se pudo listar");
 
         window.vtValidacionesActuales = r.validaciones || [];
+        actualizarOpcionesFiltroCuadrillaVT();
 
         const pendientes = window.vtValidacionesActuales.filter(x => (x.estado || "").toUpperCase() === "PENDIENTE");
         const pendientesEl = document.getElementById("vtPendientes");
@@ -463,34 +521,107 @@ async function cargarValidacionesTecnicas(){
     }
 }
 
+function normalizarOrigenOrdenVistaVT(valor){
+    const origen = (valor || "").toString().toUpperCase().trim();
+    return origen === "PROPIA" || origen === "ASIGNADA" ? origen : "SIN REGISTRO";
+}
+
+function badgeOrigenOrdenVT(valor){
+    const origen = normalizarOrigenOrdenVistaVT(valor);
+    const icono = origen === "PROPIA" ? "🏠" : origen === "ASIGNADA" ? "📥" : "⚪";
+    return `<span class="vt-origin-badge ${origen.replace(/\s+/g,"_")}">${icono} ${safeValidacion(origen)}</span>`;
+}
+
+function actualizarOpcionesFiltroCuadrillaVT(){
+    const select = document.getElementById("vtFiltroCuadrilla");
+    if(!select) return;
+    const actual = select.value || "";
+    const cuadrillas = [...new Set((window.vtValidacionesActuales || [])
+        .map(x => (x.cuadrilla || "").toString().trim())
+        .filter(Boolean))].sort((a,b) => a.localeCompare(b,"es"));
+    select.innerHTML = `<option value="">Todas las cuadrillas</option>` +
+        cuadrillas.map(c => `<option value="${safeValidacion(c)}">${safeValidacion(c)}</option>`).join("");
+    if(cuadrillas.includes(actual)) select.value = actual;
+}
+
+function cumplePeriodoFiltroVT(item, periodo){
+    if(!periodo || periodo === "TODO") return true;
+    const fecha = convertirFechaInformeVT(item.fechaRegistro);
+    if(!fecha) return false;
+    const hoy = new Date();
+    const actual = new Date(hoy.getFullYear(), hoy.getMonth(), hoy.getDate());
+    if(periodo === "HOY") return fecha.getTime() === actual.getTime();
+    if(periodo === "SEMANA"){
+        const desde = new Date(actual);
+        desde.setDate(desde.getDate() - 6);
+        return fecha >= desde && fecha <= actual;
+    }
+    if(periodo === "MES") return fecha.getFullYear() === actual.getFullYear() && fecha.getMonth() === actual.getMonth();
+    return true;
+}
+
+function aplicarFiltrosHistorialVT(lista){
+    const filtroTipo = (document.getElementById("vtFiltroTipo")?.value || "").toUpperCase();
+    const filtroSede = (document.getElementById("vtFiltroSede")?.value || "").toUpperCase();
+    const filtroEstado = (document.getElementById("vtFiltroEstado")?.value || "").toUpperCase();
+    const filtroCuadrilla = (document.getElementById("vtFiltroCuadrilla")?.value || "").toUpperCase();
+    const filtroOrigen = (document.getElementById("vtFiltroOrigen")?.value || "").toUpperCase();
+    const filtroPeriodo = (document.getElementById("vtFiltroPeriodo")?.value || "TODO").toUpperCase();
+    const buscarCodigo = (document.getElementById("vtBuscarCodigo")?.value || "").trim().toUpperCase();
+
+    return (lista || []).filter(x => {
+        if(filtroTipo && (x.tipoValidacion || "").toUpperCase() !== filtroTipo) return false;
+        if(filtroSede && (x.sede || "").toUpperCase() !== filtroSede) return false;
+        if(filtroEstado && (x.estado || "").toUpperCase() !== filtroEstado) return false;
+        if(filtroCuadrilla && (x.cuadrilla || "").toUpperCase() !== filtroCuadrilla) return false;
+        if(filtroOrigen && normalizarOrigenOrdenVistaVT(x.origenOrden) !== filtroOrigen) return false;
+        if(buscarCodigo && !String(x.codigo || "").toUpperCase().includes(buscarCodigo)) return false;
+        if(!cumplePeriodoFiltroVT(x, filtroPeriodo)) return false;
+        return true;
+    });
+}
+
+function renderConsolidadoOrigenVtrGar(lista){
+    const registros = (lista || []).filter(x => ["GAR","VTR"].includes((x.tipoValidacion || "").toUpperCase()));
+    const conteo = {
+        TOTAL:{total:0,gar:0,vtr:0},
+        PROPIA:{total:0,gar:0,vtr:0},
+        ASIGNADA:{total:0,gar:0,vtr:0},
+        "SIN REGISTRO":{total:0,gar:0,vtr:0}
+    };
+    registros.forEach(x => {
+        const tipo = (x.tipoValidacion || "").toUpperCase();
+        const origen = normalizarOrigenOrdenVistaVT(x.origenOrden);
+        conteo.TOTAL.total++;
+        if(tipo === "GAR") conteo.TOTAL.gar++;
+        if(tipo === "VTR") conteo.TOTAL.vtr++;
+        conteo[origen].total++;
+        if(tipo === "GAR") conteo[origen].gar++;
+        if(tipo === "VTR") conteo[origen].vtr++;
+    });
+    const tarjeta = (titulo, c) => `<div class="vt-origin-card"><b>${c.total}</b><span>${titulo}</span><small>GAR: ${c.gar} · VTR: ${c.vtr}</small></div>`;
+    return `<div class="vt-origin-summary">
+        <h4>⭐ Consolidado GAR/VTR por origen de orden</h4>
+        <div class="vt-origin-grid">
+            ${tarjeta("Total GAR/VTR", conteo.TOTAL)}
+            ${tarjeta("Propias", conteo.PROPIA)}
+            ${tarjeta("Asignadas", conteo.ASIGNADA)}
+            ${tarjeta("Sin registro", conteo["SIN REGISTRO"])}
+        </div>
+    </div>`;
+}
+
 function renderHistorialValidacionLocal(){
     const histEl = document.getElementById("vtHistorial");
     if(!histEl) return;
 
     const u = usuarioActualValidacion();
     const todas = Array.isArray(window.vtValidacionesActuales) ? window.vtValidacionesActuales : [];
-    const filtroTipo = (document.getElementById("vtFiltroTipo")?.value || "").toUpperCase();
-    const filtroSede = (document.getElementById("vtFiltroSede")?.value || "").toUpperCase();
-    const filtroEstado = (document.getElementById("vtFiltroEstado")?.value || "").toUpperCase();
-    const buscarCodigo = (document.getElementById("vtBuscarCodigo")?.value || "").trim().toUpperCase();
     const esGestion = (typeof pmAlcance === "function" && ["SEDE","SEDE / PROPIOS","ZONA NORTE"].includes(pmAlcance("VALIDACION TECNICA"))) || u.perfil === "SUPERVISOR" || esJefaturaValidacion(u.perfil);
-
-    let lista = esGestion
-        ? todas.filter(x => (x.estado || "").toUpperCase() !== "PENDIENTE")
-        : todas.slice();
-
-    if(filtroTipo){
-        lista = lista.filter(x => (x.tipoValidacion || "").toUpperCase() === filtroTipo);
-    }
-    if(filtroSede){
-        lista = lista.filter(x => (x.sede || "").toUpperCase() === filtroSede);
-    }
-    if(filtroEstado){
-        lista = lista.filter(x => (x.estado || "").toUpperCase() === filtroEstado);
-    }
-    if(buscarCodigo){
-        lista = lista.filter(x => String(x.codigo || "").toUpperCase().includes(buscarCodigo));
-    }
+    const filtradas = aplicarFiltrosHistorialVT(todas);
+    const lista = esGestion
+        ? filtradas.filter(x => (x.estado || "").toUpperCase() !== "PENDIENTE")
+        : filtradas.slice();
 
     if(!todas.length){
         histEl.innerHTML = `<div class="vt-sub">Sin registros.</div>`;
@@ -498,11 +629,12 @@ function renderHistorialValidacionLocal(){
     }
 
     const resumen = renderResumenValidaciones(todas);
+    const consolidado = esJefaturaValidacion(u.perfil) ? renderConsolidadoOrigenVtrGar(filtradas) : "";
     const contenido = esGestion
         ? renderHistorialAgrupadoValidacion(lista)
         : (lista.length ? renderListaValidaciones(lista, false) : `<div class="vt-sub">No hay registros para mostrar.</div>`);
 
-    histEl.innerHTML = resumen + contenido;
+    histEl.innerHTML = resumen + consolidado + contenido;
 }
 
 function renderHistorialAgrupadoValidacion(lista){
@@ -589,6 +721,7 @@ function renderItemValidacion(item, idx, u, soloPendientes){
             <div>
                 <div class="vt-id">${item.id}</div>
                 <div class="vt-sub">${item.tipoValidacion} · ${item.cuadrilla}<br>${formatearFechaHoraVistaVT(item.fechaRegistro, item.horaRegistro)}</div>
+                ${["GAR","VTR"].includes((item.tipoValidacion || "").toUpperCase()) ? badgeOrigenOrdenVT(item.origenOrden) : ""}
             </div>
             ${badgeValidacion(item.estado, estadoMostrar)}
         </div>
@@ -599,6 +732,7 @@ function renderItemValidacion(item, idx, u, soloPendientes){
         <div id="${detalleId}" class="vt-detail">
             <b>Código:</b> ${item.codigo || "-"}<br>
             <b>Ticket:</b> ${item.ticketFinal || "-"}<br>
+            ${["GAR","VTR"].includes((item.tipoValidacion || "").toUpperCase()) ? `<b>Origen de la orden:</b> ${normalizarOrigenOrdenVistaVT(item.origenOrden)}<br>` : ""}
             <b>DNI:</b> ${item.dniCliente || "-"}<br>
             <b>Motivo técnico:</b> ${item.motivoTecnico || "-"}<br>
             <b>Resultado:</b> ${resMostrar || "-"}<br>
@@ -1058,21 +1192,21 @@ async function generarInformeValidacionTecnicaExcel(btn){
 
         const detalle = [[
             "FECHA", "HORA", "SEDE", "CUADRILLA", "TECNICO", "CODIGO",
-            "TIPO VALIDACION", "TIPO TICKET", "N° TICKET", "TICKET FINAL",
+            "TIPO VALIDACION", "ORIGEN ORDEN", "TIPO TICKET", "N° TICKET", "TICKET FINAL",
             "DNI", "ESTADO", "RESULTADO", "VALIDADO POR", "PERFIL VALIDADOR",
             "FECHA VALIDACION", "HORA VALIDACION", "MOTIVO TECNICO", "MOTIVO VALIDACION"
         ]];
         lista.forEach(x => detalle.push([
             formatearFechaExcelVT(x.fechaRegistro), formatearHoraExcelVT(x.horaRegistro), valorInformeVT(x.sede),
             valorInformeVT(x.cuadrilla), valorInformeVT(x.tecnico), valorInformeVT(x.codigo),
-            valorInformeVT(x.tipoValidacion), valorInformeVT(x.tipoTicket), valorInformeVT(x.numeroTicket),
+            valorInformeVT(x.tipoValidacion), ["GAR","VTR"].includes((x.tipoValidacion || "").toUpperCase()) ? normalizarOrigenOrdenVistaVT(x.origenOrden) : "", valorInformeVT(x.tipoTicket), valorInformeVT(x.numeroTicket),
             valorInformeVT(x.ticketFinal), valorInformeVT(x.dniCliente), valorInformeVT(x.estado),
             valorInformeVT(x.resultadoFinal), valorInformeVT(x.validadoPor), valorInformeVT(x.perfilValidador),
             formatearFechaExcelVT(x.fechaValidacion), formatearHoraExcelVT(x.horaValidacion), valorInformeVT(x.motivoTecnico),
             valorInformeVT(x.motivoValidacion)
         ]));
         XLSX.utils.book_append_sheet(wb, prepararHojaExcelVT(XLSX, detalle,
-            [12,11,13,36,20,14,18,14,14,20,13,15,20,20,18,17,17,42,42], true), "DETALLE VALIDACIONES");
+            [12,11,13,36,20,14,18,16,14,14,20,13,15,20,20,18,17,17,42,42], true), "DETALLE VALIDACIONES");
 
         const conteo = crearConteoInformeVT(lista);
         const periodoTexto = document.getElementById("vtInformePeriodo")?.selectedOptions[0]?.textContent || "Todo";
