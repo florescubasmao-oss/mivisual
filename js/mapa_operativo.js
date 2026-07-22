@@ -12,6 +12,12 @@ function moEscape(v){return moNorm(v).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&l
 function moUsuario(){return localStorage.getItem('usuario')||''}
 function moPerfil(){return moNormCab(localStorage.getItem('perfil'))}
 function moPuedeImportar(){return ['JEFATURA','ADMIN','ADMINISTRADOR','JEFATURAOPERACIONES','JEFATURADEOPERACIONES','OPERACIONES'].includes(moPerfil())}
+function moPintarUltimaActualizacion(texto){
+  const e=document.getElementById('moUltimaActualizacion');
+  if(!e)return;
+  const valor=moNorm(texto)||'Sin actualización registrada';
+  e.innerHTML=`<span class="mo-update-icon" aria-hidden="true">🕒</span><span class="mo-update-copy"><small>Última actualización</small><strong>${moEscape(valor)}</strong></span>`;
+}
 
 function moCargarScript(src,globalName){return new Promise((resolve,reject)=>{if(globalName&&window[globalName])return resolve(window[globalName]);const s=document.createElement('script');s.src=src;s.onload=()=>resolve(globalName?window[globalName]:true);s.onerror=()=>reject(new Error('No se pudo cargar un componente del mapa'));document.head.appendChild(s)})}
 function moCargarCss(href){if([...document.styleSheets].some(x=>x.href&&x.href.includes('leaflet')))return;const l=document.createElement('link');l.rel='stylesheet';l.href=href;document.head.appendChild(l)}
@@ -26,7 +32,7 @@ async function mostrarMapaOperativo(){
   const menu=document.getElementById('menuPrincipal');
   if(menu) menu.style.setProperty('display','none','important');
   const p=document.getElementById('pantalla');
-  p.innerHTML=`<div class="mo-wrap"><div class="mo-head"><h2 class="mo-title">🗺️ MAPA OPERATIVO</h2><div class="mo-actions">${moPuedeImportar()?'<button class="mo-btn mo-btn-sec" onclick="moMostrarImportacion()">Ingresar datos</button>':''}</div></div>
+  p.innerHTML=`<div class="mo-wrap"><div class="mo-head"><h2 class="mo-title">🗺️ MAPA OPERATIVO</h2><div class="mo-actions"><div id="moUltimaActualizacion" class="mo-update-status" aria-live="polite"><span class="mo-update-icon" aria-hidden="true">🕒</span><span class="mo-update-copy"><small>Última actualización</small><strong>Consultando...</strong></span></div>${moPuedeImportar()?'<button class="mo-btn mo-btn-sec" onclick="moMostrarImportacion()">Ingresar datos</button>':''}</div></div>
   <div id="moVistaFiltros" class="mo-panel">
     <b>Seleccione la información que desea visualizar</b>
     <div class="mo-filtros mo-filtros-amplios" style="margin-top:9px">
@@ -56,12 +62,13 @@ async function moCargarCatalogos(){
   const d=await moApi({accion:'catalogosMapaOperativo',usuario:moUsuario()});
   const llenar=(id,lista,todos)=>{const e=document.getElementById(id);if(e)e.innerHTML=`<option value="">${todos}</option>`+(lista||[]).map(x=>`<option>${moEscape(x)}</option>`).join('')};
   llenar('moFiltroSede',d.sedes,'Todas');llenar('moFiltroGrupo',d.gruposTrabajo,'Todos');llenar('moFiltroEstado',d.estados,'Todos');llenar('moFiltroCuadrilla',d.cuadrillas,'Todas');
+  moPintarUltimaActualizacion(d.ultimaActualizacionTexto);
 }
 async function moConsultarMapa(){
   const filtros={sede:moNorm(document.getElementById('moFiltroSede')?.value),fecha:moNorm(document.getElementById('moFiltroFecha')?.value),grupoTrabajo:moNorm(document.getElementById('moFiltroGrupo')?.value),estado:moNorm(document.getElementById('moFiltroEstado')?.value),cuadrilla:moNorm(document.getElementById('moFiltroCuadrilla')?.value),codigo:moNorm(document.getElementById('moBuscarCodigo')?.value)};
   if(!Object.values(filtros).some(Boolean)){document.getElementById('moContador').textContent='Debe seleccionar al menos un filtro para evitar cargar toda la base.';return}
   document.getElementById('moContador').textContent='Consultando órdenes...';
-  const d=await moApi(Object.assign({accion:'listarMapaOperativo',usuario:moUsuario()},filtros));moRegistros=d.ordenes||[];moRenderMarcadores(moRegistros);
+  const d=await moApi(Object.assign({accion:'listarMapaOperativo',usuario:moUsuario()},filtros));moRegistros=d.ordenes||[];moPintarUltimaActualizacion(d.ultimaActualizacionTexto);moRenderMarcadores(moRegistros);
 }
 function moInicializarMapa(){
   if(moMapa){moMapa.remove();moMapa=null}
@@ -97,7 +104,7 @@ async function moLeerArchivo(){
 }
 async function moRegistrarImportacion(){
   if(!moImportacion.length)return;const btn=document.getElementById('moBtnImportar'),msg=document.getElementById('moImportMsg');btn.disabled=true;msg.className='mo-msg';msg.textContent='Registrando información...';
-  try{const d=await moApi({accion:'importarMapaOperativo',usuario:moUsuario(),registros:moImportacion});msg.className='mo-msg mo-ok';msg.textContent=`Registro terminado: ${d.nuevos} nuevos, ${d.actualizados} actualizados, ${d.repetidosCarga||0} repetidos consolidados y ${d.omitidos||0} omitidos.${d.consolidadosExistentes?` Se depuraron ${d.consolidadosExistentes} duplicados anteriores.`:''}`;moImportacion=[];await moCargarCatalogos()}catch(e){msg.className='mo-msg mo-error';msg.textContent=e.message;btn.disabled=false}
+  try{const d=await moApi({accion:'importarMapaOperativo',usuario:moUsuario(),registros:moImportacion});msg.className='mo-msg mo-ok';msg.textContent=`Registro terminado: ${d.nuevos} nuevos, ${d.actualizados} actualizados, ${d.repetidosCarga||0} repetidos consolidados y ${d.omitidos||0} omitidos.${d.consolidadosExistentes?` Se depuraron ${d.consolidadosExistentes} duplicados anteriores.`:''}`;moPintarUltimaActualizacion(d.ultimaActualizacionTexto);moImportacion=[];await moCargarCatalogos()}catch(e){msg.className='mo-msg mo-error';msg.textContent=e.message;btn.disabled=false}
 }
 function moMotivo(x){return x.motivoCancelacion||x.motivoFinalizacion||x.motivoAnulacion||''}
 function moPopup(x){const fields=[['Fecha',x.fechaSolicitud],['Hora',x.horaSolicitud],['Cliente',x.cliente],['Tipo',x.tipo],['Producto',x.productoServicio||x.productoOrigen],['Dirección',x.direccion],['Dirección adicional',x.direccionAdicional],['Región',x.region],['Código de cliente',x.codigoCliente],['Documento',x.numeroDocumento],['Teléfono móvil',x.telefonoMovil],['Teléfono fijo',x.telefonoFijo],['Inicio de visita',x.fechaInicioVisita],['Fin de visita',x.fechaFinVisita],['Motivo',moMotivo(x)],['Detalle',x.detalle]].filter(y=>moNorm(y[1]));const lat=Number(x.latitud),lng=Number(x.longitud);const ruta=Number.isFinite(lat)&&Number.isFinite(lng)?`https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(lat+','+lng)}`:'';return `<div class="mo-popup"><div class="mo-main-row"><b>Tipo de trabajo</b><span>${moEscape(x.tipoTrabajo)}</span></div><div class="mo-main-row"><b>Cuadrilla</b><span>${moEscape(x.cuadrilla)}</span></div><div class="mo-main-row"><b>Estado</b><span>${moEscape(x.estado)}</span></div><div class="mo-main-row"><b>Código</b><span>${moEscape(x.ordenId)}</span></div><details class="mo-detalle"><summary>Detalle</summary><div class="mo-detalle-grid">${fields.map(y=>`<b>${moEscape(y[0])}</b><span>${moEscape(y[1])}</span>`).join('')}</div></details>${ruta?`<a class="mo-como-llegar" href="${ruta}" target="_blank" rel="noopener noreferrer">📍 Cómo llegar en Google Maps</a>`:''}</div>`}

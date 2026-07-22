@@ -5819,6 +5819,52 @@ function agregarComentarioReclamo(data){
    Importación y visualización de órdenes georreferenciadas
 ========================= */
 const HOJA_MAPA_OPERATIVO = "MAPA_ORDENES";
+const PROPIEDAD_MAPA_ULTIMA_ACTUALIZACION = "MAPA_OPERATIVO_ULTIMA_ACTUALIZACION";
+const ZONA_HORARIA_MAPA_OPERATIVO = "America/Lima";
+
+function registrarUltimaActualizacionMapaOperativo(fecha) {
+  try {
+    const valor = fecha instanceof Date ? fecha : new Date(fecha);
+    if (!isNaN(valor.getTime())) {
+      PropertiesService.getScriptProperties().setProperty(PROPIEDAD_MAPA_ULTIMA_ACTUALIZACION, valor.toISOString());
+    }
+  } catch (e) {
+    // La columna FECHA_IMPORTACION permite recuperar el dato aunque falle la propiedad.
+  }
+}
+
+function obtenerUltimaActualizacionMapaOperativo(hoja) {
+  let fecha = null;
+  try {
+    const guardada = PropertiesService.getScriptProperties().getProperty(PROPIEDAD_MAPA_ULTIMA_ACTUALIZACION);
+    if (guardada) {
+      const candidata = new Date(guardada);
+      if (!isNaN(candidata.getTime())) fecha = candidata;
+    }
+  } catch (e) {}
+
+  if (!fecha && hoja && hoja.getLastRow() > 1) {
+    const valores = hoja.getRange(2, 27, hoja.getLastRow() - 1, 1).getValues();
+    valores.forEach(function(fila) {
+      const valor = fila[0];
+      const candidata = valor instanceof Date ? valor : new Date(valor);
+      if (!isNaN(candidata.getTime()) && (!fecha || candidata.getTime() > fecha.getTime())) fecha = candidata;
+    });
+    if (fecha) registrarUltimaActualizacionMapaOperativo(fecha);
+  }
+
+  if (!fecha) {
+    return {
+      ultimaActualizacion: "",
+      ultimaActualizacionTexto: "Sin actualización registrada"
+    };
+  }
+
+  return {
+    ultimaActualizacion: fecha.toISOString(),
+    ultimaActualizacionTexto: Utilities.formatDate(fecha, ZONA_HORARIA_MAPA_OPERATIVO, "dd/MM/yyyy '·' HH:mm") + " — Hora Perú"
+  };
+}
 
 function encabezadoMapaOperativo() {
   return [[
@@ -6088,6 +6134,8 @@ function importarMapaOperativo(data) {
       hoja.getRange(resultado.length + 2, 1, filasAnteriores - resultado.length, 28).clearContent();
     }
     if (resultado.length) hoja.getRange(2,27,resultado.length,1).setNumberFormat("dd/mm/yyyy hh:mm");
+    registrarUltimaActualizacionMapaOperativo(ahora);
+    const ultimaActualizacionMapa = obtenerUltimaActualizacionMapaOperativo(hoja);
 
     return {
       ok:true,
@@ -6098,7 +6146,9 @@ function importarMapaOperativo(data) {
       omitidos:omitidos,
       repetidosCarga:repetidosCarga,
       consolidadosExistentes:consolidadosExistentes,
-      totalGuardado:resultado.length
+      totalGuardado:resultado.length,
+      ultimaActualizacion:ultimaActualizacionMapa.ultimaActualizacion,
+      ultimaActualizacionTexto:ultimaActualizacionMapa.ultimaActualizacionTexto
     };
   } finally {
     lock.releaseLock();
@@ -6171,7 +6221,18 @@ function catalogosMapaOperativo(data) {
   validarAccesoMapaOperativo(usuario, "VER");
   const hoja = asegurarHojaMapaOperativo();
   const ultimaFila = hoja.getLastRow();
-  const salida = {ok:true,modulo:"MAPA_OPERATIVO",accion:"CATALOGOS",sedes:[],gruposTrabajo:[],estados:[],cuadrillas:[]};
+  const ultimaActualizacionMapa = obtenerUltimaActualizacionMapaOperativo(hoja);
+  const salida = {
+    ok:true,
+    modulo:"MAPA_OPERATIVO",
+    accion:"CATALOGOS",
+    sedes:[],
+    gruposTrabajo:[],
+    estados:[],
+    cuadrillas:[],
+    ultimaActualizacion:ultimaActualizacionMapa.ultimaActualizacion,
+    ultimaActualizacionTexto:ultimaActualizacionMapa.ultimaActualizacionTexto
+  };
   if (ultimaFila <= 1) return salida;
   const datos = hoja.getRange(2,1,ultimaFila-1,26).getDisplayValues();
   const permitidas = usuario.perfil === "SUPERVISOR" ? cuadrillasSupervisorMapa(usuario.usuario) : null;
@@ -6215,7 +6276,19 @@ function listarMapaOperativo(data) {
   if (!Object.keys(filtros).some(k => filtros[k])) throw new Error("Debe seleccionar al menos un filtro para consultar el mapa");
   const hoja = asegurarHojaMapaOperativo();
   const ultimaFila = hoja.getLastRow();
-  if (ultimaFila <= 1) return {ok:true,modulo:"MAPA_OPERATIVO",accion:"LISTAR",perfil:usuario.perfil,registros:0,ordenes:[]};
+  if (ultimaFila <= 1) {
+    const ultimaActualizacionMapa = obtenerUltimaActualizacionMapaOperativo(hoja);
+    return {
+      ok:true,
+      modulo:"MAPA_OPERATIVO",
+      accion:"LISTAR",
+      perfil:usuario.perfil,
+      registros:0,
+      ordenes:[],
+      ultimaActualizacion:ultimaActualizacionMapa.ultimaActualizacion,
+      ultimaActualizacionTexto:ultimaActualizacionMapa.ultimaActualizacionTexto
+    };
+  }
 
   const datos = hoja.getRange(2,1,ultimaFila-1,26).getValues();
   const permitidas = usuario.perfil === "SUPERVISOR" ? cuadrillasSupervisorMapa(usuario.usuario) : null;
@@ -6236,7 +6309,17 @@ function listarMapaOperativo(data) {
     if (filtros.codigo && textoMapa(item.ordenId) !== filtros.codigo) return;
     lista.push(item);
   });
-  return {ok:true,modulo:"MAPA_OPERATIVO",accion:"LISTAR",perfil:usuario.perfil,registros:lista.length,ordenes:lista};
+  const ultimaActualizacionMapa = obtenerUltimaActualizacionMapaOperativo(hoja);
+  return {
+    ok:true,
+    modulo:"MAPA_OPERATIVO",
+    accion:"LISTAR",
+    perfil:usuario.perfil,
+    registros:lista.length,
+    ordenes:lista,
+    ultimaActualizacion:ultimaActualizacionMapa.ultimaActualizacion,
+    ultimaActualizacionTexto:ultimaActualizacionMapa.ultimaActualizacionTexto
+  };
 }
 
 /* =========================

@@ -1,0 +1,18 @@
+MI VISUAL V251 - ÚLTIMA ACTUALIZACIÓN DEL MAPA OPERATIVO
+
+CAMBIO APLICADO
+- Se muestra en la parte superior derecha del Mapa Operativo la fecha y hora de la última carga exitosa.
+- La hora se formatea con la zona horaria America/Lima (Hora Perú).
+- El dato se actualiza automáticamente al terminar correctamente una importación.
+- Si aún no existe una carga registrada, se muestra: Sin actualización registrada.
+- La visualización está disponible para Supervisor, Jefatura, Jefatura Operaciones y Gerencia Lima.
+
+ALCANCE
+- No se modificaron filtros, marcadores, agrupaciones, historial ni datos del mapa.
+- No se modificaron otros módulos.
+
+APLICACIÓN
+- Code.gs / Apps Script: Sí.
+- Frontend GitHub: Sí.
+- Google Sheets: No requiere cambios manuales.
+- Nuevo despliegue de Apps Script: Sí.
