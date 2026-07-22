@@ -1,5 +1,5 @@
 /* =====================================================
-   MI VISUAL V242 - BONOS DE PRODUCCIÓN
+   MI VISUAL V244 - BONOS DE PRODUCCIÓN
    - Cálculo diario desde PRODUCCION_APP + CATALOGO_ORDENES
    - Semana de lunes a domingo
    - Fecha referencial: lunes de la semana subsiguiente
@@ -14,6 +14,28 @@ const MB242_SEDES = ["CHICLAYO", "PIURA", "TRUJILLO"];
 const MB242_MINIMO_BONO = 4.5;
 const MB242_BASE_SIN_BONO = 4;
 const MB242_VALOR_PUNTO_CUADRILLA = 30;
+const MB242_VALOR_PUNTO_CUADRILLA_ESPECIAL = 45;
+
+/*
+  Cuadrillas con tarifa especial:
+  - S/ 45.00 por punto para la cuadrilla.
+  - S/ 22.50 por cada medio punto para la cuadrilla.
+  La identificación combina código, plataforma y apellidos para tolerar
+  diferencias de orden o abreviación en el nombre registrado.
+*/
+const MB242_CUADRILLAS_TARIFA_ESPECIAL = [
+  {codigo:"P5",  terminos:["SGI"],       nombres:["SANCHEZ","TUME","MAXIMO"]},
+  {codigo:"P6",  terminos:["SGI"],       nombres:["ESPINOZA","ESTRADA","ROBERTO"]},
+  {codigo:"P10", terminos:["TRASLADO"],  nombres:["VERGARA","TRELLES","ROBERTSON"]},
+  {codigo:"P4",  terminos:["SGI"],       nombres:["INGOL","RODRIGUEZ","CESAR"]},
+  {codigo:"P1",  terminos:["TRASLADO"],  nombres:["ATENCIO","RELUZ","DANY","DANI"]},
+  {codigo:"P3",  terminos:["SGI"],       nombres:["ELERA","CUEVA","ROBERTO"]},
+  {codigo:"P12", terminos:["SGI"],       nombres:["FERNANDEZ","MUNDACA","MOISES"]},
+  {codigo:"P2",  terminos:["TRASLADO"],  nombres:["ESPIRE","CHIQUEZ","LUIS"]},
+  {codigo:"P10", terminos:["SGI"],       nombres:["YNGA","MORE","JAIME"]},
+  {codigo:"P16", terminos:["SGI"],       nombres:["AZABACHE","SANCHEZ","FRANK"]},
+  {codigo:"P14", terminos:["SGI"],       nombres:["BARRANZUELA","ALEMAN","WILSON","RUBEN"]}
+];
 
 let MB242_DATOS = null;
 let MB242_FILTROS = { periodo: "", sede: "TODAS", cuadrilla: "TODAS" };
@@ -117,13 +139,37 @@ function mb242Redondear(valor){
   return Math.round((Number(valor || 0) + Number.EPSILON) * 100) / 100;
 }
 
-function mb242CalcularBonoDiario(puntos){
+function mb242EsTarifaEspecial(cuadrilla){
+  const nombre = mb242Cuadrilla(cuadrilla);
+  if(!nombre) return false;
+  const codigo = (nombre.match(/^P\d+/) || [""])[0];
+  return MB242_CUADRILLAS_TARIFA_ESPECIAL.some(regla => {
+    if(codigo !== regla.codigo) return false;
+    if(!(regla.terminos || []).every(t => nombre.includes(t))) return false;
+    return (regla.nombres || []).some(t => nombre.includes(t));
+  });
+}
+
+function mb242ValorPuntoCuadrilla(cuadrilla){
+  return mb242EsTarifaEspecial(cuadrilla)
+    ? MB242_VALOR_PUNTO_CUADRILLA_ESPECIAL
+    : MB242_VALOR_PUNTO_CUADRILLA;
+}
+
+function mb242CalcularBonoDiario(puntos, cuadrillaNombre){
   const p = Number(puntos || 0);
+  const tarifa = mb242ValorPuntoCuadrilla(cuadrillaNombre);
   if(p + 0.000001 < MB242_MINIMO_BONO){
-    return { puntos:p, genera:false, cuadrilla:0, tecnico:0 };
+    return { puntos:p, genera:false, cuadrilla:0, tecnico:0, tarifa };
   }
-  const cuadrilla = mb242Redondear((p - MB242_BASE_SIN_BONO) * MB242_VALOR_PUNTO_CUADRILLA);
-  return { puntos:p, genera:true, cuadrilla, tecnico:mb242Redondear(cuadrilla / 2) };
+  const cuadrilla = mb242Redondear((p - MB242_BASE_SIN_BONO) * tarifa);
+  return {
+    puntos:p,
+    genera:true,
+    cuadrilla,
+    tecnico:mb242Redondear(cuadrilla / 2),
+    tarifa
+  };
 }
 
 function mb242EstadoPeriodo(periodo, hoy){
@@ -169,7 +215,7 @@ function mb242CerrarResumenCuadrilla(item){
   item.diasConBono = 0;
   item.trabajos = 0;
   Object.values(item.dias).forEach(dia => {
-    const bono = mb242CalcularBonoDiario(dia.puntos);
+    const bono = mb242CalcularBonoDiario(dia.puntos, item.cuadrilla);
     dia.bonoCuadrilla = bono.cuadrilla;
     dia.bonoTecnico = bono.tecnico;
     dia.genera = bono.genera;
@@ -337,10 +383,6 @@ function mb242DetalleDiario(item){
   }).join("")}</div>`;
 }
 
-function mb242Regla(){
-  return `<div class="mb242-regla"><b>Regla diaria:</b> desde 4.5 puntos genera bono. A 4.5 puntos corresponde ${mb242Moneda(15)} por cuadrilla y ${mb242Moneda(7.5)} por técnico. Cada punto adicional suma ${mb242Moneda(30)} a la cuadrilla.</div>`;
-}
-
 function mb242OpcionesPeriodo(datos, seleccionado){
   return datos.listaPeriodos.map(p => `<option value="${p.clave}" ${p.clave===seleccionado?"selected":""}>${mb242PeriodoEtiqueta(p)}</option>`).join("");
 }
@@ -357,9 +399,8 @@ function mb242RenderTecnico(datos){
 
   const html = `<div class="mb242-pagina">
     <div class="mb242-cabecera"><div><h2>🎁 Bonos</h2><p>${mb242Escapar(cuadrilla)}</p></div><button class="button_1" onclick="volverInicio()">⬅ Volver</button></div>
-    ${mb242Regla()}
-    ${mb242ResumenPeriodoTecnico("Bono referencial próximo", proximo, itemProximo, "mb242-proximo")}
     ${mb242ResumenPeriodoTecnico("Avance de la semana actual", actual, itemActual, "mb242-actual")}
+    ${mb242ResumenPeriodoTecnico("Bono referencial próximo", proximo, itemProximo, "mb242-proximo")}
     <section class="mb242-bloque">
       <div class="mb242-bloque-head"><div><h3>Historial de bonos</h3><p>Consulta cualquier semana registrada.</p></div></div>
       <label class="mb242-filtro-unico">Periodo semanal<select onchange="mb242CambiarPeriodoTecnico(this.value)">${mb242OpcionesPeriodo(datos, periodoConsulta?.clave || "")}</select></label>
@@ -481,7 +522,6 @@ function mb242RenderGestion(){
 
   const html = `<div class="mb242-pagina">
     <div class="mb242-cabecera"><div><h2>🎁 ${titulo}</h2><p>Cálculo diario y consulta semanal desde Producción.</p></div><button class="button_1" onclick="volverInicio()">⬅ Volver</button></div>
-    ${mb242Regla()}
     <div class="mb242-filtros ${perfil === "SUPERVISOR" ? "supervisor" : ""}">
       <label>📅 Periodo semanal<select onchange="mb242CambiarFiltroGestion('periodo',this.value)">${mb242OpcionesPeriodo(datos, MB242_FILTROS.periodo)}</select></label>
       <label>🏢 Sede<select ${perfil === "SUPERVISOR" ? "disabled" : ""} onchange="mb242CambiarFiltroGestion('sede',this.value)">${mb242OpcionesSede(perfil)}</select></label>
@@ -521,7 +561,7 @@ async function mostrarBonos(){
     }
     mostrarPantalla(`<div class="mb242-pagina"><div class="mb242-vacio">Tu perfil no tiene acceso a la opción Bonos.</div><button class="button_1" onclick="volverInicio()">Volver</button></div>`);
   }catch(error){
-    console.error("BONOS V242", error);
+    console.error("BONOS V244", error);
     mostrarPantalla(`<div class="mb242-pagina"><div class="mb242-error"><b>No se pudo calcular Bonos.</b><span>${mb242Escapar(error.message || error)}</span></div><button class="button_1" onclick="volverInicio()">Volver</button></div>`);
   }
 }
@@ -529,3 +569,5 @@ async function mostrarBonos(){
 window.mostrarBonos = mostrarBonos;
 window.mb242CambiarPeriodoTecnico = mb242CambiarPeriodoTecnico;
 window.mb242CambiarFiltroGestion = mb242CambiarFiltroGestion;
+window.mb242CalcularBonoDiario = mb242CalcularBonoDiario;
+window.mb242EsTarifaEspecial = mb242EsTarifaEspecial;

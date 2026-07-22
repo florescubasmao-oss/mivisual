@@ -1,0 +1,32 @@
+MI VISUAL V244 - BONOS CON TARIFAS DIFERENCIADAS
+
+CAMBIOS APLICADOS
+1. Se eliminó la franja informativa de la regla diaria en la pantalla Bonos.
+2. En Técnico, “Avance de la semana actual” aparece antes de “Bono referencial próximo”.
+3. Tarifa general: S/ 30.00 por punto para la cuadrilla; a 4.5 puntos corresponde S/ 15.00 por cuadrilla y S/ 7.50 por técnico.
+4. Tarifa especial: S/ 45.00 por punto para la cuadrilla; a 4.5 puntos corresponde S/ 22.50 por cuadrilla y S/ 11.25 por técnico.
+5. La tarifa se aplica diariamente y luego se suma por semana.
+6. La identificación de las cuadrillas especiales combina código, plataforma y apellidos, tolerando variaciones de orden en el nombre registrado.
+
+CUADRILLAS CON TARIFA ESPECIAL
+- P5 VISUAL SGI / SANCHEZ TUME MAXIMO
+- P6 VISUAL SGI / ESPINOZA ESTRADA ROBERTO
+- P10 TRASLADO / VERGARA TRELLES ROBERTSON
+- P4 VISUAL SGI / CESAR INGOL RODRIGUEZ
+- P1 TRASLADO VISUAL / DANY ATENCIO RELUZ
+- P3 VISUAL SGI / ROBERTO ELERA CUEVA
+- P12 VISUAL SGI / CESAR MOISES FERNANDEZ MUNDACA
+- P2 TRASLADO VISUAL / LUIS ESPIRE CHIQUEZ
+- P10 VISUAL SGI / JAIME YNGA MORE
+- P16 VISUAL SGI / FRANK AZABACHE SANCHEZ
+- P14 VISUAL SGI / WILSON BARRANZUELA ALEMAN
+
+NO SE MODIFICÓ
+- Producción base
+- Ranking
+- Efectividad
+- VTR/GAR
+- Recableados
+- Análisis Económico
+- Apps Script
+- Google Sheets
