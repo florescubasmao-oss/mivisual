@@ -1,5 +1,11 @@
 const API_MAPA_OPERATIVO = (window.MI_VISUAL_API_URL || "https://script.google.com/macros/s/AKfycbzcbjCLweJNgZXDerdzmMN7Lwotc1G8NWdzoPkaLNGDivAgpYxDkq78xZwPRioSB4XY/exec");
 let moMapa=null, moCapa=null, moRegistros=[], moImportacion=[], moMarcadores={};
+let moEstilosCuadrilla={};
+const MO_ETIQUETAS_CUADRILLA_KEY='miVisualMapaEtiquetasCuadrillaV254';
+const MO_ESTILOS_CUADRILLA_KEY='miVisualMapaEstilosCuadrillaV254';
+const MO_TOTAL_COLORES_CUADRILLA=72;
+const MO_TOTAL_PATRONES_CUADRILLA=7;
+const MO_TOTAL_ESTILOS_CUADRILLA=MO_TOTAL_COLORES_CUADRILLA*MO_TOTAL_PATRONES_CUADRILLA;
 
 async function moApi(payload){
   const r=await fetch(API_MAPA_OPERATIVO,{method:'POST',body:JSON.stringify(payload)});
@@ -12,6 +18,57 @@ function moEscape(v){return moNorm(v).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&l
 function moUsuario(){return localStorage.getItem('usuario')||''}
 function moPerfil(){return moNormCab(localStorage.getItem('perfil'))}
 function moPuedeImportar(){return ['JEFATURA','ADMIN','ADMINISTRADOR','JEFATURAOPERACIONES','JEFATURADEOPERACIONES','OPERACIONES'].includes(moPerfil())}
+function moEtiquetasCuadrillaActivas(){
+  try{return localStorage.getItem(MO_ETIQUETAS_CUADRILLA_KEY)!=='0'}catch(e){return true}
+}
+function moHashCuadrilla(valor){
+  const t=moNormCab(valor)||'SINCUADRILLA';let h=2166136261;
+  for(let i=0;i<t.length;i++){h^=t.charCodeAt(i);h=Math.imul(h,16777619)}
+  return h>>>0;
+}
+function moCargarRegistroEstilosCuadrilla(){
+  try{const v=JSON.parse(localStorage.getItem(MO_ESTILOS_CUADRILLA_KEY)||'{}');return v&&typeof v==='object'?v:{}}catch(e){return {}}
+}
+function moGuardarRegistroEstilosCuadrilla(registro){
+  try{localStorage.setItem(MO_ESTILOS_CUADRILLA_KEY,JSON.stringify(registro))}catch(e){}
+}
+function moConstruirEstilosCuadrillas(cuadrillas){
+  const registro=moCargarRegistroEstilosCuadrilla(),usados=new Set();
+  Object.keys(registro).sort().forEach(k=>{const n=Number(registro[k]);if(Number.isInteger(n)&&n>=0&&n<MO_TOTAL_ESTILOS_CUADRILLA&&!usados.has(n)){usados.add(n)}else delete registro[k]});
+  const claves=[...new Set((cuadrillas||[]).map(moNormCab).filter(Boolean))].sort();
+  claves.forEach(clave=>{
+    let idx=Number(registro[clave]);
+    if(!Number.isInteger(idx)||idx<0||idx>=MO_TOTAL_ESTILOS_CUADRILLA){
+      const hash=moHashCuadrilla(clave);idx=hash%MO_TOTAL_ESTILOS_CUADRILLA;
+      let paso=((hash>>>12)%(MO_TOTAL_ESTILOS_CUADRILLA-1))+1;
+      while(paso%2===0||paso%3===0||paso%7===0)paso++;
+      let intentos=0;while(usados.has(idx)&&intentos<MO_TOTAL_ESTILOS_CUADRILLA){idx=(idx+paso)%MO_TOTAL_ESTILOS_CUADRILLA;intentos++}
+      if(intentos>=MO_TOTAL_ESTILOS_CUADRILLA)idx=hash%MO_TOTAL_ESTILOS_CUADRILLA;
+      registro[clave]=idx;usados.add(idx);
+    }
+    const tono=Math.round(((idx%MO_TOTAL_COLORES_CUADRILLA)*137.508)%360);
+    const patron=Math.floor(idx/MO_TOTAL_COLORES_CUADRILLA)%MO_TOTAL_PATRONES_CUADRILLA;
+    moEstilosCuadrilla[clave]={indice:idx,color:`hsl(${tono} 72% 36%)`,patron};
+  });
+  moGuardarRegistroEstilosCuadrilla(registro);
+  return moEstilosCuadrilla;
+}
+function moEstiloCuadrilla(cuadrilla){
+  const clave=moNormCab(cuadrilla)||'SINCUADRILLA';
+  if(!moEstilosCuadrilla[clave])moConstruirEstilosCuadrillas([cuadrilla||'SIN CUADRILLA']);
+  return moEstilosCuadrilla[clave]||{indice:0,color:'hsl(205 72% 36%)',patron:0};
+}
+function moCodigoCortoCuadrilla(cuadrilla){
+  const texto=moNorm(cuadrilla),normal=moNormCab(texto);const p=texto.match(/\bP\s*(\d+)\b/i);let plataforma='';
+  if(normal.includes('TRASLADO'))plataforma='TR';else if(normal.includes('SGA'))plataforma='SGA';else if(normal.includes('SGI'))plataforma='SGI';
+  if(p)return `P${p[1]}${plataforma?'-'+plataforma:''}`;
+  const partes=texto.split(/\s+/).filter(Boolean);return (partes.slice(0,2).join('-')||'SIN-CUADRILLA').toUpperCase().slice(0,14);
+}
+function moActualizarEtiquetasCuadrilla(){
+  const e=document.getElementById('moMostrarCuadrillas'),activo=!!e?.checked;
+  try{localStorage.setItem(MO_ETIQUETAS_CUADRILLA_KEY,activo?'1':'0')}catch(err){}
+  document.querySelectorAll('#moMapa .mo-cuadrilla-label').forEach(x=>x.classList.toggle('is-hidden',!activo));
+}
 function moPintarUltimaActualizacion(texto){
   const e=document.getElementById('moUltimaActualizacion');
   if(!e)return;
@@ -45,6 +102,7 @@ async function mostrarMapaOperativo(){
       <button class="mo-btn" onclick="moConsultarMapa()">Ver mapa</button>
       <button class="mo-btn mo-btn-sec" onclick="moLimpiarFiltros()">Limpiar</button>
     </div>
+    <div class="mo-identificacion-control"><label><input id="moMostrarCuadrillas" type="checkbox" ${moEtiquetasCuadrillaActivas()?'checked':''} onchange="moActualizarEtiquetasCuadrilla()"><span>Mostrar identificación de cuadrillas</span></label><small>El color y la trama de la etiqueta identifican la cuadrilla; el color del marcador mantiene el estado de la orden.</small></div>
     <div id="moContador" class="mo-counter">Seleccione por lo menos un filtro y presione Ver mapa.</div>
   </div>
   <div id="moVistaImportacion" class="mo-panel" style="display:none">
@@ -62,6 +120,7 @@ async function moCargarCatalogos(){
   const d=await moApi({accion:'catalogosMapaOperativo',usuario:moUsuario()});
   const llenar=(id,lista,todos)=>{const e=document.getElementById(id);if(e)e.innerHTML=`<option value="">${todos}</option>`+(lista||[]).map(x=>`<option>${moEscape(x)}</option>`).join('')};
   llenar('moFiltroSede',d.sedes,'Todas');llenar('moFiltroGrupo',d.gruposTrabajo,'Todos');llenar('moFiltroEstado',d.estados,'Todos');llenar('moFiltroCuadrilla',d.cuadrillas,'Todas');
+  moConstruirEstilosCuadrillas(d.cuadrillas||[]);
   moPintarUltimaActualizacion(d.ultimaActualizacionTexto);
 }
 async function moConsultarMapa(){
@@ -119,9 +178,16 @@ function moColorEstado(estado){
   if(e.includes('AGEND')||e.includes('ASIGN')||e.includes('PENDIENT'))return '#2563eb';
   return '#0891b2';
 }
-function moIconoEstado(estado){
-  const color=moColorEstado(estado);
-  return L.divIcon({className:'mo-marker-wrap',html:`<span class="mo-marker" style="--mo-color:${color}"></span>`,iconSize:[22,30],iconAnchor:[11,29],popupAnchor:[0,-27]});
+function moIconoEstado(estado,cuadrilla){
+  const color=moColorEstado(estado),estilo=moEstiloCuadrilla(cuadrilla),codigo=moCodigoCortoCuadrilla(cuadrilla),oculta=moEtiquetasCuadrillaActivas()?'':' is-hidden';
+  const etiqueta=`<span class="mo-cuadrilla-label mo-patron-${estilo.patron}${oculta}" style="--mo-cuadrilla-color:${estilo.color}" title="${moEscape(cuadrilla)}">${moEscape(codigo)}</span>`;
+  return L.divIcon({className:'mo-marker-wrap',html:`<span class="mo-marker-stack">${etiqueta}<span class="mo-marker" style="--mo-color:${color}"></span></span>`,iconSize:[96,49],iconAnchor:[48,48],popupAnchor:[0,-43]});
 }
-function moRenderMarcadores(lista){if(!moMapa||!moCapa)return;moCapa.clearLayers();moMarcadores={};const bounds=[];let validos=0;lista.forEach(x=>{const lat=Number(x.latitud),lng=Number(x.longitud);if(!Number.isFinite(lat)||!Number.isFinite(lng))return;const m=L.marker([lat,lng],{icon:moIconoEstado(x.estado)}).bindPopup(moPopup(x),{autoClose:true,closeOnClick:true,maxWidth:310});m.on('click',()=>{moMapa.panTo([lat,lng]);});m.addTo(moCapa);moMarcadores[moNorm(x.ordenId)]=m;bounds.push([lat,lng]);validos++});if(bounds.length)moMapa.fitBounds(bounds,{padding:[25,25],maxZoom:16});document.getElementById('moContador').innerHTML=`${validos} puntos visibles de ${lista.length} órdenes filtradas.<div class="mo-leyenda"><span><i style="--c:#16a34a"></i>Finalizada</span><span><i style="--c:#dc2626"></i>Cancelada</span><span><i style="--c:#eab308"></i>Reprogramada</span><span><i style="--c:#f97316"></i>Regestión</span><span><i style="--c:#64748b"></i>Anulada</span><span><i style="--c:#2563eb"></i>Pendiente/Agendada</span><span><i style="--c:#7c3aed"></i>En proceso</span></div>`}
+function moLeyendaCuadrillas(lista){
+  const nombres=[...new Set((lista||[]).map(x=>moNorm(x.cuadrilla)).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'es'));
+  if(!nombres.length)return '';
+  const chips=nombres.map(nombre=>{const e=moEstiloCuadrilla(nombre);return `<span class="mo-cuadrilla-chip mo-patron-${e.patron}" style="--mo-cuadrilla-color:${e.color}" title="${moEscape(nombre)}">${moEscape(moCodigoCortoCuadrilla(nombre))}</span>`}).join('');
+  return `<details class="mo-leyenda-cuadrillas"><summary>Cuadrillas visibles (${nombres.length})</summary><div>${chips}</div></details>`;
+}
+function moRenderMarcadores(lista){if(!moMapa||!moCapa)return;moCapa.clearLayers();moMarcadores={};const bounds=[];let validos=0;moConstruirEstilosCuadrillas((lista||[]).map(x=>x.cuadrilla));lista.forEach(x=>{const lat=Number(x.latitud),lng=Number(x.longitud);if(!Number.isFinite(lat)||!Number.isFinite(lng))return;const m=L.marker([lat,lng],{icon:moIconoEstado(x.estado,x.cuadrilla),riseOnHover:true}).bindPopup(moPopup(x),{autoClose:true,closeOnClick:true,maxWidth:310});m.on('click',()=>{moMapa.panTo([lat,lng]);});m.addTo(moCapa);moMarcadores[moNorm(x.ordenId)]=m;bounds.push([lat,lng]);validos++});if(bounds.length)moMapa.fitBounds(bounds,{padding:[25,25],maxZoom:16});document.getElementById('moContador').innerHTML=`${validos} puntos visibles de ${lista.length} órdenes filtradas.<div class="mo-leyenda"><span><i style="--c:#16a34a"></i>Finalizada</span><span><i style="--c:#dc2626"></i>Cancelada</span><span><i style="--c:#eab308"></i>Reprogramada</span><span><i style="--c:#f97316"></i>Regestión</span><span><i style="--c:#64748b"></i>Anulada</span><span><i style="--c:#2563eb"></i>Pendiente/Agendada</span><span><i style="--c:#7c3aed"></i>En proceso</span></div>${moLeyendaCuadrillas(lista)}`}
 function moBuscarCodigo(){moConsultarMapa()}

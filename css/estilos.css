@@ -1532,3 +1532,69 @@ body{background:linear-gradient(180deg,var(--mv4-bg),var(--mv4-bg2));font-family
     font-size:8px!important;
   }
 }
+
+/* =====================================================
+   V254 - Mapa Operativo: identificación de cuadrillas
+   El marcador conserva el color del estado. La etiqueta
+   usa color y trama determinísticos por cuadrilla.
+   ===================================================== */
+.mo-identificacion-control{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:10px;
+  margin-top:9px;
+  padding:8px 10px;
+  border:1px solid #d7e1ee;
+  border-radius:9px;
+  background:#f8fafc;
+  color:#334155;
+}
+.mo-identificacion-control label{display:inline-flex;align-items:center;gap:7px;font-size:12px;font-weight:800;cursor:pointer;white-space:nowrap}
+.mo-identificacion-control input{width:17px;height:17px;accent-color:#1769aa}
+.mo-identificacion-control small{font-size:10.5px;color:#64748b;text-align:right}
+.mo-marker-wrap{overflow:visible!important}
+.mo-marker-stack{position:relative;width:96px;height:49px;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;pointer-events:none}
+.mo-cuadrilla-label{
+  position:absolute;
+  left:50%;
+  bottom:29px;
+  transform:translateX(-50%);
+  min-width:47px;
+  max-width:91px;
+  padding:3px 6px;
+  border:2px solid rgba(255,255,255,.96);
+  border-radius:7px;
+  background-color:var(--mo-cuadrilla-color);
+  color:#fff;
+  font-size:9px;
+  line-height:1.05;
+  font-weight:950;
+  letter-spacing:.15px;
+  text-align:center;
+  white-space:nowrap;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  box-shadow:0 2px 6px rgba(15,23,42,.42),0 0 0 1px rgba(15,23,42,.25);
+  text-shadow:0 1px 2px rgba(0,0,0,.7);
+  pointer-events:auto;
+  transition:opacity .14s ease,transform .14s ease;
+}
+.mo-cuadrilla-label::after{content:"";position:absolute;left:50%;bottom:-6px;transform:translateX(-50%);border-left:5px solid transparent;border-right:5px solid transparent;border-top:5px solid var(--mo-cuadrilla-color);filter:drop-shadow(0 1px 0 rgba(255,255,255,.9))}
+.mo-cuadrilla-label.is-hidden{opacity:0;visibility:hidden;transform:translateX(-50%) translateY(4px)}
+.mo-patron-0{background-image:none}
+.mo-patron-1{background-image:repeating-linear-gradient(45deg,rgba(255,255,255,.28) 0 3px,transparent 3px 7px)}
+.mo-patron-2{background-image:repeating-linear-gradient(-45deg,rgba(255,255,255,.28) 0 3px,transparent 3px 7px)}
+.mo-patron-3{background-image:radial-gradient(rgba(255,255,255,.45) 1.2px,transparent 1.5px);background-size:7px 7px}
+.mo-patron-4{background-image:repeating-linear-gradient(0deg,rgba(255,255,255,.22) 0 2px,transparent 2px 6px),repeating-linear-gradient(90deg,rgba(255,255,255,.18) 0 2px,transparent 2px 6px)}
+.mo-patron-5{background-image:repeating-linear-gradient(0deg,rgba(255,255,255,.28) 0 3px,transparent 3px 7px)}
+.mo-patron-6{background-image:linear-gradient(45deg,rgba(255,255,255,.25) 25%,transparent 25%,transparent 75%,rgba(255,255,255,.25) 75%),linear-gradient(45deg,rgba(255,255,255,.25) 25%,transparent 25%,transparent 75%,rgba(255,255,255,.25) 75%);background-position:0 0,5px 5px;background-size:10px 10px}
+.mo-leyenda-cuadrillas{margin-top:8px;padding-top:7px;border-top:1px dashed #cbd5e1}
+.mo-leyenda-cuadrillas summary{cursor:pointer;font-size:11px;font-weight:850;color:#334155;user-select:none}
+.mo-leyenda-cuadrillas>div{display:flex;flex-wrap:wrap;gap:6px;margin-top:7px}
+.mo-cuadrilla-chip{display:inline-flex;align-items:center;justify-content:center;min-width:48px;padding:3px 7px;border:1.5px solid #fff;border-radius:7px;background-color:var(--mo-cuadrilla-color);color:#fff;font-size:9px;font-weight:950;text-shadow:0 1px 2px rgba(0,0,0,.65);box-shadow:0 1px 3px rgba(15,23,42,.35)}
+@media(max-width:720px){
+  .mo-identificacion-control{align-items:flex-start;flex-direction:column}
+  .mo-identificacion-control small{text-align:left}
+  .mo-cuadrilla-label{font-size:8.5px;max-width:82px;padding:3px 5px}
+}

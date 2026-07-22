@@ -1,0 +1,17 @@
+MI VISUAL V254 - MAPA OPERATIVO: IDENTIFICACIÓN DE CUADRILLAS
+
+CAMBIO APLICADO
+- Cada marcador conserva el color que representa el estado de la orden.
+- Sobre el marcador aparece una etiqueta corta de cuadrilla, por ejemplo P14-SGI, P9-SGA o P10-TR.
+- Cada cuadrilla recibe una combinación propia de color y trama.
+- Las combinaciones se generan automáticamente y se conservan para las cuadrillas ya conocidas.
+- Cuando se registra una nueva cuadrilla, el sistema le asigna automáticamente una combinación disponible distinta.
+- Se incorporan siete tramas: sólido, diagonales, diagonales inversas, puntos, cuadrícula, franjas horizontales y damero.
+- Se agregó el control "Mostrar identificación de cuadrillas" para activar u ocultar las etiquetas sin alterar los marcadores.
+- Se agregó una leyenda desplegable de las cuadrillas visibles.
+
+ALCANCE
+- Modificación exclusiva del Mapa Operativo.
+- No modifica Code.gs, Google Sheets, importación, historial, filtros, estados, coordenadas ni datos de las órdenes.
+- No requiere un nuevo despliegue de Apps Script.
+- Requiere publicar el frontend actualizado en GitHub Pages.
