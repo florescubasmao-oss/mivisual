@@ -1,0 +1,15 @@
+MI VISUAL V249 - PRODUCCIÓN VALORIZADA
+
+CAMBIOS:
+1. En Monto diario por sede y promedio se agrega Total cuadrillas y Promedio por cuadrilla.
+2. Para una sede: promedio diario por cuadrilla = monto diario de la sede / total de cuadrillas activas registradas en esa sede.
+3. Para TODAS LAS SEDES: promedio diario por cuadrilla = monto diario total de Zona Norte / suma total de cuadrillas activas de Chiclayo, Piura y Trujillo.
+4. El resumen incluye promedio diario por cuadrilla del periodo.
+5. Al ingresar a Producción Valorizada solo se muestra el resumen principal; todas las secciones inician cerradas y se abren únicamente con Mostrar.
+
+NO SE MODIFICA:
+- Cálculo original de valorización.
+- Producción base.
+- Google Sheets.
+- Apps Script / Code.gs.
+- Otros módulos.
