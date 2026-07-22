@@ -1,0 +1,12 @@
+MI VISUAL V243 - BOTÓN BONOS EN PRODUCCIÓN DEL TÉCNICO
+
+Corrección aplicada sobre la V242:
+- Se agregó el botón 🎁 BONOS en la cabecera real de la vista Producción del perfil Técnico.
+- El botón aparece a la derecha del título MI PRODUCCIÓN.
+- Abre la opción Bonos ya implementada en V242.
+- No se modificaron cálculos, fuentes de Producción, Ranking, Efectividad, VTR/GAR ni otros módulos.
+
+Archivos modificados:
+- js/dashboards.js
+- css/estilos.css
+- index.html

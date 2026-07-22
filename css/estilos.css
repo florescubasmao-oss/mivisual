@@ -1409,3 +1409,14 @@ body{background:linear-gradient(180deg,var(--mv4-bg),var(--mv4-bg2));font-family
   .mb242-consulta-resumen{align-items:flex-start;flex-direction:column}.mb242-consulta-montos{text-align:left}
   .mb242-produccion-head{align-items:center}.mb242-btn-produccion{padding:8px 11px;font-size:12px}
 }
+
+
+/* V243 - acceso Bonos visible en Producción del Técnico */
+.mv243-produccion-head{position:relative;display:flex;align-items:center;justify-content:center;min-height:44px;margin:4px 0 14px}
+.mv243-produccion-head .mv4-title{margin:0;text-align:center}
+.mv243-produccion-head .mv243-btn-bonos{position:absolute;right:0;top:50%;transform:translateY(-50%)}
+@media(max-width:560px){
+  .mv243-produccion-head{justify-content:space-between;gap:8px;min-height:0}
+  .mv243-produccion-head .mv4-title{text-align:left;font-size:20px}
+  .mv243-produccion-head .mv243-btn-bonos{position:static;transform:none;flex:0 0 auto;padding:8px 11px;font-size:12px}
+}

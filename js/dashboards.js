@@ -2067,7 +2067,10 @@ function renderDashboardProduccion(data){
 
     let html = `
     <div class="mv4-page mv59-produccion-page">
-        <h2 class="mv4-title">📊 MI PRODUCCIÓN</h2>
+        <div class="mv243-produccion-head">
+            <h2 class="mv4-title">📊 MI PRODUCCIÓN</h2>
+            <button type="button" class="mb242-btn-produccion mv243-btn-bonos" onclick="mostrarBonos()">🎁 BONOS</button>
+        </div>
         <div class="mv4-hero-card mv59-prod-hero">
             <div class="mv4-hero-label">MI PUNTAJE DEL PERÍODO</div>
             <div class="mv4-hero-value">${totalPuntos.toFixed(1)}</div>
