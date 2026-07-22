@@ -1,5 +1,5 @@
 /* =====================================================
-   MI VISUAL V246 - BONOS DE PRODUCCIÓN
+   MI VISUAL V250 - BONOS DE PRODUCCIÓN
    - Cálculo diario desde PRODUCCION_APP + CATALOGO_ORDENES
    - Semana de lunes a domingo
    - Fecha referencial: lunes de la semana subsiguiente
@@ -174,6 +174,11 @@ function mb242ValorPuntoCuadrilla(cuadrilla){
   return mb242EsTarifaEspecial(cuadrilla)
     ? MB242_VALOR_PUNTO_CUADRILLA_ESPECIAL
     : MB242_VALOR_PUNTO_CUADRILLA;
+}
+
+function mb250EtiquetaBonoEspecial(cuadrilla, claseExtra){
+  if(!mb242EsTarifaEspecial(cuadrilla)) return "";
+  return `<span class="mb250-bono-especial-etiqueta ${claseExtra || ""}" title="Tarifa especial de bono">⭐ BONO ESPECIAL</span>`;
 }
 
 function mb242CalcularBonoDiario(puntos, cuadrillaNombre){
@@ -421,9 +426,10 @@ function mb242RenderTecnico(datos){
   const itemProximo = mb242ObtenerCuadrilla(proximo, cuadrilla, meta);
   const periodoConsulta = MB242_FILTROS.periodo ? datos.periodos[MB242_FILTROS.periodo] : null;
   const itemConsulta = periodoConsulta ? mb242ObtenerCuadrilla(periodoConsulta, cuadrilla, meta) : null;
+  const etiquetaEspecial = mb250EtiquetaBonoEspecial(cuadrilla, "mb250-bono-especial-tecnico");
 
   const html = `<div class="mb242-pagina">
-    <div class="mb242-cabecera"><div><h2>🎁 Bonos</h2><p>${mb242Escapar(cuadrilla)}</p></div><button class="button_1" onclick="volverInicio()">⬅ Volver</button></div>
+    <div class="mb242-cabecera"><div><h2 class="mb250-bonos-titulo">🎁 Bonos ${etiquetaEspecial}</h2><p>${mb242Escapar(cuadrilla)}</p></div><button class="button_1" onclick="volverInicio()">⬅ Volver</button></div>
     ${mb242ResumenPeriodoTecnico("Avance de la semana actual", actual, itemActual, "mb242-actual")}
     ${mb242ResumenPeriodoTecnico("Bono referencial próximo", proximo, itemProximo, "mb242-proximo")}
     <section class="mb242-bloque">
@@ -517,9 +523,11 @@ function mb242ResumenGestion(lista, periodo){
 }
 
 function mb242FilaCuadrilla(item){
-  return `<details class="mb242-cuadrilla-detalle">
+  const esEspecial = mb242EsTarifaEspecial(item.cuadrilla);
+  const etiquetaEspecial = mb250EtiquetaBonoEspecial(item.cuadrilla, "mb250-bono-especial-gestion");
+  return `<details class="mb242-cuadrilla-detalle ${esEspecial ? "mb250-bono-especial-marco" : ""}">
     <summary>
-      <div><b>${mb242Escapar(item.cuadrilla)}</b><span>${mb242Escapar(item.plataforma || "")}</span></div>
+      <div><b class="mb250-cuadrilla-nombre">${mb242Escapar(item.cuadrilla)} ${etiquetaEspecial}</b><span>${mb242Escapar(item.plataforma || "")}</span></div>
       <div><b>${Number(item.puntos||0).toFixed(1)} pts</b><span>${item.diasConBono||0} días con bono</span></div>
       <div><b>${mb242Moneda(item.bonoCuadrilla)}</b><span>${mb242Moneda(item.bonoTecnico)} por técnico</span></div>
     </summary>
@@ -609,4 +617,5 @@ window.mb242CambiarPeriodoTecnico = mb242CambiarPeriodoTecnico;
 window.mb242CambiarFiltroGestion = mb242CambiarFiltroGestion;
 window.mb242CalcularBonoDiario = mb242CalcularBonoDiario;
 window.mb242EsTarifaEspecial = mb242EsTarifaEspecial;
+window.mb250EtiquetaBonoEspecial = mb250EtiquetaBonoEspecial;
 window.mb242EsCuadrillaPDG = mb242EsCuadrillaPDG;

@@ -678,6 +678,7 @@ async function procesarEfectividad(){
 
     const idxFinalizada = encabezados.findIndex(x => x.includes("FINALIZADA"));
     const idxCancelada = encabezados.findIndex(x => x.includes("CANCELADA"));
+    const idxAnulada = encabezados.findIndex(x => x.includes("ANULADA") || x.includes("ANULADO"));
     const idxRegestion = encabezados.findIndex(x => x.includes("REGESTION") || x.includes("REGESTIÓN"));
     const idxReprogramado = encabezados.findIndex(x => x.includes("REPROGRAMADO"));
     const idxTotal = encabezados.findIndex(x => x.includes("TOTAL"));
@@ -708,9 +709,11 @@ async function procesarEfectividad(){
 
         const finalizada = numero(c[idxFinalizada]);
         const cancelada = numero(c[idxCancelada]);
+        const anulada = idxAnulada >= 0 ? numero(c[idxAnulada]) : 0;
         const regestion = idxRegestion >= 0 ? numero(c[idxRegestion]) : 0;
         const reprogramado = idxReprogramado >= 0 ? numero(c[idxReprogramado]) : 0;
-        const total = numero(c[idxTotal]);
+        // V250: el total se recalcula para que ANULADA se consolide como CANCELADA.
+        const total = finalizada + cancelada + anulada + regestion + reprogramado;
         const fecha = idxFecha >= 0 ? limpiar(c[idxFecha]) : "";
 
         if(total === 0) continue;
@@ -721,6 +724,7 @@ async function procesarEfectividad(){
             fecha: fecha,
             finalizada: finalizada,
             cancelada: cancelada,
+            anulada: anulada,
             regestion: regestion,
             reprogramado: reprogramado,
             total: total
@@ -739,10 +743,11 @@ async function procesarEfectividad(){
             <tr style="background:#1f4e79;color:white;">
                 <th>Cuadrilla</th>
                 <th>Finalizada</th>
-                <th>Cancelada</th>
+                <th>Cancelada (incl. anuladas)</th>
+                <th>Anuladas incluidas</th>
                 <th>Regestión</th>
                 <th>Reprogramado</th>
-                <th>Total</th>
+                <th>Total ajustado</th>
             </tr>
     `;
 
@@ -751,7 +756,8 @@ async function procesarEfectividad(){
             <tr>
                 <td>${r.cuadrilla}</td>
                 <td style="text-align:center">${r.finalizada}</td>
-                <td style="text-align:center">${r.cancelada}</td>
+                <td style="text-align:center">${r.cancelada + r.anulada}</td>
+                <td style="text-align:center">${r.anulada}</td>
                 <td style="text-align:center">${r.regestion}</td>
                 <td style="text-align:center">${r.reprogramado}</td>
                 <td style="text-align:center">${r.total}</td>

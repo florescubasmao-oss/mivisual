@@ -202,10 +202,12 @@ function procesarEfectividad(registros, periodoManual, actualizadoAlManual) {
     const fecha = actualizadoAlManual || "";
 
     const finalizada = Number(r.finalizada) || 0;
-    const cancelada = Number(r.cancelada) || 0;
+    const anulada = Number(r.anulada || r.anuladas) || 0;
+    const cancelada = (Number(r.cancelada) || 0) + anulada;
     const regestion = Number(r.regestion) || 0;
     const reprogramado = Number(r.reprogramado) || 0;
-    const total = Number(r.total) || 0;
+    // V250: las anuladas se consolidan como canceladas y forman parte del total de efectividad.
+    const total = finalizada + cancelada + regestion + reprogramado;
 
     if (!cuadrilla || total === 0) return;
 
@@ -6941,10 +6943,11 @@ function crearMatricesBaseOperativa(registros, corte, usuarioCarga) {
       }
     }
 
-    if (["FINALIZADA", "CANCELADA", "REGESTION", "REPROGRAMADO"].includes(r.estado)) {
+    if (["FINALIZADA", "CANCELADA", "ANULADA", "ANULADO", "REGESTION", "REPROGRAMADO"].includes(r.estado)) {
       const ef = asegurarCuadrilla(mapaEfectividad, r.cuadrilla, { finalizada:0, cancelada:0, regestion:0, reprogramado:0 });
       if (r.estado === "FINALIZADA") ef.finalizada++;
-      if (r.estado === "CANCELADA") ef.cancelada++;
+      // V250: ANULADA/ANULADO se contabiliza dentro de CANCELADA para afectar la efectividad.
+      if (["CANCELADA", "ANULADA", "ANULADO"].includes(r.estado)) ef.cancelada++;
       if (r.estado === "REGESTION") ef.regestion++;
       if (r.estado === "REPROGRAMADO") ef.reprogramado++;
     }

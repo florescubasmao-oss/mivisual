@@ -1663,7 +1663,7 @@ function mostrarAdministracion(){
    Overrides finales para diseño móvil corporativo
 ===================================================== */
 
-const META_PRODUCCION_CUADRILLA = 120;
+const META_PRODUCCION_CUADRILLA = 130;
 const META_EFECTIVIDAD = 70;
 const META_RECABLEADO = 42;
 const META_VTRGAR = 3;

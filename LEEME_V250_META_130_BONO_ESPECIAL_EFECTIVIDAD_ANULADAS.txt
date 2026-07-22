@@ -1,0 +1,31 @@
+MI VISUAL V250
+
+CAMBIOS APLICADOS
+
+1. META DE PRODUCCIÓN
+- La meta mensual por cuadrilla cambia de 120 a 130 puntos.
+- Se actualizan las vistas de Técnico, Supervisor, Jefatura y Gerencia Lima que usan esta meta.
+- No se modifica la producción registrada ni el cálculo diario de bonos.
+
+2. BONO ESPECIAL
+- Las cuadrillas con tarifa de S/ 45.00 por punto muestran la etiqueta dorada ⭐ BONO ESPECIAL.
+- En Técnico aparece en el encabezado del módulo Bonos.
+- En Supervisor, Jefatura y Gerencia Lima sus tarjetas quedan enmarcadas en dorado.
+- La tarifa y la lista de cuadrillas especiales existentes se conservan.
+
+3. EFECTIVIDAD
+- Los estados ANULADA y ANULADO se consolidan dentro de CANCELADA.
+- Canceladas ajustadas = Canceladas + Anuladas.
+- Total general ajustado = Finalizadas + Canceladas ajustadas + Regestiones + Reprogramadas.
+- Efectividad = Finalizadas / Total general ajustado.
+- Se aplica tanto a la Base Operativa como a la importación manual de Efectividad.
+- La hoja EFECTIVIDAD mantiene su estructura actual; el valor de Cancelada ya incluye las anuladas.
+
+NO MODIFICADO
+- Producción registrada.
+- Tarifas de Bonos.
+- Recableados.
+- VTR/GAR.
+- Observaciones.
+- Análisis Económico.
+- Estructura de Google Sheets.
