@@ -1,0 +1,14 @@
+MI VISUAL V255 - ETIQUETAS DE CUADRILLA 40% MÁS PEQUEÑAS
+
+Cambio aplicado únicamente en Mapa Operativo:
+- Se redujo aproximadamente 40% el tamaño completo de la etiqueta que identifica la cuadrilla sobre cada marcador.
+- Se redujo 40% el tamaño de la letra del código corto de la cuadrilla.
+- La letra ahora usa peso normal, sin negrita.
+- El ajuste también aplica en vista móvil.
+- Se conservaron sin cambios los colores, tramas, marcadores, filtros, leyenda y funcionamiento del mapa.
+
+Aplicación:
+- Code.gs / Apps Script: No
+- Frontend GitHub: Sí
+- Google Sheets: No
+- Nuevo Deploy Apps Script: No
