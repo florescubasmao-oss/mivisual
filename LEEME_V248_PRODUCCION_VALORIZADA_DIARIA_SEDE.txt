@@ -1,0 +1,29 @@
+MI VISUAL V248 - PRODUCCIÓN VALORIZADA DIARIA POR SEDE
+
+CAMBIO IMPLEMENTADO
+- Se reemplaza la consulta simple "Monto generado por día" por "Monto diario por sede y promedio".
+- Se agrega filtro: Todas las sedes, Chiclayo, Piura, Trujillo y cualquier otra sede registrada.
+- Para cada sede se muestra:
+  * Monto acumulado del periodo.
+  * Promedio diario considerando solo días con producción valorizada.
+  * Cantidad de días con producción.
+  * Día de mayor valorización.
+- Vista Todas las sedes:
+  * Tabla por fecha con una columna por sede y total diario.
+- Vista de una sede:
+  * Fecha, monto diario, órdenes, acumulado y promedio diario acumulado.
+
+ARCHIVOS MODIFICADOS
+- Code.gs
+- apps_script/Code.gs
+- js/analisis_economico.js
+- css/estilos.css
+- index.html
+
+APLICACIÓN
+- Code.gs / Apps Script: SÍ
+- Frontend GitHub: SÍ
+- Google Sheets: NO
+- Nuevo despliegue Apps Script: SÍ
+- Cálculo original de valorización: NO MODIFICADO
+- Solo se agrega agrupación diaria por sede y visualización.

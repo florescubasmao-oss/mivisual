@@ -3911,6 +3911,7 @@ function obtenerAnalisisEconomico(data) {
   const porPlataforma = {};
   const porTipoPartida = {};
   const porDia = {};
+  const porDiaSede = {};
   const detalle = [];
   const codigosSinTarifa = {};
   const codigosSinTarifaDetalles = [];
@@ -3970,6 +3971,11 @@ function obtenerAnalisisEconomico(data) {
     sumarEconomico(porPlataforma, plataforma, cantidad, montoLinea, { plataforma });
     sumarEconomico(porTipoPartida, tipoOrden, cantidad, montoLinea, { tipoOrden, plataforma });
     sumarEconomico(porDia, fechaClave, cantidad, montoLinea, { fecha: fechaVisible, fechaClave });
+    sumarEconomico(porDiaSede, fechaClave + "||" + sede, cantidad, montoLinea, {
+      fecha: fechaVisible,
+      fechaClave,
+      sede
+    });
 
     detalle.push({
       fecha,
@@ -4022,6 +4028,14 @@ function obtenerAnalisisEconomico(data) {
   const listaDias = finalizarAcumuladoresEconomicos(porDia)
     .sort((a, b) => a.fechaClave.localeCompare(b.fechaClave));
 
+  const listaDiasSede = finalizarAcumuladoresEconomicos(porDiaSede)
+    .sort((a, b) => {
+      const fechaA = String(a.fechaClave || "");
+      const fechaB = String(b.fechaClave || "");
+      if (fechaA !== fechaB) return fechaA.localeCompare(fechaB);
+      return String(a.sede || "").localeCompare(String(b.sede || ""));
+    });
+
   actualizarHojaAnalisisEconomico(periodo, detalle);
 
   return {
@@ -4055,6 +4069,7 @@ function obtenerAnalisisEconomico(data) {
     porPlataforma: listaPlataformas,
     porTipoPartida: listaTipos,
     porDia: listaDias,
+    porDiaSede: listaDiasSede,
     codigosSinTarifa: Object.keys(codigosSinTarifa).sort(),
     codigosSinTarifaDetalles
   };
