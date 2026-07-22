@@ -1,5 +1,5 @@
 /* =====================================================
-   MI VISUAL V245 - BONOS DE PRODUCCIÓN
+   MI VISUAL V246 - BONOS DE PRODUCCIÓN
    - Cálculo diario desde PRODUCCION_APP + CATALOGO_ORDENES
    - Semana de lunes a domingo
    - Fecha referencial: lunes de la semana subsiguiente
@@ -15,6 +15,15 @@ const MB242_MINIMO_BONO = 4.5;
 const MB242_BASE_SIN_BONO = 4;
 const MB242_VALOR_PUNTO_CUADRILLA = 30;
 const MB242_VALOR_PUNTO_CUADRILLA_ESPECIAL = 45;
+
+/*
+  Cuadrillas PDG: no participan en el módulo Bonos.
+  Su producción, puntaje y demás indicadores continúan funcionando sin cambios.
+*/
+const MB242_CUADRILLAS_PDG = [
+  {codigo:"P8", terminos:["SGI"], nombres:["BASTIDAS","GONZALEZ","ALEX"]},
+  {codigo:"P7", terminos:["SGI"], nombres:["PACHERRES","RUIZ","VICTOR"]}
+];
 
 /*
   Cuadrillas con tarifa especial:
@@ -137,6 +146,17 @@ function mb242Moneda(valor){
 
 function mb242Redondear(valor){
   return Math.round((Number(valor || 0) + Number.EPSILON) * 100) / 100;
+}
+
+function mb242EsCuadrillaPDG(cuadrilla){
+  const nombre = mb242Cuadrilla(cuadrilla);
+  if(!nombre) return false;
+  const codigo = (nombre.match(/^P\d+/) || [""])[0];
+  return MB242_CUADRILLAS_PDG.some(regla => {
+    if(codigo !== regla.codigo) return false;
+    if(!(regla.terminos || []).every(t => nombre.includes(t))) return false;
+    return (regla.nombres || []).some(t => nombre.includes(t));
+  });
 }
 
 function mb242EsTarifaEspecial(cuadrilla){
@@ -276,6 +296,8 @@ async function mb242CargarDatos(forzar){
     const codigo = (fila[3] || "").toString().trim();
     const cantidad = mb242Numero(fila[4]);
     if(!cuadrilla || !fecha || !codigo || cantidad <= 0) return;
+    // V246: las cuadrillas PDG conservan Producción y puntaje, pero no forman parte de Bonos.
+    if(mb242EsCuadrillaPDG(cuadrilla)) return;
 
     const partida = catalogo[codigo];
     const puntajeUnitario = partida ? mb242Numero(partida.puntaje) : 0;
@@ -560,6 +582,11 @@ async function mostrarBonos(){
     MB242_FILTROS = {periodo:actual?.clave || "", sede:"TODAS", cuadrilla:"TODAS"};
 
     if(perfil === "TECNICO"){
+      const cuadrillaTecnico = mb242Cuadrilla(localStorage.getItem("cuadrilla"));
+      if(mb242EsCuadrillaPDG(cuadrillaTecnico)){
+        mostrarPantalla(`<div class="mb242-pagina"><div class="mb242-vacio">La opción Bonos no está disponible para esta cuadrilla.</div><button class="button_1" onclick="volverInicio()">Volver</button></div>`);
+        return;
+      }
       // El historial inicia cerrado: solo se muestra el desplegable.
       // El detalle se carga después de seleccionar un periodo.
       MB242_FILTROS.periodo = "";
@@ -572,7 +599,7 @@ async function mostrarBonos(){
     }
     mostrarPantalla(`<div class="mb242-pagina"><div class="mb242-vacio">Tu perfil no tiene acceso a la opción Bonos.</div><button class="button_1" onclick="volverInicio()">Volver</button></div>`);
   }catch(error){
-    console.error("BONOS V244", error);
+    console.error("BONOS V246", error);
     mostrarPantalla(`<div class="mb242-pagina"><div class="mb242-error"><b>No se pudo calcular Bonos.</b><span>${mb242Escapar(error.message || error)}</span></div><button class="button_1" onclick="volverInicio()">Volver</button></div>`);
   }
 }
@@ -582,3 +609,4 @@ window.mb242CambiarPeriodoTecnico = mb242CambiarPeriodoTecnico;
 window.mb242CambiarFiltroGestion = mb242CambiarFiltroGestion;
 window.mb242CalcularBonoDiario = mb242CalcularBonoDiario;
 window.mb242EsTarifaEspecial = mb242EsTarifaEspecial;
+window.mb242EsCuadrillaPDG = mb242EsCuadrillaPDG;

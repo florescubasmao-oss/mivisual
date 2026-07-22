@@ -1,0 +1,16 @@
+MI VISUAL V246 - EXCLUSIÓN DE CUADRILLAS PDG DEL MÓDULO BONOS
+
+Cambios realizados:
+- Se excluyen únicamente del módulo Bonos las siguientes cuadrillas PDG:
+  * P8 VISUAL SGI ALEX OSWALDO BASTIDAS GONZALEZ
+  * P7 VISUAL SGI VICTOR MANUEL PACHERRES RUIZ
+- En el perfil Técnico de esas cuadrillas no aparece el botón BONOS dentro de Producción.
+- En Supervisor, Jefatura y Gerencia Lima esas cuadrillas no aparecen en filtros, resúmenes, historial ni detalle del módulo Bonos.
+- Si se intenta abrir Bonos directamente desde una cuadrilla PDG, el acceso queda bloqueado.
+
+Sin cambios:
+- Producción y puntaje diario.
+- Dashboard, Ranking, Efectividad, Recableados y VTR/GAR.
+- Observaciones y demás módulos.
+- Tarifas y cálculos de bonos de las otras cuadrillas.
+- Google Sheets y Apps Script.

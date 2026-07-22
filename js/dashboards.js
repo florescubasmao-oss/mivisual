@@ -389,6 +389,7 @@ renderDashboardProduccion(dashboard);
 function renderDashboardProduccion(data){
 
     const totalPuntos = Number(data.resumen.totalPuntos || 0);
+    const mostrarBotonBonos = !(typeof mb242EsCuadrillaPDG === "function" && mb242EsCuadrillaPDG(localStorage.getItem("cuadrilla")));
     let estadoBono = "🔴 SIN BONO";
     let estadoColor = "#991b1b";
 
@@ -405,7 +406,7 @@ function renderDashboardProduccion(data){
 
         <div class="mb242-produccion-head">
             <h2>📊 MI PRODUCCIÓN</h2>
-            <button type="button" class="mb242-btn-produccion" onclick="mostrarBonos()">🎁 BONOS</button>
+            ${mostrarBotonBonos ? `<button type="button" class="mb242-btn-produccion" onclick="mostrarBonos()">🎁 BONOS</button>` : ""}
         </div>
 
         <div style="
@@ -2050,6 +2051,7 @@ function mv59LineaResumen(icono, titulo, ordenes, puntos){
 function renderDashboardProduccion(data){
     const totalPuntos = Number(data.resumen.totalPuntos || 0);
     const totalOrdenes = Number(data.resumen.totalProduccion || 0);
+    const mostrarBotonBonos = !(typeof mb242EsCuadrillaPDG === "function" && mb242EsCuadrillaPDG(localStorage.getItem("cuadrilla")));
     const meta = META_PRODUCCION_CUADRILLA;
     const periodo = mv59PeriodoProduccion(data.detalle || []);
     const avance = meta > 0 ? Math.min(100, Math.round((totalPuntos / meta) * 100)) : 0;
@@ -2069,7 +2071,7 @@ function renderDashboardProduccion(data){
     <div class="mv4-page mv59-produccion-page">
         <div class="mv243-produccion-head">
             <h2 class="mv4-title">📊 MI PRODUCCIÓN</h2>
-            <button type="button" class="mb242-btn-produccion mv243-btn-bonos" onclick="mostrarBonos()">🎁 BONOS</button>
+            ${mostrarBotonBonos ? `<button type="button" class="mb242-btn-produccion mv243-btn-bonos" onclick="mostrarBonos()">🎁 BONOS</button>` : ""}
         </div>
         <div class="mv4-hero-card mv59-prod-hero">
             <div class="mv4-hero-label">MI PUNTAJE DEL PERÍODO</div>
