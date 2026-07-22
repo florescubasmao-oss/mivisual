@@ -393,19 +393,13 @@ function indHist(fecha, valor, sem, filas){
 async function mostrarEfectividad(){
     document.getElementById("menuPrincipal").style.display = "none";
     const cuadrilla = localStorage.getItem("cuadrilla") || "";
-    const usuario = localStorage.getItem("usuario") || localStorage.getItem("correo") || "";
     const url = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRpVkCmSvopgPByWsEX6nkuAT6mf3yD2_Cywpl9pFSZEqYpxmprDePPeV0KNgT14YpEP6gkVlvOAtZy/pub?gid=1731471693&single=true&output=csv";
-    const api = window.MI_VISUAL_API_URL || "https://script.google.com/macros/s/AKfycbzcbjCLweJNgZXDerdzmMN7Lwotc1G8NWdzoPkaLNGDivAgpYxDkq78xZwPRioSB4XY/exec";
     mostrarPantalla(`<div class="mv4-page"><h2 class="mv4-title">🎯 EFECTIVIDAD</h2><div class="mv4-loading">Cargando información...</div></div>`);
 
-    let filas=[];let detalleVtr=[];
+    let filas = [];
     try{
-        const resultados=await Promise.allSettled([
-            fetch(url + "&t=" + Date.now()).then(r=>r.text()),
-            fetch(api,{method:"POST",headers:{"Content-Type":"text/plain;charset=utf-8"},body:JSON.stringify({accion:"listarDetalleVtrGarTecnico",usuario})}).then(r=>r.json())
-        ]);
-        if(resultados[0].status==="fulfilled")filas=resultados[0].value.split("\n");
-        if(resultados[1].status==="fulfilled"&&resultados[1].value&&resultados[1].value.ok)detalleVtr=resultados[1].value.incidencias||[];
+        const respuesta = await fetch(url + "&t=" + Date.now());
+        filas = (await respuesta.text()).split("\n");
     }catch(e){}
 
     const registros = [];
@@ -413,15 +407,23 @@ async function mostrarEfectividad(){
     for(let i=1;i<filas.length;i++){
         const d = filas[i].split(",");
         if(d[2] && d[2].trim() === cuadrilla.trim()){
-            const finalizadas = Number(d[4])||0, canceladas=Number(d[5])||0, regestion=Number(d[6])||0, reprogramado=Number(d[7])||0, total=Number(d[8])||0;
+            const finalizadas = Number(d[4])||0;
+            const canceladas = Number(d[5])||0;
+            const regestion = Number(d[6])||0;
+            const reprogramado = Number(d[7])||0;
+            const total = Number(d[8])||0;
             const ef = total > 0 ? (finalizadas/total)*100 : 0;
             registros.push({fecha:d[3], finalizadas, canceladas, regestion, reprogramado, total, ef});
-            totalFinalizadas += finalizadas; totalGeneral += total; totalCanceladas += canceladas; totalRegestion += regestion; totalReprogramado += reprogramado;
+            totalFinalizadas += finalizadas;
+            totalGeneral += total;
+            totalCanceladas += canceladas;
+            totalRegestion += regestion;
+            totalReprogramado += reprogramado;
         }
     }
+
     const efMes = totalGeneral > 0 ? (totalFinalizadas/totalGeneral)*100 : 0;
     let html = indHero("🎯", "EFECTIVIDAD", `${indSemaforo("efectividad", efMes)} ${efMes.toFixed(2)}%`, "≥ 70%", "") + `
-        <style>.ind-vg-list{display:grid;gap:10px}.ind-vg-card{background:#fff;color:#0f172a;border-left:5px solid #ef4444;border-radius:13px;padding:12px;box-shadow:0 7px 18px rgba(2,6,23,.18)}.ind-vg-head{display:flex;justify-content:space-between;gap:8px;font-weight:900;margin-bottom:8px}.ind-vg-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:7px 12px;font-size:12px}.ind-vg-grid span{color:#64748b;display:block}.ind-vg-grid b{color:#111827;word-break:break-word}@media(max-width:650px){.ind-vg-grid{grid-template-columns:1fr}}</style>
         <div class="mv4-kpi-grid">
             ${indMini("✅","Finalizadas",totalFinalizadas)}
             ${indMini("❌","Canceladas",totalCanceladas)}
@@ -429,26 +431,16 @@ async function mostrarEfectividad(){
             ${indMini("📅","Reprogramadas",totalReprogramado)}
         </div>
         <h2 class="mv4-section-title">📅 Historial</h2>`;
+
     registros.reverse().forEach(r => {
         html += indHist(r.fecha, r.ef.toFixed(2)+"%", indSemaforo("efectividad", r.ef), `
             <div class="mv4-day-row"><span>Finalizadas</span><b>${r.finalizadas}</b></div>
             <div class="mv4-day-row"><span>Total general</span><b>${r.total}</b></div>`);
     });
-    html += `<h2 class="mv4-section-title">📡 Detalle de VTR/GAR asignado</h2><div class="ind-vg-list">`;
-    if(detalleVtr.length){
-        detalleVtr.forEach(x=>{
-            const esc=v=>(v==null?"":String(v)).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
-            html+=`<div class="ind-vg-card"><div class="ind-vg-head"><span>${esc(x.tipo)}</span><span>${esc(x.fecha)}</span></div><div class="ind-vg-grid">
-              <div><span>Número de documento (DNI)</span><b>${esc(x.numeroDocumento||"-")}</b></div><div><span>Cliente</span><b>${esc(x.cliente||"-")}</b></div>
-              <div><span>Código de pedido / cliente</span><b>${esc(x.codigoPedido||"-")}</b></div><div><span>Ticket</span><b>${esc(x.ticket||"-")}</b></div>
-              <div style="grid-column:1/-1"><span>Tipo de partida</span><b>${esc(x.tipoPartida||"-")}</b></div>
-            </div></div>`;
-        });
-    }else html+=`<div class="mv4-day-card"><div class="mv4-day-row"><span>No tienes VTR/GAR confirmados asignados.</span></div></div>`;
-    html += `</div><button class="button_1" onclick="volverInicio()">⬅️ Volver al menú</button></div>`;
+
+    html += `<button class="button_1" onclick="volverInicio()">⬅️ Volver al menú</button></div>`;
     mostrarPantalla(html);
 }
-
 
 async function mostrarRecableado(){
     document.getElementById("menuPrincipal").style.display = "none";

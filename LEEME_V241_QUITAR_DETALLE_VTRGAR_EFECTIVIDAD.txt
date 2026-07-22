@@ -1,0 +1,10 @@
+MI VISUAL V241 - QUITAR DETALLE VTR/GAR DE EFECTIVIDAD
+
+Cambio puntual sobre la V240 estable:
+- Se elimina únicamente el detalle de clientes VTR/GAR que aparecía dentro de la opción Efectividad del perfil Técnico.
+- La opción VTR/GAR conserva sin cambios el detalle de clientes, DNI, código de pedido, ticket, tipo de partida y círculos de estado de bono.
+- No se modifican cálculos, Apps Script, Google Sheets, Ranking, Producción, Recableado ni Análisis Económico.
+
+Archivo modificado:
+- js/indicadores.js
+- index.html (solo versión de caché)
