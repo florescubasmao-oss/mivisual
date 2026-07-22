@@ -1,4 +1,4 @@
-// MI VISUAL - Gestión de Actas v94: tarjetas por estado y vista operativa compacta
+// MI VISUAL - Gestión de Actas V247: datos automáticos desde Mapa Operativo y Producción
 
 const API_ACTAS = "https://script.google.com/macros/s/AKfycbzcbjCLweJNgZXDerdzmMN7Lwotc1G8NWdzoPkaLNGDivAgpYxDkq78xZwPRioSB4XY/exec";
 
@@ -181,9 +181,19 @@ function estiloActas(){
 
         @media(max-width:520px){.actas-validation-grid{grid-template-columns:1fr}.actas-unified-states{grid-template-columns:1fr 1fr}.actas-compact-actions .actas-btn{font-size:9px;padding:6px 7px;}}
         .actas-readonly{background:#f1f5f9;color:#475569;border-radius:10px;padding:8px 10px;font-size:12px;font-weight:800;margin-top:8px;}
+        .actas-auto-card{grid-column:1/-1;background:linear-gradient(135deg,#0f172a,#1e3a5f);border:1px solid rgba(255,255,255,.18);border-radius:16px;padding:12px;color:#fff;}
+        .actas-auto-title{font-size:12px;font-weight:900;text-transform:uppercase;letter-spacing:.35px;margin-bottom:9px;color:#bae6fd;}
+        .actas-auto-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;}
+        .actas-auto-item{background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.10);border-radius:11px;padding:8px 9px;min-height:48px;}
+        .actas-auto-item span{display:block;font-size:9px;font-weight:900;text-transform:uppercase;color:#cbd5e1;margin-bottom:3px;}
+        .actas-auto-item b{display:block;font-size:12px;line-height:1.2;color:#fff;word-break:break-word;}
+        .actas-auto-status{margin-top:8px;font-size:11px;font-weight:800;color:#dbeafe;}
+        .actas-auto-status.ok{color:#bbf7d0;}
+        .actas-auto-status.warn{color:#fde68a;}
         .actas-mobile{display:none;}
         @media(max-width:760px){.actas-grid,.actas-kpis{grid-template-columns:1fr 1fr}.actas-table{display:none}.actas-mobile{display:block}.actas-card{font-size:13px}.actas-head h2{font-size:20px}}
-        @media(max-width:480px){.actas-grid,.actas-kpis{grid-template-columns:1fr}}
+        @media(max-width:760px){.actas-auto-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+        @media(max-width:480px){.actas-grid,.actas-kpis,.actas-auto-grid{grid-template-columns:1fr}}
     </style>`;
 }
 
@@ -206,13 +216,29 @@ function mostrarGestionActas(){
             <div class="actas-actions">
                 ${u.perfil === "TECNICO" ? `<button class="actas-btn ok" onclick="mostrarFormularioActa()">+ Subir Acta PDF</button>` : ""}
                 ${(esAlmacenActas(u.perfil) || esJefaturaAlmacenActas(u.perfil)) ? `<button class="actas-btn orange" onclick="mostrarFormularioActaFaltante()">⚠ Registrar acta faltante</button>` : ""}
-                <button class="actas-btn sec" onclick="cargarActas()">🔄 Actualizar</button>
+                ${(esAlmacenActas(u.perfil) || esJefaturaAlmacenActas(u.perfil) || esJefaturaActas(u.perfil)) ? `<button class="actas-btn blue" onclick="actualizarDatosAutomaticosActasFrontend(this)">🧩 Actualizar datos automáticos</button>` : ""}
+                <button class="actas-btn sec" onclick="cargarActas()">🔄 Actualizar vista</button>
             </div>
             <div id="actasResumen"></div>
             <div id="actasLista">Cargando...</div>
         </div>
     `);
     cargarActas();
+}
+
+async function actualizarDatosAutomaticosActasFrontend(btn){
+    const u = usuarioActualActas();
+    const estadoVista = obtenerEstadoVistaActas();
+    try{
+        if(btn){ btn.disabled = true; btn.textContent = "Actualizando..."; }
+        const data = await apiActas({accion:"actualizarDatosAutomaticosActas", usuario:u.usuario});
+        alert(`✅ Actualización terminada\n\nActas actualizadas: ${data.actasActualizadas || 0}\nCampos completados: ${data.camposActualizados || 0}\nActas aún pendientes de datos: ${data.pendientes || 0}`);
+        await cargarActas(estadoVista);
+    }catch(err){
+        alert("❌ " + err.message);
+    }finally{
+        if(btn){ btn.disabled = false; btn.textContent = "🧩 Actualizar datos automáticos"; }
+    }
 }
 
 async function cargarActas(opciones){
@@ -522,6 +548,90 @@ function resumenTablasActas(data){
     <div class="actas-card"><b>Resumen por cuadrilla</b><table class="actas-table" style="display:table;margin-top:8px;"><thead><tr><th>Sede</th><th>Cuadrilla</th><th>Escaneadas</th><th>Finalizadas</th><th>Observadas</th><th>Pendientes</th></tr></thead><tbody>${cuadrillas}</tbody></table></div>`;
 }
 
+function fechaHoyLimaActas(){
+    const partes = new Intl.DateTimeFormat("en-CA", {timeZone:"America/Lima", year:"numeric", month:"2-digit", day:"2-digit"}).formatToParts(new Date());
+    const mapa = {};
+    partes.forEach(p => mapa[p.type] = p.value);
+    return `${mapa.year}-${mapa.month}-${mapa.day}`;
+}
+
+function valorAutomaticoVisibleActa(valor){
+    return valor ? limpiarHtmlActas(valor) : "Pendiente de actualización";
+}
+
+function pintarDatosAutomaticosActa(datos, estadoTexto, clase){
+    const ids = {
+        sede:"actaAutoSede", cuadrilla:"actaAutoCuadrilla", fechaGestion:"actaAutoFecha",
+        tipoEjecucion:"actaAutoTipoEjecucion", tipoPartida:"actaAutoTipoPartida",
+        dni:"actaAutoDni", cliente:"actaAutoCliente"
+    };
+    Object.keys(ids).forEach(k => {
+        const el = document.getElementById(ids[k]);
+        if(!el) return;
+        const valor = k === "fechaGestion" ? fechaVisibleActas(datos[k]) : datos[k];
+        el.innerHTML = valorAutomaticoVisibleActa(valor);
+    });
+    const estado = document.getElementById("actaAutoEstado");
+    if(estado){
+        estado.className = `actas-auto-status ${clase || ""}`;
+        estado.textContent = estadoTexto || "Los datos se completarán automáticamente al ingresar los códigos.";
+    }
+}
+
+let temporizadorDatosAutomaticosActa = null;
+let secuenciaDatosAutomaticosActa = 0;
+
+function programarConsultaDatosAutomaticosActa(){
+    clearTimeout(temporizadorDatosAutomaticosActa);
+    temporizadorDatosAutomaticosActa = setTimeout(consultarDatosAutomaticosFormularioActa, 450);
+}
+
+async function consultarDatosAutomaticosFormularioActa(){
+    const codigoOrden = document.getElementById("actaCodigoOrden")?.value.trim() || "";
+    const codigoPedido = document.getElementById("actaCodigoPedido")?.value.trim() || "";
+    const base = window._actaAutomaticosBase || {};
+    if(!codigoOrden && !codigoPedido){
+        pintarDatosAutomaticosActa(base, "Ingrese el código de orden o el código de pedido para consultar los datos automáticos.", "warn");
+        return;
+    }
+    const numeroConsulta = ++secuenciaDatosAutomaticosActa;
+    pintarDatosAutomaticosActa(Object.assign({}, base, {tipoEjecucion:"",tipoPartida:"",dni:"",cliente:""}), "Buscando información en Mapa Operativo y Producción...", "");
+    try{
+        const u = usuarioActualActas();
+        const respuesta = await apiActas({
+            accion:"consultarDatosAutomaticosActa",
+            usuario:u.usuario,
+            codigoOrden:codigoOrden,
+            codigoPedido:codigoPedido
+        });
+        if(numeroConsulta !== secuenciaDatosAutomaticosActa) return;
+        const encontrados = respuesta.automaticos || {};
+        const esRegistroOriginal = codigoPedido === (base.codigoPedidoOriginal || "") && codigoOrden === (base.codigoOrdenOriginal || "");
+        const datos = Object.assign({}, base, encontrados);
+        if(esRegistroOriginal){
+            ["tipoEjecucion","tipoPartida","dni","cliente"].forEach(k => {
+                if(!datos[k] && base[k]) datos[k] = base[k];
+            });
+        }
+        window._actaAutomaticosActuales = datos;
+        let mensaje = "";
+        let clase = "ok";
+        if(encontrados.encontradoMapa && encontrados.encontradoProduccion){
+            mensaje = "Datos encontrados en Mapa Operativo y Producción.";
+        }else if(encontrados.encontradoMapa){
+            mensaje = "Mapa Operativo encontrado. El tipo de partida queda pendiente hasta que Producción tenga una coincidencia válida.";
+            clase = "warn";
+        }else{
+            mensaje = "No se encontró coincidencia todavía. El acta podrá guardarse y los datos podrán completarse posteriormente desde Gestión de Actas.";
+            clase = "warn";
+        }
+        pintarDatosAutomaticosActa(datos, mensaje, clase);
+    }catch(err){
+        if(numeroConsulta !== secuenciaDatosAutomaticosActa) return;
+        pintarDatosAutomaticosActa(base, "No se pudo consultar ahora: " + err.message, "warn");
+    }
+}
+
 async function mostrarFormularioActa(codigoPedidoPrefill){
     const u = usuarioActualActas();
     let actaPrefill = null;
@@ -536,22 +646,41 @@ async function mostrarFormularioActa(codigoPedidoPrefill){
         mostrarPantalla(`${estiloActas()}<div class="actas-wrap"><div class="actas-msg err">Solo el técnico puede subir actas.</div></div>`);
         return;
     }
+    const fechaAutomatica = actaPrefill?.fechaGestion || fechaHoyLimaActas();
+    window._actaAutomaticosBase = {
+        sede:u.sede,
+        cuadrilla:u.cuadrilla,
+        fechaGestion:fechaAutomatica,
+        tipoEjecucion:actaPrefill?.tipoEjecucion || "",
+        tipoPartida:actaPrefill?.tipoPartida || "",
+        dni:actaPrefill?.dni || "",
+        cliente:actaPrefill?.cliente || "",
+        codigoPedidoOriginal:(actaPrefill?.codigoPedido || codigoPedidoPrefill || "").toString(),
+        codigoOrdenOriginal:(actaPrefill?.codigoOrden || "").toString()
+    };
+    window._actaAutomaticosActuales = Object.assign({}, window._actaAutomaticosBase);
     mostrarPantalla(`
         ${estiloActas()}
         <div class="actas-wrap">
-            <div class="actas-head"><h2>📄 ${esFaltante ? "Completar Acta Faltante" : (codigoPedidoPrefill ? "Reemplazar Acta Observada" : "Subir Acta Escaneada")}</h2><p>Solo se permite archivo PDF. Si el acta fue registrada como faltante, completa los datos y adjunta el PDF. Si fue observada, el nuevo PDF reemplazará al anterior.</p></div>
+            <div class="actas-head"><h2>📄 ${esFaltante ? "Completar Acta Faltante" : (codigoPedidoPrefill ? "Reemplazar Acta Observada" : "Subir Acta Escaneada")}</h2><p>Ingresa los códigos, el número de acta y adjunta el PDF. Los demás datos se completan automáticamente.</p></div>
             <form id="formActa" onsubmit="event.preventDefault(); guardarActa(this.querySelector('[data-guardar]'))">
                 <div class="actas-grid">
-                    <div class="actas-field"><label>Sede</label><input value="${limpiarHtmlActas(u.sede)}" disabled></div>
-                    <div class="actas-field"><label>Cuadrilla</label><input value="${limpiarHtmlActas(u.cuadrilla)}" disabled></div>
-                    <div class="actas-field"><label>Fecha de gestión</label><input type="date" id="actaFechaGestion" value="${limpiarHtmlActas(actaPrefill?.fechaGestion || "")}" required></div>
-                    <div class="actas-field"><label>Tipo de ejecución</label><select id="actaTipoEjecucion" required onchange="cargarTiposPartidaActas()"><option value="INSTALACION">INSTALACIÓN</option><option value="VISITA TECNICA">VISITA TÉCNICA / POSTVENTA</option></select></div>
-                    <div class="actas-field" style="grid-column:1/-1"><label>Tipo de partida</label><select id="actaTipoPartida" required><option value="">Cargando...</option></select></div>
-                    <div class="actas-field"><label>Código de orden</label><input id="actaCodigoOrden" value="${limpiarHtmlActas(actaPrefill?.codigoOrden || "")}" required></div>
-                    <div class="actas-field"><label>Código de pedido</label><input id="actaCodigoPedido" value="${limpiarHtmlActas(codigoPedidoPrefill || "")}" ${codigoPedidoPrefill ? "readonly" : ""} required></div>
-                    <div class="actas-field"><label>Número de acta</label><input id="actaNumeroActa" value="${limpiarHtmlActas(actaPrefill?.numeroActa || "")}" placeholder="Ej.: 00015487" required></div>
-                    <div class="actas-field"><label>DNI</label><input id="actaDni" required></div>
-                    <div class="actas-field"><label>Cliente</label><input id="actaCliente" required></div>
+                    <div class="actas-field"><label>Código de orden</label><input id="actaCodigoOrden" value="${limpiarHtmlActas(actaPrefill?.codigoOrden || "")}" required oninput="programarConsultaDatosAutomaticosActa()" onblur="consultarDatosAutomaticosFormularioActa()"></div>
+                    <div class="actas-field"><label>Código de pedido</label><input id="actaCodigoPedido" value="${limpiarHtmlActas(codigoPedidoPrefill || actaPrefill?.codigoPedido || "")}" ${codigoPedidoPrefill ? "readonly" : ""} required oninput="programarConsultaDatosAutomaticosActa()" onblur="consultarDatosAutomaticosFormularioActa()"></div>
+                    <div class="actas-field" style="grid-column:1/-1"><label>Número de acta</label><input id="actaNumeroActa" value="${limpiarHtmlActas(actaPrefill?.numeroActa || "")}" placeholder="Ej.: 00015487" required></div>
+                    <div class="actas-auto-card">
+                        <div class="actas-auto-title">Datos automáticos</div>
+                        <div class="actas-auto-grid">
+                            <div class="actas-auto-item"><span>Sede</span><b id="actaAutoSede"></b></div>
+                            <div class="actas-auto-item"><span>Cuadrilla</span><b id="actaAutoCuadrilla"></b></div>
+                            <div class="actas-auto-item"><span>Fecha de gestión</span><b id="actaAutoFecha"></b></div>
+                            <div class="actas-auto-item"><span>Tipo de ejecución</span><b id="actaAutoTipoEjecucion"></b></div>
+                            <div class="actas-auto-item"><span>Tipo de partida</span><b id="actaAutoTipoPartida"></b></div>
+                            <div class="actas-auto-item"><span>DNI</span><b id="actaAutoDni"></b></div>
+                            <div class="actas-auto-item"><span>Cliente</span><b id="actaAutoCliente"></b></div>
+                        </div>
+                        <div id="actaAutoEstado" class="actas-auto-status"></div>
+                    </div>
                     <div class="actas-field" style="grid-column:1/-1"><label>Acta escaneada PDF</label><input type="file" id="actaPdf" accept="application/pdf,.pdf" required></div>
                 </div>
                 <div id="actaMsg"></div>
@@ -562,12 +691,10 @@ async function mostrarFormularioActa(codigoPedidoPrefill){
             </form>
         </div>
     `);
-    if(!document.getElementById("actaFechaGestion").value) document.getElementById("actaFechaGestion").value = new Date().toISOString().slice(0,10);
-    const tipoDefecto = actaPrefill?.tipoEjecucion || inferirTipoEjecucionActas();
-    const selTipo = document.getElementById("actaTipoEjecucion");
-    if(selTipo) selTipo.value = tipoDefecto;
-    await cargarTiposPartidaActas();
-    if(actaPrefill?.tipoPartida){ const sp=document.getElementById("actaTipoPartida"); if(sp) sp.value=actaPrefill.tipoPartida; }
+    pintarDatosAutomaticosActa(window._actaAutomaticosBase, "Los datos se completarán automáticamente al validar los códigos.", "");
+    if(document.getElementById("actaCodigoOrden")?.value || document.getElementById("actaCodigoPedido")?.value){
+        consultarDatosAutomaticosFormularioActa();
+    }
 }
 
 
@@ -680,20 +807,20 @@ async function guardarActa(btn){
         const payload = {
             accion:"registrarActaEscaneada",
             usuario:u.usuario,
-            fechaGestion:document.getElementById("actaFechaGestion").value,
-            tipoEjecucion:document.getElementById("actaTipoEjecucion").value,
-            tipoPartida:document.getElementById("actaTipoPartida").value,
             codigoOrden:document.getElementById("actaCodigoOrden").value,
             codigoPedido:document.getElementById("actaCodigoPedido").value,
             numeroActa:document.getElementById("actaNumeroActa").value,
-            dni:document.getElementById("actaDni").value,
-            cliente:document.getElementById("actaCliente").value,
             archivoBase64:pdf.base64,
             archivoNombre:pdf.nombre,
             archivoMimeType:pdf.mime
         };
         const data = await apiActas(payload);
-        if(msg) msg.innerHTML = `<div class="actas-msg ok">✅ Acta registrada correctamente.<br>Archivo: ${limpiarHtmlActas(data.nombreArchivo)}<br>Estado: PENDIENTE<br>Versión: ${data.version || 1}</div>`;
+        const pendientes = [];
+        if(!data.tipoPartida) pendientes.push("tipo de partida");
+        if(!data.dni) pendientes.push("DNI");
+        if(!data.cliente) pendientes.push("cliente");
+        const nota = pendientes.length ? `<br><small>Datos pendientes de actualización automática: ${limpiarHtmlActas(pendientes.join(", "))}.</small>` : "";
+        if(msg) msg.innerHTML = `<div class="actas-msg ok">✅ Acta registrada correctamente.<br>Archivo: ${limpiarHtmlActas(data.nombreArchivo)}<br>Estado: PENDIENTE<br>Versión: ${data.version || 1}${nota}</div>`;
         setTimeout(mostrarGestionActas, 1200);
     }catch(err){
         if(msg) msg.innerHTML = `<div class="actas-msg err">❌ ${err.message}</div>`;
@@ -701,6 +828,7 @@ async function guardarActa(btn){
         if(btn){btn.disabled = false; btn.innerHTML = "Guardar Acta";}
     }
 }
+
 
 async function verDetalleActa(id){
     try{

@@ -1264,6 +1264,7 @@ body{background:linear-gradient(180deg,var(--mv4-bg),var(--mv4-bg2));font-family
 #menuPrincipal.mv196-tecnico-menu #cardRanking,
 #menuPrincipal.mv196-tecnico-menu #cardObservaciones,
 #menuPrincipal.mv196-tecnico-menu #cardValidacionTecnica,
+#menuPrincipal.mv196-tecnico-menu #cardActas,
 #menuPrincipal.mv196-tecnico-menu #cardChecklistAlmacen{
   min-height:78px!important;
   height:78px!important;
@@ -1275,6 +1276,7 @@ body{background:linear-gradient(180deg,var(--mv4-bg),var(--mv4-bg2));font-family
 #menuPrincipal.mv196-tecnico-menu #cardRanking span,
 #menuPrincipal.mv196-tecnico-menu #cardObservaciones span,
 #menuPrincipal.mv196-tecnico-menu #cardValidacionTecnica span,
+#menuPrincipal.mv196-tecnico-menu #cardActas span,
 #menuPrincipal.mv196-tecnico-menu #cardChecklistAlmacen span{
   font-size:25px!important;
   line-height:1!important;
@@ -1283,6 +1285,7 @@ body{background:linear-gradient(180deg,var(--mv4-bg),var(--mv4-bg2));font-family
 #menuPrincipal.mv196-tecnico-menu #cardRanking b,
 #menuPrincipal.mv196-tecnico-menu #cardObservaciones b,
 #menuPrincipal.mv196-tecnico-menu #cardValidacionTecnica b,
+#menuPrincipal.mv196-tecnico-menu #cardActas b,
 #menuPrincipal.mv196-tecnico-menu #cardChecklistAlmacen b{
   font-size:11px!important;
   line-height:1.1!important;
@@ -1291,6 +1294,7 @@ body{background:linear-gradient(180deg,var(--mv4-bg),var(--mv4-bg2));font-family
 @media(max-width:420px){
   #menuPrincipal.mv196-tecnico-menu #cardRanking,
   #menuPrincipal.mv196-tecnico-menu #cardValidacionTecnica,
+  #menuPrincipal.mv196-tecnico-menu #cardActas,
   #menuPrincipal.mv196-tecnico-menu #cardChecklistAlmacen{
     min-height:74px!important;
     height:74px!important;
@@ -1298,11 +1302,13 @@ body{background:linear-gradient(180deg,var(--mv4-bg),var(--mv4-bg2));font-family
   }
   #menuPrincipal.mv196-tecnico-menu #cardRanking span,
   #menuPrincipal.mv196-tecnico-menu #cardValidacionTecnica span,
+  #menuPrincipal.mv196-tecnico-menu #cardActas span,
   #menuPrincipal.mv196-tecnico-menu #cardChecklistAlmacen span{
     font-size:23px!important;
   }
   #menuPrincipal.mv196-tecnico-menu #cardRanking b,
   #menuPrincipal.mv196-tecnico-menu #cardValidacionTecnica b,
+  #menuPrincipal.mv196-tecnico-menu #cardActas b,
   #menuPrincipal.mv196-tecnico-menu #cardChecklistAlmacen b{
     font-size:10px!important;
   }

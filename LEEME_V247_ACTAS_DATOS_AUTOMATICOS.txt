@@ -1,0 +1,39 @@
+MI VISUAL V247 - GESTIÓN DE ACTAS CON DATOS AUTOMÁTICOS
+
+CAMBIOS APLICADOS
+
+1. La tarjeta GESTIÓN DE ACTAS del perfil Técnico tiene la misma altura y medida que Validación Técnica y Checklist Almacén.
+
+2. En el formulario del Técnico solo se ingresan manualmente:
+   - Código de orden.
+   - Código de pedido.
+   - Número de acta.
+   - Archivo PDF.
+
+3. Datos automáticos mostrados como resumen informativo, no como campos editables:
+   - Sede y cuadrilla: desde USUARIOS.
+   - Fecha de gestión: fecha del registro.
+   - Tipo de ejecución: desde MAPA_ORDENES / TIPO_TRABAJO.
+     * INSTALACION e INSTALACION POSIBLE FRAUDE = INSTALACION.
+     * Los demás tipos = VISITA TECNICA.
+   - DNI y cliente: desde MAPA_ORDENES.
+   - Tipo de partida: se valida con la producción de la misma cuadrilla y fecha; el código de PRODUCCION_APP se convierte al TIPO DE ORDEN configurado en CATALOGO_ORDENES.
+
+4. Si Tipo de partida, DNI o Cliente aún no están disponibles, el PDF se guarda normalmente y el dato queda pendiente.
+
+5. Responsable de Almacén, Jefatura de Almacén y Jefatura tienen el botón ACTUALIZAR DATOS AUTOMÁTICOS. Este vuelve a consultar Mapa Operativo y Producción, completa campos vacíos y no reemplaza información ya registrada. El tipo de ejecución se corrige únicamente cuando existe una coincidencia válida en Mapa Operativo.
+
+6. Se conserva sin cambios:
+   - Guardado y reemplazo de PDF observado.
+   - Actas faltantes.
+   - Estados y validaciones.
+   - Entrega física.
+   - Estructura de carpetas de Drive.
+   - Historial y permisos existentes.
+
+APLICACIÓN
+
+Code.gs / Apps Script: SÍ
+Frontend GitHub: SÍ
+Google Sheets: NO requiere crear hojas ni columnas nuevas
+Nuevo despliegue de Apps Script: SÍ

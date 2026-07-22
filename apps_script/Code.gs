@@ -2805,6 +2805,292 @@ function obtenerValorActaCompat(fila, nombreCampo) {
   return idx === undefined ? "" : fila[idx];
 }
 
+
+function textoIdentificadorActa(valor) {
+  if (valor === null || valor === undefined) return "";
+  if (typeof valor === "number" && isFinite(valor)) return Math.round(valor).toString();
+  let t = valor.toString().trim();
+  if (!t) return "";
+  if (/^[+-]?\d+(?:\.\d+)?[Ee][+-]?\d+$/.test(t)) {
+    const n = Number(t);
+    if (isFinite(n)) t = Math.round(n).toString();
+  }
+  return t.replace(/\.0+$/, "").trim();
+}
+
+function claveIdentificadorActa(valor) {
+  return normalizarTexto(textoIdentificadorActa(valor)).replace(/[^A-Z0-9]/g, "");
+}
+
+function claveCuadrillaActa(cuadrilla) {
+  const t = normalizarTexto(normalizarCuadrilla(cuadrilla));
+  const m = t.match(/^P\s*(\d+)/);
+  if (!m) return t.replace(/[^A-Z0-9]/g, "");
+  let modalidad = "";
+  if (t.indexOf("TRASLADO") >= 0 || t.indexOf("TRASLADOS") >= 0) modalidad = "TRASLADO";
+  else if (/\bSGA\b/.test(t)) modalidad = "SGA";
+  else if (/\bSGI\b/.test(t)) modalidad = "SGI";
+  return "P" + Number(m[1]) + "|" + modalidad;
+}
+
+function fechaClaveActa(valor) {
+  if (valor instanceof Date && !isNaN(valor.getTime())) {
+    return Utilities.formatDate(valor, Session.getScriptTimeZone(), "yyyy-MM-dd");
+  }
+  if (typeof valor === "number" && isFinite(valor) && valor > 20000) {
+    const ms = Math.round((valor - 25569) * 86400000);
+    const d = new Date(ms);
+    if (!isNaN(d.getTime())) return Utilities.formatDate(d, "GMT", "yyyy-MM-dd");
+  }
+  const t = (valor || "").toString().trim();
+  if (!t) return "";
+  let m = t.match(/^(\d{1,2})[\/-](\d{1,2})[\/-](\d{4})/);
+  if (m) return m[3] + "-" + m[2].padStart(2, "0") + "-" + m[1].padStart(2, "0");
+  m = t.match(/^(\d{4})[\/-](\d{1,2})[\/-](\d{1,2})/);
+  if (m) return m[1] + "-" + m[2].padStart(2, "0") + "-" + m[3].padStart(2, "0");
+  const d = new Date(t);
+  return isNaN(d.getTime()) ? "" : Utilities.formatDate(d, Session.getScriptTimeZone(), "yyyy-MM-dd");
+}
+
+function buscarRegistroMapaParaActa(codigoPedido, codigoOrden, cuadrilla, contexto) {
+  const datos = contexto && contexto.mapa ? contexto.mapa : (function(){
+    const hoja = asegurarHojaMapaOperativo();
+    const ultimaFila = hoja.getLastRow();
+    return ultimaFila > 1 ? hoja.getRange(2, 1, ultimaFila - 1, 26).getValues() : [];
+  })();
+  if (!datos.length) return null;
+  const pedido = claveIdentificadorActa(codigoPedido);
+  const orden = claveIdentificadorActa(codigoOrden);
+  if (!pedido && !orden) return null;
+  const claveCuadrilla = claveCuadrillaActa(cuadrilla);
+  let mejor = null;
+  let mejorPuntaje = -1;
+  for (let i = datos.length - 1; i >= 0; i--) {
+    const item = filaMapaOperativoAObjeto(datos[i]);
+    if (claveCuadrilla && claveCuadrillaActa(item.cuadrilla) !== claveCuadrilla) continue;
+    const ordenMapa = claveIdentificadorActa(item.ordenId);
+    const pedidoMapa = claveIdentificadorActa(item.codigoCliente);
+    let puntaje = 0;
+    if (orden && ordenMapa === orden) puntaje += 120;
+    if (pedido && pedidoMapa === pedido) puntaje += 110;
+    if (orden && pedidoMapa === orden) puntaje += 45;
+    if (pedido && ordenMapa === pedido) puntaje += 40;
+    if (!puntaje) continue;
+    if (orden && pedido && ordenMapa === orden && pedidoMapa === pedido) puntaje += 100;
+    if (puntaje > mejorPuntaje) {
+      mejor = item;
+      mejorPuntaje = puntaje;
+      if (puntaje >= 330) break;
+    }
+  }
+  return mejor;
+}
+
+function tipoEjecucionDesdeMapaActa(item) {
+  if (!item) return "";
+  const tipoTrabajo = normalizarTexto(item.tipoTrabajo || "");
+  return tipoTrabajo.indexOf("INSTALACION") >= 0 ? "INSTALACION" : "VISITA TECNICA";
+}
+
+function inferirTipoEjecucionActaServidor(cuadrilla) {
+  const c = normalizarTexto(cuadrilla || "");
+  if (c.indexOf("SGA") >= 0 || c.indexOf("TRASLADO") >= 0 || c.indexOf("VISITA TECNICA") >= 0) return "VISITA TECNICA";
+  return "INSTALACION";
+}
+
+function catalogoPartidasAutomaticasActas(contexto) {
+  if (contexto && contexto.catalogo) return contexto.catalogo;
+  const hoja = obtenerHoja(HOJA_CATALOGO_ORDENES);
+  const datos = hoja.getDataRange().getValues();
+  const porCodigo = {};
+  for (let i = 1; i < datos.length; i++) {
+    const codigo = (datos[i][0] || "").toString().trim();
+    const tipoOrden = (datos[i][1] || "").toString().trim();
+    if (!codigo || !tipoOrden) continue;
+    const item = {
+      codigo: codigo,
+      codigoNorm: normalizarTexto(codigo),
+      tipoOrden: tipoOrden,
+      tipoNorm: normalizarTexto(tipoOrden),
+      plataforma: normalizarTexto(datos[i][2] || ""),
+      grupo: normalizarTexto(datos[i][4] || "")
+    };
+    if (!porCodigo[item.codigoNorm]) porCodigo[item.codigoNorm] = [];
+    porCodigo[item.codigoNorm].push(item);
+  }
+  return porCodigo;
+}
+
+function grupoEsperadoMapaActa(item) {
+  if (!item) return "";
+  const t = normalizarTexto([
+    item.tipoTrabajo, item.tipo, item.productoOrigen, item.productoServicio,
+    item.motivoFinalizacion, item.detalle
+  ].join(" "));
+  if (t.indexOf("INSTALACION") >= 0) return "INSTALACION";
+  if (t.indexOf("TRASLADO") >= 0) return "TRASLADO";
+  if (t.indexOf("RECABLEADO") >= 0 || t.indexOf("LOS ROJO") >= 0 || t.indexOf("INTERMITENCIA") >= 0) return "RECABLEADO_VT";
+  if (t.indexOf("REUBICACION") >= 0) return "REUBICACION";
+  if (t.indexOf("PRUEBA") >= 0) return "PRUEBA_SERVICIO";
+  if (t.indexOf("CAMBIO DE ONT") >= 0 || t.indexOf("CAMBIO DE EQUIPO") >= 0 || t.indexOf("CAMBIO DE MESH") >= 0 || t.indexOf("CAMBIO DE TV") >= 0 || t.indexOf("CAMBIO DE FONO") >= 0) return "CAMBIO_EQUIPO";
+  if (t.indexOf("MESH") >= 0 || t.indexOf("WIN BOX") >= 0 || t.indexOf("WINBOX") >= 0 || t.indexOf("TV BOX") >= 0) return "ENTREGA_EQUIPO";
+  if (t.indexOf("AVERIA") >= 0 || t.indexOf("ULTIMA MILLA") >= 0 || t.indexOf("PATCHCORD") >= 0) return "ULTIMA_MILLA";
+  return "";
+}
+
+function codigoEsperadoMapaActa(item) {
+  if (!item) return "";
+  const tipoTrabajo = normalizarTexto(item.tipoTrabajo || "");
+  const tipoCliente = normalizarTexto(item.tipo || "");
+  const todo = normalizarTexto([item.tipoTrabajo, item.motivoFinalizacion, item.detalle].join(" "));
+  const esCondominio = tipoCliente.indexOf("CONDOMINIO") >= 0 || tipoCliente.indexOf("EDIFICIO") >= 0 || tipoCliente.indexOf("MULTIFAMILIAR") >= 0;
+  if (tipoTrabajo.indexOf("INSTALACION") >= 0) return esCondominio ? "IC" : "IR";
+  if (tipoTrabajo.indexOf("TRASLADO") >= 0) return esCondominio ? "TC" : "TR";
+  if (tipoTrabajo.indexOf("RECABLEADO") >= 0 || tipoTrabajo.indexOf("LOS ROJO") >= 0 || tipoTrabajo.indexOf("INTERMITENCIA") >= 0) return "SRV";
+  if (todo.indexOf("CAMBIO DE ONT") >= 0) return "ONT";
+  if (todo.indexOf("CAMBIO DE MESH") >= 0) return "MESH";
+  if (todo.indexOf("CAMBIO DE FONO") >= 0) return "FONO";
+  if (todo.indexOf("CAMBIO DE TV BOX") >= 0 || todo.indexOf("CAMBIO DE WINBOX") >= 0) return "TVBOX";
+  if (tipoTrabajo.indexOf("PRUEBA") >= 0) return "PS";
+  return "";
+}
+
+function tokensPartidaActa(texto) {
+  const omitir = {DE:1,DEL:1,LA:1,EL:1,EN:1,Y:1,A:1,UN:1,UNA:1,PARA:1,POR:1,SERVICIO:1,ABONADO:1,POST:1,VENTA:1,VISITA:1,TECNICA:1};
+  const salida = {};
+  normalizarTexto(texto || "").split(/[^A-Z0-9]+/).forEach(function(x){
+    if (x && x.length > 2 && !omitir[x]) salida[x] = true;
+  });
+  return salida;
+}
+
+function puntajePartidaAutomaticaActa(itemMapa, candidato) {
+  const grupo = grupoEsperadoMapaActa(itemMapa);
+  const codigoEsperado = codigoEsperadoMapaActa(itemMapa);
+  let puntaje = 0;
+  if (codigoEsperado && candidato.codigoNorm === codigoEsperado) puntaje += 150;
+  if (grupo && candidato.grupo === grupo) puntaje += 70;
+  const textoMapa = [itemMapa.tipoTrabajo, itemMapa.tipo, itemMapa.productoOrigen, itemMapa.productoServicio, itemMapa.motivoFinalizacion, itemMapa.detalle].join(" ");
+  const a = tokensPartidaActa(textoMapa);
+  const b = tokensPartidaActa(candidato.tipoOrden);
+  Object.keys(b).forEach(function(k){ if (a[k]) puntaje += 8; });
+  return puntaje;
+}
+
+function crearContextoDatosAutomaticosActas() {
+  const hojaMapa = asegurarHojaMapaOperativo();
+  const ultimaMapa = hojaMapa.getLastRow();
+  const mapa = ultimaMapa > 1 ? hojaMapa.getRange(2, 1, ultimaMapa - 1, 26).getValues() : [];
+  const contexto = { mapa:mapa, catalogo:null, produccion:{} };
+  contexto.catalogo = catalogoPartidasAutomaticasActas();
+  const hojaProduccion = obtenerHoja(HOJA_PRODUCCION);
+  const ultimaProduccion = hojaProduccion.getLastRow();
+  if (ultimaProduccion > 1) {
+    const datos = hojaProduccion.getRange(2, 1, ultimaProduccion - 1, 7).getValues();
+    datos.forEach(function(fila){
+      const cuadrilla = claveCuadrillaActa(fila[1]);
+      const fecha = fechaClaveActa(fila[2]);
+      const codigo = normalizarTexto(fila[3] || "");
+      if (!cuadrilla || !fecha || !codigo || numeroProduccion(fila[4]) <= 0) return;
+      const clave = cuadrilla + "|" + fecha;
+      if (!contexto.produccion[clave]) contexto.produccion[clave] = [];
+      contexto.produccion[clave].push(codigo);
+    });
+  }
+  return contexto;
+}
+
+function buscarTipoPartidaProduccionActa(itemMapa, cuadrilla, contexto) {
+  if (!itemMapa || !cuadrilla) return "";
+  const fecha = fechaClaveActa(itemMapa.fechaFinVisita) || fechaClaveActa(itemMapa.fechaInicioVisita) || fechaClaveActa(itemMapa.fechaSolicitud);
+  if (!fecha) return "";
+  contexto = contexto || crearContextoDatosAutomaticosActas();
+  const catalogo = catalogoPartidasAutomaticasActas(contexto);
+  const clave = claveCuadrillaActa(cuadrilla) + "|" + fecha;
+  const codigos = contexto.produccion[clave] || [];
+  const candidatos = [];
+  codigos.forEach(function(codigo){
+    (catalogo[codigo] || []).forEach(function(item){
+      candidatos.push({item:item, puntaje:puntajePartidaAutomaticaActa(itemMapa, item)});
+    });
+  });
+  if (!candidatos.length) return "";
+  candidatos.sort(function(a,b){ return b.puntaje - a.puntaje || a.item.tipoNorm.localeCompare(b.item.tipoNorm); });
+  if (candidatos.length === 1) return candidatos[0].item.tipoOrden;
+  if (candidatos[0].puntaje >= 70 && candidatos[0].puntaje - candidatos[1].puntaje >= 10) return candidatos[0].item.tipoOrden;
+  const codigoEsperado = codigoEsperadoMapaActa(itemMapa);
+  const exactos = candidatos.filter(function(x){ return codigoEsperado && x.item.codigoNorm === codigoEsperado; });
+  if (exactos.length === 1) return exactos[0].item.tipoOrden;
+  return "";
+}
+
+function resolverDatosAutomaticosActa(codigoPedido, codigoOrden, cuadrilla, sede, contexto) {
+  contexto = contexto || crearContextoDatosAutomaticosActas();
+  const mapa = buscarRegistroMapaParaActa(codigoPedido, codigoOrden, cuadrilla, contexto);
+  const tipoEjecucion = tipoEjecucionDesdeMapaActa(mapa);
+  const tipoPartida = buscarTipoPartidaProduccionActa(mapa, cuadrilla, contexto);
+  return {
+    sede: normalizarTexto(sede || (mapa ? sedeMapaOperativo(mapa.region) : "")),
+    cuadrilla: normalizarCuadrilla(cuadrilla),
+    fechaGestion: Utilities.formatDate(new Date(), Session.getScriptTimeZone(), "yyyy-MM-dd"),
+    tipoEjecucion: tipoEjecucion,
+    tipoPartida: tipoPartida,
+    dni: mapa ? textoIdentificadorActa(mapa.numeroDocumento) : "",
+    cliente: mapa ? (mapa.cliente || "").toString().trim().toUpperCase() : "",
+    encontradoMapa: !!mapa,
+    encontradoProduccion: !!tipoPartida
+  };
+}
+
+function consultarDatosAutomaticosActa(data) {
+  const usuario = obtenerUsuarioApp(data.usuario);
+  const perfil = normalizarTexto(usuario.perfil);
+  const permitidos = perfil === "TECNICO" || esPerfilAlmacen(perfil) || esPerfilJefaturaAlmacen(perfil) || esPerfilJefatura(perfil);
+  if (!permitidos) throw new Error("No tiene permiso para consultar datos automáticos de actas");
+  const cuadrilla = perfil === "TECNICO" ? usuario.cuadrilla : (data.cuadrilla || usuario.cuadrilla);
+  if (!cuadrilla) throw new Error("No se encontró la cuadrilla para consultar el acta");
+  const dc = obtenerDatosCuadrillaApp(cuadrilla);
+  const sede = dc.sede || usuario.sede;
+  const contexto = crearContextoDatosAutomaticosActas();
+  const automaticos = resolverDatosAutomaticosActa(data.codigoPedido || data.codigo_pedido, data.codigoOrden || data.codigo_orden, cuadrilla, sede, contexto);
+  return {ok:true, modulo:"ACTAS", accion:"DATOS_AUTOMATICOS", automaticos:automaticos};
+}
+
+function actualizarDatosAutomaticosActas(data) {
+  const usuario = obtenerUsuarioApp(data.usuario);
+  const perfil = normalizarTexto(usuario.perfil);
+  if (!(esPerfilAlmacen(perfil) || esPerfilJefaturaAlmacen(perfil) || esPerfilJefatura(perfil))) {
+    throw new Error("Solo Jefatura y Almacén pueden actualizar los datos automáticos de las actas");
+  }
+  const hoja = asegurarHojaActasEscaneadas();
+  const datos = hoja.getDataRange().getValues();
+  let actasActualizadas = 0;
+  let camposActualizados = 0;
+  let pendientes = 0;
+  const contexto = crearContextoDatosAutomaticosActas();
+  for (let i = 1; i < datos.length; i++) {
+    const item = filaActaAObjeto(datos[i]);
+    if (esPerfilAlmacen(perfil) && normalizarTexto(item.sede) !== normalizarTexto(usuario.sede)) continue;
+    const faltan = !item.tipoPartida || !item.dni || !item.cliente;
+    const automaticos = resolverDatosAutomaticosActa(item.codigoPedido, item.codigoOrden, item.cuadrilla, item.sede, contexto);
+    let cambios = 0;
+    if (automaticos.tipoEjecucion && normalizarTexto(item.tipoEjecucion) !== normalizarTexto(automaticos.tipoEjecucion)) {
+      hoja.getRange(i + 1, 9).setValue(automaticos.tipoEjecucion); cambios++;
+    }
+    if (!item.tipoPartida && automaticos.tipoPartida) { hoja.getRange(i + 1, 10).setValue(automaticos.tipoPartida); cambios++; }
+    if (!item.dni && automaticos.dni) { hoja.getRange(i + 1, 14).setValue(automaticos.dni); cambios++; }
+    if (!item.cliente && automaticos.cliente) { hoja.getRange(i + 1, 15).setValue(automaticos.cliente); cambios++; }
+    if (cambios) { actasActualizadas++; camposActualizados += cambios; }
+    const tipoFinal = item.tipoPartida || automaticos.tipoPartida;
+    const dniFinal = item.dni || automaticos.dni;
+    const clienteFinal = item.cliente || automaticos.cliente;
+    if (!tipoFinal || !dniFinal || !clienteFinal) pendientes++;
+    else if (faltan && !cambios) pendientes++;
+  }
+  SpreadsheetApp.flush();
+  return {ok:true, modulo:"ACTAS", accion:"ACTUALIZAR_DATOS_AUTOMATICOS", actasActualizadas:actasActualizadas, camposActualizados:camposActualizados, pendientes:pendientes};
+}
+
 function registrarActaEscaneada(data) {
   const hoja = asegurarHojaActasEscaneadas();
   const usuario = obtenerUsuarioApp(data.usuario);
@@ -2814,22 +3100,13 @@ function registrarActaEscaneada(data) {
   const dc = obtenerDatosCuadrillaApp(cuadrilla);
   const sede = dc.sede || usuario.sede;
   const supervisor = dc.usuarioSupervisor || usuario.usuarioSupervisor || "";
-  const fechaGestion = fechaGestionActaTexto(data.fechaGestion || data.fecha_gestion);
-  const tipoPartida = normalizarTexto(data.tipoPartida || data.tipo_partida);
-  if (!tipoPartida) throw new Error("Debe seleccionar el tipo de partida");
-  const tipoEjecucion = normalizarTipoEjecucionActa(data.tipoEjecucion || data.tipo_ejecucion, tipoPartida);
-  if (tipoEjecucion === "INSTALACION" && !esTipoInstalacionActa(tipoPartida)) throw new Error("Para INSTALACION solo corresponde seleccionar partidas de instalación y activación");
-  if (tipoEjecucion === "VISITA TECNICA" && esTipoInstalacionActa(tipoPartida)) throw new Error("Para VISITA TECNICA/POSVENTA no corresponde seleccionar partidas de instalación");
   const codigoOrden = (data.codigoOrden || data.codigo_orden || "").toString().trim();
   const codigoPedido = (data.codigoPedido || data.codigo_pedido || "").toString().trim();
   const numeroActa = (data.numeroActa || data.numero_acta || "").toString().trim();
-  const dni = (data.dni || "").toString().trim();
-  const cliente = (data.cliente || "").toString().trim().toUpperCase();
   if (!codigoOrden) throw new Error("Debe ingresar el código de orden");
   if (!codigoPedido) throw new Error("Debe ingresar el código de pedido");
   if (!numeroActa) throw new Error("Debe ingresar el número de acta");
-  if (!dni) throw new Error("Debe ingresar el DNI");
-  if (!cliente) throw new Error("Debe ingresar el cliente");
+
   const existente = buscarFilaActaPorPedido(codigoPedido);
   if (existente) {
     const obj = existente.objeto || filaActaAObjeto(existente.datos);
@@ -2838,7 +3115,15 @@ function registrarActaEscaneada(data) {
     if (!esFaltantePendiente && !(normalizarTexto(obj.resultadoAlmacen) === "OBSERVADO" || normalizarTexto(obj.resultadoJefatura) === "OBSERVADO")) throw new Error("Ya existe una acta pendiente para este Código de Pedido. Solo se puede completar si fue registrada como faltante o reemplazar cuando esté OBSERVADA.");
     if (obj.linkActa) enviarArchivoAnteriorActaPapelera(obj.linkActa);
   }
+
   const anterior = existente ? (existente.objeto || filaActaAObjeto(existente.datos)) : {};
+  const contextoAutomatico = crearContextoDatosAutomaticosActas();
+  const automaticos = resolverDatosAutomaticosActa(codigoPedido, codigoOrden, cuadrilla, sede, contextoAutomatico);
+  const fechaGestion = anterior.fechaGestion || automaticos.fechaGestion;
+  const tipoPartida = automaticos.tipoPartida || anterior.tipoPartida || "";
+  const tipoEjecucion = automaticos.tipoEjecucion || anterior.tipoEjecucion || inferirTipoEjecucionActaServidor(cuadrilla);
+  const dni = automaticos.dni || anterior.dni || "";
+  const cliente = automaticos.cliente || anterior.cliente || "";
   const version = (Number(anterior.version) || 0) + 1;
   const nombreArchivo = limpiarNombreArchivo(codigoPedido) + ".pdf";
   const link = guardarPdfActaDrive(data, sede, cuadrilla, tipoEjecucion, fechaGestion, nombreArchivo);
@@ -2853,7 +3138,11 @@ function registrarActaEscaneada(data) {
     anterior.fechaRegistroFaltante || "", anterior.horaRegistroFaltante || ""
   ];
   if (existente) hoja.getRange(existente.fila, 1, 1, 40).setValues([filaValores]); else hoja.appendRow(filaValores);
-  return {ok:true, modulo:"ACTAS", accion:existente?"REEMPLAZAR":"REGISTRAR", id:filaValores[0], estado:"PENDIENTE", estadoEntregaFisica:filaValores[29], numeroActa, tipoEjecucion, tipoPartida, version, linkActa:link, nombreArchivo};
+  return {
+    ok:true, modulo:"ACTAS", accion:existente?"REEMPLAZAR":"REGISTRAR", id:filaValores[0], estado:"PENDIENTE",
+    estadoEntregaFisica:filaValores[29], numeroActa:numeroActa, tipoEjecucion:tipoEjecucion, tipoPartida:tipoPartida,
+    dni:dni, cliente:cliente, version:version, linkActa:link, nombreArchivo:nombreArchivo, datosAutomaticos:automaticos
+  };
 }
 
 function filaActaAObjeto(fila) {
@@ -7720,6 +8009,14 @@ function doPost(e) {
 
     if (data.accion === "listarCuadrillasActasFaltantes") {
       return ContentService.createTextOutput(JSON.stringify(listarCuadrillasActasFaltantes(data))).setMimeType(ContentService.MimeType.JSON);
+    }
+
+    if (data.accion === "consultarDatosAutomaticosActa") {
+      return ContentService.createTextOutput(JSON.stringify(consultarDatosAutomaticosActa(data))).setMimeType(ContentService.MimeType.JSON);
+    }
+
+    if (data.accion === "actualizarDatosAutomaticosActas") {
+      return ContentService.createTextOutput(JSON.stringify(actualizarDatosAutomaticosActas(data))).setMimeType(ContentService.MimeType.JSON);
     }
 
     if (data.accion === "registrarActaEscaneada") {
