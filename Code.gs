@@ -1805,66 +1805,67 @@ function actualizarRanking(periodoManual, actualizadoAlManual) {
    ACTIVIDAD EN CAMPO
 ========================= */
 
+function encabezadosActividadCampoV262() {
+  return [
+    "ID", "FECHA", "HORA", "SEDE", "SUPERVISOR", "CUADRILLA", "TIPO_ACTIVIDAD",
+    "CLIENTE_PRESENTE", "DNI_VALIDADO", "ESTADO_INSTALACION", "DROP_METRAJE", "TEMPLADORES",
+    "RESERVA_CABLE", "POTENCIA_CONFORME", "VELOCIDAD_CONFORME", "LIMPIEZA_TRABAJO",
+    "CLIENTE_CONFORME", "OBSERVACIONES", "FOTO_1", "FOTO_2", "FOTO ACTA",
+    "TIPO_ORDEN", "CODIGO_PEDIDO", "DNI_CLIENTE", "CLIENTE", "DIRECCION", "TICKET",
+    "AUDITORIA_JSON", "PUNTAJE_CALIDAD", "PUNTAJE_SEGURIDAD", "PUNTAJE_CLIENTE",
+    "PUNTAJE_ORDEN_LIMPIEZA", "PUNTAJE_TOTAL", "CLASIFICACION", "REQUIERE_SEGUIMIENTO",
+    "FECHA_COMPROMISO", "RESPONSABLE_SUBSANAR", "ESTADO_AUDITORIA", "ACCIONES_CORRECTIVAS",
+    "FOTO_4", "DESC_FOTO_1", "DESC_FOTO_2", "DESC_FOTO_3", "DESC_FOTO_4"
+  ];
+}
+
 function encabezadoActividadCampo() {
-  return [[
-    "ID",
-    "FECHA",
-    "HORA",
-    "SEDE",
-    "SUPERVISOR",
-    "CUADRILLA",
-    "TIPO_ACTIVIDAD",
-    "CLIENTE_PRESENTE",
-    "DNI_VALIDADO",
-    "ESTADO_INSTALACION",
-    "DROP_METRAJE",
-    "TEMPLADORES",
-    "RESERVA_CABLE",
-    "POTENCIA_CONFORME",
-    "VELOCIDAD_CONFORME",
-    "LIMPIEZA_TRABAJO",
-    "CLIENTE_CONFORME",
-    "OBSERVACIONES",
-    "FOTO_1",
-    "FOTO_2",
-    "FOTO ACTA"
-  ]];
+  return [encabezadosActividadCampoV262()];
+}
+
+function normalizarEncabezadoActividadCampo(valor) {
+  return normalizarTexto(valor).replace(/\s+/g, "_");
 }
 
 function asegurarHojaActividadCampo() {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
   let hoja = ss.getSheetByName(HOJA_ACTIVIDAD_CAMPO);
+  const requeridos = encabezadosActividadCampoV262();
 
-  if (!hoja) {
-    hoja = ss.insertSheet(HOJA_ACTIVIDAD_CAMPO);
+  if (!hoja) hoja = ss.insertSheet(HOJA_ACTIVIDAD_CAMPO);
+
+  if (hoja.getLastRow() === 0 || hoja.getLastColumn() === 0) {
+    hoja.getRange(1, 1, 1, requeridos.length).setValues([requeridos]);
+    hoja.setFrozenRows(1);
+    return hoja;
   }
 
-  if (hoja.getLastRow() === 0) {
-    hoja.getRange(1, 1, 1, 21).setValues(encabezadoActividadCampo());
-  } else {
-    const encabezados = hoja.getRange(1, 1, 1, Math.max(hoja.getLastColumn(), 21)).getValues()[0];
-    const primero = (encabezados[0] || "").toString().trim();
-    if (!primero) {
-      hoja.getRange(1, 1, 1, 21).setValues(encabezadoActividadCampo());
-    }
+  const columnasActuales = Math.max(hoja.getLastColumn(), 1);
+  const actuales = hoja.getRange(1, 1, 1, columnasActuales).getValues()[0];
+  if (!(actuales[0] || "").toString().trim()) {
+    hoja.getRange(1, 1, 1, requeridos.length).setValues([requeridos]);
+    hoja.setFrozenRows(1);
+    return hoja;
   }
 
+  const existentes = {};
+  actuales.forEach(function(h) { existentes[normalizarEncabezadoActividadCampo(h)] = true; });
+  const faltantes = requeridos.filter(function(h) { return !existentes[normalizarEncabezadoActividadCampo(h)]; });
+  if (faltantes.length) {
+    hoja.getRange(1, columnasActuales + 1, 1, faltantes.length).setValues([faltantes]);
+  }
+  hoja.setFrozenRows(1);
   return hoja;
 }
 
 function generarIdActividadCampo() {
-  return "ACT-" + Utilities.formatDate(new Date(), Session.getScriptTimeZone(), "yyyyMMddHHmmss");
+  return "ACT-" + Utilities.formatDate(new Date(), Session.getScriptTimeZone(), "yyyyMMddHHmmssSSS");
 }
 
 function normalizarNombreCarpetaActividad(txt) {
   return (txt || "")
-    .toString()
-    .toUpperCase()
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .replace(/[^A-Z0-9]+/g, "_")
-    .replace(/^_+|_+$/g, "")
-    .substring(0, 80);
+    .toString().toUpperCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^A-Z0-9]+/g, "_").replace(/^_+|_+$/g, "").substring(0, 80);
 }
 
 function obtenerOCrearSubcarpetaActividad(carpetaPadre, nombreSubcarpeta) {
@@ -1875,15 +1876,9 @@ function obtenerOCrearSubcarpetaActividad(carpetaPadre, nombreSubcarpeta) {
 
 function guardarArchivoActividadCampo(carpeta, cuadrilla, fechaArchivo, tipoArchivo, evidencia) {
   if (!evidencia || !evidencia.base64) return "";
-
   const nombreOriginal = evidencia.nombre || (tipoArchivo + ".jpg");
-  const extension = nombreOriginal.indexOf(".") >= 0
-    ? nombreOriginal.split(".").pop().toLowerCase()
-    : "jpg";
-
-  const nombreArchivo = normalizarNombreCarpetaActividad(cuadrilla) + "_" +
-    fechaArchivo + "_" + tipoArchivo + "." + extension;
-
+  const extension = nombreOriginal.indexOf(".") >= 0 ? nombreOriginal.split(".").pop().toLowerCase() : "jpg";
+  const nombreArchivo = normalizarNombreCarpetaActividad(cuadrilla) + "_" + fechaArchivo + "_" + tipoArchivo + "." + extension;
   const bytes = Utilities.base64Decode(evidencia.base64);
   const blob = Utilities.newBlob(bytes, evidencia.mime || "image/jpeg", nombreArchivo);
   const archivo = carpeta.createFile(blob);
@@ -1898,15 +1893,15 @@ function guardarEvidenciasActividadCampo(data, cuadrilla, idRegistro) {
   const fechaCarpeta = Utilities.formatDate(ahora, Session.getScriptTimeZone(), "yyyy-MM-dd");
   const nombreSubcarpeta = fechaCarpeta + "_" + normalizarNombreCarpetaActividad(cuadrilla) + "_" + idRegistro;
   const carpetaRegistro = obtenerOCrearSubcarpetaActividad(carpetaPadre, nombreSubcarpeta);
-
   const foto1 = data.foto1 || data.FOTO_1 || null;
   const foto2 = data.foto2 || data.FOTO_2 || null;
-  const fotoActa = data.fotoActa || data.foto_acta || data.FOTO_ACTA || data["FOTO ACTA"] || null;
-
+  const foto3 = data.foto3 || data.fotoActa || data.foto_acta || data.FOTO_ACTA || data["FOTO ACTA"] || null;
+  const foto4 = data.foto4 || data.FOTO_4 || null;
   return {
-    foto1: guardarArchivoActividadCampo(carpetaRegistro, cuadrilla, fechaArchivo, "FOTO1", foto1),
-    foto2: guardarArchivoActividadCampo(carpetaRegistro, cuadrilla, fechaArchivo, "FOTO2", foto2),
-    fotoActa: guardarArchivoActividadCampo(carpetaRegistro, cuadrilla, fechaArchivo, "ACTA", fotoActa),
+    foto1: guardarArchivoActividadCampo(carpetaRegistro, cuadrilla, fechaArchivo, "EVIDENCIA1", foto1),
+    foto2: guardarArchivoActividadCampo(carpetaRegistro, cuadrilla, fechaArchivo, "EVIDENCIA2", foto2),
+    foto3: guardarArchivoActividadCampo(carpetaRegistro, cuadrilla, fechaArchivo, "EVIDENCIA3", foto3),
+    foto4: guardarArchivoActividadCampo(carpetaRegistro, cuadrilla, fechaArchivo, "EVIDENCIA4", foto4),
     carpeta: carpetaRegistro.getUrl()
   };
 }
@@ -1918,37 +1913,95 @@ function validarSiNoActividad(valor, campo) {
   throw new Error(campo + " no válido. Usa SI, NO o NO APLICA");
 }
 
+function tipoActividadCampoCanonico(tipo) {
+  const t = normalizarTexto(tipo);
+  return t === "SUPERVISION EN CALIENTE" ? "AUDITORIA EN CALIENTE" : t;
+}
+
+function esAuditoriaActividadCampo(tipo) {
+  const t = tipoActividadCampoCanonico(tipo);
+  return t === "AUDITORIA EN FRIO" || t === "AUDITORIA EN CALIENTE";
+}
+
+function respuestaCriterioAuditoriaCampo(valor) {
+  const v = normalizarTexto(valor).replace("NO APLICA", "N/A").replace(/^NA$/, "N/A");
+  if (["CUMPLE", "NO CUMPLE", "N/A"].includes(v)) return v;
+  throw new Error("Respuesta de criterio no válida");
+}
+
+function redondearAuditoriaCampo(valor) {
+  return Math.round((Number(valor) || 0) * 100) / 100;
+}
+
+function calcularPuntajesAuditoriaCampo(auditoria) {
+  const maximos = { "CALIDAD TECNICA": 40, "SEGURIDAD": 20, "ATENCION AL CLIENTE": 20, "ORDEN Y LIMPIEZA": 20 };
+  const acumulado = {};
+  Object.keys(maximos).forEach(function(k) { acumulado[k] = { cumple: 0, aplica: 0 }; });
+  const criterios = Array.isArray(auditoria.criterios) ? auditoria.criterios : [];
+  if (!criterios.length) throw new Error("Debe completar la lista de verificación de la auditoría");
+  let seguridadCritica = false;
+  const idsCriticos = { uso_epp: true, trabajo_seguro: true };
+
+  criterios.forEach(function(c) {
+    const categoria = normalizarTexto(c.categoria);
+    if (!maximos[categoria]) throw new Error("Categoría de auditoría no válida: " + categoria);
+    const respuesta = respuestaCriterioAuditoriaCampo(c.respuesta);
+    c.categoria = categoria;
+    c.respuesta = respuesta;
+    c.observacion = (c.observacion || "").toString().trim();
+    if (respuesta === "NO CUMPLE" && !c.observacion) throw new Error("Ingrese observación en cada criterio que no cumple");
+    if (respuesta !== "N/A") {
+      acumulado[categoria].aplica++;
+      if (respuesta === "CUMPLE") acumulado[categoria].cumple++;
+    }
+    if (categoria === "SEGURIDAD" && respuesta === "NO CUMPLE" && idsCriticos[(c.id || "").toString()]) seguridadCritica = true;
+  });
+
+  const puntajes = {};
+  Object.keys(maximos).forEach(function(k) {
+    const x = acumulado[k];
+    puntajes[k] = x.aplica ? redondearAuditoriaCampo(maximos[k] * x.cumple / x.aplica) : maximos[k];
+  });
+  const total = redondearAuditoriaCampo(Object.keys(puntajes).reduce(function(s, k) { return s + puntajes[k]; }, 0));
+  let clasificacion = total >= 90 ? "EXCELENTE" : total >= 80 ? "CONFORME" : total >= 70 ? "OBSERVADO" : "CRITICO";
+  if (seguridadCritica) clasificacion = "CRITICO";
+  return {
+    calidad: puntajes["CALIDAD TECNICA"],
+    seguridad: puntajes["SEGURIDAD"],
+    cliente: puntajes["ATENCION AL CLIENTE"],
+    ordenLimpieza: puntajes["ORDEN Y LIMPIEZA"],
+    total: total,
+    clasificacion: clasificacion,
+    seguridadCritica: seguridadCritica
+  };
+}
+
+function valoresFilaActividadCampo(hoja, valores) {
+  const encabezados = hoja.getRange(1, 1, 1, hoja.getLastColumn()).getValues()[0];
+  const mapaValores = {};
+  Object.keys(valores).forEach(function(k) { mapaValores[normalizarEncabezadoActividadCampo(k)] = valores[k]; });
+  return encabezados.map(function(h) {
+    const k = normalizarEncabezadoActividadCampo(h);
+    return Object.prototype.hasOwnProperty.call(mapaValores, k) ? mapaValores[k] : "";
+  });
+}
+
 function registrarActividadCampo(data) {
   const hoja = asegurarHojaActividadCampo();
   const usuarioRegistro = obtenerUsuarioApp(data.usuario);
-
   if (!(usuarioRegistro.perfil === "SUPERVISOR" || esPerfilJefatura(usuarioRegistro.perfil))) {
     throw new Error("Solo Supervisor o Jefatura pueden registrar actividad en campo");
   }
-
   const cuadrilla = normalizarCuadrilla(data.cuadrilla);
   if (!cuadrilla) throw new Error("Debe seleccionar una cuadrilla");
-
   const datosCuadrilla = obtenerDatosCuadrillaApp(cuadrilla);
-
   if (usuarioRegistro.perfil === "SUPERVISOR" && normalizarTexto(usuarioRegistro.sede) !== normalizarTexto(datosCuadrilla.sede)) {
     throw new Error("Supervisor solo puede registrar actividades de su sede");
   }
 
-  const tipoActividad = normalizarTexto(data.tipoActividad || data.tipo_actividad || data.tipo || "AUDITORIA EN FRIO");
-  const tiposPermitidos = [
-    "AUDITORIA EN FRIO",
-    "SUPERVISION EN CALIENTE",
-    "SEGUIMIENTO",
-    "VALIDACION DE OBSERVACION",
-    "CAPACITACION",
-    "CHECKLIST"
-  ];
-
-  if (!tiposPermitidos.includes(tipoActividad)) {
-    throw new Error("Tipo de actividad no válido");
-  }
-
+  const tipoActividad = tipoActividadCampoCanonico(data.tipoActividad || data.tipo_actividad || data.tipo || "AUDITORIA EN FRIO");
+  const tiposPermitidos = ["AUDITORIA EN FRIO", "AUDITORIA EN CALIENTE", "SEGUIMIENTO", "VALIDACION DE OBSERVACION", "CAPACITACION", "CHECKLIST"];
+  if (!tiposPermitidos.includes(tipoActividad)) throw new Error("Tipo de actividad no válido");
   const estadoInstalacion = normalizarTexto(data.estadoInstalacion || data.estado_instalacion);
   if (tipoActividad === "AUDITORIA EN FRIO" && !["FINALIZADA", "CANCELADA", "REPROGRAMADA"].includes(estadoInstalacion)) {
     throw new Error("Estado de instalación no válido. Usa FINALIZADA, CANCELADA o REPROGRAMADA");
@@ -1958,203 +2011,235 @@ function registrarActividadCampo(data) {
   const ahora = new Date();
   const fecha = Utilities.formatDate(ahora, Session.getScriptTimeZone(), "dd/MM/yyyy");
   const hora = Utilities.formatDate(ahora, Session.getScriptTimeZone(), "HH:mm:ss");
-
   let checklistRegistrado = null;
   if (tipoActividad === "CHECKLIST") {
     const checklistData = Object.assign({}, data.checklist || {}, {
-      usuario: usuarioRegistro.usuario,
-      cuadrilla,
-      origenRegistro: "ACTIVIDAD_CAMPO",
+      usuario: usuarioRegistro.usuario, cuadrilla: cuadrilla, origenRegistro: "ACTIVIDAD_CAMPO",
       comentarioFinal: (data.checklist && data.checklist.comentarioFinal) || data.comentarioFinal || ""
     });
-    if (!checklistData.comentarioFinal || !checklistData.comentarioFinal.toString().trim()) {
-      throw new Error("Debe ingresar el comentario final del checklist");
-    }
+    if (!checklistData.comentarioFinal || !checklistData.comentarioFinal.toString().trim()) throw new Error("Debe ingresar el comentario final del checklist");
     checklistRegistrado = registrarChecklistAlmacen(checklistData);
   }
 
-  const evidencias = tipoActividad === "CHECKLIST"
-    ? {foto1:"",foto2:"",fotoActa:"",carpeta:""}
-    : guardarEvidenciasActividadCampo(data, cuadrilla, id);
+  let auditoria = null;
+  let puntajes = { calidad:"", seguridad:"", cliente:"", ordenLimpieza:"", total:"", clasificacion:"" };
+  if (esAuditoriaActividadCampo(tipoActividad)) {
+    auditoria = data.auditoria || {};
+    const tipoOrden = normalizarTexto(auditoria.tipoOrden || data.tipoOrden);
+    if (!["ALTA", "VT", "GARANTIA", "PEXT", "VTR"].includes(tipoOrden)) throw new Error("Seleccione el tipo de orden de la auditoría");
+    auditoria.tipoOrden = tipoOrden;
+    auditoria.tipoAuditoria = tipoActividad;
+    puntajes = calcularPuntajesAuditoriaCampo(auditoria);
+    auditoria.puntajes = puntajes;
+    auditoria.clasificacion = puntajes.clasificacion;
+    auditoria.requiereSeguimiento = normalizarTexto(auditoria.requiereSeguimiento || "NO") === "SI" ? "SI" : "NO";
+    auditoria.estadoAuditoria = auditoria.requiereSeguimiento === "SI" ? "EN SEGUIMIENTO" : puntajes.clasificacion;
+    auditoria.fechaCompromiso = (auditoria.fechaCompromiso || "").toString();
+    auditoria.responsableSubsanar = (auditoria.responsableSubsanar || "").toString().trim();
+    auditoria.accionesCorrectivas = (auditoria.accionesCorrectivas || "").toString().trim();
+  }
 
-  hoja.appendRow([
-    id,
-    fecha,
-    hora,
-    datosCuadrilla.sede || usuarioRegistro.sede,
-    usuarioRegistro.usuario,
-    cuadrilla,
-    tipoActividad,
-    validarSiNoActividad(data.clientePresente || data.cliente_presente, "Cliente presente"),
-    validarSiNoActividad(data.dniValidado || data.dni_validado, "DNI validado"),
-    estadoInstalacion,
-    data.dropMetraje || data.drop_metraje || "",
-    data.templadores || "",
-    validarSiNoActividad(data.reservaCable || data.reserva_cable, "Reserva de cable"),
-    validarSiNoActividad(data.potenciaConforme || data.potencia_conforme, "Potencia conforme"),
-    validarSiNoActividad(data.velocidadConforme || data.velocidad_conforme, "Velocidad conforme"),
-    validarSiNoActividad(data.limpiezaTrabajo || data.limpieza_trabajo, "Limpieza del trabajo"),
-    validarSiNoActividad(data.clienteConforme || data.cliente_conforme, "Cliente conforme"),
-    (data.observaciones || "") + (checklistRegistrado ? "\nID CHECKLIST ALMACEN: " + checklistRegistrado.id : ""),
-    evidencias.foto1,
-    evidencias.foto2,
-    evidencias.fotoActa
-  ]);
-
-  return {
-    ok: true,
-    modulo: "ACTIVIDAD_CAMPO",
-    accion: "REGISTRAR",
-    id,
-    carpeta: evidencias.carpeta,
-    checklistId: checklistRegistrado ? checklistRegistrado.id : ""
+  const evidencias = tipoActividad === "CHECKLIST" ? { foto1:"", foto2:"", foto3:"", foto4:"", carpeta:"" } : guardarEvidenciasActividadCampo(data, cuadrilla, id);
+  const observacionesTexto = (data.observaciones || "") + (checklistRegistrado ? "\nID CHECKLIST ALMACEN: " + checklistRegistrado.id : "");
+  const valores = {
+    "ID": id, "FECHA": fecha, "HORA": hora,
+    "SEDE": datosCuadrilla.sede || usuarioRegistro.sede, "SUPERVISOR": usuarioRegistro.usuario,
+    "CUADRILLA": cuadrilla, "TIPO_ACTIVIDAD": tipoActividad,
+    "CLIENTE_PRESENTE": validarSiNoActividad(data.clientePresente || data.cliente_presente, "Cliente presente"),
+    "DNI_VALIDADO": validarSiNoActividad(data.dniValidado || data.dni_validado, "DNI validado"),
+    "ESTADO_INSTALACION": estadoInstalacion,
+    "DROP_METRAJE": data.dropMetraje || data.drop_metraje || "", "TEMPLADORES": data.templadores || "",
+    "RESERVA_CABLE": validarSiNoActividad(data.reservaCable || data.reserva_cable, "Reserva de cable"),
+    "POTENCIA_CONFORME": validarSiNoActividad(data.potenciaConforme || data.potencia_conforme, "Potencia conforme"),
+    "VELOCIDAD_CONFORME": validarSiNoActividad(data.velocidadConforme || data.velocidad_conforme, "Velocidad conforme"),
+    "LIMPIEZA_TRABAJO": validarSiNoActividad(data.limpiezaTrabajo || data.limpieza_trabajo, "Limpieza del trabajo"),
+    "CLIENTE_CONFORME": validarSiNoActividad(data.clienteConforme || data.cliente_conforme, "Cliente conforme"),
+    "OBSERVACIONES": observacionesTexto,
+    "FOTO_1": evidencias.foto1, "FOTO_2": evidencias.foto2, "FOTO ACTA": evidencias.foto3, "FOTO_4": evidencias.foto4,
+    "TIPO_ORDEN": auditoria ? auditoria.tipoOrden : "",
+    "CODIGO_PEDIDO": auditoria ? (auditoria.codigoPedido || "") : "",
+    "DNI_CLIENTE": auditoria ? (auditoria.dniCliente || "") : "",
+    "CLIENTE": auditoria ? (auditoria.cliente || "") : "",
+    "DIRECCION": auditoria ? (auditoria.direccion || "") : "",
+    "TICKET": auditoria ? (auditoria.ticket || "") : "",
+    "AUDITORIA_JSON": auditoria ? JSON.stringify(auditoria) : "",
+    "PUNTAJE_CALIDAD": auditoria ? puntajes.calidad : "",
+    "PUNTAJE_SEGURIDAD": auditoria ? puntajes.seguridad : "",
+    "PUNTAJE_CLIENTE": auditoria ? puntajes.cliente : "",
+    "PUNTAJE_ORDEN_LIMPIEZA": auditoria ? puntajes.ordenLimpieza : "",
+    "PUNTAJE_TOTAL": auditoria ? puntajes.total : "",
+    "CLASIFICACION": auditoria ? puntajes.clasificacion : "",
+    "REQUIERE_SEGUIMIENTO": auditoria ? auditoria.requiereSeguimiento : "",
+    "FECHA_COMPROMISO": auditoria ? auditoria.fechaCompromiso : "",
+    "RESPONSABLE_SUBSANAR": auditoria ? auditoria.responsableSubsanar : "",
+    "ESTADO_AUDITORIA": auditoria ? auditoria.estadoAuditoria : "",
+    "ACCIONES_CORRECTIVAS": auditoria ? auditoria.accionesCorrectivas : "",
+    "DESC_FOTO_1": data.descFoto1 || "", "DESC_FOTO_2": data.descFoto2 || "",
+    "DESC_FOTO_3": data.descFoto3 || "", "DESC_FOTO_4": data.descFoto4 || ""
   };
+  hoja.appendRow(valoresFilaActividadCampo(hoja, valores));
+  return { ok:true, modulo:"ACTIVIDAD_CAMPO", accion:"REGISTRAR", id:id, carpeta:evidencias.carpeta, checklistId:checklistRegistrado ? checklistRegistrado.id : "", puntajeTotal:auditoria ? puntajes.total : "", clasificacion:auditoria ? puntajes.clasificacion : "" };
 }
 
-function filaActividadCampoAObjeto(fila) {
+function mapaEncabezadosActividadCampo(encabezados) {
+  const mapa = {};
+  encabezados.forEach(function(h, i) { mapa[normalizarEncabezadoActividadCampo(h)] = i; });
+  return mapa;
+}
+
+function valorFilaActividadCampo(fila, mapa, nombre) {
+  const idx = mapa[normalizarEncabezadoActividadCampo(nombre)];
+  return idx === undefined ? "" : fila[idx];
+}
+
+function parseJsonActividadCampo(valor) {
+  if (!valor) return null;
+  if (typeof valor === "object") return valor;
+  try { return JSON.parse(valor.toString()); } catch (e) { return null; }
+}
+
+function filaActividadCampoAObjeto(fila, mapa) {
+  const tipoOriginal = valorFilaActividadCampo(fila, mapa, "TIPO_ACTIVIDAD");
+  const auditoria = parseJsonActividadCampo(valorFilaActividadCampo(fila, mapa, "AUDITORIA_JSON"));
   return {
-    id: fila[0],
-    fecha: fila[1],
-    hora: fila[2],
-    sede: fila[3],
-    supervisor: fila[4],
-    cuadrilla: fila[5],
-    tipoActividad: fila[6],
-    clientePresente: fila[7],
-    dniValidado: fila[8],
-    estadoInstalacion: fila[9],
-    dropMetraje: fila[10],
-    templadores: fila[11],
-    reservaCable: fila[12],
-    potenciaConforme: fila[13],
-    velocidadConforme: fila[14],
-    limpiezaTrabajo: fila[15],
-    clienteConforme: fila[16],
-    observaciones: fila[17],
-    foto1: fila[18],
-    foto2: fila[19],
-    fotoActa: fila[20]
+    id: valorFilaActividadCampo(fila, mapa, "ID"), fecha: valorFilaActividadCampo(fila, mapa, "FECHA"), hora: valorFilaActividadCampo(fila, mapa, "HORA"),
+    sede: valorFilaActividadCampo(fila, mapa, "SEDE"), supervisor: valorFilaActividadCampo(fila, mapa, "SUPERVISOR"), cuadrilla: valorFilaActividadCampo(fila, mapa, "CUADRILLA"),
+    tipoActividad: tipoActividadCampoCanonico(tipoOriginal), tipoActividadOriginal: tipoOriginal,
+    clientePresente: valorFilaActividadCampo(fila, mapa, "CLIENTE_PRESENTE"), dniValidado: valorFilaActividadCampo(fila, mapa, "DNI_VALIDADO"),
+    estadoInstalacion: valorFilaActividadCampo(fila, mapa, "ESTADO_INSTALACION"), dropMetraje: valorFilaActividadCampo(fila, mapa, "DROP_METRAJE"),
+    templadores: valorFilaActividadCampo(fila, mapa, "TEMPLADORES"), reservaCable: valorFilaActividadCampo(fila, mapa, "RESERVA_CABLE"),
+    potenciaConforme: valorFilaActividadCampo(fila, mapa, "POTENCIA_CONFORME"), velocidadConforme: valorFilaActividadCampo(fila, mapa, "VELOCIDAD_CONFORME"),
+    limpiezaTrabajo: valorFilaActividadCampo(fila, mapa, "LIMPIEZA_TRABAJO"), clienteConforme: valorFilaActividadCampo(fila, mapa, "CLIENTE_CONFORME"),
+    observaciones: valorFilaActividadCampo(fila, mapa, "OBSERVACIONES"),
+    foto1: valorFilaActividadCampo(fila, mapa, "FOTO_1"), foto2: valorFilaActividadCampo(fila, mapa, "FOTO_2"), foto3: valorFilaActividadCampo(fila, mapa, "FOTO ACTA"), fotoActa: valorFilaActividadCampo(fila, mapa, "FOTO ACTA"), foto4: valorFilaActividadCampo(fila, mapa, "FOTO_4"),
+    descFoto1: valorFilaActividadCampo(fila, mapa, "DESC_FOTO_1"), descFoto2: valorFilaActividadCampo(fila, mapa, "DESC_FOTO_2"), descFoto3: valorFilaActividadCampo(fila, mapa, "DESC_FOTO_3"), descFoto4: valorFilaActividadCampo(fila, mapa, "DESC_FOTO_4"),
+    tipoOrden: valorFilaActividadCampo(fila, mapa, "TIPO_ORDEN") || (auditoria && auditoria.tipoOrden) || "",
+    codigoPedido: valorFilaActividadCampo(fila, mapa, "CODIGO_PEDIDO") || (auditoria && auditoria.codigoPedido) || "",
+    dniCliente: valorFilaActividadCampo(fila, mapa, "DNI_CLIENTE") || (auditoria && auditoria.dniCliente) || "",
+    cliente: valorFilaActividadCampo(fila, mapa, "CLIENTE") || (auditoria && auditoria.cliente) || "",
+    direccion: valorFilaActividadCampo(fila, mapa, "DIRECCION") || (auditoria && auditoria.direccion) || "",
+    ticket: valorFilaActividadCampo(fila, mapa, "TICKET") || (auditoria && auditoria.ticket) || "",
+    auditoria: auditoria,
+    puntajeCalidad: valorFilaActividadCampo(fila, mapa, "PUNTAJE_CALIDAD"), puntajeSeguridad: valorFilaActividadCampo(fila, mapa, "PUNTAJE_SEGURIDAD"),
+    puntajeCliente: valorFilaActividadCampo(fila, mapa, "PUNTAJE_CLIENTE"), puntajeOrdenLimpieza: valorFilaActividadCampo(fila, mapa, "PUNTAJE_ORDEN_LIMPIEZA"),
+    puntajeTotal: valorFilaActividadCampo(fila, mapa, "PUNTAJE_TOTAL"), clasificacion: valorFilaActividadCampo(fila, mapa, "CLASIFICACION"),
+    requiereSeguimiento: valorFilaActividadCampo(fila, mapa, "REQUIERE_SEGUIMIENTO"), fechaCompromiso: valorFilaActividadCampo(fila, mapa, "FECHA_COMPROMISO"),
+    responsableSubsanar: valorFilaActividadCampo(fila, mapa, "RESPONSABLE_SUBSANAR"), estadoAuditoria: valorFilaActividadCampo(fila, mapa, "ESTADO_AUDITORIA"),
+    accionesCorrectivas: valorFilaActividadCampo(fila, mapa, "ACCIONES_CORRECTIVAS")
   };
 }
 
 function fechaActividadComparable(valor) {
   if (valor instanceof Date && !isNaN(valor.getTime())) return valor;
   if (!valor) return null;
-
   const texto = valor.toString().trim();
   let partes = texto.split("/");
   if (partes.length === 3) {
     const fecha = new Date(Number(partes[2]), Number(partes[1]) - 1, Number(partes[0]));
     if (!isNaN(fecha.getTime())) return fecha;
   }
-
   partes = texto.split("-");
   if (partes.length === 3) {
     const fecha = new Date(Number(partes[0]), Number(partes[1]) - 1, Number(partes[2]));
     if (!isNaN(fecha.getTime())) return fecha;
   }
-
   return null;
 }
 
 function cumpleRangoFechaActividad(fechaRegistro, desde, hasta) {
   const fecha = fechaActividadComparable(fechaRegistro);
   if (!fecha) return true;
-
-  if (desde) {
-    const fDesde = fechaActividadComparable(desde);
-    if (fDesde && fecha < fDesde) return false;
-  }
-
-  if (hasta) {
-    const fHasta = fechaActividadComparable(hasta);
-    if (fHasta && fecha > fHasta) return false;
-  }
-
+  if (desde) { const fDesde = fechaActividadComparable(desde); if (fDesde && fecha < fDesde) return false; }
+  if (hasta) { const fHasta = fechaActividadComparable(hasta); if (fHasta && fecha > fHasta) return false; }
   return true;
 }
 
 function listarActividadCampo(data) {
   const hoja = asegurarHojaActividadCampo();
   const datos = hoja.getDataRange().getValues();
+  const mapa = mapaEncabezadosActividadCampo(datos[0] || []);
   const usuario = obtenerUsuarioApp(data.usuario);
   const lista = [];
-
-  if (!(usuario.perfil === "SUPERVISOR" || esPerfilJefatura(usuario.perfil) || esPerfilGerenciaLima(usuario.perfil) || esOperacionesLima(usuario.perfil))) {
-    throw new Error("No tienes permiso para ver actividad en campo");
-  }
+  if (!(usuario.perfil === "SUPERVISOR" || esPerfilJefatura(usuario.perfil) || esPerfilGerenciaLima(usuario.perfil) || esOperacionesLima(usuario.perfil))) throw new Error("No tienes permiso para ver actividad en campo");
 
   for (let i = 1; i < datos.length; i++) {
-    const item = filaActividadCampoAObjeto(datos[i]);
-
+    const item = filaActividadCampoAObjeto(datos[i], mapa);
     let permitir = false;
-    if (usuario.perfil === "SUPERVISOR") {
-      permitir = normalizarUsuario(item.supervisor) === normalizarUsuario(usuario.usuario);
-    }
+    if (usuario.perfil === "SUPERVISOR") permitir = normalizarUsuario(item.supervisor) === normalizarUsuario(usuario.usuario);
     if (esPerfilJefatura(usuario.perfil) || esPerfilGerenciaLima(usuario.perfil) || esOperacionesLima(usuario.perfil)) permitir = true;
     if (!permitir) continue;
-
     if (data.sede && normalizarTexto(data.sede) !== normalizarTexto(item.sede)) continue;
     if (data.supervisor && normalizarUsuario(data.supervisor) !== normalizarUsuario(item.supervisor)) continue;
     if (data.cuadrilla && normalizarCuadrilla(data.cuadrilla) !== normalizarCuadrilla(item.cuadrilla)) continue;
-    if (data.tipoActividad && normalizarTexto(data.tipoActividad) !== normalizarTexto(item.tipoActividad)) continue;
+    if (data.tipoActividad && tipoActividadCampoCanonico(data.tipoActividad) !== tipoActividadCampoCanonico(item.tipoActividad)) continue;
+    if (data.tipoOrden && normalizarTexto(data.tipoOrden) !== normalizarTexto(item.tipoOrden)) continue;
+    if (data.clasificacion && normalizarTexto(data.clasificacion) !== normalizarTexto(item.clasificacion)) continue;
+    if (data.estadoAuditoria && normalizarTexto(data.estadoAuditoria) !== normalizarTexto(item.estadoAuditoria)) continue;
     if (!cumpleRangoFechaActividad(item.fecha, data.fechaDesde, data.fechaHasta)) continue;
-
     lista.push(item);
   }
-
-  return {
-    ok: true,
-    modulo: "ACTIVIDAD_CAMPO",
-    accion: "LISTAR",
-    perfil: usuario.perfil,
-    registros: lista.length,
-    actividades: lista
-  };
+  return { ok:true, modulo:"ACTIVIDAD_CAMPO", accion:"LISTAR", perfil:usuario.perfil, registros:lista.length, actividades:lista };
 }
 
 function obtenerResumenActividadCampo(data) {
   const listado = listarActividadCampo(data);
-  const tipos = [
-    "AUDITORIA EN FRIO",
-    "SUPERVISION EN CALIENTE",
-    "SEGUIMIENTO",
-    "VALIDACION DE OBSERVACION",
-    "CAPACITACION",
-    "CHECKLIST"
-  ];
-
-  const resumen = {};
-  const totales = {};
-  tipos.forEach(t => totales[t] = 0);
+  const tipos = ["AUDITORIA EN FRIO", "AUDITORIA EN CALIENTE", "SEGUIMIENTO", "VALIDACION DE OBSERVACION", "CAPACITACION", "CHECKLIST"];
+  const resumen = {}, totales = {};
+  tipos.forEach(function(t) { totales[t] = 0; });
   totales.TOTAL = 0;
+  const auditorias = { total:0, sumaPuntaje:0, conPuntaje:0, excelente:0, conforme:0, observado:0, critico:0, pendientesSeguimiento:0, cuadrillas:{}, porSede:{}, criterios:{} };
 
-  listado.actividades.forEach(item => {
+  listado.actividades.forEach(function(item) {
     const supervisor = normalizarUsuario(item.supervisor) || "SIN_SUPERVISOR";
-    const tipo = normalizarTexto(item.tipoActividad);
-
-    if (!resumen[supervisor]) {
-      resumen[supervisor] = { supervisor };
-      tipos.forEach(t => resumen[supervisor][t] = 0);
-      resumen[supervisor].TOTAL = 0;
-    }
-
+    const tipo = tipoActividadCampoCanonico(item.tipoActividad);
+    if (!resumen[supervisor]) { resumen[supervisor] = { supervisor:supervisor, sumaPuntaje:0, conPuntaje:0 }; tipos.forEach(function(t){ resumen[supervisor][t]=0; }); resumen[supervisor].TOTAL=0; }
     if (resumen[supervisor][tipo] === undefined) resumen[supervisor][tipo] = 0;
     if (totales[tipo] === undefined) totales[tipo] = 0;
+    resumen[supervisor][tipo]++; resumen[supervisor].TOTAL++; totales[tipo]++; totales.TOTAL++;
 
-    resumen[supervisor][tipo]++;
-    resumen[supervisor].TOTAL++;
-    totales[tipo]++;
-    totales.TOTAL++;
+    if (esAuditoriaActividadCampo(tipo)) {
+      auditorias.total++;
+      auditorias.cuadrillas[normalizarCuadrilla(item.cuadrilla)] = true;
+      const sede = normalizarTexto(item.sede) || "SIN SEDE";
+      if (!auditorias.porSede[sede]) auditorias.porSede[sede] = { sede:sede, total:0, sumaPuntaje:0, conPuntaje:0, critico:0, observado:0 };
+      auditorias.porSede[sede].total++;
+      const pt = Number(item.puntajeTotal);
+      if (!isNaN(pt) && item.puntajeTotal !== "") {
+        auditorias.sumaPuntaje += pt; auditorias.conPuntaje++;
+        resumen[supervisor].sumaPuntaje += pt; resumen[supervisor].conPuntaje++;
+        auditorias.porSede[sede].sumaPuntaje += pt; auditorias.porSede[sede].conPuntaje++;
+      }
+      const clas = normalizarTexto(item.clasificacion);
+      if (clas === "EXCELENTE") auditorias.excelente++;
+      else if (clas === "CONFORME") auditorias.conforme++;
+      else if (clas === "OBSERVADO") { auditorias.observado++; auditorias.porSede[sede].observado++; }
+      else if (clas === "CRITICO") { auditorias.critico++; auditorias.porSede[sede].critico++; }
+      if (normalizarTexto(item.requiereSeguimiento) === "SI" || normalizarTexto(item.estadoAuditoria) === "EN SEGUIMIENTO") auditorias.pendientesSeguimiento++;
+      const criterios = item.auditoria && Array.isArray(item.auditoria.criterios) ? item.auditoria.criterios : [];
+      criterios.forEach(function(c) {
+        if (normalizarTexto(c.respuesta) !== "NO CUMPLE") return;
+        const nombre = (c.criterio || c.id || "Criterio").toString();
+        auditorias.criterios[nombre] = (auditorias.criterios[nombre] || 0) + 1;
+      });
+    }
   });
 
+  const porSupervisor = Object.keys(resumen).map(function(k) {
+    const r = resumen[k];
+    r.promedioAuditoria = r.conPuntaje ? redondearAuditoriaCampo(r.sumaPuntaje / r.conPuntaje) : "";
+    delete r.sumaPuntaje; delete r.conPuntaje;
+    return r;
+  });
+  const porSede = Object.keys(auditorias.porSede).map(function(k) {
+    const r = auditorias.porSede[k];
+    r.promedio = r.conPuntaje ? redondearAuditoriaCampo(r.sumaPuntaje / r.conPuntaje) : "";
+    delete r.sumaPuntaje; delete r.conPuntaje;
+    return r;
+  });
+  const criteriosIncumplidos = Object.keys(auditorias.criterios).map(function(k){ return { criterio:k, cantidad:auditorias.criterios[k] }; }).sort(function(a,b){ return b.cantidad-a.cantidad; }).slice(0,10);
   return {
-    ok: true,
-    modulo: "ACTIVIDAD_CAMPO",
-    accion: "RESUMEN",
-    registros: listado.registros,
-    totales,
-    resumen: Object.keys(resumen).map(k => resumen[k])
+    ok:true, modulo:"ACTIVIDAD_CAMPO", accion:"RESUMEN", registros:listado.registros, totales:totales, resumen:porSupervisor,
+    auditorias:{ total:auditorias.total, promedioGeneral:auditorias.conPuntaje ? redondearAuditoriaCampo(auditorias.sumaPuntaje/auditorias.conPuntaje) : "", excelente:auditorias.excelente, conforme:auditorias.conforme, observado:auditorias.observado, critico:auditorias.critico, pendientesSeguimiento:auditorias.pendientesSeguimiento, cuadrillasAuditadas:Object.keys(auditorias.cuadrillas).filter(Boolean).length, porSede:porSede, criteriosIncumplidos:criteriosIncumplidos }
   };
 }
 
@@ -2164,22 +2249,11 @@ function listarCuadrillasActividadCampo(data) {
 
 function autorizarDriveActividadCampo() {
   const carpeta = DriveApp.getFolderById(CARPETA_ACTIVIDAD_CAMPO);
-  const archivoPrueba = carpeta.createFile(
-    "PRUEBA_PERMISO_ACTIVIDAD_CAMPO.txt",
-    "Permiso Drive autorizado correctamente para Actividad en Campo"
-  );
+  const archivoPrueba = carpeta.createFile("PRUEBA_PERMISO_ACTIVIDAD_CAMPO.txt", "Permiso Drive autorizado correctamente para Actividad en Campo");
   const url = archivoPrueba.getUrl();
   archivoPrueba.setTrashed(true);
-
-  return {
-    ok: true,
-    modulo: "ACTIVIDAD_CAMPO",
-    carpeta: carpeta.getName(),
-    url: carpeta.getUrl(),
-    prueba: url
-  };
+  return { ok:true, modulo:"ACTIVIDAD_CAMPO", carpeta:carpeta.getName(), url:carpeta.getUrl(), prueba:url };
 }
-
 
 
 /* =========================

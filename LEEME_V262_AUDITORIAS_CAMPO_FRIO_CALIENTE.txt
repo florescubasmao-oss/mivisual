@@ -1,0 +1,62 @@
+MI VISUAL V262 — AUDITORÍAS EN CAMPO: FRÍO Y CALIENTE
+
+ALCANCE
+Esta versión modifica únicamente las actividades AUDITORIA EN FRIO y SUPERVISION EN CALIENTE dentro de Actividad en Campo. La segunda pasa a llamarse AUDITORIA EN CALIENTE.
+
+SE CONSERVA SIN CAMBIOS
+- Seguimiento.
+- Validación de Observación.
+- Capacitación.
+- Checklist.
+- Permisos actuales.
+- Registros históricos.
+- Producción, Efectividad, Ranking, VTR/GAR, Recableados, Bonos, Mapa, Actas y demás módulos.
+
+REGISTRO DEL SUPERVISOR
+Para Auditoría en Frío y Auditoría en Caliente se agrega:
+- Tipo de orden: ALTA, VT, GARANTIA, PEXT o VTR.
+- Código de pedido, ticket, DNI, cliente y dirección.
+- Información técnica específica según el tipo de auditoría.
+- Lista de verificación por criterios.
+- Respuestas: CUMPLE, NO CUMPLE o N/A.
+- Observación obligatoria cuando un criterio NO CUMPLE.
+- Calificación automática por categoría:
+  * Calidad técnica: 40 puntos.
+  * Seguridad: 20 puntos.
+  * Atención al cliente: 20 puntos.
+  * Orden y limpieza: 20 puntos.
+- Calificación total sobre 100.
+- Clasificación: EXCELENTE, CONFORME, OBSERVADO o CRITICO.
+- Incumplimientos críticos de EPP o trabajo seguro fuerzan clasificación CRITICO.
+- Acciones correctivas, seguimiento, fecha de compromiso y responsable.
+- Hasta cuatro evidencias fotográficas con descripción.
+
+VISTA DE JEFATURA Y GERENCIA LIMA
+- Total de actividades.
+- Auditorías en Frío y en Caliente.
+- Promedio general de calificación.
+- Auditorías conformes/excelentes, observadas y críticas.
+- Pendientes de seguimiento.
+- Cuadrillas auditadas.
+- Resumen por sede.
+- Resumen por supervisor.
+- Criterios con mayor cantidad de incumplimientos.
+- Filtros por periodo, sede, supervisor, cuadrilla, tipo de auditoría, tipo de orden, clasificación y estado.
+- Detalle completo de criterios, puntajes, observaciones, acciones y evidencias.
+- Gerencia Lima mantiene visualización de solo lectura según sus permisos.
+
+GOOGLE SHEETS
+La hoja ACTIVIDAD_CAMPO conserva sus 21 columnas originales. Code.gs agrega automáticamente al final las nuevas columnas de auditoría y no reemplaza registros existentes.
+
+APLICACIÓN
+- Code.gs / Apps Script: SÍ.
+- Frontend GitHub: SÍ.
+- Google Sheets: SÍ, ampliación automática de columnas.
+- Nuevo despliegue de Apps Script: SÍ.
+
+ARCHIVOS MODIFICADOS
+- Code.gs
+- apps_script/Code.gs
+- js/actividad_campo.js
+- index.html
+- LEEME_V262_AUDITORIAS_CAMPO_FRIO_CALIENTE.txt
