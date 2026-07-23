@@ -5206,6 +5206,28 @@ function esPerfilImportarMaterialesPermitido(perfil) {
          p === "ADMINISTRADOR";
 }
 
+function ultimaActualizacionMaterialesV261(hojaConsumo) {
+  if (!hojaConsumo || hojaConsumo.getLastRow() <= 1) {
+    return {fecha:null,texto:"Sin actualización registrada"};
+  }
+  const valores = hojaConsumo.getRange(2,15,hojaConsumo.getLastRow()-1,1).getValues();
+  let ultima = null;
+  valores.forEach(function(f){
+    const valor = f[0];
+    let fecha = null;
+    if (valor instanceof Date && !isNaN(valor.getTime())) fecha = valor;
+    else if (valor) {
+      const candidata = new Date(valor);
+      if (!isNaN(candidata.getTime())) fecha = candidata;
+    }
+    if (fecha && (!ultima || fecha.getTime() > ultima.getTime())) ultima = fecha;
+  });
+  if (!ultima) return {fecha:null,texto:"Sin actualización registrada"};
+  const fechaTexto = Utilities.formatDate(ultima,"America/Lima","dd/MM/yyyy");
+  const horaTexto = Utilities.formatDate(ultima,"America/Lima","HH:mm");
+  return {fecha:ultima,texto:fechaTexto + " · " + horaTexto + " — Hora Perú"};
+}
+
 // Compatibilidad con funciones antiguas que solo consultaban materiales.
 function esPerfilMaterialesPermitido(perfil) {
   return esPerfilConsultaMaterialesPermitido(perfil);
@@ -5658,7 +5680,8 @@ function procesarImportacionMaterialesV184(data) {
       HOJA_IMPORTAR_MATERIALES,
       HOJA_CONSUMO_MATERIALES,
       HOJA_CATALOGO_PRECIOS_MATERIALES
-    ]
+    ],
+    ultimaActualizacionTexto: Utilities.formatDate(ahora,"America/Lima","dd/MM/yyyy") + " · " + Utilities.formatDate(ahora,"America/Lima","HH:mm") + " — Hora Perú"
   };
 }
 
@@ -5706,7 +5729,7 @@ function obtenerResumenMaterialesV184(data) {
 
   const hojas = asegurarHojasMaterialesV184();
   if (hojas.consumo.getLastRow() <= 1) {
-    return {ok:true,modulo:"MATERIALES",registros:0,costoTotal:0,totalOrdenesFinalizadas:0,promedioGeneralOrden:0,porSede:[],porTipo:[],porCuadrilla:[],materiales:[]};
+    return {ok:true,modulo:"MATERIALES",registros:0,costoTotal:0,totalOrdenesFinalizadas:0,promedioGeneralOrden:0,porSede:[],porTipo:[],porCuadrilla:[],materiales:[],ultimaActualizacionTexto:"Sin actualización registrada"};
   }
 
   const datos = hojas.consumo.getRange(2,1,hojas.consumo.getLastRow()-1,16).getValues();
@@ -5797,6 +5820,7 @@ function obtenerResumenMaterialesV184(data) {
   }).sort((a,b)=>b.costo-a.costo);
 
   const totalOrdenesFinalizadas = listaCuadrillas.reduce((suma, item) => suma + (Number(item.ordenesFinalizadas) || 0), 0);
+  const ultimaActualizacion = ultimaActualizacionMaterialesV261(hojas.consumo);
 
   return {
     ok:true,
@@ -5805,6 +5829,7 @@ function obtenerResumenMaterialesV184(data) {
     costoTotal:costoTotal,
     totalOrdenesFinalizadas:totalOrdenesFinalizadas,
     promedioGeneralOrden:totalOrdenesFinalizadas > 0 ? costoTotal / totalOrdenesFinalizadas : 0,
+    ultimaActualizacionTexto:ultimaActualizacion.texto,
     materiales:Object.keys(materialesDisponibles).sort(),
     porSede:Object.keys(porSede).map(k=>porSede[k]).sort((a,b)=>b.costo-a.costo),
     porTipo:Object.keys(porTipo).map(k=>porTipo[k]).sort((a,b)=>b.costo-a.costo),

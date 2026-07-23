@@ -63,8 +63,8 @@ function mostrarCostoMateriales(){
     .mat184-grid{display:grid;grid-template-columns:200px 1fr;gap:12px;align-items:end}.mat184-grid label{font-weight:800;font-size:12px}.mat184-grid input,.mat184-grid select,.mat184-grid textarea{width:100%;box-sizing:border-box;padding:10px;border:1px solid #94a3b8;border-radius:9px}
     .mat184-grid textarea{height:300px;font-family:monospace;white-space:pre}.mat184-status{margin-top:12px;padding:12px;border-radius:10px;background:#eff6ff}.mat184-kpis{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin:12px 0}.mat184-kpi{background:#e0f2fe;border-radius:12px;padding:14px}.mat184-kpi b{font-size:23px;display:block}
     .mat184-table{width:100%;border-collapse:collapse}.mat184-table th,.mat184-table td{padding:8px;border-bottom:1px solid #e2e8f0;text-align:left}.mat184-table th{background:#f1f5f9}
-    .mat184-tabs{align-items:center}.mat184-tabs .mat184-import-mini{margin-left:auto;background:#0ea5e9!important;padding:8px 11px;font-size:12px}.mat184-detalle-btn{border:0;border-radius:7px;padding:6px 9px;font-size:12px;font-weight:800;background:#334155;color:#fff;cursor:pointer}.mat184-detalle-fila{display:none;background:#f8fafc}.mat184-detalle-fila.visible{display:table-row}.mat184-detalle-wrap{padding:10px 6px}.mat184-subtabla{width:100%;border-collapse:collapse}.mat184-subtabla th,.mat184-subtabla td{padding:7px;border-bottom:1px solid #dbeafe;font-size:12px}.mat184-subtabla th{background:#e0f2fe}.mat184-filtros-resumen{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:10px;align-items:end}.mat184-modal-fondo{position:fixed;inset:0;background:rgba(2,6,23,.78);display:flex;align-items:center;justify-content:center;padding:18px;z-index:9999}.mat184-modal{background:#fff;color:#0f172a;width:min(980px,96vw);max-height:90vh;overflow:auto;border-radius:18px;padding:18px;box-shadow:0 20px 60px rgba(0,0,0,.45)}.mat184-modal-head{display:flex;justify-content:space-between;gap:12px;align-items:center}.mat184-cerrar{border:0;background:#475569;color:#fff;border-radius:9px;padding:8px 11px;font-weight:800;cursor:pointer}.mat184-cuadrilla-selector{display:grid;grid-template-columns:1fr auto;gap:10px;align-items:end;margin:14px 0}.mat184-cuadrilla-selector select{width:100%;padding:10px;border:1px solid #94a3b8;border-radius:9px}.mat197-sede{margin:14px 0;border:1px solid #bfdbfe;border-radius:14px;overflow:hidden;background:#fff}.mat197-sede summary{list-style:none;cursor:pointer;padding:14px 16px;background:#e0f2fe;display:grid;grid-template-columns:minmax(180px,1.4fr) repeat(4,minmax(120px,1fr));gap:12px;align-items:center}.mat197-sede summary::-webkit-details-marker{display:none}.mat197-sede summary:before{content:"▶";font-size:12px;margin-right:8px}.mat197-sede[open] summary:before{content:"▼"}.mat197-sede-titulo{font-weight:900;font-size:16px}.mat197-sede-metrica span{display:block;font-size:11px;color:#475569}.mat197-sede-metrica b{font-size:15px}.mat197-participacion{font-weight:900}.mat197-barra{height:7px;background:#dbeafe;border-radius:999px;overflow:hidden;margin-top:4px}.mat197-barra i{display:block;height:100%;background:#0ea5e9}.mat197-tabla-wrap{overflow:auto;padding:10px 12px 14px}.mat197-tabla-wrap .mat184-table{min-width:850px}
-    @media(max-width:700px){.mat184-grid{grid-template-columns:1fr}.mat184-kpis{grid-template-columns:1fr}.mat184-panel{padding:12px}.mat184-filtros-resumen{grid-template-columns:1fr 1fr}.mat184-tabs .mat184-import-mini{margin-left:0}.mat184-table{min-width:720px}.mat197-sede summary{grid-template-columns:1fr 1fr;padding:12px}.mat197-sede-titulo{grid-column:1/-1}.mat197-sede-metrica b{font-size:14px}}
+    .mat184-tabs{align-items:center}.mat184-tabs .mat184-import-mini{margin-left:auto;background:#0ea5e9!important;padding:8px 11px;font-size:12px}.mat184-detalle-btn{border:0;border-radius:7px;padding:6px 9px;font-size:12px;font-weight:800;background:#334155;color:#fff;cursor:pointer}.mat184-detalle-fila{display:none;background:#f8fafc}.mat184-detalle-fila.visible{display:table-row}.mat184-detalle-wrap{padding:10px 6px}.mat184-subtabla{width:100%;border-collapse:collapse}.mat184-subtabla th,.mat184-subtabla td{padding:7px;border-bottom:1px solid #dbeafe;font-size:12px}.mat184-subtabla th{background:#e0f2fe}.mat184-filtros-resumen{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:10px;align-items:end}.mat184-modal-fondo{position:fixed;inset:0;background:rgba(2,6,23,.78);display:flex;align-items:center;justify-content:center;padding:18px;z-index:9999}.mat184-modal{background:#fff;color:#0f172a;width:min(980px,96vw);max-height:90vh;overflow:auto;border-radius:18px;padding:18px;box-shadow:0 20px 60px rgba(0,0,0,.45)}.mat184-modal-head{display:flex;justify-content:space-between;gap:12px;align-items:center}.mat184-cerrar{border:0;background:#475569;color:#fff;border-radius:9px;padding:8px 11px;font-weight:800;cursor:pointer}.mat184-cuadrilla-selector{display:grid;grid-template-columns:1fr auto;gap:10px;align-items:end;margin:14px 0}.mat184-cuadrilla-selector select{width:100%;padding:10px;border:1px solid #94a3b8;border-radius:9px}.mat197-sede{margin:14px 0;border:1px solid #bfdbfe;border-radius:14px;overflow:hidden;background:#fff}.mat197-sede summary{list-style:none;cursor:pointer;padding:14px 16px;background:#e0f2fe;display:grid;grid-template-columns:minmax(180px,1.4fr) repeat(4,minmax(120px,1fr));gap:12px;align-items:center}.mat197-sede summary::-webkit-details-marker{display:none}.mat197-sede summary:before{content:"▶";font-size:12px;margin-right:8px}.mat197-sede[open] summary:before{content:"▼"}.mat197-sede-titulo{font-weight:900;font-size:16px}.mat197-sede-metrica span{display:block;font-size:11px;color:#475569}.mat197-sede-metrica b{font-size:15px}.mat197-participacion{font-weight:900}.mat197-barra{height:7px;background:#dbeafe;border-radius:999px;overflow:hidden;margin-top:4px}.mat197-barra i{display:block;height:100%;background:#0ea5e9}.mat197-tabla-wrap{overflow:auto;padding:10px 12px 14px}.mat197-tabla-wrap .mat184-table{min-width:850px}.mat261-actualizacion{margin-left:auto;background:#fff;color:#0f172a;border:1px solid #cbd5e1;border-radius:10px;padding:7px 11px;min-width:190px;box-shadow:0 4px 12px rgba(2,6,23,.12);line-height:1.15}.mat261-actualizacion span{display:block;font-size:10px;font-weight:900;letter-spacing:.04em;color:#475569}.mat261-actualizacion b{display:block;margin-top:3px;font-size:12px}.mat261-ranking{margin-top:16px;border:1px solid #f59e0b;border-radius:14px;overflow:hidden;background:#fff}.mat261-ranking summary{cursor:pointer;list-style:none;padding:14px 16px;background:#fff7ed;font-weight:900;display:flex;align-items:center;justify-content:space-between;gap:12px}.mat261-ranking summary::-webkit-details-marker{display:none}.mat261-ranking summary:after{content:"Mostrar ranking";font-size:12px;color:#fff;background:#b45309;border-radius:8px;padding:7px 10px}.mat261-ranking[open] summary:after{content:"Ocultar ranking"}.mat261-ranking-cuerpo{padding:12px;overflow:auto}.mat261-ranking-tabla{min-width:980px}.mat261-clasificacion{display:inline-flex;align-items:center;gap:5px;border-radius:999px;padding:5px 9px;font-size:11px;font-weight:900;white-space:nowrap}.mat261-critico{background:#fee2e2;color:#991b1b;border:1px solid #fca5a5}.mat261-alto{background:#ffedd5;color:#9a3412;border:1px solid #fdba74}.mat261-atencion{background:#fef9c3;color:#854d0e;border:1px solid #fde047}.mat261-normal{background:#dcfce7;color:#166534;border:1px solid #86efac}.mat261-muestra{background:#f1f5f9;color:#475569;border:1px solid #cbd5e1}.mat261-variacion-positiva{color:#b91c1c;font-weight:900}.mat261-variacion-normal{color:#166534;font-weight:900}
+    @media(max-width:700px){.mat184-grid{grid-template-columns:1fr}.mat184-kpis{grid-template-columns:1fr}.mat184-panel{padding:12px}.mat184-filtros-resumen{grid-template-columns:1fr 1fr}.mat184-tabs .mat184-import-mini{margin-left:0}.mat184-table{min-width:720px}.mat197-sede summary{grid-template-columns:1fr 1fr;padding:12px}.mat197-sede-titulo{grid-column:1/-1}.mat197-sede-metrica b{font-size:14px}.mat261-actualizacion{margin-left:0;min-width:0;width:100%;box-sizing:border-box}.mat261-ranking summary{padding:12px}.mat261-ranking summary:after{font-size:10px}}
   </style>
   <section class="mat184">
     <div class="mat184-head"><h2>📦 Costo y consumo de materiales</h2></div>
@@ -72,11 +72,63 @@ function mostrarCostoMateriales(){
       <button id="matTabResumen" class="activo" onclick="mat184CambiarVista('resumen')">Resumen de consumo</button>
       <button id="matTabPromedio" onclick="mat184CambiarVista('promedio')">Promedio por cuadrilla</button>
       <button onclick="mostrarAnalisisEconomico()">Volver</button>
+      <div id="mat261UltimaActualizacion" class="mat261-actualizacion"><span>ÚLTIMA ACTUALIZACIÓN</span><b>Consultando...</b></div>
       ${aePerfilImportarMateriales()?`<button id="matTabImportar" class="mat184-import-mini" onclick="mat184CambiarVista('importar')">Subir datos</button>`:""}
     </div>
     <div id="mat184Contenido"></div>
   </section>`;
   mat184CambiarVista("resumen");
+}
+
+function mat261ActualizarSelloMateriales(valor){
+  const sello=document.getElementById("mat261UltimaActualizacion");
+  if(!sello)return;
+  const texto=(valor||"Sin actualización registrada").toString();
+  sello.innerHTML=`<span>ÚLTIMA ACTUALIZACIÓN</span><b>${aeEscape(texto)}</b>`;
+}
+
+function mat261ClasificarPromedio(ordenes,promedio,promedioGeneral){
+  const n=Number(ordenes)||0;
+  const p=Number(promedio)||0;
+  const g=Number(promedioGeneral)||0;
+  const variacion=g>0?((p-g)/g)*100:0;
+  if(n<10)return {clave:"muestra",texto:"⚪ Muestra insuficiente",variacion};
+  if(variacion>=30)return {clave:"critico",texto:"🔴 Crítico",variacion};
+  if(variacion>=15)return {clave:"alto",texto:"🟠 Alto",variacion};
+  if(variacion>0)return {clave:"atencion",texto:"🟡 Atención",variacion};
+  return {clave:"normal",texto:"🟢 Normal",variacion};
+}
+
+function mat261RenderRankingMateriales(datos){
+  const general=Number(datos?.promedioGeneralOrden)||0;
+  const cuadrillas=(datos?.porCuadrilla||[]).slice().sort((a,b)=>{
+    const pa=Number(a.costoPromedioOrden)||0;
+    const pb=Number(b.costoPromedioOrden)||0;
+    return pb-pa || (Number(b.costo)||0)-(Number(a.costo)||0) || String(a.cuadrilla||"").localeCompare(String(b.cuadrilla||""),undefined,{numeric:true});
+  });
+  const filas=cuadrillas.map((x,i)=>{
+    const clas=mat261ClasificarPromedio(x.ordenesFinalizadas,x.costoPromedioOrden,general);
+    const variacion=general>0?`${clas.variacion>=0?"+":""}${clas.variacion.toFixed(1)}%`:"—";
+    const claseVar=clas.variacion>0?"mat261-variacion-positiva":"mat261-variacion-normal";
+    const promedio=Number(x.ordenesFinalizadas)>0?aeMoneda(x.costoPromedioOrden):"Sin órdenes";
+    return `<tr>
+      <td><b>${i+1}</b></td>
+      <td>${aeEscape(x.sede||"SIN SEDE")}</td>
+      <td>${aeEscape(x.cuadrilla||"SIN CUADRILLA")}</td>
+      <td>${aeMoneda(x.costo)}</td>
+      <td>${aeNumero(x.ordenesFinalizadas)}</td>
+      <td><b>${promedio}</b></td>
+      <td class="${claseVar}">${variacion}</td>
+      <td><span class="mat261-clasificacion mat261-${clas.clave}">${clas.texto}</span></td>
+    </tr>`;
+  }).join("");
+  return `<details class="mat261-ranking">
+    <summary><span>📊 Ranking de gasto promedio por cuadrilla</span></summary>
+    <div class="mat261-ranking-cuerpo">
+      <div class="mat184-status" style="margin:0 0 10px">Ordenado de mayor a menor costo promedio por orden. La clasificación compara cada cuadrilla con el promedio general filtrado (${general>0?aeMoneda(general):"sin promedio disponible"}). Las cuadrillas con menos de 10 órdenes se identifican como muestra insuficiente.</div>
+      <table class="mat184-table mat261-ranking-tabla"><thead><tr><th>Puesto</th><th>Sede</th><th>Cuadrilla</th><th>Costo total</th><th>Órdenes finalizadas</th><th>Promedio por orden</th><th>Variación</th><th>Clasificación</th></tr></thead><tbody>${filas||'<tr><td colspan="8">Sin información</td></tr>'}</tbody></table>
+    </div>
+  </details>`;
 }
 
 function mat184CambiarVista(vista){
@@ -136,6 +188,7 @@ async function mat184Procesar(){
       Técnicos ambiguos: ${ambiguos.length}${ambiguos.length?`<br><small>${ambiguos.map(aeEscape).join(" · ")}</small>`:""}<br>
       Valores no numéricos ignorados: ${r.totalInvalidos||0}${invalidos.length?`<br><small>${invalidos.map(x=>`Fila ${x.fila}: ${aeEscape(x.tecnico)} / ${aeEscape(x.material)} = ${aeEscape(x.valor)}`).join("<br>")}</small>`:""}`;
     document.getElementById("mat184Texto").value="";
+    mat261ActualizarSelloMateriales(r.ultimaActualizacionTexto);
   }catch(e){if(est)est.textContent="❌ "+e.message}
 }
 
@@ -190,6 +243,7 @@ async function mat184ConsultarPromedio(){
       material:document.getElementById("mat184Insumo")?.value||"TODOS"
     });
     mat184UltimoResumen=r;
+    mat261ActualizarSelloMateriales(r.ultimaActualizacionTexto);
     const sel=document.getElementById("mat184Insumo");
     if(sel){
       const valor=sel.value||"TODOS";
@@ -237,7 +291,8 @@ async function mat184ConsultarPromedio(){
       </div>
       <h3>Promedio por sede y cuadrilla</h3>
       <div class="mat184-status" style="margin-bottom:10px">Cada sede consolida el costo y las órdenes de todas sus cuadrillas. Abra una sede para comparar cuánto representa cada cuadrilla dentro del costo total de esa sede.</div>
-      ${bloques||'<div class="mat184-status">Sin información</div>'}`;
+      ${bloques||'<div class="mat184-status">Sin información</div>'}
+      ${mat261RenderRankingMateriales(r)}`;
   }catch(e){if(c)c.innerHTML='<div class="mat184-status">❌ '+aeEscape(e.message)+'</div>'}
 }
 
@@ -301,6 +356,7 @@ async function mat184ConsultarResumen(){
       material:document.getElementById("mat184Insumo")?.value||"TODOS"
     });
     mat184UltimoResumen=r;
+    mat261ActualizarSelloMateriales(r.ultimaActualizacionTexto);
     const sel=document.getElementById("mat184Insumo");
     if(sel){
       const valor=sel.value||"TODOS";

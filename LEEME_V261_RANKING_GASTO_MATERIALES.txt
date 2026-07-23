@@ -1,0 +1,22 @@
+MI VISUAL V261 - RANKING DE GASTO PROMEDIO POR CUADRILLA
+
+Cambios incluidos:
+1. Se mantiene sin cambios la vista Promedio por sede y cuadrilla.
+2. Se agrega debajo una sección cerrada por defecto: Ranking de gasto promedio por cuadrilla.
+3. Ordena todas las cuadrillas de mayor a menor costo promedio por orden.
+4. Muestra puesto, sede, cuadrilla, costo total, órdenes finalizadas, promedio por orden, variación y clasificación.
+5. Clasificación:
+   - Crítico: 30% o más por encima del promedio general.
+   - Alto: 15% a 29.99% por encima.
+   - Atención: más de 0% y menos de 15% por encima.
+   - Normal: igual o por debajo del promedio general.
+   - Muestra insuficiente: menos de 10 órdenes finalizadas.
+6. La sección responde a los filtros de periodo, sede, tipo e insumo.
+7. Se incorpora fecha y hora de la última importación exitosa de materiales, en Hora Perú.
+8. No se modifican cálculos, registros, filtros ni permisos existentes.
+
+Aplicación:
+- Code.gs / Apps Script: Sí.
+- Frontend GitHub: Sí.
+- Google Sheets: No.
+- Nuevo Deploy Apps Script: Sí.
