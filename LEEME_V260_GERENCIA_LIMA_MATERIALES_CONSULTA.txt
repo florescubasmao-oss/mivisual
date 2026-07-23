@@ -1,0 +1,15 @@
+MI VISUAL V260 - GERENCIA LIMA: CONSULTA DE COSTO Y CONSUMO DE MATERIALES
+
+CAMBIO APLICADO
+- Gerencia Lima puede consultar Costo y consumo de materiales con el mismo alcance visual de Jefatura General.
+- Accede a Resumen de consumo, Promedio por cuadrilla, filtros por periodo/sede/tipo/insumo y Consulta por cuadrilla.
+- Puede visualizar todas las sedes y los costos consolidados.
+- Producción valorizada continúa oculta para Gerencia Lima.
+- Subir datos y crear/verificar hojas continúan restringidos para Gerencia Lima.
+- No se modificaron datos, hojas, cálculos ni permisos de otros perfiles.
+
+APLICACION
+- Code.gs / Apps Script: SI
+- Frontend GitHub: SI
+- Google Sheets: NO
+- Nuevo Deploy Apps Script: SI

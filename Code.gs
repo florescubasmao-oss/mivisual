@@ -5187,13 +5187,28 @@ const CATALOGO_MATERIALES_V184 = [
   ["FIBRA OPTICA DROP CONECTORIZADO DE 200 M",0.27]
 ];
 
-function esPerfilMaterialesPermitido(perfil) {
+function esPerfilConsultaMaterialesPermitido(perfil) {
+  const p = normalizarTexto(perfil);
+  return p === "JEFATURA" ||
+         p === "JEFATURA GENERAL" ||
+         p === "GERENCIA LIMA" ||
+         p === "JEFATURA ALMACEN" ||
+         p === "ADMIN" ||
+         p === "ADMINISTRADOR";
+}
+
+function esPerfilImportarMaterialesPermitido(perfil) {
   const p = normalizarTexto(perfil);
   return p === "JEFATURA" ||
          p === "JEFATURA GENERAL" ||
          p === "JEFATURA ALMACEN" ||
          p === "ADMIN" ||
          p === "ADMINISTRADOR";
+}
+
+// Compatibilidad con funciones antiguas que solo consultaban materiales.
+function esPerfilMaterialesPermitido(perfil) {
+  return esPerfilConsultaMaterialesPermitido(perfil);
 }
 
 function asegurarHojasMaterialesV184() {
@@ -5463,7 +5478,7 @@ function loteMaterialesV184(texto, fecha, usuario) {
 
 function procesarImportacionMaterialesV184(data) {
   const usuario = obtenerUsuarioApp(data.usuario);
-  if (!esPerfilMaterialesPermitido(usuario.perfil)) {
+  if (!esPerfilImportarMaterialesPermitido(usuario.perfil)) {
     throw new Error("No tienes permiso para importar consumo de materiales");
   }
 
@@ -5685,7 +5700,7 @@ function obtenerFinalizadasEfectividadMateriales(periodo) {
 
 function obtenerResumenMaterialesV184(data) {
   const usuario = obtenerUsuarioApp(data.usuario);
-  if (!esPerfilMaterialesPermitido(usuario.perfil)) {
+  if (!esPerfilConsultaMaterialesPermitido(usuario.perfil)) {
     throw new Error("No tienes permiso para ver consumo de materiales");
   }
 
@@ -8200,7 +8215,7 @@ function doPost(e) {
     if (data.accion === "obtenerResumenMateriales") return respuestaJson(obtenerResumenMaterialesV184(data));
     if (data.accion === "asegurarHojasMateriales") {
       const u = obtenerUsuarioApp(data.usuario);
-      if (!esPerfilMaterialesPermitido(u.perfil)) throw new Error("No tienes permiso");
+      if (!esPerfilImportarMaterialesPermitido(u.perfil)) throw new Error("No tienes permiso");
       asegurarHojasMaterialesV184();
       return respuestaJson({ok:true,hojas:[HOJA_IMPORTAR_MATERIALES,HOJA_CONSUMO_MATERIALES,HOJA_CATALOGO_PRECIOS_MATERIALES]});
     }

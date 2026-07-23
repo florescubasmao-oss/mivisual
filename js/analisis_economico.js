@@ -14,7 +14,9 @@ function aeApiMateriales(payload){
 function aeEscape(v){return String(v==null?"":v).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]))}
 function aePerfilActual(){return (localStorage.getItem("perfil")||"").toUpperCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"").trim()}
 function aeEsJefaturaAlmacen(){return aePerfilActual()==="JEFATURA ALMACEN"}
+function aeEsGerenciaLima(){return aePerfilActual()==="GERENCIA LIMA"}
 function aePerfilMateriales(){return ["JEFATURA","JEFATURA GENERAL","GERENCIA LIMA","JEFATURA ALMACEN","ADMIN","ADMINISTRADOR"].includes(aePerfilActual())}
+function aePerfilImportarMateriales(){return ["JEFATURA","JEFATURA GENERAL","JEFATURA ALMACEN","ADMIN","ADMINISTRADOR"].includes(aePerfilActual())}
 function aePerfilProduccionValorizada(){return ["JEFATURA","JEFATURA GENERAL","ADMIN","ADMINISTRADOR"].includes(aePerfilActual())}
 function aePeriodoMesesMateriales(){return aeOpcionesPeriodo()}
 
@@ -70,7 +72,7 @@ function mostrarCostoMateriales(){
       <button id="matTabResumen" class="activo" onclick="mat184CambiarVista('resumen')">Resumen de consumo</button>
       <button id="matTabPromedio" onclick="mat184CambiarVista('promedio')">Promedio por cuadrilla</button>
       <button onclick="mostrarAnalisisEconomico()">Volver</button>
-      <button id="matTabImportar" class="mat184-import-mini" onclick="mat184CambiarVista('importar')">Subir datos</button>
+      ${aePerfilImportarMateriales()?`<button id="matTabImportar" class="mat184-import-mini" onclick="mat184CambiarVista('importar')">Subir datos</button>`:""}
     </div>
     <div id="mat184Contenido"></div>
   </section>`;
@@ -78,6 +80,10 @@ function mostrarCostoMateriales(){
 }
 
 function mat184CambiarVista(vista){
+  if(vista==="importar"&&!aePerfilImportarMateriales()){
+    alert("Este perfil tiene acceso de consulta, pero no puede subir datos de materiales.");
+    vista="resumen";
+  }
   document.getElementById("matTabImportar")?.classList.toggle("activo",vista==="importar");
   document.getElementById("matTabResumen")?.classList.toggle("activo",vista==="resumen");
   document.getElementById("matTabPromedio")?.classList.toggle("activo",vista==="promedio");
