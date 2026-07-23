@@ -1,4 +1,4 @@
-// MI VISUAL - Actividad en Campo V262 · Auditorías en Frío y Caliente calificadas
+// MI VISUAL - Actividad en Campo V263 · Auditorías con autocompletado y vista gerencial
 
 const API_ACTIVIDAD_CAMPO = "https://script.google.com/macros/s/AKfycbzcbjCLweJNgZXDerdzmMN7Lwotc1G8NWdzoPkaLNGDivAgpYxDkq78xZwPRioSB4XY/exec";
 
@@ -143,6 +143,15 @@ function estiloActividadCampo(){
         .act-detail-box,.act-detail-group{background:#13243f;border-radius:12px;padding:12px;margin:10px 0;}.act-detail-box h4,.act-detail-group h4{margin:0 0 9px;color:#9ec5ff;}
         .act-detail-criterion{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:6px 12px;padding:8px 0;border-bottom:1px solid rgba(255,255,255,.08);}.act-detail-criterion small{grid-column:1/-1;color:#fcd34d;}.act-resp-cumple{color:#4ade80}.act-resp-no-cumple{color:#f87171}.act-resp-na{color:#cbd5e1}
         .act-manager-kpis{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:9px;margin:12px 0;}
+        .act-auto-msg{background:#102a46;border:1px solid #3c5d81;border-radius:12px;padding:10px 12px;color:#cbd5e1;font-size:12px;line-height:1.35;}
+        .act-auto-msg.buscando{border-color:#38bdf8;color:#e0f2fe;}.act-auto-msg.encontrado{border-color:#22c55e;background:#123d2a;color:#dcfce7;}.act-auto-msg.manual{border-color:#f59e0b;background:#473515;color:#fef3c7;}.act-auto-msg.error{border-color:#ef4444;background:#4b1f24;color:#fee2e2;}
+        .act-manager-records{display:grid;gap:14px;margin-top:12px;}
+        .act-manager-record{background:#10213b;border:1px solid rgba(148,163,184,.26);border-radius:16px;padding:14px;box-shadow:0 8px 18px rgba(0,0,0,.16);}
+        .act-manager-record-head{display:flex;justify-content:space-between;gap:12px;align-items:flex-start;border-bottom:1px solid rgba(255,255,255,.08);padding-bottom:10px;margin-bottom:10px;}
+        .act-manager-record-head h3{margin:4px 0 0;font-size:17px;}.act-manager-record-head small{color:#c9d7ef;}
+        .act-manager-record-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;}
+        .act-manager-record-grid>div{background:#13243f;border-radius:10px;padding:9px;min-width:0;}.act-manager-record-grid span{display:block;color:#9fb3cc;font-size:10px;text-transform:uppercase;margin-bottom:3px;}.act-manager-record-grid b{display:block;overflow-wrap:anywhere;}
+        .act-manager-evidencias{margin-top:10px;}.act-manager-ver{margin-top:10px;display:block;}
         @media(max-width:760px){
             .act-wrap{width:100vw;max-width:100vw;padding:10px 12px 100px;margin:0;overflow-x:hidden;}
             #pantalla{width:100%;overflow-x:hidden;}
@@ -150,7 +159,7 @@ function estiloActividadCampo(){
             .act-head h2{font-size:20px;}
             .act-sub{font-size:12px;}
             .act-card{padding:14px;border-radius:16px;margin:10px 0;width:100%;box-sizing:border-box;}
-            .act-grid,.act-grid-3,.act-filter,.act-kpis,.act-manager-kpis,.act-score-grid,.act-evidence-grid,.act-detail-grid{grid-template-columns:1fr;gap:12px;}
+            .act-grid,.act-grid-3,.act-filter,.act-kpis,.act-manager-kpis,.act-score-grid,.act-evidence-grid,.act-detail-grid,.act-manager-record-grid{grid-template-columns:1fr;gap:12px;}
             .act-actions{display:grid;grid-template-columns:1fr;gap:10px;}
             .act-btn{width:100%;font-size:14px;}
             .act-field input,.act-field select,.act-field textarea{font-size:16px;min-height:46px;width:100%!important;max-width:100%;}
@@ -158,6 +167,7 @@ function estiloActividadCampo(){
             .act-summary-wrap{display:block!important;overflow:auto;}
             .act-mobile-card{display:block;}
             .act-kpi b{font-size:23px;}
+            .act-manager-record-head{flex-direction:column;}
         }
     </style>`;
 }
@@ -217,6 +227,9 @@ function criteriosAplicablesAuditoriaCampo(tipoOrden){
     return AUDITORIA_CRITERIOS_CAMPO.filter(c => c.tipos.includes(tipoOrden));
 }
 
+let audBusquedaTimer = null;
+let audBusquedaSecuencia = 0;
+
 function formularioDatosGeneralesAuditoriaCampo(){
     return `<div class="act-card act-audit-card">
         <div class="act-section-title">1. Información general de auditoría</div>
@@ -226,13 +239,55 @@ function formularioDatosGeneralesAuditoriaCampo(){
             </div>
         </div>
         <div class="act-grid" style="margin-top:14px;">
-            ${campoTexto("audCodigoPedido","Código de pedido","Ejemplo: 3030002")}
+            <div class="act-field"><label>Código de pedido</label><input id="audCodigoPedido" placeholder="Ejemplo: 3030002" inputmode="numeric" autocomplete="off" oninput="programarBusquedaAuditoriaCampo()"></div>
             ${campoTexto("audTicket","Ticket","GAR-, VTR-, AT- u otro")}
             ${campoTexto("audDniCliente","DNI del cliente","Documento de identidad")}
             ${campoTexto("audCliente","Cliente","Nombre del cliente")}
-            ${campoArea("audDireccion","Dirección","Dirección donde se realizó la auditoría")}
+            ${campoTexto("audDireccion","Dirección","Dirección donde se realizó la auditoría")}
+            <div id="audAutoMsg" class="act-auto-msg act-wide">Ingrese el código para buscar datos en Mapa Operativo y la base de Producción. Si no existe coincidencia, complete los campos manualmente.</div>
         </div>
     </div>`;
+}
+
+function programarBusquedaAuditoriaCampo(inmediata=false){
+    clearTimeout(audBusquedaTimer);
+    audBusquedaTimer = setTimeout(buscarDatosAuditoriaCampo, inmediata ? 0 : 650);
+}
+
+function seleccionarTipoOrdenAuditoriaCampo(tipo){
+    const valor=(tipo||"").toUpperCase();
+    const radio=document.querySelector(`input[name="actTipoOrden"][value="${valor}"]`);
+    if(radio){ radio.checked=true; renderChecklistAuditoriaCampo(); }
+}
+
+async function buscarDatosAuditoriaCampo(){
+    const codigo=(document.getElementById("audCodigoPedido")?.value||"").trim();
+    const msg=document.getElementById("audAutoMsg");
+    if(!codigo || codigo.length<4){
+        if(msg){msg.className="act-auto-msg act-wide";msg.textContent="Ingrese al menos 4 caracteres para buscar la orden.";}
+        return;
+    }
+    const secuencia=++audBusquedaSecuencia;
+    if(msg){msg.className="act-auto-msg act-wide buscando";msg.textContent="Buscando coincidencias del código...";}
+    try{
+        const data=await apiActividadCampo({accion:"buscarDatosAuditoriaCampo",usuario:usuarioActualActividad().usuario,codigoPedido:codigo,cuadrilla:document.getElementById("actCuadrilla")?.value||""});
+        if(secuencia!==audBusquedaSecuencia)return;
+        if(!data.ok)throw new Error(data.error||"No se pudo consultar la orden");
+        if(!data.encontrado){
+            if(msg){msg.className="act-auto-msg act-wide manual";msg.textContent="Sin coincidencia. Complete los datos manualmente.";}
+            return;
+        }
+        const asignar=(id,valor)=>{const e=document.getElementById(id);if(e&&valor!==undefined&&valor!==null&&String(valor).trim()!=="")e.value=valor;};
+        asignar("audTicket",data.ticket);
+        asignar("audDniCliente",data.dniCliente);
+        asignar("audCliente",data.cliente);
+        asignar("audDireccion",data.direccion);
+        if(data.tipoOrden)seleccionarTipoOrdenAuditoriaCampo(data.tipoOrden);
+        if(msg){msg.className="act-auto-msg act-wide encontrado";msg.textContent=`Datos encontrados en ${data.fuente||"la base operativa"}. Puede revisarlos o corregirlos antes de guardar.`;}
+    }catch(err){
+        if(secuencia!==audBusquedaSecuencia)return;
+        if(msg){msg.className="act-auto-msg act-wide error";msg.textContent=`No se pudo completar automáticamente: ${err.message}. Puede continuar manualmente.`;}
+    }
 }
 
 function htmlChecklistAuditoriaCampo(){
@@ -253,7 +308,7 @@ function renderChecklistAuditoriaCampo(){
         const lista = criterios.filter(c=>c.categoria===cat);
         if(!lista.length) return "";
         return `<div class="act-audit-group">
-            <div class="act-audit-group-title">${actEsc(cat)} · máx. ${AUDITORIA_MAXIMOS_CAMPO[cat]} pts</div>
+            <div class="act-audit-group-title">${actEsc(cat)}</div>
             <div class="act-audit-table-wrap"><table class="act-audit-table">
                 <thead><tr><th>Criterio de evaluación</th><th>Cumple</th><th>No cumple</th><th>N/A</th><th>Observación</th></tr></thead>
                 <tbody>${lista.map(c=>`<tr data-criterio="${c.id}">
@@ -342,6 +397,31 @@ function badgeClasificacionActividad(clasificacion){
     const c=(clasificacion||"").toUpperCase();
     if(!c)return "";
     return `<span class="act-badge act-badge-${c.toLowerCase()}">${actEsc(c)}</span>`;
+}
+
+function fechaVisiblePeruActividad(valor){
+    if(!valor)return "-";
+    const texto=String(valor).trim();
+    const directa=texto.match(/^(\d{1,2})[\/-](\d{1,2})[\/-](\d{4})/);
+    if(directa)return `${directa[1].padStart(2,"0")}/${directa[2].padStart(2,"0")}/${directa[3]}`;
+    const d=new Date(valor);
+    if(Number.isNaN(d.getTime()))return texto;
+    return new Intl.DateTimeFormat("es-PE",{timeZone:"America/Lima",day:"2-digit",month:"2-digit",year:"numeric"}).format(d);
+}
+
+function horaVisiblePeruActividad(valor,fechaValor){
+    const texto=String(valor||"").trim();
+    const directa=texto.match(/^(\d{1,2}):(\d{2})(?::\d{2})?/);
+    if(directa)return `${directa[1].padStart(2,"0")}:${directa[2]}`;
+    let d=texto?new Date(texto):null;
+    if((!d||Number.isNaN(d.getTime()))&&fechaValor)d=new Date(fechaValor);
+    if(!d||Number.isNaN(d.getTime()))return "";
+    return new Intl.DateTimeFormat("es-PE",{timeZone:"America/Lima",hour:"2-digit",minute:"2-digit",hour12:false}).format(d);
+}
+
+function fechaHoraPeruActividad(a){
+    const fecha=fechaVisiblePeruActividad(a?.fecha),hora=horaVisiblePeruActividad(a?.hora,a?.fecha);
+    return `${fecha}${hora?` · ${hora}`:""} — Hora Perú`;
 }
 
 function detalleAuditoriaActividadHtml(a){
@@ -437,7 +517,11 @@ async function cargarActividadCampo(){
         const data=await apiActividadCampo(filtros);
         if(!data.ok)throw new Error(data.error||"Error al listar actividades");
         if(!data.actividades||!data.actividades.length){cont.innerHTML=`<div class="act-vacio">No hay actividades registradas.</div>`;return;}
-        cont.innerHTML=`<div class="act-card"><b>Registros encontrados: ${data.actividades.length}</b><div class="act-table-wrap"><table class="act-table"><thead><tr><th>Fecha</th><th>Supervisor</th><th>Sede</th><th>Cuadrilla</th><th>Tipo</th><th>Resultado</th><th>Evidencias</th><th>Detalle</th></tr></thead><tbody>${data.actividades.map((a,i)=>filaActividadCampo(a,i)).join("")}</tbody></table></div><div class="act-mobile-list">${data.actividades.map((a,i)=>cardMovilActividadCampo(a,i)).join("")}</div></div>`;
+        if(esJefaturaActividad(u.perfil)){
+            cont.innerHTML=`<div class="act-card"><b>Registros encontrados: ${data.actividades.length}</b><div class="act-manager-records">${data.actividades.map((a,i)=>tarjetaGestionActividadCampo(a,i)).join("")}</div></div>`;
+        }else{
+            cont.innerHTML=`<div class="act-card"><b>Registros encontrados: ${data.actividades.length}</b><div class="act-table-wrap"><table class="act-table"><thead><tr><th>Fecha</th><th>Supervisor</th><th>Sede</th><th>Cuadrilla</th><th>Tipo</th><th>Resultado</th><th>Evidencias</th><th>Detalle</th></tr></thead><tbody>${data.actividades.map((a,i)=>filaActividadCampo(a,i)).join("")}</tbody></table></div><div class="act-mobile-list">${data.actividades.map((a,i)=>cardMovilActividadCampo(a,i)).join("")}</div></div>`;
+        }
     }catch(err){cont.innerHTML=`<div class="act-error">❌ ${actEsc(err.message)}</div>`;}
 }
 
@@ -468,16 +552,28 @@ function detalleActividadTexto(a){
     return `<div style="white-space:pre-wrap;">${actEsc(`Tipo: ${nombreTipoActividadCampo(a.tipoActividad)||"-"}\n\n${a.observaciones||"Sin detalle."}`)}</div>`;
 }
 
+function tarjetaGestionActividadCampo(a,i){
+    const idDetalle=`actDetalleGestion_${i}`;
+    const resultado=esTipoAuditoriaCampo(a.tipoActividad)?`${a.puntajeTotal!==""&&a.puntajeTotal!==undefined?`<b>${Number(a.puntajeTotal).toFixed(2)} pts</b> `:""}${badgeClasificacionActividad(a.clasificacion)}`:actEsc(a.estadoInstalacion||"-");
+    return `<article class="act-manager-record">
+        <div class="act-manager-record-head"><div><small>${actEsc(fechaHoraPeruActividad(a))}</small><h3>${actEsc(nombreTipoActividadCampo(a.tipoActividad)||"Actividad")}</h3></div><div>${resultado}</div></div>
+        <div class="act-manager-record-grid"><div><span>Supervisor</span><b>${actEsc(a.supervisor||"-")}</b></div><div><span>Sede</span><b>${actEsc(a.sede||"-")}</b></div><div><span>Cuadrilla</span><b>${actEsc(a.cuadrilla||"-")}</b></div><div><span>Tipo de orden</span><b>${actEsc(a.tipoOrden||"-")}</b></div></div>
+        <div class="act-links act-manager-evidencias">${evidenciasActividadHtml(a)}</div>
+        <button class="act-btn sec act-manager-ver" onclick="toggleActividadDetalle('${idDetalle}')">Ver detalle</button>
+        <div id="${idDetalle}" class="act-detail">${detalleActividadTexto(a)}</div>
+    </article>`;
+}
+
 function filaActividadCampo(a,i){
     const idDetalle=`actDetalle_${i}`;
     const resultado=esTipoAuditoriaCampo(a.tipoActividad)?`${a.puntajeTotal!==""&&a.puntajeTotal!==undefined?`${Number(a.puntajeTotal).toFixed(2)} pts `:""}${badgeClasificacionActividad(a.clasificacion)}`:(a.estadoInstalacion||"-");
-    return `<tr><td>${actEsc(a.fecha||"-")}<br><small>${actEsc(a.hora||"")}</small></td><td>${actEsc(a.supervisor||"-")}</td><td>${actEsc(a.sede||"-")}</td><td>${actEsc(a.cuadrilla||"-")}</td><td>${actEsc(nombreTipoActividadCampo(a.tipoActividad)||"-")}${a.tipoOrden?`<br><small>${actEsc(a.tipoOrden)}</small>`:""}</td><td>${resultado}</td><td class="act-links">${evidenciasActividadHtml(a)}</td><td><button class="act-btn sec" onclick="toggleActividadDetalle('${idDetalle}')">Ver</button></td></tr><tr><td colspan="8"><div id="${idDetalle}" class="act-detail">${detalleActividadTexto(a)}</div></td></tr>`;
+    return `<tr><td>${actEsc(fechaVisiblePeruActividad(a.fecha))}<br><small>${actEsc(horaVisiblePeruActividad(a.hora,a.fecha))} · Hora Perú</small></td><td>${actEsc(a.supervisor||"-")}</td><td>${actEsc(a.sede||"-")}</td><td>${actEsc(a.cuadrilla||"-")}</td><td>${actEsc(nombreTipoActividadCampo(a.tipoActividad)||"-")}${a.tipoOrden?`<br><small>${actEsc(a.tipoOrden)}</small>`:""}</td><td>${resultado}</td><td class="act-links">${evidenciasActividadHtml(a)}</td><td><button class="act-btn sec" onclick="toggleActividadDetalle('${idDetalle}')">Ver</button></td></tr><tr><td colspan="8"><div id="${idDetalle}" class="act-detail">${detalleActividadTexto(a)}</div></td></tr>`;
 }
 
 function cardMovilActividadCampo(a,i){
     const idDetalle=`actDetalleMovil_${i}`;
     const resultado=esTipoAuditoriaCampo(a.tipoActividad)?`${a.puntajeTotal!==""&&a.puntajeTotal!==undefined?`${Number(a.puntajeTotal).toFixed(2)} pts `:""}${badgeClasificacionActividad(a.clasificacion)}`:(a.estadoInstalacion||"-");
-    return `<div class="act-mobile-card"><b>${actEsc(nombreTipoActividadCampo(a.tipoActividad)||"Actividad")}</b><br><small>${actEsc(a.fecha||"-")} ${actEsc(a.hora||"")}</small><br><br><b>Supervisor:</b> ${actEsc(a.supervisor||"-")}<br><b>Sede:</b> ${actEsc(a.sede||"-")}<br><b>Cuadrilla:</b> ${actEsc(a.cuadrilla||"-")}<br><b>Resultado:</b> ${resultado}<br><div class="act-links" style="margin-top:8px;">${evidenciasActividadHtml(a)}</div><button class="act-btn sec" style="margin-top:10px;" onclick="toggleActividadDetalle('${idDetalle}')">Ver detalle</button><div id="${idDetalle}" class="act-detail">${detalleActividadTexto(a)}</div></div>`;
+    return `<div class="act-mobile-card"><b>${actEsc(nombreTipoActividadCampo(a.tipoActividad)||"Actividad")}</b><br><small>${actEsc(fechaHoraPeruActividad(a))}</small><br><br><b>Supervisor:</b> ${actEsc(a.supervisor||"-")}<br><b>Sede:</b> ${actEsc(a.sede||"-")}<br><b>Cuadrilla:</b> ${actEsc(a.cuadrilla||"-")}<br><b>Resultado:</b> ${resultado}<br><div class="act-links" style="margin-top:8px;">${evidenciasActividadHtml(a)}</div><button class="act-btn sec" style="margin-top:10px;" onclick="toggleActividadDetalle('${idDetalle}')">Ver detalle</button><div id="${idDetalle}" class="act-detail">${detalleActividadTexto(a)}</div></div>`;
 }
 
 function toggleActividadDetalle(id){
@@ -489,7 +585,7 @@ function toggleActividadDetalle(id){
 async function mostrarFormularioActividadCampo(){
     const u=usuarioActualActividad();
     if(u.perfil!=="SUPERVISOR"){mostrarPantalla(`${estiloActividadCampo()}<div class="act-wrap"><div class="act-error">El registro de nuevas actividades está habilitado solo para Supervisores. Jefatura puede revisar los registros desde la vista principal.</div><button class="act-btn sec" onclick="mostrarActividadCampo()">Volver</button></div>`);return;}
-    mostrarPantalla(`${estiloActividadCampo()}${typeof ckStyle==="function"?ckStyle():""}<div class="act-wrap"><div class="act-head"><h2>📍 Nueva Actividad en Campo</h2><p class="act-sub">Auditoría en Frío y Auditoría en Caliente incluyen calificación completa. Las demás actividades conservan su funcionamiento.</p></div><div class="act-card"><div class="act-grid"><div class="act-field"><label>Supervisor</label><input value="${actEsc(u.usuario)}" disabled></div><div class="act-field"><label>Sede</label><input value="${actEsc(u.sede)}" disabled></div><div class="act-field"><label>Cuadrilla visitada</label><select id="actCuadrilla"><option value="">Cargando cuadrillas...</option></select></div><div class="act-field"><label>Tipo de actividad</label><select id="actTipoActividad" onchange="renderFormularioTipoActividad()">${TIPOS_ACTIVIDAD_CAMPO.map(t=>`<option>${t}</option>`).join("")}</select></div></div></div><form id="formActividadCampo" onsubmit="event.preventDefault(); guardarActividadCampo(this.querySelector('[data-guardar]')); "><div id="camposTipoActividad"></div><div class="act-card"><div class="act-section-title">📝 Cierre de actividad</div><div id="camposCierreActividad" class="act-grid"></div><div id="actEvidenciasGenerales" style="margin-top:12px;"></div><div id="actNotaEvidencias" class="act-note">Las evidencias se comprimen antes de enviarse y quedan vinculadas al registro.</div><div class="act-actions"><button type="submit" data-guardar class="act-btn ok">💾 Guardar actividad</button><button type="button" class="act-btn sec" onclick="mostrarActividadCampo()">Cancelar</button></div><div id="actMsgGuardar" class="act-msg"></div></div></form></div>`);
+    mostrarPantalla(`${estiloActividadCampo()}${typeof ckStyle==="function"?ckStyle():""}<div class="act-wrap"><div class="act-head"><h2>📍 Nueva Actividad en Campo</h2><p class="act-sub">Auditoría en Frío y Auditoría en Caliente incluyen calificación completa. Las demás actividades conservan su funcionamiento.</p></div><div class="act-card"><div class="act-grid"><div class="act-field"><label>Supervisor</label><input value="${actEsc(u.usuario)}" disabled></div><div class="act-field"><label>Sede</label><input value="${actEsc(u.sede)}" disabled></div><div class="act-field"><label>Cuadrilla visitada</label><select id="actCuadrilla" onchange="programarBusquedaAuditoriaCampo(true)"><option value="">Cargando cuadrillas...</option></select></div><div class="act-field"><label>Tipo de actividad</label><select id="actTipoActividad" onchange="renderFormularioTipoActividad()">${TIPOS_ACTIVIDAD_CAMPO.map(t=>`<option>${t}</option>`).join("")}</select></div></div></div><form id="formActividadCampo" onsubmit="event.preventDefault(); guardarActividadCampo(this.querySelector('[data-guardar]')); "><div id="camposTipoActividad"></div><div class="act-card"><div class="act-section-title">📝 Cierre de actividad</div><div id="camposCierreActividad" class="act-grid"></div><div id="actEvidenciasGenerales" style="margin-top:12px;"></div><div id="actNotaEvidencias" class="act-note">Las evidencias se comprimen antes de enviarse y quedan vinculadas al registro.</div><div class="act-actions"><button type="submit" data-guardar class="act-btn ok">💾 Guardar actividad</button><button type="button" class="act-btn sec" onclick="mostrarActividadCampo()">Cancelar</button></div><div id="actMsgGuardar" class="act-msg"></div></div></form></div>`);
     await cargarCuadrillasActividadCampo();renderFormularioTipoActividad();
 }
 
@@ -523,7 +619,7 @@ function renderEvidenciasActividadCampo(tipo){
 function renderCierreActividad(tipo){
     const cont=document.getElementById("camposCierreActividad");if(!cont)return;
     if(esTipoAuditoriaCampo(tipo)){
-        cont.innerHTML=`<div class="act-wide"><div class="act-section-title">3. Calificación automática</div><div class="act-score-grid"><div><span>Calidad técnica</span><input id="audPuntajeCalidad" value="0.00" disabled></div><div><span>Seguridad</span><input id="audPuntajeSeguridad" value="0.00" disabled></div><div><span>Atención al cliente</span><input id="audPuntajeCliente" value="0.00" disabled></div><div><span>Orden y limpieza</span><input id="audPuntajeOrden" value="0.00" disabled></div><div class="act-score-total"><span>Total</span><input id="audPuntajeTotal" value="0.00" disabled></div></div><div style="text-align:center;margin-bottom:12px;"><span id="audClasificacion" class="act-audit-class act-class-pendiente">PENDIENTE</span></div></div>${campoArea("actObservacionesGenerales","Observaciones generales","Hallazgos generales de la auditoría.")}${campoArea("audAccionesCorrectivas","Acciones correctivas inmediatas","Acciones realizadas o indicadas en campo.")}<div class="act-field"><label>Requiere seguimiento</label><select id="audRequiereSeguimiento" onchange="document.getElementById('audFechaCompromiso').disabled=this.value!=='SI'"><option>NO</option><option>SI</option></select></div>${campoFecha("audFechaCompromiso","Fecha de compromiso")}${campoTexto("audResponsableSubsanar","Responsable de subsanar","Cuadrilla, técnico u otro responsable")}`;
+        cont.innerHTML=`${campoArea("actObservacionesGenerales","Observaciones generales","Hallazgos generales de la auditoría.")}${campoArea("audAccionesCorrectivas","Acciones correctivas inmediatas","Acciones realizadas o indicadas en campo.")}<div class="act-field"><label>Requiere seguimiento</label><select id="audRequiereSeguimiento" onchange="document.getElementById('audFechaCompromiso').disabled=this.value!=='SI'"><option>NO</option><option>SI</option></select></div>${campoFecha("audFechaCompromiso","Fecha de compromiso")}${campoTexto("audResponsableSubsanar","Responsable de subsanar","Cuadrilla, técnico u otro responsable")}`;
         setTimeout(()=>{const f=document.getElementById('audFechaCompromiso');if(f)f.disabled=true;},0);return;
     }
     if(tipo==="VALIDACION DE OBSERVACION"){cont.innerHTML=`<div class="act-note act-wide">Para Validación de Observación se registran únicamente los datos propios de la validación y sus evidencias.</div>`;return;}
@@ -733,7 +829,7 @@ async function guardarActividadCampo(btn){
             observaciones:armarDetalleActividad(tipo),foto1,foto2,foto3,foto4,auditoria,checklist,
             descFoto1:obtenerValor("actDescFoto1"),descFoto2:obtenerValor("actDescFoto2"),descFoto3:obtenerValor("actDescFoto3"),descFoto4:obtenerValor("actDescFoto4")};
         const data=await apiActividadCampo(payload);if(!data.ok)throw new Error(data.error||"Error al guardar actividad");
-        if(msg)msg.innerHTML=`<div class="act-ok-msg">✅ Actividad registrada correctamente.<br>ID: ${actEsc(data.id)}${data.puntajeTotal!==""&&data.puntajeTotal!==undefined?`<br>Calificación: <b>${Number(data.puntajeTotal).toFixed(2)} · ${actEsc(data.clasificacion)}</b>`:""}</div>`;setTimeout(mostrarActividadCampo,1200);
+        if(msg)msg.innerHTML=`<div class="act-ok-msg">✅ Actividad registrada correctamente.<br>ID: ${actEsc(data.id)}</div>`;setTimeout(mostrarActividadCampo,1200);
     }catch(err){if(msg)msg.innerHTML=`<div class="act-error">❌ ${actEsc(err.message)}</div>`;}finally{ocultarCargandoActividad();if(btn){btn.disabled=false;btn.innerHTML="💾 Guardar actividad";}}
 }
 

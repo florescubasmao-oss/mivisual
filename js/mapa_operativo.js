@@ -1,5 +1,5 @@
 const API_MAPA_OPERATIVO = (window.MI_VISUAL_API_URL || "https://script.google.com/macros/s/AKfycbzcbjCLweJNgZXDerdzmMN7Lwotc1G8NWdzoPkaLNGDivAgpYxDkq78xZwPRioSB4XY/exec");
-let moMapa=null, moCapa=null, moRegistros=[], moImportacion=[], moMarcadores={};
+let moMapa=null, moCapa=null, moRegistros=[], moImportacion=[], moMarcadores={}, moArchivoSeleccionado=null;
 let moEstilosCuadrilla={};
 const MO_ETIQUETAS_CUADRILLA_KEY='miVisualMapaEtiquetasCuadrillaV254';
 const MO_ESTILOS_CUADRILLA_KEY='miVisualMapaEstilosCuadrillaV254';
@@ -116,11 +116,39 @@ async function mostrarMapaOperativo(){
   </div>
   <div id="moVistaImportacion" class="mo-panel" style="display:none">
     <div class="mo-head"><b>Ingresar información operativa</b><button class="mo-btn mo-btn-sec" onclick="moVolverFiltros()">Volver al mapa</button></div>
-    <div class="mo-upload-grid"><div><label class="mo-label">Archivo Excel</label><input id="moArchivo" class="mo-input" type="file" accept=".xlsx,.xls,.csv"></div><button id="moBtnLeer" class="mo-btn" onclick="moLeerArchivo()">Leer archivo</button><button id="moBtnImportar" class="mo-btn" onclick="moRegistrarImportacion()" disabled>Registrar información</button></div>
-    <div id="moImportMsg" class="mo-msg">Seleccione el archivo, léalo y luego registre la información.</div>
+    <div id="moDropArchivo" class="mo-drop-zone" aria-label="Zona para arrastrar el archivo Excel">
+      <div class="mo-drop-icon">📥</div><b>Arrastre aquí el archivo Excel</b><span>También puede elegirlo desde Documentos o Escritorio.</span>
+      <input id="moArchivo" type="file" accept=".xlsx,.xls,.csv" hidden onchange="moSeleccionarArchivoMapa(this.files&&this.files[0])">
+      <div id="moNombreArchivo" class="mo-file-name">Ningún archivo seleccionado</div>
+    </div>
+    <div class="mo-upload-actions"><button class="mo-btn mo-btn-sec" onclick="document.getElementById('moArchivo').click()">Elegir archivo</button><button id="moBtnLeer" class="mo-btn" onclick="moLeerArchivo()">Leer archivo</button><button id="moBtnImportar" class="mo-btn" onclick="moRegistrarImportacion()" disabled>Registrar información</button></div>
+    <div id="moImportMsg" class="mo-msg">Puede arrastrar el Excel directamente para evitar el selector de carpetas de Windows.</div>
   </div>
   <div id="moMapa" class="mo-map"><div class="mo-empty">Aplique filtros para visualizar únicamente las órdenes necesarias.</div></div></div>`;
+  moPrepararCargaArchivoMapa();
   try{await moDependencias();moInicializarMapa();await moCargarCatalogos()}catch(e){document.getElementById('moMapa').innerHTML=`<div class="mo-empty mo-error">${moEscape(e.message)}</div>`}
+}
+function moArchivoMapaValido(file){
+  if(!file)return false;
+  return /\.(xlsx|xls|csv)$/i.test(file.name||"");
+}
+function moSeleccionarArchivoMapa(file){
+  const nombre=document.getElementById('moNombreArchivo'),msg=document.getElementById('moImportMsg'),btn=document.getElementById('moBtnImportar');
+  moImportacion=[];if(btn)btn.disabled=true;
+  if(!file){moArchivoSeleccionado=null;if(nombre)nombre.textContent='Ningún archivo seleccionado';return;}
+  if(!moArchivoMapaValido(file)){
+    moArchivoSeleccionado=null;if(nombre)nombre.textContent='Archivo no válido';
+    if(msg){msg.className='mo-msg mo-error';msg.textContent='Use un archivo .xlsx, .xls o .csv.';}return;
+  }
+  moArchivoSeleccionado=file;
+  if(nombre)nombre.textContent=`${file.name} · ${Math.max(1,Math.round(file.size/1024))} KB`;
+  if(msg){msg.className='mo-msg';msg.textContent='Archivo listo. Presione Leer archivo para validar su contenido.';}
+}
+function moPrepararCargaArchivoMapa(){
+  const zona=document.getElementById('moDropArchivo');if(!zona)return;
+  ['dragenter','dragover'].forEach(tipo=>zona.addEventListener(tipo,e=>{e.preventDefault();e.stopPropagation();zona.classList.add('is-dragover');}));
+  ['dragleave','drop'].forEach(tipo=>zona.addEventListener(tipo,e=>{e.preventDefault();e.stopPropagation();zona.classList.remove('is-dragover');}));
+  zona.addEventListener('drop',e=>{const file=e.dataTransfer&&e.dataTransfer.files&&e.dataTransfer.files[0];moSeleccionarArchivoMapa(file);});
 }
 function moMostrarImportacion(){document.getElementById('moVistaFiltros').style.display='none';document.getElementById('moMapa').style.display='none';document.getElementById('moVistaImportacion').style.display='block'}
 function moVolverFiltros(){document.getElementById('moVistaImportacion').style.display='none';document.getElementById('moVistaFiltros').style.display='block';document.getElementById('moMapa').style.display='block';setTimeout(()=>moMapa&&moMapa.invalidateSize(),50)}
@@ -157,8 +185,8 @@ function moFmtFechaHoraValor(v){const d=moFechaExcel(v);if(!d)return moNorm(v);c
 function moCoord(v){const t=moNorm(v).replace(/[()]/g,'').replace(/;/g,',');const m=t.match(/(-?\d+(?:\.\d+)?)\s*,\s*(-?\d+(?:\.\d+)?)/);return m?[Number(m[1]),Number(m[2])]:[null,null]}
 function moValor(row,map,...names){for(const n of names){const i=map[moNormCab(n)];if(i!==undefined&&row[i]!==undefined&&row[i]!==null)return row[i]}return ''}
 async function moLeerArchivo(){
-  const f=document.getElementById('moArchivo')?.files?.[0],msg=document.getElementById('moImportMsg'),btn=document.getElementById('moBtnImportar');
-  if(!f){msg.className='mo-msg mo-error';msg.textContent='Seleccione un archivo Excel.';return}
+  const f=moArchivoSeleccionado||document.getElementById('moArchivo')?.files?.[0],msg=document.getElementById('moImportMsg'),btn=document.getElementById('moBtnImportar');
+  if(!f){msg.className='mo-msg mo-error';msg.textContent='Arrastre o seleccione un archivo Excel.';return}
   try{msg.className='mo-msg';msg.textContent='Leyendo archivo...';const buf=await f.arrayBuffer();const wb=XLSX.read(buf,{type:'array',cellDates:true});const ws=wb.Sheets[wb.SheetNames[0]];const rows=XLSX.utils.sheet_to_json(ws,{header:1,defval:'',raw:true});if(rows.length<2)throw new Error('El archivo no contiene registros.');
     let headerIndex=-1;
     for(let i=0;i<Math.min(rows.length,30);i++){

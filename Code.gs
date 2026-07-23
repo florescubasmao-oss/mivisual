@@ -1986,6 +1986,102 @@ function valoresFilaActividadCampo(hoja, valores) {
   });
 }
 
+function tipoOrdenDesdeRegistroAuditoriaCampo(itemMapa, itemBase) {
+  const texto = normalizarTexto([
+    itemMapa && itemMapa.tipoTrabajo,
+    itemMapa && itemMapa.tipo,
+    itemMapa && itemMapa.productoOrigen,
+    itemMapa && itemMapa.productoServicio,
+    itemMapa && itemMapa.detalle,
+    itemBase && itemBase.tipo,
+    itemBase && itemBase.tipoPartida
+  ].join(" "));
+  if (texto.indexOf("PEXT") >= 0 || texto.indexOf("PLANTA EXTERNA") >= 0) return "PEXT";
+  if (texto.indexOf("GARANTIA") >= 0 || /(^|\s)GAR($|\s)/.test(texto)) return "GARANTIA";
+  if (texto.indexOf("REITERADA") >= 0 || /(^|\s)VTR($|\s)/.test(texto)) return "VTR";
+  if (texto.indexOf("INSTALACION") >= 0 || texto.indexOf("ALTA") >= 0) return "ALTA";
+  return texto ? "VT" : "";
+}
+
+function extraerTicketRegistroAuditoriaCampo(itemMapa) {
+  if (!itemMapa) return "";
+  const texto = [
+    itemMapa.detalle, itemMapa.motivoFinalizacion, itemMapa.motivoCancelacion,
+    itemMapa.motivoAnulacion, itemMapa.productoOrigen, itemMapa.productoServicio
+  ].join(" ");
+  const coincidencia = texto.match(/\b(?:GAR|VTR|AT)\s*[-:]?\s*\d{4,}\b/i);
+  return coincidencia ? coincidencia[0].replace(/\s+/g, "").replace(":", "-").toUpperCase() : "";
+}
+
+function buscarBaseOperativaParaAuditoriaCampo(codigo, cuadrilla) {
+  const hoja = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(HOJA_BASE_VTR_GAR_DETECTADA);
+  if (!hoja || hoja.getLastRow() <= 1) return null;
+  const datos = hoja.getDataRange().getDisplayValues();
+  const mapa = mapaEncabezadosActividadCampo(datos[0] || []);
+  const codigoClave = claveIdentificadorActa(codigo);
+  const cuadrillaClave = claveCuadrillaActa(cuadrilla);
+  let mejor = null, mejorPuntaje = -1;
+  for (let i = datos.length - 1; i >= 1; i--) {
+    const fila = datos[i];
+    const codigoFila = claveIdentificadorActa(valorFilaActividadCampo(fila, mapa, "CODIGO_PEDIDO"));
+    if (!codigoFila || codigoFila !== codigoClave) continue;
+    const cuadrillaFila = valorFilaActividadCampo(fila, mapa, "CUADRILLA_EJECUTORA");
+    let puntaje = 100;
+    if (cuadrillaClave && claveCuadrillaActa(cuadrillaFila) === cuadrillaClave) puntaje += 20;
+    if (puntaje <= mejorPuntaje) continue;
+    mejorPuntaje = puntaje;
+    mejor = {
+      tipo: valorFilaActividadCampo(fila, mapa, "TIPO"),
+      ticket: valorFilaActividadCampo(fila, mapa, "TICKET"),
+      dniCliente: valorFilaActividadCampo(fila, mapa, "NUMERO_DOCUMENTO"),
+      cliente: valorFilaActividadCampo(fila, mapa, "CLIENTE"),
+      codigoPedido: valorFilaActividadCampo(fila, mapa, "CODIGO_PEDIDO"),
+      tipoPartida: valorFilaActividadCampo(fila, mapa, "TIPO_PARTIDA"),
+      cuadrilla: cuadrillaFila
+    };
+  }
+  return mejor;
+}
+
+function buscarDatosAuditoriaCampo(data) {
+  const usuario = obtenerUsuarioApp(data.usuario);
+  if (!(usuario.perfil === "SUPERVISOR" || esPerfilJefatura(usuario.perfil) || esPerfilGerenciaLima(usuario.perfil))) {
+    throw new Error("No tienes permiso para consultar datos de auditoría");
+  }
+  const codigo = (data.codigoPedido || data.codigo || "").toString().trim();
+  if (!codigo) throw new Error("Ingrese el código de pedido");
+  const cuadrilla = normalizarCuadrilla(data.cuadrilla || "");
+  const mapa = buscarRegistroMapaParaActa(codigo, codigo, cuadrilla, null);
+  const base = buscarBaseOperativaParaAuditoriaCampo(codigo, cuadrilla);
+  if (!mapa && !base) {
+    return { ok:true, modulo:"ACTIVIDAD_CAMPO", accion:"BUSCAR_DATOS_AUDITORIA", encontrado:false };
+  }
+  let direccion = "";
+  if (mapa) {
+    const partes = [];
+    [mapa.direccion, mapa.direccionAdicional].forEach(function(x) {
+      const t = (x || "").toString().trim();
+      if (t && partes.map(normalizarTexto).indexOf(normalizarTexto(t)) < 0) partes.push(t);
+    });
+    direccion = partes.join(" - ");
+  }
+  const ticketMapa = extraerTicketRegistroAuditoriaCampo(mapa);
+  return {
+    ok:true,
+    modulo:"ACTIVIDAD_CAMPO",
+    accion:"BUSCAR_DATOS_AUDITORIA",
+    encontrado:true,
+    fuente: mapa && base ? "Mapa Operativo y base de Producción" : (mapa ? "Mapa Operativo" : "base de Producción"),
+    tipoOrden: tipoOrdenDesdeRegistroAuditoriaCampo(mapa, base),
+    ticket: (base && base.ticket) || ticketMapa || "",
+    dniCliente: (mapa && textoIdentificadorActa(mapa.numeroDocumento)) || (base && base.dniCliente) || "",
+    cliente: (mapa && (mapa.cliente || "").toString().trim()) || (base && base.cliente) || "",
+    direccion: direccion,
+    codigoPedido: (mapa && (mapa.codigoCliente || mapa.ordenId)) || (base && base.codigoPedido) || codigo,
+    cuadrillaEncontrada: (mapa && mapa.cuadrilla) || (base && base.cuadrilla) || ""
+  };
+}
+
 function registrarActividadCampo(data) {
   const hoja = asegurarHojaActividadCampo();
   const usuarioRegistro = obtenerUsuarioApp(data.usuario);
@@ -2009,8 +2105,8 @@ function registrarActividadCampo(data) {
 
   const id = generarIdActividadCampo();
   const ahora = new Date();
-  const fecha = Utilities.formatDate(ahora, Session.getScriptTimeZone(), "dd/MM/yyyy");
-  const hora = Utilities.formatDate(ahora, Session.getScriptTimeZone(), "HH:mm:ss");
+  const fecha = Utilities.formatDate(ahora, "America/Lima", "dd/MM/yyyy");
+  const hora = Utilities.formatDate(ahora, "America/Lima", "HH:mm:ss");
   let checklistRegistrado = null;
   if (tipoActividad === "CHECKLIST") {
     const checklistData = Object.assign({}, data.checklist || {}, {
@@ -2156,7 +2252,8 @@ function cumpleRangoFechaActividad(fechaRegistro, desde, hasta) {
 
 function listarActividadCampo(data) {
   const hoja = asegurarHojaActividadCampo();
-  const datos = hoja.getDataRange().getValues();
+  // V263: getDisplayValues evita fechas/horas ISO de 1899 y conserva la hora visible de Perú.
+  const datos = hoja.getDataRange().getDisplayValues();
   const mapa = mapaEncabezadosActividadCampo(datos[0] || []);
   const usuario = obtenerUsuarioApp(data.usuario);
   const lista = [];
@@ -2526,8 +2623,8 @@ function registrarValidacionTecnica(data) {
   if (!motivo) throw new Error("Debe ingresar el motivo");
 
   const ahora = new Date();
-  const fecha = Utilities.formatDate(ahora, Session.getScriptTimeZone(), "dd/MM/yyyy");
-  const hora = Utilities.formatDate(ahora, Session.getScriptTimeZone(), "HH:mm:ss");
+  const fecha = Utilities.formatDate(ahora, "America/Lima", "dd/MM/yyyy");
+  const hora = Utilities.formatDate(ahora, "America/Lima", "HH:mm:ss");
   const horaLimite = tipoValidacion === "RECABLEADO"
     ? new Date(ahora.getTime() + 12 * 60 * 1000)
     : "";
@@ -8431,6 +8528,12 @@ function doPost(e) {
         .setMimeType(ContentService.MimeType.JSON);
     }
 
+
+    if (data.accion === "buscarDatosAuditoriaCampo") {
+      return ContentService
+        .createTextOutput(JSON.stringify(buscarDatosAuditoriaCampo(data)))
+        .setMimeType(ContentService.MimeType.JSON);
+    }
 
     if (data.accion === "registrarActividadCampo") {
       return ContentService

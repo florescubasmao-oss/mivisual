@@ -1,0 +1,51 @@
+MI VISUAL V263 - AUDITORÍAS AUTOMÁTICAS Y CARGA ALTERNATIVA DEL MAPA
+
+BASE
+- Construida sobre MI VISUAL V262.
+- Mantiene todas las implementaciones anteriores.
+
+ACTIVIDAD EN CAMPO - AUDITORÍA EN FRÍO Y AUDITORÍA EN CALIENTE
+1. Dirección compacta
+- El campo Dirección ahora es de una sola línea y tiene el mismo tamaño que Código, Ticket, DNI y Cliente.
+
+2. Autocompletado por código
+- Al ingresar el Código de pedido, el sistema consulta primero Mapa Operativo.
+- Como respaldo consulta la base operativa generada desde Producción para registros VTR/GAR.
+- Completa los datos disponibles: Tipo de orden, Ticket, DNI, Cliente y Dirección.
+- Si no encuentra coincidencia, todos los campos continúan habilitados para llenado manual.
+- Los datos encontrados pueden revisarse o corregirse antes de guardar.
+
+3. Puntaje automático no visible para Supervisor
+- Se retiró del formulario el bloque de puntajes y clasificación.
+- También se retiraron los textos de puntaje máximo en los encabezados del checklist.
+- El cálculo continúa realizándose y guardándose automáticamente en el servidor.
+- Jefatura y Gerencia Lima siguen viendo puntajes, clasificación y detalle completo.
+
+4. Vista de Jefatura y Gerencia Lima
+- Fecha y hora se muestran en formato visible de Perú.
+- Cada registro se presenta como bloque independiente.
+- Cada registro tiene su botón Ver detalle inmediatamente debajo.
+- El detalle conserva criterios, puntajes, clasificación, observaciones, acciones correctivas y evidencias.
+
+MAPA OPERATIVO
+1. Contraste
+- El título MAPA OPERATIVO ahora se muestra en blanco con sombra para mejorar su lectura.
+
+2. Carga alternativa de archivos
+- Se agregó una zona para arrastrar y soltar archivos Excel o CSV.
+- Se muestra el nombre y tamaño del archivo antes de leerlo.
+- Se mantiene el botón Elegir archivo como alternativa.
+- Arrastrar el archivo desde Documentos o Escritorio evita depender del selector de Windows cuando su carpeta Descargas está dañada.
+
+IMPORTANTE
+- Una aplicación web no puede cambiar la carpeta inicial del selector de archivos de Windows.
+- Si D:\Users\LENOVO\Downloads continúa dañada, el botón Elegir archivo puede seguir mostrando el error de Windows.
+- La nueva zona de arrastrar y soltar permite cargar el archivo sin abrir esa carpeta.
+
+APLICACIÓN
+- Code.gs / Apps Script: SÍ
+- Frontend GitHub: SÍ
+- Google Sheets: NO requiere modificación manual
+- Nuevo despliegue Apps Script: SÍ
+- Estructura de datos existente: conservada
+- Otros módulos: sin cambios
