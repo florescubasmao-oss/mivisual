@@ -1,0 +1,18 @@
+MI VISUAL V265 - RECEPCIÓN MASIVA Y CARGOS DE ACTAS
+
+CAMBIOS
+- Nueva opción Recibir varias actas para Responsable de Almacén y Jefatura de Almacén.
+- Permite validar hasta 20 números de acta por lista.
+- Detecta válidas, no registradas/sin PDF, ya entregadas, otra cuadrilla y duplicadas.
+- Solo confirma las actas válidas y conserva intactas las demás.
+- Genera cargo PDF A4 dividido horizontalmente en dos copias idénticas.
+- Unidad fija WIN, fecha/hora Perú automáticas, sede, cuadrilla, plataforma, número de acta y fecha de atención consultada desde Mapa Operativo, con respaldo en los datos ya guardados del acta.
+- Registra usuario de almacén, número único de cargo e historial para volver a descargar el PDF.
+- Crea automáticamente la hoja CARGOS_ACTAS.
+- No modifica el proceso individual, PDFs escaneados, estructura Drive ni validaciones existentes.
+
+APLICACIÓN
+Code.gs / Apps Script: SÍ
+Frontend GitHub: SÍ
+Google Sheets: SÍ, hoja CARGOS_ACTAS automática
+Nuevo Deploy Apps Script: SÍ

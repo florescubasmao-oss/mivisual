@@ -12,6 +12,7 @@ const HOJA_ACTIVIDAD_CAMPO = "ACTIVIDAD_CAMPO";
 const CARPETA_ACTIVIDAD_CAMPO = "1tu6DWyOkM0b-W1nI_MIXGuTmlZypjsBV";
 const HOJA_VALIDACION_TECNICA = "VALIDACION_TECNICA";
 const HOJA_ACTAS_ESCANEADAS = "ACTAS_ESCANEADAS";
+const HOJA_CARGOS_ACTAS = "CARGOS_ACTAS";
 const HOJA_ANALISIS_ECONOMICO = "ANALISIS_ECONOMICO";
 const CARPETA_ACTAS_ESCANEADAS = "1EZALuMsXo_ZRO93FjKyuDgRmvAe2C69L";
 const HOJA_CHECKLIST_ALMACEN = "CHECKLIST_ALMACEN";
@@ -3229,10 +3230,11 @@ function resolverDatosAutomaticosActa(codigoPedido, codigoOrden, cuadrilla, sede
   const mapa = buscarRegistroMapaParaActa(codigoPedido, codigoOrden, cuadrilla, contexto);
   const tipoEjecucion = tipoEjecucionDesdeMapaActa(mapa);
   const tipoPartida = buscarTipoPartidaProduccionActa(mapa, cuadrilla, contexto);
+  const fechaAtencionMapa = mapa ? (fechaClaveActa(mapa.fechaFinVisita) || fechaClaveActa(mapa.fechaInicioVisita) || fechaClaveActa(mapa.fechaSolicitud)) : "";
   return {
     sede: normalizarTexto(sede || (mapa ? sedeMapaOperativo(mapa.region) : "")),
     cuadrilla: normalizarCuadrilla(cuadrilla),
-    fechaGestion: Utilities.formatDate(new Date(), Session.getScriptTimeZone(), "yyyy-MM-dd"),
+    fechaGestion: fechaAtencionMapa || Utilities.formatDate(new Date(), Session.getScriptTimeZone(), "yyyy-MM-dd"),
     tipoEjecucion: tipoEjecucion,
     tipoPartida: tipoPartida,
     dni: mapa ? textoIdentificadorActa(mapa.numeroDocumento) : "",
@@ -3497,6 +3499,287 @@ function resumenActasEscaneadas(data) {
   return {ok:true,modulo:"ACTAS",accion:"RESUMEN",general,sedes:Object.keys(sedes).sort().map(k=>sedes[k]),cuadrillas:Object.keys(cuadrillas).sort().map(k=>cuadrillas[k])};
 }
 
+
+
+/* =========================
+   CARGOS DE ENTREGA DE ACTAS - V265
+========================= */
+
+function encabezadoCargosActas_() {
+  return [[
+    "ID_CARGO","FECHA_ENTREGA","HORA_ENTREGA","SEDE","CUADRILLA","PLATAFORMA","UNIDAD",
+    "USUARIO_RECIBE","PERFIL_RECIBE","TOTAL_ACTAS","NUMEROS_ACTA","DETALLE_JSON",
+    "LINK_PDF","NOMBRE_PDF","ESTADO"
+  ]];
+}
+
+function asegurarHojaCargosActas_() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  let hoja = ss.getSheetByName(HOJA_CARGOS_ACTAS);
+  if (!hoja) hoja = ss.insertSheet(HOJA_CARGOS_ACTAS);
+  if (hoja.getMaxColumns() < 15) hoja.insertColumnsAfter(hoja.getMaxColumns(), 15 - hoja.getMaxColumns());
+  if (hoja.getLastRow() === 0 || !hoja.getRange(1,1).getValue()) {
+    hoja.getRange(1,1,1,15).setValues(encabezadoCargosActas_());
+    hoja.setFrozenRows(1);
+  }
+  return hoja;
+}
+
+function carpetaCargosActas_() {
+  const raiz = DriveApp.getFolderById(CARPETA_ACTAS_ESCANEADAS);
+  return obtenerOCrearCarpetaActa(raiz, "CARGOS_ENTREGA_ACTAS");
+}
+
+function normalizarNumeroActaCargo_(valor) {
+  const original = textoIdentificadorActa(valor).replace(/\s+/g, "").trim();
+  let clave = normalizarTexto(original).replace(/[^A-Z0-9]/g, "");
+  if (/^\d+$/.test(clave)) clave = clave.replace(/^0+(?=\d)/, "");
+  return { original: original, clave: clave };
+}
+
+function separarNumerosActaCargo_(texto) {
+  const partes = (texto || "").toString().split(/[\n,;|\t]+/).map(function(x){ return x.trim(); }).filter(Boolean);
+  if (!partes.length) throw new Error("Debe ingresar por lo menos un número de acta");
+  if (partes.length > 20) throw new Error("Solo se permiten hasta 20 números de acta por cargo");
+  return partes;
+}
+
+function plataformaCargoActas_(cuadrilla) {
+  const c = normalizarTexto(cuadrilla || "");
+  if (c.indexOf("TRASLADO") >= 0) return "TRASLADOS";
+  if (/\bSGA\b/.test(c)) return "AVERIAS";
+  if (/\bSGI\b/.test(c)) return "INSTALACIONES";
+  return "OPERACIONES";
+}
+
+function fechaAtencionCargoActa_(acta, contexto) {
+  try {
+    const mapa = buscarRegistroMapaParaActa(acta.codigoPedido, acta.codigoOrden, acta.cuadrilla, contexto);
+    if (mapa) {
+      const f = fechaClaveActa(mapa.fechaFinVisita) || fechaClaveActa(mapa.fechaInicioVisita) || fechaClaveActa(mapa.fechaSolicitud);
+      if (f) return f;
+    }
+  } catch (e) {}
+  return fechaClaveActa(acta.fechaGestion) || fechaClaveActa(acta.fechaRegistro) || "";
+}
+
+function validarRecepcionMasivaActasInterno_(data, usuario) {
+  if (!(esPerfilAlmacen(usuario.perfil) || esPerfilJefaturaAlmacen(usuario.perfil))) {
+    throw new Error("Solo Responsable de Almacén o Jefatura de Almacén pueden recibir varias actas");
+  }
+  const cuadrilla = normalizarCuadrilla(data.cuadrilla || "");
+  if (!cuadrilla) throw new Error("Debe seleccionar una cuadrilla");
+  const dc = obtenerDatosCuadrillaApp(cuadrilla);
+  const sede = normalizarTexto(dc.sede || "");
+  if (!sede) throw new Error("No se pudo determinar la sede de la cuadrilla");
+  if (esPerfilAlmacen(usuario.perfil) && sede !== normalizarTexto(usuario.sede)) {
+    throw new Error("Responsable de Almacén solo puede recibir actas de su sede");
+  }
+
+  const numeros = separarNumerosActaCargo_(data.numerosActa || data.numeros || "");
+  const hoja = asegurarHojaActasEscaneadas();
+  const datos = hoja.getDataRange().getValues();
+  const indice = {};
+  for (let i = 1; i < datos.length; i++) {
+    const acta = filaActaAObjeto(datos[i]);
+    const num = normalizarNumeroActaCargo_(acta.numeroActa);
+    if (!num.clave) continue;
+    if (!indice[num.clave]) indice[num.clave] = [];
+    indice[num.clave].push({ acta: acta, fila: i + 1 });
+  }
+
+  const contexto = crearContextoDatosAutomaticosActas();
+  const vistos = {};
+  const resultados = [];
+  numeros.forEach(function(numeroIngresado, pos){
+    const n = normalizarNumeroActaCargo_(numeroIngresado);
+    const base = { posicion:pos+1, numeroIngresado:numeroIngresado, numeroActa:n.original || numeroIngresado, clave:n.clave };
+    if (!n.clave) {
+      resultados.push(Object.assign(base,{estado:"NO_REGISTRADA",detalle:"Número vacío o no válido"}));
+      return;
+    }
+    if (vistos[n.clave]) {
+      resultados.push(Object.assign(base,{estado:"DUPLICADA",detalle:"Número repetido dentro de la lista"}));
+      return;
+    }
+    vistos[n.clave] = true;
+    const candidatas = indice[n.clave] || [];
+    if (!candidatas.length) {
+      resultados.push(Object.assign(base,{estado:"NO_REGISTRADA",detalle:"No existe un acta escaneada con este número"}));
+      return;
+    }
+    const propias = candidatas.filter(function(x){ return normalizarCuadrilla(x.acta.cuadrilla) === cuadrilla; });
+    if (!propias.length) {
+      const otras = Array.from(new Set(candidatas.map(function(x){ return x.acta.cuadrilla; }).filter(Boolean)));
+      resultados.push(Object.assign(base,{estado:"OTRA_CUADRILLA",detalle:"Registrada para: "+(otras.join(", ")||"otra cuadrilla")}));
+      return;
+    }
+    const seleccion = propias[propias.length - 1];
+    const acta = seleccion.acta;
+    if (!acta.linkActa) {
+      resultados.push(Object.assign(base,{estado:"NO_REGISTRADA",detalle:"El técnico todavía no ha subido el PDF",id:acta.id}));
+      return;
+    }
+    if (normalizarTexto(acta.estadoEntregaFisica) === "ENTREGADA") {
+      resultados.push(Object.assign(base,{estado:"YA_ENTREGADA",detalle:"Ya fue confirmada físicamente",id:acta.id,fechaAtencion:fechaAtencionCargoActa_(acta,contexto),codigoPedido:acta.codigoPedido||""}));
+      return;
+    }
+    resultados.push(Object.assign(base,{
+      estado:"VALIDA",detalle:"Lista para recibir",id:acta.id,fila:seleccion.fila,
+      numeroActa:acta.numeroActa||numeroIngresado,fechaAtencion:fechaAtencionCargoActa_(acta,contexto),
+      codigoPedido:acta.codigoPedido||"",codigoOrden:acta.codigoOrden||"",tecnico:acta.tecnico||dc.usuario||"",
+      cuadrilla:acta.cuadrilla||cuadrilla,sede:acta.sede||sede
+    }));
+  });
+
+  const resumen = {ingresadas:resultados.length,validas:0,noRegistradas:0,yaEntregadas:0,otraCuadrilla:0,duplicadas:0};
+  resultados.forEach(function(r){
+    if (r.estado === "VALIDA") resumen.validas++;
+    else if (r.estado === "NO_REGISTRADA") resumen.noRegistradas++;
+    else if (r.estado === "YA_ENTREGADA") resumen.yaEntregadas++;
+    else if (r.estado === "OTRA_CUADRILLA") resumen.otraCuadrilla++;
+    else if (r.estado === "DUPLICADA") resumen.duplicadas++;
+  });
+  return {ok:true,modulo:"ACTAS",accion:"VALIDAR_RECEPCION_MASIVA",sede:sede,cuadrilla:cuadrilla,plataforma:plataformaCargoActas_(cuadrilla),resultados:resultados,resumen:resumen};
+}
+
+function validarRecepcionMasivaActas(data) {
+  return validarRecepcionMasivaActasInterno_(data, obtenerUsuarioApp(data.usuario));
+}
+
+function escaparHtmlCargoActas_(valor) {
+  return (valor === null || valor === undefined ? "" : valor.toString())
+    .replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/\"/g,"&quot;").replace(/'/g,"&#039;");
+}
+
+function fechaCargoVisible_(valor) {
+  const f = fechaClaveActa(valor);
+  if (!f) return "";
+  const p = f.split("-");
+  return p[2]+"/"+p[1]+"/"+p[0];
+}
+
+function tablaMediaCargoActas_(detalle) {
+  const lista = detalle.slice(0,20);
+  while (lista.length < 20) lista.push({numeroActa:"",fechaAtencion:""});
+  function columna(inicio) {
+    let filas = "";
+    for (let i=inicio;i<inicio+10;i++) {
+      const x = lista[i] || {};
+      filas += '<tr><td class="idx">'+(i+1)+'</td><td>'+escaparHtmlCargoActas_(x.numeroActa||"")+'</td><td>'+escaparHtmlCargoActas_(fechaCargoVisible_(x.fechaAtencion))+'</td></tr>';
+    }
+    return '<table class="lista"><thead><tr><th>N.°</th><th>NRO. ACTA</th><th>FECHA ATENCIÓN</th></tr></thead><tbody>'+filas+'</tbody></table>';
+  }
+  return '<div class="dos-columnas">'+columna(0)+columna(10)+'</div>';
+}
+
+function copiaCargoActasHtml_(datos, etiquetaCopia) {
+  return '<section class="copia">'
+    +'<div class="cabecera"><div class="marca"><b>VISUAL</b><span>CONNECTIONS</span></div><div class="titulo"><h1>CARGO - ENTREGA DE ACTAS</h1><p>JEFATURA LOGÍSTICA / GERENCIA DE OPERACIONES</p></div><div class="cargo-id"><b>'+escaparHtmlCargoActas_(datos.idCargo)+'</b><small>'+escaparHtmlCargoActas_(etiquetaCopia)+'</small></div></div>'
+    +'<div class="meta"><div><span>UNIDAD</span><b>WIN</b></div><div><span>SEDE</span><b>'+escaparHtmlCargoActas_(datos.sede)+'</b></div><div><span>PLATAFORMA</span><b>'+escaparHtmlCargoActas_(datos.plataforma)+'</b></div><div><span>FECHA DE ENTREGA</span><b>'+escaparHtmlCargoActas_(datos.fechaVisible)+' '+escaparHtmlCargoActas_(datos.horaVisible)+'</b></div></div>'
+    +'<div class="cuadrilla"><span>CUADRILLA / TÉCNICO</span><b>'+escaparHtmlCargoActas_(datos.cuadrilla)+'</b></div>'
+    +tablaMediaCargoActas_(datos.detalle)
+    +'<div class="firmas"><div><span></span><b>TÉCNICO / CUADRILLA</b></div><div><span></span><b>RESPONSABLE ALMACÉN</b><small>'+escaparHtmlCargoActas_(datos.usuarioRecibe)+'</small></div></div>'
+    +'<div class="nota"><b>IMPORTANTE:</b> Este cargo acredita únicamente la entrega física de las actas listadas. La validación documental y los estados del aplicativo se mantienen según Gestión de Actas.</div>'
+    +'</section>';
+}
+
+function htmlCargoActas_(datos) {
+  return '<!doctype html><html><head><meta charset="UTF-8"><style>'
+    +'@page{size:A4;margin:6mm}*{box-sizing:border-box}body{margin:0;font-family:Arial,sans-serif;color:#111;font-size:9px}.copia{height:137mm;border:1.2px solid #111;padding:4mm;position:relative;overflow:hidden}.corte{height:6mm;border-top:1px dashed #555;text-align:center;font-size:7px;color:#555;padding-top:1mm}.cabecera{display:grid;grid-template-columns:28mm 1fr 35mm;align-items:center;gap:2mm;border-bottom:1px solid #111;padding-bottom:2mm}.marca{border:1px solid #777;border-radius:2mm;padding:2mm;text-align:center}.marca b{display:block;font-size:14px;letter-spacing:1px}.marca span{font-size:7px}.titulo{text-align:center}.titulo h1{font-size:14px;margin:0}.titulo p{font-size:7px;margin:1mm 0 0}.cargo-id{text-align:right}.cargo-id b{display:block;color:#b91c1c;font-size:10px}.cargo-id small{display:block;margin-top:1mm}.meta{display:grid;grid-template-columns:18mm 28mm 35mm 1fr;gap:2mm;margin:2mm 0}.meta div,.cuadrilla{border-bottom:1px solid #777;padding:1mm}.meta span,.cuadrilla span{display:block;font-size:6.5px;color:#555}.meta b,.cuadrilla b{font-size:8.5px}.dos-columnas{display:grid;grid-template-columns:1fr 1fr;gap:3mm;margin-top:2mm}.lista{width:100%;border-collapse:collapse;table-layout:fixed}.lista th,.lista td{border:1px solid #777;padding:.8mm;height:5.4mm}.lista th{background:#eef2f7;font-size:6.7px}.lista .idx{width:7mm;text-align:center}.lista th:nth-child(3),.lista td:nth-child(3){width:25mm;text-align:center}.firmas{display:grid;grid-template-columns:1fr 1fr;gap:16mm;margin:5mm 10mm 0}.firmas div{text-align:center}.firmas span{display:block;border-top:1px solid #111}.firmas b{display:block;font-size:7px;margin-top:1mm}.firmas small{display:block;font-size:6.5px}.nota{position:absolute;left:4mm;right:4mm;bottom:2.5mm;font-size:6.2px;line-height:1.2}.nota b{font-size:6.4px}'
+    +'</style></head><body>'
+    +copiaCargoActasHtml_(datos,"COPIA TÉCNICO")+'<div class="corte">✂ CORTE AQUÍ</div>'+copiaCargoActasHtml_(datos,"COPIA ALMACÉN")
+    +'</body></html>';
+}
+
+function generarArchivoCargoActas_(datos) {
+  const html = htmlCargoActas_(datos);
+  const nombre = datos.idCargo + ".pdf";
+  const pdfBlob = HtmlService.createHtmlOutput(html).getAs(MimeType.PDF).setName(nombre);
+  const archivo = carpetaCargosActas_().createFile(pdfBlob);
+  archivo.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
+  return {
+    archivo:archivo,
+    nombre:nombre,
+    link:archivo.getUrl(),
+    descarga:"https://drive.google.com/uc?export=download&id="+archivo.getId(),
+    base64:Utilities.base64Encode(pdfBlob.getBytes())
+  };
+}
+
+function confirmarRecepcionMasivaActas(data) {
+  const usuario = obtenerUsuarioApp(data.usuario);
+  const lock = LockService.getScriptLock();
+  lock.waitLock(30000);
+  try {
+    const validacion = validarRecepcionMasivaActasInterno_(data, usuario);
+    const validas = validacion.resultados.filter(function(x){ return x.estado === "VALIDA"; });
+    if (!validas.length) throw new Error("No hay actas válidas para confirmar");
+    const ahora = new Date();
+    const fechaIso = Utilities.formatDate(ahora,"America/Lima","yyyy-MM-dd");
+    const fechaVisible = Utilities.formatDate(ahora,"America/Lima","dd/MM/yyyy");
+    const horaVisible = Utilities.formatDate(ahora,"America/Lima","HH:mm");
+    const idCargo = "CA-" + Utilities.formatDate(ahora,"America/Lima","yyyyMMdd-HHmmss") + "-" + Math.floor(100+Math.random()*900);
+    const datosCargo = {
+      idCargo:idCargo,sede:validacion.sede,cuadrilla:validacion.cuadrilla,plataforma:validacion.plataforma,
+      fechaVisible:fechaVisible,horaVisible:horaVisible,usuarioRecibe:usuario.usuario,detalle:validas
+    };
+    const pdf = generarArchivoCargoActas_(datosCargo);
+
+    const hojaActas = asegurarHojaActasEscaneadas();
+    validas.forEach(function(x){
+      hojaActas.getRange(x.fila,30,1,6).setValues([["ENTREGADA",usuario.usuario,usuario.perfil,ahora,ahora,""]]);
+      hojaActas.getRange(x.fila,33).setNumberFormat("dd/mm/yyyy");
+      hojaActas.getRange(x.fila,34).setNumberFormat("hh:mm:ss");
+    });
+
+    const hojaCargos = asegurarHojaCargosActas_();
+    hojaCargos.appendRow([
+      idCargo,ahora,ahora,validacion.sede,validacion.cuadrilla,validacion.plataforma,"WIN",
+      usuario.usuario,usuario.perfil,validas.length,validas.map(function(x){return x.numeroActa;}).join(", "),
+      JSON.stringify(validas),pdf.link,pdf.nombre,"GENERADO"
+    ]);
+    const nf = hojaCargos.getLastRow();
+    hojaCargos.getRange(nf,2).setNumberFormat("dd/mm/yyyy");
+    hojaCargos.getRange(nf,3).setNumberFormat("hh:mm:ss");
+    SpreadsheetApp.flush();
+    return {
+      ok:true,modulo:"ACTAS",accion:"CONFIRMAR_RECEPCION_MASIVA",idCargo:idCargo,
+      totalActas:validas.length,fechaEntrega:fechaIso,fechaVisible:fechaVisible,horaVisible:horaVisible,
+      linkPdf:pdf.link,descargaPdf:pdf.descarga,nombrePdf:pdf.nombre,pdfBase64:pdf.base64,
+      resultados:validacion.resultados,resumen:validacion.resumen
+    };
+  } finally {
+    lock.releaseLock();
+  }
+}
+
+function filaCargoActasAObjeto_(fila) {
+  return {
+    idCargo:fila[0]||"",fechaEntrega:fila[1]||"",horaEntrega:fila[2]||"",sede:fila[3]||"",cuadrilla:fila[4]||"",
+    plataforma:fila[5]||"",unidad:fila[6]||"WIN",usuarioRecibe:fila[7]||"",perfilRecibe:fila[8]||"",
+    totalActas:Number(fila[9])||0,numerosActa:fila[10]||"",detalleJson:fila[11]||"",linkPdf:fila[12]||"",
+    nombrePdf:fila[13]||"",estado:fila[14]||"GENERADO"
+  };
+}
+
+function listarCargosActas(data) {
+  const usuario = obtenerUsuarioApp(data.usuario);
+  const perfil = normalizarTexto(usuario.perfil);
+  if (!(esPerfilAlmacen(perfil) || esPerfilJefaturaAlmacen(perfil) || esPerfilJefatura(perfil))) {
+    throw new Error("No tiene permiso para consultar cargos de actas");
+  }
+  const hoja = asegurarHojaCargosActas_();
+  const datos = hoja.getDataRange().getValues();
+  const lista = [];
+  for (let i=1;i<datos.length;i++) {
+    const item = filaCargoActasAObjeto_(datos[i]);
+    if (esPerfilAlmacen(perfil) && normalizarTexto(item.sede) !== normalizarTexto(usuario.sede)) continue;
+    lista.push(item);
+  }
+  lista.reverse();
+  return {ok:true,modulo:"ACTAS",accion:"LISTAR_CARGOS",cargos:lista,registros:lista.length};
+}
 
 
 
@@ -8488,6 +8771,18 @@ function doPost(e) {
 
     if (data.accion === "actualizarEntregaFisicaActa") {
       return ContentService.createTextOutput(JSON.stringify(actualizarEntregaFisicaActa(data))).setMimeType(ContentService.MimeType.JSON);
+    }
+
+    if (data.accion === "validarRecepcionMasivaActas") {
+      return ContentService.createTextOutput(JSON.stringify(validarRecepcionMasivaActas(data))).setMimeType(ContentService.MimeType.JSON);
+    }
+
+    if (data.accion === "confirmarRecepcionMasivaActas") {
+      return ContentService.createTextOutput(JSON.stringify(confirmarRecepcionMasivaActas(data))).setMimeType(ContentService.MimeType.JSON);
+    }
+
+    if (data.accion === "listarCargosActas") {
+      return ContentService.createTextOutput(JSON.stringify(listarCargosActas(data))).setMimeType(ContentService.MimeType.JSON);
     }
 
     if (data.accion === "resumenActasEscaneadas") {

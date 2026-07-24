@@ -1,4 +1,4 @@
-// MI VISUAL - Gestión de Actas V264: guía visual y filtros por perfil
+// MI VISUAL - Gestión de Actas V265: recepción masiva, cargo A4, guía visual y filtros por perfil
 
 const API_ACTAS = "https://script.google.com/macros/s/AKfycbzcbjCLweJNgZXDerdzmMN7Lwotc1G8NWdzoPkaLNGDivAgpYxDkq78xZwPRioSB4XY/exec";
 
@@ -238,6 +238,18 @@ function estiloActas(){
         @media(max-width:900px){.actas-filters-grid{grid-template-columns:repeat(3,minmax(0,1fr))}.actas-upload-layout{grid-template-columns:1fr}.actas-code-guide{position:static;}}
         @media(max-width:760px){.actas-grid,.actas-kpis{grid-template-columns:1fr 1fr}.actas-table{display:none}.actas-mobile{display:block}.actas-card{font-size:13px}.actas-head h2{font-size:20px}.actas-filters-grid,.actas-filters-grid.tech{grid-template-columns:repeat(2,minmax(0,1fr))}}
         @media(max-width:760px){.actas-auto-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+        .actas-masiva-card{background:#fff;border:1px solid #dbeafe;border-radius:16px;padding:14px;color:#111827;box-shadow:0 6px 16px rgba(15,23,42,.08);}
+        .actas-masiva-summary{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:8px;margin:10px 0;}
+        .actas-masiva-kpi{border-radius:12px;padding:10px;text-align:center;background:#f8fafc;border:1px solid #e5e7eb;}
+        .actas-masiva-kpi b{display:block;font-size:20px}.actas-masiva-kpi span{font-size:10px;font-weight:900;color:#64748b;}
+        .actas-status-valida{color:#166534;font-weight:900}.actas-status-error{color:#991b1b;font-weight:900}.actas-status-info{color:#1d4ed8;font-weight:900}.actas-status-warn{color:#9a3412;font-weight:900}
+        .actas-cargo-result{background:#ecfdf5;border:1px solid #86efac;border-radius:14px;padding:14px;margin-top:12px;color:#14532d;}
+        .actas-cargos-history{background:#fff;border:1px solid #cbd5e1;border-radius:16px;margin:12px 0;overflow:hidden;color:#111827;}
+        .actas-cargos-history>summary{cursor:pointer;list-style:none;padding:13px 15px;background:#e2e8f0;font-weight:900;display:flex;justify-content:space-between;align-items:center;}
+        .actas-cargos-history>summary::-webkit-details-marker{display:none}.actas-cargos-history>summary:after{content:'▸'}.actas-cargos-history[open]>summary:after{content:'▾'}
+        .actas-cargos-body{padding:12px}.actas-cargos-filtros{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:8px;margin-bottom:10px;}
+        .actas-cargo-card{border:1px solid #e5e7eb;border-radius:12px;padding:10px;margin-bottom:8px;background:#f8fafc;display:grid;grid-template-columns:1.2fr 1.4fr .8fr auto;gap:8px;align-items:center;}
+        @media(max-width:760px){.actas-masiva-summary{grid-template-columns:repeat(2,minmax(0,1fr))}.actas-cargos-filtros{grid-template-columns:repeat(2,minmax(0,1fr))}.actas-cargo-card{grid-template-columns:1fr}}
         @media(max-width:480px){.actas-grid,.actas-kpis,.actas-auto-grid,.actas-filters-grid,.actas-filters-grid.tech{grid-template-columns:1fr}}
     </style>`;
 }
@@ -261,15 +273,18 @@ function mostrarGestionActas(){
             <div class="actas-actions">
                 ${u.perfil === "TECNICO" ? `<button class="actas-btn ok" onclick="mostrarFormularioActa()">+ Subir Acta PDF</button>` : ""}
                 ${(esAlmacenActas(u.perfil) || esJefaturaAlmacenActas(u.perfil)) ? `<button class="actas-btn orange" onclick="mostrarFormularioActaFaltante()">⚠ Registrar acta faltante</button>` : ""}
+                ${(esAlmacenActas(u.perfil) || esJefaturaAlmacenActas(u.perfil)) ? `<button class="actas-btn ok" onclick="mostrarRecepcionMasivaActas()">📦 Recibir varias actas</button>` : ""}
                 ${(esAlmacenActas(u.perfil) || esJefaturaAlmacenActas(u.perfil) || esJefaturaActas(u.perfil)) ? `<button class="actas-btn blue" onclick="actualizarDatosAutomaticosActasFrontend(this)">🧩 Actualizar datos automáticos</button>` : ""}
                 <button class="actas-btn sec" onclick="cargarActas()">🔄 Actualizar vista</button>
             </div>
             <div id="actasResumen"></div>
             <div id="actasFiltros"></div>
             <div id="actasLista">Cargando...</div>
+            <div id="actasCargosHistorial"></div>
         </div>
     `);
     cargarActas();
+    if(esAlmacenActas(u.perfil) || esJefaturaAlmacenActas(u.perfil) || esJefaturaActas(u.perfil)) cargarHistorialCargosActas();
 }
 
 async function actualizarDatosAutomaticosActasFrontend(btn){
@@ -1073,4 +1088,147 @@ async function validarActa(id, resultado){
     }catch(err){
         alert("❌ " + err.message);
     }
+}
+
+
+/* =========================
+   RECEPCIÓN MASIVA Y CARGOS DE ACTAS - V265
+========================= */
+
+function etiquetaEstadoValidacionCargoActas(estado){
+    const e=normalizarActas(estado);
+    if(e==="VALIDA") return `<span class="actas-status-valida">✅ Registrada y escaneada</span>`;
+    if(e==="YA_ENTREGADA") return `<span class="actas-status-info">🔵 Ya entregada</span>`;
+    if(e==="OTRA_CUADRILLA") return `<span class="actas-status-warn">🟠 Otra cuadrilla</span>`;
+    if(e==="DUPLICADA") return `<span class="actas-status-warn">⚪ Duplicada en la lista</span>`;
+    return `<span class="actas-status-error">⚠️ No registrada / sin PDF</span>`;
+}
+
+async function mostrarRecepcionMasivaActas(){
+    const u=usuarioActualActas();
+    if(!(esAlmacenActas(u.perfil)||esJefaturaAlmacenActas(u.perfil))) return alert("No tiene permiso para recibir varias actas.");
+    let cuadrillas=[];
+    try{ cuadrillas=(await apiActas({accion:"listarCuadrillasActasFaltantes",usuario:u.usuario})).cuadrillas||[]; }
+    catch(err){ return alert("❌ "+err.message); }
+    const sedes=[...new Set(cuadrillas.map(x=>x.sede).filter(Boolean))].sort();
+    window._cuadrillasRecepcionActas=cuadrillas;
+    window._validacionRecepcionActas=null;
+    mostrarPantalla(`
+        ${estiloActas()}
+        <div class="actas-wrap">
+            <div class="actas-head" style="background:linear-gradient(135deg,#047857,#16a34a)"><h2>📦 Recibir varias actas</h2><p>Ingrese hasta 20 números. Solo se confirmarán actas previamente escaneadas por el técnico.</p></div>
+            <div class="actas-masiva-card">
+                <div class="actas-grid">
+                    <div class="actas-field"><label>Sede</label><select id="cargoActasSede" onchange="actualizarCuadrillasRecepcionActas()">${sedes.map(s=>`<option value="${limpiarHtmlActas(s)}">${limpiarHtmlActas(s)}</option>`).join("")}</select></div>
+                    <div class="actas-field"><label>Cuadrilla</label><select id="cargoActasCuadrilla" required></select></div>
+                    <div class="actas-field" style="grid-column:1/-1"><label>Números de acta (máximo 20)</label><textarea id="cargoActasNumeros" rows="9" placeholder="00124567\n00124568\n00124569\nTambién puede separar por comas"></textarea></div>
+                </div>
+                <div class="actas-actions"><button class="actas-btn blue" id="btnValidarCargoActas" onclick="validarRecepcionMasivaActasFrontend(this)">Validar actas</button><button class="actas-btn sec" onclick="mostrarGestionActas()">Cancelar</button></div>
+                <div id="cargoActasValidacion"></div>
+            </div>
+        </div>`);
+    const sedeSel=document.getElementById("cargoActasSede");
+    if(esAlmacenActas(u.perfil)&&sedeSel){sedeSel.value=u.sede;sedeSel.disabled=true;}
+    actualizarCuadrillasRecepcionActas();
+}
+
+function actualizarCuadrillasRecepcionActas(){
+    const sede=normalizarActas(document.getElementById("cargoActasSede")?.value||"");
+    const sel=document.getElementById("cargoActasCuadrilla");
+    const lista=(window._cuadrillasRecepcionActas||[]).filter(x=>normalizarActas(x.sede)===sede);
+    if(sel) sel.innerHTML=`<option value="">Seleccione cuadrilla</option>`+lista.map(x=>`<option value="${limpiarHtmlActas(x.cuadrilla)}">${limpiarHtmlActas(x.cuadrilla)}</option>`).join("");
+}
+
+async function validarRecepcionMasivaActasFrontend(btn){
+    const u=usuarioActualActas(),cuadrilla=document.getElementById("cargoActasCuadrilla")?.value||"",numeros=document.getElementById("cargoActasNumeros")?.value||"",cont=document.getElementById("cargoActasValidacion");
+    if(!cuadrilla) return alert("Seleccione una cuadrilla.");
+    if(!numeros.trim()) return alert("Ingrese los números de acta.");
+    try{
+        if(btn){btn.disabled=true;btn.textContent="Validando...";}
+        const data=await apiActas({accion:"validarRecepcionMasivaActas",usuario:u.usuario,cuadrilla,numerosActa:numeros});
+        window._validacionRecepcionActas=data;
+        renderValidacionRecepcionMasivaActas(data,cont);
+    }catch(err){ if(cont)cont.innerHTML=`<div class="actas-msg err">❌ ${limpiarHtmlActas(err.message)}</div>`; }
+    finally{if(btn){btn.disabled=false;btn.textContent="Validar actas";}}
+}
+
+function renderValidacionRecepcionMasivaActas(data,cont){
+    if(!cont) return;
+    const r=data.resumen||{};
+    const filas=(data.resultados||[]).map(x=>`<tr><td>${x.posicion}</td><td><b>${limpiarHtmlActas(x.numeroActa||x.numeroIngresado||"")}</b></td><td>${etiquetaEstadoValidacionCargoActas(x.estado)}</td><td>${limpiarHtmlActas(x.detalle||"")}</td><td>${fechaVisibleActas(x.fechaAtencion||"")}</td></tr>`).join("");
+    cont.innerHTML=`
+        <div class="actas-masiva-summary">
+            <div class="actas-masiva-kpi"><b>${r.ingresadas||0}</b><span>INGRESADAS</span></div>
+            <div class="actas-masiva-kpi"><b>${r.validas||0}</b><span>VÁLIDAS</span></div>
+            <div class="actas-masiva-kpi"><b>${r.noRegistradas||0}</b><span>NO REGISTRADAS</span></div>
+            <div class="actas-masiva-kpi"><b>${r.yaEntregadas||0}</b><span>YA ENTREGADAS</span></div>
+            <div class="actas-masiva-kpi"><b>${(r.otraCuadrilla||0)+(r.duplicadas||0)}</b><span>OTRAS / DUPLICADAS</span></div>
+        </div>
+        <div style="overflow:auto"><table class="actas-table"><thead><tr><th>#</th><th>Número de acta</th><th>Resultado</th><th>Detalle</th><th>Fecha atención</th></tr></thead><tbody>${filas}</tbody></table></div>
+        <div class="actas-msg info">Se recibirán únicamente <b>${r.validas||0}</b> actas válidas. Las demás permanecerán sin cambios.</div>
+        ${(r.validas||0)>0?`<div class="actas-actions"><button class="actas-btn ok" id="btnConfirmarCargoActas" onclick="confirmarRecepcionMasivaActasFrontend(this)">Confirmar recepción y generar cargo</button></div>`:""}`;
+}
+
+async function confirmarRecepcionMasivaActasFrontend(btn){
+    const u=usuarioActualActas(),cuadrilla=document.getElementById("cargoActasCuadrilla")?.value||"",numeros=document.getElementById("cargoActasNumeros")?.value||"",cont=document.getElementById("cargoActasValidacion");
+    if(!confirm("¿Confirmar la recepción física de las actas válidas y generar el cargo A4?")) return;
+    try{
+        if(btn){btn.disabled=true;btn.textContent="Generando cargo...";}
+        const data=await apiActas({accion:"confirmarRecepcionMasivaActas",usuario:u.usuario,cuadrilla,numerosActa:numeros});
+        descargarPdfBase64CargoActas(data.pdfBase64,data.nombrePdf||`${data.idCargo}.pdf`);
+        if(cont)cont.innerHTML=`<div class="actas-cargo-result"><h3 style="margin:0 0 7px">✅ Cargo generado</h3><div><b>${limpiarHtmlActas(data.idCargo)}</b> · ${data.totalActas||0} actas · ${limpiarHtmlActas(data.fechaVisible||"")} ${limpiarHtmlActas(data.horaVisible||"")} — Hora Perú</div><div class="actas-actions"><a class="actas-btn blue" href="${limpiarHtmlActas(data.linkPdf||data.descargaPdf||"")}" target="_blank" rel="noopener">Ver / imprimir cargo</a><button class="actas-btn sec" onclick="mostrarGestionActas()">Volver a Gestión de Actas</button></div></div>`;
+    }catch(err){if(cont)cont.innerHTML+=`<div class="actas-msg err">❌ ${limpiarHtmlActas(err.message)}</div>`;}
+    finally{if(btn){btn.disabled=false;btn.textContent="Confirmar recepción y generar cargo";}}
+}
+
+function descargarPdfBase64CargoActas(base64,nombre){
+    if(!base64) return;
+    const bin=atob(base64),bytes=new Uint8Array(bin.length);
+    for(let i=0;i<bin.length;i++)bytes[i]=bin.charCodeAt(i);
+    const url=URL.createObjectURL(new Blob([bytes],{type:"application/pdf"}));
+    const a=document.createElement("a");a.href=url;a.download=nombre||"cargo_actas.pdf";document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),3000);
+}
+
+async function cargarHistorialCargosActas(){
+    const cont=document.getElementById("actasCargosHistorial");
+    if(!cont)return;
+    const u=usuarioActualActas();
+    cont.innerHTML=`<details class="actas-cargos-history"><summary>📚 Historial de cargos</summary><div class="actas-cargos-body">Cargando historial...</div></details>`;
+    try{
+        const data=await apiActas({accion:"listarCargosActas",usuario:u.usuario});
+        window._cargosActas=data.cargos||[];
+        renderHistorialCargosActas();
+    }catch(err){cont.innerHTML=`<details class="actas-cargos-history"><summary>📚 Historial de cargos</summary><div class="actas-cargos-body"><div class="actas-msg err">❌ ${limpiarHtmlActas(err.message)}</div></div></details>`;}
+}
+
+function renderHistorialCargosActas(){
+    const cont=document.getElementById("actasCargosHistorial");if(!cont)return;
+    const lista=window._cargosActas||[];
+    const sedes=[...new Set(lista.map(x=>x.sede).filter(Boolean))].sort();
+    const cuadrillas=[...new Set(lista.map(x=>x.cuadrilla).filter(Boolean))].sort();
+    cont.innerHTML=`<details class="actas-cargos-history"><summary>📚 Historial de cargos <span class="actas-count">${lista.length}</span></summary><div class="actas-cargos-body">
+        <div class="actas-cargos-filtros">
+            <div class="actas-filter-field"><label>N.º cargo</label><input id="fCargoNumero" oninput="aplicarFiltrosCargosActas()" placeholder="Buscar cargo"></div>
+            <div class="actas-filter-field"><label>Fecha entrega</label><input type="date" id="fCargoFecha" onchange="aplicarFiltrosCargosActas()"></div>
+            <div class="actas-filter-field"><label>Sede</label><select id="fCargoSede" onchange="aplicarFiltrosCargosActas()"><option value="">Todas</option>${sedes.map(x=>`<option>${limpiarHtmlActas(x)}</option>`).join("")}</select></div>
+            <div class="actas-filter-field"><label>Cuadrilla</label><select id="fCargoCuadrilla" onchange="aplicarFiltrosCargosActas()"><option value="">Todas</option>${cuadrillas.map(x=>`<option>${limpiarHtmlActas(x)}</option>`).join("")}</select></div>
+            <div class="actas-filter-field"><label>Responsable</label><input id="fCargoResponsable" oninput="aplicarFiltrosCargosActas()" placeholder="Usuario que recibió"></div>
+        </div><div id="listaCargosActas"></div></div></details>`;
+    renderListaCargosActas(lista);
+}
+
+function fechaIsoCargoActas(valor){
+    if(!valor)return"";const d=new Date(valor);if(!isNaN(d.getTime()))return new Intl.DateTimeFormat("en-CA",{timeZone:"America/Lima",year:"numeric",month:"2-digit",day:"2-digit"}).format(d);return fechaIsoFiltroActas(valor);
+}
+
+function aplicarFiltrosCargosActas(){
+    const numero=normalizarActas(document.getElementById("fCargoNumero")?.value||""),fecha=document.getElementById("fCargoFecha")?.value||"",sede=normalizarActas(document.getElementById("fCargoSede")?.value||""),cuadrilla=normalizarActas(document.getElementById("fCargoCuadrilla")?.value||""),resp=normalizarActas(document.getElementById("fCargoResponsable")?.value||"");
+    const lista=(window._cargosActas||[]).filter(x=>(!numero||normalizarActas(x.idCargo).includes(numero))&&(!fecha||fechaIsoCargoActas(x.fechaEntrega)===fecha)&&(!sede||normalizarActas(x.sede)===sede)&&(!cuadrilla||normalizarActas(x.cuadrilla)===cuadrilla)&&(!resp||normalizarActas(x.usuarioRecibe).includes(resp)));
+    renderListaCargosActas(lista);
+}
+
+function renderListaCargosActas(lista){
+    const cont=document.getElementById("listaCargosActas");if(!cont)return;
+    if(!lista.length){cont.innerHTML=`<div class="actas-empty">No hay cargos para los filtros seleccionados.</div>`;return;}
+    cont.innerHTML=lista.map(x=>`<div class="actas-cargo-card"><div><b>${limpiarHtmlActas(x.idCargo||"")}</b><br><small>${fechaVisibleActas(x.fechaEntrega)} ${limpiarHtmlActas(x.horaEntrega||"")} — Hora Perú</small></div><div><b>${limpiarHtmlActas(x.cuadrilla||"")}</b><br><small>${limpiarHtmlActas(x.sede||"")} · ${limpiarHtmlActas(x.plataforma||"")}</small></div><div><b>${x.totalActas||0} actas</b><br><small>${limpiarHtmlActas(x.usuarioRecibe||"")}</small></div><div><a class="actas-btn blue" href="${limpiarHtmlActas(x.linkPdf||"")}" target="_blank" rel="noopener">Ver / descargar PDF</a></div></div>`).join("");
 }
