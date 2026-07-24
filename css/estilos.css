@@ -1662,3 +1662,73 @@ body{background:linear-gradient(180deg,var(--mv4-bg),var(--mv4-bg2));font-family
 
 /* V267 - Técnico: Equipos Averiados con el mismo tamaño compacto.
    Las cuatro tarjetas operativas usan columnas de 4/12: tres por fila. */
+
+/* =====================================================
+   V270 - Técnico móvil: cuatro tarjetas operativas en una sola fila
+   Alcance exclusivo: Validación Técnica, Gestión de Actas,
+   Equipos Averiados y Checklist Almacén en perfil TÉCNICO.
+   ===================================================== */
+@media (max-width:520px){
+  #menuPrincipal.mv196-tecnico-menu #cardValidacionTecnica,
+  #menuPrincipal.mv196-tecnico-menu #cardActas,
+  #menuPrincipal.mv196-tecnico-menu #cardEquiposAveriados,
+  #menuPrincipal.mv196-tecnico-menu #cardChecklistAlmacen{
+    grid-column:span 3!important;
+    min-width:0!important;
+    width:auto!important;
+    min-height:64px!important;
+    height:64px!important;
+    padding:5px 1px!important;
+    border-radius:11px!important;
+    gap:3px!important;
+    overflow:hidden!important;
+  }
+  #menuPrincipal.mv196-tecnico-menu #cardValidacionTecnica span,
+  #menuPrincipal.mv196-tecnico-menu #cardActas span,
+  #menuPrincipal.mv196-tecnico-menu #cardEquiposAveriados span,
+  #menuPrincipal.mv196-tecnico-menu #cardChecklistAlmacen span{
+    font-size:18px!important;
+    line-height:1!important;
+    margin:0!important;
+  }
+  #menuPrincipal.mv196-tecnico-menu #cardValidacionTecnica b,
+  #menuPrincipal.mv196-tecnico-menu #cardActas b,
+  #menuPrincipal.mv196-tecnico-menu #cardEquiposAveriados b,
+  #menuPrincipal.mv196-tecnico-menu #cardChecklistAlmacen b{
+    width:100%!important;
+    max-width:100%!important;
+    padding:0 1px!important;
+    box-sizing:border-box!important;
+    font-size:6.5px!important;
+    line-height:1.04!important;
+    letter-spacing:-.08px!important;
+    text-align:center!important;
+    white-space:normal!important;
+    overflow-wrap:normal!important;
+    word-break:normal!important;
+    hyphens:none!important;
+  }
+}
+@media (max-width:350px){
+  #menuPrincipal.mv196-tecnico-menu #cardValidacionTecnica,
+  #menuPrincipal.mv196-tecnico-menu #cardActas,
+  #menuPrincipal.mv196-tecnico-menu #cardEquiposAveriados,
+  #menuPrincipal.mv196-tecnico-menu #cardChecklistAlmacen{
+    min-height:60px!important;
+    height:60px!important;
+    padding:4px 0!important;
+    border-radius:10px!important;
+  }
+  #menuPrincipal.mv196-tecnico-menu #cardValidacionTecnica span,
+  #menuPrincipal.mv196-tecnico-menu #cardActas span,
+  #menuPrincipal.mv196-tecnico-menu #cardEquiposAveriados span,
+  #menuPrincipal.mv196-tecnico-menu #cardChecklistAlmacen span{
+    font-size:16px!important;
+  }
+  #menuPrincipal.mv196-tecnico-menu #cardValidacionTecnica b,
+  #menuPrincipal.mv196-tecnico-menu #cardActas b,
+  #menuPrincipal.mv196-tecnico-menu #cardEquiposAveriados b,
+  #menuPrincipal.mv196-tecnico-menu #cardChecklistAlmacen b{
+    font-size:5.9px!important;
+  }
+}

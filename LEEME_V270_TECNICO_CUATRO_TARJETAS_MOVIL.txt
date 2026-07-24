@@ -1,0 +1,18 @@
+MI VISUAL V270
+
+CORRECCIÓN APLICADA
+- Exclusivamente en el perfil TÉCNICO y en vista móvil.
+- Validación Técnica, Gestión de Actas, Equipos Averiados y Checklist Almacén se muestran en una sola fila.
+- Se ajustaron proporcionalmente altura, ancho, iconos, texto y separación para evitar desplazamiento horizontal.
+- En computadora se conserva la distribución existente.
+- No se modificaron permisos, accesos, formularios, cálculos ni funcionamiento de los módulos.
+
+ARCHIVOS MODIFICADOS
+- css/estilos.css
+- index.html
+
+APLICACIÓN
+- Code.gs / Apps Script: NO
+- Frontend GitHub: SÍ
+- Google Sheets: NO
+- Nuevo Deploy Apps Script: NO
