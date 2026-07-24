@@ -1,0 +1,15 @@
+MI VISUAL V266 - EQUIPOS AVERIADOS
+
+Implementación nueva e independiente:
+- Técnico registra hasta 8 equipos: ONT HUAWEI, ONT ZTE, MESH HUAWEI, MESH ZTE, WINBOX y TELÉFONO.
+- Por equipo: serie y código de cliente.
+- Datos automáticos: técnico, cuadrilla, sede, plataforma, fecha y hora Perú.
+- Responsable de Almacén gestiona su sede y puede crear solicitudes pendientes para el técnico.
+- Jefatura de Almacén gestiona las tres sedes.
+- Jefatura General tiene solo visualización y descarga de informe.
+- Recepción total o parcial, observación o rechazo por equipo.
+- Cargo PDF A4 en dos copias, generado únicamente por Almacén.
+- Registro posterior de entrega a WIN.
+- Hojas automáticas: EQUIPOS_AVERIADOS y CARGOS_EQUIPOS_AVERIADOS.
+
+No se modificaron Checklist Almacén, Gestión de Actas ni los demás módulos.

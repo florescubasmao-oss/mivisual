@@ -13,6 +13,8 @@ const CARPETA_ACTIVIDAD_CAMPO = "1tu6DWyOkM0b-W1nI_MIXGuTmlZypjsBV";
 const HOJA_VALIDACION_TECNICA = "VALIDACION_TECNICA";
 const HOJA_ACTAS_ESCANEADAS = "ACTAS_ESCANEADAS";
 const HOJA_CARGOS_ACTAS = "CARGOS_ACTAS";
+const HOJA_EQUIPOS_AVERIADOS = "EQUIPOS_AVERIADOS";
+const HOJA_CARGOS_EQUIPOS_AVERIADOS = "CARGOS_EQUIPOS_AVERIADOS";
 const HOJA_ANALISIS_ECONOMICO = "ANALISIS_ECONOMICO";
 const CARPETA_ACTAS_ESCANEADAS = "1EZALuMsXo_ZRO93FjKyuDgRmvAe2C69L";
 const HOJA_CHECKLIST_ALMACEN = "CHECKLIST_ALMACEN";
@@ -5313,8 +5315,8 @@ const HOJA_PERMISOS_MODULOS = "PERMISOS_MODULOS";
 function encabezadoPermisosModulos(){return [["PERFIL","MODULO","ACTIVO","ORDEN_MENU","MOSTRAR_MODULO","VER","REGISTRAR","EDITAR","OBSERVAR","APROBAR","VALIDAR","DESCARGAR","ADMINISTRAR","ALCANCE_DATOS","VISTA_PERFIL","OBSERVACION"]];}
 function asegurarHojaPermisosModulos(){const ss=SpreadsheetApp.getActiveSpreadsheet();let h=ss.getSheetByName(HOJA_PERMISOS_MODULOS);if(!h)h=ss.insertSheet(HOJA_PERMISOS_MODULOS);if(h.getMaxColumns()<16)h.insertColumnsAfter(h.getMaxColumns(),16-h.getMaxColumns());if(h.getLastRow()===0||!h.getRange(1,1).getValue())h.getRange(1,1,1,16).setValues(encabezadoPermisosModulos());return h;}
 function filaPermisoAObjeto(f){return {perfil:normalizarTexto(f[0]),modulo:normalizarTexto(f[1]),activo:normalizarTexto(f[2]||"SI"),ordenMenu:f[3],mostrarModulo:normalizarTexto(f[4]||"NO"),ver:normalizarTexto(f[5]||"NO"),registrar:normalizarTexto(f[6]||"NO"),editar:normalizarTexto(f[7]||"NO"),observar:normalizarTexto(f[8]||"NO"),aprobar:normalizarTexto(f[9]||"NO"),validar:normalizarTexto(f[10]||"NO"),descargar:normalizarTexto(f[11]||"NO"),administrar:normalizarTexto(f[12]||"NO"),alcanceDatos:normalizarTexto(f[13]||"SIN ACCESO"),vistaPerfil:(f[14]||"").toString(),observacion:(f[15]||"").toString()};}
-function obtenerPermisosUsuario(data){asegurarPermisosMapaOperativo();const u=obtenerUsuarioApp(data.usuario),h=asegurarHojaPermisosModulos(),d=h.getDataRange().getValues(),p=normalizarTexto(u.perfil),lista=[];for(let i=1;i<d.length;i++){const x=filaPermisoAObjeto(d[i]);if(x.perfil===p)lista.push(x);}return {ok:true,modulo:"PERMISOS",perfil:p,permisos:lista};}
-function listarPermisosAdministracion(data){const u=obtenerUsuarioApp(data.usuario);if(!esPerfilJefatura(u.perfil))throw new Error("Solo Jefatura puede administrar permisos");const d=asegurarHojaPermisosModulos().getDataRange().getValues(),lista=[];for(let i=1;i<d.length;i++)if(d[i][0]&&d[i][1])lista.push(filaPermisoAObjeto(d[i]));return {ok:true,permisos:lista};}
+function obtenerPermisosUsuario(data){asegurarPermisosMapaOperativo();asegurarPermisosEquiposAveriados_();const u=obtenerUsuarioApp(data.usuario),h=asegurarHojaPermisosModulos(),d=h.getDataRange().getValues(),p=normalizarTexto(u.perfil),lista=[];for(let i=1;i<d.length;i++){const x=filaPermisoAObjeto(d[i]);if(x.perfil===p)lista.push(x);}return {ok:true,modulo:"PERMISOS",perfil:p,permisos:lista};}
+function listarPermisosAdministracion(data){asegurarPermisosEquiposAveriados_();const u=obtenerUsuarioApp(data.usuario);if(!esPerfilJefatura(u.perfil))throw new Error("Solo Jefatura puede administrar permisos");const d=asegurarHojaPermisosModulos().getDataRange().getValues(),lista=[];for(let i=1;i<d.length;i++)if(d[i][0]&&d[i][1])lista.push(filaPermisoAObjeto(d[i]));return {ok:true,permisos:lista};}
 function guardarPermisoModulo(data){const u=obtenerUsuarioApp(data.usuario);if(!esPerfilJefatura(u.perfil))throw new Error("Solo Jefatura puede administrar permisos");const h=asegurarHojaPermisosModulos(),d=h.getDataRange().getValues(),p=normalizarTexto(data.perfil),m=normalizarTexto(data.modulo);if(!p||!m)throw new Error("Perfil y módulo son obligatorios");const sn=v=>normalizarTexto(v)==="SI"?"SI":"NO";const fila=[p,m,sn(data.activo||"SI"),Number(data.ordenMenu)||"",sn(data.mostrarModulo),sn(data.ver),sn(data.registrar),sn(data.editar),sn(data.observar),sn(data.aprobar),sn(data.validar),sn(data.descargar),sn(data.administrar),normalizarTexto(data.alcanceDatos||"SIN ACCESO"),(data.vistaPerfil||p).toString(),(data.observacion||"").toString()];let n=0;for(let i=1;i<d.length;i++)if(normalizarTexto(d[i][0])===p&&normalizarTexto(d[i][1])===m){n=i+1;break;}if(n)h.getRange(n,1,1,16).setValues([fila]);else h.appendRow(fila);try{CacheService.getScriptCache().remove("PM_CENTRAL|"+p+"|"+m);}catch(e){}return {ok:true,perfil:p,modulo:m};}
 function permisoUsuarioAccion(usuario,modulo,accion){const h=asegurarHojaPermisosModulos(),d=h.getDataRange().getValues(),p=normalizarTexto(usuario.perfil),m=normalizarTexto(modulo),col={VER:5,REGISTRAR:6,EDITAR:7,OBSERVAR:8,APROBAR:9,VALIDAR:10,DESCARGAR:11,ADMINISTRAR:12}[normalizarTexto(accion)];if(col===undefined)return false;for(let i=1;i<d.length;i++)if(normalizarTexto(d[i][0])===p&&normalizarTexto(d[i][1])===m)return normalizarTexto(d[i][2]||"SI")==="SI"&&normalizarTexto(d[i][col]||"NO")==="SI";return false;}
 
@@ -8665,6 +8667,591 @@ function listarCatalogoPartidasOperativas(data) {
 }
 
 
+
+/* =========================
+   V266 - EQUIPOS AVERIADOS
+   Registro técnico, recepción de almacén, cargo A4 y entrega a WIN.
+========================= */
+
+function eaNormalizarTipoEquipo_(valor) {
+  const t = normalizarTexto(valor || "");
+  const permitidos = {
+    "ONT HUAWEI":"ONT HUAWEI",
+    "ONT ZTE":"ONT ZTE",
+    "MESH HUAWEI":"MESH HUAWEI",
+    "MESH ZTE":"MESH ZTE",
+    "WINBOX":"WINBOX",
+    "WIN BOX":"WINBOX",
+    "TELEFONO":"TELEFONO",
+    "TELÉFONO":"TELEFONO"
+  };
+  if (!permitidos[t]) throw new Error("Tipo de equipo no permitido: " + (valor || ""));
+  return permitidos[t];
+}
+
+function eaTiposEquipos_() {
+  return ["ONT HUAWEI","ONT ZTE","MESH HUAWEI","MESH ZTE","WINBOX","TELEFONO"];
+}
+
+function eaEsTecnico_(perfil) {
+  return normalizarTexto(perfil) === "TECNICO";
+}
+
+function eaEsResponsableAlmacen_(perfil) {
+  const p = normalizarTexto(perfil);
+  return p === "ALMACEN" || p === "RESPONSABLE ALMACEN" || p === "RESPONSABLE DE ALMACEN";
+}
+
+function eaEsJefaturaAlmacen_(perfil) {
+  return normalizarTexto(perfil) === "JEFATURA ALMACEN";
+}
+
+function eaEsJefaturaGeneral_(perfil) {
+  const p = normalizarTexto(perfil);
+  return p === "JEFATURA" || p === "JEFATURA GENERAL" || p === "ADMIN" || p === "ADMINISTRADOR";
+}
+
+function eaPuedeVer_(usuario) {
+  return eaEsTecnico_(usuario.perfil) || eaEsResponsableAlmacen_(usuario.perfil) ||
+    eaEsJefaturaAlmacen_(usuario.perfil) || eaEsJefaturaGeneral_(usuario.perfil);
+}
+
+function eaPuedeGestionarAlmacen_(usuario) {
+  return eaEsResponsableAlmacen_(usuario.perfil) || eaEsJefaturaAlmacen_(usuario.perfil);
+}
+
+function eaFechaHoraPeru_(fecha) {
+  const d = fecha || new Date();
+  return {
+    fecha: Utilities.formatDate(d, "America/Lima", "dd/MM/yyyy"),
+    fechaIso: Utilities.formatDate(d, "America/Lima", "yyyy-MM-dd"),
+    hora: Utilities.formatDate(d, "America/Lima", "HH:mm:ss")
+  };
+}
+
+function eaEncabezadoSolicitudes_() {
+  return [[
+    "ID","FECHA_REGISTRO","HORA_REGISTRO","ORIGEN_REGISTRO","REGISTRADO_POR","PERFIL_REGISTRO",
+    "SEDE","PLATAFORMA","CUADRILLA","USUARIO_TECNICO","TECNICO","ESTADO","CANTIDAD_REFERENCIAL",
+    "EQUIPOS_JSON","FECHA_COMPLETADO_TECNICO","HORA_COMPLETADO_TECNICO","VALIDADO_POR","PERFIL_VALIDACION",
+    "FECHA_VALIDACION","HORA_VALIDACION","OBSERVACION_ALMACEN","ID_CARGO","LINK_CARGO","ESTADO_WIN",
+    "FECHA_ENTREGA_WIN","HORA_ENTREGA_WIN","RECIBIDO_WIN_POR","DOCUMENTO_WIN","OBSERVACION_WIN",
+    "ULTIMA_ACTUALIZACION","HISTORIAL_JSON"
+  ]];
+}
+
+function eaEncabezadoCargos_() {
+  return [[
+    "ID_CARGO","ID_SOLICITUD","FECHA_CARGO","HORA_CARGO","SEDE","PLATAFORMA","CUADRILLA","USUARIO_TECNICO",
+    "TECNICO","RECIBIDO_POR","PERFIL_RECIBE","TOTAL_EQUIPOS","EQUIPOS_JSON","LINK_PDF","NOMBRE_PDF","ESTADO"
+  ]];
+}
+
+function eaAsegurarHojaSolicitudes_() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  let h = ss.getSheetByName(HOJA_EQUIPOS_AVERIADOS);
+  if (!h) h = ss.insertSheet(HOJA_EQUIPOS_AVERIADOS);
+  if (h.getMaxColumns() < 31) h.insertColumnsAfter(h.getMaxColumns(), 31 - h.getMaxColumns());
+  if (h.getLastRow() === 0 || !h.getRange(1,1).getValue()) h.getRange(1,1,1,31).setValues(eaEncabezadoSolicitudes_());
+  else h.getRange(1,1,1,31).setValues(eaEncabezadoSolicitudes_());
+  h.setFrozenRows(1);
+  return h;
+}
+
+function eaAsegurarHojaCargos_() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  let h = ss.getSheetByName(HOJA_CARGOS_EQUIPOS_AVERIADOS);
+  if (!h) h = ss.insertSheet(HOJA_CARGOS_EQUIPOS_AVERIADOS);
+  if (h.getMaxColumns() < 16) h.insertColumnsAfter(h.getMaxColumns(), 16 - h.getMaxColumns());
+  if (h.getLastRow() === 0 || !h.getRange(1,1).getValue()) h.getRange(1,1,1,16).setValues(eaEncabezadoCargos_());
+  else h.getRange(1,1,1,16).setValues(eaEncabezadoCargos_());
+  h.setFrozenRows(1);
+  return h;
+}
+
+function eaJson_(valor, porDefecto) {
+  if (valor === null || valor === undefined || valor === "") return porDefecto;
+  if (typeof valor === "object") return valor;
+  try { return JSON.parse(valor); } catch (e) { return porDefecto; }
+}
+
+function eaEscaparHtml_(valor) {
+  return (valor === null || valor === undefined ? "" : valor.toString())
+    .replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/\"/g,"&quot;").replace(/'/g,"&#039;");
+}
+
+function eaLimpiarSerie_(valor) {
+  return (valor || "").toString().trim().toUpperCase().replace(/\s+/g, " ");
+}
+
+function eaLimpiarCodigoCliente_(valor) {
+  return (valor || "").toString().trim().replace(/\s+/g, " ");
+}
+
+function eaNormalizarEquipos_(equipos) {
+  if (!Array.isArray(equipos) || equipos.length < 1) throw new Error("Debe registrar al menos un equipo");
+  if (equipos.length > 8) throw new Error("Se permiten como máximo 8 equipos por solicitud");
+  const series = {};
+  return equipos.map(function(e, i) {
+    const tipo = eaNormalizarTipoEquipo_(e && e.tipo);
+    const serie = eaLimpiarSerie_(e && e.serie);
+    const codigoCliente = eaLimpiarCodigoCliente_(e && e.codigoCliente);
+    if (!serie) throw new Error("Ingrese la serie del equipo " + (i + 1));
+    if (!codigoCliente) throw new Error("Ingrese el código de cliente del equipo " + (i + 1));
+    const clave = normalizarTexto(serie).replace(/[^A-Z0-9]/g, "");
+    if (series[clave]) throw new Error("La serie " + serie + " está repetida en la solicitud");
+    series[clave] = true;
+    return {
+      tipo: tipo,
+      serie: serie,
+      codigoCliente: codigoCliente,
+      estadoRecepcion: normalizarTexto(e && e.estadoRecepcion || "PENDIENTE") || "PENDIENTE",
+      observacionAlmacen: (e && e.observacionAlmacen || "").toString().trim(),
+      recibidoPor: (e && e.recibidoPor || "").toString(),
+      fechaRecepcion: (e && e.fechaRecepcion || "").toString(),
+      horaRecepcion: (e && e.horaRecepcion || "").toString(),
+      cargoId: (e && e.cargoId || "").toString(),
+      estadoWin: normalizarTexto(e && e.estadoWin || "PENDIENTE") || "PENDIENTE",
+      fechaWin: (e && e.fechaWin || "").toString(),
+      horaWin: (e && e.horaWin || "").toString(),
+      recibidoWinPor: (e && e.recibidoWinPor || "").toString(),
+      documentoWin: (e && e.documentoWin || "").toString()
+    };
+  });
+}
+
+function eaFilaAObjeto_(fila, numeroFila) {
+  return {
+    fila: numeroFila || 0,
+    id: fila[0] || "",
+    fechaRegistro: fila[1] || "",
+    horaRegistro: fila[2] || "",
+    origenRegistro: fila[3] || "",
+    registradoPor: fila[4] || "",
+    perfilRegistro: fila[5] || "",
+    sede: fila[6] || "",
+    plataforma: fila[7] || "",
+    cuadrilla: fila[8] || "",
+    usuarioTecnico: fila[9] || "",
+    tecnico: fila[10] || "",
+    estado: fila[11] || "",
+    cantidadReferencial: Number(fila[12]) || 0,
+    equipos: eaJson_(fila[13], []),
+    fechaCompletadoTecnico: fila[14] || "",
+    horaCompletadoTecnico: fila[15] || "",
+    validadoPor: fila[16] || "",
+    perfilValidacion: fila[17] || "",
+    fechaValidacion: fila[18] || "",
+    horaValidacion: fila[19] || "",
+    observacionAlmacen: fila[20] || "",
+    idCargo: fila[21] || "",
+    linkCargo: fila[22] || "",
+    estadoWin: fila[23] || "",
+    fechaEntregaWin: fila[24] || "",
+    horaEntregaWin: fila[25] || "",
+    recibidoWinPor: fila[26] || "",
+    documentoWin: fila[27] || "",
+    observacionWin: fila[28] || "",
+    ultimaActualizacion: fila[29] || "",
+    historial: eaJson_(fila[30], [])
+  };
+}
+
+function eaBuscarSolicitud_(id) {
+  const h = eaAsegurarHojaSolicitudes_();
+  const d = h.getDataRange().getValues();
+  for (let i=1;i<d.length;i++) {
+    if (String(d[i][0]) === String(id)) return {hoja:h, fila:i+1, item:eaFilaAObjeto_(d[i], i+1)};
+  }
+  throw new Error("No se encontró la solicitud de equipos averiados");
+}
+
+function eaHistorialAgregar_(historial, usuario, accion, detalle) {
+  const fh = eaFechaHoraPeru_(new Date());
+  const lista = Array.isArray(historial) ? historial.slice() : [];
+  lista.push({fecha:fh.fecha,hora:fh.hora,usuario:usuario.usuario,perfil:usuario.perfil,accion:accion,detalle:detalle || ""});
+  return lista;
+}
+
+function eaIdSolicitud_() {
+  const ahora = new Date();
+  return "EA-" + Utilities.formatDate(ahora, "America/Lima", "yyyyMMdd-HHmmss") + "-" + Math.floor(100 + Math.random()*900);
+}
+
+function eaIdCargo_() {
+  const ahora = new Date();
+  return "CEA-" + Utilities.formatDate(ahora, "America/Lima", "yyyyMMdd-HHmmss") + "-" + Math.floor(100 + Math.random()*900);
+}
+
+function eaObtenerTecnicosCatalogo_(usuario) {
+  const h = obtenerHoja(HOJA_USUARIOS);
+  const d = h.getDataRange().getValues();
+  const lista = [];
+  for (let i=1;i<d.length;i++) {
+    const perfil = normalizarTexto(d[i][6]);
+    const estado = normalizarTexto(d[i][8] || "ACTIVO");
+    if (perfil !== "TECNICO" || (estado && estado !== "ACTIVO")) continue;
+    const sede = normalizarTexto(d[i][4]);
+    if (eaEsResponsableAlmacen_(usuario.perfil) && sede !== normalizarTexto(usuario.sede)) continue;
+    lista.push({
+      usuario: normalizarUsuario(d[i][0]),
+      tecnico: (d[i][10] || d[i][0] || "").toString().trim(),
+      cuadrilla: normalizarCuadrilla(d[i][3]),
+      sede: sede,
+      plataforma: normalizarTexto(d[i][5])
+    });
+  }
+  lista.sort(function(a,b){
+    const s = (a.sede || "").localeCompare(b.sede || "");
+    if (s) return s;
+    const c = (a.cuadrilla || "").localeCompare(b.cuadrilla || "");
+    if (c) return c;
+    return (a.tecnico || "").localeCompare(b.tecnico || "");
+  });
+  return lista;
+}
+
+function eaCatalogos(data) {
+  const usuario = obtenerUsuarioApp(data.usuario);
+  if (!eaPuedeVer_(usuario)) throw new Error("No tienes acceso a Equipos Averiados");
+  return {
+    ok:true, modulo:"EQUIPOS_AVERIADOS", accion:"CATALOGOS", perfil:usuario.perfil,
+    tipos:eaTiposEquipos_(), tecnicos:eaPuedeGestionarAlmacen_(usuario) ? eaObtenerTecnicosCatalogo_(usuario) : []
+  };
+}
+
+function eaSolicitudAbiertaTecnico_(usuarioTecnico) {
+  const h = eaAsegurarHojaSolicitudes_();
+  const d = h.getDataRange().getValues();
+  const u = normalizarUsuario(usuarioTecnico);
+  const abiertos = ["PENDIENTE DE REGISTRO POR TECNICO","PENDIENTE DE ENTREGA","RECIBIDO PARCIALMENTE","OBSERVADO"];
+  for (let i=1;i<d.length;i++) {
+    if (normalizarUsuario(d[i][9]) === u && abiertos.indexOf(normalizarTexto(d[i][11])) >= 0) return eaFilaAObjeto_(d[i], i+1);
+  }
+  return null;
+}
+
+function registrarEquiposAveriadosTecnico(data) {
+  const usuario = obtenerUsuarioApp(data.usuario);
+  if (!eaEsTecnico_(usuario.perfil)) throw new Error("Solo el técnico puede registrar sus equipos averiados");
+  const equipos = eaNormalizarEquipos_(data.equipos);
+  const ahora = new Date();
+  const fh = eaFechaHoraPeru_(ahora);
+  const id = eaIdSolicitud_();
+  const historial = eaHistorialAgregar_([], usuario, "REGISTRO TECNICO", equipos.length + " equipo(s) registrados");
+  const h = eaAsegurarHojaSolicitudes_();
+  h.appendRow([
+    id,ahora,ahora,"TECNICO",usuario.usuario,usuario.perfil,usuario.sede,usuario.plataforma,usuario.cuadrilla,
+    usuario.usuario,usuario.nombresApellidos || usuario.usuario,"PENDIENTE DE ENTREGA",equipos.length,JSON.stringify(equipos),
+    ahora,ahora,"","","","","","","","PENDIENTE","","","","","",ahora,JSON.stringify(historial)
+  ]);
+  const r = h.getLastRow();
+  h.getRange(r,2).setNumberFormat("dd/mm/yyyy");
+  h.getRange(r,3).setNumberFormat("hh:mm:ss");
+  h.getRange(r,15).setNumberFormat("dd/mm/yyyy");
+  h.getRange(r,16).setNumberFormat("hh:mm:ss");
+  return {ok:true,modulo:"EQUIPOS_AVERIADOS",accion:"REGISTRAR_TECNICO",id:id,equipos:equipos.length,fecha:fh.fecha,hora:fh.hora};
+}
+
+function crearSolicitudEquiposAveriadosAlmacen(data) {
+  const usuario = obtenerUsuarioApp(data.usuario);
+  if (!eaPuedeGestionarAlmacen_(usuario)) throw new Error("Solo Responsable o Jefatura de Almacén puede crear la solicitud pendiente");
+  const usuarioTecnico = normalizarUsuario(data.usuarioTecnico);
+  if (!usuarioTecnico) throw new Error("Seleccione el técnico");
+  const tecnico = obtenerUsuarioApp(usuarioTecnico);
+  if (!eaEsTecnico_(tecnico.perfil)) throw new Error("El usuario seleccionado no es técnico");
+  if (eaEsResponsableAlmacen_(usuario.perfil) && normalizarTexto(tecnico.sede) !== normalizarTexto(usuario.sede)) {
+    throw new Error("Solo puede crear solicitudes para técnicos de su sede");
+  }
+  const existente = eaSolicitudAbiertaTecnico_(usuarioTecnico);
+  if (existente) throw new Error("El técnico ya tiene una solicitud abierta: " + existente.id);
+  const cantidad = Math.max(1, Math.min(8, Number(data.cantidadReferencial) || 1));
+  const ahora = new Date();
+  const id = eaIdSolicitud_();
+  const observacion = (data.observacion || "").toString().trim();
+  const historial = eaHistorialAgregar_([], usuario, "SOLICITUD CREADA POR ALMACEN", "Cantidad referencial: " + cantidad + (observacion ? ". " + observacion : ""));
+  const h = eaAsegurarHojaSolicitudes_();
+  h.appendRow([
+    id,ahora,ahora,"ALMACEN",usuario.usuario,usuario.perfil,tecnico.sede,tecnico.plataforma,tecnico.cuadrilla,
+    tecnico.usuario,tecnico.nombresApellidos || tecnico.usuario,"PENDIENTE DE REGISTRO POR TECNICO",cantidad,"",
+    "","","","","","",observacion,"","","PENDIENTE","","","","","",ahora,JSON.stringify(historial)
+  ]);
+  const r = h.getLastRow();
+  h.getRange(r,2).setNumberFormat("dd/mm/yyyy");
+  h.getRange(r,3).setNumberFormat("hh:mm:ss");
+  return {ok:true,modulo:"EQUIPOS_AVERIADOS",accion:"CREAR_SOLICITUD_ALMACEN",id:id,cantidadReferencial:cantidad};
+}
+
+function completarSolicitudEquiposAveriadosTecnico(data) {
+  const usuario = obtenerUsuarioApp(data.usuario);
+  if (!eaEsTecnico_(usuario.perfil)) throw new Error("Solo el técnico puede completar esta solicitud");
+  const reg = eaBuscarSolicitud_(data.id);
+  if (normalizarUsuario(reg.item.usuarioTecnico) !== normalizarUsuario(usuario.usuario)) throw new Error("La solicitud no pertenece al técnico actual");
+  if (["RECIBIDO POR ALMACEN","ENTREGADO A WIN","RECHAZADO"].indexOf(normalizarTexto(reg.item.estado)) >= 0) throw new Error("La solicitud ya no puede modificarse");
+  let equipos = eaNormalizarEquipos_(data.equipos);
+  // Si ya hubo una recepción parcial, los equipos recibidos no pueden perderse ni volver a estado pendiente.
+  const recibidosAnteriores = (reg.item.equipos || []).filter(function(e){ return normalizarTexto(e.estadoRecepcion) === "RECIBIDO"; });
+  const nuevosPorSerie = {};
+  equipos.forEach(function(e){ nuevosPorSerie[normalizarTexto(e.serie)] = e; });
+  recibidosAnteriores.forEach(function(anterior){
+    const clave = normalizarTexto(anterior.serie);
+    if (nuevosPorSerie[clave]) Object.assign(nuevosPorSerie[clave], anterior);
+    else equipos.push(anterior);
+  });
+  if (equipos.length > 8) throw new Error("La solicitud no puede superar 8 equipos, incluyendo los ya recibidos");
+  const ahora = new Date();
+  const historial = eaHistorialAgregar_(reg.item.historial, usuario, "SOLICITUD COMPLETADA POR TECNICO", equipos.length + " equipo(s)");
+  reg.hoja.getRange(reg.fila,12,1,20).setValues([[
+    "PENDIENTE DE ENTREGA",equipos.length,JSON.stringify(equipos),ahora,ahora,
+    reg.item.validadoPor||"",reg.item.perfilValidacion||"",reg.item.fechaValidacion||"",reg.item.horaValidacion||"",
+    reg.item.observacionAlmacen||"",reg.item.idCargo||"",reg.item.linkCargo||"",reg.item.estadoWin||"PENDIENTE",
+    reg.item.fechaEntregaWin||"",reg.item.horaEntregaWin||"",reg.item.recibidoWinPor||"",reg.item.documentoWin||"",
+    reg.item.observacionWin||"",ahora,JSON.stringify(historial)
+  ]]);
+  reg.hoja.getRange(reg.fila,15).setNumberFormat("dd/mm/yyyy");
+  reg.hoja.getRange(reg.fila,16).setNumberFormat("hh:mm:ss");
+  return {ok:true,modulo:"EQUIPOS_AVERIADOS",accion:"COMPLETAR_TECNICO",id:reg.item.id,equipos:equipos.length};
+}
+
+function eaRegistroVisible_(usuario, item) {
+  if (eaEsTecnico_(usuario.perfil)) return normalizarUsuario(item.usuarioTecnico) === normalizarUsuario(usuario.usuario) || normalizarCuadrilla(item.cuadrilla) === normalizarCuadrilla(usuario.cuadrilla);
+  if (eaEsResponsableAlmacen_(usuario.perfil)) return normalizarTexto(item.sede) === normalizarTexto(usuario.sede);
+  return eaEsJefaturaAlmacen_(usuario.perfil) || eaEsJefaturaGeneral_(usuario.perfil);
+}
+
+function listarEquiposAveriados(data) {
+  const usuario = obtenerUsuarioApp(data.usuario);
+  if (!eaPuedeVer_(usuario)) throw new Error("No tienes acceso a Equipos Averiados");
+  const h = eaAsegurarHojaSolicitudes_();
+  const d = h.getDataRange().getValues();
+  const lista = [];
+  const filtroSede = normalizarTexto(data.sede || "");
+  const filtroCuadrilla = normalizarCuadrilla(data.cuadrilla || "");
+  const filtroTecnico = normalizarUsuario(data.usuarioTecnico || data.tecnico || "");
+  const filtroEstado = normalizarTexto(data.estado || "");
+  const filtroTipo = normalizarTexto(data.tipoEquipo || "");
+  const filtroSerie = normalizarTexto(data.serie || "");
+  const filtroCodigo = normalizarTexto(data.codigoCliente || "");
+  const filtroDesde = (data.desde || "").toString();
+  const filtroHasta = (data.hasta || "").toString();
+  for (let i=1;i<d.length;i++) {
+    const item = eaFilaAObjeto_(d[i], i+1);
+    if (!eaRegistroVisible_(usuario, item)) continue;
+    if (filtroSede && normalizarTexto(item.sede) !== filtroSede) continue;
+    if (filtroCuadrilla && normalizarCuadrilla(item.cuadrilla) !== filtroCuadrilla) continue;
+    if (filtroTecnico && normalizarUsuario(item.usuarioTecnico) !== filtroTecnico && normalizarUsuario(item.tecnico).indexOf(filtroTecnico) < 0) continue;
+    if (filtroEstado && normalizarTexto(item.estado) !== filtroEstado && normalizarTexto(item.estadoWin) !== filtroEstado) continue;
+    const fechaIso = item.fechaRegistro instanceof Date ? Utilities.formatDate(item.fechaRegistro,"America/Lima","yyyy-MM-dd") : "";
+    if (filtroDesde && fechaIso && fechaIso < filtroDesde) continue;
+    if (filtroHasta && fechaIso && fechaIso > filtroHasta) continue;
+    if (filtroTipo && !item.equipos.some(function(e){return normalizarTexto(e.tipo) === filtroTipo;})) continue;
+    if (filtroSerie && !item.equipos.some(function(e){return normalizarTexto(e.serie).indexOf(filtroSerie) >= 0;})) continue;
+    if (filtroCodigo && !item.equipos.some(function(e){return normalizarTexto(e.codigoCliente).indexOf(filtroCodigo) >= 0;})) continue;
+    item.fechaRegistroVisible = item.fechaRegistro instanceof Date ? Utilities.formatDate(item.fechaRegistro,"America/Lima","dd/MM/yyyy") : item.fechaRegistro;
+    item.horaRegistroVisible = item.horaRegistro instanceof Date ? Utilities.formatDate(item.horaRegistro,"America/Lima","HH:mm:ss") : item.horaRegistro;
+    lista.push(item);
+  }
+  lista.sort(function(a,b){ return String(b.id).localeCompare(String(a.id)); });
+  const resumen = {total:lista.length,pendienteRegistro:0,pendienteEntrega:0,parcial:0,recibido:0,observado:0,rechazado:0,pendienteWin:0,entregadoWin:0,totalEquipos:0};
+  lista.forEach(function(x){
+    const e = normalizarTexto(x.estado);
+    resumen.totalEquipos += Array.isArray(x.equipos) ? x.equipos.length : 0;
+    if (e === "PENDIENTE DE REGISTRO POR TECNICO") resumen.pendienteRegistro++;
+    else if (e === "PENDIENTE DE ENTREGA") resumen.pendienteEntrega++;
+    else if (e === "RECIBIDO PARCIALMENTE") resumen.parcial++;
+    else if (e === "RECIBIDO POR ALMACEN") resumen.recibido++;
+    else if (e === "OBSERVADO") resumen.observado++;
+    else if (e === "RECHAZADO") resumen.rechazado++;
+    if (normalizarTexto(x.estadoWin) === "PENDIENTE DE ENTREGA A WIN") resumen.pendienteWin++;
+    if (normalizarTexto(x.estadoWin) === "ENTREGADO A WIN") resumen.entregadoWin++;
+  });
+  return {ok:true,modulo:"EQUIPOS_AVERIADOS",accion:"LISTAR",perfil:usuario.perfil,resumen:resumen,solicitudes:lista,registros:lista.length};
+}
+
+function eaCarpetaCargos_() {
+  const raiz = DriveApp.getFolderById(CARPETA_ACTAS_ESCANEADAS);
+  const nombre = "CARGOS_EQUIPOS_AVERIADOS";
+  const it = raiz.getFoldersByName(nombre);
+  return it.hasNext() ? it.next() : raiz.createFolder(nombre);
+}
+
+function eaTablaCargo_(equipos) {
+  const lista = equipos.slice(0,8);
+  while (lista.length < 8) lista.push({tipo:"",serie:"",codigoCliente:""});
+  let filas = "";
+  lista.forEach(function(x,i){
+    filas += '<tr><td class="num">'+(i+1)+'</td><td>'+eaEscaparHtml_(x.tipo||"")+'</td><td>'+eaEscaparHtml_(x.serie||"")+'</td><td>'+eaEscaparHtml_(x.codigoCliente||"")+'</td></tr>';
+  });
+  return '<table class="equipos"><thead><tr><th>N.°</th><th>TIPO DE EQUIPO</th><th>SERIE</th><th>CÓDIGO DE CLIENTE</th></tr></thead><tbody>'+filas+'</tbody></table>';
+}
+
+function eaCopiaCargoHtml_(datos, copia) {
+  return '<section class="copia">'
+    +'<div class="cab"><div class="marca"><b>VISUAL</b><span>CONNECTIONS</span></div><div class="titulo"><h1>CARGO DE ENTREGA DE EQUIPOS AVERIADOS</h1><p>CONTROL DE RECEPCIÓN DE ALMACÉN</p></div><div class="id"><b>'+eaEscaparHtml_(datos.idCargo)+'</b><small>'+eaEscaparHtml_(copia)+'</small></div></div>'
+    +'<div class="meta"><div><span>SEDE</span><b>'+eaEscaparHtml_(datos.sede)+'</b></div><div><span>PLATAFORMA</span><b>'+eaEscaparHtml_(datos.plataforma)+'</b></div><div><span>CUADRILLA</span><b>'+eaEscaparHtml_(datos.cuadrilla)+'</b></div><div><span>FECHA Y HORA</span><b>'+eaEscaparHtml_(datos.fecha)+' '+eaEscaparHtml_(datos.hora)+'</b></div></div>'
+    +'<div class="tecnico"><span>TÉCNICO</span><b>'+eaEscaparHtml_(datos.tecnico)+'</b><small>Solicitud '+eaEscaparHtml_(datos.idSolicitud)+'</small></div>'
+    +eaTablaCargo_(datos.equipos)
+    +'<div class="firmas"><div><span></span><b>TÉCNICO</b></div><div><span></span><b>RESPONSABLE DE ALMACÉN</b><small>'+eaEscaparHtml_(datos.recibidoPor)+'</small></div></div>'
+    +'<div class="nota">El presente cargo acredita únicamente la recepción física de los equipos averiados detallados.</div>'
+    +'</section>';
+}
+
+function eaHtmlCargo_(datos) {
+  return '<!doctype html><html><head><meta charset="UTF-8"><style>'
+    +'@page{size:A4;margin:6mm}*{box-sizing:border-box}body{margin:0;font-family:Arial,sans-serif;color:#111;font-size:9px}.copia{height:137mm;border:1.2px solid #111;padding:4mm;position:relative;overflow:hidden}.corte{height:6mm;border-top:1px dashed #555;text-align:center;font-size:7px;color:#555;padding-top:1mm}.cab{display:grid;grid-template-columns:28mm 1fr 38mm;align-items:center;gap:2mm;border-bottom:1px solid #111;padding-bottom:2mm}.marca{border:1px solid #777;border-radius:2mm;padding:2mm;text-align:center}.marca b{display:block;font-size:14px}.marca span{font-size:7px}.titulo{text-align:center}.titulo h1{font-size:12px;margin:0}.titulo p{font-size:7px;margin:1mm 0}.id{text-align:right}.id b{display:block;color:#b91c1c}.id small{display:block;margin-top:1mm}.meta{display:grid;grid-template-columns:25mm 35mm 1fr 38mm;gap:2mm;margin:2mm 0}.meta div,.tecnico{border-bottom:1px solid #777;padding:1mm}.meta span,.tecnico span{display:block;font-size:6.5px;color:#555}.meta b,.tecnico b{font-size:8.5px}.tecnico small{float:right;font-size:6.5px}.equipos{width:100%;border-collapse:collapse;table-layout:fixed;margin-top:3mm}.equipos th,.equipos td{border:1px solid #777;padding:1mm;height:7.4mm}.equipos th{background:#eef2f7;font-size:7px}.equipos .num{width:8mm;text-align:center}.equipos th:nth-child(2){width:38mm}.equipos th:nth-child(3){width:45mm}.firmas{display:grid;grid-template-columns:1fr 1fr;gap:18mm;margin:9mm 12mm 0}.firmas div{text-align:center}.firmas span{display:block;border-top:1px solid #111}.firmas b{display:block;font-size:7px;margin-top:1mm}.firmas small{display:block;font-size:6.5px}.nota{position:absolute;left:4mm;right:4mm;bottom:3mm;font-size:6.4px}'
+    +'</style></head><body>'+eaCopiaCargoHtml_(datos,"COPIA TÉCNICO")+'<div class="corte">✂ CORTE AQUÍ</div>'+eaCopiaCargoHtml_(datos,"COPIA ALMACÉN")+'</body></html>';
+}
+
+function eaGenerarCargo_(datos) {
+  const html = eaHtmlCargo_(datos);
+  const nombre = datos.idCargo + ".pdf";
+  const pdf = HtmlService.createHtmlOutput(html).getAs(MimeType.PDF).setName(nombre);
+  const archivo = eaCarpetaCargos_().createFile(pdf);
+  archivo.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
+  return {nombre:nombre,link:archivo.getUrl(),descarga:"https://drive.google.com/uc?export=download&id="+archivo.getId(),base64:Utilities.base64Encode(pdf.getBytes())};
+}
+
+function validarRecepcionEquiposAveriados(data) {
+  const usuario = obtenerUsuarioApp(data.usuario);
+  if (!eaPuedeGestionarAlmacen_(usuario)) throw new Error("Solo Responsable o Jefatura de Almacén puede validar la recepción");
+  const lock = LockService.getScriptLock();
+  lock.waitLock(30000);
+  try {
+    const reg = eaBuscarSolicitud_(data.id);
+    if (eaEsResponsableAlmacen_(usuario.perfil) && normalizarTexto(reg.item.sede) !== normalizarTexto(usuario.sede)) throw new Error("La solicitud pertenece a otra sede");
+    if (!Array.isArray(reg.item.equipos) || !reg.item.equipos.length) throw new Error("El técnico todavía no registró los equipos");
+    const decisiones = Array.isArray(data.equipos) ? data.equipos : [];
+    const porSerie = {};
+    decisiones.forEach(function(x){ porSerie[normalizarTexto(x.serie)] = x; });
+    const ahora = new Date();
+    const fh = eaFechaHoraPeru_(ahora);
+    const nuevosRecibidos = [];
+    const equipos = reg.item.equipos.map(function(orig){
+      const e = Object.assign({}, orig);
+      if (normalizarTexto(e.estadoRecepcion) === "RECIBIDO") return e;
+      const dec = porSerie[normalizarTexto(e.serie)];
+      if (!dec) return e;
+      const estado = normalizarTexto(dec.estado || dec.estadoRecepcion || "PENDIENTE");
+      if (["PENDIENTE","RECIBIDO","OBSERVADO","RECHAZADO"].indexOf(estado) < 0) throw new Error("Estado de recepción no válido");
+      e.estadoRecepcion = estado;
+      e.observacionAlmacen = (dec.observacion || dec.observacionAlmacen || "").toString().trim();
+      if (estado === "RECIBIDO") {
+        e.recibidoPor = usuario.usuario;
+        e.fechaRecepcion = fh.fecha;
+        e.horaRecepcion = fh.hora;
+        e.estadoWin = "PENDIENTE";
+        nuevosRecibidos.push(e);
+      }
+      return e;
+    });
+    const totalRecibidos = equipos.filter(function(e){return normalizarTexto(e.estadoRecepcion)==="RECIBIDO";}).length;
+    const totalPendientes = equipos.filter(function(e){return normalizarTexto(e.estadoRecepcion)==="PENDIENTE";}).length;
+    const totalObservados = equipos.filter(function(e){return normalizarTexto(e.estadoRecepcion)==="OBSERVADO";}).length;
+    const totalRechazados = equipos.filter(function(e){return normalizarTexto(e.estadoRecepcion)==="RECHAZADO";}).length;
+    let estado = "PENDIENTE DE ENTREGA";
+    if (totalRecibidos === equipos.length) estado = "RECIBIDO POR ALMACEN";
+    else if (totalRecibidos > 0) estado = "RECIBIDO PARCIALMENTE";
+    else if (totalObservados > 0) estado = "OBSERVADO";
+    else if (totalRechazados === equipos.length) estado = "RECHAZADO";
+    let cargo = null;
+    let idCargo = reg.item.idCargo || "";
+    let linkCargo = reg.item.linkCargo || "";
+    if (nuevosRecibidos.length) {
+      idCargo = eaIdCargo_();
+      nuevosRecibidos.forEach(function(e){e.cargoId=idCargo;});
+      cargo = eaGenerarCargo_({idCargo:idCargo,idSolicitud:reg.item.id,sede:reg.item.sede,plataforma:reg.item.plataforma,cuadrilla:reg.item.cuadrilla,tecnico:reg.item.tecnico,recibidoPor:usuario.nombresApellidos||usuario.usuario,fecha:fh.fecha,hora:fh.hora,equipos:nuevosRecibidos});
+      linkCargo = cargo.link;
+      const hc = eaAsegurarHojaCargos_();
+      hc.appendRow([idCargo,reg.item.id,ahora,ahora,reg.item.sede,reg.item.plataforma,reg.item.cuadrilla,reg.item.usuarioTecnico,reg.item.tecnico,usuario.usuario,usuario.perfil,nuevosRecibidos.length,JSON.stringify(nuevosRecibidos),cargo.link,cargo.nombre,"GENERADO"]);
+      const rc = hc.getLastRow(); hc.getRange(rc,3).setNumberFormat("dd/mm/yyyy"); hc.getRange(rc,4).setNumberFormat("hh:mm:ss");
+    }
+    const estadoWin = totalRecibidos > 0 ? "PENDIENTE DE ENTREGA A WIN" : (reg.item.estadoWin || "PENDIENTE");
+    const historial = eaHistorialAgregar_(reg.item.historial, usuario, "VALIDACION DE RECEPCION", "Recibidos: "+totalRecibidos+", pendientes: "+totalPendientes+", observados: "+totalObservados+", rechazados: "+totalRechazados);
+    reg.hoja.getRange(reg.fila,12,1,20).setValues([[
+      estado,equipos.length,JSON.stringify(equipos),reg.item.fechaCompletadoTecnico||"",reg.item.horaCompletadoTecnico||"",
+      usuario.usuario,usuario.perfil,ahora,ahora,(data.observacionGeneral||"").toString().trim(),idCargo,linkCargo,estadoWin,
+      reg.item.fechaEntregaWin||"",reg.item.horaEntregaWin||"",reg.item.recibidoWinPor||"",reg.item.documentoWin||"",
+      reg.item.observacionWin||"",ahora,JSON.stringify(historial)
+    ]]);
+    reg.hoja.getRange(reg.fila,19).setNumberFormat("dd/mm/yyyy"); reg.hoja.getRange(reg.fila,20).setNumberFormat("hh:mm:ss");
+    return {ok:true,modulo:"EQUIPOS_AVERIADOS",accion:"VALIDAR_RECEPCION",id:reg.item.id,estado:estado,totalRecibidos:totalRecibidos,cargo:cargo ? {idCargo:idCargo,linkPdf:cargo.link,descargaPdf:cargo.descarga,nombrePdf:cargo.nombre,pdfBase64:cargo.base64} : null};
+  } finally { lock.releaseLock(); }
+}
+
+function registrarEntregaWinEquiposAveriados(data) {
+  const usuario = obtenerUsuarioApp(data.usuario);
+  if (!eaPuedeGestionarAlmacen_(usuario)) throw new Error("Solo Responsable o Jefatura de Almacén puede registrar la entrega a WIN");
+  const reg = eaBuscarSolicitud_(data.id);
+  if (eaEsResponsableAlmacen_(usuario.perfil) && normalizarTexto(reg.item.sede) !== normalizarTexto(usuario.sede)) throw new Error("La solicitud pertenece a otra sede");
+  const recibidoWinPor = (data.recibidoWinPor || "").toString().trim();
+  if (!recibidoWinPor) throw new Error("Ingrese el nombre del responsable de WIN que recibe");
+  const documento = (data.documentoWin || "").toString().trim();
+  const observacion = (data.observacionWin || "").toString().trim();
+  const ahora = new Date();
+  const fh = eaFechaHoraPeru_(ahora);
+  let actualizados = 0;
+  const equipos = (reg.item.equipos || []).map(function(orig){
+    const e = Object.assign({},orig);
+    if (normalizarTexto(e.estadoRecepcion)==="RECIBIDO" && normalizarTexto(e.estadoWin)!=="ENTREGADO A WIN") {
+      e.estadoWin="ENTREGADO A WIN";e.fechaWin=fh.fecha;e.horaWin=fh.hora;e.recibidoWinPor=recibidoWinPor;e.documentoWin=documento;actualizados++;
+    }
+    return e;
+  });
+  if (!actualizados) throw new Error("No existen equipos recibidos pendientes de entrega a WIN");
+  const pendientesWin = equipos.some(function(e){return normalizarTexto(e.estadoRecepcion)==="RECIBIDO" && normalizarTexto(e.estadoWin)!=="ENTREGADO A WIN";});
+  const estadoWin = pendientesWin ? "PENDIENTE DE ENTREGA A WIN" : "ENTREGADO A WIN";
+  const historial = eaHistorialAgregar_(reg.item.historial, usuario, "ENTREGA A WIN", actualizados + " equipo(s). Recibe: " + recibidoWinPor);
+  reg.hoja.getRange(reg.fila,14).setValue(JSON.stringify(equipos));
+  reg.hoja.getRange(reg.fila,24,1,8).setValues([[estadoWin,ahora,ahora,recibidoWinPor,documento,observacion,ahora,JSON.stringify(historial)]]);
+  reg.hoja.getRange(reg.fila,25).setNumberFormat("dd/mm/yyyy"); reg.hoja.getRange(reg.fila,26).setNumberFormat("hh:mm:ss");
+  return {ok:true,modulo:"EQUIPOS_AVERIADOS",accion:"ENTREGA_WIN",id:reg.item.id,equipos:actualizados,estadoWin:estadoWin,fecha:fh.fecha,hora:fh.hora};
+}
+
+function eaFilaCargoAObjeto_(f) {
+  return {idCargo:f[0]||"",idSolicitud:f[1]||"",fechaCargo:f[2]||"",horaCargo:f[3]||"",sede:f[4]||"",plataforma:f[5]||"",cuadrilla:f[6]||"",usuarioTecnico:f[7]||"",tecnico:f[8]||"",recibidoPor:f[9]||"",perfilRecibe:f[10]||"",totalEquipos:Number(f[11])||0,equipos:eaJson_(f[12],[]),linkPdf:f[13]||"",nombrePdf:f[14]||"",estado:f[15]||"GENERADO"};
+}
+
+function listarCargosEquiposAveriados(data) {
+  const usuario = obtenerUsuarioApp(data.usuario);
+  if (!eaPuedeVer_(usuario)) throw new Error("No tienes acceso a los cargos de equipos averiados");
+  const h = eaAsegurarHojaCargos_();
+  const d = h.getDataRange().getValues();
+  const lista=[];
+  for(let i=1;i<d.length;i++){
+    const x=eaFilaCargoAObjeto_(d[i]);
+    if(eaEsTecnico_(usuario.perfil) && normalizarUsuario(x.usuarioTecnico)!==normalizarUsuario(usuario.usuario) && normalizarCuadrilla(x.cuadrilla)!==normalizarCuadrilla(usuario.cuadrilla)) continue;
+    if(eaEsResponsableAlmacen_(usuario.perfil) && normalizarTexto(x.sede)!==normalizarTexto(usuario.sede)) continue;
+    x.fechaCargoVisible=x.fechaCargo instanceof Date?Utilities.formatDate(x.fechaCargo,"America/Lima","dd/MM/yyyy"):x.fechaCargo;
+    x.horaCargoVisible=x.horaCargo instanceof Date?Utilities.formatDate(x.horaCargo,"America/Lima","HH:mm:ss"):x.horaCargo;
+    lista.push(x);
+  }
+  lista.reverse();
+  return {ok:true,modulo:"EQUIPOS_AVERIADOS",accion:"LISTAR_CARGOS",cargos:lista,registros:lista.length};
+}
+
+function asegurarPermisosEquiposAveriados_() {
+  const h = asegurarHojaPermisosModulos();
+  const d = h.getDataRange().getValues();
+  const existe = {};
+  for(let i=1;i<d.length;i++) existe[normalizarTexto(d[i][0])+"|"+normalizarTexto(d[i][1])] = true;
+  const filas = [
+    ["TECNICO","EQUIPOS AVERIADOS","SI",17,"SI","SI","SI","SI","NO","NO","NO","SI","NO","PERSONAL","TECNICO","Registro y consulta de equipos averiados"],
+    ["ALMACEN","EQUIPOS AVERIADOS","SI",17,"SI","SI","SI","SI","SI","NO","SI","SI","SI","SEDE","ALMACEN","Recepción y cargo de equipos averiados"],
+    ["RESPONSABLE ALMACEN","EQUIPOS AVERIADOS","SI",17,"SI","SI","SI","SI","SI","NO","SI","SI","SI","SEDE","RESPONSABLE ALMACEN","Recepción y cargo de equipos averiados"],
+    ["RESPONSABLE DE ALMACEN","EQUIPOS AVERIADOS","SI",17,"SI","SI","SI","SI","SI","NO","SI","SI","SI","SEDE","RESPONSABLE DE ALMACEN","Recepción y cargo de equipos averiados"],
+    ["JEFATURA ALMACEN","EQUIPOS AVERIADOS","SI",17,"SI","SI","SI","SI","SI","SI","SI","SI","SI","ZONA NORTE","JEFATURA ALMACEN","Gestión total de las tres sedes"],
+    ["JEFATURA","EQUIPOS AVERIADOS","SI",17,"SI","SI","NO","NO","NO","NO","NO","SI","NO","ZONA NORTE","JEFATURA","Solo visualización y descarga de informe"],
+    ["JEFATURA GENERAL","EQUIPOS AVERIADOS","SI",17,"SI","SI","NO","NO","NO","NO","NO","SI","NO","ZONA NORTE","JEFATURA GENERAL","Solo visualización y descarga de informe"],
+    ["ADMIN","EQUIPOS AVERIADOS","SI",17,"SI","SI","NO","NO","NO","NO","NO","SI","NO","ZONA NORTE","ADMIN","Solo visualización y descarga de informe"],
+    ["ADMINISTRADOR","EQUIPOS AVERIADOS","SI",17,"SI","SI","NO","NO","NO","NO","NO","SI","NO","ZONA NORTE","ADMINISTRADOR","Solo visualización y descarga de informe"]
+  ];
+  const nuevas=[];
+  filas.forEach(function(f){if(!existe[normalizarTexto(f[0])+"|EQUIPOS AVERIADOS"])nuevas.push(f);});
+  if(nuevas.length) h.getRange(h.getLastRow()+1,1,nuevas.length,16).setValues(nuevas);
+  return nuevas.length;
+}
+
+
 function doPost(e) {
   try {
     const data = JSON.parse(e.postData.contents);
@@ -8733,6 +9320,15 @@ function doPost(e) {
     if (data.accion === "listarChecklistAlmacen") return respuestaJson(listarChecklistAlmacen(data));
     if (data.accion === "validarChecklistAlmacen") return respuestaJson(validarChecklistAlmacen(data));
     if (data.accion === "autorizarDriveChecklistAlmacen") return respuestaJson(autorizarDriveChecklistAlmacen());
+
+    if (data.accion === "catalogosEquiposAveriados") return respuestaJson(eaCatalogos(data));
+    if (data.accion === "registrarEquiposAveriadosTecnico") return respuestaJson(registrarEquiposAveriadosTecnico(data));
+    if (data.accion === "crearSolicitudEquiposAveriadosAlmacen") return respuestaJson(crearSolicitudEquiposAveriadosAlmacen(data));
+    if (data.accion === "completarSolicitudEquiposAveriadosTecnico") return respuestaJson(completarSolicitudEquiposAveriadosTecnico(data));
+    if (data.accion === "listarEquiposAveriados") return respuestaJson(listarEquiposAveriados(data));
+    if (data.accion === "validarRecepcionEquiposAveriados") return respuestaJson(validarRecepcionEquiposAveriados(data));
+    if (data.accion === "registrarEntregaWinEquiposAveriados") return respuestaJson(registrarEntregaWinEquiposAveriados(data));
+    if (data.accion === "listarCargosEquiposAveriados") return respuestaJson(listarCargosEquiposAveriados(data));
 
     if (data.accion === "obtenerAnalisisEconomico") {
       return ContentService

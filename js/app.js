@@ -291,7 +291,7 @@ function organizarMenuPorPerfilV218(mv55, perfil){
         panel.id = esGerencia ? "mv221GerenciaSections" : "mv213JefaturaSections";
         crearSeccionesMenuV218(panel, [
             { titulo:"📊 Gestión", clase:"mv213-grid-4", ids:["cardDashboardJefatura","cardRanking","cardBonos","cardAnalisisEconomico"] },
-            { titulo:"📋 Control Operativo", clase:"mv213-grid-4", ids:["cardActividadCampo","cardValidacionTecnica","cardActas","cardObservaciones"] },
+            { titulo:"📋 Control Operativo", clase:"mv213-grid-4", ids:["cardActividadCampo","cardValidacionTecnica","cardActas","cardEquiposAveriados","cardObservaciones"] },
             { titulo:"🏢 Operación", clase:"mv213-grid-4", ids:["cardChecklistAlmacen","cardProgramacionDescansos","cardTrabajosConjunta","cardMapaOperativo"] },
             { titulo:"📚 Recursos", clase:"mv213-grid-3", ids:["cardAccesos","cardBiblioteca","cardCapacitacion"] },
             { titulo:"💬 Soporte", clase:"mv213-grid-support", ids:["cardConsultasReclamos"] }
@@ -315,7 +315,7 @@ function aplicarPermisosMenuActualizados(){
         'cardProduccion','cardEfectividad','cardRecableado','cardVTRGAR','cardRanking','cardBonos',
         'cardObservaciones','cardAccesos','cardBiblioteca','cardCapacitacion',
         'cardDashboardSupervisor','cardDashboardJefatura','cardAnalisisEconomico',
-        'cardAdministracion','cardActividadCampo','cardValidacionTecnica','cardActas',
+        'cardAdministracion','cardActividadCampo','cardValidacionTecnica','cardActas','cardEquiposAveriados',
         'cardChecklistAlmacen','cardProgramacionDescansos','cardTrabajosConjunta','cardMapaOperativo','cardConsultasReclamos'
     ];
     todasLasCards.forEach(id => mostrarCardSeguro(id, false));
@@ -398,6 +398,7 @@ async function configurarMenu(){
         "cardActividadCampo",
         "cardValidacionTecnica",
         "cardActas",
+        "cardEquiposAveriados",
         "cardChecklistAlmacen",
         "cardProgramacionDescansos",
         "cardTrabajosConjunta",
@@ -433,6 +434,7 @@ async function configurarMenu(){
             "cardObservaciones",
             "cardValidacionTecnica",
             "cardActas",
+            "cardEquiposAveriados",
             "cardChecklistAlmacen",
             "cardTrabajosConjunta",
             "cardAccesos",
@@ -468,6 +470,7 @@ async function configurarMenu(){
             "cardActividadCampo",
             "cardValidacionTecnica",
             "cardActas",
+            "cardEquiposAveriados",
             "cardChecklistAlmacen",
             "cardProgramacionDescansos",
             "cardTrabajosConjunta",
@@ -486,6 +489,7 @@ async function configurarMenu(){
             "cardActividadCampo",
             "cardValidacionTecnica",
             "cardActas",
+            "cardEquiposAveriados",
             "cardChecklistAlmacen",
             "cardProgramacionDescansos",
             "cardTrabajosConjunta",
@@ -521,6 +525,7 @@ async function configurarMenu(){
             "cardActividadCampo",
             "cardValidacionTecnica",
             "cardActas",
+            "cardEquiposAveriados",
             "cardChecklistAlmacen",
             "cardProgramacionDescansos",
             "cardTrabajosConjunta",
@@ -539,6 +544,7 @@ async function configurarMenu(){
             "cardActividadCampo",
             "cardValidacionTecnica",
             "cardActas",
+            "cardEquiposAveriados",
             "cardChecklistAlmacen",
             "cardProgramacionDescansos",
             "cardTrabajosConjunta",
@@ -546,10 +552,12 @@ async function configurarMenu(){
         ],
         ALMACEN: [
             "cardActas",
+            "cardEquiposAveriados",
             "cardChecklistAlmacen"
         ],
         "JEFATURA ALMACEN": [
             "cardActas",
+            "cardEquiposAveriados",
             "cardChecklistAlmacen",
             "cardAnalisisEconomico"
         ]
