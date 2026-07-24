@@ -1266,6 +1266,7 @@ body{background:linear-gradient(180deg,var(--mv4-bg),var(--mv4-bg2));font-family
 #menuPrincipal.mv196-tecnico-menu #cardObservaciones,
 #menuPrincipal.mv196-tecnico-menu #cardValidacionTecnica,
 #menuPrincipal.mv196-tecnico-menu #cardActas,
+#menuPrincipal.mv196-tecnico-menu #cardEquiposAveriados,
 #menuPrincipal.mv196-tecnico-menu #cardChecklistAlmacen{
   min-height:78px!important;
   height:78px!important;
@@ -1278,6 +1279,7 @@ body{background:linear-gradient(180deg,var(--mv4-bg),var(--mv4-bg2));font-family
 #menuPrincipal.mv196-tecnico-menu #cardObservaciones span,
 #menuPrincipal.mv196-tecnico-menu #cardValidacionTecnica span,
 #menuPrincipal.mv196-tecnico-menu #cardActas span,
+#menuPrincipal.mv196-tecnico-menu #cardEquiposAveriados span,
 #menuPrincipal.mv196-tecnico-menu #cardChecklistAlmacen span{
   font-size:25px!important;
   line-height:1!important;
@@ -1287,6 +1289,7 @@ body{background:linear-gradient(180deg,var(--mv4-bg),var(--mv4-bg2));font-family
 #menuPrincipal.mv196-tecnico-menu #cardObservaciones b,
 #menuPrincipal.mv196-tecnico-menu #cardValidacionTecnica b,
 #menuPrincipal.mv196-tecnico-menu #cardActas b,
+#menuPrincipal.mv196-tecnico-menu #cardEquiposAveriados b,
 #menuPrincipal.mv196-tecnico-menu #cardChecklistAlmacen b{
   font-size:11px!important;
   line-height:1.1!important;
@@ -1296,6 +1299,7 @@ body{background:linear-gradient(180deg,var(--mv4-bg),var(--mv4-bg2));font-family
   #menuPrincipal.mv196-tecnico-menu #cardRanking,
   #menuPrincipal.mv196-tecnico-menu #cardValidacionTecnica,
   #menuPrincipal.mv196-tecnico-menu #cardActas,
+  #menuPrincipal.mv196-tecnico-menu #cardEquiposAveriados,
   #menuPrincipal.mv196-tecnico-menu #cardChecklistAlmacen{
     min-height:74px!important;
     height:74px!important;
@@ -1304,12 +1308,14 @@ body{background:linear-gradient(180deg,var(--mv4-bg),var(--mv4-bg2));font-family
   #menuPrincipal.mv196-tecnico-menu #cardRanking span,
   #menuPrincipal.mv196-tecnico-menu #cardValidacionTecnica span,
   #menuPrincipal.mv196-tecnico-menu #cardActas span,
+  #menuPrincipal.mv196-tecnico-menu #cardEquiposAveriados span,
   #menuPrincipal.mv196-tecnico-menu #cardChecklistAlmacen span{
     font-size:23px!important;
   }
   #menuPrincipal.mv196-tecnico-menu #cardRanking b,
   #menuPrincipal.mv196-tecnico-menu #cardValidacionTecnica b,
   #menuPrincipal.mv196-tecnico-menu #cardActas b,
+  #menuPrincipal.mv196-tecnico-menu #cardEquiposAveriados b,
   #menuPrincipal.mv196-tecnico-menu #cardChecklistAlmacen b{
     font-size:10px!important;
   }
@@ -1487,6 +1493,7 @@ body{background:linear-gradient(180deg,var(--mv4-bg),var(--mv4-bg2));font-family
 }
 #menuPrincipal.mv196-tecnico-menu #cardValidacionTecnica,
 #menuPrincipal.mv196-tecnico-menu #cardActas,
+#menuPrincipal.mv196-tecnico-menu #cardEquiposAveriados,
 #menuPrincipal.mv196-tecnico-menu #cardChecklistAlmacen{
   grid-column:span 4!important;
   min-width:0!important;
@@ -1499,6 +1506,7 @@ body{background:linear-gradient(180deg,var(--mv4-bg),var(--mv4-bg2));font-family
 }
 #menuPrincipal.mv196-tecnico-menu #cardValidacionTecnica span,
 #menuPrincipal.mv196-tecnico-menu #cardActas span,
+#menuPrincipal.mv196-tecnico-menu #cardEquiposAveriados span,
 #menuPrincipal.mv196-tecnico-menu #cardChecklistAlmacen span{
   font-size:22px!important;
   line-height:1!important;
@@ -1506,6 +1514,7 @@ body{background:linear-gradient(180deg,var(--mv4-bg),var(--mv4-bg2));font-family
 }
 #menuPrincipal.mv196-tecnico-menu #cardValidacionTecnica b,
 #menuPrincipal.mv196-tecnico-menu #cardActas b,
+#menuPrincipal.mv196-tecnico-menu #cardEquiposAveriados b,
 #menuPrincipal.mv196-tecnico-menu #cardChecklistAlmacen b{
   font-size:9px!important;
   line-height:1.08!important;
@@ -1516,6 +1525,7 @@ body{background:linear-gradient(180deg,var(--mv4-bg),var(--mv4-bg2));font-family
   #menuPrincipal.mv196-tecnico-menu #mv55MainModules{gap:5px!important;}
   #menuPrincipal.mv196-tecnico-menu #cardValidacionTecnica,
   #menuPrincipal.mv196-tecnico-menu #cardActas,
+  #menuPrincipal.mv196-tecnico-menu #cardEquiposAveriados,
   #menuPrincipal.mv196-tecnico-menu #cardChecklistAlmacen{
     min-height:68px!important;
     height:68px!important;
@@ -1524,11 +1534,13 @@ body{background:linear-gradient(180deg,var(--mv4-bg),var(--mv4-bg2));font-family
   }
   #menuPrincipal.mv196-tecnico-menu #cardValidacionTecnica span,
   #menuPrincipal.mv196-tecnico-menu #cardActas span,
+  #menuPrincipal.mv196-tecnico-menu #cardEquiposAveriados span,
   #menuPrincipal.mv196-tecnico-menu #cardChecklistAlmacen span{
     font-size:20px!important;
   }
   #menuPrincipal.mv196-tecnico-menu #cardValidacionTecnica b,
   #menuPrincipal.mv196-tecnico-menu #cardActas b,
+  #menuPrincipal.mv196-tecnico-menu #cardEquiposAveriados b,
   #menuPrincipal.mv196-tecnico-menu #cardChecklistAlmacen b{
     font-size:8px!important;
   }
@@ -1647,3 +1659,6 @@ body{background:linear-gradient(180deg,var(--mv4-bg),var(--mv4-bg2));font-family
 .pd-aviso-pendientes-descansos{width:100%;margin-top:8px;padding:9px 12px;border:2px solid #ef4444;border-radius:12px;background:#fef2f2;color:#991b1b;display:flex;align-items:center;gap:8px;text-align:left;cursor:pointer;box-shadow:0 4px 12px rgba(127,29,29,.13)}
 .pd-aviso-pendientes-descansos>span{font-size:19px}.pd-aviso-pendientes-descansos strong{font-size:11px}.pd-aviso-pendientes-descansos small{margin-left:auto;font-size:9px;font-weight:800;color:#b91c1c}
 @media(max-width:720px){.pd-card-badge-descansos{top:-7px;right:-7px;min-width:22px;height:22px;font-size:10px}.pd-aviso-pendientes-descansos{padding:8px 9px}.pd-aviso-pendientes-descansos small{display:none}}
+
+/* V267 - Técnico: Equipos Averiados con el mismo tamaño compacto.
+   Las cuatro tarjetas operativas usan columnas de 4/12: tres por fila. */

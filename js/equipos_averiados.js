@@ -1,4 +1,4 @@
-// MI VISUAL V266 - Equipos Averiados: registro técnico, recepción, cargo y entrega a WIN.
+// MI VISUAL V267 - Equipos Averiados: registro técnico, recepción de almacén y cargo.
 const API_EQUIPOS_AVERIADOS = "https://script.google.com/macros/s/AKfycbzcbjCLweJNgZXDerdzmMN7Lwotc1G8NWdzoPkaLNGDivAgpYxDkq78xZwPRioSB4XY/exec";
 
 const EA_STATE = {catalogos:null, solicitudes:[], cargos:[], resumen:{}, formularioId:""};
@@ -27,7 +27,7 @@ async function eaApi(payload){
 }
 
 function eaStyles(){return `<style id="eaStyles">
-.ea-wrap{max-width:1120px;margin:auto;padding:12px}.ea-head{background:linear-gradient(135deg,#7c2d12,#ea580c);color:#fff;border-radius:18px;padding:18px;margin-bottom:12px;box-shadow:0 10px 24px rgba(15,23,42,.2)}.ea-head h2{margin:0 0 5px;font-size:23px}.ea-head p{margin:0;font-size:12px;opacity:.94}.ea-actions{display:flex;gap:8px;flex-wrap:wrap;margin:10px 0}.ea-btn{border:0;border-radius:11px;padding:9px 12px;font-weight:900;cursor:pointer;font-size:12px;text-decoration:none;display:inline-flex;align-items:center;justify-content:center;gap:5px}.ea-btn.blue{background:#2563eb;color:#fff}.ea-btn.green{background:#16a34a;color:#fff}.ea-btn.orange{background:#f59e0b;color:#111827}.ea-btn.red{background:#dc2626;color:#fff}.ea-btn.gray{background:#64748b;color:#fff}.ea-btn.light{background:#e2e8f0;color:#0f172a}.ea-btn:disabled{opacity:.5;cursor:not-allowed}.ea-card{background:#fff;color:#0f172a;border:1px solid #dbe3ee;border-radius:15px;padding:12px;margin-bottom:10px;box-shadow:0 5px 14px rgba(15,23,42,.08)}.ea-kpis{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:8px;margin:10px 0}.ea-kpi{background:#f8fafc;border:2px solid #cbd5e1;border-radius:13px;padding:10px;text-align:center}.ea-kpi b{display:block;font-size:21px}.ea-kpi span{font-size:10px;font-weight:900;color:#475569}.ea-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px}.ea-field label{display:block;font-size:10px;font-weight:900;color:#334155;margin-bottom:4px}.ea-field input,.ea-field select,.ea-field textarea{width:100%;box-sizing:border-box;border:1px solid #cbd5e1;border-radius:9px;padding:9px;background:#fff;color:#0f172a}.ea-filter{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:7px;align-items:end}.ea-request{border-left:6px solid #94a3b8}.ea-request.pending{border-left-color:#f59e0b}.ea-request.received{border-left-color:#16a34a}.ea-request.observed{border-left-color:#dc2626}.ea-request.partial{border-left-color:#0ea5e9}.ea-request-head{display:flex;justify-content:space-between;align-items:flex-start;gap:10px}.ea-request-head h3{margin:0;font-size:15px}.ea-meta{font-size:11px;color:#475569;line-height:1.45;margin-top:4px}.ea-badge{display:inline-block;padding:4px 8px;border-radius:999px;font-size:9px;font-weight:900}.ea-badge.yellow{background:#fef3c7;color:#92400e}.ea-badge.green{background:#dcfce7;color:#166534}.ea-badge.red{background:#fee2e2;color:#991b1b}.ea-badge.blue{background:#dbeafe;color:#1e40af}.ea-badge.gray{background:#e2e8f0;color:#334155}.ea-table-wrap{overflow:auto;margin-top:9px}.ea-table{width:100%;border-collapse:collapse;min-width:660px;font-size:11px}.ea-table th,.ea-table td{border:1px solid #cbd5e1;padding:7px;text-align:left}.ea-table th{background:#eaf2fb;font-size:10px}.ea-equipo-form{border:1px solid #cbd5e1;border-radius:11px;padding:9px;margin:7px 0;background:#f8fafc;position:relative}.ea-equipo-grid{display:grid;grid-template-columns:1.15fr 1fr 1fr auto;gap:7px;align-items:end}.ea-remove{width:32px;height:34px;border:0;border-radius:8px;background:#fee2e2;color:#991b1b;font-weight:900;cursor:pointer}.ea-alert{border-radius:12px;padding:10px;font-size:12px;font-weight:800;margin:9px 0}.ea-alert.warn{background:#fff7ed;border:1px solid #fb923c;color:#9a3412}.ea-alert.ok{background:#f0fdf4;border:1px solid #86efac;color:#166534}.ea-empty{text-align:center;color:#64748b;padding:28px}.ea-modal-bg{position:fixed;inset:0;background:rgba(15,23,42,.72);z-index:99999;display:flex;align-items:center;justify-content:center;padding:12px}.ea-modal{width:min(850px,97vw);max-height:92vh;overflow:auto;background:#fff;color:#0f172a;border-radius:17px;padding:15px;box-shadow:0 20px 50px rgba(0,0,0,.35)}.ea-modal h3{margin:0 0 12px}.ea-modal-close{float:right;border:0;background:#e2e8f0;width:32px;height:32px;border-radius:8px;font-weight:900;cursor:pointer}.ea-cargo-list{display:grid;gap:7px}.ea-cargo{display:flex;justify-content:space-between;gap:10px;align-items:center;background:#f8fafc;border:1px solid #cbd5e1;border-radius:10px;padding:9px}.ea-auto{background:#eff6ff;border:1px solid #93c5fd;border-radius:12px;padding:10px;font-size:11px;line-height:1.5}.ea-state-win{font-size:10px;font-weight:900;color:#7c3aed}.ea-history{font-size:10px;color:#475569;line-height:1.5}.ea-history div{padding:4px 0;border-bottom:1px dashed #cbd5e1}
+.ea-wrap{max-width:1120px;margin:auto;padding:12px}.ea-head{background:linear-gradient(135deg,#7c2d12,#ea580c);color:#fff;border-radius:18px;padding:18px;margin-bottom:12px;box-shadow:0 10px 24px rgba(15,23,42,.2)}.ea-head h2{margin:0 0 5px;font-size:23px}.ea-head p{margin:0;font-size:12px;opacity:.94}.ea-actions{display:flex;gap:8px;flex-wrap:wrap;margin:10px 0}.ea-btn{border:0;border-radius:11px;padding:9px 12px;font-weight:900;cursor:pointer;font-size:12px;text-decoration:none;display:inline-flex;align-items:center;justify-content:center;gap:5px}.ea-btn.blue{background:#2563eb;color:#fff}.ea-btn.green{background:#16a34a;color:#fff}.ea-btn.orange{background:#f59e0b;color:#111827}.ea-btn.red{background:#dc2626;color:#fff}.ea-btn.gray{background:#64748b;color:#fff}.ea-btn.light{background:#e2e8f0;color:#0f172a}.ea-btn:disabled{opacity:.5;cursor:not-allowed}.ea-card{background:#fff;color:#0f172a;border:1px solid #dbe3ee;border-radius:15px;padding:12px;margin-bottom:10px;box-shadow:0 5px 14px rgba(15,23,42,.08)}.ea-kpis{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:8px;margin:10px 0}.ea-kpi{background:#f8fafc;border:2px solid #cbd5e1;border-radius:13px;padding:10px;text-align:center}.ea-kpi b{display:block;font-size:21px}.ea-kpi span{font-size:10px;font-weight:900;color:#475569}.ea-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px}.ea-field label{display:block;font-size:10px;font-weight:900;color:#334155;margin-bottom:4px}.ea-field input,.ea-field select,.ea-field textarea{width:100%;box-sizing:border-box;border:1px solid #cbd5e1;border-radius:9px;padding:9px;background:#fff;color:#0f172a}.ea-filter{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:7px;align-items:end}.ea-request{border-left:6px solid #94a3b8}.ea-request.pending{border-left-color:#f59e0b}.ea-request.received{border-left-color:#16a34a}.ea-request.observed{border-left-color:#dc2626}.ea-request.partial{border-left-color:#0ea5e9}.ea-request-head{display:flex;justify-content:space-between;align-items:flex-start;gap:10px}.ea-request-head h3{margin:0;font-size:15px}.ea-meta{font-size:11px;color:#475569;line-height:1.45;margin-top:4px}.ea-badge{display:inline-block;padding:4px 8px;border-radius:999px;font-size:9px;font-weight:900}.ea-badge.yellow{background:#fef3c7;color:#92400e}.ea-badge.green{background:#dcfce7;color:#166534}.ea-badge.red{background:#fee2e2;color:#991b1b}.ea-badge.blue{background:#dbeafe;color:#1e40af}.ea-badge.gray{background:#e2e8f0;color:#334155}.ea-table-wrap{overflow:auto;margin-top:9px}.ea-table{width:100%;border-collapse:collapse;min-width:660px;font-size:11px}.ea-table th,.ea-table td{border:1px solid #cbd5e1;padding:7px;text-align:left}.ea-table th{background:#eaf2fb;font-size:10px}.ea-equipo-form{border:1px solid #cbd5e1;border-radius:11px;padding:9px;margin:7px 0;background:#f8fafc;position:relative}.ea-equipo-grid{display:grid;grid-template-columns:1.15fr 1fr 1fr auto;gap:7px;align-items:end}.ea-remove{width:32px;height:34px;border:0;border-radius:8px;background:#fee2e2;color:#991b1b;font-weight:900;cursor:pointer}.ea-alert{border-radius:12px;padding:10px;font-size:12px;font-weight:800;margin:9px 0}.ea-alert.warn{background:#fff7ed;border:1px solid #fb923c;color:#9a3412}.ea-alert.ok{background:#f0fdf4;border:1px solid #86efac;color:#166534}.ea-empty{text-align:center;color:#64748b;padding:28px}.ea-modal-bg{position:fixed;inset:0;background:rgba(15,23,42,.72);z-index:99999;display:flex;align-items:center;justify-content:center;padding:12px}.ea-modal{width:min(850px,97vw);max-height:92vh;overflow:auto;background:#fff;color:#0f172a;border-radius:17px;padding:15px;box-shadow:0 20px 50px rgba(0,0,0,.35)}.ea-modal h3{margin:0 0 12px}.ea-modal-close{float:right;border:0;background:#e2e8f0;width:32px;height:32px;border-radius:8px;font-weight:900;cursor:pointer}.ea-cargo-list{display:grid;gap:7px}.ea-cargo{display:flex;justify-content:space-between;gap:10px;align-items:center;background:#f8fafc;border:1px solid #cbd5e1;border-radius:10px;padding:9px}.ea-auto{background:#eff6ff;border:1px solid #93c5fd;border-radius:12px;padding:10px;font-size:11px;line-height:1.5}.ea-confirmacion{margin-top:6px;padding:7px 9px;border-radius:9px;background:#ecfdf5;border:1px solid #86efac;color:#166534;font-size:10px;font-weight:800;line-height:1.4}.ea-history{font-size:10px;color:#475569;line-height:1.5}.ea-history div{padding:4px 0;border-bottom:1px dashed #cbd5e1}
 @media(max-width:760px){.ea-kpis{grid-template-columns:repeat(2,1fr)}.ea-grid,.ea-filter{grid-template-columns:1fr 1fr}.ea-equipo-grid{grid-template-columns:1fr}.ea-remove{width:100%}.ea-request-head{flex-direction:column}.ea-cargo{align-items:flex-start;flex-direction:column}}
 @media(max-width:430px){.ea-wrap{padding:7px}.ea-grid,.ea-filter{grid-template-columns:1fr}.ea-head h2{font-size:20px}}
 </style>`;}
@@ -35,7 +35,7 @@ function eaStyles(){return `<style id="eaStyles">
 function eaBadge(estado){
   const e=eaNorm(estado);let c="gray";
   if(e.includes("PENDIENTE"))c="yellow";
-  if(e.includes("RECIBIDO")||e==="ENTREGADO A WIN")c="green";
+  if(e.includes("RECIBIDO"))c="green";
   if(e.includes("OBSERVADO")||e.includes("RECHAZADO"))c="red";
   if(e.includes("PARCIAL"))c="blue";
   return `<span class="ea-badge ${c}">${eaEsc(estado||"PENDIENTE")}</span>`;
@@ -43,10 +43,16 @@ function eaBadge(estado){
 function eaClaseSolicitud(estado){const e=eaNorm(estado);if(e.includes("PARCIAL"))return"partial";if(e.includes("RECIBIDO"))return"received";if(e.includes("OBSERVADO")||e.includes("RECHAZADO"))return"observed";return"pending";}
 
 async function mostrarEquiposAveriados(){
-  if(typeof setBotonNavegacion==="function")setBotonNavegacion("menu");
   const p=document.getElementById("pantalla");
   if(!p)return;
-  p.innerHTML=eaStyles()+`<div class="ea-wrap"><div class="ea-head"><h2>🔧 Equipos Averiados</h2><p>Registro, recepción de almacén, cargos y trazabilidad de entrega a WIN.</p></div><div class="ea-card">⏳ Cargando información...</div></div>`;
+  const carga=eaStyles()+`<div class="ea-wrap"><div class="ea-head"><h2>🔧 Equipos Averiados</h2><p>Registro técnico, recepción física de almacén y cargos.</p></div><div class="ea-card">⏳ Cargando información...</div></div>`;
+  if(typeof mostrarPantalla==="function") mostrarPantalla(carga);
+  else {
+    const menu=document.getElementById("menuPrincipal");
+    if(menu)menu.style.display="none";
+    p.innerHTML=carga;
+    if(typeof setBotonNavegacion==="function")setBotonNavegacion("modulo");
+  }
   try{
     const u=eaUsuario();
     const [cat,lis,cargos]=await Promise.all([
@@ -69,14 +75,14 @@ function eaRender(){
   if(eaEsJefGeneral(u.perfil)) acciones=`<button class="ea-btn blue" onclick="eaDescargarInforme()">⬇ Descargar informe</button>`;
   const alerta=eaEsTecnico(u.perfil)&&pendientesTecnico.length?`<div class="ea-alert warn">📣 Almacén solicita registrar equipos averiados pendientes de entrega. Tiene ${pendientesTecnico.length} solicitud(es) por completar.</div>`:"";
   p.innerHTML=eaStyles()+`<div class="ea-wrap">
-    <div class="ea-head"><h2>🔧 Equipos Averiados</h2><p>${eaEsTecnico(u.perfil)?"Registre únicamente tipo, serie y código de cliente. Máximo 8 equipos por solicitud.":"Control de recepción física, cargos y entrega posterior a WIN."}</p></div>
+    <div class="ea-head"><h2>🔧 Equipos Averiados</h2><p>${eaEsTecnico(u.perfil)?"Registre únicamente tipo, serie y código de cliente. Máximo 8 equipos por solicitud.":"Control de recepción física de almacén y generación de cargos."}</p></div>
     ${alerta}<div class="ea-actions">${acciones}</div>
     <div class="ea-kpis">
       <div class="ea-kpi"><b>${Number(r.total||0)}</b><span>SOLICITUDES</span></div>
       <div class="ea-kpi"><b>${Number(r.totalEquipos||0)}</b><span>EQUIPOS REGISTRADOS</span></div>
       <div class="ea-kpi"><b>${Number(r.pendienteRegistro||0)+Number(r.pendienteEntrega||0)}</b><span>PENDIENTES</span></div>
-      <div class="ea-kpi"><b>${Number(r.recibido||0)+Number(r.parcial||0)}</b><span>CON RECEPCIÓN</span></div>
-      <div class="ea-kpi"><b>${Number(r.pendienteWin||0)}</b><span>PENDIENTES A WIN</span></div>
+      <div class="ea-kpi"><b>${Number(r.parcial||0)}</b><span>RECEPCIÓN PARCIAL</span></div>
+      <div class="ea-kpi"><b>${Number(r.recibido||0)}</b><span>RECIBIDOS</span></div>
     </div>
     ${!eaEsTecnico(u.perfil)?eaFiltrosHtml():""}
     <div id="eaLista">${eaListaHtml()}</div>
@@ -108,22 +114,28 @@ async function eaAplicarFiltros(){
 function eaEquiposTabla(item){
   const equipos=Array.isArray(item.equipos)?item.equipos:[];
   if(!equipos.length)return `<div class="ea-alert warn">El técnico aún no ha registrado el detalle de los equipos.</div>`;
-  return `<div class="ea-table-wrap"><table class="ea-table"><thead><tr><th>#</th><th>Tipo</th><th>Serie</th><th>Código cliente</th><th>Recepción</th><th>Entrega WIN</th></tr></thead><tbody>${equipos.map((e,i)=>`<tr><td>${i+1}</td><td>${eaEsc(e.tipo)}</td><td><b>${eaEsc(e.serie)}</b></td><td>${eaEsc(e.codigoCliente)}</td><td>${eaBadge(e.estadoRecepcion||"PENDIENTE")}${e.observacionAlmacen?`<br><small>${eaEsc(e.observacionAlmacen)}</small>`:""}</td><td>${eaBadge(e.estadoWin==="ENTREGADO A WIN"?"ENTREGADO A WIN":"PENDIENTE")}</td></tr>`).join("")}</tbody></table></div>`;
+  return `<div class="ea-table-wrap"><table class="ea-table"><thead><tr><th>#</th><th>Tipo</th><th>Serie</th><th>Código cliente</th><th>Recepción de almacén</th></tr></thead><tbody>${equipos.map((e,i)=>`<tr><td>${i+1}</td><td>${eaEsc(e.tipo)}</td><td><b>${eaEsc(e.serie)}</b></td><td>${eaEsc(e.codigoCliente)}</td><td>${eaBadge(e.estadoRecepcion||"PENDIENTE")}${e.observacionAlmacen?`<br><small>${eaEsc(e.observacionAlmacen)}</small>`:""}</td></tr>`).join("")}</tbody></table></div>`;
+}
+
+function eaLinkDescargaCargo(url){
+  const txt=(url||"").toString();
+  const m=txt.match(/\/d\/([a-zA-Z0-9_-]+)/)||txt.match(/[?&]id=([a-zA-Z0-9_-]+)/);
+  return m?`https://drive.google.com/uc?export=download&id=${m[1]}`:txt;
 }
 
 function eaAccionesSolicitud(item){
-  const u=eaUsuario(),e=eaNorm(item.estado),win=eaNorm(item.estadoWin);let h="";
+  const u=eaUsuario(),e=eaNorm(item.estado);let h="";
   if(eaEsTecnico(u.perfil)&&["PENDIENTE DE REGISTRO POR TECNICO","OBSERVADO","RECIBIDO PARCIALMENTE"].includes(e))h+=`<button class="ea-btn orange" onclick="eaAbrirFormularioTecnico('${eaEsc(item.id)}')">✍ Completar solicitud</button>`;
   if(eaPuedeGestionar(u.perfil)&&Array.isArray(item.equipos)&&item.equipos.length&&!["RECIBIDO POR ALMACEN","RECHAZADO"].includes(e))h+=`<button class="ea-btn green" onclick="eaAbrirRecepcion('${eaEsc(item.id)}')">📦 Recibir / validar</button>`;
-  if(eaPuedeGestionar(u.perfil)&&win==="PENDIENTE DE ENTREGA A WIN")h+=`<button class="ea-btn blue" onclick="eaAbrirEntregaWin('${eaEsc(item.id)}')">🚚 Registrar entrega a WIN</button>`;
-  if(item.linkCargo)h+=`<a class="ea-btn light" href="${eaEsc(item.linkCargo)}" target="_blank" rel="noopener">📄 Ver último cargo</a>`;
+  if(eaEsJefAlmacen(u.perfil)&&["RECIBIDO POR ALMACEN","RECIBIDO PARCIALMENTE"].includes(e))h+=`<button class="ea-btn orange" onclick="eaVolverPendiente('${eaEsc(item.id)}')">↩ Volver a pendiente</button>`;
+  if(item.linkCargo)h+=`<a class="ea-btn blue" href="${eaEsc(eaLinkDescargaCargo(item.linkCargo))}" target="_blank" rel="noopener">⬇ Descargar cargo</a>`;
   return h?`<div class="ea-actions">${h}</div>`:"";
 }
 
 function eaListaHtml(){
   if(!EA_STATE.solicitudes.length)return `<div class="ea-card ea-empty">No existen solicitudes registradas.</div>`;
   return EA_STATE.solicitudes.map(item=>`<article class="ea-card ea-request ${eaClaseSolicitud(item.estado)}">
-    <div class="ea-request-head"><div><h3>${eaEsc(item.id)} · ${eaEsc(item.cuadrilla)}</h3><div class="ea-meta">${eaEsc(item.sede)} · ${eaEsc(item.plataforma)}<br>Técnico: <b>${eaEsc(item.tecnico)}</b><br>Registrado: ${eaEsc(item.fechaRegistroVisible||item.fechaRegistro)} ${eaEsc(item.horaRegistroVisible||item.horaRegistro)} · Origen: ${eaEsc(item.origenRegistro)}</div></div><div>${eaBadge(item.estado)}<br><span class="ea-state-win">${eaEsc(item.estadoWin||"")}</span></div></div>
+    <div class="ea-request-head"><div><h3>${eaEsc(item.id)} · ${eaEsc(item.cuadrilla)}</h3><div class="ea-meta">${eaEsc(item.sede)} · ${eaEsc(item.plataforma)}<br>Técnico: <b>${eaEsc(item.tecnico)}</b><br>Registrado: ${eaEsc(item.fechaRegistroVisible||item.fechaRegistro)} ${eaEsc(item.horaRegistroVisible||item.horaRegistro)} · Origen: ${eaEsc(item.origenRegistro)}</div>${item.validadoPor?`<div class="ea-confirmacion">✅ Conformidad de recepción: ${eaEsc(item.validadoPor)} · ${eaEsc(item.perfilValidacion||"")}<br>${eaEsc(item.fechaValidacionVisible||item.fechaValidacion||"")} ${eaEsc(item.horaValidacionVisible||item.horaValidacion||"")}</div>`:""}</div><div>${eaBadge(item.estado)}</div></div>
     ${eaEquiposTabla(item)}${eaAccionesSolicitud(item)}
     ${item.historial&&item.historial.length?`<details><summary>Historial</summary><div class="ea-history">${item.historial.slice().reverse().map(x=>`<div><b>${eaEsc(x.fecha)} ${eaEsc(x.hora)}</b> · ${eaEsc(x.accion)} · ${eaEsc(x.usuario)}<br>${eaEsc(x.detalle||"")}</div>`).join("")}</div></details>`:""}
   </article>`).join("");
@@ -131,7 +143,7 @@ function eaListaHtml(){
 
 function eaCargosHtml(){
   if(!EA_STATE.cargos.length)return "";
-  return `<details class="ea-card"><summary><b>📄 Historial de cargos (${EA_STATE.cargos.length})</b></summary><div class="ea-cargo-list" style="margin-top:9px">${EA_STATE.cargos.map(c=>`<div class="ea-cargo"><div><b>${eaEsc(c.idCargo)}</b><div class="ea-meta">${eaEsc(c.fechaCargoVisible||c.fechaCargo)} ${eaEsc(c.horaCargoVisible||c.horaCargo)} · ${eaEsc(c.cuadrilla)} · ${c.totalEquipos} equipo(s)</div></div><a class="ea-btn blue" href="${eaEsc(c.linkPdf)}" target="_blank" rel="noopener">Descargar cargo</a></div>`).join("")}</div></details>`;
+  return `<details class="ea-card"><summary><b>📄 Historial de cargos (${EA_STATE.cargos.length})</b></summary><div class="ea-cargo-list" style="margin-top:9px">${EA_STATE.cargos.map(c=>`<div class="ea-cargo"><div><b>${eaEsc(c.idCargo)}</b><div class="ea-meta">${eaEsc(c.fechaCargoVisible||c.fechaCargo)} ${eaEsc(c.horaCargoVisible||c.horaCargo)} · ${eaEsc(c.cuadrilla)} · ${c.totalEquipos} equipo(s)</div></div><a class="ea-btn blue" href="${eaEsc(eaLinkDescargaCargo(c.linkPdf))}" target="_blank" rel="noopener">⬇ Descargar cargo</a></div>`).join("")}</div></details>`;
 }
 
 function eaModal(html){document.getElementById("eaModal")?.remove();const d=document.createElement("div");d.id="eaModal";d.className="ea-modal-bg";d.innerHTML=`<div class="ea-modal"><button class="ea-modal-close" onclick="eaCerrarModal()">×</button>${html}</div>`;document.body.appendChild(d);}
@@ -179,14 +191,19 @@ async function eaConfirmarRecepcion(id){
   try{const d=await eaApi({accion:"validarRecepcionEquiposAveriados",usuario:eaUsuario().usuario,id,equipos,observacionGeneral:document.getElementById("eaRecObsGeneral").value});if(d.cargo?.pdfBase64)eaDescargarBase64(d.cargo.pdfBase64,d.cargo.nombrePdf||`${d.cargo.idCargo}.pdf`,`application/pdf`);eaCerrarModal();await mostrarEquiposAveriados();}catch(e){alert(e.message);}
 }
 
-function eaAbrirEntregaWin(id){eaModal(`<h3>🚚 Registrar entrega a WIN</h3><div class="ea-grid"><div class="ea-field"><label>RESPONSABLE WIN QUE RECIBE</label><input id="eaWinRecibe"></div><div class="ea-field"><label>NÚMERO DE DOCUMENTO / CARGO</label><input id="eaWinDoc"></div></div><div class="ea-field" style="margin-top:8px"><label>OBSERVACIÓN</label><textarea id="eaWinObs" rows="3"></textarea></div><div class="ea-actions"><button class="ea-btn blue" onclick="eaGuardarEntregaWin('${eaEsc(id)}')">Confirmar entrega a WIN</button></div>`);}
-async function eaGuardarEntregaWin(id){try{await eaApi({accion:"registrarEntregaWinEquiposAveriados",usuario:eaUsuario().usuario,id,recibidoWinPor:document.getElementById("eaWinRecibe").value,documentoWin:document.getElementById("eaWinDoc").value,observacionWin:document.getElementById("eaWinObs").value});eaCerrarModal();await mostrarEquiposAveriados();}catch(e){alert(e.message);}}
+async function eaVolverPendiente(id){
+  if(!confirm("La solicitud volverá a pendiente. El cargo anterior permanecerá en el historial. ¿Continuar?"))return;
+  try{
+    await eaApi({accion:"volverPendienteEquiposAveriados",usuario:eaUsuario().usuario,id});
+    await mostrarEquiposAveriados();
+  }catch(e){alert(e.message);}
+}
 
 function eaDescargarBase64(base64,nombre,mime){const a=document.createElement("a");a.href=`data:${mime};base64,${base64}`;a.download=nombre;document.body.appendChild(a);a.click();a.remove();}
 
 function eaDescargarInforme(){
-  const filas=[["Solicitud","Fecha","Sede","Plataforma","Cuadrilla","Técnico","Estado solicitud","Tipo equipo","Serie","Código cliente","Estado recepción","Cargo","Estado WIN"]];
-  EA_STATE.solicitudes.forEach(s=>(s.equipos||[]).forEach(e=>filas.push([s.id,s.fechaRegistroVisible||s.fechaRegistro,s.sede,s.plataforma,s.cuadrilla,s.tecnico,s.estado,e.tipo,e.serie,e.codigoCliente,e.estadoRecepcion||"PENDIENTE",e.cargoId||s.idCargo||"",e.estadoWin||s.estadoWin||"PENDIENTE"])));
+  const filas=[["Solicitud","Fecha","Sede","Plataforma","Cuadrilla","Técnico","Estado solicitud","Tipo equipo","Serie","Código cliente","Estado recepción","Confirmado por","Fecha conformidad","Cargo"]];
+  EA_STATE.solicitudes.forEach(s=>(s.equipos||[]).forEach(e=>filas.push([s.id,s.fechaRegistroVisible||s.fechaRegistro,s.sede,s.plataforma,s.cuadrilla,s.tecnico,s.estado,e.tipo,e.serie,e.codigoCliente,e.estadoRecepcion||"PENDIENTE",s.validadoPor||"",`${s.fechaValidacionVisible||s.fechaValidacion||""} ${s.horaValidacionVisible||s.horaValidacion||""}`,e.cargoId||s.idCargo||""])));
   const csv="\uFEFF"+filas.map(f=>f.map(v=>`"${(v??"").toString().replace(/"/g,'""')}"`).join(";")).join("\r\n");
   const blob=new Blob([csv],{type:"text/csv;charset=utf-8"}),a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download=`INFORME_EQUIPOS_AVERIADOS_${new Date().toISOString().slice(0,10)}.csv`;document.body.appendChild(a);a.click();URL.revokeObjectURL(a.href);a.remove();
 }

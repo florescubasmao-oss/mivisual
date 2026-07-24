@@ -1,0 +1,38 @@
+MI VISUAL V267 - EQUIPOS AVERIADOS: RECEPCIÓN Y CARGO
+
+Base utilizada: V266.
+Alcance: únicamente el módulo Equipos Averiados y el tamaño de su tarjeta en el menú Técnico.
+
+CAMBIOS
+1. Perfil Técnico
+- La tarjeta Equipos Averiados tiene el mismo tamaño compacto que Validación Técnica, Gestión de Actas y Checklist Almacén.
+- Las tarjetas operativas se organizan en columnas de tres por fila.
+- Al ingresar a Equipos Averiados, el menú deja de mostrarse y se abre una pantalla independiente.
+
+2. Flujo operativo
+- Se elimina de la interfaz y del flujo la entrega posterior a WIN.
+- El módulo termina con la recepción física y conformidad de almacén.
+- Responsable de Almacén y Jefatura de Almacén pueden confirmar directamente la recepción.
+- No existe una segunda aprobación obligatoria de Jefatura de Almacén.
+
+3. Cargos
+- Al confirmar equipos recibidos se genera automáticamente el cargo PDF.
+- El cargo se descarga automáticamente al confirmar.
+- Cada solicitud con cargo muestra el botón Descargar cargo.
+- El historial de cargos permanece disponible para una nueva descarga.
+
+4. Trazabilidad
+- Cada solicitud muestra quién dio la conformidad, su perfil, fecha y hora Perú.
+- Jefatura de Almacén puede devolver una recepción confirmada o parcial a Pendiente.
+- Al volver a pendiente, el cargo anterior no se elimina: permanece en el historial.
+
+5. Protección
+- No se modifican otros módulos.
+- Las hojas EQUIPOS_AVERIADOS y CARGOS_EQUIPOS_AVERIADOS mantienen su estructura existente.
+- Se conservan los registros y cargos creados anteriormente.
+
+APLICACIÓN
+- Code.gs / Apps Script: SÍ.
+- Frontend GitHub: SÍ.
+- Google Sheets: NO requiere cambio manual.
+- Nuevo despliegue Apps Script: SÍ.

@@ -8669,8 +8669,8 @@ function listarCatalogoPartidasOperativas(data) {
 
 
 /* =========================
-   V266 - EQUIPOS AVERIADOS
-   Registro técnico, recepción de almacén, cargo A4 y entrega a WIN.
+   V267 - EQUIPOS AVERIADOS
+   Registro técnico, recepción de almacén y cargo A4.
 ========================= */
 
 function eaNormalizarTipoEquipo_(valor) {
@@ -8941,9 +8941,9 @@ function registrarEquiposAveriadosTecnico(data) {
   const historial = eaHistorialAgregar_([], usuario, "REGISTRO TECNICO", equipos.length + " equipo(s) registrados");
   const h = eaAsegurarHojaSolicitudes_();
   h.appendRow([
-    id,ahora,ahora,"TECNICO",usuario.usuario,usuario.perfil,usuario.sede,usuario.plataforma,usuario.cuadrilla,
-    usuario.usuario,usuario.nombresApellidos || usuario.usuario,"PENDIENTE DE ENTREGA",equipos.length,JSON.stringify(equipos),
-    ahora,ahora,"","","","","","","","PENDIENTE","","","","","",ahora,JSON.stringify(historial)
+    id, ahora, ahora, "TECNICO", usuario.usuario, usuario.perfil, usuario.sede, usuario.plataforma, usuario.cuadrilla,
+    usuario.usuario, usuario.nombresApellidos || usuario.usuario, "PENDIENTE DE ENTREGA", equipos.length, JSON.stringify(equipos),
+    ahora, ahora, "", "", "", "", "", "", "", "", "", "", "", "", "", ahora, JSON.stringify(historial)
   ]);
   const r = h.getLastRow();
   h.getRange(r,2).setNumberFormat("dd/mm/yyyy");
@@ -8972,9 +8972,9 @@ function crearSolicitudEquiposAveriadosAlmacen(data) {
   const historial = eaHistorialAgregar_([], usuario, "SOLICITUD CREADA POR ALMACEN", "Cantidad referencial: " + cantidad + (observacion ? ". " + observacion : ""));
   const h = eaAsegurarHojaSolicitudes_();
   h.appendRow([
-    id,ahora,ahora,"ALMACEN",usuario.usuario,usuario.perfil,tecnico.sede,tecnico.plataforma,tecnico.cuadrilla,
-    tecnico.usuario,tecnico.nombresApellidos || tecnico.usuario,"PENDIENTE DE REGISTRO POR TECNICO",cantidad,"",
-    "","","","","","",observacion,"","","PENDIENTE","","","","","",ahora,JSON.stringify(historial)
+    id, ahora, ahora, "ALMACEN", usuario.usuario, usuario.perfil, tecnico.sede, tecnico.plataforma, tecnico.cuadrilla,
+    tecnico.usuario, tecnico.nombresApellidos || tecnico.usuario, "PENDIENTE DE REGISTRO POR TECNICO", cantidad, "",
+    "", "", "", "", "", "", observacion, "", "", "", "", "", "", "", "", ahora, JSON.stringify(historial)
   ]);
   const r = h.getLastRow();
   h.getRange(r,2).setNumberFormat("dd/mm/yyyy");
@@ -8987,7 +8987,7 @@ function completarSolicitudEquiposAveriadosTecnico(data) {
   if (!eaEsTecnico_(usuario.perfil)) throw new Error("Solo el técnico puede completar esta solicitud");
   const reg = eaBuscarSolicitud_(data.id);
   if (normalizarUsuario(reg.item.usuarioTecnico) !== normalizarUsuario(usuario.usuario)) throw new Error("La solicitud no pertenece al técnico actual");
-  if (["RECIBIDO POR ALMACEN","ENTREGADO A WIN","RECHAZADO"].indexOf(normalizarTexto(reg.item.estado)) >= 0) throw new Error("La solicitud ya no puede modificarse");
+  if (["RECIBIDO POR ALMACEN","RECHAZADO"].indexOf(normalizarTexto(reg.item.estado)) >= 0) throw new Error("La solicitud ya no puede modificarse");
   let equipos = eaNormalizarEquipos_(data.equipos);
   // Si ya hubo una recepción parcial, los equipos recibidos no pueden perderse ni volver a estado pendiente.
   const recibidosAnteriores = (reg.item.equipos || []).filter(function(e){ return normalizarTexto(e.estadoRecepcion) === "RECIBIDO"; });
@@ -9004,9 +9004,9 @@ function completarSolicitudEquiposAveriadosTecnico(data) {
   reg.hoja.getRange(reg.fila,12,1,20).setValues([[
     "PENDIENTE DE ENTREGA",equipos.length,JSON.stringify(equipos),ahora,ahora,
     reg.item.validadoPor||"",reg.item.perfilValidacion||"",reg.item.fechaValidacion||"",reg.item.horaValidacion||"",
-    reg.item.observacionAlmacen||"",reg.item.idCargo||"",reg.item.linkCargo||"",reg.item.estadoWin||"PENDIENTE",
-    reg.item.fechaEntregaWin||"",reg.item.horaEntregaWin||"",reg.item.recibidoWinPor||"",reg.item.documentoWin||"",
-    reg.item.observacionWin||"",ahora,JSON.stringify(historial)
+    reg.item.observacionAlmacen||"",reg.item.idCargo||"",reg.item.linkCargo||"","",
+    "","","","",
+    "",ahora,JSON.stringify(historial)
   ]]);
   reg.hoja.getRange(reg.fila,15).setNumberFormat("dd/mm/yyyy");
   reg.hoja.getRange(reg.fila,16).setNumberFormat("hh:mm:ss");
@@ -9040,7 +9040,7 @@ function listarEquiposAveriados(data) {
     if (filtroSede && normalizarTexto(item.sede) !== filtroSede) continue;
     if (filtroCuadrilla && normalizarCuadrilla(item.cuadrilla) !== filtroCuadrilla) continue;
     if (filtroTecnico && normalizarUsuario(item.usuarioTecnico) !== filtroTecnico && normalizarUsuario(item.tecnico).indexOf(filtroTecnico) < 0) continue;
-    if (filtroEstado && normalizarTexto(item.estado) !== filtroEstado && normalizarTexto(item.estadoWin) !== filtroEstado) continue;
+    if (filtroEstado && normalizarTexto(item.estado) !== filtroEstado) continue;
     const fechaIso = item.fechaRegistro instanceof Date ? Utilities.formatDate(item.fechaRegistro,"America/Lima","yyyy-MM-dd") : "";
     if (filtroDesde && fechaIso && fechaIso < filtroDesde) continue;
     if (filtroHasta && fechaIso && fechaIso > filtroHasta) continue;
@@ -9049,10 +9049,12 @@ function listarEquiposAveriados(data) {
     if (filtroCodigo && !item.equipos.some(function(e){return normalizarTexto(e.codigoCliente).indexOf(filtroCodigo) >= 0;})) continue;
     item.fechaRegistroVisible = item.fechaRegistro instanceof Date ? Utilities.formatDate(item.fechaRegistro,"America/Lima","dd/MM/yyyy") : item.fechaRegistro;
     item.horaRegistroVisible = item.horaRegistro instanceof Date ? Utilities.formatDate(item.horaRegistro,"America/Lima","HH:mm:ss") : item.horaRegistro;
+    item.fechaValidacionVisible = item.fechaValidacion instanceof Date ? Utilities.formatDate(item.fechaValidacion,"America/Lima","dd/MM/yyyy") : item.fechaValidacion;
+    item.horaValidacionVisible = item.horaValidacion instanceof Date ? Utilities.formatDate(item.horaValidacion,"America/Lima","HH:mm:ss") : item.horaValidacion;
     lista.push(item);
   }
   lista.sort(function(a,b){ return String(b.id).localeCompare(String(a.id)); });
-  const resumen = {total:lista.length,pendienteRegistro:0,pendienteEntrega:0,parcial:0,recibido:0,observado:0,rechazado:0,pendienteWin:0,entregadoWin:0,totalEquipos:0};
+  const resumen = {total:lista.length,pendienteRegistro:0,pendienteEntrega:0,parcial:0,recibido:0,observado:0,rechazado:0,totalEquipos:0};
   lista.forEach(function(x){
     const e = normalizarTexto(x.estado);
     resumen.totalEquipos += Array.isArray(x.equipos) ? x.equipos.length : 0;
@@ -9062,8 +9064,6 @@ function listarEquiposAveriados(data) {
     else if (e === "RECIBIDO POR ALMACEN") resumen.recibido++;
     else if (e === "OBSERVADO") resumen.observado++;
     else if (e === "RECHAZADO") resumen.rechazado++;
-    if (normalizarTexto(x.estadoWin) === "PENDIENTE DE ENTREGA A WIN") resumen.pendienteWin++;
-    if (normalizarTexto(x.estadoWin) === "ENTREGADO A WIN") resumen.entregadoWin++;
   });
   return {ok:true,modulo:"EQUIPOS_AVERIADOS",accion:"LISTAR",perfil:usuario.perfil,resumen:resumen,solicitudes:lista,registros:lista.length};
 }
@@ -9139,7 +9139,11 @@ function validarRecepcionEquiposAveriados(data) {
         e.recibidoPor = usuario.usuario;
         e.fechaRecepcion = fh.fecha;
         e.horaRecepcion = fh.hora;
-        e.estadoWin = "PENDIENTE";
+        e.estadoWin = "";
+        e.fechaWin = "";
+        e.horaWin = "";
+        e.recibidoWinPor = "";
+        e.documentoWin = "";
         nuevosRecibidos.push(e);
       }
       return e;
@@ -9162,49 +9166,58 @@ function validarRecepcionEquiposAveriados(data) {
       cargo = eaGenerarCargo_({idCargo:idCargo,idSolicitud:reg.item.id,sede:reg.item.sede,plataforma:reg.item.plataforma,cuadrilla:reg.item.cuadrilla,tecnico:reg.item.tecnico,recibidoPor:usuario.nombresApellidos||usuario.usuario,fecha:fh.fecha,hora:fh.hora,equipos:nuevosRecibidos});
       linkCargo = cargo.link;
       const hc = eaAsegurarHojaCargos_();
-      hc.appendRow([idCargo,reg.item.id,ahora,ahora,reg.item.sede,reg.item.plataforma,reg.item.cuadrilla,reg.item.usuarioTecnico,reg.item.tecnico,usuario.usuario,usuario.perfil,nuevosRecibidos.length,JSON.stringify(nuevosRecibidos),cargo.link,cargo.nombre,"GENERADO"]);
+      hc.appendRow([idCargo,reg.item.id,ahora,ahora,reg.item.sede,reg.item.plataforma,reg.item.cuadrilla,reg.item.usuarioTecnico,reg.item.tecnico,usuario.nombresApellidos||usuario.usuario,usuario.perfil,nuevosRecibidos.length,JSON.stringify(nuevosRecibidos),cargo.link,cargo.nombre,"GENERADO"]);
       const rc = hc.getLastRow(); hc.getRange(rc,3).setNumberFormat("dd/mm/yyyy"); hc.getRange(rc,4).setNumberFormat("hh:mm:ss");
     }
-    const estadoWin = totalRecibidos > 0 ? "PENDIENTE DE ENTREGA A WIN" : (reg.item.estadoWin || "PENDIENTE");
-    const historial = eaHistorialAgregar_(reg.item.historial, usuario, "VALIDACION DE RECEPCION", "Recibidos: "+totalRecibidos+", pendientes: "+totalPendientes+", observados: "+totalObservados+", rechazados: "+totalRechazados);
+    const historial = eaHistorialAgregar_(reg.item.historial, usuario, "CONFORMIDAD DE RECEPCION", "Recibidos: "+totalRecibidos+", pendientes: "+totalPendientes+", observados: "+totalObservados+", rechazados: "+totalRechazados);
     reg.hoja.getRange(reg.fila,12,1,20).setValues([[
       estado,equipos.length,JSON.stringify(equipos),reg.item.fechaCompletadoTecnico||"",reg.item.horaCompletadoTecnico||"",
-      usuario.usuario,usuario.perfil,ahora,ahora,(data.observacionGeneral||"").toString().trim(),idCargo,linkCargo,estadoWin,
-      reg.item.fechaEntregaWin||"",reg.item.horaEntregaWin||"",reg.item.recibidoWinPor||"",reg.item.documentoWin||"",
-      reg.item.observacionWin||"",ahora,JSON.stringify(historial)
+      usuario.nombresApellidos||usuario.usuario,usuario.perfil,ahora,ahora,(data.observacionGeneral||"").toString().trim(),idCargo,linkCargo,"",
+      "","","","",
+      "",ahora,JSON.stringify(historial)
     ]]);
     reg.hoja.getRange(reg.fila,19).setNumberFormat("dd/mm/yyyy"); reg.hoja.getRange(reg.fila,20).setNumberFormat("hh:mm:ss");
     return {ok:true,modulo:"EQUIPOS_AVERIADOS",accion:"VALIDAR_RECEPCION",id:reg.item.id,estado:estado,totalRecibidos:totalRecibidos,cargo:cargo ? {idCargo:idCargo,linkPdf:cargo.link,descargaPdf:cargo.descarga,nombrePdf:cargo.nombre,pdfBase64:cargo.base64} : null};
   } finally { lock.releaseLock(); }
 }
 
-function registrarEntregaWinEquiposAveriados(data) {
+function volverPendienteEquiposAveriados(data) {
   const usuario = obtenerUsuarioApp(data.usuario);
-  if (!eaPuedeGestionarAlmacen_(usuario)) throw new Error("Solo Responsable o Jefatura de Almacén puede registrar la entrega a WIN");
-  const reg = eaBuscarSolicitud_(data.id);
-  if (eaEsResponsableAlmacen_(usuario.perfil) && normalizarTexto(reg.item.sede) !== normalizarTexto(usuario.sede)) throw new Error("La solicitud pertenece a otra sede");
-  const recibidoWinPor = (data.recibidoWinPor || "").toString().trim();
-  if (!recibidoWinPor) throw new Error("Ingrese el nombre del responsable de WIN que recibe");
-  const documento = (data.documentoWin || "").toString().trim();
-  const observacion = (data.observacionWin || "").toString().trim();
-  const ahora = new Date();
-  const fh = eaFechaHoraPeru_(ahora);
-  let actualizados = 0;
-  const equipos = (reg.item.equipos || []).map(function(orig){
-    const e = Object.assign({},orig);
-    if (normalizarTexto(e.estadoRecepcion)==="RECIBIDO" && normalizarTexto(e.estadoWin)!=="ENTREGADO A WIN") {
-      e.estadoWin="ENTREGADO A WIN";e.fechaWin=fh.fecha;e.horaWin=fh.hora;e.recibidoWinPor=recibidoWinPor;e.documentoWin=documento;actualizados++;
+  if (!eaEsJefaturaAlmacen_(usuario.perfil)) throw new Error("Solo Jefatura de Almacén puede volver una recepción a pendiente");
+  const lock = LockService.getScriptLock();
+  lock.waitLock(30000);
+  try {
+    const reg = eaBuscarSolicitud_(data.id);
+    const estadoActual = normalizarTexto(reg.item.estado);
+    if (["RECIBIDO POR ALMACEN","RECIBIDO PARCIALMENTE"].indexOf(estadoActual) < 0) {
+      throw new Error("La solicitud no tiene una recepción confirmada para revertir");
     }
-    return e;
-  });
-  if (!actualizados) throw new Error("No existen equipos recibidos pendientes de entrega a WIN");
-  const pendientesWin = equipos.some(function(e){return normalizarTexto(e.estadoRecepcion)==="RECIBIDO" && normalizarTexto(e.estadoWin)!=="ENTREGADO A WIN";});
-  const estadoWin = pendientesWin ? "PENDIENTE DE ENTREGA A WIN" : "ENTREGADO A WIN";
-  const historial = eaHistorialAgregar_(reg.item.historial, usuario, "ENTREGA A WIN", actualizados + " equipo(s). Recibe: " + recibidoWinPor);
-  reg.hoja.getRange(reg.fila,14).setValue(JSON.stringify(equipos));
-  reg.hoja.getRange(reg.fila,24,1,8).setValues([[estadoWin,ahora,ahora,recibidoWinPor,documento,observacion,ahora,JSON.stringify(historial)]]);
-  reg.hoja.getRange(reg.fila,25).setNumberFormat("dd/mm/yyyy"); reg.hoja.getRange(reg.fila,26).setNumberFormat("hh:mm:ss");
-  return {ok:true,modulo:"EQUIPOS_AVERIADOS",accion:"ENTREGA_WIN",id:reg.item.id,equipos:actualizados,estadoWin:estadoWin,fecha:fh.fecha,hora:fh.hora};
+    const ahora = new Date();
+    const equipos = (reg.item.equipos || []).map(function(orig){
+      const e = Object.assign({}, orig);
+      e.estadoRecepcion = "PENDIENTE";
+      e.observacionAlmacen = "";
+      e.recibidoPor = "";
+      e.fechaRecepcion = "";
+      e.horaRecepcion = "";
+      e.cargoId = "";
+      e.estadoWin = "";
+      e.fechaWin = "";
+      e.horaWin = "";
+      e.recibidoWinPor = "";
+      e.documentoWin = "";
+      return e;
+    });
+    const historial = eaHistorialAgregar_(reg.item.historial, usuario, "RECEPCION VUELTA A PENDIENTE", "La conformidad anterior fue revertida por Jefatura de Almacén. El cargo anterior permanece en el historial de cargos.");
+    reg.hoja.getRange(reg.fila,12,1,20).setValues([[
+      "PENDIENTE DE ENTREGA",equipos.length,JSON.stringify(equipos),reg.item.fechaCompletadoTecnico||"",reg.item.horaCompletadoTecnico||"",
+      "","","","","","","","",
+      "","","","","",ahora,JSON.stringify(historial)
+    ]]);
+    return {ok:true,modulo:"EQUIPOS_AVERIADOS",accion:"VOLVER_PENDIENTE",id:reg.item.id,estado:"PENDIENTE DE ENTREGA"};
+  } finally {
+    lock.releaseLock();
+  }
 }
 
 function eaFilaCargoAObjeto_(f) {
@@ -9327,7 +9340,7 @@ function doPost(e) {
     if (data.accion === "completarSolicitudEquiposAveriadosTecnico") return respuestaJson(completarSolicitudEquiposAveriadosTecnico(data));
     if (data.accion === "listarEquiposAveriados") return respuestaJson(listarEquiposAveriados(data));
     if (data.accion === "validarRecepcionEquiposAveriados") return respuestaJson(validarRecepcionEquiposAveriados(data));
-    if (data.accion === "registrarEntregaWinEquiposAveriados") return respuestaJson(registrarEntregaWinEquiposAveriados(data));
+    if (data.accion === "volverPendienteEquiposAveriados") return respuestaJson(volverPendienteEquiposAveriados(data));
     if (data.accion === "listarCargosEquiposAveriados") return respuestaJson(listarCargosEquiposAveriados(data));
 
     if (data.accion === "obtenerAnalisisEconomico") {
