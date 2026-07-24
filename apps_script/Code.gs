@@ -8796,8 +8796,8 @@ function eaNormalizarEquipos_(equipos) {
     const tipo = eaNormalizarTipoEquipo_(e && e.tipo);
     const serie = eaLimpiarSerie_(e && e.serie);
     const codigoCliente = eaLimpiarCodigoCliente_(e && e.codigoCliente);
-    if (!serie) throw new Error("Ingrese la serie del equipo " + (i + 1));
-    if (!codigoCliente) throw new Error("Ingrese el código de cliente del equipo " + (i + 1));
+    if (!serie) throw new Error("Ingrese la serie (SN) del equipo " + (i + 1));
+    if (!codigoCliente) throw new Error("Ingrese la MAC del equipo " + (i + 1));
     const clave = normalizarTexto(serie).replace(/[^A-Z0-9]/g, "");
     if (series[clave]) throw new Error("La serie " + serie + " está repetida en la solicitud");
     series[clave] = true;
@@ -9082,7 +9082,7 @@ function eaTablaCargo_(equipos) {
   lista.forEach(function(x,i){
     filas += '<tr><td class="num">'+(i+1)+'</td><td>'+eaEscaparHtml_(x.tipo||"")+'</td><td>'+eaEscaparHtml_(x.serie||"")+'</td><td>'+eaEscaparHtml_(x.codigoCliente||"")+'</td></tr>';
   });
-  return '<table class="equipos"><thead><tr><th>N.°</th><th>TIPO DE EQUIPO</th><th>SERIE</th><th>CÓDIGO DE CLIENTE</th></tr></thead><tbody>'+filas+'</tbody></table>';
+  return '<table class="equipos"><thead><tr><th>N.°</th><th>TIPO DE EQUIPO</th><th>SERIE (SN DEL EQUIPO)</th><th>MAC DEL EQUIPO</th></tr></thead><tbody>'+filas+'</tbody></table>';
 }
 
 function eaCopiaCargoHtml_(datos, copia) {

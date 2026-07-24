@@ -1,0 +1,14 @@
+MI VISUAL V269 - EQUIPOS AVERIADOS: SN Y MAC
+
+Cambios puntuales:
+- En Equipos Averiados, el campo SERIE ahora se muestra como SERIE (SN DEL EQUIPO).
+- El campo CÓDIGO DE CLIENTE ahora se muestra como MAC DEL EQUIPO.
+- El cambio se aplica en registro del técnico, filtros, listados, recepción de almacén, informe y cargo PDF.
+- Se conservan los nombres internos de datos para mantener compatibilidad con registros existentes y no alterar la hoja.
+
+Aplicación:
+- Code.gs / Apps Script: Sí (etiquetas y validaciones del cargo PDF).
+- Frontend GitHub: Sí.
+- Google Sheets: No.
+- Nuevo Deploy Apps Script: Sí.
+- Otros módulos: Sin cambios.

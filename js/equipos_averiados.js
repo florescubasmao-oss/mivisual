@@ -88,7 +88,7 @@ function eaRender(){
   if(eaEsJefGeneral(u.perfil)) acciones=`<button class="ea-btn blue" onclick="eaDescargarInforme()">⬇ Descargar informe</button>`;
   const alerta=eaEsTecnico(u.perfil)&&pendientesTecnico.length?`<div class="ea-alert warn">📣 Almacén solicita registrar equipos averiados pendientes de entrega. Tiene ${pendientesTecnico.length} solicitud(es) por completar.</div>`:"";
   p.innerHTML=eaStyles()+`<div class="ea-wrap">
-    <div class="ea-head"><h2>🔧 Equipos Averiados</h2><p>${eaEsTecnico(u.perfil)?"Registre únicamente tipo, serie y código de cliente. Máximo 8 equipos por solicitud.":"Control de recepción física de almacén y generación de cargos."}</p></div>
+    <div class="ea-head"><h2>🔧 Equipos Averiados</h2><p>${eaEsTecnico(u.perfil)?"Registre únicamente tipo de equipo, serie (SN del equipo) y MAC del equipo. Máximo 8 equipos por solicitud.":"Control de recepción física de almacén y generación de cargos."}</p></div>
     ${alerta}<div class="ea-actions">${acciones}</div>
     <div class="ea-kpis">
       <div class="ea-kpi solicitudes"><b>${Number(r.total||0)}</b><span>SOLICITUDES</span></div>
@@ -111,7 +111,7 @@ function eaFiltrosHtml(){
     <div class="ea-field"><label>SEDE</label><select id="eaFSede"><option value="">TODAS</option>${sedes.map(x=>`<option>${eaEsc(x)}</option>`).join("")}</select></div>
     <div class="ea-field"><label>CUADRILLA</label><select id="eaFCuadrilla"><option value="">TODAS</option>${cuad.map(x=>`<option>${eaEsc(x)}</option>`).join("")}</select></div>
     <div class="ea-field"><label>ESTADO</label><select id="eaFEstado"><option value="">TODOS</option>${estados.map(x=>`<option>${eaEsc(x)}</option>`).join("")}</select></div>
-    <div class="ea-field"><label>SERIE</label><input id="eaFSerie" placeholder="Buscar serie"></div>
+    <div class="ea-field"><label>SERIE (SN DEL EQUIPO)</label><input id="eaFSerie" placeholder="Buscar SN del equipo"></div>
     <button class="ea-btn blue" onclick="eaAplicarFiltros()">Consultar</button>
   </div></div>`;
 }
@@ -127,7 +127,7 @@ async function eaAplicarFiltros(){
 function eaEquiposTabla(item){
   const equipos=Array.isArray(item.equipos)?item.equipos:[];
   if(!equipos.length)return `<div class="ea-alert warn">El técnico aún no ha registrado el detalle de los equipos.</div>`;
-  return `<div class="ea-table-wrap"><table class="ea-table"><thead><tr><th>#</th><th>Tipo</th><th>Serie</th><th>Código cliente</th><th>Recepción de almacén</th></tr></thead><tbody>${equipos.map((e,i)=>`<tr><td>${i+1}</td><td>${eaEsc(e.tipo)}</td><td><b>${eaEsc(e.serie)}</b></td><td>${eaEsc(e.codigoCliente)}</td><td>${eaBadge(e.estadoRecepcion||"PENDIENTE")}${e.observacionAlmacen?`<br><small>${eaEsc(e.observacionAlmacen)}</small>`:""}</td></tr>`).join("")}</tbody></table></div>`;
+  return `<div class="ea-table-wrap"><table class="ea-table"><thead><tr><th>#</th><th>Tipo</th><th>Serie (SN del equipo)</th><th>MAC del equipo</th><th>Recepción de almacén</th></tr></thead><tbody>${equipos.map((e,i)=>`<tr><td>${i+1}</td><td>${eaEsc(e.tipo)}</td><td><b>${eaEsc(e.serie)}</b></td><td>${eaEsc(e.codigoCliente)}</td><td>${eaBadge(e.estadoRecepcion||"PENDIENTE")}${e.observacionAlmacen?`<br><small>${eaEsc(e.observacionAlmacen)}</small>`:""}</td></tr>`).join("")}</tbody></table></div>`;
 }
 
 function eaLinkDescargaCargo(url){
@@ -164,7 +164,7 @@ function eaCerrarModal(){document.getElementById("eaModal")?.remove();}
 
 function eaFilaFormulario(e={}){
   const tipos=(EA_STATE.catalogos?.tipos||[]).map(t=>`<option ${eaNorm(e.tipo)===eaNorm(t)?"selected":""}>${eaEsc(t)}</option>`).join("");
-  return `<div class="ea-equipo-form"><div class="ea-equipo-grid"><div class="ea-field"><label>TIPO DE EQUIPO</label><select class="ea-tipo"><option value="">Seleccione</option>${tipos}</select></div><div class="ea-field"><label>SERIE</label><input class="ea-serie" value="${eaEsc(e.serie||"")}" placeholder="Número de serie"></div><div class="ea-field"><label>CÓDIGO DE CLIENTE</label><input class="ea-codigo" value="${eaEsc(e.codigoCliente||"")}" placeholder="Código de cliente"></div><button class="ea-remove" onclick="this.closest('.ea-equipo-form').remove()">×</button></div></div>`;
+  return `<div class="ea-equipo-form"><div class="ea-equipo-grid"><div class="ea-field"><label>TIPO DE EQUIPO</label><select class="ea-tipo"><option value="">Seleccione</option>${tipos}</select></div><div class="ea-field"><label>SERIE (SN DEL EQUIPO)</label><input class="ea-serie" value="${eaEsc(e.serie||"")}" placeholder="SN del equipo"></div><div class="ea-field"><label>MAC DEL EQUIPO</label><input class="ea-codigo" value="${eaEsc(e.codigoCliente||"")}" placeholder="MAC del equipo"></div><button class="ea-remove" onclick="this.closest('.ea-equipo-form').remove()">×</button></div></div>`;
 }
 function eaAgregarFila(){const c=document.getElementById("eaFilasEquipos");if(!c)return;if(c.children.length>=8){alert("Máximo 8 equipos por solicitud");return;}c.insertAdjacentHTML("beforeend",eaFilaFormulario());}
 function eaRecolectarEquipos(){return [...document.querySelectorAll("#eaFilasEquipos .ea-equipo-form")].map(x=>({tipo:x.querySelector(".ea-tipo").value,serie:x.querySelector(".ea-serie").value,codigoCliente:x.querySelector(".ea-codigo").value}));}
@@ -197,7 +197,7 @@ async function eaCrearSolicitudAlmacen(){
 
 function eaAbrirRecepcion(id){
   const item=EA_STATE.solicitudes.find(x=>x.id===id);if(!item)return;
-  eaModal(`<h3>📦 Recepción de equipos · ${eaEsc(id)}</h3><p class="ea-meta">Marque el resultado físico de cada equipo. Los ya recibidos quedan bloqueados.</p><div class="ea-table-wrap"><table class="ea-table"><thead><tr><th>Tipo</th><th>Serie</th><th>Código cliente</th><th>Resultado</th><th>Observación</th></tr></thead><tbody>${item.equipos.map(e=>{const recibido=eaNorm(e.estadoRecepcion)==="RECIBIDO";return `<tr data-serie="${eaEsc(e.serie)}"><td>${eaEsc(e.tipo)}</td><td><b>${eaEsc(e.serie)}</b></td><td>${eaEsc(e.codigoCliente)}</td><td><select class="ea-rec-estado" ${recibido?"disabled":""}><option>PENDIENTE</option><option ${eaNorm(e.estadoRecepcion)==="RECIBIDO"?"selected":""}>RECIBIDO</option><option ${eaNorm(e.estadoRecepcion)==="OBSERVADO"?"selected":""}>OBSERVADO</option><option ${eaNorm(e.estadoRecepcion)==="RECHAZADO"?"selected":""}>RECHAZADO</option></select></td><td><input class="ea-rec-obs" value="${eaEsc(e.observacionAlmacen||"")}" ${recibido?"disabled":""}></td></tr>`;}).join("")}</tbody></table></div><div class="ea-field" style="margin-top:8px"><label>OBSERVACIÓN GENERAL</label><textarea id="eaRecObsGeneral" rows="2"></textarea></div><div class="ea-actions"><button class="ea-btn green" onclick="eaConfirmarRecepcion('${eaEsc(id)}')">Confirmar recepción</button></div>`);
+  eaModal(`<h3>📦 Recepción de equipos · ${eaEsc(id)}</h3><p class="ea-meta">Marque el resultado físico de cada equipo. Los ya recibidos quedan bloqueados.</p><div class="ea-table-wrap"><table class="ea-table"><thead><tr><th>Tipo</th><th>Serie (SN del equipo)</th><th>MAC del equipo</th><th>Resultado</th><th>Observación</th></tr></thead><tbody>${item.equipos.map(e=>{const recibido=eaNorm(e.estadoRecepcion)==="RECIBIDO";return `<tr data-serie="${eaEsc(e.serie)}"><td>${eaEsc(e.tipo)}</td><td><b>${eaEsc(e.serie)}</b></td><td>${eaEsc(e.codigoCliente)}</td><td><select class="ea-rec-estado" ${recibido?"disabled":""}><option>PENDIENTE</option><option ${eaNorm(e.estadoRecepcion)==="RECIBIDO"?"selected":""}>RECIBIDO</option><option ${eaNorm(e.estadoRecepcion)==="OBSERVADO"?"selected":""}>OBSERVADO</option><option ${eaNorm(e.estadoRecepcion)==="RECHAZADO"?"selected":""}>RECHAZADO</option></select></td><td><input class="ea-rec-obs" value="${eaEsc(e.observacionAlmacen||"")}" ${recibido?"disabled":""}></td></tr>`;}).join("")}</tbody></table></div><div class="ea-field" style="margin-top:8px"><label>OBSERVACIÓN GENERAL</label><textarea id="eaRecObsGeneral" rows="2"></textarea></div><div class="ea-actions"><button class="ea-btn green" onclick="eaConfirmarRecepcion('${eaEsc(id)}')">Confirmar recepción</button></div>`);
 }
 async function eaConfirmarRecepcion(id){
   const equipos=[...document.querySelectorAll("#eaModal tbody tr")].map(tr=>({serie:tr.dataset.serie,estado:tr.querySelector(".ea-rec-estado").value,observacion:tr.querySelector(".ea-rec-obs").value}));
@@ -215,7 +215,7 @@ async function eaVolverPendiente(id){
 function eaDescargarBase64(base64,nombre,mime){const a=document.createElement("a");a.href=`data:${mime};base64,${base64}`;a.download=nombre;document.body.appendChild(a);a.click();a.remove();}
 
 function eaDescargarInforme(){
-  const filas=[["Solicitud","Fecha","Sede","Plataforma","Cuadrilla","Técnico","Estado solicitud","Tipo equipo","Serie","Código cliente","Estado recepción","Confirmado por","Fecha conformidad","Cargo"]];
+  const filas=[["Solicitud","Fecha","Sede","Plataforma","Cuadrilla","Técnico","Estado solicitud","Tipo equipo","Serie (SN del equipo)","MAC del equipo","Estado recepción","Confirmado por","Fecha conformidad","Cargo"]];
   EA_STATE.solicitudes.forEach(s=>(s.equipos||[]).forEach(e=>filas.push([s.id,s.fechaRegistroVisible||s.fechaRegistro,s.sede,s.plataforma,s.cuadrilla,s.tecnico,s.estado,e.tipo,e.serie,e.codigoCliente,e.estadoRecepcion||"PENDIENTE",s.validadoPor||"",`${s.fechaValidacionVisible||s.fechaValidacion||""} ${s.horaValidacionVisible||s.horaValidacion||""}`,e.cargoId||s.idCargo||""])));
   const csv="\uFEFF"+filas.map(f=>f.map(v=>`"${(v??"").toString().replace(/"/g,'""')}"`).join(";")).join("\r\n");
   const blob=new Blob([csv],{type:"text/csv;charset=utf-8"}),a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download=`INFORME_EQUIPOS_AVERIADOS_${new Date().toISOString().slice(0,10)}.csv`;document.body.appendChild(a);a.click();URL.revokeObjectURL(a.href);a.remove();
