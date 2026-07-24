@@ -1,0 +1,19 @@
+MI VISUAL V268 - AJUSTES VISUALES EN EQUIPOS AVERIADOS Y GESTIÓN DE ACTAS
+
+1. EQUIPOS AVERIADOS
+- Los valores de los indicadores superiores ahora tienen contraste visible.
+- El indicador PENDIENTES usa fondo amarillo y texto oscuro.
+- Cada solicitud se identifica en el encabezado por fecha y código corto de cuadrilla (ej.: 24/07/2026 · P14).
+- El ID interno de la solicitud y el nombre completo de la cuadrilla se conservan para trazabilidad.
+
+2. GESTIÓN DE ACTAS - PERFIL TÉCNICO
+- La ayuda ¿Dónde encuentro los códigos? aparece al inicio del formulario.
+- Inicia cerrada y se abre únicamente al pulsar el desplegable.
+- Se conserva exactamente la imagen guía ya incorporada.
+
+APLICACIÓN
+- Code.gs / Apps Script: NO
+- Frontend GitHub: SÍ
+- Google Sheets: NO
+- Nuevo Deploy Apps Script: NO
+- Otros módulos: SIN CAMBIOS

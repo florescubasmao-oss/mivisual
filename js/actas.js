@@ -224,9 +224,9 @@ function estiloActas(){
         .actas-filter-actions{display:flex;align-items:end;}
         .actas-filter-actions .actas-btn{width:100%;padding:9px 10px;}
         .actas-filter-result{margin-top:8px;font-size:11px;color:#475569;font-weight:800;}
-        .actas-upload-layout{display:grid;grid-template-columns:minmax(0,1fr) 300px;gap:14px;align-items:start;}
+        .actas-upload-layout{display:block;}
         .actas-upload-main{min-width:0;}
-        .actas-code-guide{background:#fff;border:1px solid #cbd5e1;border-radius:16px;padding:0;overflow:hidden;box-shadow:0 6px 16px rgba(15,23,42,.08);color:#111827;position:sticky;top:12px;}
+        .actas-code-guide{background:#fff;border:1px solid #cbd5e1;border-radius:16px;padding:0;overflow:hidden;box-shadow:0 6px 16px rgba(15,23,42,.08);color:#111827;} .actas-code-guide-top{margin:0 0 12px;}
         .actas-code-guide>summary{cursor:pointer;list-style:none;padding:11px 12px;background:#e0f2fe;color:#075985;font-size:12px;font-weight:900;display:flex;justify-content:space-between;align-items:center;gap:8px;}
         .actas-code-guide>summary::-webkit-details-marker{display:none;}
         .actas-code-guide>summary:after{content:'▾';font-size:13px;}
@@ -235,7 +235,7 @@ function estiloActas(){
         .actas-code-guide img{display:block;width:100%;height:auto;border-radius:10px;border:1px solid #e2e8f0;background:#fff;}
         .actas-code-guide p{margin:8px 0 0;font-size:11px;line-height:1.35;color:#475569;font-weight:700;}
         .actas-mobile{display:none;}
-        @media(max-width:900px){.actas-filters-grid{grid-template-columns:repeat(3,minmax(0,1fr))}.actas-upload-layout{grid-template-columns:1fr}.actas-code-guide{position:static;}}
+        @media(max-width:900px){.actas-filters-grid{grid-template-columns:repeat(3,minmax(0,1fr))}}
         @media(max-width:760px){.actas-grid,.actas-kpis{grid-template-columns:1fr 1fr}.actas-table{display:none}.actas-mobile{display:block}.actas-card{font-size:13px}.actas-head h2{font-size:20px}.actas-filters-grid,.actas-filters-grid.tech{grid-template-columns:repeat(2,minmax(0,1fr))}}
         @media(max-width:760px){.actas-auto-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
         .actas-masiva-card{background:#fff;border:1px solid #dbeafe;border-radius:16px;padding:14px;color:#111827;box-shadow:0 6px 16px rgba(15,23,42,.08);}
@@ -822,6 +822,13 @@ async function mostrarFormularioActa(codigoPedidoPrefill){
         <div class="actas-wrap">
             <div class="actas-head"><h2>📄 ${esFaltante ? "Completar Acta Faltante" : (codigoPedidoPrefill ? "Reemplazar Acta Observada" : "Subir Acta Escaneada")}</h2><p>Ingresa los códigos, el número de acta y adjunta el PDF. Los demás datos se completan automáticamente.</p></div>
             <form id="formActa" onsubmit="event.preventDefault(); guardarActa(this.querySelector('[data-guardar]'))">
+                <details id="guiaCodigosActa" class="actas-code-guide actas-code-guide-top">
+                    <summary>¿Dónde encuentro los códigos?</summary>
+                    <div class="actas-code-guide-body">
+                        <img src="./img/guia_codigos_acta.png?v=V268" alt="Guía para ubicar el código de orden y el código de pedido">
+                        <p><b>Código de orden:</b> aparece junto a “Orden N.°”.<br><b>Código de pedido:</b> aparece junto a “Seguimiento Cliente”.</p>
+                    </div>
+                </details>
                 <div class="actas-upload-layout">
                     <div class="actas-upload-main">
                         <div class="actas-grid">
@@ -849,19 +856,10 @@ async function mostrarFormularioActa(codigoPedidoPrefill){
                             <button class="actas-btn sec" type="button" onclick="mostrarGestionActas()">Cancelar</button>
                         </div>
                     </div>
-                    <details id="guiaCodigosActa" class="actas-code-guide" open>
-                        <summary>¿Dónde encuentro los códigos?</summary>
-                        <div class="actas-code-guide-body">
-                            <img src="./img/guia_codigos_acta.png?v=V264" alt="Guía para ubicar el código de orden y el código de pedido">
-                            <p><b>Código de orden:</b> aparece junto a “Orden N.°”.<br><b>Código de pedido:</b> aparece junto a “Seguimiento Cliente”.</p>
-                        </div>
-                    </details>
                 </div>
             </form>
         </div>
     `);
-    const guiaCodigos = document.getElementById("guiaCodigosActa");
-    if(guiaCodigos && window.matchMedia && window.matchMedia("(max-width: 900px)").matches) guiaCodigos.open = false;
     pintarDatosAutomaticosActa(window._actaAutomaticosBase, "Los datos se completarán automáticamente al validar los códigos.", "");
     if(document.getElementById("actaCodigoOrden")?.value || document.getElementById("actaCodigoPedido")?.value){
         consultarDatosAutomaticosFormularioActa();
