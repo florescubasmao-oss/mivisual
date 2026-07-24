@@ -1,0 +1,46 @@
+MI VISUAL V264 - GESTIÓN DE ACTAS: GUÍA DE CÓDIGOS Y FILTROS POR PERFIL
+
+Base utilizada:
+- MI VISUAL V263.
+
+Cambios incluidos:
+
+1. Perfil Técnico - guía visual para registrar códigos
+- Se incorporó exactamente la imagen proporcionada por el usuario.
+- En escritorio aparece al costado derecho del formulario de carga de actas.
+- En pantallas pequeñas aparece debajo del formulario dentro del desplegable “¿Dónde encuentro los códigos?”.
+- La guía señala dónde ubicar el Código de orden y el Código de pedido.
+- No se generó ni reemplazó la imagen original.
+
+2. Filtros del Técnico
+- Código de pedido.
+- Número de acta.
+- No se muestran otros filtros en este perfil.
+
+3. Filtros para Responsable de Almacén, Supervisor y perfiles autorizados
+- Número de acta.
+- Fecha.
+- Cuadrilla.
+- Estado del acta.
+
+4. Filtro adicional para Jefaturas, Jefatura de Almacén, Gerencia y Administración
+- Sede.
+
+5. Estados disponibles
+- Pendiente.
+- Observada.
+- Finalizada.
+- Faltante.
+
+6. Protección del avance
+- No se modificó Code.gs.
+- No se modificó la estructura de Google Sheets.
+- No se modificó la estructura de Drive.
+- No se modificó el guardado, validación, reemplazo de PDF, entrega física ni actualización automática de datos.
+- Los filtros se aplican sobre los registros que cada perfil ya tiene permiso de consultar.
+
+Aplicación:
+- Code.gs / Apps Script: NO.
+- Frontend GitHub: SÍ.
+- Google Sheets: NO.
+- Nuevo Deploy Apps Script: NO.
