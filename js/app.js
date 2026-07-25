@@ -167,9 +167,21 @@ function prepararMenuVisual(){
     }
 
     const info = obtenerNombrePerfilMenu();
+    const perfilPlantilla = normalizarPerfilApp(localStorage.getItem("perfil"));
+    const perfilesPlantilla = ["TECNICO","SUPERVISOR","JEFATURA","JEFATURA GENERAL","GERENCIA LIMA","JEFATURA OPERACIONES","JEFATURA DE OPERACIONES","ADMIN","ADMINISTRADOR"];
+    const botonPlantilla = perfilesPlantilla.includes(perfilPlantilla) ? `
+        <button id="btnPlantillaOrden" class="mv271-plantilla-btn" type="button" title="Consultar plantilla de orden" aria-label="Consultar plantilla de orden" onclick="mostrarPlantillaOrden()">
+          <svg viewBox="0 0 64 64" role="img" aria-hidden="true">
+            <rect x="11" y="5" width="42" height="52" rx="4" fill="#e8f4ff" stroke="#174a78" stroke-width="3"/>
+            <rect x="16" y="11" width="32" height="9" rx="2" fill="#1d70b7"/>
+            <path d="M17 25h30M17 33h30M17 41h30M27 24v19M38 24v19" stroke="#6b8aa5" stroke-width="2"/>
+            <path d="M43 43v14m0 0-7-7m7 7 7-7" fill="none" stroke="#f59e0b" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </button>` : "";
     welcome.innerHTML = `
         <div class="mv55-welcome-hi">👋 Bienvenido${info.nombresApellidos ? ", " + info.nombresApellidos : ""}</div>
         <div class="mv55-welcome-detail">${info.detalle}</div>
+        ${botonPlantilla}
     `;
 
     return { menu, welcome, main, recursos, recursosTitle };

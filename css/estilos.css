@@ -1732,3 +1732,55 @@ body{background:linear-gradient(180deg,var(--mv4-bg),var(--mv4-bg2));font-family
     font-size:5.9px!important;
   }
 }
+
+
+/* =====================================================
+   V271 - Icono y consulta de Plantilla de Orden
+   ===================================================== */
+.mv55-welcome{position:relative;}
+.mv271-plantilla-btn{
+  position:absolute;right:16px;top:50%;transform:translateY(-50%);
+  width:48px;height:48px;padding:0;border-radius:11px;
+  border:2px solid #22c55e;background:#f8fafc;cursor:pointer;
+  display:flex;align-items:center;justify-content:center;
+  box-shadow:0 7px 16px rgba(0,0,0,.24);
+}
+.mv271-plantilla-btn svg{width:34px;height:34px;display:block;}
+.mv271-plantilla-btn:hover{transform:translateY(-50%) scale(1.04);}
+.mv271-plantilla-btn:active{transform:translateY(-50%) scale(.97);}
+.mv55-welcome:has(.mv271-plantilla-btn){padding-right:82px!important;}
+
+.po-page{width:100%;max-width:900px;margin:0 auto;padding:16px 14px 100px;box-sizing:border-box;color:#fff;}
+.po-head{background:linear-gradient(135deg,#12375e,#155e75);border-radius:20px;padding:18px 20px;box-shadow:0 12px 28px rgba(0,0,0,.22);}
+.po-head h2{margin:0;font-size:25px;font-weight:950;}
+.po-head p{margin:7px 0 0;color:#dbeafe;font-size:13px;font-weight:700;line-height:1.35;}
+.po-search-card,.po-result-card{margin-top:14px;background:#f8fafc;color:#0f172a;border-radius:18px;padding:16px;box-sizing:border-box;box-shadow:0 10px 24px rgba(0,0,0,.2);}
+.po-search-card label{display:block;font-size:12px;font-weight:950;text-transform:uppercase;margin-bottom:7px;}
+.po-search-row{display:grid;grid-template-columns:minmax(0,1fr) 170px;gap:10px;}
+.po-search-row input{min-height:48px;border:1px solid #b8c7d9;border-radius:12px;padding:10px 13px;font-size:18px;font-weight:800;box-sizing:border-box;outline:none;}
+.po-search-row input:focus{border-color:#0ea5e9;box-shadow:0 0 0 3px rgba(14,165,233,.15);}
+.po-search-row button,.po-actions button{border:0;border-radius:11px;padding:11px 14px;font-weight:900;cursor:pointer;background:#475569;color:#fff;}
+.po-search-row button,.po-actions .po-primary{background:#087cc1;}
+.po-actions button:disabled{opacity:.4;cursor:not-allowed;}
+.po-status{margin-top:9px;font-size:12px;font-weight:800;color:#475569;}
+.po-status.loading{color:#1d4ed8;}.po-status.ok{color:#047857;}.po-status.error{color:#b91c1c;}
+.po-result-top{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;margin-bottom:10px;}
+.po-result-top>div{display:grid;gap:3px;}.po-result-top b{font-size:18px;}.po-result-top small{color:#475569;font-weight:700;}
+.po-result-top>span{background:#dbeafe;color:#1e3a8a;border-radius:999px;padding:7px 11px;font-size:12px;font-weight:950;}
+.po-text{width:100%;min-height:440px;resize:vertical;box-sizing:border-box;border-radius:13px;border:1px solid #b8c7d9;background:#0f1f35;color:#fff;padding:15px;font-family:Arial,sans-serif;font-size:14px;line-height:1.45;white-space:pre-wrap;}
+.po-actions{display:flex;flex-wrap:wrap;gap:9px;margin-top:11px;}
+
+@media(max-width:620px){
+  .mv271-plantilla-btn{right:12px;width:42px;height:42px;border-radius:9px;}
+  .mv271-plantilla-btn svg{width:30px;height:30px;}
+  .mv55-welcome:has(.mv271-plantilla-btn){padding-right:66px!important;}
+  .po-page{padding:10px 10px 95px;}
+  .po-head{padding:15px;border-radius:17px;}.po-head h2{font-size:21px;}
+  .po-search-card,.po-result-card{padding:12px;border-radius:16px;}
+  .po-search-row{grid-template-columns:1fr;}
+  .po-search-row button{min-height:45px;}
+  .po-result-top{flex-direction:column;}
+  .po-text{min-height:390px;font-size:13px;padding:12px;}
+  .po-actions{display:grid;grid-template-columns:1fr 1fr;}
+  .po-actions button{min-height:44px;padding:9px 7px;font-size:12px;}
+}

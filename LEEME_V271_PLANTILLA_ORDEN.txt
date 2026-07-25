@@ -1,0 +1,30 @@
+MI VISUAL V271 - CONSULTA DE PLANTILLA DE ORDEN
+
+Base: V270 estable.
+
+IMPLEMENTACION
+- Se agrega únicamente un icono de plantilla en la cabecera del menú para Técnico, Supervisor, Jefatura y Gerencia Lima.
+- El icono abre una pantalla independiente de consulta.
+- La búsqueda se realiza por CODIGO_CLIENTE en MAPA_ORDENES.
+- Si existen registros repetidos se muestra el más reciente por fecha, hora y fecha de importación.
+- Técnico: solo órdenes de su cuadrilla.
+- Supervisor: solo órdenes de sus cuadrillas asignadas.
+- Jefatura y Gerencia Lima: todas las órdenes.
+- Resultado en formato textual seleccionable.
+- Acciones: Copiar plantilla completa, Copiar selección, Nueva búsqueda y Ver ubicación.
+- Consulta de solo lectura: no modifica Mapa Operativo ni sus órdenes.
+
+APLICACION
+Code.gs / Apps Script: SI
+Frontend GitHub: SI
+Google Sheets: NO
+Nuevo Deploy Apps Script: SI
+
+ARCHIVOS MODIFICADOS / NUEVOS
+- Code.gs
+- apps_script/Code.gs
+- js/app.js
+- js/plantilla_orden.js
+- css/estilos.css
+- index.html
+- LEEME_V271_PLANTILLA_ORDEN.txt

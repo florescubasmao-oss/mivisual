@@ -9265,6 +9265,137 @@ function asegurarPermisosEquiposAveriados_() {
 }
 
 
+
+/* =====================================================
+   V271 - CONSULTA DE PLANTILLA DE ORDEN
+   Consulta de solo lectura sobre MAPA_ORDENES.
+   ===================================================== */
+function perfilPermitidoPlantillaOrden_(perfil) {
+  const p = normalizarTexto(perfil);
+  return [
+    "TECNICO","SUPERVISOR","JEFATURA","JEFATURA GENERAL","GERENCIA LIMA",
+    "JEFATURA OPERACIONES","JEFATURA DE OPERACIONES","OPERACIONES","ADMIN","ADMINISTRADOR"
+  ].indexOf(p) >= 0;
+}
+
+function fechaHoraClavePlantillaOrden_(fila) {
+  const fecha = fechaClaveMapa(fila[2] || fila[19] || fila[18]);
+  let hora = textoMapa(fila[3]);
+  let horas = 0;
+  let minutos = 0;
+  const m = hora.match(/(\d{1,2}):(\d{2})/);
+  if (m) {
+    horas = Math.min(23, Number(m[1]) || 0);
+    minutos = Math.min(59, Number(m[2]) || 0);
+  }
+  let principal = 0;
+  if (fecha) {
+    const partes = fecha.split("-");
+    principal = Date.UTC(Number(partes[0]), Number(partes[1]) - 1, Number(partes[2]), horas, minutos, 0);
+  }
+  const importacion = fila[26] instanceof Date ? fila[26].getTime() : new Date(fila[26] || 0).getTime();
+  return {
+    principal: isFinite(principal) ? principal : 0,
+    importacion: isFinite(importacion) ? importacion : 0,
+    orden: Number(String(fila[0] || "").replace(/\D/g,"")) || 0
+  };
+}
+
+function compararRecenciaPlantillaOrden_(a, b) {
+  const ka = fechaHoraClavePlantillaOrden_(a);
+  const kb = fechaHoraClavePlantillaOrden_(b);
+  if (ka.principal !== kb.principal) return kb.principal - ka.principal;
+  if (ka.importacion !== kb.importacion) return kb.importacion - ka.importacion;
+  return kb.orden - ka.orden;
+}
+
+function valorPlantillaOrden_(etiqueta, valor) {
+  const texto = textoMapa(valor);
+  return texto ? etiqueta + ": " + texto : "";
+}
+
+function construirTextoPlantillaOrden_(item) {
+  const lineas = [];
+  const fechaHora = [item.fechaSolicitud, item.horaSolicitud].filter(function(x){ return x; }).join(" ");
+  if (fechaHora) lineas.push(fechaHora);
+  if (item.ordenId) lineas.push("Orden N°: " + item.ordenId);
+  if (item.productoOrigen) lineas.push(item.productoOrigen);
+  if (item.tipoTrabajo) lineas.push(item.tipoTrabajo);
+
+  const producto = textoMapa(item.productoServicio).replace(/\|/g,"\n");
+  if (producto) lineas.push(producto);
+
+  if (item.codigoCliente) lineas.push("Seguimiento Cliente: " + item.codigoCliente);
+  lineas.push("");
+
+  [
+    valorPlantillaOrden_("Estado", item.estado),
+    valorPlantillaOrden_("Cuadrilla", item.cuadrilla),
+    valorPlantillaOrden_("Cliente", item.cliente),
+    valorPlantillaOrden_("Documento", item.numeroDocumento),
+    valorPlantillaOrden_("Teléfono móvil", item.telefonoMovil),
+    valorPlantillaOrden_("Teléfono fijo", item.telefonoFijo),
+    valorPlantillaOrden_("Dirección", item.direccion),
+    valorPlantillaOrden_("Referencia", item.direccionAdicional),
+    valorPlantillaOrden_("Inicio de visita", item.fechaInicioVisita),
+    valorPlantillaOrden_("Fin de visita", item.fechaFinVisita),
+    valorPlantillaOrden_("Motivo de cancelación", item.motivoCancelacion),
+    valorPlantillaOrden_("Motivo de finalización", item.motivoFinalizacion),
+    valorPlantillaOrden_("Motivo de anulación", item.motivoAnulacion),
+    valorPlantillaOrden_("Detalle", item.detalle),
+    valorPlantillaOrden_("Región", item.region)
+  ].forEach(function(linea){ if (linea) lineas.push(linea); });
+
+  if (item.latitud !== "" && item.longitud !== "") {
+    lineas.push("Coordenadas: " + item.latitud + "," + item.longitud);
+  }
+  return lineas.join("\n").replace(/\n{3,}/g,"\n\n").trim();
+}
+
+function consultarPlantillaOrden(data) {
+  const usuario = obtenerUsuarioApp(data.usuario);
+  if (!perfilPermitidoPlantillaOrden_(usuario.perfil)) throw new Error("No tienes permiso para consultar plantillas de órdenes");
+
+  const codigoBuscado = normalizarIdentificadorMapa(data.codigoCliente);
+  if (!codigoBuscado) throw new Error("Ingrese un código de cliente válido");
+
+  const hoja = asegurarHojaMapaOperativo();
+  if (hoja.getLastRow() <= 1) throw new Error("Mapa Operativo todavía no tiene órdenes registradas");
+
+  const filas = hoja.getRange(2,1,hoja.getLastRow()-1,28).getValues();
+  const perfil = normalizarTexto(usuario.perfil);
+  const cuadrillaTecnico = normalizarCuadrilla(usuario.cuadrilla);
+  const cuadrillasSupervisor = perfil === "SUPERVISOR" ? cuadrillasSupervisorMapa(usuario.usuario) : {};
+
+  const coincidencias = filas.filter(function(fila){
+    if (normalizarIdentificadorMapa(fila[14]) !== codigoBuscado) return false;
+    const cuadrillaFila = normalizarCuadrilla(fila[7]);
+    if (perfil === "TECNICO") return cuadrillaFila === cuadrillaTecnico;
+    if (perfil === "SUPERVISOR") return !!cuadrillasSupervisor[cuadrillaFila];
+    return true;
+  });
+
+  if (!coincidencias.length) {
+    if (perfil === "TECNICO") throw new Error("No se encontró una orden reciente con ese código asociada a su cuadrilla");
+    if (perfil === "SUPERVISOR") throw new Error("No se encontró una orden con ese código asociada a sus cuadrillas");
+    throw new Error("No se encontró una orden con ese código de cliente");
+  }
+
+  coincidencias.sort(compararRecenciaPlantillaOrden_);
+  const fila = coincidencias[0];
+  const item = filaMapaOperativoAObjeto(fila);
+  item.fechaImportacion = textoMapa(fila[26]);
+
+  return {
+    ok:true,
+    modulo:"PLANTILLA_ORDEN",
+    accion:"CONSULTAR",
+    coincidencias:coincidencias.length,
+    orden:item,
+    plantilla:construirTextoPlantillaOrden_(item)
+  };
+}
+
 function doPost(e) {
   try {
     const data = JSON.parse(e.postData.contents);
@@ -9280,6 +9411,7 @@ function doPost(e) {
     if (data.accion === "listarCatalogoPartidasOperativas") return respuestaJson(listarCatalogoPartidasOperativas(data));
     if (data.accion === "registrarPartidaCatalogoOperativa") return respuestaJson(registrarPartidaCatalogoOperativa(data));
 
+    if (data.accion === "consultarPlantillaOrden") return respuestaJson(consultarPlantillaOrden(data));
     if (data.accion === "importarMapaOperativo") return respuestaJson(importarMapaOperativo(data));
     if (data.accion === "listarMapaOperativo") return respuestaJson(listarMapaOperativo(data));
     if (data.accion === "catalogosMapaOperativo") return respuestaJson(catalogosMapaOperativo(data));
