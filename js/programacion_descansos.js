@@ -1,4 +1,4 @@
-// MI VISUAL - Programación de Descansos V256
+// MI VISUAL - Programación de Descansos V272
 const API_DESCANSOS = "https://script.google.com/macros/s/AKfycbzcbjCLweJNgZXDerdzmMN7Lwotc1G8NWdzoPkaLNGDivAgpYxDkq78xZwPRioSB4XY/exec";
 let PD_DATA={programacion:[],cuadrillas:[]};
 let PD_CAMBIOS={};
@@ -13,6 +13,22 @@ function pdEsc(v){return (v??"").toString().replace(/&/g,"&amp;").replace(/</g,"
 async function pdApi(payload){const r=await fetch(API_DESCANSOS,{method:"POST",body:JSON.stringify(payload)});const d=await r.json();if(!d.ok)throw new Error(d.error||"Error en Programación de Descansos");return d;}
 function pdHoy(){const d=new Date(),m=String(d.getMonth()+1).padStart(2,"0"),day=String(d.getDate()).padStart(2,"0");return `${d.getFullYear()}-${m}-${day}`;}
 function pdPeriodoActual(){return pdHoy().slice(0,7);}
+function pdSumarMes(periodo,desplazamiento){
+  const [anio,mes]=String(periodo||pdPeriodoActual()).split("-").map(Number);
+  const fecha=new Date(anio,mes-1+Number(desplazamiento||0),1);
+  return `${fecha.getFullYear()}-${String(fecha.getMonth()+1).padStart(2,"0")}`;
+}
+function pdPeriodosDisponibles(periodoSeleccionado){
+  const actual=pdPeriodoActual();
+  const lista=[pdSumarMes(actual,-1),actual,pdSumarMes(actual,1)];
+  const seleccionado=periodoSeleccionado||actual;
+  if(!lista.includes(seleccionado))lista.push(seleccionado);
+  return [...new Set(lista)].sort();
+}
+function pdOpcionesMesHtml(periodoSeleccionado){
+  const seleccionado=periodoSeleccionado||pdPeriodoActual();
+  return pdPeriodosDisponibles(seleccionado).map(periodo=>`<option value="${periodo}" ${periodo===seleccionado?'selected':''}>${pdEsc(pdNombreMes(periodo))}</option>`).join('');
+}
 function pdDiasMes(periodo){const [y,m]=periodo.split("-").map(Number);return new Date(y,m,0).getDate();}
 function pdFecha(periodo,dia){return `${periodo}-${String(dia).padStart(2,"0")}`;}
 function pdNombreMes(periodo){const [y,m]=periodo.split("-").map(Number);return new Intl.DateTimeFormat("es-PE",{month:"long",year:"numeric"}).format(new Date(y,m-1,1)).toUpperCase();}
@@ -270,7 +286,7 @@ function pdRenderTecnico(){
   const estadoHoyHtml=esMesActual?`<div class="pd-tech-state ${estado==="DESCANSO"?'descanso':'campo'}"><div>ESTADO DE HOY</div><h2>${estado==="DESCANSO"?'😴 DESCANSO':(estado==='VACACIONES'?'🏖️ VACACIONES':'🟢 EN CAMPO')}</h2><div>${pdEsc(new Date(hoy+'T12:00:00').toLocaleDateString('es-PE',{weekday:'long',day:'2-digit',month:'long'}))}</div></div>`:'';
   document.getElementById("pdContenido").innerHTML=`
   ${estadoHoyHtml}
-  <div class="pd-card"><div class="pd-tech-month-head"><div><b>Mi programación mensual</b><div class="pd-note">Consulta tus días de campo y descanso de forma visual.</div></div><div class="pd-field"><label>Mes</label><input type="month" value="${pdEsc(per)}" onchange="pdCambiarMesTecnico(this.value)"></div></div>${pdCalendarioTecnicoHtml(u.cuadrilla,per)}</div>
+  <div class="pd-card"><div class="pd-tech-month-head"><div><b>Mi programación mensual</b><div class="pd-note">Consulta el mes anterior, el actual y el siguiente.</div></div><div class="pd-field"><label>Mes disponible</label><select onchange="pdCambiarMesTecnico(this.value)">${pdOpcionesMesHtml(per)}</select></div></div>${pdCalendarioTecnicoHtml(u.cuadrilla,per)}</div>
   <div class="pd-card"><div class="pd-summary"><div class="pd-kpi"><small>DESCANSOS DEL MES</small><b>${descansosMes.length}</b></div><div class="pd-kpi verde"><small>PRÓXIMO DESCANSO</small><b style="font-size:15px">${pdEsc(proximo)}</b></div></div><span class="pd-note">La programación aplica a toda la cuadrilla.</span></div>
   ${descansosSolicitables.length&&!pendienteActivo?`<div class="pd-request"><b>Solicitar cambio de descanso</b><div class="pd-note">La solicitud será revisada por tu Supervisor y finalmente por Jefatura General.</div><div class="pd-grid2" style="margin-top:8px"><div class="pd-field"><label>Descanso actual</label><select id="pdDescansoActual">${descansosSolicitables.map(x=>`<option value="${x.fecha}">${x.fecha}</option>`).join('')}</select></div><div class="pd-field"><label>Nueva fecha solicitada</label><input type="date" id="pdNuevaFecha" min="${hoy}"></div></div><div class="pd-field" style="margin-top:8px"><label>Motivo</label><textarea id="pdMotivoSolicitud" rows="2" placeholder="Explica brevemente el motivo del cambio"></textarea></div><button class="pd-btn pd-orange" style="margin-top:8px" onclick="pdSolicitarCambio()">Enviar solicitud</button></div>`:(pendienteActivo?'<div class="pd-alert">Ya tienes una solicitud de cambio en revisión. Podrás registrar otra cuando sea aprobada o rechazada.</div>':'')}
   <div class="pd-card"><div class="pd-collapse-head"><div><span class="pd-collapse-title">Mis solicitudes de cambio</span><div class="pd-note">Revisa el avance de tus solicitudes.</div></div><button type="button" class="pd-collapse-btn" data-pd-toggle="pdSolicitudesTecnico" onclick="pdTogglePanel('pdSolicitudesTecnico')">▼ Ver</button></div><div id="pdSolicitudesTecnico" class="pd-collapse-body"><div class="pd-list">${solicitudes.length?solicitudes.map(x=>{const estadoSol=x.estadoValidacion||x.estadoProgramacion||'PENDIENTE';return `<div class="pd-item"><strong>${pdEsc(x.fecha)} → ${pdEsc(x.solicitudCambio||'')}</strong><span class="pd-status pd-solicitud-estado ${pdClaseEstadoSolicitud(estadoSol)}">${pdEsc(pdNorm(estadoSol).replace(/_/g,' '))}</span><div class="pd-note">${pdEsc(x.motivoSolicitud||'Sin motivo')}</div>${x.comentarioSupervisor?`<div class="pd-note"><b>Supervisor:</b> ${pdEsc(x.comentarioSupervisor)}</div>`:''}${x.comentarioJefatura?`<div class="pd-note"><b>Jefatura:</b> ${pdEsc(x.comentarioJefatura)}</div>`:''}</div>`;}).join(''):'<div class="pd-note">No tienes solicitudes registradas en este periodo.</div>'}</div></div></div>`;
@@ -305,7 +321,7 @@ function pdRenderGestion(){
   // Dentro del módulo se conserva solo la gestión de sus cuadrillas.
   document.getElementById('pdContenido').innerHTML=`
   <div class="pd-card"><div class="pd-toolbar">
-    <div class="pd-field"><label>Periodo principal</label><input type="month" id="pdPeriodo" value="${per}"></div>
+    <div class="pd-field"><label>Periodo principal</label><select id="pdPeriodo" onchange="pdCambiarVista()">${pdOpcionesMesHtml(per)}</select><div class="pd-note">Mes anterior, actual y siguiente disponibles.</div></div>
     <div class="pd-field"><label>Consulta</label><select id="pdModo" onchange="pdAjustarModoFechas()"><option value="MES" ${modo==='MES'?'selected':''}>Mes visual completo</option><option value="RANGO" ${modo==='RANGO'?'selected':''}>De fecha a fecha</option><option value="DIA" ${modo==='DIA'?'selected':''}>Un día</option></select></div>
     <div class="pd-field"><label>Desde</label><input type="date" id="pdDesde" value="${desde}" ${modo==='MES'?'disabled':''}></div>
     <div class="pd-field"><label>Hasta</label><input type="date" id="pdHasta" value="${hasta}" ${modo!=='RANGO'?'disabled':''}></div>

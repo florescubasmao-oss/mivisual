@@ -1,0 +1,18 @@
+MI VISUAL V272 - PROGRAMACIÓN DE DESCANSOS: MES ANTERIOR, ACTUAL Y SIGUIENTE
+
+CAMBIO APLICADO
+- Programación de Descansos deja de depender del selector nativo de mes del navegador.
+- Técnico, Supervisor y Jefatura visualizan explícitamente tres periodos disponibles:
+  1. Mes anterior.
+  2. Mes actual.
+  3. Mes siguiente.
+- Durante julio de 2026 aparecen junio, julio y agosto de 2026.
+- Durante agosto de 2026 aparecen julio, agosto y septiembre de 2026.
+- Al seleccionar un mes se consulta la programación correspondiente sin mezclar registros.
+- Los descansos, solicitudes, notificaciones, capacidades y cruces por plataforma se mantienen sin cambios.
+
+APLICACIÓN
+- Code.gs / Apps Script: NO
+- Frontend GitHub: SÍ
+- Google Sheets: NO
+- Nuevo Deploy Apps Script: NO
