@@ -1,5 +1,5 @@
 
-// V184 - Menú económico con Producción valorizada y Costo de materiales
+// V273 - Producción valorizada vinculada a descansos y resultados diarios
 function aeApiMateriales(payload){
   return fetch(API_ANALISIS_ECONOMICO,{
     method:"POST",
@@ -433,6 +433,15 @@ function aeOrdenSedesDiarias(a,b){
   const orden={"CHICLAYO":1,"PIURA":2,"TRUJILLO":3,"SIN SEDE":99};
   return (orden[aeNormalizarSedeDiaria(a)]||50)-(orden[aeNormalizarSedeDiaria(b)]||50)||String(a).localeCompare(String(b));
 }
+function aeDetalleDiarioLista(data){
+  const nuevo=Array.isArray(data?.detalleDiarioProgramacion)?data.detalleDiarioProgramacion:[];
+  if(nuevo.length)return nuevo;
+  const anterior=Array.isArray(data?.porDiaSede)?data.porDiaSede:[];
+  return anterior.map(x=>{
+    const sede=aeNormalizarSedeDiaria(x.sede),total=aeTotalCuadrillasDiarias(data,sede),monto=Number(x.monto)||0;
+    return {...x,sede,totalCuadrillas:total,cuadrillasProgramadas:total,cuadrillasConProduccion:monto>0?total:0,cuadrillasConDescanso:0,cuadrillasProgramadasSinProduccion:monto>0?0:total,metaDiaria:total*500,cumplimientoDiario:total?monto/(total*500):0,promedioCuadrillaProduccion:total?monto/total:0};
+  });
+}
 function aeListaSedesDiarias(lista){
   return [...new Set((Array.isArray(lista)?lista:[]).map(x=>aeNormalizarSedeDiaria(x.sede)))].sort(aeOrdenSedesDiarias);
 }
@@ -446,18 +455,18 @@ function aeTotalCuadrillasDiarias(data,sede="TODAS"){
   return cuadrillas.filter(x=>aeNormalizarSedeDiaria(x.sede)===aeNormalizarSedeDiaria(sede)).length;
 }
 function aeResumenSedeDiaria(lista,sede,data){
-  const registros=(Array.isArray(lista)?lista:[]).filter(x=>aeNormalizarSedeDiaria(x.sede)===aeNormalizarSedeDiaria(sede)&&Number(x.monto)>0);
+  const registros=(Array.isArray(lista)?lista:[]).filter(x=>aeNormalizarSedeDiaria(x.sede)===aeNormalizarSedeDiaria(sede));
   const monto=registros.reduce((t,x)=>t+(Number(x.monto)||0),0);
-  const dias=registros.length;
-  const cuadrillas=aeTotalCuadrillasDiarias(data,sede);
+  const cuadrillas=registros.length?Math.max(...registros.map(x=>Number(x.totalCuadrillas)||0)):aeTotalCuadrillasDiarias(data,sede);
+  const jornadasProgramadas=registros.reduce((t,x)=>t+(Number(x.cuadrillasProgramadas)||0),0);
+  const jornadasProduccion=registros.reduce((t,x)=>t+(Number(x.cuadrillasConProduccion)||0),0);
+  const jornadasDescanso=registros.reduce((t,x)=>t+(Number(x.cuadrillasConDescanso)||0),0);
+  const metaMensual=cuadrillas*(Number(data?.parametrosMeta?.metaMensualCuadrilla)||13000);
   const mejor=registros.reduce((m,x)=>!m||Number(x.monto)>Number(m.monto)?x:m,null);
   return {
-    sede:aeNormalizarSedeDiaria(sede),
-    monto,
-    dias,
-    cuadrillas,
-    promedio:dias?monto/dias:0,
-    promedioDiarioCuadrilla:dias&&cuadrillas?monto/(dias*cuadrillas):0,
+    sede:aeNormalizarSedeDiaria(sede),monto,cuadrillas,jornadasProgramadas,jornadasProduccion,jornadasDescanso,metaMensual,
+    cumplimiento:metaMensual?monto/metaMensual:0,
+    promedioProduccion:jornadasProduccion?monto/jornadasProduccion:0,
     mejor
   };
 }
@@ -466,48 +475,51 @@ function aeTarjetasResumenDiario(lista,sedes,data){
   return `<div class="ae-diario-resumen">${sedes.map(s=>{
     const r=aeResumenSedeDiaria(lista,s,data);
     const mejor=r.mejor?`${aeEscape(r.mejor.fecha||r.mejor.fechaClave||"-")} · ${aeMoneda(r.mejor.monto)}`:"Sin producción";
-    return `<article class="ae-diario-kpi"><span>${aeEscape(r.sede)}</span><strong>${aeMoneda(r.monto)}</strong><small>Promedio diario: <b>${aeMoneda(r.promedio)}</b></small><small>Cuadrillas: <b>${aeNumero(r.cuadrillas)}</b></small><small>Promedio diario por cuadrilla: <b>${aeMoneda(r.promedioDiarioCuadrilla)}</b></small><small>${r.dias} día${r.dias===1?"":"s"} con producción</small><em>Mejor día: ${mejor}</em></article>`;
+    return `<article class="ae-diario-kpi"><span>${aeEscape(r.sede)}</span><strong>${aeMoneda(r.monto)}</strong><small>Meta mensual: <b>${aeMoneda(r.metaMensual)}</b></small><small>Cumplimiento: <b>${aePorcentaje(r.cumplimiento)}</b></small><small>Cuadrillas: <b>${aeNumero(r.cuadrillas)}</b></small><small>Jornadas programadas: <b>${aeNumero(r.jornadasProgramadas)}</b></small><small>Jornadas con producción: <b>${aeNumero(r.jornadasProduccion)}</b></small><small>Jornadas de descanso: <b>${aeNumero(r.jornadasDescanso)}</b></small><small>Promedio por cuadrilla con producción: <b>${aeMoneda(r.promedioProduccion)}</b></small><em>Mejor día: ${mejor}</em></article>`;
   }).join("")}</div>`;
 }
 function aeTablaDiariaTodas(lista,sedes,data){
   const fechas=[...new Set(lista.map(x=>String(x.fechaClave||"")))].filter(Boolean).sort();
   if(!fechas.length)return '<div class="ae-vacio">Sin información diaria por sede para este periodo.</div>';
   const mapa={};
-  lista.forEach(x=>{const f=String(x.fechaClave||"");const s=aeNormalizarSedeDiaria(x.sede);if(!mapa[f])mapa[f]={fecha:x.fecha||f};mapa[f][s]=(mapa[f][s]||0)+(Number(x.monto)||0)});
-  const totalCuadrillas=aeTotalCuadrillasDiarias(data,"TODAS");
+  lista.forEach(x=>{
+    const f=String(x.fechaClave||""),s=aeNormalizarSedeDiaria(x.sede);
+    if(!mapa[f])mapa[f]={fecha:x.fecha||f,sedes:{},cuadrillasProgramadas:0,cuadrillasConProduccion:0,cuadrillasConDescanso:0,cuadrillasProgramadasSinProduccion:0,metaDiaria:0};
+    mapa[f].sedes[s]=(mapa[f].sedes[s]||0)+(Number(x.monto)||0);
+    mapa[f].cuadrillasProgramadas+=Number(x.cuadrillasProgramadas)||0;
+    mapa[f].cuadrillasConProduccion+=Number(x.cuadrillasConProduccion)||0;
+    mapa[f].cuadrillasConDescanso+=Number(x.cuadrillasConDescanso)||0;
+    mapa[f].cuadrillasProgramadasSinProduccion+=Number(x.cuadrillasProgramadasSinProduccion)||0;
+    mapa[f].metaDiaria+=Number(x.metaDiaria)||0;
+  });
   const cab=sedes.map(s=>`<th>${aeEscape(s)}</th>`).join("");
   const filas=fechas.map(f=>{
-    const r=mapa[f]||{};
-    const total=sedes.reduce((t,s)=>t+(Number(r[s])||0),0);
-    const promedioCuadrilla=totalCuadrillas?total/totalCuadrillas:0;
-    return `<tr><td>${aeEscape(r.fecha||f)}</td>${sedes.map(s=>`<td>${aeMoneda(r[s]||0)}</td>`).join("")}<td><b>${aeMoneda(total)}</b></td><td>${aeNumero(totalCuadrillas)}</td><td><b>${aeMoneda(promedioCuadrilla)}</b></td></tr>`;
+    const r=mapa[f]||{},total=sedes.reduce((t,s)=>t+(Number(r.sedes?.[s])||0),0),meta=Number(r.metaDiaria)||0;
+    const cumplimiento=meta?total/meta:0,promedio=(Number(r.cuadrillasConProduccion)||0)?total/Number(r.cuadrillasConProduccion):0;
+    return `<tr><td>${aeEscape(r.fecha||f)}</td>${sedes.map(s=>`<td>${aeMoneda(r.sedes?.[s]||0)}</td>`).join("")}<td><b>${aeMoneda(total)}</b></td><td>${aeNumero(r.cuadrillasProgramadas)}</td><td><b>${aeNumero(r.cuadrillasConProduccion)}</b></td><td>${aeNumero(r.cuadrillasConDescanso)}</td><td>${aeNumero(r.cuadrillasProgramadasSinProduccion)}</td><td>${aeMoneda(meta)}</td><td><b>${aePorcentaje(cumplimiento)}</b></td><td><b>${aeMoneda(promedio)}</b></td></tr>`;
   }).join("");
-  return `<div class="ae-diario-tabla-wrap"><table class="ae-diario-tabla"><thead><tr><th>Fecha</th>${cab}<th>Total diario</th><th>Total cuadrillas</th><th>Promedio por cuadrilla</th></tr></thead><tbody>${filas}</tbody></table></div>`;
+  return `<div class="ae-diario-tabla-wrap"><table class="ae-diario-tabla"><thead><tr><th>Fecha</th>${cab}<th>Total diario</th><th>Cuadrillas programadas</th><th>Con producción</th><th>Con descanso</th><th>Programadas sin producción</th><th>Meta diaria</th><th>Cumplimiento</th><th>Promedio por cuadrilla con producción</th></tr></thead><tbody>${filas}</tbody></table></div>`;
 }
 function aeTablaDiariaSede(lista,sede,data){
   const registros=lista.filter(x=>aeNormalizarSedeDiaria(x.sede)===aeNormalizarSedeDiaria(sede)).sort((a,b)=>String(a.fechaClave||"").localeCompare(String(b.fechaClave||"")));
   if(!registros.length)return '<div class="ae-vacio">Sin información para la sede seleccionada.</div>';
-  const totalCuadrillas=aeTotalCuadrillasDiarias(data,sede);
-  let acumulado=0,dias=0;
+  let acumulado=0;
   const filas=registros.map(x=>{
-    const monto=Number(x.monto)||0;
+    const monto=Number(x.monto)||0,meta=Number(x.metaDiaria)||0,conProduccion=Number(x.cuadrillasConProduccion)||0;
     acumulado+=monto;
-    if(monto>0)dias++;
-    const promedio=dias?acumulado/dias:0;
-    const promedioCuadrilla=totalCuadrillas?monto/totalCuadrillas:0;
-    return `<tr><td>${aeEscape(x.fecha||x.fechaClave||"-")}</td><td>${aeMoneda(monto)}</td><td>${aeNumero(x.cantidad)} órdenes</td><td>${aeNumero(totalCuadrillas)}</td><td><b>${aeMoneda(promedioCuadrilla)}</b></td><td>${aeMoneda(acumulado)}</td><td>${aeMoneda(promedio)}</td></tr>`;
+    return `<tr><td>${aeEscape(x.fecha||x.fechaClave||"-")}</td><td>${aeMoneda(monto)}</td><td>${aeNumero(x.cantidad)} órdenes</td><td>${aeNumero(x.cuadrillasProgramadas)}</td><td><b>${aeNumero(conProduccion)}</b></td><td>${aeNumero(x.cuadrillasConDescanso)}</td><td>${aeNumero(x.cuadrillasProgramadasSinProduccion)}</td><td>${aeMoneda(meta)}</td><td><b>${aePorcentaje(meta?monto/meta:0)}</b></td><td><b>${aeMoneda(conProduccion?monto/conProduccion:0)}</b></td><td>${aeMoneda(acumulado)}</td></tr>`;
   }).join("");
-  return `<div class="ae-diario-tabla-wrap"><table class="ae-diario-tabla"><thead><tr><th>Fecha</th><th>Monto diario</th><th>Órdenes</th><th>Total cuadrillas</th><th>Promedio por cuadrilla</th><th>Acumulado</th><th>Promedio diario</th></tr></thead><tbody>${filas}</tbody></table></div>`;
+  return `<div class="ae-diario-tabla-wrap"><table class="ae-diario-tabla"><thead><tr><th>Fecha</th><th>Monto diario</th><th>Órdenes</th><th>Cuadrillas programadas</th><th>Con producción</th><th>Con descanso</th><th>Programadas sin producción</th><th>Meta diaria</th><th>Cumplimiento</th><th>Promedio por cuadrilla con producción</th><th>Acumulado</th></tr></thead><tbody>${filas}</tbody></table></div>`;
 }
 function aeVistaMontoDiarioSede(data,sede="TODAS"){
-  const lista=Array.isArray(data?.porDiaSede)?data.porDiaSede:[];
+  const lista=aeDetalleDiarioLista(data);
   const sedes=aeListaSedesDiarias(lista);
-  if(!lista.length)return '<div class="ae-vacio">No se recibió el detalle diario por sede. Actualice también Code.gs y realice un nuevo despliegue de Apps Script.</div>';
+  if(!lista.length)return '<div class="ae-vacio">No se recibió el detalle diario vinculado con Programación de Descansos. Actualice también Code.gs y realice un nuevo despliegue de Apps Script.</div>';
   if(sede==="TODAS")return `${aeTarjetasResumenDiario(lista,sedes,data)}${aeTablaDiariaTodas(lista,sedes,data)}`;
   return `${aeTarjetasResumenDiario(lista,[sede],data)}${aeTablaDiariaSede(lista,sede,data)}`;
 }
 function aeModuloMontoDiarioSede(data){
-  const lista=Array.isArray(data?.porDiaSede)?data.porDiaSede:[];
+  const lista=aeDetalleDiarioLista(data);
   const sedes=aeListaSedesDiarias(lista);
   return `<div class="ae-diario-filtro"><label>Filtrar por sede<select id="aeFiltroSedeDiaria" onchange="aeActualizarVistaDiariaSede()"><option value="TODAS">TODAS LAS SEDES</option>${sedes.map(s=>`<option value="${aeEscape(s)}">${aeEscape(s)}</option>`).join("")}</select></label></div><div id="aeDiarioSedeContenido">${aeVistaMontoDiarioSede(data,"TODAS")}</div>`;
 }
@@ -530,7 +542,13 @@ function aeToggleAlerta(btn){
   btn.classList.toggle("abierta",abierto);
 }
 function renderAnalisisEconomico(data){
-  const r=data.resumen||{},pm=data.parametrosMeta||{},faltante=Math.max(0,(Number(r.metaTotal)||0)-(Number(r.montoTotal)||0));
+  const r=data.resumen||{},pm=data.parametrosMeta||{},rp=data.resumenProgramacion||{};
+  const faltante=Math.max(0,(Number(r.metaTotal)||0)-(Number(r.montoTotal)||0));
+  const metaCorte=Number(rp.metaAcumuladaCorte||r.metaAcumuladaCorte)||0;
+  const cumplimientoCorte=Number(rp.cumplimientoCorte||r.cumplimientoCorte)||0;
+  const faltanteCorte=Math.max(0,metaCorte-(Number(r.montoTotal)||0));
+  const textoCorte=rp.fechaCorte?` al ${rp.fechaCorte}`:"";
+  const textoProyeccion=rp.periodoCerrado?"Periodo cerrado · monto real final":`Basada en ${aeNumero(rp.jornadasPendientes||0)} jornadas programadas pendientes`;
   window.aeDatosAnalisisActual=data;
-  document.getElementById("aeResultado").innerHTML=`<div class="ae-periodo"><b>${data.periodo}</b><span>Actualizado: ${data.fechaActualizacion}</span></div><div class="ae-kpis">${aeTarjeta("Monto generado",aeMoneda(r.montoTotal),`Meta ${aeMoneda(r.metaTotal)}`,aeClaseCumplimiento(r.cumplimiento))}${aeTarjeta("Cumplimiento",aePorcentaje(r.cumplimiento),faltante>0?`Faltan ${aeMoneda(faltante)}`:"Meta alcanzada",aeClaseCumplimiento(r.cumplimiento))}${aeTarjeta("Proyección de cierre",aeMoneda(r.proyeccionCierre),`${r.diasConProduccion||0} días con producción`,aeClaseCumplimiento((r.proyeccionCierre||0)/(r.metaTotal||1)))}${aeTarjeta("Órdenes ejecutadas",aeNumero(r.ordenesEjecutadas),"Finalizadas registradas en Producción")}${aeTarjeta("Ticket promedio",aeMoneda(r.ticketPromedio),"Monto promedio por orden")}${aeTarjeta("Cuadrillas activas",aeNumero(pm.cuadrillasActivas),`${aeMoneda(pm.metaMensualCuadrilla)} por cuadrilla`)}</div>${aeSeccion("🏢 Monto generado por sede",aeFilas((data.porSede||[]).filter(x=>String(x.sede||"").toUpperCase()!=="TODAS"),"sede"),false)}${aeSeccion("👷 Monto generado por cuadrilla",aeFilas((data.porCuadrilla||[]).filter(x=>/^P\d+\b/i.test(String(x.cuadrilla||""))),"cuadrilla"),false)}${aeSeccion("🧭 Monto generado por plataforma",aeFilas(data.porPlataforma,"plataforma"),false)}${aeSeccion("📦 Monto generado por tipo de partida",aeFilas(data.porTipoPartida,"tipo"),false)}${aeSeccion("📅 Monto diario por sede y promedio",aeModuloMontoDiarioSede(data),false)}${aeAlertaSinTarifa(data)}`;
+  document.getElementById("aeResultado").innerHTML=`<div class="ae-periodo"><b>${data.periodo}</b><span>Actualizado: ${data.fechaActualizacion}</span></div><div class="ae-kpis">${aeTarjeta("Monto generado",aeMoneda(r.montoTotal),`Meta mensual ${aeMoneda(r.metaTotal)}`,aeClaseCumplimiento(r.cumplimiento))}${aeTarjeta("Cumplimiento mensual",aePorcentaje(r.cumplimiento),faltante>0?`Faltan ${aeMoneda(faltante)}`:"Meta mensual alcanzada",aeClaseCumplimiento(r.cumplimiento))}${aeTarjeta("Meta acumulada al corte",aeMoneda(metaCorte),`${aeNumero(rp.jornadasProgramadasAlCorte||0)} jornadas programadas${textoCorte}`)}${aeTarjeta("Cumplimiento al corte",aePorcentaje(cumplimientoCorte),faltanteCorte>0?`Faltan ${aeMoneda(faltanteCorte)} frente a la programación`:"Meta acumulada alcanzada",aeClaseCumplimiento(cumplimientoCorte))}${aeTarjeta("Proyección de cierre",aeMoneda(r.proyeccionCierre),textoProyeccion,aeClaseCumplimiento((r.proyeccionCierre||0)/(r.metaTotal||1)))}${aeTarjeta("Órdenes ejecutadas",aeNumero(r.ordenesEjecutadas),"Finalizadas registradas en Producción")}${aeTarjeta("Ticket promedio",aeMoneda(r.ticketPromedio),"Monto promedio por orden")}${aeTarjeta("Cuadrillas activas",aeNumero(pm.cuadrillasActivas),`${aeMoneda(pm.metaMensualCuadrilla)} por cuadrilla`)}</div>${aeSeccion("🏢 Monto generado por sede",aeFilas((data.porSede||[]).filter(x=>String(x.sede||"").toUpperCase()!=="TODAS"),"sede"),false)}${aeSeccion("👷 Monto generado por cuadrilla",aeFilas((data.porCuadrilla||[]).filter(x=>/^P\d+\b/i.test(String(x.cuadrilla||""))),"cuadrilla"),false)}${aeSeccion("🧭 Monto generado por plataforma",aeFilas(data.porPlataforma,"plataforma"),false)}${aeSeccion("📦 Monto generado por tipo de partida",aeFilas(data.porTipoPartida,"tipo"),false)}${aeSeccion("📅 Monto diario por sede y promedio",aeModuloMontoDiarioSede(data),false)}${aeAlertaSinTarifa(data)}`;
 }

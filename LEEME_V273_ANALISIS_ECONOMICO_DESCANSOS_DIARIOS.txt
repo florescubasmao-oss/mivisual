@@ -1,0 +1,17 @@
+MI VISUAL V273 - PRODUCCIÓN VALORIZADA VINCULADA A DESCANSOS
+
+Cambios aplicados únicamente en Análisis Económico / Producción Valorizada:
+- La meta mensual se mantiene en S/ 13,000 por cuadrilla (26 jornadas x S/ 500).
+- La meta acumulada y la proyección de cierre usan las jornadas programadas según PROGRAMACION_DESCANSOS.
+- Las cuadrillas con descanso aprobado no se consideran dentro de la meta de ese día.
+- Se cuentan las cuadrillas únicas que aparecen con producción en cada fecha.
+- Se muestran por día: programadas, con producción, con descanso y programadas sin producción.
+- El promedio diario se divide entre las cuadrillas que realmente tuvieron producción.
+- La proyección usa el rendimiento por jornada programada y las jornadas pendientes del mes.
+
+Aplicación requerida:
+- Frontend GitHub: Sí.
+- Code.gs / Apps Script: Sí.
+- Nuevo despliegue de Apps Script: Sí.
+- Google Sheets: No se agregan ni modifican columnas.
+- Otros módulos: Sin cambios.

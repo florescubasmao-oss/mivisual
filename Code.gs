@@ -4280,6 +4280,187 @@ function obtenerCuadrillasActivasEconomico() {
   return lista;
 }
 
+
+function fechaClaveAnalisisEconomico(fecha) {
+  return Utilities.formatDate(fecha, Session.getScriptTimeZone(), "yyyy-MM-dd");
+}
+
+function fechaVisibleAnalisisEconomico(fecha) {
+  return Utilities.formatDate(fecha, Session.getScriptTimeZone(), "dd/MM/yyyy");
+}
+
+function fechaDesdeClaveAnalisisEconomico(clave) {
+  const m = String(clave || "").match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (!m) return null;
+  const fecha = new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]));
+  return isNaN(fecha.getTime()) ? null : fecha;
+}
+
+function agregarCuadrillaConjuntoEconomico(mapa, clave, cuadrilla) {
+  if (!mapa[clave]) mapa[clave] = {};
+  mapa[clave][normalizarCuadrilla(cuadrilla)] = true;
+}
+
+function contarConjuntoEconomico(conjunto) {
+  return Object.keys(conjunto || {}).length;
+}
+
+function obtenerDescansosAprobadosEconomico(periodo, cuadrillasActivas) {
+  const activas = {};
+  cuadrillasActivas.forEach(c => activas[normalizarCuadrilla(c.cuadrilla)] = true);
+
+  const ultimos = {};
+  let registrosAprobados = 0;
+
+  leerProgramacionDescansosPeriodo(periodo.clave).forEach(reg => {
+    const item = reg.item || {};
+    const cuadrilla = normalizarCuadrilla(item.cuadrilla);
+    if (!activas[cuadrilla] || !item.fecha) return;
+
+    const estado = normalizarTexto(item.estadoValidacion || item.estadoProgramacion).replace(/_/g, " ");
+    const resultadoJefatura = normalizarTexto(item.resultadoJefatura || "");
+    const aprobado = ["APROBADO", "APLICADO"].includes(estado) || resultadoJefatura === "APROBADO";
+    if (!aprobado) return;
+
+    registrosAprobados++;
+    const clave = cuadrilla + "|" + item.fecha;
+    const orden = Number(item.version) || 0;
+    const indice = Number(reg.indice) || 0;
+    const anterior = ultimos[clave];
+
+    if (!anterior || orden > anterior.orden || (orden === anterior.orden && indice > anterior.indice)) {
+      ultimos[clave] = { item, orden, indice };
+    }
+  });
+
+  const descansos = {};
+  Object.keys(ultimos).forEach(clave => {
+    const item = ultimos[clave].item || {};
+    const estadoDia = normalizarEstadoDiaDescansos(item.estadoNuevo || item.estadoDia || "EN CAMPO");
+    if (estadoDia === "DESCANSO") descansos[clave] = true;
+  });
+
+  return { descansos, registrosAprobados };
+}
+
+function construirDetalleDiarioEconomico(periodo, cuadrillasActivas, descansos, produccionDiaSede, ordenesDiaSede, porDiaSede, ultimaFechaProduccionClave, montoTotal) {
+  const porSede = {};
+  cuadrillasActivas.forEach(c => {
+    const sede = normalizarTexto(c.sede || "SIN SEDE");
+    if (!porSede[sede]) porSede[sede] = [];
+    porSede[sede].push(normalizarCuadrilla(c.cuadrilla));
+  });
+
+  const hoyReal = new Date();
+  const hoy = new Date(hoyReal.getFullYear(), hoyReal.getMonth(), hoyReal.getDate());
+  const periodoCerrado = periodo.fin.getTime() < hoy.getTime();
+  const periodoFuturo = periodo.inicio.getTime() > hoy.getTime();
+  let fechaCorte = null;
+
+  if (periodoCerrado) {
+    fechaCorte = new Date(periodo.fin.getFullYear(), periodo.fin.getMonth(), periodo.fin.getDate());
+  } else if (!periodoFuturo && ultimaFechaProduccionClave) {
+    fechaCorte = fechaDesdeClaveAnalisisEconomico(ultimaFechaProduccionClave);
+    if (fechaCorte && fechaCorte.getTime() > hoy.getTime()) fechaCorte = hoy;
+  }
+
+  const detalle = [];
+  let jornadasProgramadasMes = 0;
+  let jornadasDescansoMes = 0;
+  let jornadasProgramadasAlCorte = 0;
+  let jornadasConProduccionAlCorte = 0;
+  let jornadasDescansoAlCorte = 0;
+  let jornadasProgramadasSinProduccionAlCorte = 0;
+  let jornadasPendientes = 0;
+
+  for (let d = new Date(periodo.inicio.getFullYear(), periodo.inicio.getMonth(), 1); d <= periodo.fin; d.setDate(d.getDate() + 1)) {
+    const fecha = new Date(d.getFullYear(), d.getMonth(), d.getDate());
+    const fechaClave = fechaClaveAnalisisEconomico(fecha);
+    const dentroCorte = !!fechaCorte && fecha.getTime() <= fechaCorte.getTime();
+    const posteriorCorte = !periodoCerrado && (!fechaCorte || fecha.getTime() > fechaCorte.getTime());
+
+    Object.keys(porSede).sort().forEach(sede => {
+      const cuadrillas = porSede[sede] || [];
+      const claveDiaSede = fechaClave + "||" + sede;
+      const produccion = produccionDiaSede[claveDiaSede] || {};
+      let conDescanso = 0;
+      let programadasSinProduccion = 0;
+
+      cuadrillas.forEach(cuadrilla => {
+        const estaDescanso = !!descansos[cuadrilla + "|" + fechaClave];
+        if (estaDescanso) {
+          conDescanso++;
+        } else if (!produccion[cuadrilla]) {
+          programadasSinProduccion++;
+        }
+      });
+
+      const programadas = Math.max(0, cuadrillas.length - conDescanso);
+      const conProduccion = contarConjuntoEconomico(produccion);
+      const acumulador = porDiaSede[claveDiaSede] || {};
+      const monto = Number(acumulador.monto) || 0;
+      const cantidad = Number(ordenesDiaSede[claveDiaSede]) || 0;
+      const metaDiaria = programadas * META_DIARIA_CUADRILLA;
+
+      jornadasProgramadasMes += programadas;
+      jornadasDescansoMes += conDescanso;
+
+      if (dentroCorte) {
+        jornadasProgramadasAlCorte += programadas;
+        jornadasConProduccionAlCorte += conProduccion;
+        jornadasDescansoAlCorte += conDescanso;
+        jornadasProgramadasSinProduccionAlCorte += programadasSinProduccion;
+
+        detalle.push({
+          fecha: fechaVisibleAnalisisEconomico(fecha),
+          fechaClave,
+          sede,
+          monto,
+          cantidad,
+          totalCuadrillas: cuadrillas.length,
+          cuadrillasProgramadas: programadas,
+          cuadrillasConProduccion: conProduccion,
+          cuadrillasConDescanso: conDescanso,
+          cuadrillasProgramadasSinProduccion: programadasSinProduccion,
+          metaDiaria,
+          cumplimientoDiario: metaDiaria > 0 ? monto / metaDiaria : 0,
+          promedioCuadrillaProduccion: conProduccion > 0 ? monto / conProduccion : 0
+        });
+      } else if (posteriorCorte) {
+        jornadasPendientes += programadas;
+      }
+    });
+  }
+
+  const metaAcumuladaCorte = jornadasProgramadasAlCorte * META_DIARIA_CUADRILLA;
+  const rendimientoJornadaProgramada = jornadasProgramadasAlCorte > 0 ? montoTotal / jornadasProgramadasAlCorte : 0;
+  const proyeccionCierre = periodoCerrado
+    ? montoTotal
+    : montoTotal + (rendimientoJornadaProgramada * jornadasPendientes);
+
+  return {
+    detalle,
+    resumen: {
+      fechaCorte: fechaCorte ? fechaVisibleAnalisisEconomico(fechaCorte) : "",
+      fechaCorteClave: fechaCorte ? fechaClaveAnalisisEconomico(fechaCorte) : "",
+      periodoCerrado,
+      periodoFuturo,
+      jornadasProgramadasMes,
+      jornadasDescansoMes,
+      jornadasProgramadasAlCorte,
+      jornadasConProduccionAlCorte,
+      jornadasDescansoAlCorte,
+      jornadasProgramadasSinProduccionAlCorte,
+      jornadasPendientes,
+      metaProgramadaMes: jornadasProgramadasMes * META_DIARIA_CUADRILLA,
+      metaAcumuladaCorte,
+      cumplimientoCorte: metaAcumuladaCorte > 0 ? montoTotal / metaAcumuladaCorte : 0,
+      rendimientoJornadaProgramada,
+      proyeccionCierre
+    }
+  };
+}
+
 function crearAcumuladorEconomico(clave, extras) {
   return Object.assign({
     clave,
@@ -4390,6 +4571,8 @@ function obtenerAnalisisEconomico(data) {
   const catalogo = obtenerCatalogoEconomico();
   const usuarios = obtenerMapaUsuarios();
   const cuadrillasActivas = obtenerCuadrillasActivasEconomico();
+  const mapaCuadrillasActivas = {};
+  cuadrillasActivas.forEach(c => mapaCuadrillasActivas[normalizarCuadrilla(c.cuadrilla)] = c);
 
   const porSede = {};
   const porCuadrilla = {};
@@ -4397,6 +4580,8 @@ function obtenerAnalisisEconomico(data) {
   const porTipoPartida = {};
   const porDia = {};
   const porDiaSede = {};
+  const produccionDiaSede = {};
+  const ordenesDiaSede = {};
   const detalle = [];
   const codigosSinTarifa = {};
   const codigosSinTarifaDetalles = [];
@@ -4405,6 +4590,7 @@ function obtenerAnalisisEconomico(data) {
   let montoTotal = 0;
   let ordenesEjecutadas = 0;
   let ordenesValorizadas = 0;
+  let ultimaFechaProduccionClave = "";
 
   for (let i = 1; i < produccion.length; i++) {
     const fila = produccion[i];
@@ -4416,26 +4602,39 @@ function obtenerAnalisisEconomico(data) {
     if (!cuadrilla || !fecha || !codigo || cantidad <= 0) continue;
     if (fecha.getFullYear() !== periodo.anio || (fecha.getMonth() + 1) !== periodo.mes) continue;
 
+    const fechaClave = fechaClaveAnalisisEconomico(fecha);
+    const fechaVisible = fechaVisibleAnalisisEconomico(fecha);
+    if (!ultimaFechaProduccionClave || fechaClave > ultimaFechaProduccionClave) ultimaFechaProduccionClave = fechaClave;
+
+    const datosUsuario = usuarios[cuadrilla] || {};
+    const cuadrillaActiva = mapaCuadrillasActivas[cuadrilla] || null;
+    const sede = normalizarTexto((cuadrillaActiva && cuadrillaActiva.sede) || datosUsuario.sede || "SIN SEDE");
+    const claveDiaSede = fechaClave + "||" + sede;
+
     // Todas las filas válidas de PRODUCCION_APP cuentan como órdenes ejecutadas,
     // incluso cuando una partida todavía no tiene tarifa activa.
     ordenesEjecutadas += cantidad;
 
+    // Para los resultados diarios se cuenta una sola vez cada cuadrilla que
+    // aparece con producción, aun cuando tenga varias órdenes o partidas.
+    if (cuadrillaActiva) {
+      agregarCuadrillaConjuntoEconomico(produccionDiaSede, claveDiaSede, cuadrilla);
+      ordenesDiaSede[claveDiaSede] = (ordenesDiaSede[claveDiaSede] || 0) + cantidad;
+    }
+
     const cat = obtenerCatalogoEconomicoPorCodigo(codigo, catalogo);
     if (!cat || cat.estadoTarifa !== "ACTIVO" || cat.monto <= 0) {
       codigosSinTarifa[codigo] = true;
-      const datosUsuarioSinTarifa = usuarios[cuadrilla] || {};
       codigosSinTarifaDetalles.push({
         codigo,
-        fecha: Utilities.formatDate(fecha, Session.getScriptTimeZone(), "dd/MM/yyyy"),
+        fecha: fechaVisible,
         cuadrilla,
-        sede: normalizarTexto(datosUsuarioSinTarifa.sede || "SIN SEDE"),
+        sede,
         cantidad
       });
       continue;
     }
 
-    const datosUsuario = usuarios[cuadrilla] || {};
-    const sede = normalizarTexto(datosUsuario.sede || "SIN SEDE");
     // La plataforma económica depende exclusivamente del tipo de orden
     // configurado en CATALOGO_ORDENES (columna PLATAFORMA_ORDEN).
     // No se usa la plataforma asignada al usuario/cuadrilla.
@@ -4444,8 +4643,6 @@ function obtenerAnalisisEconomico(data) {
     const tipoOrden = normalizarTexto(cat.tipoOrden || codigo);
     const montoUnitario = cat.monto;
     const montoLinea = cantidad * montoUnitario;
-    const fechaClave = Utilities.formatDate(fecha, Session.getScriptTimeZone(), "yyyy-MM-dd");
-    const fechaVisible = Utilities.formatDate(fecha, Session.getScriptTimeZone(), "dd/MM/yyyy");
 
     montoTotal += montoLinea;
     ordenesValorizadas += cantidad;
@@ -4456,7 +4653,7 @@ function obtenerAnalisisEconomico(data) {
     sumarEconomico(porPlataforma, plataforma, cantidad, montoLinea, { plataforma });
     sumarEconomico(porTipoPartida, tipoOrden, cantidad, montoLinea, { tipoOrden, plataforma });
     sumarEconomico(porDia, fechaClave, cantidad, montoLinea, { fecha: fechaVisible, fechaClave });
-    sumarEconomico(porDiaSede, fechaClave + "||" + sede, cantidad, montoLinea, {
+    sumarEconomico(porDiaSede, claveDiaSede, cantidad, montoLinea, {
       fecha: fechaVisible,
       fechaClave,
       sede
@@ -4493,10 +4690,20 @@ function obtenerAnalisisEconomico(data) {
     porSede[c.sede].meta += metaPorCuadrilla;
   });
 
+  const descansosInfo = obtenerDescansosAprobadosEconomico(periodo, cuadrillasActivas);
+  const programacionEconomica = construirDetalleDiarioEconomico(
+    periodo,
+    cuadrillasActivas,
+    descansosInfo.descansos,
+    produccionDiaSede,
+    ordenesDiaSede,
+    porDiaSede,
+    ultimaFechaProduccionClave,
+    montoTotal
+  );
+
   const diasTrabajados = Object.keys(diasConProduccion).length;
-  const proyeccionCierre = diasTrabajados > 0
-    ? (montoTotal / diasTrabajados) * DIAS_META_MENSUAL
-    : 0;
+  const proyeccionCierre = programacionEconomica.resumen.proyeccionCierre;
 
   const listaCuadrillas = finalizarAcumuladoresEconomicos(porCuadrilla)
     .sort((a, b) => b.monto - a.monto);
@@ -4534,7 +4741,8 @@ function obtenerAnalisisEconomico(data) {
       metaDiariaCuadrilla: META_DIARIA_CUADRILLA,
       diasMetaMensual: DIAS_META_MENSUAL,
       metaMensualCuadrilla: metaPorCuadrilla,
-      cuadrillasActivas: cuadrillasActivas.length
+      cuadrillasActivas: cuadrillasActivas.length,
+      metaProgramadaMes: programacionEconomica.resumen.metaProgramadaMes
     },
     resumen: {
       montoTotal,
@@ -4545,10 +4753,16 @@ function obtenerAnalisisEconomico(data) {
       ticketPromedio: ordenesValorizadas > 0 ? montoTotal / ordenesValorizadas : 0,
       diasConProduccion: diasTrabajados,
       proyeccionCierre,
+      metaAcumuladaCorte: programacionEconomica.resumen.metaAcumuladaCorte,
+      cumplimientoCorte: programacionEconomica.resumen.cumplimientoCorte,
       diferenciaMeta: montoTotal - metaTotal,
       mejorCuadrilla: listaCuadrillas.length ? listaCuadrillas[0] : null,
       menorCuadrilla: listaCuadrillas.length ? listaCuadrillas[listaCuadrillas.length - 1] : null
     },
+    resumenProgramacion: Object.assign({}, programacionEconomica.resumen, {
+      registrosDescansosAprobados: descansosInfo.registrosAprobados
+    }),
+    detalleDiarioProgramacion: programacionEconomica.detalle,
     porSede: listaSedes,
     porCuadrilla: listaCuadrillas,
     porPlataforma: listaPlataformas,
@@ -4559,7 +4773,6 @@ function obtenerAnalisisEconomico(data) {
     codigosSinTarifaDetalles
   };
 }
-
 
 
 /* =========================
