@@ -1,0 +1,25 @@
+MI VISUAL V280 - OBSERVACIONES: FILTROS CERRADOS
+
+CAMBIO REALIZADO
+- Los filtros de Observaciones están agrupados en el botón "Filtros".
+- Al ingresar al módulo, el panel de filtros aparece cerrado.
+- Al pulsar "Filtros", se muestran u ocultan todos los campos.
+- Se mantiene sin cambios la lógica actual de filtrado.
+
+ARCHIVOS QUE DEBES REEMPLAZAR EN GITHUB
+1. js/observaciones.js
+2. css/estilos.css
+3. index.html
+
+APPS SCRIPT
+- Code.gs NO fue modificado.
+- No debes actualizar ni volver a implementar Apps Script.
+
+ORDEN DE ACTUALIZACIÓN
+1. Reemplaza en GitHub los tres archivos incluidos, respetando sus carpetas.
+2. Realiza commit y push.
+3. Actualiza la página para cargar la versión V280.
+
+SEGURIDAD
+- Este paquete no incluye la carpeta .git.
+- No se modificaron otros módulos.

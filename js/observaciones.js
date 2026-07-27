@@ -95,40 +95,46 @@ function mostrarObservaciones(){
                 <div class="obs-kpi obs-money"><b>S/ 0.00</b><span>Impacto</span></div>
             </div>
             ${esVistaJefaturaObs(u) ? `<div id="resumenObservacionesSede" class="obs-resumen-sedes"></div>` : ``}
-            <div class="obs-filtros ${esVistaJefaturaObs(u) ? "obs-filtros-jefatura" : ""}">
-                <select id="filtroEstadoObs" onchange="aplicarFiltrosObservaciones()">
-                    <option value="">Todos los estados</option>
-                    <option>DERIVADO</option>
-                    <option>EN PROCESO</option>
-                    <option>PENALIZADO</option>
-                    <option>APELADO</option>
-                    <option>SUBSANADO</option>
-                </select>
-                <select id="filtroFuenteObs" onchange="aplicarFiltrosObservaciones()">
-                    <option value="">Todas las fuentes</option>
-                    <option>WIN</option>
-                    <option>VISUAL</option>
-                </select>
-                ${esVistaJefaturaObs(u) ? `
-                    <input id="filtroCodigoObs" type="search" placeholder="Buscar por código" oninput="aplicarFiltrosObservaciones()">
-                    <input id="filtroCuadrillaObs" type="search" placeholder="Buscar por cuadrilla" oninput="aplicarFiltrosObservaciones()">
-                    <input id="filtroFechaDesdeObs" type="date" aria-label="Fecha desde" onchange="aplicarFiltrosObservaciones()">
-                    <input id="filtroFechaHastaObs" type="date" aria-label="Fecha hasta" onchange="aplicarFiltrosObservaciones()">
-                    <select id="filtroTipoObs" onchange="aplicarFiltrosObservaciones()">
-                        <option value="">Todos los tipos</option>
-                        <option value="SEGURIDAD">SEGURIDAD</option>
-                        <option value="IMPLEMENTACION">IMPLEMENTACIÓN</option>
-                        <option value="GESTION TECNICA">GESTIÓN TÉCNICA</option>
+            <details class="obs-panel-filtros">
+                <summary>
+                    <span>🔎 Filtros</span>
+                    <span class="obs-panel-filtros-flecha">⌄</span>
+                </summary>
+                <div class="obs-filtros ${esVistaJefaturaObs(u) ? "obs-filtros-jefatura" : ""}">
+                    <select id="filtroEstadoObs" onchange="aplicarFiltrosObservaciones()">
+                        <option value="">Todos los estados</option>
+                        <option>DERIVADO</option>
+                        <option>EN PROCESO</option>
+                        <option>PENALIZADO</option>
+                        <option>APELADO</option>
+                        <option>SUBSANADO</option>
                     </select>
-                    <select id="filtroSedeObs" onchange="aplicarFiltrosObservaciones()">
-                        <option value="">Todas las sedes</option>
-                        <option>CHICLAYO</option>
-                        <option>PIURA</option>
-                        <option>TRUJILLO</option>
+                    <select id="filtroFuenteObs" onchange="aplicarFiltrosObservaciones()">
+                        <option value="">Todas las fuentes</option>
+                        <option>WIN</option>
+                        <option>VISUAL</option>
                     </select>
-                    <button type="button" class="obs-btn-limpiar" onclick="limpiarFiltrosObservaciones()">Limpiar filtros</button>
-                ` : ``}
-            </div>
+                    ${esVistaJefaturaObs(u) ? `
+                        <input id="filtroCodigoObs" type="search" placeholder="Buscar por código" oninput="aplicarFiltrosObservaciones()">
+                        <input id="filtroCuadrillaObs" type="search" placeholder="Buscar por cuadrilla" oninput="aplicarFiltrosObservaciones()">
+                        <input id="filtroFechaDesdeObs" type="date" aria-label="Fecha desde" onchange="aplicarFiltrosObservaciones()">
+                        <input id="filtroFechaHastaObs" type="date" aria-label="Fecha hasta" onchange="aplicarFiltrosObservaciones()">
+                        <select id="filtroTipoObs" onchange="aplicarFiltrosObservaciones()">
+                            <option value="">Todos los tipos</option>
+                            <option value="SEGURIDAD">SEGURIDAD</option>
+                            <option value="IMPLEMENTACION">IMPLEMENTACIÓN</option>
+                            <option value="GESTION TECNICA">GESTIÓN TÉCNICA</option>
+                        </select>
+                        <select id="filtroSedeObs" onchange="aplicarFiltrosObservaciones()">
+                            <option value="">Todas las sedes</option>
+                            <option>CHICLAYO</option>
+                            <option>PIURA</option>
+                            <option>TRUJILLO</option>
+                        </select>
+                        <button type="button" class="obs-btn-limpiar" onclick="limpiarFiltrosObservaciones()">Limpiar filtros</button>
+                    ` : ``}
+                </div>
+            </details>
             <div id="listaObservaciones">Cargando...</div>
         </div>
     `);
