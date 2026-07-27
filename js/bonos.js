@@ -1,5 +1,5 @@
 /* =====================================================
-   MI VISUAL V283 - BONOS DE PRODUCCIÓN + CONJUNTA PEXT
+   MI VISUAL V284 - BONOS DE PRODUCCIÓN + PEXT
    - Cálculo diario desde PRODUCCION_APP + CATALOGO_ORDENES + PEXT
    - Semana de lunes a domingo
    - Fecha referencial: lunes de la semana subsiguiente
@@ -250,6 +250,7 @@ function mb242AsegurarCuadrilla(periodo, cuadrilla, meta){
       diasConBono:0,
       trabajos:0,
       puntosPext:0,
+      puntosPextPendientes:0,
       bonoPext:0
     };
   }
@@ -266,6 +267,7 @@ function mb283AsegurarDia(item, fecha){
       puntosPext:0,
       trabajos:0,
       trabajosPext:0,
+      trabajosPextPendientes:0,
       partidas:{},
       pext:[],
       bonoCuadrilla:0,
@@ -273,6 +275,7 @@ function mb283AsegurarDia(item, fecha){
       bonoProduccion:0,
       bonoPext:0,
       puntosPextComisionables:0,
+      puntosPextPendientes:0,
       genera:false
     };
   }
@@ -282,6 +285,7 @@ function mb283AsegurarDia(item, fecha){
 function mb242CerrarResumenCuadrilla(item){
   item.puntos = 0;
   item.puntosPext = 0;
+  item.puntosPextPendientes = 0;
   item.bonoCuadrilla = 0;
   item.bonoTecnico = 0;
   item.bonoPext = 0;
@@ -297,6 +301,7 @@ function mb242CerrarResumenCuadrilla(item){
     dia.genera = bono.genera;
     item.puntos += dia.puntos;
     item.puntosPext += Number(dia.puntosPext||0);
+    item.puntosPextPendientes += Number(dia.puntosPextPendientes||0);
     item.trabajos += Number(dia.trabajos||0) + Number(dia.trabajosPext||0);
     item.bonoCuadrilla += bono.cuadrilla;
     item.bonoTecnico += bono.tecnico;
@@ -305,6 +310,7 @@ function mb242CerrarResumenCuadrilla(item){
   });
   item.puntos = mb242Redondear(item.puntos);
   item.puntosPext = mb242Redondear(item.puntosPext);
+  item.puntosPextPendientes = mb242Redondear(item.puntosPextPendientes);
   item.bonoCuadrilla = mb242Redondear(item.bonoCuadrilla);
   item.bonoTecnico = mb242Redondear(item.bonoTecnico);
   item.bonoPext = mb242Redondear(item.bonoPext);
@@ -339,6 +345,7 @@ function mb283IntegrarPext(periodos, metaCuadrillas, trabajosPext){
     const cuadrilla = mb242Cuadrilla(registro.cuadrilla);
     const fecha = mb242ParseFecha(registro.fechaTrabajo);
     const puntosPext = Math.max(0, mb242Numero(registro.puntosPext));
+    const estadoBono = mb242Normalizar(registro.estadoBono)==="VALIDADO" ? "VALIDADO" : "PENDIENTE";
     if(!id || vistos.has(id) || !cuadrilla || !fecha || puntosPext<=0) return;
     vistos.add(id);
     if(mb242EsCuadrillaPDG(cuadrilla)) return;
@@ -354,11 +361,22 @@ function mb283IntegrarPext(periodos, metaCuadrillas, trabajosPext){
     if(!periodos[clavePeriodo]) periodos[clavePeriodo] = mb242CrearPeriodo(inicio);
     const item = mb242AsegurarCuadrilla(periodos[clavePeriodo], cuadrilla, metaCuadrillas[cuadrilla]);
     const dia = mb283AsegurarDia(item, fecha);
-    dia.puntosPext += puntosPext;
-    dia.puntos += puntosPext;
-    dia.trabajosPext += 1;
+    if(estadoBono==="VALIDADO"){
+      dia.puntosPext += puntosPext;
+      dia.puntos += puntosPext;
+      dia.trabajosPext += 1;
+    }else{
+      dia.puntosPextPendientes += puntosPext;
+      dia.trabajosPextPendientes += 1;
+    }
     dia.pext.push({
       id,
+      tipoTrabajo:mb242Normalizar(registro.tipoTrabajo)||"CONJUNTA PEXT",
+      origenPuntos:mb242Normalizar(registro.origenPuntos)||"SUPERVISOR",
+      estadoBono,
+      vistoBuenoTecnico:Boolean(registro.vistoBuenoTecnico),
+      validadoArea:Boolean(registro.validadoArea),
+      estadoGeneral:(registro.estadoGeneral||"").toString().trim(),
       cto:(registro.cto || "").toString().trim(),
       conectorizados:Math.max(0, mb242Numero(registro.cantidadConectorizados)),
       puntosConectorizados:Math.max(0, mb242Numero(registro.puntosConectorizados)),
@@ -474,7 +492,7 @@ function mb242ObtenerCuadrilla(periodo, cuadrilla, meta){
     cuadrilla:clave || "SIN CUADRILLA",
     sede:meta?.sede || "SIN SEDE",
     plataforma:meta?.plataforma || "",
-    dias:{}, puntos:0, puntosPext:0, bonoCuadrilla:0, bonoTecnico:0,
+    dias:{}, puntos:0, puntosPext:0, puntosPextPendientes:0, bonoCuadrilla:0, bonoTecnico:0,
     bonoPext:0, diasConBono:0, trabajos:0
   };
 }
@@ -504,10 +522,21 @@ function mb283DetallePextDia(dia){
   const registros = Array.isArray(dia.pext) ? dia.pext : [];
   if(!registros.length) return "";
   const detalle = registros.map(x => {
-    const cto = x.cto ? `CTO ${mb242Escapar(x.cto)} · ` : "";
-    return `<li>${cto}${Number(x.recableados||0).toFixed(0)} recableado(s) = ${Number(x.puntosRecableados||0).toFixed(1)} pts · ${Number(x.conectorizados||0).toFixed(0)} conectorizado(s) = ${Number(x.puntosConectorizados||0).toFixed(1)} pts · Total ${Number(x.puntosPext||0).toFixed(1)} pts</li>`;
+    const validado=x.estadoBono==="VALIDADO";
+    const tipo=mb242Normalizar(x.tipoTrabajo)||"PEXT";
+    let trabajo="";
+    if(tipo==="CONJUNTA PEXT"&&x.origenPuntos==="AUTOMATICO"){
+      const cto=x.cto?`CTO ${mb242Escapar(x.cto)} · `:"";
+      trabajo=`${cto}${Number(x.recableados||0).toFixed(0)} recableado(s) = ${Number(x.puntosRecableados||0).toFixed(1)} pts · ${Number(x.conectorizados||0).toFixed(0)} conectorizado(s) = ${Number(x.puntosConectorizados||0).toFixed(1)} pts`;
+    }else{
+      const origen=x.origenPuntos==="SUPERVISOR"?"registrados por el Supervisor":"calculados automáticamente";
+      trabajo=`${mb242Escapar(tipo)} · ${Number(x.puntosPext||0).toFixed(1)} pts ${origen}`;
+    }
+    const validaciones=`Técnico: ${x.vistoBuenoTecnico?"VISTO BUENO":"PENDIENTE"} · Área: ${x.validadoArea?"VALIDADO":"PENDIENTE"}`;
+    return `<li><span class="mb242-estado ${validado?"curso":"cerrada"}">${validado?"VALIDADO":"PENDIENTE"}</span> ${trabajo} · Total ${Number(x.puntosPext||0).toFixed(1)} pts<br><small>${validaciones}</small></li>`;
   }).join("");
-  return `<div><b>Bono Conjunta PEXT:</b> ${Number(dia.puntosPext||0).toFixed(1)} pts</div>
+  return `<div><b>PEXT validado:</b> ${Number(dia.puntosPext||0).toFixed(1)} pts</div>
+    ${Number(dia.puntosPextPendientes||0)>0?`<div><b>PEXT pendiente:</b> ${Number(dia.puntosPextPendientes||0).toFixed(1)} pts · todavía no suma al bono</div>`:""}
     <div><b>Puntos PEXT comisionables:</b> ${Number(dia.puntosPextComisionables||0).toFixed(1)} × S/ 30.00 = ${mb242Moneda(dia.bonoPext)}</div>
     <ul>${detalle}</ul>`;
 }
@@ -558,7 +587,7 @@ function mb242RenderTecnico(datos){
       <label class="mb242-filtro-unico">Periodo semanal<select onchange="mb242CambiarPeriodoTecnico(this.value)">${mb242OpcionesPeriodo(datos, periodoConsulta?.clave || "", true)}</select></label>
       <div id="mb242HistorialTecnico">${periodoConsulta ? mb242ResumenConsultaTecnico(periodoConsulta, itemConsulta) : ""}</div>
     </section>
-    <div class="mb242-nota">La fecha indicada es referencial. MI VISUAL calcula el bono desde Producción y Conjunta PEXT con conformidad final, pero no registra ni valida pagos.</div>
+    <div class="mb242-nota">La fecha indicada es referencial. Los puntos PEXT solo ingresan al bono con visto bueno técnico y validación del área encargada. Los pendientes se muestran, pero no generan monto.</div>
   </div>`;
   mostrarPantalla(html);
 }
@@ -680,7 +709,7 @@ function mb242RenderGestion(){
   const titulo = perfil === "SUPERVISOR" ? "Bonos · Supervisor" : (perfil === "GERENCIA LIMA" ? "Bonos · Gerencia Lima" : "Bonos · Jefatura");
 
   const html = `<div class="mb242-pagina">
-    <div class="mb242-cabecera"><div><h2>🎁 ${titulo}</h2><p>Cálculo diario y consulta semanal desde Producción y Conjunta PEXT.</p></div><button class="button_1" onclick="volverInicio()">⬅ Volver</button></div>
+    <div class="mb242-cabecera"><div><h2>🎁 ${titulo}</h2><p>Cálculo diario y consulta semanal desde Producción y trabajos PEXT.</p></div><button class="button_1" onclick="volverInicio()">⬅ Volver</button></div>
     <div class="mb242-filtros ${perfil === "SUPERVISOR" ? "supervisor" : ""}">
       <label>📅 Periodo semanal<select onchange="mb242CambiarFiltroGestion('periodo',this.value)">${mb242OpcionesPeriodo(datos, MB242_FILTROS.periodo)}</select></label>
       <label>🏢 Sede<select ${perfil === "SUPERVISOR" ? "disabled" : ""} onchange="mb242CambiarFiltroGestion('sede',this.value)">${mb242OpcionesSede(perfil)}</select></label>
@@ -688,7 +717,7 @@ function mb242RenderGestion(){
     </div>
     <div class="mb242-periodo-info"><b>${periodo ? `${mb242FormatoFecha(periodo.inicio)} al ${mb242FormatoFecha(periodo.fin)}` : "Sin periodo"}</b><span>${periodo?.estado || ""}</span><em>Fecha referencial: ${mb242FormatoFecha(periodo?.fechaReferencial)}</em></div>
     <div id="mb242GestionContenido">${mb242ResumenGestion(lista, periodo)}${mb242AgrupadoSedes(lista, perfil)}</div>
-    <div class="mb242-nota">La fecha indicada es referencial. MI VISUAL calcula el bono desde Producción y Conjunta PEXT con conformidad final, pero no registra ni valida pagos.</div>
+    <div class="mb242-nota">La fecha indicada es referencial. Los puntos PEXT solo ingresan al bono con visto bueno técnico y validación del área encargada. Los pendientes se muestran, pero no generan monto.</div>
   </div>`;
   mostrarPantalla(html);
 }

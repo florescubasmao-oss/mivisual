@@ -5791,18 +5791,26 @@ function registrarTrabajoConjunta(data){
   const fecha=fechaTrabajoConjunta(data.fechaTrabajo),inicio=(data.horaInicio||"").toString(),fin=(data.horaFin||"").toString();
   if(!fecha||!inicio||!fin)throw new Error("Complete fecha, hora de inicio y hora de fin");
   if(fin<=inicio)throw new Error("La hora de fin debe ser posterior a la hora de inicio");
-  const puntos=Number(data.puntosSolicitados);if(!isFinite(puntos)||puntos<0)throw new Error("Puntos no válidos");
   const comentario=(data.comentarioFinal||"").toString().trim();if(!comentario)throw new Error("El comentario final es obligatorio");
-  let descripcion="",cto="",cantCon="",codCon="",cantRec="",codRec="",cuadras="",zona="";
+  let descripcion="",cto="",cantCon="",codCon="",cantRec="",codRec="",cuadras="",zona="",puntos=0;
   if(tipo==="NORMALIZACION"){
     descripcion=(data.descripcionTrabajo||"").toString().trim();if(!descripcion)throw new Error("La descripción del trabajo es obligatoria");
+    puntos=Number(data.puntosSolicitados);if(!isFinite(puntos)||puntos<=0)throw new Error("Ingrese los puntos de Normalización");
   }else if(tipo==="CONJUNTA PEXT"){
     cto=(data.cto||"").toString().trim();if(!cto)throw new Error("La CTO es obligatoria");
     cantCon=Number(data.cantidadConectorizados)||0;cantRec=Number(data.cantidadRecableados)||0;
     codCon=limpiarCodigosConjunta(data.codigosConectorizados,cantCon,"conectorizados");codRec=limpiarCodigosConjunta(data.codigosRecableados,cantRec,"recableados");
+    const calculo=calcularPuntajeBonoPext(cantCon,cantRec);
+    if(calculo.puntosPext>0){
+      puntos=calculo.puntosPext;
+    }else{
+      puntos=Number(data.puntosSolicitados);
+      if(!isFinite(puntos)||puntos<=0)throw new Error("Si no hubo recableados ni conectorizados, ingrese los puntos asignados por el Supervisor");
+    }
   }else{
     cuadras=Number(data.cantidadCuadras)||0;if(cuadras<=0)throw new Error("La cantidad de cuadras debe ser mayor a cero");
     zona=(data.zonaReferencia||"").toString().trim();if(!zona)throw new Error("La zona o referencia es obligatoria");
+    puntos=Number(data.puntosSolicitados);if(!isFinite(puntos)||puntos<=0)throw new Error("Ingrese los puntos de Ordenamiento");
   }
   const id=idTrabajoConjunta(),ev=guardarEvidenciasTrabajoConjunta(data,id,dc.sede,cuadrilla,tipo,fecha),ahora=new Date(),h=asegurarHojaTrabajosConjunta();
   h.appendRow([id,ahora,ahora,u.usuario,cuadrilla,tipo,fecha,inicio,fin,descripcion,cto,cantCon,codCon,cantRec,codRec,cuadras,zona,(data.trabajosAdicionales||"").toString().trim(),ev[0],ev[1],ev[2],puntos,comentario,"","","","","","","","","","","","PENDIENTE DE VISTO BUENO TECNICO",1]);
@@ -5856,6 +5864,40 @@ function calcularPuntajeBonoPext(cantidadConectorizados,cantidadRecableados){
     puntosPext:puntosConectorizados+puntosRecableados
   };
 }
+function calcularPuntajeTrabajoPextParaBono(x){
+  const tipo=normalizarTexto(x&&x.tipoTrabajo);
+  if(tipo==="CONJUNTA PEXT"){
+    const calculo=calcularPuntajeBonoPext(x.cantidadConectorizados,x.cantidadRecableados);
+    if(calculo.puntosPext>0)return {
+      tipoTrabajo:tipo,
+      origenPuntos:"AUTOMATICO",
+      puntosPext:calculo.puntosPext,
+      conectorizados:calculo.conectorizados,
+      recableados:calculo.recableados,
+      puntosConectorizados:calculo.puntosConectorizados,
+      puntosRecableados:calculo.puntosRecableados
+    };
+    const manual=Math.max(0,Number(x.puntosSolicitados)||0);
+    return {
+      tipoTrabajo:tipo,
+      origenPuntos:"SUPERVISOR",
+      puntosPext:manual,
+      conectorizados:0,
+      recableados:0,
+      puntosConectorizados:0,
+      puntosRecableados:0
+    };
+  }
+  return {
+    tipoTrabajo:tipo,
+    origenPuntos:"SUPERVISOR",
+    puntosPext:Math.max(0,Number(x&&x.puntosSolicitados)||0),
+    conectorizados:0,
+    recableados:0,
+    puntosConectorizados:0,
+    puntosRecableados:0
+  };
+}
 function listarBonosPextConjunta(data){
   const u=obtenerUsuarioApp(data.usuario);
   // Bonos es una vista derivada de Producción; usa el mismo permiso y alcance.
@@ -5868,8 +5910,8 @@ function listarBonosPextConjunta(data){
     const id=(x.id||"").toString().trim();
     if(!id||vistos[id])continue;
     vistos[id]=true;
-    if(normalizarTexto(x.tipoTrabajo)!=="CONJUNTA PEXT")continue;
-    if(normalizarTexto(x.estadoGeneral)!=="CONFORMIDAD FINAL"||normalizarTexto(x.conformidadFinal)!=="CONFORME")continue;
+    const tipo=normalizarTexto(x.tipoTrabajo);
+    if(!["CONJUNTA PEXT","NORMALIZACION","ORDENAMIENTO"].includes(tipo))continue;
     const cuadrilla=normalizarCuadrilla(x.cuadrilla);
     if(!cuadrilla)continue;
     if(!mapaSede[cuadrilla]){
@@ -5884,19 +5926,30 @@ function listarBonosPextConjunta(data){
     else if(alcance==="PERSONAL")ver=normalizarCuadrilla(u.cuadrilla)===cuadrilla;
     else if(alcance==="SEDE / PROPIOS")ver=normalizarTexto(u.sede)===sede||normalizarCuadrilla(u.cuadrilla)===cuadrilla;
     if(!ver)continue;
-    const calculo=calcularPuntajeBonoPext(x.cantidadConectorizados,x.cantidadRecableados);
+    const calculo=calcularPuntajeTrabajoPextParaBono(x);
     if(calculo.puntosPext<=0)continue;
+    const vistoBuenoTecnico=normalizarTexto(x.resultadoTecnico)==="VISTO BUENO";
+    const validadoArea=normalizarTexto(x.resultadoJefatura)==="APROBADO";
+    const estadoBono=vistoBuenoTecnico&&validadoArea?"VALIDADO":"PENDIENTE";
     trabajos.push({
       id,
       cuadrilla:x.cuadrilla,
       sede,
       fechaTrabajo:x.fechaTrabajo,
+      tipoTrabajo:calculo.tipoTrabajo,
+      origenPuntos:calculo.origenPuntos,
       cto:x.cto||"",
-      cantidadConectorizados:calculo.conectorizados,
+      cantidadConectorizados:calculo.conectorizados||0,
       puntosConectorizados:calculo.puntosConectorizados,
-      cantidadRecableados:calculo.recableados,
+      cantidadRecableados:calculo.recableados||0,
       puntosRecableados:calculo.puntosRecableados,
-      puntosPext:calculo.puntosPext
+      puntosPext:calculo.puntosPext,
+      estadoBono,
+      vistoBuenoTecnico,
+      validadoArea,
+      estadoGeneral:x.estadoGeneral||"",
+      resultadoTecnico:x.resultadoTecnico||"",
+      resultadoArea:x.resultadoJefatura||""
     });
   }
   return {ok:true,modulo:"BONOS",accion:"LISTAR_PEXT",registros:trabajos.length,trabajos};
@@ -5907,7 +5960,8 @@ function responderTrabajoConjuntaTecnico(data){
   const e=buscarTrabajoConjunta(data.id),x=e.item;if(normalizarCuadrilla(u.cuadrilla)!==normalizarCuadrilla(x.cuadrilla))throw new Error("Este registro no corresponde a su cuadrilla");
   if(normalizarTexto(x.estadoGeneral)!=="PENDIENTE DE VISTO BUENO TECNICO")throw new Error("El registro ya fue revisado por el Técnico");
   const resultado=normalizarTexto(data.resultado),obs=(data.observacion||"").toString().trim();if(!["VISTO BUENO","OBSERVADO"].includes(resultado))throw new Error("Resultado técnico no válido");if(resultado==="OBSERVADO"&&!obs)throw new Error("La observación es obligatoria");
-  const ahora=new Date();e.hoja.getRange(e.fila,24).setValue(resultado);e.hoja.getRange(e.fila,25).setValue(obs);e.hoja.getRange(e.fila,26).setValue(u.usuario);e.hoja.getRange(e.fila,27).setValue(ahora).setNumberFormat("dd/mm/yyyy");e.hoja.getRange(e.fila,28).setValue(ahora).setNumberFormat("hh:mm:ss");e.hoja.getRange(e.fila,35).setValue(resultado==="VISTO BUENO"?"PENDIENTE DE VALIDACION JEFATURA":"OBSERVADO POR TECNICO");
+  const areaConforme=normalizarTexto(x.resultadoJefatura)==="APROBADO";
+  const ahora=new Date();e.hoja.getRange(e.fila,24).setValue(resultado);e.hoja.getRange(e.fila,25).setValue(obs);e.hoja.getRange(e.fila,26).setValue(u.usuario);e.hoja.getRange(e.fila,27).setValue(ahora).setNumberFormat("dd/mm/yyyy");e.hoja.getRange(e.fila,28).setValue(ahora).setNumberFormat("hh:mm:ss");e.hoja.getRange(e.fila,35).setValue(resultado==="VISTO BUENO"?(areaConforme?"PENDIENTE CONFORMIDAD FINAL":"PENDIENTE DE VALIDACION JEFATURA"):"OBSERVADO POR TECNICO");
   return {ok:true,modulo:"TRABAJOS_CONJUNTA",accion:"RESPUESTA_TECNICO",id:data.id,resultado};
 }
 function validarTrabajoConjuntaJefatura(data){
@@ -5925,7 +5979,8 @@ function validarTrabajoConjuntaJefatura(data){
   e.hoja.getRange(e.fila,31).setValue(u.usuario);
   e.hoja.getRange(e.fila,32).setValue(ahora).setNumberFormat("dd/mm/yyyy");
   e.hoja.getRange(e.fila,33).setValue(ahora).setNumberFormat("hh:mm:ss");
-  e.hoja.getRange(e.fila,35).setValue(resultado==="APROBADO"?"PENDIENTE CONFORMIDAD FINAL":(resultado==="OBSERVADO"?"OBSERVADO POR JEFATURA":"RECHAZADO"));
+  const tecnicoConforme=normalizarTexto(e.item.resultadoTecnico)==="VISTO BUENO";
+  e.hoja.getRange(e.fila,35).setValue(resultado==="APROBADO"?(tecnicoConforme?"PENDIENTE CONFORMIDAD FINAL":"PENDIENTE DE VISTO BUENO TECNICO"):(resultado==="OBSERVADO"?"OBSERVADO POR JEFATURA":"RECHAZADO"));
   return {ok:true,modulo:"TRABAJOS_CONJUNTA",accion:"VALIDAR_JEFATURA",id:data.id,resultado};
 }
 function conformidadFinalTrabajoConjunta(data){
@@ -5934,6 +5989,7 @@ function conformidadFinalTrabajoConjunta(data){
   exigirPermisoModuloCentral(u,"PEXT","APROBAR");
   const e=buscarTrabajoConjunta(data.id);
   if(normalizarTexto(e.item.estadoGeneral)!=="PENDIENTE CONFORMIDAD FINAL")throw new Error("El registro no está pendiente de conformidad final");
+  if(normalizarTexto(e.item.resultadoTecnico)!=="VISTO BUENO"||normalizarTexto(e.item.resultadoJefatura)!=="APROBADO")throw new Error("Falta el visto bueno del Técnico o la validación del área encargada");
   const resultado=normalizarTexto(data.resultado),obs=(data.observacion||"").toString().trim();
   if(!["CONFORME","SIN CONFORMIDAD"].includes(resultado))throw new Error("Conformidad final no válida");
   if(resultado==="SIN CONFORMIDAD"&&!obs)throw new Error("El motivo es obligatorio");

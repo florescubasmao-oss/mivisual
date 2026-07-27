@@ -1,0 +1,53 @@
+MI VISUAL V284 - PEXT: PUNTOS, VALIDACION Y BONOS
+
+CAMBIOS APLICADOS
+1. NORMALIZACION
+   - El Supervisor registra manualmente los puntos.
+   - Los puntos se incorporan a Bonos PEXT cuando tienen visto bueno del Técnico y validación del área encargada.
+
+2. ORDENAMIENTO
+   - El Supervisor registra manualmente los puntos.
+   - Los puntos se incorporan a Bonos PEXT cuando tienen visto bueno del Técnico y validación del área encargada.
+
+3. CONJUNTA PEXT
+   - Se retiró el campo general de puntos.
+   - Los puntos se calculan automáticamente cuando existen recableados o conectorizados.
+   - Cada recableado vale 2 puntos.
+   - Conectorizados: 1-2 = 1 punto, 3-6 = 2 puntos, 7-12 = 3 puntos y 13-16 = 4 puntos.
+   - Si recableados y conectorizados están ambos en cero, recién aparece el campo para que el Supervisor registre los puntos manualmente.
+
+4. ESTADO EN BONOS
+   - VALIDADO: existe visto bueno del Técnico y validación APROBADA del área encargada.
+   - PENDIENTE: falta cualquiera de las dos validaciones.
+   - Los registros pendientes se muestran con su detalle, pero no suman puntos ni generan monto.
+   - Se conserva la validación directa del área antes del Técnico. Si el área valida primero, el Técnico todavía puede dar su visto bueno.
+
+5. CALCULO DEL BONO
+   - La producción normal se toma primero y después se agregan únicamente los puntos PEXT validados.
+   - Normalización, Ordenamiento y Conjunta PEXT usan la tarifa PEXT de S/ 30.00 por punto comisionable.
+   - La base diaria continúa siendo 4 puntos y se debe superar 4 puntos para comisionar.
+   - No se cambió la tarifa de la producción normal ni la regla de bono especial.
+
+ARCHIVOS MODIFICADOS
+- Code.gs
+- apps_script/Code.gs
+- js/trabajos_conjunta.js
+- js/bonos.js
+- index.html
+
+CODE.GS
+- SI fue modificado.
+- Las dos copias de Code.gs incluidas son idénticas.
+- No se agregaron columnas ni se requiere migrar Google Sheets.
+- Se reutiliza la columna existente PUNTOS_SOLICITADOS.
+
+ORDEN DE ACTUALIZACION
+1. En Apps Script, reemplazar Code.gs.
+2. Guardar y crear una nueva implementación de la aplicación web.
+3. En GitHub, reemplazar los archivos incluidos respetando sus carpetas.
+4. Realizar commit y push.
+
+IMPORTANTE
+- El ZIP contiene únicamente los archivos que deben cambiarse.
+- El ZIP no contiene la carpeta .git.
+- No se modificaron estilos globales ni otros módulos.
