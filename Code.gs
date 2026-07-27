@@ -5898,10 +5898,22 @@ function calcularPuntajeTrabajoPextParaBono(x){
     puntosRecableados:0
   };
 }
+function obtenerPermisoLecturaBonos(usuario){
+  const permisoBonos=obtenerPermisoModuloCentral(usuario,"BONOS");
+  if(permisoBonos.existe)return exigirPermisoModuloCentral(usuario,"BONOS","VER");
+
+  // Compatibilidad con V242: Bonos nació como una vista derivada sin filas
+  // propias en PERMISOS_MODULOS. Usa el primer alcance dinámico disponible.
+  const modulosCompatibles=["DASHBOARD SUPERVISOR","DASHBOARD JEFATURA","PRODUCCION","RANKING"];
+  for(let i=0;i<modulosCompatibles.length;i++){
+    const permiso=obtenerPermisoModuloCentral(usuario,modulosCompatibles[i]);
+    if(permiso.habilitado)return permiso;
+  }
+  throw new Error("No tienes permiso para ver en BONOS");
+}
 function listarBonosPextConjunta(data){
   const u=obtenerUsuarioApp(data.usuario);
-  // Bonos es una vista derivada de Producción; usa el mismo permiso y alcance.
-  const permiso=exigirPermisoModuloCentral(u,"PRODUCCION","VER");
+  const permiso=obtenerPermisoLecturaBonos(u);
   const h=asegurarHojaTrabajosConjunta(),ultima=h.getLastRow();
   if(ultima<=1)return {ok:true,modulo:"BONOS",accion:"LISTAR_PEXT",registros:0,trabajos:[]};
   const filas=h.getRange(2,1,ultima-1,36).getValues(),trabajos=[],mapaSede={},vistos={};
@@ -5918,14 +5930,7 @@ function listarBonosPextConjunta(data){
       try{mapaSede[cuadrilla]=normalizarTexto(obtenerDatosCuadrillaApp(x.cuadrilla).sede);}catch(e){mapaSede[cuadrilla]="";}
     }
     const sede=mapaSede[cuadrilla]||"";
-    const alcance=normalizarTexto(permiso.alcanceDatos);
-    let ver=false;
-    if(alcance==="ZONA NORTE")ver=true;
-    else if(alcance==="SEDE")ver=normalizarTexto(u.sede)===sede;
-    else if(alcance==="CUADRILLA")ver=normalizarCuadrilla(u.cuadrilla)===cuadrilla;
-    else if(alcance==="PERSONAL")ver=normalizarCuadrilla(u.cuadrilla)===cuadrilla;
-    else if(alcance==="SEDE / PROPIOS")ver=normalizarTexto(u.sede)===sede||normalizarCuadrilla(u.cuadrilla)===cuadrilla;
-    if(!ver)continue;
+    if(!registroCumpleAlcanceCentral(u,permiso,{sede,cuadrilla:x.cuadrilla}))continue;
     const calculo=calcularPuntajeTrabajoPextParaBono(x);
     if(calculo.puntosPext<=0)continue;
     const vistoBuenoTecnico=normalizarTexto(x.resultadoTecnico)==="VISTO BUENO";

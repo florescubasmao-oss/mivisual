@@ -1,0 +1,41 @@
+MI VISUAL V285 - CORRECCION DE ACCESO A BONOS
+==============================================
+
+PROBLEMA CORREGIDO
+- Bonos mostraba: "No tienes permiso para ver en PRODUCCION".
+- La consulta PEXT de Bonos exigía incorrectamente el permiso del módulo PRODUCCION.
+
+CORRECCION
+- Bonos utiliza primero su permiso dinámico BONOS cuando está configurado.
+- Para instalaciones anteriores a V285, donde BONOS nació sin una fila propia en
+  PERMISOS_MODULOS, conserva compatibilidad usando el alcance dinámico disponible
+  del dashboard, Producción o Ranking.
+- Supervisor continúa viendo únicamente su alcance autorizado.
+- Técnico continúa viendo únicamente su cuadrilla.
+- Jefatura y Gerencia conservan el alcance configurado.
+- No se modificaron cálculos, puntos, tarifas, validaciones PEXT ni otros módulos.
+
+ARCHIVOS MODIFICADOS
+- Code.gs
+- apps_script/Code.gs
+
+CODE.GS
+- SI fue modificado.
+- Las dos copias incluidas son idénticas.
+- No se modificó Google Sheets.
+- No se modificaron HTML, JavaScript ni CSS de GitHub Pages.
+
+ORDEN DE ACTUALIZACION
+1. Reemplazar Code.gs en Apps Script.
+2. Guardar.
+3. Ir a Implementar > Administrar implementaciones > Editar.
+4. Seleccionar Nueva versión y pulsar Implementar. Así se conserva la misma URL.
+5. Probar nuevamente la opción Bonos.
+6. Para mantener el repositorio sincronizado, reemplazar en GitHub:
+   - Code.gs
+   - apps_script/Code.gs
+7. Realizar commit y push.
+
+IMPORTANTE
+- El ZIP contiene únicamente los archivos necesarios.
+- El ZIP no contiene la carpeta .git.
