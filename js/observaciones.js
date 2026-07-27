@@ -299,8 +299,8 @@ function pintarObservacionesAgrupadasPorSede(lista, u){
         if(ia !== -1 || ib !== -1) return (ia === -1 ? 99 : ia) - (ib === -1 ? 99 : ib);
         return a.localeCompare(b);
     });
-    cont.innerHTML = sedes.map((sede, indice) => `
-        <details class="obs-sede-grupo" ${sedes.length === 1 || indice === 0 ? "open" : ""}>
+    cont.innerHTML = sedes.map(sede => `
+        <details class="obs-sede-grupo">
             <summary>
                 <span><b>📍 ${sede}</b><small>${resumenGrupoSedeObs(sede, grupos[sede])}</small></span>
                 <span class="obs-sede-flecha">▼</span>
@@ -393,6 +393,7 @@ function cardObservacion(o, u){
             <div class="obs-resumen-main">
                 <b class="obs-codigo">${o.codigo || "-"}</b>
                 <span>${o.tipoObservacion || "-"} • S/ ${monto}</span>
+                <span class="obs-sede-lineal">👷 ${o.cuadrilla || "SIN CUADRILLA"}</span>
                 ${esVistaJefaturaObs(u) ? `<span class="obs-sede-lineal">📍 ${o.sede || "SIN SEDE"}</span>` : ``}
                 <span class="obs-estado-lineal">${etiquetaEstadoObs(o.estado)}</span>
                 ${tieneDescargo ? `<span class="obs-chip-descargo">Descargo enviado</span>` : ``}
