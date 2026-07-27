@@ -4,6 +4,23 @@ async function crApi(payload){const r=await fetch(API_CONSULTAS_RECLAMOS,{method
 function crEsc(v){return String(v??"").replace(/[&<>\"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;",'\"':"&quot;","'":"&#39;"}[m]));}
 function crPerfil(){return (localStorage.getItem("perfil")||"").toUpperCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"");}
 function crEsGerenciaLima(){return crPerfil().trim()==="GERENCIA LIMA";}
+function crAyudaEstado(estado){
+  const e=String(estado||"").toUpperCase();
+  if(e==="EN REVISION")return "Indique qué se revisará o qué validación se realizará.";
+  if(e==="EN PROCESO")return "Indique qué gestión o acción se está realizando.";
+  if(e==="PENDIENTE DE INFORMACION")return "Detalle qué información o documento falta y quién debe enviarlo.";
+  if(e==="SOLUCIONADO")return "Detalle la solución aplicada y el resultado obtenido.";
+  if(e==="RECHAZADO")return "Indique claramente el motivo del rechazo.";
+  return "Explique el motivo del cambio de estado.";
+}
+function crActualizarAyudaEstado(){
+  const estado=document.getElementById("crNuevoEstado")?.value||"";
+  const ayuda=document.getElementById("crAyudaEstado");
+  const comentario=document.getElementById("crComentario");
+  const texto=crAyudaEstado(estado);
+  if(ayuda)ayuda.textContent=texto;
+  if(comentario)comentario.placeholder=texto;
+}
 function crCategorias(){return {
  "BONO, PRODUCCION Y PUNTAJE":["PUNTOS NO CONTABILIZADOS","BONO INCORRECTO","TRABAJO MAL REGISTRADO"],
  "DEMORA O FALTA DE RESPUESTA DE BACK":["BACK NO RESPONDE","DEMORA EXCESIVA","NO RESPONDE EN EL GRUPO"],
@@ -112,16 +129,50 @@ async function crDetalle(id){
     const d=await crApi({accion:"listarConsultasReclamos",usuario:localStorage.getItem("usuario")});
     const x=d.casos.find(c=>c.id===id);if(!x)return;
     const h=await crApi({accion:"listarHistorialReclamo",usuario:localStorage.getItem("usuario"),id});
-    const p=crPerfil(),areaPerfil=d.areaPerfil||"";
+    const areaPerfil=d.areaPerfil||"";
     const estado=String(x.estado||"").toUpperCase();
     const finalizado=estado==="SOLUCIONADO"||estado==="RECHAZADO"||estado==="CERRADO";
-    const puedeResolver=!finalizado&&((areaPerfil&&areaPerfil===x.areaResponsable)||(p.includes("JEFATURA")&&x.areaResponsable==="JEFATURA GENERAL"));
-    const controles=(finalizado||crEsGerenciaLima())
-      ? `<div class="cr-final-note">${crEsGerenciaLima()?"Vista de solo lectura para Gerencia Lima.":"Caso finalizado. El estado ya no puede modificarse ni admite nuevas respuestas."}</div>`
-      : `<textarea id="crComentario" rows="3" placeholder="Comentario o respuesta"></textarea><div class="cr-actions"><button onclick="crComentar('${id}')">Agregar comentario</button>${puedeResolver?`<select id="crNuevoEstado"><option>EN REVISION</option><option>EN PROCESO</option><option>PENDIENTE DE INFORMACION</option><option>SOLUCIONADO</option><option>RECHAZADO</option></select><button class="cr-primary" onclick="crActualizar('${id}')">Guardar estado</button>`:''}</div>`;
+    const esResponsable=!!(areaPerfil&&areaPerfil===x.areaResponsable);
+    const puedeResolver=!finalizado&&esResponsable;
+    const puedeRestablecer=!crEsGerenciaLima()&&esResponsable&&h.historial.some(y=>["CAMBIO DE ESTADO","COMENTARIO"].includes(String(y.accion||"").toUpperCase()));
+    const botonRestablecer=puedeRestablecer?`<button onclick="crRestablecer('${id}')">Restablecer último movimiento</button>`:"";
+    const campoComentario=puedeResolver
+      ? `<label for="crComentario"><b>Motivo o comentario obligatorio para cambiar el estado *</b></label><textarea id="crComentario" rows="3" required></textarea><small id="crAyudaEstado"></small>`
+      : `<textarea id="crComentario" rows="3" placeholder="Comentario o respuesta"></textarea>`;
+    const controles=crEsGerenciaLima()
+      ? `<div class="cr-final-note">Vista de solo lectura para Gerencia Lima.</div>`
+      : finalizado
+        ? `<div class="cr-final-note">Caso finalizado. Solo el responsable del área puede restablecer el último movimiento.</div>${botonRestablecer?`<div class="cr-actions">${botonRestablecer}</div>`:""}`
+        : `${campoComentario}<div class="cr-actions"><button onclick="crComentar('${id}')">Agregar comentario</button>${puedeResolver?`<select id="crNuevoEstado" onchange="crActualizarAyudaEstado()"><option>EN REVISION</option><option>EN PROCESO</option><option>PENDIENTE DE INFORMACION</option><option>SOLUCIONADO</option><option>RECHAZADO</option></select><button class="cr-primary" onclick="crActualizar('${id}')">Guardar estado</button>`:''}${botonRestablecer}</div>`;
     document.getElementById("crCasos").innerHTML=`<button onclick="crCargar()">← Volver</button><article class="cr-detail"><h3>${crEsc(x.id)} — ${crEsc(x.subcategoria)}</h3><div class="cr-detail-grid"><div><b>Área</b><br>${crEsc(x.areaResponsable)}</div><div><b>Estado</b><br>${crEsc(x.estado)}</div><div><b>Sede</b><br>${crEsc(x.sede)}</div><div><b>Cuadrilla</b><br>${crEsc(x.cuadrilla)}</div>${x.detalleDias&&x.detalleDias.length?`<div><b>Días reportados</b><br>${x.detalleDias.length}</div><div><b>Puntos solicitados</b><br>${crEsc(x.totalPuntos||0)}</div>`:`<div><b>Código</b><br>${crEsc(x.codigoPedido||'-')}</div><div><b>Ticket</b><br>${crEsc(x.ticket||'-')}</div>`}</div>${x.detalleDias&&x.detalleDias.length?`<h4>Detalle por fecha</h4><div class="cr-days-detail">${x.detalleDias.map((d,i)=>`<div><b>Día ${i+1}: ${crEsc(d.fecha)} · ${crEsc(d.puntos)} puntos</b>${(d.codigos||[]).map((c,j)=>`<p>Código ${j+1}: ${crEsc(c.codigo)} ${c.actaUrl?`· <a href="${crEsc(c.actaUrl)}" target="_blank" rel="noopener">Ver acta</a>`:''}</p>`).join('')}</div>`).join('')}</div>`:''}<h4>Descripción</h4><p>${crEsc(x.descripcion)}</p>${x.evidencias?`<h4>Evidencias</h4><p>${crEsc(x.evidencias)}</p>`:''}<h4>Historial</h4><div class="cr-history">${h.historial.map(y=>`<div><b>${crEsc(y.accion)} · ${crEsc(y.usuario)}</b><br>${crEsc(y.comentario||'')}<small>${crEsc(y.estadoAnterior)} → ${crEsc(y.estadoNuevo)}</small></div>`).join('')}</div>${controles}</article>`;
+    if(puedeResolver)crActualizarAyudaEstado();
   }catch(e){alert(e.message);}
 }
 async function crComentar(id){try{await crApi({accion:"agregarComentarioReclamo",usuario:localStorage.getItem("usuario"),id,comentario:crComentario.value});crDetalle(id);}catch(e){alert(e.message);}}
-async function crActualizar(id){try{await crApi({accion:"actualizarConsultaReclamo",usuario:localStorage.getItem("usuario"),id,estado:crNuevoEstado.value,comentario:crComentario.value});crDetalle(id);}catch(e){alert(e.message);}}
+async function crActualizar(id){
+  try{
+    const estado=document.getElementById("crNuevoEstado")?.value||"";
+    const campo=document.getElementById("crComentario");
+    const comentario=String(campo?.value||"").trim();
+    if(!comentario){
+      alert("Debe ingresar el motivo o comentario. "+crAyudaEstado(estado));
+      if(campo)campo.focus();
+      return;
+    }
+    await crApi({accion:"actualizarConsultaReclamo",usuario:localStorage.getItem("usuario"),id,estado,comentario});
+    crDetalle(id);
+  }catch(e){alert(e.message);}
+}
+async function crRestablecer(id){
+  try{
+    const ingresado=prompt("Ingrese el motivo obligatorio del restablecimiento:");
+    if(ingresado===null)return;
+    const motivo=String(ingresado||"").trim();
+    if(!motivo){alert("Debe ingresar el motivo del restablecimiento.");return;}
+    if(!confirm("Se anulará el último comentario o cambio de estado del caso. ¿Desea continuar?"))return;
+    await crApi({accion:"restablecerConsultaReclamo",usuario:localStorage.getItem("usuario"),id,motivo});
+    alert("Último movimiento restablecido correctamente.");
+    crDetalle(id);
+  }catch(e){alert(e.message);}
+}
 window.mostrarConsultasReclamos=mostrarConsultasReclamos;

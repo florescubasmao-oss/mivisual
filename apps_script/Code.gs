@@ -6692,17 +6692,19 @@ function listarHistorialReclamo(data){
   const h=asegurarHojasConsultasReclamos().historial,d=h.getDataRange().getValues(),lista=[];for(let i=1;i<d.length;i++)if(String(d[i][1])===String(data.id))lista.push({id:d[i][0],idCaso:d[i][1],fecha:d[i][2],hora:d[i][3],usuario:d[i][4],perfil:d[i][5],accion:d[i][6],estadoAnterior:d[i][7],estadoNuevo:d[i][8],comentario:d[i][9],evidencias:d[i][10]});
   return {ok:true,historial:lista};
 }
+function puedeResolverConsultaReclamo(u,item){
+  const p=normalizarTexto(u.perfil),areaUsuario=perfilAreaReclamo(p),areaCaso=normalizarTexto(item.areaResponsable);
+  if(areaUsuario&&areaUsuario===areaCaso)return true;
+  return esPerfilJefatura(p)&&areaCaso==="JEFATURA GENERAL";
+}
 function actualizarConsultaReclamo(data){
-  const u=obtenerUsuarioApp(data.usuario),r=buscarReclamo(data.id),x=r.item,p=normalizarTexto(u.perfil),areaUsuario=perfilAreaReclamo(p),areaCaso=normalizarTexto(x.areaResponsable),nuevo=normalizarTexto(data.estado||x.estado),comentario=String(data.comentario||"").trim();
+  const u=obtenerUsuarioApp(data.usuario),r=buscarReclamo(data.id),x=r.item,nuevo=normalizarTexto(data.estado||x.estado),comentario=String(data.comentario||"").trim();
   const estadoActual=normalizarTexto(x.estadoOriginal||x.estado);
   if(["SOLUCIONADO","RECHAZADO","CERRADO"].includes(estadoActual))throw new Error("Este caso ya está finalizado y no puede cambiar de estado");
   const estados=["EN REVISION","EN PROCESO","PENDIENTE DE INFORMACION","SOLUCIONADO","RECHAZADO","REGISTRADO"];
   if(!estados.includes(nuevo))throw new Error("Estado no válido");
-  let puedeResolver=false;
-  if(areaUsuario&&areaUsuario===areaCaso)puedeResolver=true;
-  if(esPerfilJefatura(p)&&areaCaso==="JEFATURA GENERAL")puedeResolver=true;
-  if(esPerfilJefatura(p)&&areaCaso!=="JEFATURA GENERAL")puedeResolver=false;
-  if(!puedeResolver)throw new Error("Puede visualizar el caso, pero no tiene permiso para resolverlo");
+  if(!comentario)throw new Error("Debe ingresar el motivo o comentario del cambio de estado");
+  if(!puedeResolverConsultaReclamo(u,x))throw new Error("Puede visualizar el caso, pero no tiene permiso para resolverlo");
   const ahora=new Date();
   r.hoja.getRange(r.fila,16).setValue(nuevo);r.hoja.getRange(r.fila,17).setValue(u.usuario);r.hoja.getRange(r.fila,24).setValue(ahora);
   if(!x.fechaPrimeraRespuesta&&nuevo!=="REGISTRADO")r.hoja.getRange(r.fila,18).setValue(ahora);
@@ -6713,6 +6715,43 @@ function actualizarConsultaReclamo(data){
   }
   guardarHistorialReclamo(x.id,u,"CAMBIO DE ESTADO",x.estado,nuevo,comentario,data.evidencias||"");
   return {ok:true,modulo:"MESA_AYUDA",accion:"ACTUALIZAR",id:x.id,estado:nuevo,finalizado:["SOLUCIONADO","RECHAZADO"].includes(nuevo)};
+}
+function restablecerConsultaReclamo(data){
+  const u=obtenerUsuarioApp(data.usuario),r=buscarReclamo(data.id),x=r.item,motivo=String(data.motivo||"").trim();
+  if(!puedeResolverConsultaReclamo(u,x))throw new Error("Solo el responsable del área puede restablecer este caso");
+  if(!motivo)throw new Error("Debe ingresar el motivo del restablecimiento");
+  const h=asegurarHojasConsultasReclamos().historial,d=h.getDataRange().getValues();
+  let filaHistorial=0,movimiento=null;
+  for(let i=d.length-1;i>=1;i--){
+    if(String(d[i][1])!==String(x.id))continue;
+    const accion=normalizarTexto(d[i][6]);
+    if(accion==="CAMBIO DE ESTADO"||accion==="COMENTARIO"){
+      filaHistorial=i+1;
+      movimiento={accion,estadoAnterior:normalizarTexto(d[i][7]),estadoNuevo:normalizarTexto(d[i][8])};
+      break;
+    }
+  }
+  if(!movimiento)throw new Error("Este caso no tiene movimientos para restablecer");
+  const estadoActual=normalizarTexto(x.estadoOriginal||x.estado);
+  let estadoRestablecido=estadoActual;
+  if(movimiento.accion==="CAMBIO DE ESTADO"){
+    if(estadoActual!==movimiento.estadoNuevo)throw new Error("El último cambio de estado ya no coincide con el estado actual");
+    estadoRestablecido=movimiento.estadoAnterior||"REGISTRADO";
+    r.hoja.getRange(r.fila,16).setValue(estadoRestablecido);
+    r.hoja.getRange(r.fila,17).setValue(u.usuario);
+    r.hoja.getRange(r.fila,24).setValue(new Date());
+    if(estadoRestablecido==="REGISTRADO")r.hoja.getRange(r.fila,18).clearContent();
+    if(!["SOLUCIONADO","RECHAZADO","CERRADO"].includes(estadoRestablecido)){
+      r.hoja.getRange(r.fila,19).clearContent();
+      r.hoja.getRange(r.fila,20).clearContent();
+      r.hoja.getRange(r.fila,22).clearContent();
+    }
+  }else{
+    r.hoja.getRange(r.fila,24).setValue(new Date());
+  }
+  h.getRange(filaHistorial,7).setValue(movimiento.accion+" ANULADO");
+  guardarHistorialReclamo(x.id,u,"RESTABLECIMIENTO",estadoActual,estadoRestablecido,motivo,"");
+  return {ok:true,modulo:"MESA_AYUDA",accion:"RESTABLECER",id:x.id,estado:estadoRestablecido,movimientoAnulado:movimiento.accion};
 }
 function agregarComentarioReclamo(data){
   const u=obtenerUsuarioApp(data.usuario),r=buscarReclamo(data.id);
@@ -10012,6 +10051,7 @@ function doPost(e) {
     if (data.accion === "listarConsultasReclamos") return respuestaJson(listarConsultasReclamos(data));
     if (data.accion === "listarHistorialReclamo") return respuestaJson(listarHistorialReclamo(data));
     if (data.accion === "actualizarConsultaReclamo") return respuestaJson(actualizarConsultaReclamo(data));
+    if (data.accion === "restablecerConsultaReclamo") return respuestaJson(restablecerConsultaReclamo(data));
     if (data.accion === "agregarComentarioReclamo") return respuestaJson(agregarComentarioReclamo(data));
     if (data.accion === "procesarImportacionMateriales") return respuestaJson(procesarImportacionMaterialesV184(data));
     if (data.accion === "obtenerResumenMateriales") return respuestaJson(obtenerResumenMaterialesV184(data));

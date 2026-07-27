@@ -1,0 +1,35 @@
+MI VISUAL V278 - MESA DE AYUDA: MOTIVO OBLIGATORIO
+
+CAMBIO REALIZADO
+- Todo cambio de estado exige un motivo o comentario.
+- EN REVISION: solicita indicar qué se revisará.
+- EN PROCESO: solicita indicar la gestión que se realiza.
+- PENDIENTE DE INFORMACION: solicita detallar qué información o documento falta.
+- SOLUCIONADO: solicita detallar la solución aplicada.
+- RECHAZADO: solicita indicar el motivo del rechazo.
+- SOLUCIONADO y RECHAZADO continúan como estados finales y bloqueados.
+- El motivo queda registrado en el historial del caso.
+- Cada caso incluye la opción Restablecer último movimiento.
+- Solo el responsable del área asignada puede restablecerlo.
+- Permite anular el último comentario o devolver el caso al estado anterior.
+- También exige indicar el motivo del restablecimiento.
+- El movimiento anterior se conserva en el historial identificado como ANULADO.
+
+ARCHIVOS MODIFICADOS
+1. Code.gs
+2. apps_script/Code.gs
+3. js/consultas_reclamos.js
+4. index.html
+
+ORDEN DE ACTUALIZACION
+1. Reemplazar Code.gs en Apps Script.
+2. Crear una nueva implementación de Apps Script.
+3. Reemplazar en GitHub:
+   - js/consultas_reclamos.js
+   - index.html
+4. Realizar commit y push.
+
+IMPORTANTE
+- Code.gs SI fue modificado.
+- No se modificaron permisos, rutas, hojas ni otros módulos.
+- El ZIP reducido no incluye la carpeta .git.
