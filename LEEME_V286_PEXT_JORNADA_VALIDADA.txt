@@ -1,0 +1,48 @@
+MI VISUAL V286 - PEXT: MEDIO DÍA / DÍA COMPLETO
+
+CAMBIO REALIZADO
+- Al pulsar VALIDAR en PEXT, el responsable debe seleccionar:
+  * MEDIO DÍA
+  * DÍA COMPLETO
+- La selección es obligatoria únicamente al validar.
+- Observar y Rechazar mantienen su funcionamiento actual.
+- La jornada queda visible solo para perfiles con permiso PEXT -> VALIDAR.
+- El informe Excel PEXT incluye la columna JORNADA VALIDADA para el responsable validador.
+- Los registros anteriores se conservan. Su jornada permanecerá vacía porque fueron validados antes de este cambio.
+
+CAMBIO AUTOMÁTICO EN GOOGLE SHEETS
+- Se añade al final de TRABAJOS_CONJUNTA la columna:
+  JORNADA_VALIDADA
+- No se borra, reemplaza ni desplaza información existente.
+
+ARCHIVOS MODIFICADOS
+- Code.gs
+- apps_script/Code.gs
+- js/trabajos_conjunta.js
+- index.html
+
+CODE.GS
+- SÍ CAMBIÓ.
+- Debe actualizarse en Apps Script y crear una nueva versión de la implementación.
+
+ORDEN DE ACTUALIZACIÓN
+1. Copiar Code.gs en Apps Script.
+2. Guardar.
+3. Implementar -> Administrar implementaciones -> Editar.
+4. Seleccionar Nueva versión e Implementar.
+5. Reemplazar en GitHub:
+   - Code.gs
+   - apps_script/Code.gs
+   - js/trabajos_conjunta.js
+   - index.html
+6. Realizar commit y push.
+7. Probar un registro PEXT pendiente:
+   - Pulsar Validar.
+   - Seleccionar Medio día o Día completo.
+   - Confirmar que la jornada aparezca en el detalle del validador.
+   - Descargar el informe y revisar JORNADA VALIDADA.
+
+NO CAMBIAR
+- No reemplazar la carpeta .git.
+- No se requiere modificar manualmente Google Sheets.
+- No se modificaron cálculos de puntos, Bonos ni otros módulos.

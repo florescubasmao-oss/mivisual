@@ -5723,15 +5723,16 @@ function encabezadoTrabajosConjunta(){return [[
   "CANTIDAD_CUADRAS","ZONA_REFERENCIA","TRABAJOS_ADICIONALES","EVIDENCIA_1","EVIDENCIA_2","EVIDENCIA_3",
   "PUNTOS_SOLICITADOS","COMENTARIO_FINAL","RESULTADO_TECNICO","OBSERVACION_TECNICO","TECNICO_REVISA_POR",
   "FECHA_REVISION_TECNICO","HORA_REVISION_TECNICO","RESULTADO_JEFATURA","OBSERVACION_JEFATURA","VALIDADO_POR",
-  "FECHA_VALIDACION","HORA_VALIDACION","CONFORMIDAD_FINAL","ESTADO_GENERAL","VERSION"
+  "FECHA_VALIDACION","HORA_VALIDACION","CONFORMIDAD_FINAL","ESTADO_GENERAL","VERSION","JORNADA_VALIDADA"
 ]];}
 
 function asegurarHojaTrabajosConjunta(){
   const ss=SpreadsheetApp.getActiveSpreadsheet();
   let h=ss.getSheetByName(HOJA_TRABAJOS_CONJUNTA);
   if(!h)h=ss.insertSheet(HOJA_TRABAJOS_CONJUNTA);
-  if(h.getMaxColumns()<36)h.insertColumnsAfter(h.getMaxColumns(),36-h.getMaxColumns());
-  if(h.getLastRow()===0||!h.getRange(1,1).getValue())h.getRange(1,1,1,36).setValues(encabezadoTrabajosConjunta());
+  if(h.getMaxColumns()<37)h.insertColumnsAfter(h.getMaxColumns(),37-h.getMaxColumns());
+  if(h.getLastRow()===0||!h.getRange(1,1).getValue())h.getRange(1,1,1,37).setValues(encabezadoTrabajosConjunta());
+  else if(!h.getRange(1,37).getValue())h.getRange(1,37).setValue("JORNADA_VALIDADA");
   return h;
 }
 function idTrabajoConjunta(){return "TC-"+Utilities.formatDate(new Date(),Session.getScriptTimeZone(),"yyyyMMddHHmmss")+"-"+Math.floor(Math.random()*900+100);}
@@ -5772,7 +5773,7 @@ function buscarTrabajoConjunta(id){
   throw new Error("No se encontró el trabajo en conjunta: "+id);
 }
 function filaTrabajoConjuntaAObjeto(f){return {
-  id:f[0],fechaRegistro:f[1],horaRegistro:f[2],supervisorRegistra:f[3],cuadrilla:f[4],tipoTrabajo:f[5],fechaTrabajo:fechaTrabajoConjunta(f[6]),horaInicio:f[7],horaFin:f[8],descripcionTrabajo:f[9],cto:f[10],cantidadConectorizados:f[11],codigosConectorizados:f[12],cantidadRecableados:f[13],codigosRecableados:f[14],cantidadCuadras:f[15],zonaReferencia:f[16],trabajosAdicionales:f[17],evidencia1:f[18],evidencia2:f[19],evidencia3:f[20],puntosSolicitados:f[21],comentarioFinal:f[22],resultadoTecnico:f[23],observacionTecnico:f[24],tecnicoRevisaPor:f[25],fechaRevisionTecnico:f[26],horaRevisionTecnico:f[27],resultadoJefatura:f[28],observacionJefatura:f[29],validadoPor:f[30],fechaValidacion:f[31],horaValidacion:f[32],conformidadFinal:f[33],estadoGeneral:f[34],version:Number(f[35])||1
+  id:f[0],fechaRegistro:f[1],horaRegistro:f[2],supervisorRegistra:f[3],cuadrilla:f[4],tipoTrabajo:f[5],fechaTrabajo:fechaTrabajoConjunta(f[6]),horaInicio:f[7],horaFin:f[8],descripcionTrabajo:f[9],cto:f[10],cantidadConectorizados:f[11],codigosConectorizados:f[12],cantidadRecableados:f[13],codigosRecableados:f[14],cantidadCuadras:f[15],zonaReferencia:f[16],trabajosAdicionales:f[17],evidencia1:f[18],evidencia2:f[19],evidencia3:f[20],puntosSolicitados:f[21],comentarioFinal:f[22],resultadoTecnico:f[23],observacionTecnico:f[24],tecnicoRevisaPor:f[25],fechaRevisionTecnico:f[26],horaRevisionTecnico:f[27],resultadoJefatura:f[28],observacionJefatura:f[29],validadoPor:f[30],fechaValidacion:f[31],horaValidacion:f[32],conformidadFinal:f[33],estadoGeneral:f[34],version:Number(f[35])||1,jornadaValidada:f[36]||""
 };}
 function listarCuadrillasTrabajosConjunta(data){
   exigirPextActivo();
@@ -5813,7 +5814,7 @@ function registrarTrabajoConjunta(data){
     puntos=Number(data.puntosSolicitados);if(!isFinite(puntos)||puntos<=0)throw new Error("Ingrese los puntos de Ordenamiento");
   }
   const id=idTrabajoConjunta(),ev=guardarEvidenciasTrabajoConjunta(data,id,dc.sede,cuadrilla,tipo,fecha),ahora=new Date(),h=asegurarHojaTrabajosConjunta();
-  h.appendRow([id,ahora,ahora,u.usuario,cuadrilla,tipo,fecha,inicio,fin,descripcion,cto,cantCon,codCon,cantRec,codRec,cuadras,zona,(data.trabajosAdicionales||"").toString().trim(),ev[0],ev[1],ev[2],puntos,comentario,"","","","","","","","","","","","PENDIENTE DE VISTO BUENO TECNICO",1]);
+  h.appendRow([id,ahora,ahora,u.usuario,cuadrilla,tipo,fecha,inicio,fin,descripcion,cto,cantCon,codCon,cantRec,codRec,cuadras,zona,(data.trabajosAdicionales||"").toString().trim(),ev[0],ev[1],ev[2],puntos,comentario,"","","","","","","","","","","","PENDIENTE DE VISTO BUENO TECNICO",1,""]);
   const fila=h.getLastRow();h.getRange(fila,2).setNumberFormat("dd/mm/yyyy");h.getRange(fila,3).setNumberFormat("hh:mm:ss");
   return {ok:true,modulo:"TRABAJOS_CONJUNTA",accion:"REGISTRAR",id,estado:"PENDIENTE DE VISTO BUENO TECNICO"};
 }
@@ -5823,7 +5824,7 @@ function listarTrabajosConjunta(data){
   const permiso=exigirPermisoModuloCentral(u,"PEXT","VER");
   const h=asegurarHojaTrabajosConjunta(),ultima=h.getLastRow();
   if(ultima<=1)return {ok:true,modulo:"TRABAJOS_CONJUNTA",accion:"LISTAR",perfil:u.perfil,registros:0,trabajos:[]};
-  const d=h.getRange(2,1,ultima-1,36).getValues(),lista=[],mapaSede={};
+  const d=h.getRange(2,1,ultima-1,37).getValues(),lista=[],mapaSede={};
   for(let i=0;i<d.length;i++){
     const x=filaTrabajoConjuntaAObjeto(d[i]);
     const clave=normalizarCuadrilla(x.cuadrilla);
@@ -5831,6 +5832,7 @@ function listarTrabajosConjunta(data){
       try{mapaSede[clave]=normalizarTexto(obtenerDatosCuadrillaApp(x.cuadrilla).sede);}catch(e){mapaSede[clave]="";}
     }
     x.sede=mapaSede[clave]||"";
+    if(!permiso.validar)x.jornadaValidada="";
     const alcance=normalizarTexto(permiso.alcanceDatos);
     let ver=false;
     if(alcance==="ZONA NORTE")ver=true;
@@ -5916,7 +5918,7 @@ function listarBonosPextConjunta(data){
   const permiso=obtenerPermisoLecturaBonos(u);
   const h=asegurarHojaTrabajosConjunta(),ultima=h.getLastRow();
   if(ultima<=1)return {ok:true,modulo:"BONOS",accion:"LISTAR_PEXT",registros:0,trabajos:[]};
-  const filas=h.getRange(2,1,ultima-1,36).getValues(),trabajos=[],mapaSede={},vistos={};
+  const filas=h.getRange(2,1,ultima-1,37).getValues(),trabajos=[],mapaSede={},vistos={};
   for(let i=0;i<filas.length;i++){
     const x=filaTrabajoConjuntaAObjeto(filas[i]);
     const id=(x.id||"").toString().trim();
@@ -5978,12 +5980,16 @@ function validarTrabajoConjuntaJefatura(data){
   const resultado=normalizarTexto(data.resultado),obs=(data.observacion||"").toString().trim();
   if(!["APROBADO","OBSERVADO","RECHAZADO"].includes(resultado))throw new Error("Resultado de validación no válido");
   if(resultado!=="APROBADO"&&!obs)throw new Error("El motivo es obligatorio");
+  const jornadaNormalizada=resultado==="APROBADO"?normalizarTexto(data.jornadaValidada):"";
+  if(resultado==="APROBADO"&&!["MEDIO DIA","DIA COMPLETO"].includes(jornadaNormalizada))throw new Error("Seleccione Medio día o Día completo");
+  const jornadaValidada=jornadaNormalizada==="MEDIO DIA"?"MEDIO DÍA":jornadaNormalizada==="DIA COMPLETO"?"DÍA COMPLETO":"";
   const ahora=new Date();
   e.hoja.getRange(e.fila,29).setValue(resultado);
   e.hoja.getRange(e.fila,30).setValue(obs);
   e.hoja.getRange(e.fila,31).setValue(u.usuario);
   e.hoja.getRange(e.fila,32).setValue(ahora).setNumberFormat("dd/mm/yyyy");
   e.hoja.getRange(e.fila,33).setValue(ahora).setNumberFormat("hh:mm:ss");
+  e.hoja.getRange(e.fila,37).setValue(jornadaValidada);
   const tecnicoConforme=normalizarTexto(e.item.resultadoTecnico)==="VISTO BUENO";
   e.hoja.getRange(e.fila,35).setValue(resultado==="APROBADO"?(tecnicoConforme?"PENDIENTE CONFORMIDAD FINAL":"PENDIENTE DE VISTO BUENO TECNICO"):(resultado==="OBSERVADO"?"OBSERVADO POR JEFATURA":"RECHAZADO"));
   return {ok:true,modulo:"TRABAJOS_CONJUNTA",accion:"VALIDAR_JEFATURA",id:data.id,resultado};
