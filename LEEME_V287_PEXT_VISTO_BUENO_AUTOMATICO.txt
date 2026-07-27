@@ -1,0 +1,29 @@
+MI VISUAL V287 - PEXT VISTO BUENO AUTOMÁTICO
+
+CAMBIO REALIZADO
+- Si el técnico no responde un registro PEXT dentro de las 24 horas posteriores al registro del supervisor, el sistema coloca:
+  VISTO BUENO AUTOMÁTICO
+- El registro pasa automáticamente a PENDIENTE DE VALIDACIÓN JEFATURA.
+- Si el área encargada ya lo había validado, pasa a PENDIENTE CONFORMIDAD FINAL.
+- Los bonos reconocen el visto bueno automático igual que el visto bueno manual.
+- No se modificaron puntos, tarifas, jornada validada, formularios ni otros módulos.
+
+ARCHIVOS QUE CAMBIARON
+- Code.gs
+- apps_script/Code.gs
+
+ORDEN DE ACTUALIZACIÓN
+1. Copiar Code.gs en Apps Script.
+2. Guardar.
+3. Crear una nueva versión de la implementación.
+4. Si Apps Script solicita autorización por el control automático, aceptarla.
+5. Reemplazar en GitHub:
+   - Code.gs
+   - apps_script/Code.gs
+6. Realizar commit y push.
+
+IMPORTANTE
+- No cambiar index.html ni archivos JavaScript o CSS.
+- No modificar Google Sheets manualmente.
+- El control se ejecuta cada hora y también al consultar PEXT; por ello el visto bueno se registrará al cumplirse las 24 horas, con un margen máximo aproximado de una hora.
+- El ZIP no incluye la carpeta .git.
