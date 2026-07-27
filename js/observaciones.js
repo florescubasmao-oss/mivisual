@@ -92,7 +92,8 @@ function mostrarObservaciones(){
                 <div class="obs-kpi obs-pen"><b>-</b><span>Penalizadas</span></div>
                 <div class="obs-kpi obs-ape"><b>-</b><span>Apeladas</span></div>
                 <div class="obs-kpi obs-subsa"><b>-</b><span>Subsanadas</span></div>
-                <div class="obs-kpi obs-money"><b>S/ 0.00</b><span>Impacto</span></div>
+                <div class="obs-kpi obs-money-win"><b>S/ 0.00</b><span>Impacto WIN</span></div>
+                <div class="obs-kpi obs-money-visual"><b>S/ 0.00</b><span>Impacto VISUAL</span></div>
             </div>
             ${esVistaJefaturaObs(u) ? `<div id="resumenObservacionesSede" class="obs-resumen-sedes"></div>` : ``}
             <details class="obs-panel-filtros">
@@ -159,6 +160,25 @@ function factorImpactoObs(estado){
     return 1;
 }
 
+function fuenteImpactoObs(fuente){
+    const f = textoObs(fuente);
+    if(f.includes("WIN")) return "win";
+    if(f.includes("VISUAL")) return "visual";
+    return "";
+}
+
+function importeImpactoObs(o){
+    return (Number(o && o.monto) || 0) * factorImpactoObs(o && o.estado);
+}
+
+function impactosPorFuenteObs(lista){
+    return (lista || []).reduce((r, o) => {
+        const fuente = fuenteImpactoObs(o.fuente);
+        if(fuente) r[fuente] += importeImpactoObs(o);
+        return r;
+    }, { win: 0, visual: 0 });
+}
+
 function esVistaJefaturaObs(u){
     const perfil = ((u && u.perfil) || "").toString().toUpperCase().trim();
     return perfil === "JEFATURA" || perfil === "GERENCIA LIMA" || perfil === "ADMIN" || perfil === "ADMINISTRADOR";
@@ -171,9 +191,11 @@ function pintarResumenObservacionesPorSede(lista){
     const sedes = {};
     (lista || []).forEach(o => {
         const sede = (o.sede || "SIN SEDE").toString().toUpperCase().trim();
-        if(!sedes[sede]) sedes[sede] = { sede, cantidad: 0, impacto: 0 };
+        if(!sedes[sede]) sedes[sede] = { sede, cantidad: 0, impactoWin: 0, impactoVisual: 0 };
         sedes[sede].cantidad++;
-        sedes[sede].impacto += (Number(o.monto) || 0) * factorImpactoObs(o.estado);
+        const fuente = fuenteImpactoObs(o.fuente);
+        if(fuente === "win") sedes[sede].impactoWin += importeImpactoObs(o);
+        if(fuente === "visual") sedes[sede].impactoVisual += importeImpactoObs(o);
     });
 
     const orden = ["CHICLAYO", "PIURA", "TRUJILLO"];
@@ -188,7 +210,10 @@ function pintarResumenObservacionesPorSede(lista){
         <div class="obs-sede-mini">
             <b>${x.sede}</b>
             <span>${x.cantidad} observación${x.cantidad === 1 ? "" : "es"}</span>
-            <small>S/ ${x.impacto.toFixed(2)}</small>
+            <div class="obs-sede-impactos">
+                <small class="obs-sede-impacto-win">WIN: S/ ${x.impactoWin.toFixed(2)}</small>
+                <small class="obs-sede-impacto-visual">VISUAL: S/ ${x.impactoVisual.toFixed(2)}</small>
+            </div>
         </div>
     `).join("");
 }
@@ -204,14 +229,17 @@ function pintarResumenObservaciones(lista){
         penalizadas: 0,
         apeladas: 0,
         subsanadas: 0,
-        impacto: 0
+        impactoWin: 0,
+        impactoVisual: 0
     };
 
     (lista || []).forEach(o => {
         r.total++;
         const clave = estadoClaveObs(o.estado);
         if(r[clave] !== undefined) r[clave]++;
-        r.impacto += (Number(o.monto) || 0) * factorImpactoObs(o.estado);
+        const fuente = fuenteImpactoObs(o.fuente);
+        if(fuente === "win") r.impactoWin += importeImpactoObs(o);
+        if(fuente === "visual") r.impactoVisual += importeImpactoObs(o);
     });
 
     cont.innerHTML = `
@@ -221,7 +249,8 @@ function pintarResumenObservaciones(lista){
         <div class="obs-kpi obs-pen"><b>${r.penalizadas}</b><span>Penalizadas</span></div>
         <div class="obs-kpi obs-ape"><b>${r.apeladas}</b><span>Apeladas</span></div>
         <div class="obs-kpi obs-subsa"><b>${r.subsanadas}</b><span>Subsanadas</span></div>
-        <div class="obs-kpi obs-money"><b>S/ ${r.impacto.toFixed(2)}</b><span>Impacto</span></div>
+        <div class="obs-kpi obs-money-win"><b>S/ ${r.impactoWin.toFixed(2)}</b><span>Impacto WIN</span></div>
+        <div class="obs-kpi obs-money-visual"><b>S/ ${r.impactoVisual.toFixed(2)}</b><span>Impacto VISUAL</span></div>
     `;
 }
 
@@ -287,8 +316,8 @@ function obtenerObservacionesFiltradas(){
 }
 
 function resumenGrupoSedeObs(sede, lista){
-    const impacto = (lista || []).reduce((s,o) => s + ((Number(o.monto)||0) * factorImpactoObs(o.estado)), 0);
-    return `${lista.length} observación${lista.length === 1 ? "" : "es"} · S/ ${impacto.toFixed(2)}`;
+    const impacto = impactosPorFuenteObs(lista);
+    return `${lista.length} observación${lista.length === 1 ? "" : "es"} · WIN S/ ${impacto.win.toFixed(2)} · VISUAL S/ ${impacto.visual.toFixed(2)}`;
 }
 
 function pintarObservacionesAgrupadasPorSede(lista, u){

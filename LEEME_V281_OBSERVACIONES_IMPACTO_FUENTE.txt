@@ -1,0 +1,27 @@
+MI VISUAL V281 - OBSERVACIONES: IMPACTO WIN / VISUAL
+
+CAMBIO REALIZADO
+- La tarjeta única IMPACTO se separó en:
+  * IMPACTO WIN
+  * IMPACTO VISUAL
+- Cada monto se clasifica automáticamente mediante el campo FUENTE del registro.
+- Los resúmenes por sede también muestran por separado el impacto WIN y VISUAL.
+- Los filtros siguen recalculando ambos impactos con los registros visibles.
+- Se conserva la regla vigente de cálculo según el estado de la observación.
+
+ARCHIVOS PARA GITHUB
+1. js/observaciones.js
+2. css/estilos.css
+3. index.html
+
+CODE.GS
+- NO fue modificado.
+- NO es necesario actualizar Apps Script.
+- NO es necesario crear una nueva implementación.
+
+ORDEN DE ACTUALIZACIÓN
+1. Reemplazar en GitHub los tres archivos, respetando sus carpetas.
+2. Realizar commit y push.
+3. Actualizar la página para cargar la versión V281.
+
+Este paquete no contiene .git ni archivos ajenos a la corrección.

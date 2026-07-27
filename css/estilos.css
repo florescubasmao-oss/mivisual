@@ -509,6 +509,8 @@ body{background:linear-gradient(180deg,var(--mv4-bg),var(--mv4-bg2));font-family
 .obs-ape{background:linear-gradient(135deg,#a855f7,#6d28d9);}
 .obs-subsa{background:linear-gradient(135deg,#22c55e,#15803d);}
 .obs-money{background:linear-gradient(135deg,#14b8a6,#0f766e);}
+.obs-money-win{background:linear-gradient(135deg,#14b8a6,#0f766e);}
+.obs-money-visual{background:linear-gradient(135deg,#f59e0b,#b45309);}
 .obs-resumen-error{grid-column:1/-1;margin:0;}
 @media(max-width:760px){.obs-resumen-kpis{grid-template-columns:repeat(2,1fr);gap:8px}.obs-kpi{min-height:64px;padding:11px 8px}.obs-kpi b{font-size:20px}.obs-kpi span{font-size:10px}}
 @media(max-width:390px){.obs-resumen-kpis{grid-template-columns:1fr 1fr}.obs-kpi b{font-size:18px}}
@@ -704,14 +706,18 @@ body{background:linear-gradient(180deg,var(--mv4-bg),var(--mv4-bg2));font-family
 .obs-sede-mini{background:#ffffff;border:1px solid #dbe4ee;border-left:4px solid #0f766e;border-radius:11px;padding:8px 10px;box-shadow:0 4px 10px rgba(15,23,42,.06);min-width:0;}
 .obs-sede-mini b{display:block;color:#0f172a;font-size:12px;line-height:1.15;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
 .obs-sede-mini span{display:block;color:#475569;font-size:10px;margin-top:3px;}
-.obs-sede-mini small{display:block;color:#047857;font-size:11px;font-weight:800;margin-top:2px;}
+.obs-sede-mini small{display:block;font-size:10px;font-weight:800;margin-top:2px;}
+.obs-sede-impactos{display:flex;gap:3px 8px;align-items:center;justify-content:space-between;flex-wrap:wrap;margin-top:2px;}
+.obs-sede-impacto-win{color:#047857;}
+.obs-sede-impacto-visual{color:#b45309;}
 .obs-sede-lineal{font-size:12px;font-weight:800;color:#075985;background:#e0f2fe;border:1px solid #bae6fd;border-radius:999px;padding:6px 10px;}
 @media(max-width:520px){
   .obs-resumen-sedes{grid-template-columns:repeat(3,minmax(0,1fr));gap:5px;}
   .obs-sede-mini{padding:7px 6px;border-left-width:3px;}
   .obs-sede-mini b{font-size:10px;}
   .obs-sede-mini span{font-size:9px;}
-  .obs-sede-mini small{font-size:10px;}
+  .obs-sede-mini small{font-size:9px;}
+  .obs-sede-impactos{display:grid;gap:1px;}
   .obs-sede-lineal{display:inline-block!important;width:max-content;max-width:100%;}
 }
 
