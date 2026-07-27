@@ -1,0 +1,23 @@
+MI VISUAL V279
+OBSERVACIONES: DESPLEGABLES CERRADOS Y CUADRILLA VISIBLE
+
+CAMBIOS REALIZADOS
+1. Al ingresar a Observaciones, todos los grupos por sede aparecen cerrados.
+2. Ninguna sede se abre automáticamente, aunque exista una sola sede.
+3. La tarjeta compacta de cada observación muestra el nombre de la cuadrilla.
+4. El detalle continúa mostrando la cuadrilla como antes.
+
+ARCHIVOS PARA ACTUALIZAR EN GITHUB
+- js/observaciones.js
+- index.html
+
+APPS SCRIPT
+- Code.gs NO cambió.
+- No se requiere nueva implementación de Apps Script.
+
+ORDEN DE ACTUALIZACIÓN
+1. Reemplazar js/observaciones.js en GitHub.
+2. Reemplazar index.html en GitHub.
+3. Realizar commit y push.
+
+Este paquete no contiene la carpeta .git ni archivos ajenos a la corrección.
