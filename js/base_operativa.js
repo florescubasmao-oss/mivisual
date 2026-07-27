@@ -1,4 +1,4 @@
-// MI VISUAL V253 - Origen PROPIA / ASIGNADA en Calificación VTR/GAR
+// MI VISUAL V276 - Histórico mensual de la base operativa
 const API_BASE_OPERATIVA = (window.MI_VISUAL_API_URL || "https://script.google.com/macros/s/AKfycbzcbjCLweJNgZXDerdzmMN7Lwotc1G8NWdzoPkaLNGDivAgpYxDkq78xZwPRioSB4XY/exec");
 let BO_REGISTROS = [];
 let BO_ARCHIVO = "";
@@ -87,10 +87,10 @@ function boCss(){
 function mostrarActualizarBaseOperativa(){
   BO_REGISTROS=[]; BO_REGISTROS_ORIGINALES=[]; BO_DUPLICADOS_REVISION=[]; BO_DUPLICADOS_REVISADOS=true; BO_FILAS_OMITIDAS=0; BO_ARCHIVO=""; BO_CONTROL_LECTURA={registrosValidos:0,finalizadasPeriodo:0,finalizadasLeidas:0,duplicadosExactos:0};
   mostrarPantalla(boCss()+`<div class="bo-wrap">
-    <div class="bo-head"><h2>📤 Actualizar base operativa</h2><p>Una sola carga reemplaza completamente Producción, Efectividad, % Recableado y VTR/GAR del periodo detectado.</p></div>
+    <div class="bo-head"><h2>📤 Actualizar base operativa</h2><p>La carga actualiza únicamente el mes detectado y conserva los meses anteriores.</p></div>
     <div class="bo-card">
       <div class="bo-grid"><div><label><b>Archivo base madre</b></label><input id="boArchivo" class="bo-file" type="file" accept=".xlsx,.xls,.csv,.htm,.html"></div><button id="boLeer" class="bo-btn" onclick="boLeerArchivo()">Leer archivo</button></div>
-      <p class="bo-note">La fecha oficial será el último día con órdenes en estado FINALIZADA. Las órdenes posteriores a ese corte no se mezclarán. Antes de escribir, el sistema valida toda la carga y conserva un respaldo para restaurar si ocurre un error.</p>
+      <p class="bo-note">La fecha oficial será el último día con órdenes en estado FINALIZADA. Las órdenes posteriores a ese corte no se mezclarán. Si una orden ya existe, se actualiza sin duplicarla; los demás meses permanecen guardados.</p>
       <details id="boCompatibilidad" style="margin:12px 0"><summary style="cursor:pointer;font-weight:800">El archivo .xls no abre o viene acompañado de una carpeta</summary>
         <p class="bo-note"><b>Opción recomendada para este reporte:</b> seleccione la carpeta cuyo nombre termina en <b>_archivos</b>. El sistema buscará y leerá automáticamente <b>sheet001.htm</b>, que contiene la base real.</p>
         <div class="bo-grid"><div><label><b>Carpeta complementaria del reporte</b></label><input id="boCarpetaReporte" class="bo-file" type="file" webkitdirectory directory multiple></div><button id="boLeerCarpeta" class="bo-btn" onclick="boLeerCarpetaReporte()">Leer carpeta</button></div>
@@ -99,7 +99,7 @@ function mostrarActualizarBaseOperativa(){
       </details>
       <div id="boMensaje" class="bo-msg">Seleccione el archivo descargado del sistema central o pegue toda la tabla.</div>
       <div id="boResumen"></div>
-      <div class="bo-actions"><button id="boProcesar" class="bo-btn warn" onclick="boProcesarBase()" disabled>Reemplazar información actual</button><button class="bo-btn alt" onclick="mostrarAdministracion()">⬅️ Volver</button></div>
+      <div class="bo-actions"><button id="boProcesar" class="bo-btn warn" onclick="boProcesarBase()" disabled>Actualizar período</button><button class="bo-btn alt" onclick="mostrarAdministracion()">⬅️ Volver</button></div>
     </div>
   </div>`);
 }
@@ -432,7 +432,7 @@ function boAplicarLecturaLocal(resultado,archivo,detalleOrigen){
   const msg=document.getElementById("boMensaje");
   if(BO_DUPLICADOS_REVISADOS){
     msg.className="bo-msg bo-ok";
-    msg.textContent=`Base lista: ${archivo||"BASE OPERATIVA"}${detalleOrigen?`\n${detalleOrigen}`:""}\nFinalizadas del periodo leídas: ${BO_CONTROL_LECTURA.finalizadasPeriodo}.\nLa información actual será reemplazada completamente al confirmar.`;
+    msg.textContent=`Base lista: ${archivo||"BASE OPERATIVA"}${detalleOrigen?`\n${detalleOrigen}`:""}\nFinalizadas del periodo leídas: ${BO_CONTROL_LECTURA.finalizadasPeriodo}.\nAl confirmar se actualizará únicamente este período y se conservarán los meses anteriores.`;
   }else{
     msg.className="bo-msg bo-warn";
     msg.textContent=`Base leída correctamente. Se detectaron ${BO_CONTROL_LECTURA.duplicadosExactos} copia(s) exacta(s). Revise cada caso antes de continuar. Las visitas del mismo cliente en días diferentes no aparecen como duplicadas y se contabilizan ambas.`;
@@ -607,7 +607,7 @@ async function boProcesarBase(){
   if(BO_DUPLICADOS_REVISION.length && !BO_DUPLICADOS_REVISADOS){alert("Revise y confirme los posibles duplicados antes de continuar.");const el=document.getElementById("boRevisionDuplicados");if(el)el.scrollIntoView({behavior:"smooth",block:"start"});return;}
   const btn=document.getElementById("boProcesar"),msg=document.getElementById("boMensaje"),resumen=document.getElementById("boResumen");
   try{
-    btn.disabled=true;msg.className="bo-msg";msg.textContent="Validando resultados antes de reemplazar las hojas...";
+    btn.disabled=true;msg.className="bo-msg";msg.textContent="Validando resultados antes de actualizar el período...";
     document.querySelectorAll(".bo-preview-generated").forEach(el=>el.remove());
     const vista=await boApi({accion:"previsualizarBaseOperativa",usuario:boUsuario(),archivo:BO_ARCHIVO,registros:BO_REGISTROS,controlLectura:BO_CONTROL_LECTURA});
     BO_PREVISTA=vista;BO_CATALOGO_OPCIONES=vista.catalogoOpciones||{plataformas:[],grupos:[],estados:[]};
@@ -619,7 +619,7 @@ async function boProcesarBase(){
     const advertencias=[];
     if(partidas.length)advertencias.push(`Partidas sin catálogo: ${partidas.length}`);
     if(cuadrillas.length)advertencias.push(`Cuadrillas no encontradas en USUARIOS: ${cuadrillas.length}`);
-    resumen.insertAdjacentHTML("beforeend",`<div class="bo-card bo-preview-generated" style="margin-top:12px"><h3>Previsualización antes de reemplazar</h3><div class="bo-table-wrap"><table class="bo-table"><thead><tr><th>Indicador</th><th>Actual</th><th>Nuevo</th></tr></thead><tbody>
+    resumen.insertAdjacentHTML("beforeend",`<div class="bo-card bo-preview-generated" style="margin-top:12px"><h3>Previsualización del período</h3><div class="bo-table-wrap"><table class="bo-table"><thead><tr><th>Indicador</th><th>Actual</th><th>Nuevo</th></tr></thead><tbody>
       <tr><td>Órdenes clasificadas en Producción</td><td>${a.produccionOrdenes||0}</td><td>${totalClasificadas}</td></tr>
       <tr><td>Finalizadas detectadas</td><td>${a.finalizadas||0}</td><td>${totalFinalizadas}</td></tr>
       <tr><td>Finalizadas sin partida de catálogo</td><td>-</td><td><b>${totalSinCatalogo}</b></td></tr>
@@ -644,14 +644,14 @@ async function boProcesarBase(){
       msg.textContent=`NO SE MODIFICÓ NINGUNA HOJA.\nLa validación no coincide: ${totalFinalizadas} finalizadas y ${totalClasificadas} clasificadas en Producción.`;
       return;
     }
-    if(!confirm(`PREVISUALIZACIÓN DE LA NUEVA BASE\n\n${detalle}\n\nEsta operación reemplazará completamente las cuatro hojas actuales y actualizará el Ranking. ¿Confirmar?`)){
+    if(!confirm(`PREVISUALIZACIÓN DE LA NUEVA BASE\n\n${detalle}\n\nEsta operación actualizará únicamente el período detectado en Producción, Efectividad, Recableados, VTR/GAR y Ranking. Los meses anteriores permanecerán guardados. ¿Confirmar?`)){
       msg.className="bo-msg bo-warn";msg.textContent="Validación realizada. No se modificó ninguna hoja.";return;
     }
     msg.className="bo-msg";msg.textContent="Procesando base y actualizando hojas. No cierre esta pantalla...";
     const r=await boApi({accion:"procesarBaseOperativa",usuario:boUsuario(),archivo:BO_ARCHIVO,registros:BO_REGISTROS,controlLectura:BO_CONTROL_LECTURA});
     const desconocidas=(r.partidasNoEncontradas||[]),cuadNo=(r.cuadrillasNoEncontradas||[]);
     msg.className="bo-msg bo-ok";
-    msg.textContent=`BASE OPERATIVA ACTUALIZADA\nCorte: ${r.actualizadoAl}\nFinalizadas cargadas: ${r.finalizadas||0}\nÓrdenes registradas en Producción: ${r.produccionOrdenes||0}\nProducción: ${r.produccion} filas agrupadas\nEfectividad: ${r.efectividad} cuadrillas\nRecableados: ${r.recableado} cuadrillas\nVTR/GAR: ${r.vtrgar} cuadrillas\nDuplicados revisados: ${r.duplicadosDetectados||0}
+    msg.textContent=`BASE OPERATIVA ACTUALIZADA\nPeríodo: ${r.periodo||"-"}\nCorte: ${r.actualizadoAl}\nFinalizadas cargadas: ${r.finalizadas||0}\nÓrdenes nuevas en el histórico: ${r.historicoNuevos||0}\nÓrdenes actualizadas en el histórico: ${r.historicoActualizados||0}\nÓrdenes registradas en Producción: ${r.produccionOrdenes||0}\nProducción: ${r.produccion} filas agrupadas\nEfectividad: ${r.efectividad} cuadrillas\nRecableados: ${r.recableado} cuadrillas\nVTR/GAR: ${r.vtrgar} cuadrillas\nMeses anteriores conservados: Sí\nDuplicados revisados: ${r.duplicadosDetectados||0}
 Copias conservadas: ${r.duplicadosConservados||0}
 Copias omitidas: ${r.duplicadosOmitidos||0}\nConciliación posterior: ${r.conciliacion&&r.conciliacion.ok?"OK":"No confirmada"}\nRanking actualizado: ${r.ranking?"Sí":"No"}`;
     if(desconocidas.length||cuadNo.length)resumen.insertAdjacentHTML("beforeend",`<div class="bo-msg bo-warn bo-preview-generated">${desconocidas.length?`<b>Partidas no encontradas (${desconocidas.length}):</b><br>${desconocidas.slice(0,30).map(boEsc).join("<br>")}`:""}${cuadNo.length?`<br><br><b>Cuadrillas no encontradas en USUARIOS:</b><br>${cuadNo.map(boEsc).join("<br>")}`:""}</div>`);

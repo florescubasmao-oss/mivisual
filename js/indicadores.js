@@ -1,6 +1,6 @@
 // MI VISUAL - archivo modularizado
 
-async function mostrarEfectividad(){
+async function mostrarEfectividad(periodoSeleccionado){
 
 document.getElementById("menuPrincipal").style.display = "none";
 
@@ -390,7 +390,7 @@ function indHist(fecha, valor, sem, filas){
     return `<div class="mv4-day-card"><div class="mv4-day-head"><b>📅 ${fecha}</b><span>${sem} ${valor}</span></div>${filas}</div>`;
 }
 
-async function mostrarEfectividad(){
+async function mostrarEfectividad(periodoSeleccionado){
     document.getElementById("menuPrincipal").style.display = "none";
     const cuadrilla = localStorage.getItem("cuadrilla") || "";
     const url = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRpVkCmSvopgPByWsEX6nkuAT6mf3yD2_Cywpl9pFSZEqYpxmprDePPeV0KNgT14YpEP6gkVlvOAtZy/pub?gid=1731471693&single=true&output=csv";
@@ -402,7 +402,7 @@ async function mostrarEfectividad(){
         filas = (await respuesta.text()).split("\n");
     }catch(e){}
 
-    const registros = [];
+    const registrosTodos = [];
     let totalFinalizadas = 0, totalGeneral = 0, totalCanceladas = 0, totalRegestion = 0, totalReprogramado = 0;
     for(let i=1;i<filas.length;i++){
         const d = filas[i].split(",");
@@ -413,17 +413,24 @@ async function mostrarEfectividad(){
             const reprogramado = Number(d[7])||0;
             const total = Number(d[8])||0;
             const ef = total > 0 ? (finalizadas/total)*100 : 0;
-            registros.push({fecha:d[3], finalizadas, canceladas, regestion, reprogramado, total, ef});
-            totalFinalizadas += finalizadas;
-            totalGeneral += total;
-            totalCanceladas += canceladas;
-            totalRegestion += regestion;
-            totalReprogramado += reprogramado;
+            registrosTodos.push({fecha:d[3], finalizadas, canceladas, regestion, reprogramado, total, ef});
         }
     }
 
+    const periodos = mv276PeriodosDesdeValores(registrosTodos.map(x=>x.fecha));
+    const periodo = mv276PeriodoPredeterminado(periodos, periodoSeleccionado);
+    const registros = registrosTodos.filter(x=>mv276ClavePeriodo(x.fecha)===periodo);
+    registros.forEach(r=>{
+        totalFinalizadas += r.finalizadas;
+        totalGeneral += r.total;
+        totalCanceladas += r.canceladas;
+        totalRegestion += r.regestion;
+        totalReprogramado += r.reprogramado;
+    });
+
     const efMes = totalGeneral > 0 ? (totalFinalizadas/totalGeneral)*100 : 0;
-    let html = indHero("🎯", "EFECTIVIDAD", `${indSemaforo("efectividad", efMes)} ${efMes.toFixed(2)}%`, "≥ 70%", "") + `
+    let html = indHero("🎯", "EFECTIVIDAD", `${indSemaforo("efectividad", efMes)} ${efMes.toFixed(2)}%`, "≥ 70%", "") +
+        mv276SelectorPeriodo(periodos, periodo, "mostrarEfectividad", "mv276EfectividadPeriodo") + `
         <div class="mv4-kpi-grid">
             ${indMini("✅","Finalizadas",totalFinalizadas)}
             ${indMini("❌","Canceladas",totalCanceladas)}
@@ -442,23 +449,28 @@ async function mostrarEfectividad(){
     mostrarPantalla(html);
 }
 
-async function mostrarRecableado(){
+async function mostrarRecableado(periodoSeleccionado){
     document.getElementById("menuPrincipal").style.display = "none";
     const cuadrilla = localStorage.getItem("cuadrilla");
     const url = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRpVkCmSvopgPByWsEX6nkuAT6mf3yD2_Cywpl9pFSZEqYpxmprDePPeV0KNgT14YpEP6gkVlvOAtZy/pub?gid=317412212&single=true&output=csv";
     mostrarPantalla(`<div class="mv4-page"><h2 class="mv4-title">🔧 RECABLEADO</h2><div class="mv4-loading">Cargando información...</div></div>`);
     const respuesta = await fetch(url + "&t=" + Date.now());
     const filas = (await respuesta.text()).split("\n");
-    const registros=[]; let totalRojos=0,totalRec=0;
+    const registrosTodos=[]; let totalRojos=0,totalRec=0;
     for(let i=1;i<filas.length;i++){
         const d=filas[i].split(",");
         if(d[2] && d[2].trim() === cuadrilla.trim()){
             const fecha=d[3], rojos=Number(d[4])||0, rec=Number(d[5])||0, pct=indParsePct(d[6]);
-            registros.push({fecha,rojos,rec,pct}); totalRojos+=rojos; totalRec+=rec;
+            registrosTodos.push({fecha,rojos,rec,pct});
         }
     }
+    const periodos = mv276PeriodosDesdeValores(registrosTodos.map(x=>x.fecha));
+    const periodo = mv276PeriodoPredeterminado(periodos, periodoSeleccionado);
+    const registros = registrosTodos.filter(x=>mv276ClavePeriodo(x.fecha)===periodo);
+    registros.forEach(r=>{totalRojos+=r.rojos;totalRec+=r.rec;});
     const pctMes = totalRojos>0 ? (totalRec/totalRojos)*100 : 0;
-    let html = indHero("🔧", "RECABLEADO", `${indSemaforo("recableado", pctMes)} ${pctMes.toFixed(2)}%`, "≤ 42%", "") + `
+    let html = indHero("🔧", "RECABLEADO", `${indSemaforo("recableado", pctMes)} ${pctMes.toFixed(2)}%`, "≤ 42%", "") +
+        mv276SelectorPeriodo(periodos, periodo, "mostrarRecableado", "mv276RecableadoPeriodo") + `
         <div class="mv4-kpi-grid">
             ${indMini("🔴","Los Rojos",totalRojos)}
             ${indMini("🔧","Recableados",totalRec)}
@@ -473,7 +485,7 @@ async function mostrarRecableado(){
     mostrarPantalla(html);
 }
 
-async function mostrarVTRGAR(){
+async function mostrarVTRGAR(periodoSeleccionado){
     document.getElementById("menuPrincipal").style.display = "none";
     const cuadrilla = localStorage.getItem("cuadrilla") || "";
     const usuario = localStorage.getItem("usuario") || localStorage.getItem("correo") || "";
@@ -487,46 +499,46 @@ async function mostrarVTRGAR(){
     let errorDetalle = false;
 
     try{
-        const resultados = await Promise.allSettled([
-            fetch(url + "&t=" + Date.now()).then(r => r.text()),
-            fetch(api, {
-                method: "POST",
-                headers: {"Content-Type":"text/plain;charset=utf-8"},
-                body: JSON.stringify({accion:"listarDetalleVtrGarTecnico", usuario})
-            }).then(r => r.json())
-        ]);
+        filas = (await fetch(url + "&t=" + Date.now()).then(r => r.text())).split("\n");
+    }catch(e){}
 
-        if(resultados[0].status === "fulfilled"){
-            filas = resultados[0].value.split("\n");
-        }
-
-        if(resultados[1].status === "fulfilled" && resultados[1].value && resultados[1].value.ok){
-            detalleVtrGar = resultados[1].value.incidencias || [];
-        }else{
-            errorDetalle = true;
-        }
-    }catch(e){
-        errorDetalle = true;
-    }
-
-    const registros=[];
+    const registrosTodos=[];
     let totalGar=0,totalVtr=0,totalOrd=0;
 
     for(let i=1;i<filas.length;i++){
         const d=filas[i].split(",");
         if(d[2] && d[2].trim() === cuadrilla.trim()){
             const fecha=d[3], ordenes=Number(d[4])||0, gar=Number(d[5])||0, vtr=Number(d[6])||0, pct=indParsePct(d[8]);
-            registros.push({fecha,ordenes,gar,vtr,pct});
-            totalGar+=gar;
-            totalVtr+=vtr;
-            totalOrd+=ordenes;
+            registrosTodos.push({fecha,ordenes,gar,vtr,pct});
         }
+    }
+
+    const periodos = mv276PeriodosDesdeValores(registrosTodos.map(x=>x.fecha));
+    const periodo = mv276PeriodoPredeterminado(periodos, periodoSeleccionado);
+    const registros = registrosTodos.filter(x=>mv276ClavePeriodo(x.fecha)===periodo);
+    registros.forEach(r=>{
+        totalGar+=r.gar;
+        totalVtr+=r.vtr;
+        totalOrd+=r.ordenes;
+    });
+
+    try{
+        const detalle = await fetch(api, {
+            method: "POST",
+            headers: {"Content-Type":"text/plain;charset=utf-8"},
+            body: JSON.stringify({accion:"listarDetalleVtrGarTecnico", usuario, periodo})
+        }).then(r => r.json());
+        if(detalle && detalle.ok) detalleVtrGar = detalle.incidencias || [];
+        else errorDetalle = true;
+    }catch(e){
+        errorDetalle = true;
     }
 
     const pctMes = totalOrd>0 ? ((totalGar+totalVtr)/totalOrd)*100 : 0;
     const esc = v => (v == null ? "" : String(v)).replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 
-    let html = indHero("📡", "VTR / GAR", `${indSemaforo("vtrgar", pctMes)} ${pctMes.toFixed(2)}%`, "≤ 3%", "") + `
+    let html = indHero("📡", "VTR / GAR", `${indSemaforo("vtrgar", pctMes)} ${pctMes.toFixed(2)}%`, "≤ 3%", "") +
+        mv276SelectorPeriodo(periodos, periodo, "mostrarVTRGAR", "mv276VtrGarPeriodo") + `
         <style>
             .ind-vg-list{display:grid;gap:10px}
             .ind-vg-card{background:#fff;color:#0f172a;border-left:5px solid #ef4444;border-radius:13px;padding:12px;box-shadow:0 7px 18px rgba(2,6,23,.18)}
@@ -592,4 +604,3 @@ async function mostrarVTRGAR(){
     html += `</div><button class="button_1" onclick="volverInicio()">⬅️ Volver al menú</button></div>`;
     mostrarPantalla(html);
 }
-

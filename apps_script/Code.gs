@@ -178,10 +178,12 @@ function procesarProduccion(registros) {
 
 function procesarEfectividad(registros, periodoManual, actualizadoAlManual) {
   const hoja = obtenerHoja(HOJA_EFECTIVIDAD);
+  const cortePeriodo = fechaBaseOperativa(actualizadoAlManual);
 
   if (!Array.isArray(registros) || registros.length === 0) {
     throw new Error("No se recibieron registros de efectividad");
   }
+  if (!cortePeriodo) throw new Error("La fecha de actualización de Efectividad no es válida");
 
   const salida = [[
     "ID",
@@ -238,9 +240,10 @@ function procesarEfectividad(registros, periodoManual, actualizadoAlManual) {
     throw new Error("No se encontraron registros válidos de efectividad");
   }
 
-  hoja.clearContents();
-  hoja.getRange(1, 1, salida.length, salida[0].length).setValues(salida);
-  hoja.getRange(2, 10, salida.length - 1, 1).setNumberFormat("0.00%");
+  const salidaHistorica = combinarMatrizPeriodoBaseOperativa(hoja, salida, 3, cortePeriodo);
+  reemplazarHojaBaseOperativa(hoja, salidaHistorica);
+  hoja.getRange(2, 4, salidaHistorica.length - 1, 1).setNumberFormat("dd/mm/yyyy");
+  hoja.getRange(2, 10, salidaHistorica.length - 1, 1).setNumberFormat("0.00%");
 
   return {
     ok: true,
@@ -256,14 +259,16 @@ function procesarEfectividad(registros, periodoManual, actualizadoAlManual) {
    BASE EFECTIVIDAD
 ========================= */
 
-function obtenerBaseEfectividad() {
+function obtenerBaseEfectividad(periodoReferencia) {
   const hoja = obtenerHoja(HOJA_EFECTIVIDAD);
   const datos = hoja.getDataRange().getValues();
   const lista = [];
   const mapa = {};
+  const referencia = fechaBaseOperativa(periodoReferencia);
 
   for (let i = 1; i < datos.length; i++) {
     const fila = datos[i];
+    if (referencia && !mismoPeriodoBaseOperativa(fila[3], referencia)) continue;
     const usuario = fila[1] || "ADMIN";
     const cuadrilla = normalizarCuadrilla(fila[2]);
     const finalizadas = Number(fila[4]) || 0;
@@ -285,12 +290,14 @@ function obtenerBaseEfectividad() {
 
 function procesarRecableado(registros, periodoManual, actualizadoAlManual) {
   const hoja = obtenerHoja(HOJA_RECABLEADO);
+  const cortePeriodo = fechaBaseOperativa(actualizadoAlManual);
 
   if (!Array.isArray(registros) || registros.length === 0) {
     throw new Error("No se recibieron registros de recableado");
   }
+  if (!cortePeriodo) throw new Error("La fecha de actualización de Recableado no es válida");
 
-  const baseEfectividad = obtenerBaseEfectividad();
+  const baseEfectividad = obtenerBaseEfectividad(cortePeriodo);
   const baseLista = baseEfectividad.lista;
   const mapaRecableado = {};
 
@@ -347,9 +354,10 @@ function procesarRecableado(registros, periodoManual, actualizadoAlManual) {
     totalRecableados += recableados;
   });
 
-  hoja.clearContents();
-  hoja.getRange(1, 1, salida.length, salida[0].length).setValues(salida);
-  hoja.getRange(2, 7, salida.length - 1, 1).setNumberFormat("0.00%");
+  const salidaHistorica = combinarMatrizPeriodoBaseOperativa(hoja, salida, 3, cortePeriodo);
+  reemplazarHojaBaseOperativa(hoja, salidaHistorica);
+  hoja.getRange(2, 4, salidaHistorica.length - 1, 1).setNumberFormat("dd/mm/yyyy");
+  hoja.getRange(2, 7, salidaHistorica.length - 1, 1).setNumberFormat("0.00%");
 
   return {
     ok: true,
@@ -390,8 +398,10 @@ function convertirRegistrosVtrGar(registros) {
 
 function procesarVtrGar(registros, periodoManual, actualizadoAlManual) {
   const hoja = obtenerHojaVtrGarFlexible();
+  const cortePeriodo = fechaBaseOperativa(actualizadoAlManual);
+  if (!cortePeriodo) throw new Error("La fecha de actualización de VTR/GAR no es válida");
 
-  const baseEfectividad = obtenerBaseEfectividad();
+  const baseEfectividad = obtenerBaseEfectividad(cortePeriodo);
   const baseLista = baseEfectividad.lista;
 
   if (baseLista.length === 0) {
@@ -448,9 +458,10 @@ function procesarVtrGar(registros, periodoManual, actualizadoAlManual) {
     totalGarVtr += total;
   });
 
-  hoja.clearContents();
-  hoja.getRange(1, 1, salida.length, salida[0].length).setValues(salida);
-  hoja.getRange(2, 9, salida.length - 1, 1).setNumberFormat("0.00%");
+  const salidaHistorica = combinarMatrizPeriodoBaseOperativa(hoja, salida, 3, cortePeriodo);
+  reemplazarHojaBaseOperativa(hoja, salidaHistorica);
+  hoja.getRange(2, 4, salidaHistorica.length - 1, 1).setNumberFormat("dd/mm/yyyy");
+  hoja.getRange(2, 9, salidaHistorica.length - 1, 1).setNumberFormat("0.00%");
 
   return {
     ok: true,
@@ -1331,21 +1342,31 @@ function actualizarResumenObservaciones() {
   };
 }
 
-function obtenerResumenObservacionesPorCuadrilla() {
-  const hoja = obtenerHoja(HOJA_RESUMEN_OBSERVACIONES);
+function obtenerResumenObservacionesPorCuadrilla(cortePeriodo) {
+  const hoja = obtenerHoja(cortePeriodo ? HOJA_OBSERVACIONES : HOJA_RESUMEN_OBSERVACIONES);
   const datos = hoja.getDataRange().getValues();
   const mapa = {};
 
   for (let i = 1; i < datos.length; i++) {
-    const cuadrilla = normalizarCuadrilla(datos[i][0]);
+    const fila = datos[i];
+    if (cortePeriodo && !mismoPeriodoBaseOperativa(fila[1], cortePeriodo)) continue;
+    const cuadrilla = normalizarCuadrilla(cortePeriodo ? fila[8] : fila[0]);
 
     if (!cuadrilla) continue;
 
-    mapa[cuadrilla] = {
-      observaciones: Number(datos[i][1]) || 0,
-      montoTotal: Number(datos[i][2]) || 0,
-      montoAfectado: Number(datos[i][3]) || 0
-    };
+    if (!mapa[cuadrilla]) {
+      mapa[cuadrilla] = { observaciones:0, montoTotal:0, montoAfectado:0 };
+    }
+    if (cortePeriodo) {
+      const monto = Number(fila[14]) || 0;
+      mapa[cuadrilla].observaciones++;
+      mapa[cuadrilla].montoTotal += monto;
+      mapa[cuadrilla].montoAfectado += monto * factorEstadoObservacion(fila[13]);
+    } else {
+      mapa[cuadrilla].observaciones = Number(fila[1]) || 0;
+      mapa[cuadrilla].montoTotal = Number(fila[2]) || 0;
+      mapa[cuadrilla].montoAfectado = Number(fila[3]) || 0;
+    }
   }
 
   return mapa;
@@ -1424,7 +1445,7 @@ function obtenerPuntajeProduccion(codigo, catalogo) {
   return 1;
 }
 
-function obtenerProduccionPorCuadrilla() {
+function obtenerProduccionPorCuadrilla(cortePeriodo) {
   const hoja = obtenerHoja(HOJA_PRODUCCION);
   const datos = hoja.getDataRange().getValues();
   const catalogo = obtenerCatalogoPuntajesProduccion();
@@ -1432,6 +1453,7 @@ function obtenerProduccionPorCuadrilla() {
 
   for (let i = 1; i < datos.length; i++) {
     const fila = datos[i];
+    if (cortePeriodo && !mismoPeriodoBaseOperativa(fila[2], cortePeriodo)) continue;
     const usuario = fila[0] || "ADMIN";
     const cuadrilla = normalizarCuadrilla(fila[1]);
     const codigo = (fila[3] || "").toString().trim();
@@ -1456,13 +1478,14 @@ function obtenerProduccionPorCuadrilla() {
   return mapa;
 }
 
-function obtenerEfectividadPorCuadrilla() {
+function obtenerEfectividadPorCuadrilla(cortePeriodo) {
   const hoja = obtenerHoja(HOJA_EFECTIVIDAD);
   const datos = hoja.getDataRange().getValues();
   const mapa = {};
 
   for (let i = 1; i < datos.length; i++) {
     const fila = datos[i];
+    if (cortePeriodo && !mismoPeriodoBaseOperativa(fila[3], cortePeriodo)) continue;
 
     const usuario = fila[1] || "ADMIN";
     const cuadrilla = normalizarCuadrilla(fila[2]);
@@ -1485,13 +1508,14 @@ function obtenerEfectividadPorCuadrilla() {
   return mapa;
 }
 
-function obtenerRecableadoPorCuadrilla() {
+function obtenerRecableadoPorCuadrilla(cortePeriodo) {
   const hoja = obtenerHoja(HOJA_RECABLEADO);
   const datos = hoja.getDataRange().getValues();
   const mapa = {};
 
   for (let i = 1; i < datos.length; i++) {
     const fila = datos[i];
+    if (cortePeriodo && !mismoPeriodoBaseOperativa(fila[3], cortePeriodo)) continue;
 
     const cuadrilla = normalizarCuadrilla(fila[2]);
     const rojoAsignadas = Number(fila[4]) || 0;
@@ -1510,13 +1534,14 @@ function obtenerRecableadoPorCuadrilla() {
   return mapa;
 }
 
-function obtenerVtrGarPorCuadrilla() {
+function obtenerVtrGarPorCuadrilla(cortePeriodo) {
   const hoja = obtenerHojaVtrGarFlexible();
   const datos = hoja.getDataRange().getValues();
   const mapa = {};
 
   for (let i = 1; i < datos.length; i++) {
     const fila = datos[i];
+    if (cortePeriodo && !mismoPeriodoBaseOperativa(fila[3], cortePeriodo)) continue;
 
     const cuadrilla = normalizarCuadrilla(fila[2]);
     const finalizadas = Number(fila[4]) || 0;
@@ -1658,15 +1683,16 @@ function actualizarRanking(periodoManual, actualizadoAlManual) {
   const corteAutomatico = obtenerCorteRankingAutomatico();
   const periodoRanking = periodoManual || corteAutomatico.periodo || "";
   const actualizadoAlRanking = actualizadoAlManual || corteAutomatico.actualizadoAl || "";
+  const corteRanking = convertirFechaRanking(actualizadoAlRanking);
 
   actualizarResumenObservaciones();
 
   const mapaUsuarios = obtenerMapaUsuarios();
-  const mapaProduccion = obtenerProduccionPorCuadrilla();
-  const mapaEfectividad = obtenerEfectividadPorCuadrilla();
-  const mapaRecableado = obtenerRecableadoPorCuadrilla();
-  const mapaVtrGar = obtenerVtrGarPorCuadrilla();
-  const mapaObservaciones = obtenerResumenObservacionesPorCuadrilla();
+  const mapaProduccion = obtenerProduccionPorCuadrilla(corteRanking);
+  const mapaEfectividad = obtenerEfectividadPorCuadrilla(corteRanking);
+  const mapaRecableado = obtenerRecableadoPorCuadrilla(corteRanking);
+  const mapaVtrGar = obtenerVtrGarPorCuadrilla(corteRanking);
+  const mapaObservaciones = obtenerResumenObservacionesPorCuadrilla(corteRanking);
 
   const cuadrillas = {};
 
@@ -1758,7 +1784,7 @@ function actualizarRanking(periodoManual, actualizadoAlManual) {
 
   lista.forEach((item, i) => {
     salida.push([
-      i + 1,
+      (corteRanking ? clavePeriodoBaseOperativa(corteRanking) : periodoRanking) + "|" + (i + 1),
       item.cuadrilla,
       item.actualizacion,
       item.usuario,
@@ -1781,15 +1807,18 @@ function actualizarRanking(periodoManual, actualizadoAlManual) {
     ]);
   });
 
-  hojaRanking.clearContents();
-  hojaRanking.getRange(1, 1, salida.length, salida[0].length).setValues(salida);
+  const salidaHistorica = corteRanking
+    ? combinarMatrizPeriodoBaseOperativa(hojaRanking, salida, 2, corteRanking)
+    : salida;
+  reemplazarHojaBaseOperativa(hojaRanking, salidaHistorica);
 
-  if (salida.length > 1) {
-    hojaRanking.getRange(2, 8, salida.length - 1, 1).setNumberFormat("0.00%");
-    hojaRanking.getRange(2, 9, salida.length - 1, 1).setNumberFormat("0.00%");
-    hojaRanking.getRange(2, 10, salida.length - 1, 1).setNumberFormat("0.00%");
-    hojaRanking.getRange(2, 12, salida.length - 1, 2).setNumberFormat('"S/ "0.00');
-    hojaRanking.getRange(2, 14, salida.length - 1, 1).setNumberFormat("0.00");
+  if (salidaHistorica.length > 1) {
+    const filasHistoricas = salidaHistorica.length - 1;
+    hojaRanking.getRange(2, 8, filasHistoricas, 1).setNumberFormat("0.00%");
+    hojaRanking.getRange(2, 9, filasHistoricas, 1).setNumberFormat("0.00%");
+    hojaRanking.getRange(2, 10, filasHistoricas, 1).setNumberFormat("0.00%");
+    hojaRanking.getRange(2, 12, filasHistoricas, 2).setNumberFormat('"S/ "0.00');
+    hojaRanking.getRange(2, 14, filasHistoricas, 1).setNumberFormat("0.00");
   }
 
   return {
@@ -7204,13 +7233,14 @@ function listarMapaOperativo(data) {
 }
 
 /* =========================
-   BASE OPERATIVA UNIFICADA V238
-   Reemplaza únicamente las hojas de indicadores actuales.
+   BASE OPERATIVA UNIFICADA V276
+   Conserva el histórico y actualiza únicamente el período cargado.
 ========================= */
 const HOJA_ASIGNACION_VTR_GAR = "ASIGNACION_VTR_GAR";
 const HOJA_BASE_VTR_GAR_DETECTADA = "BASE_VTR_GAR_DETECTADA";
 const HOJA_HISTORIAL_CARGA_OPERATIVA = "HISTORIAL_CARGA_OPERATIVA";
 const HOJA_HISTORIAL_VTR_GAR = "HISTORIAL_VTR_GAR";
+const HOJA_BASE_OPERATIVA_HISTORICA = "BASE_OPERATIVA_HISTORICA";
 
 function validarAdministracionBaseOperativa(usuarioSesion) {
   const usuario = obtenerUsuarioApp(usuarioSesion);
@@ -7317,6 +7347,203 @@ function asegurarHojaHistorialCargaOperativa() {
   ], true);
 }
 
+function encabezadosBaseOperativaHistorica() {
+  return [
+    "CLAVE_REGISTRO", "PERIODO", "FECHA", "CUADRILLA", "ESTADO", "TIPO_TRABAJO",
+    "NUMERO_DOCUMENTO", "CLIENTE", "SEDE", "CODIGO_PEDIDO", "TICKET",
+    "CODIGO_LIQUIDACION", "TIPO_ATENCION", "TIPO_PARTIDA", "TIPO_PARTIDA_ALTERNA",
+    "ARCHIVO_ULTIMA_CARGA", "USUARIO_ULTIMA_CARGA", "FECHA_ULTIMA_ACTUALIZACION"
+  ];
+}
+
+function asegurarHojaBaseOperativaHistorica() {
+  return asegurarHojaBaseOperativa(
+    HOJA_BASE_OPERATIVA_HISTORICA,
+    encabezadosBaseOperativaHistorica(),
+    true
+  );
+}
+
+function clavePeriodoBaseOperativa(fecha) {
+  if (!(fecha instanceof Date) || isNaN(fecha.getTime())) return "";
+  return Utilities.formatDate(fecha, Session.getScriptTimeZone(), "yyyy-MM");
+}
+
+function mismoPeriodoBaseOperativa(fecha, referencia) {
+  const a = fechaBaseOperativa(fecha);
+  const b = fechaBaseOperativa(referencia);
+  return !!a && !!b &&
+    a.getFullYear() === b.getFullYear() &&
+    a.getMonth() === b.getMonth();
+}
+
+function filaHistoricaARegistroBaseOperativa(fila) {
+  const fecha = fechaBaseOperativa(fila[2]);
+  if (!fecha) return null;
+  return {
+    claveHistorica: (fila[0] || "").toString(),
+    periodoHistorico: (fila[1] || "").toString(),
+    fecha,
+    cuadrilla: normalizarCuadrilla(fila[3]),
+    estado: normalizarTexto(fila[4]),
+    tipoTrabajo: normalizarTexto(fila[5]),
+    numeroDocumento: textoValidoBaseOperativa(fila[6]),
+    cliente: textoValidoBaseOperativa(fila[7]),
+    sede: normalizarTexto(fila[8]),
+    codigoPedido: textoValidoBaseOperativa(fila[9]),
+    ticket: textoValidoBaseOperativa(fila[10]),
+    codigoLiquidacion: textoValidoBaseOperativa(fila[11]),
+    tipoAtencion: normalizarTexto(fila[12]),
+    tipoPartida: normalizarTexto(fila[13]),
+    tipoPartidaAlterna: normalizarTexto(fila[14]),
+    archivoUltimaCarga: (fila[15] || "").toString(),
+    usuarioUltimaCarga: (fila[16] || "").toString(),
+    fechaUltimaActualizacion: fila[17] || ""
+  };
+}
+
+function filaRegistroHistoricoBaseOperativa(registro) {
+  const fecha = fechaBaseOperativa(registro.fecha);
+  return [
+    registro.claveHistorica || claveRegistroBaseOperativa(registro),
+    clavePeriodoBaseOperativa(fecha),
+    fecha,
+    normalizarCuadrilla(registro.cuadrilla),
+    normalizarTexto(registro.estado),
+    normalizarTexto(registro.tipoTrabajo),
+    textoValidoBaseOperativa(registro.numeroDocumento),
+    textoValidoBaseOperativa(registro.cliente),
+    normalizarTexto(registro.sede),
+    textoValidoBaseOperativa(registro.codigoPedido),
+    textoValidoBaseOperativa(registro.ticket),
+    textoValidoBaseOperativa(registro.codigoLiquidacion),
+    normalizarTexto(registro.tipoAtencion),
+    normalizarTexto(registro.tipoPartida),
+    normalizarTexto(registro.tipoPartidaAlterna),
+    registro.archivoUltimaCarga || "",
+    registro.usuarioUltimaCarga || "",
+    registro.fechaUltimaActualizacion || new Date()
+  ];
+}
+
+function leerBaseOperativaHistorica() {
+  const hoja = asegurarHojaBaseOperativaHistorica();
+  const datos = hoja.getDataRange().getValues();
+  const registros = [];
+  for (let i = 1; i < datos.length; i++) {
+    const item = filaHistoricaARegistroBaseOperativa(datos[i]);
+    if (item && item.cuadrilla && item.estado) registros.push(item);
+  }
+  return { hoja, registros };
+}
+
+function clavesCoincidenciaBaseOperativa(registro) {
+  const fecha = fechaBaseOperativa(registro.fecha);
+  const fechaClave = fechaIsoBaseOperativa(fecha);
+  const cuadrilla = normalizarCuadrilla(registro.cuadrilla);
+  const salida = [];
+  const liq = normalizarTexto(textoValidoBaseOperativa(registro.codigoLiquidacion));
+  const ticket = normalizarTexto(textoValidoBaseOperativa(registro.ticket)).replace(/\s+/g, "");
+  const pedido = normalizarTexto(textoValidoBaseOperativa(registro.codigoPedido));
+  const documento = normalizarTexto(textoValidoBaseOperativa(registro.numeroDocumento));
+  const cliente = normalizarTexto(textoValidoBaseOperativa(registro.cliente));
+  const partida = normalizarTexto(registro.tipoPartida || registro.tipoPartidaAlterna);
+  const atencion = normalizarTexto(registro.tipoAtencion || registro.tipoTrabajo);
+
+  if (liq) salida.push("LIQ|" + liq);
+  if (ticket) salida.push("TICKET|" + ticket);
+  if (pedido) salida.push(["PEDIDO", pedido, fechaClave, cuadrilla, partida || atencion].join("|"));
+  if (documento) salida.push(["DOC", documento, fechaClave, cuadrilla, partida || atencion].join("|"));
+  if (cliente) salida.push(["CLIENTE", cliente, fechaClave, cuadrilla, partida || atencion].join("|"));
+  salida.push(["BASE", fechaClave, cuadrilla, documento || cliente, partida, atencion].join("|"));
+  return salida.filter((x, i, a) => x && a.indexOf(x) === i);
+}
+
+function combinarBaseOperativaHistorica(registrosEntrada, corteEntrada, usuarioCarga, archivo) {
+  const historica = leerBaseOperativaHistorica();
+  const periodoClave = clavePeriodoBaseOperativa(corteEntrada);
+  const registros = historica.registros.map(x => Object.assign({}, x));
+  const indices = {};
+  const usados = {};
+
+  function indexar(item, indice) {
+    clavesCoincidenciaBaseOperativa(item).forEach(clave => {
+      if (!indices[clave]) indices[clave] = [];
+      if (indices[clave].indexOf(indice) < 0) indices[clave].push(indice);
+    });
+  }
+
+  registros.forEach((item, indice) => indexar(item, indice));
+
+  let nuevos = 0;
+  let actualizados = 0;
+  const ahora = new Date();
+
+  registrosEntrada.forEach(entrada => {
+    if (clavePeriodoBaseOperativa(entrada.fecha) !== periodoClave) return;
+    const claves = clavesCoincidenciaBaseOperativa(entrada);
+    let indice = -1;
+
+    for (let i = 0; i < claves.length && indice < 0; i++) {
+      const candidatos = indices[claves[i]] || [];
+      for (let j = 0; j < candidatos.length; j++) {
+        const candidato = candidatos[j];
+        if (!usados[candidato] && clavePeriodoBaseOperativa(registros[candidato].fecha) === periodoClave) {
+          indice = candidato;
+          break;
+        }
+      }
+    }
+
+    const combinado = Object.assign({}, indice >= 0 ? registros[indice] : {}, entrada, {
+      claveHistorica: claveRegistroBaseOperativa(entrada),
+      periodoHistorico: periodoClave,
+      archivoUltimaCarga: archivo || "",
+      usuarioUltimaCarga: usuarioCarga || "ADMIN",
+      fechaUltimaActualizacion: ahora
+    });
+
+    if (indice >= 0) {
+      registros[indice] = combinado;
+      usados[indice] = true;
+      actualizados++;
+      indexar(combinado, indice);
+    } else {
+      const nuevoIndice = registros.length;
+      registros.push(combinado);
+      usados[nuevoIndice] = true;
+      indexar(combinado, nuevoIndice);
+      nuevos++;
+    }
+  });
+
+  const registrosPeriodo = registros.filter(x => clavePeriodoBaseOperativa(x.fecha) === periodoClave);
+  if (!registrosPeriodo.length) throw new Error("No se generó información para el periodo detectado");
+
+  let corte = corteEntrada;
+  registrosPeriodo.forEach(x => {
+    if (x.estado === "FINALIZADA" && x.fecha && (!corte || x.fecha > corte)) corte = x.fecha;
+  });
+
+  const matriz = [encabezadosBaseOperativaHistorica()];
+  registros.sort((a, b) =>
+    a.fecha - b.fecha ||
+    a.cuadrilla.localeCompare(b.cuadrilla) ||
+    (a.claveHistorica || "").localeCompare(b.claveHistorica || "")
+  ).forEach(item => matriz.push(filaRegistroHistoricoBaseOperativa(item)));
+
+  return {
+    hoja: historica.hoja,
+    registros,
+    registrosPeriodo,
+    periodoClave,
+    corte,
+    nuevos,
+    actualizados,
+    matriz
+  };
+}
+
 function fechaBaseOperativa(valor) {
   if (valor instanceof Date && !isNaN(valor.getTime())) {
     return new Date(valor.getFullYear(), valor.getMonth(), valor.getDate());
@@ -7360,11 +7587,21 @@ function textoValidoBaseOperativa(valor) {
 function claveRegistroBaseOperativa(registro) {
   const liq = normalizarTexto(textoValidoBaseOperativa(registro.codigoLiquidacion));
   if (liq) return "LIQ|" + liq;
-  const ticket = normalizarTexto(textoValidoBaseOperativa(registro.ticket));
+  const ticket = normalizarTexto(textoValidoBaseOperativa(registro.ticket)).replace(/\s+/g, "");
   if (ticket) return "TICKET|" + ticket;
+  const pedido = normalizarTexto(textoValidoBaseOperativa(registro.codigoPedido));
+  if (pedido) {
+    return [
+      "PEDIDO", pedido, fechaIsoBaseOperativa(registro.fecha),
+      normalizarCuadrilla(registro.cuadrilla),
+      normalizarTexto(registro.tipoPartida || registro.tipoPartidaAlterna || registro.tipoAtencion)
+    ].join("|");
+  }
   return [
     "BASE", fechaIsoBaseOperativa(registro.fecha), normalizarCuadrilla(registro.cuadrilla),
-    normalizarTexto(registro.codigoPedido), normalizarTexto(registro.tipoPartida), normalizarTexto(registro.estado)
+    normalizarTexto(registro.numeroDocumento || registro.cliente),
+    normalizarTexto(registro.tipoPartida || registro.tipoPartidaAlterna),
+    normalizarTexto(registro.tipoAtencion || registro.tipoTrabajo)
   ].join("|");
 }
 
@@ -8097,6 +8334,42 @@ function restaurarSnapshotBaseOperativa(snapshot) {
   }
 }
 
+function combinarMatrizPeriodoBaseOperativa(hoja, matrizPeriodo, indiceFecha, cortePeriodo) {
+  if (!matrizPeriodo || !matrizPeriodo.length || !matrizPeriodo[0].length) {
+    throw new Error("Matriz mensual vacía");
+  }
+
+  const columnas = matrizPeriodo[0].length;
+  const salida = [matrizPeriodo[0].slice()];
+  const ultima = hoja.getLastRow();
+
+  if (ultima > 1) {
+    const existentes = hoja.getRange(2, 1, ultima - 1, Math.min(columnas, hoja.getLastColumn())).getValues();
+    existentes.forEach(fila => {
+      const normalizada = fila.slice(0, columnas);
+      while (normalizada.length < columnas) normalizada.push("");
+      const fecha = fechaBaseOperativa(normalizada[indiceFecha]);
+      if (!fecha || !mismoPeriodoBaseOperativa(fecha, cortePeriodo)) salida.push(normalizada);
+    });
+  }
+
+  for (let i = 1; i < matrizPeriodo.length; i++) {
+    salida.push(matrizPeriodo[i].slice(0, columnas));
+  }
+
+  const encabezado = salida.shift();
+  salida.sort((a, b) => {
+    const fa = fechaBaseOperativa(a[indiceFecha]);
+    const fb = fechaBaseOperativa(b[indiceFecha]);
+    const ta = fa ? fa.getTime() : 0;
+    const tb = fb ? fb.getTime() : 0;
+    if (ta !== tb) return ta - tb;
+    return normalizarTexto(a[1] || a[2] || "").localeCompare(normalizarTexto(b[1] || b[2] || ""));
+  });
+  salida.unshift(encabezado);
+  return salida;
+}
+
 function reemplazarHojaBaseOperativa(hoja, matriz) {
   if (!matriz || !matriz.length || !matriz[0].length) {
     throw new Error("Matriz de actualización vacía");
@@ -8142,7 +8415,7 @@ function mapaConciliacionProduccionMatrizBaseOperativa(matriz) {
   return { mapa, total };
 }
 
-function mapaConciliacionProduccionHojaBaseOperativa(hoja) {
+function mapaConciliacionProduccionHojaBaseOperativa(hoja, cortePeriodo) {
   const mapa = {};
   let total = 0;
   const ultima = hoja.getLastRow();
@@ -8151,6 +8424,7 @@ function mapaConciliacionProduccionHojaBaseOperativa(hoja) {
   datos.forEach(fila => {
     const cuadrilla = normalizarCuadrilla(fila[1]);
     const fecha = fechaBaseOperativa(fila[2]);
+    if (cortePeriodo && (!fecha || !mismoPeriodoBaseOperativa(fecha, cortePeriodo))) return;
     const codigo = (fila[3] || "").toString().trim();
     const cantidad = Number(fila[4]) || 0;
     if (!cuadrilla || !fecha || !codigo || cantidad <= 0) return;
@@ -8197,18 +8471,22 @@ function diferenciasConciliacionProduccionBaseOperativa(esperado, actual, limite
   return salida.slice(0, Math.max(1, Number(limite) || 20));
 }
 
-function sumarFinalizadasEscritasBaseOperativa() {
+function sumarFinalizadasEscritasBaseOperativa(cortePeriodo) {
   const hoja = obtenerHoja(HOJA_EFECTIVIDAD);
   const ultima = hoja.getLastRow();
   if (ultima <= 1) return 0;
-  return hoja.getRange(2, 5, ultima - 1, 1).getValues().reduce((s, fila) => s + (Number(fila[0]) || 0), 0);
+  const datos = hoja.getRange(2, 1, ultima - 1, Math.min(10, hoja.getLastColumn())).getValues();
+  return datos.reduce((s, fila) => {
+    if (cortePeriodo && !mismoPeriodoBaseOperativa(fila[3], cortePeriodo)) return s;
+    return s + (Number(fila[4]) || 0);
+  }, 0);
 }
 
 function validarConciliacionPostEscrituraBaseOperativa(matrices) {
   const hojaProduccion = obtenerHoja(HOJA_PRODUCCION);
   const esperado = mapaConciliacionProduccionMatrizBaseOperativa(matrices.produccion);
-  const actual = mapaConciliacionProduccionHojaBaseOperativa(hojaProduccion);
-  const finalizadasEscritas = sumarFinalizadasEscritasBaseOperativa();
+  const actual = mapaConciliacionProduccionHojaBaseOperativa(hojaProduccion, matrices.corte);
+  const finalizadasEscritas = sumarFinalizadasEscritasBaseOperativa(matrices.corte);
   const montoEsperado = montoConciliacionProduccionBaseOperativa(esperado);
   const montoActual = montoConciliacionProduccionBaseOperativa(actual);
   const diferencias = diferenciasConciliacionProduccionBaseOperativa(esperado, actual, 8);
@@ -8239,12 +8517,17 @@ function validarConciliacionPostEscrituraBaseOperativa(matrices) {
 
 function escribirIndicadoresYConciliarBaseOperativa(hojas, matrices) {
   const controles = [];
+  const produccionHistorica = combinarMatrizPeriodoBaseOperativa(hojas[0], matrices.produccion, 2, matrices.corte);
+  const efectividadHistorica = combinarMatrizPeriodoBaseOperativa(hojas[1], matrices.efectividad, 3, matrices.corte);
+  const recableadoHistorico = combinarMatrizPeriodoBaseOperativa(hojas[2], matrices.recableado, 3, matrices.corte);
+  const vtrGarHistorico = combinarMatrizPeriodoBaseOperativa(hojas[3], matrices.vtrgar, 3, matrices.corte);
 
-  controles.push(reemplazarHojaBaseOperativa(hojas[0], matrices.produccion));
-  controles.push(reemplazarHojaBaseOperativa(hojas[1], matrices.efectividad));
-  controles.push(reemplazarHojaBaseOperativa(hojas[2], matrices.recableado));
-  controles.push(reemplazarHojaBaseOperativa(hojas[3], matrices.vtrgar));
+  controles.push(reemplazarHojaBaseOperativa(hojas[0], produccionHistorica));
+  controles.push(reemplazarHojaBaseOperativa(hojas[1], efectividadHistorica));
+  controles.push(reemplazarHojaBaseOperativa(hojas[2], recableadoHistorico));
+  controles.push(reemplazarHojaBaseOperativa(hojas[3], vtrGarHistorico));
   controles.push(reemplazarHojaBaseOperativa(hojas[4], matrices.baseIncidencias));
+  controles.push(reemplazarHojaBaseOperativa(hojas[5], matrices.baseHistorica));
 
   aplicarFormatosBaseOperativa(matrices);
   SpreadsheetApp.flush();
@@ -8257,7 +8540,7 @@ function escribirIndicadoresYConciliarBaseOperativa(hojas, matrices) {
   } catch (primerError) {
     // Reintento automático de PRODUCCION_APP. Esto cubre hojas que tenían un
     // filtro activo o filas ocultas antes de la carga.
-    reemplazarHojaBaseOperativa(hojas[0], matrices.produccion);
+    reemplazarHojaBaseOperativa(hojas[0], produccionHistorica);
     aplicarFormatosBaseOperativa(matrices);
     SpreadsheetApp.flush();
 
@@ -8270,24 +8553,28 @@ function escribirIndicadoresYConciliarBaseOperativa(hojas, matrices) {
 
 function aplicarFormatosBaseOperativa(matrices) {
   const hp = obtenerHoja(HOJA_PRODUCCION);
-  if (matrices.produccion.length > 1) {
-    hp.getRange(2, 3, matrices.produccion.length - 1, 1).setNumberFormat("dd/mm/yyyy");
-    hp.getRange(2, 7, matrices.produccion.length - 1, 1).setNumberFormat("dd/mm/yyyy");
+  if (hp.getLastRow() > 1) {
+    const filas = hp.getLastRow() - 1;
+    hp.getRange(2, 3, filas, 1).setNumberFormat("dd/mm/yyyy");
+    hp.getRange(2, 7, filas, 1).setNumberFormat("dd/mm/yyyy");
   }
   const he = obtenerHoja(HOJA_EFECTIVIDAD);
-  if (matrices.efectividad.length > 1) {
-    he.getRange(2, 4, matrices.efectividad.length - 1, 1).setNumberFormat("dd/mm/yyyy");
-    he.getRange(2, 10, matrices.efectividad.length - 1, 1).setNumberFormat("0.00%");
+  if (he.getLastRow() > 1) {
+    const filas = he.getLastRow() - 1;
+    he.getRange(2, 4, filas, 1).setNumberFormat("dd/mm/yyyy");
+    he.getRange(2, 10, filas, 1).setNumberFormat("0.00%");
   }
   const hr = obtenerHoja(HOJA_RECABLEADO);
-  if (matrices.recableado.length > 1) {
-    hr.getRange(2, 4, matrices.recableado.length - 1, 1).setNumberFormat("dd/mm/yyyy");
-    hr.getRange(2, 7, matrices.recableado.length - 1, 1).setNumberFormat("0.00%");
+  if (hr.getLastRow() > 1) {
+    const filas = hr.getLastRow() - 1;
+    hr.getRange(2, 4, filas, 1).setNumberFormat("dd/mm/yyyy");
+    hr.getRange(2, 7, filas, 1).setNumberFormat("0.00%");
   }
   const hv = obtenerHojaVtrGarFlexible();
-  if (matrices.vtrgar.length > 1) {
-    hv.getRange(2, 4, matrices.vtrgar.length - 1, 1).setNumberFormat("dd/mm/yyyy");
-    hv.getRange(2, 9, matrices.vtrgar.length - 1, 1).setNumberFormat("0.00%");
+  if (hv.getLastRow() > 1) {
+    const filas = hv.getLastRow() - 1;
+    hv.getRange(2, 4, filas, 1).setNumberFormat("dd/mm/yyyy");
+    hv.getRange(2, 9, filas, 1).setNumberFormat("0.00%");
   }
   const hi = asegurarHojaBaseVtrGarDetectada();
   if (matrices.baseIncidencias.length > 1) {
@@ -8296,6 +8583,12 @@ function aplicarFormatosBaseOperativa(matrices) {
     hi.getRange(2, 16, filas, 1).setNumberFormat("dd/mm/yyyy hh:mm");
     hi.getRange(2, 18, filas, 1).setNumberFormat("dd/mm/yyyy hh:mm");
     hi.getRange(2, 19, filas, 1).setNumberFormat("dd/mm/yyyy");
+  }
+  const hh = asegurarHojaBaseOperativaHistorica();
+  if (hh.getLastRow() > 1) {
+    const filas = hh.getLastRow() - 1;
+    hh.getRange(2, 3, filas, 1).setNumberFormat("dd/mm/yyyy");
+    hh.getRange(2, 18, filas, 1).setNumberFormat("dd/mm/yyyy hh:mm:ss");
   }
 }
 
@@ -8317,27 +8610,31 @@ function registrarHistorialCargaBaseOperativa(usuario, archivo, preparado, matri
 }
 
 
-function resumenActualBaseOperativa() {
-  function sumarColumna(hoja, columna) {
+function resumenActualBaseOperativa(cortePeriodo) {
+  function sumarColumna(hoja, columna, columnaFecha) {
     const ultima = hoja.getLastRow();
     if (ultima <= 1) return 0;
-    return hoja.getRange(2, columna, ultima - 1, 1).getValues().reduce((s, f) => s + (Number(f[0]) || 0), 0);
+    const ancho = Math.max(columna, columnaFecha);
+    return hoja.getRange(2, 1, ultima - 1, ancho).getValues().reduce((s, f) => {
+      if (cortePeriodo && !mismoPeriodoBaseOperativa(f[columnaFecha - 1], cortePeriodo)) return s;
+      return s + (Number(f[columna - 1]) || 0);
+    }, 0);
   }
   const hp = obtenerHoja(HOJA_PRODUCCION);
   const he = obtenerHoja(HOJA_EFECTIVIDAD);
   const hr = obtenerHoja(HOJA_RECABLEADO);
   const hv = obtenerHojaVtrGarFlexible();
   return {
-    produccionOrdenes: sumarColumna(hp, 5),
-    finalizadas: sumarColumna(he, 5),
-    canceladas: sumarColumna(he, 6),
-    regestiones: sumarColumna(he, 7),
-    reprogramadas: sumarColumna(he, 8),
-    totalGeneral: sumarColumna(he, 9),
-    losRojos: sumarColumna(hr, 5),
-    recableados: sumarColumna(hr, 6),
-    gar: sumarColumna(hv, 6),
-    vtr: sumarColumna(hv, 7)
+    produccionOrdenes: sumarColumna(hp, 5, 3),
+    finalizadas: sumarColumna(he, 5, 4),
+    canceladas: sumarColumna(he, 6, 4),
+    regestiones: sumarColumna(he, 7, 4),
+    reprogramadas: sumarColumna(he, 8, 4),
+    totalGeneral: sumarColumna(he, 9, 4),
+    losRojos: sumarColumna(hr, 5, 4),
+    recableados: sumarColumna(hr, 6, 4),
+    gar: sumarColumna(hv, 6, 4),
+    vtr: sumarColumna(hv, 7, 4)
   };
 }
 
@@ -8375,12 +8672,15 @@ function validarControlLecturaBaseOperativa(control, preparado, matrices) {
   }
 
   const finalizadasPeriodoCliente = Number(control.finalizadasPeriodo);
+  const finalizadasCarga = matrices.totalFinalizadasCarga !== undefined
+    ? Number(matrices.totalFinalizadasCarga)
+    : Number(matrices.totalFinalizadasBase);
   if (isFinite(finalizadasPeriodoCliente) && finalizadasPeriodoCliente >= 0 &&
-      finalizadasPeriodoCliente !== matrices.totalFinalizadasBase) {
+      finalizadasPeriodoCliente !== finalizadasCarga) {
     throw new Error(
       "No se modificó ninguna hoja. El archivo contiene " + finalizadasPeriodoCliente +
       " órdenes FINALIZADAS para el periodo, pero Apps Script recibió " +
-      matrices.totalFinalizadasBase + ". La carga quedó incompleta."
+      finalizadasCarga + ". La carga quedó incompleta."
     );
   }
 
@@ -8406,8 +8706,19 @@ function validarControlLecturaBaseOperativa(control, preparado, matrices) {
 function previsualizarBaseOperativa(data) {
   const usuario = validarAdministracionBaseOperativa(data.usuario);
   const preparado = prepararRegistrosBaseOperativa(data.registros);
-  const corte = obtenerCorteBaseOperativa(preparado.registros);
-  const matrices = crearMatricesBaseOperativa(preparado.registros, corte, usuario.usuario);
+  const corteEntrada = obtenerCorteBaseOperativa(preparado.registros);
+  const historica = combinarBaseOperativaHistorica(
+    preparado.registros,
+    corteEntrada,
+    usuario.usuario,
+    data.archivo
+  );
+  const matrices = crearMatricesBaseOperativa(historica.registrosPeriodo, historica.corte, usuario.usuario);
+  matrices.totalFinalizadasCarga = preparado.registros.filter(r =>
+    r.estado === "FINALIZADA" && mismoPeriodoBaseOperativa(r.fecha, corteEntrada)
+  ).length;
+  matrices.baseHistorica = historica.matriz;
+  matrices.periodoClave = historica.periodoClave;
   validarControlLecturaBaseOperativa(data.controlLectura, preparado, matrices);
   const catalogoVista = catalogoPartidasBaseOperativa();
   const controlDuplicados = data.controlLectura || {};
@@ -8419,6 +8730,9 @@ function previsualizarBaseOperativa(data) {
     actualizadoAl: matrices.actualizadoAl,
     filasRecibidas: preparado.recibidos,
     filasUnicas: preparado.registros.length,
+    historicoNuevos: historica.nuevos,
+    historicoActualizados: historica.actualizados,
+    registrosHistoricosPeriodo: historica.registrosPeriodo.length,
     duplicados: preparado.duplicados,
     duplicadosDetectados: Number(controlDuplicados.duplicadosDetectados || controlDuplicados.duplicadosExactos || preparado.duplicados || 0),
     duplicadosConservados: Number(controlDuplicados.duplicadosConservados || preparado.duplicados || 0),
@@ -8437,7 +8751,7 @@ function previsualizarBaseOperativa(data) {
     catalogoOpciones: opcionesCatalogoBaseOperativa(catalogoVista.lista),
     partidasNoEncontradas: matrices.partidasNoEncontradas,
     cuadrillasNoEncontradas: matrices.cuadrillasNoEncontradas,
-    actual: resumenActualBaseOperativa(),
+    actual: resumenActualBaseOperativa(matrices.corte),
     nuevo: resumenNuevoBaseOperativa(matrices)
   };
 }
@@ -8449,8 +8763,19 @@ function procesarBaseOperativa(data) {
   let snapshots = [];
   try {
     const preparado = prepararRegistrosBaseOperativa(data.registros);
-    const corte = obtenerCorteBaseOperativa(preparado.registros);
-    const matrices = crearMatricesBaseOperativa(preparado.registros, corte, usuario.usuario);
+    const corteEntrada = obtenerCorteBaseOperativa(preparado.registros);
+    const historica = combinarBaseOperativaHistorica(
+      preparado.registros,
+      corteEntrada,
+      usuario.usuario,
+      data.archivo
+    );
+    const matrices = crearMatricesBaseOperativa(historica.registrosPeriodo, historica.corte, usuario.usuario);
+    matrices.totalFinalizadasCarga = preparado.registros.filter(r =>
+      r.estado === "FINALIZADA" && mismoPeriodoBaseOperativa(r.fecha, corteEntrada)
+    ).length;
+    matrices.baseHistorica = historica.matriz;
+    matrices.periodoClave = historica.periodoClave;
     validarControlLecturaBaseOperativa(data.controlLectura, preparado, matrices);
     const controlDuplicados = data.controlLectura || {};
 
@@ -8475,7 +8800,8 @@ function procesarBaseOperativa(data) {
 
     const hojas = [
       obtenerHoja(HOJA_PRODUCCION), obtenerHoja(HOJA_EFECTIVIDAD), obtenerHoja(HOJA_RECABLEADO),
-      obtenerHojaVtrGarFlexible(), asegurarHojaBaseVtrGarDetectada(), obtenerHoja(HOJA_RANKING)
+      obtenerHojaVtrGarFlexible(), asegurarHojaBaseVtrGarDetectada(),
+      asegurarHojaBaseOperativaHistorica(), obtenerHoja(HOJA_RANKING)
     ];
     snapshots = hojas.map(snapshotHojaBaseOperativa);
 
@@ -8503,11 +8829,15 @@ function procesarBaseOperativa(data) {
       duplicadosDetectados: Number(controlDuplicados.duplicadosDetectados || controlDuplicados.duplicadosExactos || preparado.duplicados || 0),
       duplicadosConservados: Number(controlDuplicados.duplicadosConservados || preparado.duplicados || 0),
       duplicadosOmitidos: Number(controlDuplicados.duplicadosOmitidos || 0),
+      historicoNuevos: historica.nuevos,
+      historicoActualizados: historica.actualizados,
+      registrosHistoricosPeriodo: historica.registrosPeriodo.length,
       partidasNoEncontradas: matrices.partidasNoEncontradas,
       cuadrillasNoEncontradas: matrices.cuadrillasNoEncontradas,
       ranking: !!(ranking && ranking.ok),
       conciliacion: conciliacion,
-      reemplazoTotal: true
+      reemplazoTotal: false,
+      historicoMensual: true
     };
   } catch (e) {
     if (snapshots.length) {
@@ -8601,15 +8931,17 @@ function anularAsignacionVtrGar(data) {
 }
 
 
-function recalcularVtrGarDesdeBaseOperativa(usuarioCarga) {
+function recalcularVtrGarDesdeBaseOperativa(usuarioCarga, periodoReferencia) {
   const gestion = obtenerGestionVtrGarExistente().lista;
   const hojaEf = obtenerHoja(HOJA_EFECTIVIDAD);
   const datosEf = hojaEf.getDataRange().getValues();
   if (datosEf.length <= 1) throw new Error("EFECTIVIDAD no contiene datos para recalcular VTR/GAR");
 
+  const referencia = fechaBaseOperativa(periodoReferencia);
   let corte = null;
   for (let i = 1; i < datosEf.length; i++) {
     const f = fechaBaseOperativa(datosEf[i][3]);
+    if (referencia && (!f || !mismoPeriodoBaseOperativa(f, referencia))) continue;
     if (f && (!corte || f > corte)) corte = f;
   }
   if (!corte) throw new Error("No se pudo determinar la fecha de corte desde EFECTIVIDAD");
@@ -8629,6 +8961,7 @@ function recalcularVtrGarDesdeBaseOperativa(usuarioCarga) {
 
   const salida = [["ID", "Usuario", "Cuadrilla", "ACTUALIZACION", "Total Ordenes FINALIZADAS", "GAR", "VTR", "TOTAL GAR/VTR", "% VTR/GAR"]];
   for (let i = 1; i < datosEf.length; i++) {
+    if (!mismoPeriodoBaseOperativa(datosEf[i][3], corte)) continue;
     const cuadrilla = normalizarCuadrilla(datosEf[i][2]);
     if (!cuadrilla) continue;
     const finalizadas = Number(datosEf[i][4]) || 0;
@@ -8640,10 +8973,11 @@ function recalcularVtrGarDesdeBaseOperativa(usuarioCarga) {
     ]);
   }
   const hojaVtr = obtenerHojaVtrGarFlexible();
-  reemplazarHojaBaseOperativa(hojaVtr, salida);
-  if (salida.length > 1) {
-    hojaVtr.getRange(2, 4, salida.length - 1, 1).setNumberFormat("dd/mm/yyyy");
-    hojaVtr.getRange(2, 9, salida.length - 1, 1).setNumberFormat("0.00%");
+  const salidaHistorica = combinarMatrizPeriodoBaseOperativa(hojaVtr, salida, 3, corte);
+  reemplazarHojaBaseOperativa(hojaVtr, salidaHistorica);
+  if (salidaHistorica.length > 1) {
+    hojaVtr.getRange(2, 4, salidaHistorica.length - 1, 1).setNumberFormat("dd/mm/yyyy");
+    hojaVtr.getRange(2, 9, salidaHistorica.length - 1, 1).setNumberFormat("0.00%");
   }
   SpreadsheetApp.flush();
   actualizarRanking(periodo, fechaVisibleBaseOperativa(corte));
@@ -8715,7 +9049,7 @@ function calificarIncidenciaVtrGar(data) {
     clave, usuario.usuario, accion, item.estadoCalificacion, estadoNuevo,
     item.cuadrillaResponsable, responsable, observacion
   );
-  const recalculo = recalcularVtrGarDesdeBaseOperativa(usuario.usuario);
+  const recalculo = recalcularVtrGarDesdeBaseOperativa(usuario.usuario, item.fechaISO || item.fecha);
   return {
     ok:true, modulo:"GESTION_VTR_GAR", accion, clave,
     estado:estadoNuevo, cuadrillaResponsable:responsable, recalculo
@@ -8728,12 +9062,20 @@ function listarDetalleVtrGarTecnico(data) {
   if (esPerfilJefatura(usuario.perfil) && data.cuadrilla) cuadrilla = normalizarCuadrilla(data.cuadrilla);
   if (!cuadrilla) throw new Error("El usuario no tiene una cuadrilla asociada");
 
+  let referenciaPeriodo = null;
+  const periodoSolicitado = (data.periodo || "").toString().trim();
+  if (/^\d{4}-\d{2}$/.test(periodoSolicitado)) {
+    const p = periodoSolicitado.split("-");
+    referenciaPeriodo = new Date(Number(p[0]), Number(p[1]) - 1, 1);
+  }
+
   let corte = null;
   try {
     const hojaEf = obtenerHoja(HOJA_EFECTIVIDAD);
     const datosEf = hojaEf.getDataRange().getValues();
     for (let i = 1; i < datosEf.length; i++) {
       const f = fechaBaseOperativa(datosEf[i][3]);
+      if (referenciaPeriodo && (!f || !mismoPeriodoBaseOperativa(f, referenciaPeriodo))) continue;
       if (f && (!corte || f > corte)) corte = f;
     }
   } catch (e) {}
@@ -8742,12 +9084,14 @@ function listarDetalleVtrGarTecnico(data) {
     if (!estadoVtrGarContabilizable(item.estadoCalificacion)) return false;
     if (normalizarCuadrilla(item.cuadrillaResponsable) !== cuadrilla) return false;
     const fecha = fechaBaseOperativa(item.fechaISO || item.fecha);
-    if (corte && (!fecha || !registroEnPeriodoBaseOperativa({fecha}, corte))) return false;
+    const referencia = corte || referenciaPeriodo;
+    if (referencia && (!fecha || !mismoPeriodoBaseOperativa(fecha, referencia))) return false;
     return true;
   }).sort((a,b) => (b.fechaISO || "").localeCompare(a.fechaISO || ""));
 
   return {
     ok:true, modulo:"DETALLE_VTR_GAR", cuadrilla, registros:lista.length,
+    periodo: corte ? clavePeriodoBaseOperativa(corte) : periodoSolicitado,
     actualizadoAl:corte ? fechaVisibleBaseOperativa(corte) : "",
     incidencias:lista.map(item => ({
       clave:item.clave, fecha:item.fecha, fechaISO:item.fechaISO, tipo:item.tipo,

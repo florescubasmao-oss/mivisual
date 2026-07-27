@@ -31,6 +31,70 @@ function numeroMiVisual(valor){
     return Number((valor || "").toString().replace(",", ".")) || 0;
 }
 
+function mv276ParseFecha(valor){
+    const texto = (valor || "").toString().trim();
+    if(!texto) return null;
+    let m = texto.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})/);
+    if(m) return new Date(Number(m[3]), Number(m[2]) - 1, Number(m[1]));
+    m = texto.match(/^(\d{4})-(\d{1,2})-(\d{1,2})/);
+    if(m) return new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]));
+    return null;
+}
+
+function mv276ClavePeriodo(valor){
+    const fecha = valor instanceof Date ? valor : mv276ParseFecha(valor);
+    if(!fecha || Number.isNaN(fecha.getTime())) return "";
+    return `${fecha.getFullYear()}-${String(fecha.getMonth()+1).padStart(2,"0")}`;
+}
+
+function mv276EtiquetaPeriodo(clave){
+    const meses = ["ENERO","FEBRERO","MARZO","ABRIL","MAYO","JUNIO","JULIO","AGOSTO","SEPTIEMBRE","OCTUBRE","NOVIEMBRE","DICIEMBRE"];
+    const m = String(clave || "").match(/^(\d{4})-(\d{2})$/);
+    if(!m) return "SIN PERÍODO";
+    return `${meses[Number(m[2])-1] || ""} ${m[1]}`.trim();
+}
+
+function mv276PeriodosDesdeValores(valores){
+    const mapa = {};
+    (valores || []).forEach(valor => {
+        const clave = mv276ClavePeriodo(valor);
+        if(!clave) return;
+        const fecha = mv276ParseFecha(valor);
+        if(!mapa[clave]) mapa[clave] = {clave, etiqueta:mv276EtiquetaPeriodo(clave), corte:""};
+        if(fecha){
+            const visible = `${String(fecha.getDate()).padStart(2,"0")}/${String(fecha.getMonth()+1).padStart(2,"0")}/${fecha.getFullYear()}`;
+            if(!mapa[clave].corte || mv276ClaveOrdenFecha(visible) > mv276ClaveOrdenFecha(mapa[clave].corte)) mapa[clave].corte = visible;
+        }
+    });
+    return Object.values(mapa).sort((a,b)=>b.clave.localeCompare(a.clave));
+}
+
+function mv276ClaveOrdenFecha(valor){
+    const fecha = mv276ParseFecha(valor);
+    if(!fecha) return "";
+    return `${fecha.getFullYear()}${String(fecha.getMonth()+1).padStart(2,"0")}${String(fecha.getDate()).padStart(2,"0")}`;
+}
+
+function mv276PeriodoPredeterminado(periodos, solicitado){
+    const lista = periodos || [];
+    if(solicitado && lista.some(x=>x.clave===solicitado)) return solicitado;
+    const actual = mv276ClavePeriodo(new Date());
+    if(lista.some(x=>x.clave===actual)) return actual;
+    return lista[0]?.clave || "";
+}
+
+function mv276SelectorPeriodo(periodos, seleccionado, funcion, id){
+    const lista = periodos || [];
+    if(!lista.length) return "";
+    const identificador = id || "mv276Periodo";
+    return `<div class="mv276-periodo-filtro">
+        <label for="${identificador}">📅 Período</label>
+        <select id="${identificador}" onchange="${funcion}(this.value)">
+            ${lista.map(x=>`<option value="${x.clave}" ${x.clave===seleccionado?"selected":""}>${x.etiqueta}${x.corte?` · al ${x.corte}`:""}</option>`).join("")}
+        </select>
+    </div>`;
+}
+
 async function mostrarProduccion() {
 
 const cuadrilla = localStorage.getItem("cuadrilla");
@@ -228,7 +292,7 @@ const urlProduccion =
 const urlCatalogo =
 "https://docs.google.com/spreadsheets/d/e/2PACX-1vRpVkCmSvopgPByWsEX6nkuAT6mf3yD2_Cywpl9pFSZEqYpxmprDePPeV0KNgT14YpEP6gkVlvOAtZy/pub?gid=2013842388&single=true&output=csv";
 
-async function mostrarProduccionV2(){
+async function mostrarProduccionV2(periodoSeleccionado){
 
     document.getElementById("menuPrincipal").style.display = "none";
 
@@ -284,7 +348,7 @@ let totalPuntos = 0;
     // PRODUCCION DEL USUARIO
     //--------------------------------------------------
 
-    const registros = [];
+    const registrosTodos = [];
 
     for(let i=1;i<filasProduccion.length;i++){
 
@@ -307,7 +371,7 @@ if(!login.startsWith(hoja)){
 
 console.log("COINCIDE");
 
-        registros.push({
+        registrosTodos.push({
 
             usuario:d[0],
             cuadrilla:d[1],
@@ -322,6 +386,10 @@ console.log("COINCIDE");
         });
 
     }
+
+    const periodos = mv276PeriodosDesdeValores(registrosTodos.map(x=>x.fecha));
+    const periodo = mv276PeriodoPredeterminado(periodos, periodoSeleccionado);
+    const registros = registrosTodos.filter(x=>mv276ClavePeriodo(x.fecha)===periodo);
 
    console.table(registros);
 
@@ -379,7 +447,9 @@ const dashboard = {
         totalTraslados,
         totalPuntos
     },
-    detalle: registros
+    detalle: registros,
+    periodos,
+    periodo
 };
 
 renderDashboardProduccion(dashboard);
@@ -1750,7 +1820,7 @@ function mv58EstadoMenor(v, meta){
     if(n <= meta * 1.25) return {txt:"🟡 Atento", color:"#facc15"};
     return {txt:"🔴 Crítico", color:"#ef4444"};
 }
-async function mv58EnriquecerRanking(lista){
+async function mv58EnriquecerRanking(lista, periodo){
     try{
         const [prod, cat, ef, rec, vtr] = await Promise.all([
             mv58GetCSV(MV58_URL_PRODUCCION),
@@ -1769,6 +1839,7 @@ async function mv58EnriquecerRanking(lista){
 
         const prodMap = {};
         prod.slice(1).forEach(r => {
+            if(periodo && mv276ClavePeriodo(r[2]) !== periodo) return;
             const cuadrilla = mv58Key(r[1]);
             if(!cuadrilla) return;
             const codigo = (r[3] || "").toString().trim();
@@ -1792,6 +1863,7 @@ async function mv58EnriquecerRanking(lista){
 
         const efMap = {};
         ef.slice(1).forEach(r => {
+            if(periodo && mv276ClavePeriodo(r[3]) !== periodo) return;
             const cuadrilla = mv58Key(r[2]); if(!cuadrilla) return;
             efMap[cuadrilla] = {
                 finalizadas:mv4Num(r[4]), canceladas:mv4Num(r[5]), regestion:mv4Num(r[6]), reprogramadas:mv4Num(r[7]), total:mv4Num(r[8]), efectividad:mv4Pct(r[9])
@@ -1800,17 +1872,19 @@ async function mv58EnriquecerRanking(lista){
 
         const recMap = {};
         rec.slice(1).forEach(r => {
+            if(periodo && mv276ClavePeriodo(r[3]) !== periodo) return;
             const cuadrilla = mv58Key(r[2]); if(!cuadrilla) return;
             recMap[cuadrilla] = { los:mv4Num(r[4]), recableados:mv4Num(r[5]), porcentaje:mv4Pct(r[6]) };
         });
 
         const vtrMap = {};
         vtr.slice(1).forEach(r => {
+            if(periodo && mv276ClavePeriodo(r[3]) !== periodo) return;
             const cuadrilla = mv58Key(r[2]); if(!cuadrilla) return;
             vtrMap[cuadrilla] = { finalizadas:mv4Num(r[4]), gar:mv4Num(r[5]), vtr:mv4Num(r[6]), total:mv4Num(r[7]), porcentaje:mv4Pct(r[8]) };
         });
 
-        const obsMap = await mv58ObtenerObservacionesMap();
+        const obsMap = await mv58ObtenerObservacionesMap(periodo);
 
         lista.forEach(x => {
             const k = mv58Key(x.cuadrilla);
@@ -1825,7 +1899,7 @@ async function mv58EnriquecerRanking(lista){
     }
     return lista;
 }
-async function mv58ObtenerObservacionesMap(){
+async function mv58ObtenerObservacionesMap(periodo){
     const mapa = {};
     try{
         const usuario = localStorage.getItem("usuario") || "";
@@ -1834,6 +1908,7 @@ async function mv58ObtenerObservacionesMap(){
         const lista = data.observaciones || [];
         const pendientes = ["DERIVADO", "EN PROCESO", "PENALIZADO", "APELADO"];
         lista.forEach(o => {
+            if(periodo && mv276ClavePeriodo(o.fechaRegistro) !== periodo) return;
             const k = mv58Key(o.cuadrilla); if(!k) return;
             if(!mapa[k]) mapa[k] = { total:0, pendientes:0, montoTotal:0, montoPendiente:0, estados:{} };
             const estado = mv4Norm(o.estado || "SIN ESTADO");
@@ -1926,11 +2001,14 @@ function mv58DetalleObs(d){
     </div>`;
 }
 
-async function mv4ObtenerRanking(){
+async function mv4ObtenerRanking(periodoSeleccionado){
     const res = await fetch(URL_RANKING_MI_VISUAL + "&t=" + Date.now());
     const texto = await res.text();
-    const lista = mv4CSV(texto).slice(1).map(mv4FilaRanking).filter(x => x.cuadrilla);
-    return await mv58EnriquecerRanking(lista);
+    const listaCompleta = mv4CSV(texto).slice(1).map(mv4FilaRanking).filter(x => x.cuadrilla);
+    MV276_DASH_PERIODOS = mv276PeriodosDesdeValores(listaCompleta.map(x=>x.actualizacion));
+    MV276_DASH_PERIODO = mv276PeriodoPredeterminado(MV276_DASH_PERIODOS, periodoSeleccionado);
+    const lista = listaCompleta.filter(x=>mv276ClavePeriodo(x.actualizacion)===MV276_DASH_PERIODO);
+    return await mv58EnriquecerRanking(lista, MV276_DASH_PERIODO);
 }
 function mv4Estado(tipo, valor, meta){
     const v = Number(valor) || 0;
@@ -2073,6 +2151,7 @@ function renderDashboardProduccion(data){
             <h2 class="mv4-title">📊 MI PRODUCCIÓN</h2>
             ${mostrarBotonBonos ? `<button type="button" class="mb242-btn-produccion mv243-btn-bonos" onclick="mostrarBonos()">🎁 BONOS</button>` : ""}
         </div>
+        ${mv276SelectorPeriodo(data.periodos, data.periodo, "mostrarProduccionV2", "mv276ProduccionPeriodo")}
         <div class="mv4-hero-card mv59-prod-hero">
             <div class="mv4-hero-label">MI PUNTAJE DEL PERÍODO</div>
             <div class="mv4-hero-value">${totalPuntos.toFixed(1)}</div>
@@ -2131,6 +2210,8 @@ function renderDashboardProduccion(data){
 
 let MV198_DASH_SUPERVISOR_LISTA = [];
 let MV198_DASH_JEFATURA_LISTA = [];
+let MV276_DASH_PERIODOS = [];
+let MV276_DASH_PERIODO = "";
 
 function mv198Escapar(valor){
     return (valor ?? "").toString()
@@ -2209,6 +2290,7 @@ let MV239_DASH_SUPERVISOR_FILTROS = {
 
 function mv239FiltrosSupervisor(lista, filtros){
     return `<div class="mv199-filtros-jefatura mv239-filtros-supervisor">
+        ${mv276SelectorPeriodo(MV276_DASH_PERIODOS, MV276_DASH_PERIODO, "mv276CambiarPeriodoSupervisor", "mv276PeriodoSupervisor")}
         <div class="mv199-campo-filtro">
             <label for="mv239FiltroIndicadorSupervisor">📊 Indicador</label>
             <select id="mv239FiltroIndicadorSupervisor" onchange="mv239CambiarFiltroSupervisor('indicador',this.value)">
@@ -2283,11 +2365,15 @@ function mv198CambiarCuadrillaSupervisor(valor){
     mv239CambiarFiltroSupervisor("cuadrilla", valor);
 }
 
-async function mostrarDashboardSupervisor(){
+async function mv276CambiarPeriodoSupervisor(valor){
+    await mostrarDashboardSupervisor(valor);
+}
+
+async function mostrarDashboardSupervisor(periodoSeleccionado){
     const sede = mv4Norm(localStorage.getItem("sede"));
     mostrarPantalla(`<div class="mv4-page"><h2 class="mv4-title">👷 SUPERVISOR</h2><div class="mv4-loading">Cargando dashboard...</div></div>`);
     try{
-        MV198_DASH_SUPERVISOR_LISTA = (await mv4ObtenerRanking()).filter(x => mv4Norm(x.sede) === sede);
+        MV198_DASH_SUPERVISOR_LISTA = (await mv4ObtenerRanking(periodoSeleccionado)).filter(x => mv4Norm(x.sede) === sede);
         MV239_DASH_SUPERVISOR_FILTROS = {indicador:"RESUMEN", cuadrilla:"TODAS"};
         mv198RenderSupervisor();
     }catch(e){ mostrarPantalla(`<div class="mv4-page"><h2>👷 Supervisor</h2><div class="mv4-error">${e.message}</div></div>`); }
@@ -2393,6 +2479,7 @@ function mv199FiltrosJefatura(lista, filtros){
         ? lista
         : lista.filter(x => mv4Norm(x.sede) === filtros.sede);
     return `<div class="mv199-filtros-jefatura">
+        ${mv276SelectorPeriodo(MV276_DASH_PERIODOS, MV276_DASH_PERIODO, "mv276CambiarPeriodoJefatura", "mv276PeriodoJefatura")}
         <div class="mv199-campo-filtro">
             <label for="mv199FiltroSede">🏢 Sede</label>
             <select id="mv199FiltroSede" onchange="mv199CambiarFiltroJefatura('sede',this.value)">${mv199OpcionesSede(filtros.sede)}</select>
@@ -2537,11 +2624,15 @@ function mv198RenderJefatura(seleccionada){
 }
 function mv198CambiarCuadrillaJefatura(valor){ mv199CambiarFiltroJefatura("cuadrilla",valor); }
 
-async function mostrarDashboardJefatura(){
+async function mv276CambiarPeriodoJefatura(valor){
+    await mostrarDashboardJefatura(valor);
+}
+
+async function mostrarDashboardJefatura(periodoSeleccionado){
     const rotuloVista = mv240RotuloVistaEjecutiva();
     mostrarPantalla(`<div class="mv4-page"><h2 class="mv4-title">${rotuloVista.icono} ${rotuloVista.titulo}</h2><div class="mv4-loading">Cargando Zona Norte...</div></div>`);
     try{
-        const listaCompleta = await mv4ObtenerRanking();
+        const listaCompleta = await mv4ObtenerRanking(periodoSeleccionado);
         MV198_DASH_JEFATURA_LISTA = mv591ListaZonaNorte(listaCompleta);
         MV199_DASH_JEFATURA_FILTROS = {sede:"TODAS", indicador:"RESUMEN", cuadrilla:"TODAS"};
         mv199RenderJefatura();

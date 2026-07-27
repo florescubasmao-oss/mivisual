@@ -1,0 +1,36 @@
+MI VISUAL V276 - HISTÓRICO MENSUAL
+
+Cambios incluidos
+- La Base Operativa actualiza únicamente el mes detectado y conserva los meses anteriores.
+- Las cargas separadas de Efectividad, Recableados y VTR/GAR también conservan los otros meses.
+- Una orden existente se actualiza por sus códigos de identificación sin duplicarse.
+- Producción, Efectividad, Recableados, VTR/GAR y Ranking quedan separados por mes.
+- Se agregó selector de mes para Técnico, Supervisor, Jefatura y Gerencia.
+- Bonos conserva la producción histórica necesaria para liquidar el mes anterior.
+- Se creó la hoja oculta BASE_OPERATIVA_HISTORICA para almacenar el detalle acumulado.
+
+Publicación
+1. APPS SCRIPT:
+   - Reemplazar el contenido actual por Code.gs.
+   - Guardar y realizar una nueva implementación.
+
+2. GITHUB:
+   - Reemplazar únicamente:
+     Code.gs
+     apps_script/Code.gs
+     css/estilos.css
+     index.html
+     js/base_operativa.js
+     js/dashboards.js
+     js/indicadores.js
+     js/ranking.js
+   - Code.gs y apps_script/Code.gs son copias sincronizadas del código de Apps Script.
+
+3. Realizar commit y push sin reemplazar ni modificar la carpeta .git.
+
+4. Al cargar agosto, julio permanecerá disponible en los selectores y para Bonos.
+
+IMPORTANTE
+Code.gs y apps_script/Code.gs deben permanecer idénticos.
+Este paquete contiene únicamente los archivos modificados en V276.
+No contiene la carpeta .git ni archivos sin cambios.

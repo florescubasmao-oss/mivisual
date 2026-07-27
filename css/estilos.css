@@ -911,10 +911,14 @@ body{background:linear-gradient(180deg,var(--mv4-bg),var(--mv4-bg2));font-family
 
 
 /* MI VISUAL V199 - Filtros combinados de Jefatura por sede, indicador y cuadrilla */
-.mv199-filtros-jefatura{margin:12px 0;padding:12px;background:#132845;border:1px solid rgba(255,255,255,.09);border-radius:14px;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;color:#fff}
+.mv199-filtros-jefatura{margin:12px 0;padding:12px;background:#132845;border:1px solid rgba(255,255,255,.09);border-radius:14px;display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;color:#fff}
 .mv199-campo-filtro{display:flex;flex-direction:column;gap:6px;min-width:0}
 .mv199-campo-filtro label{font-size:12px;color:#dbeafe;font-weight:900}
 .mv199-campo-filtro select{width:100%;min-height:42px;border-radius:10px;border:1px solid #3b82f6;background:#fff;color:#0f172a;padding:8px 10px;font-weight:800;overflow:hidden;text-overflow:ellipsis}
+.mv276-periodo-filtro{display:flex;flex-direction:column;gap:6px;min-width:0;margin:8px 0 12px;padding:10px 12px;background:#132845;border:1px solid rgba(255,255,255,.12);border-radius:12px;color:#fff}
+.mv276-periodo-filtro label{font-size:12px;color:#dbeafe;font-weight:900}
+.mv276-periodo-filtro select{width:100%;min-height:42px;border-radius:10px;border:1px solid #3b82f6;background:#fff;color:#0f172a;padding:8px 10px;font-weight:800}
+.mv199-filtros-jefatura>.mv276-periodo-filtro{margin:0}
 .mv199-listado-indicador,.mv199-resumen-sede-seleccionada{margin-top:14px;padding:14px;background:#eef5ff;color:#0f172a;border-radius:15px;border:1px solid #cbd5e1}
 .mv199-listado-cabecera{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:12px}
 .mv199-listado-cabecera b{display:block;font-size:17px}
@@ -1353,7 +1357,7 @@ body{background:linear-gradient(180deg,var(--mv4-bg),var(--mv4-bg2));font-family
 .mv239-filtro-sede-ranking{margin:12px 0 18px;padding:12px;background:#132845;border:1px solid rgba(255,255,255,.10);border-radius:14px;display:grid;grid-template-columns:minmax(150px,auto) minmax(220px,1fr);align-items:center;gap:12px;color:#fff}
 .mv239-filtro-sede-ranking label{font-size:13px;color:#dbeafe;font-weight:900}
 .mv239-filtro-sede-ranking select{width:100%;min-height:42px;border-radius:10px;border:1px solid #3b82f6;background:#fff;color:#0f172a;padding:8px 10px;font-weight:800}
-.mv199-filtros-jefatura.mv239-filtros-supervisor{grid-template-columns:repeat(2,minmax(0,1fr))}
+.mv199-filtros-jefatura.mv239-filtros-supervisor{grid-template-columns:repeat(3,minmax(0,1fr))}
 @media(max-width:700px){
   .mv239-filtro-sede-ranking{grid-template-columns:1fr;gap:7px}
   .mv199-filtros-jefatura.mv239-filtros-supervisor{grid-template-columns:1fr}
