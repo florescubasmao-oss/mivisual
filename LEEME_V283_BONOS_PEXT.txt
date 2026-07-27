@@ -1,0 +1,56 @@
+MI VISUAL V283 - BONOS VINCULADOS CON CONJUNTA PEXT
+
+CAMBIO APLICADO
+- Bonos suma primero los puntos de la producción normal y después los puntos de CONJUNTA PEXT.
+- Solo ingresan registros CONJUNTA PEXT con estado CONFORMIDAD FINAL y resultado CONFORME.
+- Los registros pendientes, observados, rechazados o sin conformidad no generan puntaje en Bonos.
+- Cada registro PEXT se considera una sola vez mediante su ID.
+
+PUNTAJE PEXT
+- Cada recableado: 2 puntos.
+- 1 a 2 conectorizados: 1 punto.
+- 3 a 6 conectorizados: 2 puntos.
+- 7 a 12 conectorizados: 3 puntos.
+- 13 a 16 conectorizados: 4 puntos.
+
+CÁLCULO DEL BONO
+- La base diaria continúa siendo 4 puntos.
+- Debe superar 4 puntos para comisionar.
+- La producción normal conserva su tarifa general o especial.
+- Los puntos PEXT comisionables valen siempre S/ 30.00 por punto para la cuadrilla.
+- Esta tarifa PEXT de S/ 30.00 se aplica también a cuadrillas con bono especial.
+- El monto por técnico continúa siendo la mitad del bono de la cuadrilla.
+
+EJEMPLOS VALIDADOS
+1. Solo PEXT: 2 recableados = 4 puntos. No comisiona.
+2. Solo PEXT: 2 recableados + 2 conectorizados = 5 puntos.
+   Comisiona 1 punto PEXT: S/ 30.00 por cuadrilla.
+3. Producción normal: 2 traslados residenciales = 4 puntos.
+   PEXT: 1 recableado = 2 puntos.
+   Total: 6 puntos. Comisionan 2 puntos PEXT: S/ 60.00 por cuadrilla.
+
+VISUALIZACIÓN
+- El total diario muestra Producción normal + Conjunta PEXT.
+- Debajo aparece “Bono Conjunta PEXT” con:
+  CTO, recableados, conectorizados, puntos PEXT y monto PEXT comisionable.
+- Aplica en las vistas de Técnico, Supervisor, Jefatura y Gerencia.
+
+ARCHIVOS MODIFICADOS
+- Code.gs
+- apps_script/Code.gs
+- js/bonos.js
+- index.html
+
+ORDEN DE ACTUALIZACIÓN
+1. En Apps Script, reemplazar Code.gs.
+2. Guardar y crear una nueva implementación de la aplicación web.
+3. En GitHub, reemplazar los archivos respetando sus carpetas:
+   - Code.gs
+   - apps_script/Code.gs
+   - js/bonos.js
+   - index.html
+4. Realizar commit y push.
+
+IMPORTANTE
+- El ZIP no contiene la carpeta .git.
+- No se modificaron otros módulos ni estilos.

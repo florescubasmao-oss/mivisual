@@ -5835,6 +5835,72 @@ function listarTrabajosConjunta(data){
   lista.reverse();
   return {ok:true,modulo:"TRABAJOS_CONJUNTA",accion:"LISTAR",perfil:u.perfil,registros:lista.length,trabajos:lista};
 }
+function puntajeConectorizadosBonoPext(cantidad){
+  const n=Math.max(0,Math.floor(Number(cantidad)||0));
+  if(n===0)return 0;
+  if(n<=2)return 1;
+  if(n<=6)return 2;
+  if(n<=12)return 3;
+  return 4;
+}
+function calcularPuntajeBonoPext(cantidadConectorizados,cantidadRecableados){
+  const conectorizados=Math.max(0,Math.floor(Number(cantidadConectorizados)||0));
+  const recableados=Math.max(0,Math.floor(Number(cantidadRecableados)||0));
+  const puntosConectorizados=puntajeConectorizadosBonoPext(conectorizados);
+  const puntosRecableados=recableados*2;
+  return {
+    conectorizados,
+    recableados,
+    puntosConectorizados,
+    puntosRecableados,
+    puntosPext:puntosConectorizados+puntosRecableados
+  };
+}
+function listarBonosPextConjunta(data){
+  const u=obtenerUsuarioApp(data.usuario);
+  // Bonos es una vista derivada de Producción; usa el mismo permiso y alcance.
+  const permiso=exigirPermisoModuloCentral(u,"PRODUCCION","VER");
+  const h=asegurarHojaTrabajosConjunta(),ultima=h.getLastRow();
+  if(ultima<=1)return {ok:true,modulo:"BONOS",accion:"LISTAR_PEXT",registros:0,trabajos:[]};
+  const filas=h.getRange(2,1,ultima-1,36).getValues(),trabajos=[],mapaSede={},vistos={};
+  for(let i=0;i<filas.length;i++){
+    const x=filaTrabajoConjuntaAObjeto(filas[i]);
+    const id=(x.id||"").toString().trim();
+    if(!id||vistos[id])continue;
+    vistos[id]=true;
+    if(normalizarTexto(x.tipoTrabajo)!=="CONJUNTA PEXT")continue;
+    if(normalizarTexto(x.estadoGeneral)!=="CONFORMIDAD FINAL"||normalizarTexto(x.conformidadFinal)!=="CONFORME")continue;
+    const cuadrilla=normalizarCuadrilla(x.cuadrilla);
+    if(!cuadrilla)continue;
+    if(!mapaSede[cuadrilla]){
+      try{mapaSede[cuadrilla]=normalizarTexto(obtenerDatosCuadrillaApp(x.cuadrilla).sede);}catch(e){mapaSede[cuadrilla]="";}
+    }
+    const sede=mapaSede[cuadrilla]||"";
+    const alcance=normalizarTexto(permiso.alcanceDatos);
+    let ver=false;
+    if(alcance==="ZONA NORTE")ver=true;
+    else if(alcance==="SEDE")ver=normalizarTexto(u.sede)===sede;
+    else if(alcance==="CUADRILLA")ver=normalizarCuadrilla(u.cuadrilla)===cuadrilla;
+    else if(alcance==="PERSONAL")ver=normalizarCuadrilla(u.cuadrilla)===cuadrilla;
+    else if(alcance==="SEDE / PROPIOS")ver=normalizarTexto(u.sede)===sede||normalizarCuadrilla(u.cuadrilla)===cuadrilla;
+    if(!ver)continue;
+    const calculo=calcularPuntajeBonoPext(x.cantidadConectorizados,x.cantidadRecableados);
+    if(calculo.puntosPext<=0)continue;
+    trabajos.push({
+      id,
+      cuadrilla:x.cuadrilla,
+      sede,
+      fechaTrabajo:x.fechaTrabajo,
+      cto:x.cto||"",
+      cantidadConectorizados:calculo.conectorizados,
+      puntosConectorizados:calculo.puntosConectorizados,
+      cantidadRecableados:calculo.recableados,
+      puntosRecableados:calculo.puntosRecableados,
+      puntosPext:calculo.puntosPext
+    });
+  }
+  return {ok:true,modulo:"BONOS",accion:"LISTAR_PEXT",registros:trabajos.length,trabajos};
+}
 function responderTrabajoConjuntaTecnico(data){
   exigirPextActivo();
   const u=obtenerUsuarioApp(data.usuario);exigirPermisoModuloCentral(u,"PEXT","OBSERVAR");
@@ -10256,6 +10322,7 @@ function doPost(e) {
     if (data.accion === "listarCuadrillasTrabajosConjunta") return respuestaJson(listarCuadrillasTrabajosConjunta(data));
     if (data.accion === "registrarTrabajoConjunta") return respuestaJson(registrarTrabajoConjunta(data));
     if (data.accion === "listarTrabajosConjunta") return respuestaJson(listarTrabajosConjunta(data));
+    if (data.accion === "listarBonosPextConjunta") return respuestaJson(listarBonosPextConjunta(data));
     if (data.accion === "responderTrabajoConjuntaTecnico") return respuestaJson(responderTrabajoConjuntaTecnico(data));
     if (data.accion === "validarTrabajoConjuntaJefatura") return respuestaJson(validarTrabajoConjuntaJefatura(data));
     if (data.accion === "conformidadFinalTrabajoConjunta") return respuestaJson(conformidadFinalTrabajoConjunta(data));

@@ -1,6 +1,6 @@
 /* =====================================================
-   MI VISUAL V250 - BONOS DE PRODUCCIÓN
-   - Cálculo diario desde PRODUCCION_APP + CATALOGO_ORDENES
+   MI VISUAL V283 - BONOS DE PRODUCCIÓN + CONJUNTA PEXT
+   - Cálculo diario desde PRODUCCION_APP + CATALOGO_ORDENES + PEXT
    - Semana de lunes a domingo
    - Fecha referencial: lunes de la semana subsiguiente
    - No registra ni valida pagos
@@ -9,12 +9,14 @@
 const MB242_URL_PRODUCCION = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRpVkCmSvopgPByWsEX6nkuAT6mf3yD2_Cywpl9pFSZEqYpxmprDePPeV0KNgT14YpEP6gkVlvOAtZy/pub?gid=1814992325&single=true&output=csv";
 const MB242_URL_CATALOGO = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRpVkCmSvopgPByWsEX6nkuAT6mf3yD2_Cywpl9pFSZEqYpxmprDePPeV0KNgT14YpEP6gkVlvOAtZy/pub?gid=2013842388&single=true&output=csv";
 const MB242_URL_RANKING = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRpVkCmSvopgPByWsEX6nkuAT6mf3yD2_Cywpl9pFSZEqYpxmprDePPeV0KNgT14YpEP6gkVlvOAtZy/pub?gid=1269910675&single=true&output=csv";
+const MB283_API_BONOS_PEXT = (window.MI_VISUAL_API_URL || "https://script.google.com/macros/s/AKfycbzcbjCLweJNgZXDerdzmMN7Lwotc1G8NWdzoPkaLNGDivAgpYxDkq78xZwPRioSB4XY/exec");
 
 const MB242_SEDES = ["CHICLAYO", "PIURA", "TRUJILLO"];
 const MB242_MINIMO_BONO = 4.5;
 const MB242_BASE_SIN_BONO = 4;
 const MB242_VALOR_PUNTO_CUADRILLA = 30;
 const MB242_VALOR_PUNTO_CUADRILLA_ESPECIAL = 45;
+const MB283_VALOR_PUNTO_PEXT = 30;
 
 /*
   Cuadrillas PDG: no participan en el módulo Bonos.
@@ -181,19 +183,38 @@ function mb250EtiquetaBonoEspecial(cuadrilla, claseExtra){
   return `<span class="mb250-bono-especial-etiqueta ${claseExtra || ""}" title="Tarifa especial de bono">⭐ BONO ESPECIAL</span>`;
 }
 
-function mb242CalcularBonoDiario(puntos, cuadrillaNombre){
-  const p = Number(puntos || 0);
+function mb242CalcularBonoDiario(puntos, cuadrillaNombre, puntosPext){
+  const p = Math.max(0, Number(puntos || 0));
+  const pext = Math.max(0, Math.min(p, Number(puntosPext || 0)));
+  const produccion = Math.max(0, p - pext);
   const tarifa = mb242ValorPuntoCuadrilla(cuadrillaNombre);
   if(p + 0.000001 < MB242_MINIMO_BONO){
-    return { puntos:p, genera:false, cuadrilla:0, tecnico:0, tarifa };
+    return {
+      puntos:p, puntosProduccion:produccion, puntosPext:pext,
+      puntosProduccionComisionables:0, puntosPextComisionables:0,
+      genera:false, cuadrilla:0, tecnico:0, tarifa,
+      bonoProduccion:0, bonoPext:0
+    };
   }
-  const cuadrilla = mb242Redondear((p - MB242_BASE_SIN_BONO) * tarifa);
+  // La producción normal se toma primero como base. PEXT se suma después.
+  const puntosProduccionComisionables = Math.max(0, produccion - MB242_BASE_SIN_BONO);
+  const basePendiente = Math.max(0, MB242_BASE_SIN_BONO - produccion);
+  const puntosPextComisionables = Math.max(0, pext - basePendiente);
+  const bonoProduccion = mb242Redondear(puntosProduccionComisionables * tarifa);
+  const bonoPext = mb242Redondear(puntosPextComisionables * MB283_VALOR_PUNTO_PEXT);
+  const cuadrilla = mb242Redondear(bonoProduccion + bonoPext);
   return {
     puntos:p,
-    genera:true,
+    puntosProduccion:produccion,
+    puntosPext:pext,
+    puntosProduccionComisionables,
+    puntosPextComisionables,
+    genera:cuadrilla>0,
     cuadrilla,
     tecnico:mb242Redondear(cuadrilla / 2),
-    tarifa
+    tarifa,
+    bonoProduccion,
+    bonoPext
   };
 }
 
@@ -227,32 +248,66 @@ function mb242AsegurarCuadrilla(periodo, cuadrilla, meta){
       bonoCuadrilla:0,
       bonoTecnico:0,
       diasConBono:0,
-      trabajos:0
+      trabajos:0,
+      puntosPext:0,
+      bonoPext:0
     };
   }
   return periodo.cuadrillas[cuadrilla];
 }
 
+function mb283AsegurarDia(item, fecha){
+  const claveDia = mb242ClaveFecha(fecha);
+  if(!item.dias[claveDia]){
+    item.dias[claveDia] = {
+      fecha,
+      puntos:0,
+      puntosProduccion:0,
+      puntosPext:0,
+      trabajos:0,
+      trabajosPext:0,
+      partidas:{},
+      pext:[],
+      bonoCuadrilla:0,
+      bonoTecnico:0,
+      bonoProduccion:0,
+      bonoPext:0,
+      puntosPextComisionables:0,
+      genera:false
+    };
+  }
+  return item.dias[claveDia];
+}
+
 function mb242CerrarResumenCuadrilla(item){
   item.puntos = 0;
+  item.puntosPext = 0;
   item.bonoCuadrilla = 0;
   item.bonoTecnico = 0;
+  item.bonoPext = 0;
   item.diasConBono = 0;
   item.trabajos = 0;
   Object.values(item.dias).forEach(dia => {
-    const bono = mb242CalcularBonoDiario(dia.puntos, item.cuadrilla);
+    const bono = mb242CalcularBonoDiario(dia.puntos, item.cuadrilla, dia.puntosPext);
     dia.bonoCuadrilla = bono.cuadrilla;
     dia.bonoTecnico = bono.tecnico;
+    dia.bonoProduccion = bono.bonoProduccion;
+    dia.bonoPext = bono.bonoPext;
+    dia.puntosPextComisionables = bono.puntosPextComisionables;
     dia.genera = bono.genera;
     item.puntos += dia.puntos;
-    item.trabajos += dia.trabajos;
+    item.puntosPext += Number(dia.puntosPext||0);
+    item.trabajos += Number(dia.trabajos||0) + Number(dia.trabajosPext||0);
     item.bonoCuadrilla += bono.cuadrilla;
     item.bonoTecnico += bono.tecnico;
+    item.bonoPext += bono.bonoPext;
     if(bono.genera) item.diasConBono++;
   });
   item.puntos = mb242Redondear(item.puntos);
+  item.puntosPext = mb242Redondear(item.puntosPext);
   item.bonoCuadrilla = mb242Redondear(item.bonoCuadrilla);
   item.bonoTecnico = mb242Redondear(item.bonoTecnico);
+  item.bonoPext = mb242Redondear(item.bonoPext);
   return item;
 }
 
@@ -262,12 +317,65 @@ async function mb242FetchCSV(url){
   return mb242CSV(await respuesta.text());
 }
 
+async function mb283FetchPextBonos(){
+  const usuario = (localStorage.getItem("usuario") || "").trim();
+  if(!usuario) throw new Error("No se encontró el usuario para consultar PEXT");
+  const respuesta = await fetch(MB283_API_BONOS_PEXT, {
+    method:"POST",
+    body:JSON.stringify({accion:"listarBonosPextConjunta", usuario})
+  });
+  const texto = await respuesta.text();
+  let data;
+  try{ data = JSON.parse(texto); }
+  catch(_){ throw new Error("La respuesta de PEXT no es válida"); }
+  if(!respuesta.ok || !data.ok) throw new Error(data.error || "No se pudo consultar PEXT para Bonos");
+  return Array.isArray(data.trabajos) ? data.trabajos : [];
+}
+
+function mb283IntegrarPext(periodos, metaCuadrillas, trabajosPext){
+  const vistos = new Set();
+  (trabajosPext || []).forEach(registro => {
+    const id = (registro.id || "").toString().trim();
+    const cuadrilla = mb242Cuadrilla(registro.cuadrilla);
+    const fecha = mb242ParseFecha(registro.fechaTrabajo);
+    const puntosPext = Math.max(0, mb242Numero(registro.puntosPext));
+    if(!id || vistos.has(id) || !cuadrilla || !fecha || puntosPext<=0) return;
+    vistos.add(id);
+    if(mb242EsCuadrillaPDG(cuadrilla)) return;
+
+    if(!metaCuadrillas[cuadrilla]){
+      metaCuadrillas[cuadrilla] = {
+        sede:mb242Normalizar(registro.sede) || "SIN SEDE",
+        plataforma:""
+      };
+    }
+    const inicio = mb242InicioSemana(fecha);
+    const clavePeriodo = mb242ClaveFecha(inicio);
+    if(!periodos[clavePeriodo]) periodos[clavePeriodo] = mb242CrearPeriodo(inicio);
+    const item = mb242AsegurarCuadrilla(periodos[clavePeriodo], cuadrilla, metaCuadrillas[cuadrilla]);
+    const dia = mb283AsegurarDia(item, fecha);
+    dia.puntosPext += puntosPext;
+    dia.puntos += puntosPext;
+    dia.trabajosPext += 1;
+    dia.pext.push({
+      id,
+      cto:(registro.cto || "").toString().trim(),
+      conectorizados:Math.max(0, mb242Numero(registro.cantidadConectorizados)),
+      puntosConectorizados:Math.max(0, mb242Numero(registro.puntosConectorizados)),
+      recableados:Math.max(0, mb242Numero(registro.cantidadRecableados)),
+      puntosRecableados:Math.max(0, mb242Numero(registro.puntosRecableados)),
+      puntosPext
+    });
+  });
+}
+
 async function mb242CargarDatos(forzar){
   if(MB242_DATOS && !forzar) return MB242_DATOS;
-  const [produccion, catalogoFilas, rankingFilas] = await Promise.all([
+  const [produccion, catalogoFilas, rankingFilas, trabajosPext] = await Promise.all([
     mb242FetchCSV(MB242_URL_PRODUCCION),
     mb242FetchCSV(MB242_URL_CATALOGO),
-    mb242FetchCSV(MB242_URL_RANKING)
+    mb242FetchCSV(MB242_URL_RANKING),
+    mb283FetchPextBonos()
   ]);
 
   const catalogo = {};
@@ -314,11 +422,8 @@ async function mb242CargarDatos(forzar){
     if(!periodos[clavePeriodo]) periodos[clavePeriodo] = mb242CrearPeriodo(inicio);
     const meta = metaCuadrillas[cuadrilla] || {sede:"SIN SEDE", plataforma:""};
     const item = mb242AsegurarCuadrilla(periodos[clavePeriodo], cuadrilla, meta);
-    const claveDia = mb242ClaveFecha(fecha);
-    if(!item.dias[claveDia]){
-      item.dias[claveDia] = {fecha, puntos:0, trabajos:0, partidas:{}, bonoCuadrilla:0, bonoTecnico:0, genera:false};
-    }
-    const dia = item.dias[claveDia];
+    const dia = mb283AsegurarDia(item, fecha);
+    dia.puntosProduccion += puntos;
     dia.puntos += puntos;
     dia.trabajos += cantidad;
     const nombrePartida = partida?.tipo || codigo;
@@ -326,6 +431,8 @@ async function mb242CargarDatos(forzar){
     dia.partidas[nombrePartida].cantidad += cantidad;
     dia.partidas[nombrePartida].puntos += puntos;
   });
+
+  mb283IntegrarPext(periodos, metaCuadrillas, trabajosPext);
 
   const hoy = new Date();
   const actual = mb242InicioSemana(hoy);
@@ -367,7 +474,8 @@ function mb242ObtenerCuadrilla(periodo, cuadrilla, meta){
     cuadrilla:clave || "SIN CUADRILLA",
     sede:meta?.sede || "SIN SEDE",
     plataforma:meta?.plataforma || "",
-    dias:{}, puntos:0, bonoCuadrilla:0, bonoTecnico:0, diasConBono:0, trabajos:0
+    dias:{}, puntos:0, puntosPext:0, bonoCuadrilla:0, bonoTecnico:0,
+    bonoPext:0, diasConBono:0, trabajos:0
   };
 }
 
@@ -392,6 +500,18 @@ function mb242Kpi(icono, titulo, valor, detalle){
   return `<div class="mb242-kpi"><div class="mb242-kpi-titulo"><span>${icono}</span>${titulo}</div><div class="mb242-kpi-valor">${valor}</div><div class="mb242-kpi-detalle">${detalle || ""}</div></div>`;
 }
 
+function mb283DetallePextDia(dia){
+  const registros = Array.isArray(dia.pext) ? dia.pext : [];
+  if(!registros.length) return "";
+  const detalle = registros.map(x => {
+    const cto = x.cto ? `CTO ${mb242Escapar(x.cto)} · ` : "";
+    return `<li>${cto}${Number(x.recableados||0).toFixed(0)} recableado(s) = ${Number(x.puntosRecableados||0).toFixed(1)} pts · ${Number(x.conectorizados||0).toFixed(0)} conectorizado(s) = ${Number(x.puntosConectorizados||0).toFixed(1)} pts · Total ${Number(x.puntosPext||0).toFixed(1)} pts</li>`;
+  }).join("");
+  return `<div><b>Bono Conjunta PEXT:</b> ${Number(dia.puntosPext||0).toFixed(1)} pts</div>
+    <div><b>Puntos PEXT comisionables:</b> ${Number(dia.puntosPextComisionables||0).toFixed(1)} × S/ 30.00 = ${mb242Moneda(dia.bonoPext)}</div>
+    <ul>${detalle}</ul>`;
+}
+
 function mb242DetalleDiario(item){
   const dias = Object.values(item?.dias || {}).sort((a,b) => a.fecha - b.fecha);
   if(!dias.length) return `<div class="mb242-vacio">No hay producción registrada para esta cuadrilla durante la semana.</div>`;
@@ -403,7 +523,8 @@ function mb242DetalleDiario(item){
       <div class="mb242-dia-contenido">
         <div><b>Bono cuadrilla:</b> ${mb242Moneda(dia.bonoCuadrilla)}</div>
         <div><b>Por técnico:</b> ${mb242Moneda(dia.bonoTecnico)}</div>
-        <div><b>Trabajos:</b> ${Number(dia.trabajos||0).toFixed(0)}</div>
+        <div><b>Producción normal:</b> ${Number(dia.puntosProduccion||0).toFixed(1)} pts · ${Number(dia.trabajos||0).toFixed(0)} trabajo(s)</div>
+        ${mb283DetallePextDia(dia)}
         ${partidas ? `<ul>${partidas}</ul>` : ""}
       </div>
     </details>`;
@@ -437,7 +558,7 @@ function mb242RenderTecnico(datos){
       <label class="mb242-filtro-unico">Periodo semanal<select onchange="mb242CambiarPeriodoTecnico(this.value)">${mb242OpcionesPeriodo(datos, periodoConsulta?.clave || "", true)}</select></label>
       <div id="mb242HistorialTecnico">${periodoConsulta ? mb242ResumenConsultaTecnico(periodoConsulta, itemConsulta) : ""}</div>
     </section>
-    <div class="mb242-nota">La fecha indicada es referencial. MI VISUAL calcula el bono desde Producción, pero no registra ni valida pagos.</div>
+    <div class="mb242-nota">La fecha indicada es referencial. MI VISUAL calcula el bono desde Producción y Conjunta PEXT con conformidad final, pero no registra ni valida pagos.</div>
   </div>`;
   mostrarPantalla(html);
 }
@@ -559,7 +680,7 @@ function mb242RenderGestion(){
   const titulo = perfil === "SUPERVISOR" ? "Bonos · Supervisor" : (perfil === "GERENCIA LIMA" ? "Bonos · Gerencia Lima" : "Bonos · Jefatura");
 
   const html = `<div class="mb242-pagina">
-    <div class="mb242-cabecera"><div><h2>🎁 ${titulo}</h2><p>Cálculo diario y consulta semanal desde Producción.</p></div><button class="button_1" onclick="volverInicio()">⬅ Volver</button></div>
+    <div class="mb242-cabecera"><div><h2>🎁 ${titulo}</h2><p>Cálculo diario y consulta semanal desde Producción y Conjunta PEXT.</p></div><button class="button_1" onclick="volverInicio()">⬅ Volver</button></div>
     <div class="mb242-filtros ${perfil === "SUPERVISOR" ? "supervisor" : ""}">
       <label>📅 Periodo semanal<select onchange="mb242CambiarFiltroGestion('periodo',this.value)">${mb242OpcionesPeriodo(datos, MB242_FILTROS.periodo)}</select></label>
       <label>🏢 Sede<select ${perfil === "SUPERVISOR" ? "disabled" : ""} onchange="mb242CambiarFiltroGestion('sede',this.value)">${mb242OpcionesSede(perfil)}</select></label>
@@ -567,7 +688,7 @@ function mb242RenderGestion(){
     </div>
     <div class="mb242-periodo-info"><b>${periodo ? `${mb242FormatoFecha(periodo.inicio)} al ${mb242FormatoFecha(periodo.fin)}` : "Sin periodo"}</b><span>${periodo?.estado || ""}</span><em>Fecha referencial: ${mb242FormatoFecha(periodo?.fechaReferencial)}</em></div>
     <div id="mb242GestionContenido">${mb242ResumenGestion(lista, periodo)}${mb242AgrupadoSedes(lista, perfil)}</div>
-    <div class="mb242-nota">La fecha indicada es referencial. MI VISUAL calcula el bono desde Producción, pero no registra ni valida pagos.</div>
+    <div class="mb242-nota">La fecha indicada es referencial. MI VISUAL calcula el bono desde Producción y Conjunta PEXT con conformidad final, pero no registra ni valida pagos.</div>
   </div>`;
   mostrarPantalla(html);
 }
@@ -583,7 +704,7 @@ async function mostrarBonos(){
   try{
     const menu = document.getElementById("menuPrincipal");
     if(menu) menu.style.display = "none";
-    mostrarPantalla(`<div class="mb242-pagina"><div class="mb242-cargando">⏳ Calculando bonos desde Producción...</div></div>`);
+    mostrarPantalla(`<div class="mb242-pagina"><div class="mb242-cargando">⏳ Calculando bonos desde Producción y PEXT...</div></div>`);
     const datos = await mb242CargarDatos(true);
     const perfil = mb242Normalizar(localStorage.getItem("perfil"));
     const actual = mb242BuscarPeriodoActual(datos) || datos.listaPeriodos[0];
@@ -607,7 +728,7 @@ async function mostrarBonos(){
     }
     mostrarPantalla(`<div class="mb242-pagina"><div class="mb242-vacio">Tu perfil no tiene acceso a la opción Bonos.</div><button class="button_1" onclick="volverInicio()">Volver</button></div>`);
   }catch(error){
-    console.error("BONOS V246", error);
+    console.error("BONOS V283", error);
     mostrarPantalla(`<div class="mb242-pagina"><div class="mb242-error"><b>No se pudo calcular Bonos.</b><span>${mb242Escapar(error.message || error)}</span></div><button class="button_1" onclick="volverInicio()">Volver</button></div>`);
   }
 }
