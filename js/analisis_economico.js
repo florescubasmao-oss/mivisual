@@ -1,5 +1,5 @@
 
-// V273 - Producción valorizada vinculada a descansos y resultados diarios
+// V274 - Lectura al corte y proyección diaria por jornadas programadas
 function aeApiMateriales(payload){
   return fetch(API_ANALISIS_ECONOMICO,{
     method:"POST",
@@ -529,6 +529,44 @@ function aeActualizarVistaDiariaSede(){
   if(cont)cont.innerHTML=aeVistaMontoDiarioSede(window.aeDatosAnalisisActual||{},sede);
 }
 
+function aeTablaProyeccionDiaria(data){
+  const lista=Array.isArray(data?.proyeccionDiariaCierre)?data.proyeccionDiariaCierre:[];
+  const rp=data?.resumenProgramacion||{};
+  if(rp.periodoCerrado)return '<div class="ae-vacio">El periodo está cerrado. La producción mostrada corresponde al resultado final.</div>';
+  if(!lista.length)return '<div class="ae-vacio">No existen días ni jornadas programadas pendientes para este periodo.</div>';
+  const filas=lista.map(x=>{
+    const meta=Number(x.metaDiaria)||0,estimado=Number(x.estimadoDia)||0;
+    return `<tr><td>${aeEscape(x.fecha||x.fechaClave||"-")}</td><td><b>${aeNumero(x.cuadrillasProgramadas)}</b></td><td>${aeNumero(x.cuadrillasConDescanso)}</td><td>${aeMoneda(meta)}</td><td><b>${aeMoneda(estimado)}</b></td><td><b>${aeMoneda(x.acumuladoProyectado)}</b></td></tr>`;
+  }).join("");
+  return `<div class="ae-proyeccion-tabla-wrap"><table class="ae-proyeccion-tabla"><thead><tr><th>Fecha</th><th>Cuadrillas programadas</th><th>Con descanso</th><th>Meta del día</th><th>Estimado del día</th><th>Acumulado proyectado</th></tr></thead><tbody>${filas}</tbody></table></div>`;
+}
+
+function aeLecturaAlCorte(data){
+  const r=data?.resumen||{},rp=data?.resumenProgramacion||{};
+  const dias=Number(rp.diasCalendarioPendientes)||0;
+  const jornadas=Number(rp.jornadasPendientes)||0;
+  const rendimiento=Number(rp.rendimientoJornadaProgramada)||0;
+  const estimadoPendiente=Number(rp.produccionEstimadaPendiente)||0;
+  const necesario=Number(rp.promedioNecesarioJornada)||0;
+  const diferencia=Number(rp.diferenciaProyectadaMeta)||0;
+  const cerrado=!!rp.periodoCerrado;
+  const favorable=cerrado?(Number(r.montoTotal)||0)>=(Number(r.metaTotal)||0):(Number(r.proyeccionCierre)||0)>=(Number(r.metaTotal)||0);
+  const estado=cerrado?(favorable?"Meta mensual alcanzada":"Periodo cerrado por debajo de la meta"):(favorable?"Proyección favorable":"Se requiere elevar el promedio por jornada");
+  const clase=favorable?"ae-corte-favorable":"ae-corte-atencion";
+  const textoDias=cerrado?"Periodo cerrado":`${aeNumero(dias)} días calendario`;
+  const textoJornadas=cerrado?"Sin jornadas pendientes":`${aeNumero(jornadas)} jornadas programadas`;
+  return `<div class="ae-corte-bloque">
+    <div class="ae-corte-titulo"><div><span>LECTURA AL CORTE</span><h3>Producción y estimación hasta el cierre</h3></div><small>${rp.fechaCorte?`Datos hasta el ${aeEscape(rp.fechaCorte)}`:"Sin fecha de producción registrada"}</small></div>
+    <div class="ae-corte-grid">
+      <article class="ae-corte-kpi"><span>Producción al corte</span><strong>${aeMoneda(r.montoTotal)}</strong><small>${rp.fechaCorte?`Acumulado hasta el ${aeEscape(rp.fechaCorte)}`:"Sin fecha de corte"}</small></article>
+      <article class="ae-corte-kpi"><span>Días para el cierre</span><strong>${textoDias}</strong><small>${cerrado?"Resultado mensual final":"Días posteriores a la última producción cargada"}</small></article>
+      <article class="ae-corte-kpi"><span>Jornadas pendientes</span><strong>${textoJornadas}</strong><small>Según descansos programados</small></article>
+      <article class="ae-corte-kpi"><span>Producción pendiente estimada</span><strong>${aeMoneda(estimadoPendiente)}</strong><small>Promedio actual ${aeMoneda(rendimiento)} por jornada</small></article>
+    </div>
+    <div class="ae-corte-lectura ${clase}"><div><span>Promedio actual por jornada</span><b>${aeMoneda(rendimiento)}</b></div><div><span>Promedio necesario para la meta</span><b>${aeMoneda(necesario)}</b></div><div><span>${estado}</span><b>${diferencia>=0?"+":"-"}${aeMoneda(Math.abs(diferencia))} frente a la meta</b></div></div>
+  </div>`;
+}
+
 function aeAlertaSinTarifa(data){
   const detalles=Array.isArray(data.codigosSinTarifaDetalles)?data.codigosSinTarifaDetalles:[],codigos=Array.isArray(data.codigosSinTarifa)?data.codigosSinTarifa:[];
   if(!detalles.length&&!codigos.length)return"";
@@ -548,7 +586,10 @@ function renderAnalisisEconomico(data){
   const cumplimientoCorte=Number(rp.cumplimientoCorte||r.cumplimientoCorte)||0;
   const faltanteCorte=Math.max(0,metaCorte-(Number(r.montoTotal)||0));
   const textoCorte=rp.fechaCorte?` al ${rp.fechaCorte}`:"";
-  const textoProyeccion=rp.periodoCerrado?"Periodo cerrado · monto real final":`Basada en ${aeNumero(rp.jornadasPendientes||0)} jornadas programadas pendientes`;
+  const diasPendientes=Number(rp.diasCalendarioPendientes)||0;
+  const jornadasPendientes=Number(rp.jornadasPendientes)||0;
+  const estimadoPendiente=Number(rp.produccionEstimadaPendiente)||0;
+  const textoProyeccion=rp.periodoCerrado?"Periodo cerrado · monto real final":`${aeMoneda(estimadoPendiente)} estimados en ${aeNumero(diasPendientes)} días y ${aeNumero(jornadasPendientes)} jornadas pendientes`;
   window.aeDatosAnalisisActual=data;
-  document.getElementById("aeResultado").innerHTML=`<div class="ae-periodo"><b>${data.periodo}</b><span>Actualizado: ${data.fechaActualizacion}</span></div><div class="ae-kpis">${aeTarjeta("Monto generado",aeMoneda(r.montoTotal),`Meta mensual ${aeMoneda(r.metaTotal)}`,aeClaseCumplimiento(r.cumplimiento))}${aeTarjeta("Cumplimiento mensual",aePorcentaje(r.cumplimiento),faltante>0?`Faltan ${aeMoneda(faltante)}`:"Meta mensual alcanzada",aeClaseCumplimiento(r.cumplimiento))}${aeTarjeta("Meta acumulada al corte",aeMoneda(metaCorte),`${aeNumero(rp.jornadasProgramadasAlCorte||0)} jornadas programadas${textoCorte}`)}${aeTarjeta("Cumplimiento al corte",aePorcentaje(cumplimientoCorte),faltanteCorte>0?`Faltan ${aeMoneda(faltanteCorte)} frente a la programación`:"Meta acumulada alcanzada",aeClaseCumplimiento(cumplimientoCorte))}${aeTarjeta("Proyección de cierre",aeMoneda(r.proyeccionCierre),textoProyeccion,aeClaseCumplimiento((r.proyeccionCierre||0)/(r.metaTotal||1)))}${aeTarjeta("Órdenes ejecutadas",aeNumero(r.ordenesEjecutadas),"Finalizadas registradas en Producción")}${aeTarjeta("Ticket promedio",aeMoneda(r.ticketPromedio),"Monto promedio por orden")}${aeTarjeta("Cuadrillas activas",aeNumero(pm.cuadrillasActivas),`${aeMoneda(pm.metaMensualCuadrilla)} por cuadrilla`)}</div>${aeSeccion("🏢 Monto generado por sede",aeFilas((data.porSede||[]).filter(x=>String(x.sede||"").toUpperCase()!=="TODAS"),"sede"),false)}${aeSeccion("👷 Monto generado por cuadrilla",aeFilas((data.porCuadrilla||[]).filter(x=>/^P\d+\b/i.test(String(x.cuadrilla||""))),"cuadrilla"),false)}${aeSeccion("🧭 Monto generado por plataforma",aeFilas(data.porPlataforma,"plataforma"),false)}${aeSeccion("📦 Monto generado por tipo de partida",aeFilas(data.porTipoPartida,"tipo"),false)}${aeSeccion("📅 Monto diario por sede y promedio",aeModuloMontoDiarioSede(data),false)}${aeAlertaSinTarifa(data)}`;
+  document.getElementById("aeResultado").innerHTML=`<div class="ae-periodo"><b>${data.periodo}</b><span>Actualizado: ${data.fechaActualizacion}</span></div><div class="ae-kpis">${aeTarjeta("Monto generado",aeMoneda(r.montoTotal),`Meta mensual ${aeMoneda(r.metaTotal)}`,aeClaseCumplimiento(r.cumplimiento))}${aeTarjeta("Cumplimiento mensual",aePorcentaje(r.cumplimiento),faltante>0?`Faltan ${aeMoneda(faltante)}`:"Meta mensual alcanzada",aeClaseCumplimiento(r.cumplimiento))}${aeTarjeta("Meta acumulada al corte",aeMoneda(metaCorte),`${aeNumero(rp.jornadasProgramadasAlCorte||0)} jornadas programadas${textoCorte}`)}${aeTarjeta("Cumplimiento al corte",aePorcentaje(cumplimientoCorte),faltanteCorte>0?`Faltan ${aeMoneda(faltanteCorte)} frente a la programación`:"Meta acumulada alcanzada",aeClaseCumplimiento(cumplimientoCorte))}${aeTarjeta("Proyección de cierre",aeMoneda(r.proyeccionCierre),textoProyeccion,aeClaseCumplimiento((r.proyeccionCierre||0)/(r.metaTotal||1)))}${aeTarjeta("Órdenes ejecutadas",aeNumero(r.ordenesEjecutadas),"Finalizadas registradas en Producción")}${aeTarjeta("Ticket promedio",aeMoneda(r.ticketPromedio),"Monto promedio por orden")}${aeTarjeta("Cuadrillas activas",aeNumero(pm.cuadrillasActivas),`${aeMoneda(pm.metaMensualCuadrilla)} por cuadrilla`)}</div>${aeLecturaAlCorte(data)}${aeSeccion("📆 Proyección diaria hasta el cierre",aeTablaProyeccionDiaria(data),true)}${aeSeccion("🏢 Monto generado por sede",aeFilas((data.porSede||[]).filter(x=>String(x.sede||"").toUpperCase()!=="TODAS"),"sede"),false)}${aeSeccion("👷 Monto generado por cuadrilla",aeFilas((data.porCuadrilla||[]).filter(x=>/^P\d+\b/i.test(String(x.cuadrilla||""))),"cuadrilla"),false)}${aeSeccion("🧭 Monto generado por plataforma",aeFilas(data.porPlataforma,"plataforma"),false)}${aeSeccion("📦 Monto generado por tipo de partida",aeFilas(data.porTipoPartida,"tipo"),false)}${aeSeccion("📅 Monto diario por sede y promedio",aeModuloMontoDiarioSede(data),false)}${aeAlertaSinTarifa(data)}`;
 }

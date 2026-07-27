@@ -4365,6 +4365,7 @@ function construirDetalleDiarioEconomico(periodo, cuadrillasActivas, descansos, 
   }
 
   const detalle = [];
+  const proyeccionPorFecha = {};
   let jornadasProgramadasMes = 0;
   let jornadasDescansoMes = 0;
   let jornadasProgramadasAlCorte = 0;
@@ -4376,6 +4377,7 @@ function construirDetalleDiarioEconomico(periodo, cuadrillasActivas, descansos, 
   for (let d = new Date(periodo.inicio.getFullYear(), periodo.inicio.getMonth(), 1); d <= periodo.fin; d.setDate(d.getDate() + 1)) {
     const fecha = new Date(d.getFullYear(), d.getMonth(), d.getDate());
     const fechaClave = fechaClaveAnalisisEconomico(fecha);
+    const fechaVisible = fechaVisibleAnalisisEconomico(fecha);
     const dentroCorte = !!fechaCorte && fecha.getTime() <= fechaCorte.getTime();
     const posteriorCorte = !periodoCerrado && (!fechaCorte || fecha.getTime() > fechaCorte.getTime());
 
@@ -4412,7 +4414,7 @@ function construirDetalleDiarioEconomico(periodo, cuadrillasActivas, descansos, 
         jornadasProgramadasSinProduccionAlCorte += programadasSinProduccion;
 
         detalle.push({
-          fecha: fechaVisibleAnalisisEconomico(fecha),
+          fecha: fechaVisible,
           fechaClave,
           sede,
           monto,
@@ -4428,23 +4430,51 @@ function construirDetalleDiarioEconomico(periodo, cuadrillasActivas, descansos, 
         });
       } else if (posteriorCorte) {
         jornadasPendientes += programadas;
+        if (!proyeccionPorFecha[fechaClave]) {
+          proyeccionPorFecha[fechaClave] = {
+            fecha: fechaVisible,
+            fechaClave,
+            cuadrillasProgramadas: 0,
+            cuadrillasConDescanso: 0,
+            metaDiaria: 0
+          };
+        }
+        proyeccionPorFecha[fechaClave].cuadrillasProgramadas += programadas;
+        proyeccionPorFecha[fechaClave].cuadrillasConDescanso += conDescanso;
+        proyeccionPorFecha[fechaClave].metaDiaria += metaDiaria;
       }
     });
   }
 
   const metaAcumuladaCorte = jornadasProgramadasAlCorte * META_DIARIA_CUADRILLA;
   const rendimientoJornadaProgramada = jornadasProgramadasAlCorte > 0 ? montoTotal / jornadasProgramadasAlCorte : 0;
-  const proyeccionCierre = periodoCerrado
-    ? montoTotal
-    : montoTotal + (rendimientoJornadaProgramada * jornadasPendientes);
+  const produccionEstimadaPendiente = rendimientoJornadaProgramada * jornadasPendientes;
+  const proyeccionCierre = periodoCerrado ? montoTotal : montoTotal + produccionEstimadaPendiente;
+  const metaMensual = cuadrillasActivas.length * META_DIARIA_CUADRILLA * DIAS_META_MENSUAL;
+  const faltanteMetaMensual = Math.max(0, metaMensual - montoTotal);
+  const promedioNecesarioJornada = jornadasPendientes > 0 ? faltanteMetaMensual / jornadasPendientes : 0;
+
+  let acumuladoProyectado = montoTotal;
+  const proyeccionDiaria = Object.keys(proyeccionPorFecha).sort().map(fechaClave => {
+    const item = proyeccionPorFecha[fechaClave];
+    const estimadoDia = (Number(item.cuadrillasProgramadas) || 0) * rendimientoJornadaProgramada;
+    acumuladoProyectado += estimadoDia;
+    return Object.assign({}, item, {
+      estimadoDia,
+      acumuladoProyectado,
+      rendimientoJornadaProgramada
+    });
+  });
 
   return {
     detalle,
+    proyeccionDiaria,
     resumen: {
       fechaCorte: fechaCorte ? fechaVisibleAnalisisEconomico(fechaCorte) : "",
       fechaCorteClave: fechaCorte ? fechaClaveAnalisisEconomico(fechaCorte) : "",
       periodoCerrado,
       periodoFuturo,
+      diasCalendarioPendientes: proyeccionDiaria.length,
       jornadasProgramadasMes,
       jornadasDescansoMes,
       jornadasProgramadasAlCorte,
@@ -4456,6 +4486,9 @@ function construirDetalleDiarioEconomico(periodo, cuadrillasActivas, descansos, 
       metaAcumuladaCorte,
       cumplimientoCorte: metaAcumuladaCorte > 0 ? montoTotal / metaAcumuladaCorte : 0,
       rendimientoJornadaProgramada,
+      produccionEstimadaPendiente,
+      promedioNecesarioJornada,
+      diferenciaProyectadaMeta: proyeccionCierre - metaMensual,
       proyeccionCierre
     }
   };
@@ -4763,6 +4796,7 @@ function obtenerAnalisisEconomico(data) {
       registrosDescansosAprobados: descansosInfo.registrosAprobados
     }),
     detalleDiarioProgramacion: programacionEconomica.detalle,
+    proyeccionDiariaCierre: programacionEconomica.proyeccionDiaria,
     porSede: listaSedes,
     porCuadrilla: listaCuadrillas,
     porPlataforma: listaPlataformas,

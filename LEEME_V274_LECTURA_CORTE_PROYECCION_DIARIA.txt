@@ -1,0 +1,46 @@
+MI VISUAL V274 - LECTURA AL CORTE Y PROYECCIÓN DIARIA
+
+Base utilizada:
+- MI_VISUAL_V273_ANALISIS_ECONOMICO_DESCANSOS_PRODUCCION_DIARIA.zip
+
+Módulo modificado:
+- Análisis Económico > Producción valorizada
+
+Implementación:
+1. Nueva sección compacta "Lectura al corte" con:
+   - Producción acumulada hasta la última fecha cargada.
+   - Días calendario restantes para cerrar el mes.
+   - Jornadas programadas pendientes según descansos aprobados.
+   - Producción pendiente estimada.
+2. Lectura operativa:
+   - Promedio actual por jornada programada.
+   - Promedio necesario por jornada para cumplir la meta mensual.
+   - Estado favorable o de atención y diferencia proyectada frente a la meta.
+3. La tarjeta "Proyección de cierre" ahora indica cuánto se estima producir en los días y jornadas pendientes.
+4. Nueva tabla abierta "Proyección diaria hasta el cierre" con:
+   - Fecha.
+   - Cuadrillas programadas.
+   - Cuadrillas con descanso.
+   - Meta diaria.
+   - Producción estimada del día.
+   - Acumulado proyectado.
+5. Los cálculos continúan usando la programación de descansos y la meta de S/ 500 por jornada-cuadrilla.
+
+Archivos modificados:
+- Code.gs
+- apps_script/Code.gs
+- js/analisis_economico.js
+- css/estilos.css
+- index.html
+
+Aplicación requerida:
+- Code.gs / Apps Script: SÍ
+- Frontend GitHub: SÍ
+- Google Sheets: NO
+- Nuevo Deploy Apps Script: SÍ
+
+No se modificaron:
+- Producción base ni tarifas.
+- Programación de Descansos.
+- Permisos y perfiles.
+- Otros módulos de MI VISUAL.
