@@ -7476,6 +7476,189 @@ function leerBaseOperativaHistorica() {
   return { hoja, registros };
 }
 
+/* =========================
+   TRABAJOS DIARIOS POR CUADRILLA V282
+   Consulta protegida para Dashboard Supervisor, Jefatura y Gerencia.
+========================= */
+function permisoTrabajosDiariosDashboard_(usuario) {
+  const modulos = ["DASHBOARD JEFATURA", "DASHBOARD SUPERVISOR"];
+  for (let i = 0; i < modulos.length; i++) {
+    const permiso = obtenerPermisoModuloCentral(usuario, modulos[i]);
+    if (permiso && permiso.habilitado) return permiso;
+  }
+  throw new Error("No tienes permiso para consultar trabajos diarios");
+}
+
+function registroCumpleAlcanceTrabajosDiarios_(usuario, permiso, registro) {
+  const alcance = normalizarTexto(permiso && permiso.alcanceDatos || "SIN ACCESO");
+  if (["ZONA", "ZONA NORTE", "ADMIN", "TODAS LAS SEDES", "SEGUN DESTINO"].includes(alcance)) {
+    return true;
+  }
+  return registroCumpleAlcanceCentral(usuario, permiso, registro);
+}
+
+function resolverCatalogoTrabajoDiario_(registro, catalogo) {
+  let tipoPartida = normalizarTexto(registro.tipoPartida);
+  let item = catalogo.porTipo[tipoPartida] || null;
+  const alterna = normalizarTexto(registro.tipoPartidaAlterna);
+  if (!item && alterna && (catalogo.porTipo[alterna] || ["", "AVERIA", "INSTALACION"].includes(tipoPartida))) {
+    tipoPartida = alterna;
+    item = catalogo.porTipo[tipoPartida] || null;
+  }
+  return { tipoPartida, item };
+}
+
+function resumenTrabajosDiarios_(trabajos) {
+  const resumen = {
+    total: 0, finalizadas: 0, canceladas: 0, regestiones: 0,
+    reprogramadas: 0, otrosEstados: 0, puntos: 0
+  };
+  (trabajos || []).forEach(x => {
+    const cantidad = Math.max(1, Number(x.cantidad) || 1);
+    const estado = normalizarTexto(x.estado);
+    resumen.total += cantidad;
+    if (estado === "FINALIZADA") resumen.finalizadas += cantidad;
+    else if (["CANCELADA", "ANULADA", "ANULADO"].includes(estado)) resumen.canceladas += cantidad;
+    else if (estado === "REGESTION") resumen.regestiones += cantidad;
+    else if (estado === "REPROGRAMADO") resumen.reprogramadas += cantidad;
+    else resumen.otrosEstados += cantidad;
+    resumen.puntos += Number(x.puntos) || 0;
+  });
+  resumen.puntos = Math.round(resumen.puntos * 100) / 100;
+  return resumen;
+}
+
+function trabajosDiariosDesdeProduccion_(usuario, permiso, cuadrilla, fecha, catalogo, sedeCuadrilla) {
+  const hoja = obtenerHoja(HOJA_PRODUCCION);
+  if (hoja.getLastRow() <= 1) return [];
+  const datos = hoja.getRange(2, 1, hoja.getLastRow() - 1, Math.max(7, hoja.getLastColumn())).getValues();
+  const catalogoPorCodigo = {};
+  catalogo.lista.forEach(x => catalogoPorCodigo[normalizarTexto(x.codigo)] = x);
+  const salida = [];
+
+  datos.forEach(fila => {
+    const cuadrillaFila = normalizarCuadrilla(fila[1]);
+    const fechaFila = fechaBaseOperativa(fila[2]);
+    if (cuadrillaFila !== cuadrilla || !fechaFila || fechaIsoBaseOperativa(fechaFila) !== fechaIsoBaseOperativa(fecha)) return;
+    const registroAlcance = { cuadrilla: cuadrillaFila, sede: sedeCuadrilla };
+    if (!registroCumpleAlcanceTrabajosDiarios_(usuario, permiso, registroAlcance)) return;
+    const codigo = normalizarTexto(fila[3]);
+    const cantidad = Math.max(1, Number(fila[4]) || 1);
+    const cat = catalogoPorCodigo[codigo] || null;
+    const puntajeUnitario = cat ? Number(cat.puntaje) || 0 : 0;
+    salida.push({
+      clave: (fila[5] || [cuadrillaFila, fechaIsoBaseOperativa(fechaFila), codigo].join("|")).toString(),
+      fecha: fechaVisibleBaseOperativa(fechaFila),
+      fechaISO: fechaIsoBaseOperativa(fechaFila),
+      cuadrilla: cuadrillaFila,
+      sede: sedeCuadrilla,
+      estado: "FINALIZADA",
+      tipoTrabajo: cat ? cat.grupo : "",
+      tipoAtencion: "",
+      tipoPartida: cat ? cat.tipoOrden : codigo,
+      codigoProduccion: codigo,
+      codigoPedido: "",
+      ticket: "",
+      numeroDocumento: "",
+      cliente: "",
+      cantidad,
+      puntajeUnitario,
+      puntos: Math.round(cantidad * puntajeUnitario * 100) / 100,
+      detalleDisponible: false
+    });
+  });
+  return salida;
+}
+
+function listarTrabajosDiariosCuadrilla(data) {
+  const usuario = obtenerUsuarioApp(data.usuario);
+  const permiso = permisoTrabajosDiariosDashboard_(usuario);
+  const cuadrilla = normalizarCuadrilla(data.cuadrilla);
+  const fecha = fechaBaseOperativa(data.fecha);
+  const periodo = (data.periodo || "").toString().trim();
+
+  if (!cuadrilla) throw new Error("Debe seleccionar una cuadrilla");
+  if (!fecha) throw new Error("Debe seleccionar una fecha válida");
+  if (periodo && clavePeriodoBaseOperativa(fecha) !== periodo) {
+    throw new Error("La fecha seleccionada no corresponde al período del dashboard");
+  }
+
+  const mapaUsuarios = obtenerMapaUsuarios();
+  const datosCuadrilla = mapaUsuarios[cuadrilla] || {};
+  const sedeCuadrilla = normalizarTexto(datosCuadrilla.sede || "");
+  const supervisorAsignado = normalizarUsuario(datosCuadrilla.usuarioSupervisor || "");
+  if (normalizarTexto(usuario.perfil) === "SUPERVISOR" &&
+      supervisorAsignado && supervisorAsignado !== normalizarUsuario(usuario.usuario)) {
+    throw new Error("Esta cuadrilla está asignada a otro supervisor");
+  }
+  if (!registroCumpleAlcanceTrabajosDiarios_(usuario, permiso, { cuadrilla, sede:sedeCuadrilla })) {
+    throw new Error("No tienes acceso a los trabajos de esta cuadrilla");
+  }
+
+  const catalogo = catalogoPartidasBaseOperativa();
+  const historica = leerBaseOperativaHistorica();
+  const fechaISO = fechaIsoBaseOperativa(fecha);
+  let trabajos = [];
+
+  historica.registros.forEach(registro => {
+    if (normalizarCuadrilla(registro.cuadrilla) !== cuadrilla) return;
+    if (fechaIsoBaseOperativa(registro.fecha) !== fechaISO) return;
+    const sede = normalizarTexto(registro.sede || sedeCuadrilla);
+    if (!registroCumpleAlcanceTrabajosDiarios_(usuario, permiso, { cuadrilla, sede })) return;
+    const resuelta = resolverCatalogoTrabajoDiario_(registro, catalogo);
+    const puntajeUnitario = registro.estado === "FINALIZADA" && resuelta.item
+      ? Number(resuelta.item.puntaje) || 0
+      : 0;
+    trabajos.push({
+      clave: registro.claveHistorica || claveRegistroBaseOperativa(registro),
+      fecha: fechaVisibleBaseOperativa(registro.fecha),
+      fechaISO,
+      cuadrilla,
+      sede,
+      estado: registro.estado,
+      tipoTrabajo: registro.tipoTrabajo,
+      tipoAtencion: registro.tipoAtencion,
+      tipoPartida: resuelta.tipoPartida || registro.tipoPartida || registro.tipoPartidaAlterna,
+      codigoProduccion: resuelta.item ? resuelta.item.codigo : "",
+      codigoPedido: registro.codigoPedido,
+      ticket: registro.ticket,
+      codigoLiquidacion: registro.codigoLiquidacion,
+      numeroDocumento: registro.numeroDocumento,
+      cliente: registro.cliente,
+      cantidad: 1,
+      puntajeUnitario,
+      puntos: puntajeUnitario,
+      detalleDisponible: true
+    });
+  });
+
+  let origen = "BASE_OPERATIVA_HISTORICA";
+  if (!trabajos.length) {
+    trabajos = trabajosDiariosDesdeProduccion_(usuario, permiso, cuadrilla, fecha, catalogo, sedeCuadrilla);
+    origen = trabajos.length ? "PRODUCCION_AGRUPADA" : "SIN_REGISTROS";
+  }
+
+  trabajos.sort((a, b) =>
+    normalizarTexto(a.estado).localeCompare(normalizarTexto(b.estado)) ||
+    normalizarTexto(a.tipoPartida).localeCompare(normalizarTexto(b.tipoPartida)) ||
+    normalizarTexto(a.codigoPedido).localeCompare(normalizarTexto(b.codigoPedido))
+  );
+
+  return {
+    ok: true,
+    modulo: "TRABAJOS_DIARIOS",
+    accion: "LISTAR",
+    periodo: clavePeriodoBaseOperativa(fecha),
+    fecha: fechaVisibleBaseOperativa(fecha),
+    fechaISO,
+    cuadrilla,
+    sede: sedeCuadrilla,
+    origen,
+    resumen: resumenTrabajosDiarios_(trabajos),
+    trabajos
+  };
+}
+
 function clavesCoincidenciaBaseOperativa(registro) {
   const fecha = fechaBaseOperativa(registro.fecha);
   const fechaClave = fechaIsoBaseOperativa(fecha);
@@ -10030,6 +10213,7 @@ function doPost(e) {
   try {
     const data = JSON.parse(e.postData.contents);
 
+    if (data.accion === "listarTrabajosDiariosCuadrilla") return respuestaJson(listarTrabajosDiariosCuadrilla(data));
     if (data.accion === "previsualizarBaseOperativa") return respuestaJson(previsualizarBaseOperativa(data));
     if (data.accion === "procesarBaseOperativa") return respuestaJson(procesarBaseOperativa(data));
     if (data.accion === "listarGestionVtrGar") return respuestaJson(listarGestionVtrGar(data));

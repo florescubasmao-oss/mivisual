@@ -1,0 +1,31 @@
+MI VISUAL V282 - TRABAJOS DIARIOS POR CUADRILLA
+
+CAMBIO REALIZADO
+- Se añadió "TRABAJOS DIARIOS" al selector de indicadores de los dashboards.
+- Disponible para Supervisor, Jefatura y Gerencia según sus permisos y alcance.
+- Permite seleccionar período, cuadrilla y fecha.
+- Muestra total del día, finalizadas, otros estados, puntos y detalle de cada orden.
+- El detalle incluye, cuando está disponible: código de pedido, ticket, código de liquidación,
+  DNI/documento, cliente, tipo de trabajo, tipo de atención, partida y puntos.
+- Para períodos antiguos sin detalle histórico, usa como respaldo el resumen agrupado de Producción.
+
+ARCHIVOS QUE CAMBIARON
+APPS SCRIPT:
+- Code.gs
+- apps_script/Code.gs (copia idéntica)
+
+GITHUB:
+- js/dashboards.js
+- css/estilos.css
+- index.html
+
+ORDEN DE ACTUALIZACIÓN
+1. Copiar Code.gs en Apps Script.
+2. Guardar y crear una nueva implementación de la aplicación web.
+3. Reemplazar en GitHub js/dashboards.js, css/estilos.css e index.html.
+4. Realizar commit y push.
+
+IMPORTANTE
+- Code.gs SÍ CAMBIÓ.
+- No reemplazar la carpeta .git.
+- El ZIP contiene únicamente los archivos necesarios.

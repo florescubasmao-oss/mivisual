@@ -2310,14 +2310,15 @@ function mv239CambiarFiltroSupervisor(campo, valor){
     if(!["indicador","cuadrilla"].includes(campo)) return;
     MV239_DASH_SUPERVISOR_FILTROS[campo] = valor || (campo === "indicador" ? "RESUMEN" : "TODAS");
 
-    if(campo === "indicador" && valor !== "RESUMEN"){
+    if(campo === "indicador" && !["RESUMEN","TRABAJOS_DIARIOS"].includes(valor)){
         MV239_DASH_SUPERVISOR_FILTROS.cuadrilla = "TODAS";
     }
 
-    if(campo === "cuadrilla" && valor !== "TODAS"){
+    if(campo === "cuadrilla" && valor !== "TODAS" && MV239_DASH_SUPERVISOR_FILTROS.indicador !== "TRABAJOS_DIARIOS"){
         MV239_DASH_SUPERVISOR_FILTROS.indicador = "RESUMEN";
     }
 
+    mv282LimpiarResultado();
     mv198RenderSupervisor();
 }
 
@@ -2345,7 +2346,9 @@ function mv198RenderSupervisor(seleccionada){
         : null;
 
     let contenido = "";
-    if(seleccion){
+    if(filtros.indicador === "TRABAJOS_DIARIOS"){
+        contenido = mv282RenderTrabajosDiarios(lista, filtros, "SUPERVISOR");
+    }else if(seleccion){
         contenido = mv198ResumenCuadrilla(seleccion);
     }else if(filtros.indicador !== "RESUMEN"){
         contenido = mv199ListadoIndicador(lista, filtros.indicador, sede, "mv239AbrirCuadrillaSupervisor");
@@ -2375,6 +2378,7 @@ async function mostrarDashboardSupervisor(periodoSeleccionado){
     try{
         MV198_DASH_SUPERVISOR_LISTA = (await mv4ObtenerRanking(periodoSeleccionado)).filter(x => mv4Norm(x.sede) === sede);
         MV239_DASH_SUPERVISOR_FILTROS = {indicador:"RESUMEN", cuadrilla:"TODAS"};
+        mv282ReiniciarConsulta();
         mv198RenderSupervisor();
     }catch(e){ mostrarPantalla(`<div class="mv4-page"><h2>👷 Supervisor</h2><div class="mv4-error">${e.message}</div></div>`); }
 }
@@ -2447,6 +2451,7 @@ function mv4SedeCard(sede, lista){
 
 const MV199_INDICADORES_JEFATURA = [
     {valor:"RESUMEN", etiqueta:"RESUMEN GENERAL"},
+    {valor:"TRABAJOS_DIARIOS", etiqueta:"TRABAJOS DIARIOS"},
     {valor:"PRODUCCION", etiqueta:"PRODUCCIÓN"},
     {valor:"EFECTIVIDAD", etiqueta:"EFECTIVIDAD"},
     {valor:"RECABLEADO", etiqueta:"% RECABLEADO"},
@@ -2461,6 +2466,175 @@ let MV199_DASH_JEFATURA_FILTROS = {
     indicador: "RESUMEN",
     cuadrilla: "TODAS"
 };
+
+let MV282_TRABAJOS_DIARIOS = {
+    fecha: "",
+    resultado: null,
+    cargando: false,
+    error: ""
+};
+
+function mv282LimitesPeriodo(){
+    const m = String(MV276_DASH_PERIODO || "").match(/^(\d{4})-(\d{2})$/);
+    if(!m) return {min:"", max:"", predeterminada:""};
+    const anio = Number(m[1]);
+    const mes = Number(m[2]);
+    const ultimoDia = new Date(anio, mes, 0).getDate();
+    const min = `${m[1]}-${m[2]}-01`;
+    const max = `${m[1]}-${m[2]}-${String(ultimoDia).padStart(2,"0")}`;
+    const hoy = new Date();
+    const esActual = hoy.getFullYear() === anio && hoy.getMonth() + 1 === mes;
+    const dia = esActual ? Math.min(hoy.getDate(), ultimoDia) : ultimoDia;
+    return {min, max, predeterminada:`${m[1]}-${m[2]}-${String(dia).padStart(2,"0")}`};
+}
+
+function mv282ReiniciarConsulta(){
+    const limites = mv282LimitesPeriodo();
+    MV282_TRABAJOS_DIARIOS = {
+        fecha: limites.predeterminada,
+        resultado: null,
+        cargando: false,
+        error: ""
+    };
+}
+
+function mv282LimpiarResultado(){
+    MV282_TRABAJOS_DIARIOS.resultado = null;
+    MV282_TRABAJOS_DIARIOS.cargando = false;
+    MV282_TRABAJOS_DIARIOS.error = "";
+}
+
+function mv282RenderDashboard(origen){
+    if(origen === "SUPERVISOR") mv198RenderSupervisor();
+    else mv199RenderJefatura();
+}
+
+function mv282CambiarFecha(valor, origen){
+    MV282_TRABAJOS_DIARIOS.fecha = valor || "";
+    mv282LimpiarResultado();
+    mv282RenderDashboard(origen);
+}
+
+function mv282ClaseEstado(estado){
+    const e = mv4Norm(estado);
+    if(e === "FINALIZADA") return "finalizada";
+    if(["CANCELADA","ANULADA","ANULADO"].includes(e)) return "cancelada";
+    if(e === "REPROGRAMADO") return "reprogramada";
+    if(e === "REGESTION") return "regestion";
+    return "otro";
+}
+
+function mv282LineaDato(etiqueta, valor){
+    if(valor === undefined || valor === null || String(valor).trim() === "") return "";
+    return `<div><span>${etiqueta}</span><b>${mv198Escapar(valor)}</b></div>`;
+}
+
+function mv282RenderResultado(data){
+    if(!data) return `<div class="mv282-ayuda">Selecciona la cuadrilla y la fecha, luego pulsa <b>Consultar trabajos</b>.</div>`;
+    const r = data.resumen || {};
+    const trabajos = data.trabajos || [];
+    const noFinalizadas = Number(r.canceladas||0) + Number(r.regestiones||0) + Number(r.reprogramadas||0) + Number(r.otrosEstados||0);
+    let html = `<div class="mv282-resultado-cabecera">
+        <div><b>${mv198Escapar(data.cuadrilla || "")}</b><span>${mv198Escapar(data.sede || "")} · ${mv198Escapar(data.fecha || "")}</span></div>
+    </div>
+    <div class="mv282-resumen-grid">
+        ${mv591MiniResumenCard("📋","Total órdenes",mv58Valor(r.total||0),"Órdenes del día","")}
+        ${mv591MiniResumenCard("✅","Finalizadas",mv58Valor(r.finalizadas||0),"Trabajos ejecutados","")}
+        ${mv591MiniResumenCard("📌","Otros estados",mv58Valor(noFinalizadas),"Canceladas, regestión y otros","")}
+        ${mv591MiniResumenCard("⭐","Puntos",mv58Valor(r.puntos||0),"Producción del día","")}
+    </div>`;
+
+    if(data.origen === "PRODUCCION_AGRUPADA"){
+        html += `<div class="mv282-aviso">Este período conserva el resumen por tipo de trabajo. Para visualizar código, ticket y cliente debe cargarse nuevamente la base operativa de ese mes.</div>`;
+    }
+    if(!trabajos.length){
+        return html + `<div class="mv4-empty">No existen trabajos registrados para la cuadrilla y fecha seleccionadas.</div>`;
+    }
+
+    html += `<div class="mv282-lista">`;
+    trabajos.forEach((x, i) => {
+        const cantidad = Math.max(1, Number(x.cantidad)||1);
+        const titulo = x.tipoPartida || x.tipoAtencion || x.tipoTrabajo || "Trabajo registrado";
+        const puntos = Number(x.puntos)||0;
+        html += `<div class="mv282-trabajo-card">
+            <div class="mv282-trabajo-head">
+                <div><small>TRABAJO ${i+1}</small><b>${mv198Escapar(titulo)}</b></div>
+                <span class="mv282-estado ${mv282ClaseEstado(x.estado)}">${mv198Escapar(x.estado || "SIN ESTADO")}</span>
+            </div>
+            <div class="mv282-datos-grid">
+                ${mv282LineaDato("Código de pedido", x.codigoPedido)}
+                ${mv282LineaDato("Ticket", x.ticket)}
+                ${mv282LineaDato("Código liquidación", x.codigoLiquidacion)}
+                ${mv282LineaDato("DNI / Documento", x.numeroDocumento)}
+                ${mv282LineaDato("Cliente", x.cliente)}
+                ${mv282LineaDato("Tipo de trabajo", x.tipoTrabajo)}
+                ${mv282LineaDato("Tipo de atención", x.tipoAtencion)}
+                ${mv282LineaDato("Código producción", x.codigoProduccion)}
+            </div>
+            <div class="mv282-trabajo-pie">
+                <span>${cantidad > 1 ? `${cantidad} órdenes agrupadas` : "1 orden"}</span>
+                <b>${mv58Valor(puntos)} pts</b>
+            </div>
+        </div>`;
+    });
+    return html + `</div>`;
+}
+
+function mv282RenderTrabajosDiarios(lista, filtros, origen){
+    const limites = mv282LimitesPeriodo();
+    if(!MV282_TRABAJOS_DIARIOS.fecha) MV282_TRABAJOS_DIARIOS.fecha = limites.predeterminada;
+    const cuadrilla = filtros.cuadrilla || "TODAS";
+    const habilitado = cuadrilla !== "TODAS" && !!MV282_TRABAJOS_DIARIOS.fecha;
+    let resultado = "";
+    if(MV282_TRABAJOS_DIARIOS.cargando) resultado = `<div class="mv4-loading">Consultando trabajos diarios...</div>`;
+    else if(MV282_TRABAJOS_DIARIOS.error) resultado = `<div class="mv4-error">${mv198Escapar(MV282_TRABAJOS_DIARIOS.error)}</div>`;
+    else resultado = mv282RenderResultado(MV282_TRABAJOS_DIARIOS.resultado);
+
+    return `<div class="mv282-panel">
+        <div class="mv282-titulo"><div><b>📅 TRABAJOS DIARIOS POR CUADRILLA</b><span>Consulta qué órdenes atendió una cuadrilla en una fecha específica.</span></div></div>
+        <div class="mv282-consulta">
+            <label>Fecha
+                <input type="date" min="${limites.min}" max="${limites.max}" value="${mv198Escapar(MV282_TRABAJOS_DIARIOS.fecha)}" onchange="mv282CambiarFecha(this.value,'${origen}')">
+            </label>
+            <button type="button" onclick="mv282ConsultarTrabajosDiarios('${origen}')" ${habilitado && !MV282_TRABAJOS_DIARIOS.cargando ? "" : "disabled"}>🔎 Consultar trabajos</button>
+        </div>
+        ${cuadrilla === "TODAS" ? `<div class="mv282-aviso">Selecciona una cuadrilla en el filtro superior para realizar la consulta.</div>` : ""}
+        <div class="mv282-resultado">${resultado}</div>
+    </div>`;
+}
+
+async function mv282ConsultarTrabajosDiarios(origen){
+    const filtros = origen === "SUPERVISOR" ? MV239_DASH_SUPERVISOR_FILTROS : MV199_DASH_JEFATURA_FILTROS;
+    const cuadrilla = filtros.cuadrilla || "TODAS";
+    const fecha = MV282_TRABAJOS_DIARIOS.fecha;
+    if(cuadrilla === "TODAS"){ alert("Seleccione una cuadrilla."); return; }
+    if(!fecha){ alert("Seleccione una fecha."); return; }
+
+    MV282_TRABAJOS_DIARIOS.cargando = true;
+    MV282_TRABAJOS_DIARIOS.error = "";
+    MV282_TRABAJOS_DIARIOS.resultado = null;
+    mv282RenderDashboard(origen);
+    try{
+        const res = await fetch(MV58_API, {
+            method:"POST",
+            body:JSON.stringify({
+                accion:"listarTrabajosDiariosCuadrilla",
+                usuario:localStorage.getItem("usuario") || "",
+                periodo:MV276_DASH_PERIODO,
+                fecha,
+                cuadrilla
+            })
+        });
+        const data = await res.json();
+        if(!data.ok) throw new Error((data.error || "No se pudo consultar los trabajos").replace(/^Error:\s*/,""));
+        MV282_TRABAJOS_DIARIOS.resultado = data;
+    }catch(e){
+        MV282_TRABAJOS_DIARIOS.error = e.message || "No se pudo consultar los trabajos.";
+    }finally{
+        MV282_TRABAJOS_DIARIOS.cargando = false;
+        mv282RenderDashboard(origen);
+    }
+}
 
 function mv199OpcionesSede(seleccionada){
     return `<option value="TODAS">TODAS LAS SEDES</option>` + MV591_SEDES_OFICIALES.map(s =>
@@ -2556,7 +2730,8 @@ function mv199CambiarFiltroJefatura(campo, valor){
         const encontrada = (MV198_DASH_JEFATURA_LISTA||[]).find(x => x.cuadrilla === MV199_DASH_JEFATURA_FILTROS.cuadrilla);
         if(!encontrada || (valor !== "TODAS" && mv4Norm(encontrada.sede) !== valor)) MV199_DASH_JEFATURA_FILTROS.cuadrilla = "TODAS";
     }
-    if(campo === "indicador" && valor !== "RESUMEN") MV199_DASH_JEFATURA_FILTROS.cuadrilla = "TODAS";
+    if(campo === "indicador" && !["RESUMEN","TRABAJOS_DIARIOS"].includes(valor)) MV199_DASH_JEFATURA_FILTROS.cuadrilla = "TODAS";
+    if(campo === "sede" || campo === "cuadrilla" || campo === "indicador") mv282LimpiarResultado();
     mv199RenderJefatura();
 }
 
@@ -2599,7 +2774,9 @@ function mv199RenderJefatura(){
         </div>
         ${mv199FiltrosJefatura(listaCompleta, f)}`;
 
-    if(seleccion){
+    if(f.indicador === "TRABAJOS_DIARIOS"){
+        html += mv282RenderTrabajosDiarios(listaSede, f, "JEFATURA");
+    }else if(seleccion){
         html += mv198ResumenCuadrilla(seleccion);
     }else if(f.indicador !== "RESUMEN"){
         html += mv199ListadoIndicador(listaSede, f.indicador, f.sede);
@@ -2635,6 +2812,7 @@ async function mostrarDashboardJefatura(periodoSeleccionado){
         const listaCompleta = await mv4ObtenerRanking(periodoSeleccionado);
         MV198_DASH_JEFATURA_LISTA = mv591ListaZonaNorte(listaCompleta);
         MV199_DASH_JEFATURA_FILTROS = {sede:"TODAS", indicador:"RESUMEN", cuadrilla:"TODAS"};
+        mv282ReiniciarConsulta();
         mv199RenderJefatura();
     }catch(e){
         const rotuloError = mv240RotuloVistaEjecutiva();
