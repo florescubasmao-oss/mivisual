@@ -1,0 +1,19 @@
+MI VISUAL V275 - PEXT HORA PERÚ Y CÓDIGOS/DNI EN INFORME
+
+Base: V274.
+
+CAMBIOS REALIZADOS
+1. La hora de inicio y fin en las tarjetas PEXT se muestra en formato de 24 horas para Perú: HH:mm:ss.
+2. Se corrigen valores de hora provenientes de Google Sheets que llegaban como fechas ISO de 1899, evitando mostrar textos como 1899-12-30T...Z.
+3. El detalle identifica expresamente los códigos o DNI de los trabajos conectorizados y recableados.
+4. El formulario cambia la etiqueta a "Códigos o DNI" para ambos tipos de trabajo.
+5. El informe Excel incorpora columnas separadas para:
+   - CÓDIGOS O DNI DE CONECTORIZADOS
+   - CÓDIGOS O DNI DE RECABLEADOS
+6. Las horas del informe se exportan en formato Perú HH:mm:ss.
+
+NO SE MODIFICÓ
+- Code.gs / Apps Script.
+- Estructura de Google Sheets.
+- Permisos, estados ni flujo PEXT.
+- Otros módulos.
