@@ -1,0 +1,26 @@
+MI VISUAL V277 - PEXT CUADRILLA EN INFORME
+
+CAMBIO REALIZADO
+- El informe Excel de PEXT incluye la nueva columna:
+  CUADRILLA QUE EJECUTÓ EL TRABAJO
+- La cuadrilla se obtiene directamente de cada registro PEXT.
+- Se actualizó el rango del filtro y el ancho de columnas del Excel.
+
+ARCHIVOS A REEMPLAZAR EN GITHUB
+1. js/trabajos_conjunta.js
+2. index.html
+
+NO SE MODIFICÓ
+- Code.gs.
+- apps_script/Code.gs.
+- Apps Script.
+- Google Sheets.
+- Permisos, estados ni flujo de PEXT.
+- Otros módulos.
+
+ORDEN DE ACTUALIZACIÓN
+1. Reemplazar js/trabajos_conjunta.js en GitHub.
+2. Reemplazar index.html en GitHub.
+3. Realizar commit y push.
+
+No es necesario realizar una nueva implementación de Apps Script.

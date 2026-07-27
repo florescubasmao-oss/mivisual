@@ -1,4 +1,4 @@
-// MI VISUAL - PEXT V275 - hora Perú e informe con códigos/DNI
+// MI VISUAL - PEXT V277 - informe con cuadrilla ejecutora
 const API_TRABAJOS_CONJUNTA = "https://script.google.com/macros/s/AKfycbzcbjCLweJNgZXDerdzmMN7Lwotc1G8NWdzoPkaLNGDivAgpYxDkq78xZwPRioSB4XY/exec";
 let tcRegistros = [];
 let tcCuadrillas = [];
@@ -211,16 +211,16 @@ async function tcDescargarInforme(){
   try{
     tcLoading("Generando informe...");
     const XLSX=await tcCargarXlsx();
-    const filas=[["SEDE","TIPO DE TRABAJO REALIZADO","FECHA","CTO","CONECTORIZADOS","CÓDIGOS O DNI DE CONECTORIZADOS","RECABLEADOS","CÓDIGOS O DNI DE RECABLEADOS","HORA DE INICIO (PERÚ)","HORA DE FIN (PERÚ)","COMENTARIOS DEL SUPERVISOR"]];
+    const filas=[["SEDE","CUADRILLA QUE EJECUTÓ EL TRABAJO","TIPO DE TRABAJO REALIZADO","FECHA","CTO","CONECTORIZADOS","CÓDIGOS O DNI DE CONECTORIZADOS","RECABLEADOS","CÓDIGOS O DNI DE RECABLEADOS","HORA DE INICIO (PERÚ)","HORA DE FIN (PERÚ)","COMENTARIOS DEL SUPERVISOR"]];
     arr.forEach(x=>filas.push([
-      x.sede||"",x.tipoTrabajo||"",tcFmtFecha(x.fechaTrabajo),x.cto||"",
+      x.sede||"",x.cuadrilla||"",x.tipoTrabajo||"",tcFmtFecha(x.fechaTrabajo),x.cto||"",
       Number(x.cantidadConectorizados)||0,x.codigosConectorizados||"",
       Number(x.cantidadRecableados)||0,x.codigosRecableados||"",
       tcFmtHoraPE(x.horaInicio),tcFmtHoraPE(x.horaFin),x.comentarioFinal||""
     ]));
     const ws=XLSX.utils.aoa_to_sheet(filas);
-    ws['!autofilter']={ref:`A1:K${filas.length}`};
-    ws['!cols']=[{wch:14},{wch:28},{wch:13},{wch:22},{wch:16},{wch:34},{wch:14},{wch:34},{wch:20},{wch:20},{wch:48}];
+    ws['!autofilter']={ref:`A1:L${filas.length}`};
+    ws['!cols']=[{wch:14},{wch:42},{wch:28},{wch:13},{wch:22},{wch:16},{wch:34},{wch:14},{wch:34},{wch:20},{wch:20},{wch:48}];
     const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,"PEXT");
     XLSX.writeFile(wb,`INFORME_PEXT_${new Date().toISOString().slice(0,10).replaceAll('-','')}.xlsx`);
   }catch(e){alert(e.message);}finally{tcLoadingOff();}
