@@ -17,6 +17,7 @@ const HOJA_EQUIPOS_AVERIADOS = "EQUIPOS_AVERIADOS";
 const HOJA_CARGOS_EQUIPOS_AVERIADOS = "CARGOS_EQUIPOS_AVERIADOS";
 const HOJA_ANALISIS_ECONOMICO = "ANALISIS_ECONOMICO";
 const HOJA_GASTOS_CUADRILLA = "GASTOS_CUADRILLA";
+const HOJA_TARIFARIO_PDG = "TARIFARIO_PDG";
 const CARPETA_ACTAS_ESCANEADAS = "1EZALuMsXo_ZRO93FjKyuDgRmvAe2C69L";
 const HOJA_CHECKLIST_ALMACEN = "CHECKLIST_ALMACEN";
 const CARPETA_CHECKLIST_ALMACEN = "1nL5if5dRs3y1_OpKfzu7N9BNjiSvXVgp";
@@ -6824,12 +6825,14 @@ function obtenerResumenMaterialesV184(data) {
 }
 
 /* =====================================================
-   V292 - UTILIDAD MENSUAL POR CUADRILLA
+   V293 - UTILIDAD MENSUAL POR CUADRILLA
    Producción valorizada menos materiales, sueldos,
-   combustible, alquiler de unidad, bonos y penalidades WIN.
+   combustible, alquiler de unidad, pago PDG, bonos y penalidades WIN.
 ===================================================== */
 const MODULO_UTILIDAD_CUADRILLA = "UTILIDAD CUADRILLA";
-const CONCEPTOS_GASTO_UTILIDAD = ["SUELDOS","COMBUSTIBLE","ALQUILER UNIDAD"];
+const CONCEPTOS_GASTO_UTILIDAD = [
+  "SUELDO TECNICO 1","SUELDO TECNICO 2","COMBUSTIBLE","ALQUILER UNIDAD"
+];
 
 function asegurarPermisoUtilidadCuadrilla_() {
   const hoja = asegurarHojaPermisosModulos();
@@ -6868,6 +6871,108 @@ function asegurarHojaGastosCuadrilla_() {
   return hoja;
 }
 
+function filasInicialesTarifarioPdg_() {
+  return [
+    ["INSTALACION NUEVA","INSTALACION Y ACTIVACION DE ABONADOS EN RESIDENCIALES",100,120],
+    ["INSTALACION NUEVA","INSTALACION Y ACTIVACION DE ABONADOS EN CONDOMINIOS-V3",70,80],
+    ["INSTALACION ADICIONAL","CABLEADO UTP CAT 5 O CAT 6 - ADICIONAL - INSTALACIONES",18,20],
+    ["INSTALACION ADICIONAL","CABLEADO CAT 5 O CAT 6 Y CONFIGURACION DE MESH DURANTE LA INSTALACION",18,20],
+    ["POST VENTA - VT","INSTALACION DE MESH MAS CABLEADO CAT 5 O CAT 6 - POST VENTA",35,40],
+    ["POST VENTA - VT","SERVICIO COMPLETO DE RECABLEADO EN ABONADO RESIDENCIAL - POST VENTA",82.50,96.80],
+    ["POST VENTA - VT","SERVICIO COMPLETO DE RECABLEADO EN ABONADO CONDOMINIO - POST VENTA",60.67,69.33],
+    ["POST VENTA - VT","CABLEADO UTP CAT 5 O CAT 6 - POST VENTA",32.94,37.65],
+    ["POST VENTA - VT","REUBICACION DE ROUTER CON RESERVA - POST VENTA",30,35],
+    ["POST VENTA - VT","REUBICACION DE ROUTER SIN RESERVA - POST VENTA",90,105.60],
+    ["POST VENTA - VT","RE-INSTALACION DE ONT - CONDOMINIO",60.67,69.33],
+    ["POST VENTA - VT","RE-INSTALACION DE ONT - RESIDENCIAL",90,105.60],
+    ["POST VENTA - VT","CAMBIO DE ONT POR REPOSICION - POST VENTA",37.06,42.35],
+    ["POST VENTA - VT","TRASLADO DE SERVICIOS POR MUDANZA EN CONDOMINIO - POST VENTA",70,80],
+    ["POST VENTA - VT","TRASLADO DE SERVICIOS POR MUDANZA EN RESIDENCIALES - POST VENTA",100,120],
+    ["POST VENTA - VT","SERVICIO DE ENTREGA Y CONFIGURACION DE TV BOX - POST VENTA",25,30],
+    ["POST VENTA - VT","SERVICIO DE ENTREGA Y CONFIGURACION DE MESH - POST VENTA",25,30],
+    ["POST VENTA - VT","SERVICIO DE ENTREGA Y CONFIGURACION DE FONO WIN - POST VENTA",25,30],
+    ["POST VENTA - VT","MIGRA XGSPON",77,88],
+    ["TRABAJOS ADICIONALES - POST VENTA","CABLEADO UTP CAT 5 O CAT 6 - ADICIONAL - POST VENTA",18,20],
+    ["TRABAJOS ADICIONALES - POST VENTA","INSTALACION DE MESH MAS CABLEADO CAT 5 O CAT 6 DURANTE LA ATENCION - POST VENTA",18,20],
+    ["AVERIAS VT","ATENCION DE AVERIAS ULTIMA MILLA",39.38,45],
+    ["AVERIAS VT","PRUEBAS DE SERVICIO",39.38,45],
+    ["AVERIAS VT","CAMBIO DE EQUIPO ONT",39.38,45],
+    ["AVERIAS VT","CAMBIO DE EQUIPO MESH",39.38,52.50],
+    ["AVERIAS VT","CAMBIO DE TV BOX",39.38,52.50],
+    ["AVERIAS VT","CAMBIO DE FONO WIN",39.38,45],
+    ["AVERIAS VT","SERVICIO COMPLETO DE RECABLEADO EN ABONADO RESIDENCIAL - VISITA TECNICA",82.50,96.80],
+    ["AVERIAS VT","SERVICIO COMPLETO DE RECABLEADO EN ABONADO CONDOMINIO - VISITA TECNICA",60.67,69.33],
+    ["TRABAJOS ADICIONALES - AVERIAS","RETIRO DE 1 KILOGRAMO DE FIBRA OPTICA",1,1],
+    ["TRABAJOS ADICIONALES - AVERIAS","CABLEADO CAT 5 O CAT 6 Y CONFIGURACION DE MESH DURANTE LA ATENCION - VISITA TECNICA",23.50,27.42],
+    ["TRABAJOS ADICIONALES - AVERIAS","INSTALACION DE SPLITTERS 1X2",14.58,17.50]
+  ];
+}
+
+function normalizarNombreTarifaPdg_(valor) {
+  return normalizarTexto(valor)
+    .replace(/\bPOS VENTA\b/g,"POST VENTA")
+    .replace(/\bCAT5\b/g,"CAT 5")
+    .replace(/\bCAT6\b/g,"CAT 6")
+    .replace(/[^A-Z0-9]+/g," ")
+    .replace(/\s+/g," ")
+    .trim();
+}
+
+function asegurarHojaTarifarioPdg_() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  let hoja = ss.getSheetByName(HOJA_TARIFARIO_PDG);
+  if (!hoja) hoja = ss.insertSheet(HOJA_TARIFARIO_PDG);
+  if (hoja.getMaxColumns() < 6) hoja.insertColumnsAfter(hoja.getMaxColumns(),6-hoja.getMaxColumns());
+  if (hoja.getLastRow() === 0 || !hoja.getRange(1,1).getValue()) {
+    hoja.getRange(1,1,1,6).setValues([[
+      "CODIGO_PARTIDA","TIPO_SERVICIO","NOMBRE_PARTIDA",
+      "TARIFA_1_60","TARIFA_61_MAS","ESTADO"
+    ]]);
+    hoja.setFrozenRows(1);
+  }
+  if (hoja.getLastRow() <= 1) {
+    const catalogo = catalogoPartidasBaseOperativa().lista;
+    const codigosPorNombre = {};
+    catalogo.forEach(function(x) {
+      codigosPorNombre[normalizarNombreTarifaPdg_(x.tipoOrden)] = x.codigo;
+    });
+    const filas = filasInicialesTarifarioPdg_().map(function(x) {
+      return [
+        codigosPorNombre[normalizarNombreTarifaPdg_(x[1])] || "",
+        x[0],x[1],x[2],x[3],"ACTIVO"
+      ];
+    });
+    hoja.getRange(2,1,filas.length,6).setValues(filas);
+    hoja.getRange(2,4,filas.length,2).setNumberFormat('"S/ "0.00');
+  }
+  return hoja;
+}
+
+function obtenerTarifarioPdg_() {
+  const hoja = asegurarHojaTarifarioPdg_();
+  const datos = hoja.getLastRow() > 1
+    ? hoja.getRange(2,1,hoja.getLastRow()-1,6).getValues()
+    : [];
+  const porCodigo = {};
+  const porNombre = {};
+  const lista = [];
+  datos.forEach(function(fila) {
+    if (normalizarTexto(fila[5] || "ACTIVO") !== "ACTIVO") return;
+    const item = {
+      codigo:String(fila[0] || "").trim(),
+      tipoServicio:normalizarTexto(fila[1]),
+      nombre:String(fila[2] || "").trim(),
+      tarifaHasta60:Number(fila[3]) || 0,
+      tarifa61Mas:Number(fila[4]) || 0
+    };
+    if (!item.nombre || item.tarifaHasta60 < 0 || item.tarifa61Mas < 0) return;
+    if (item.codigo) porCodigo[item.codigo] = item;
+    porNombre[normalizarNombreTarifaPdg_(item.nombre)] = item;
+    lista.push(item);
+  });
+  return {porCodigo,porNombre,lista};
+}
+
 function exigirAccesoUtilidadCuadrilla_(data, accion) {
   asegurarPermisoUtilidadCuadrilla_();
   const usuario = obtenerUsuarioApp(data.usuario);
@@ -6901,6 +7006,8 @@ function numeroMonedaUtilidad_(valor) {
 function conceptoGastoUtilidad_(valor) {
   const concepto = normalizarTexto(valor);
   if (["SUELDO","SUELDOS","PLANILLA","REMUNERACION","REMUNERACIONES"].includes(concepto)) return "SUELDOS";
+  if (["SUELDO TECNICO 1","SUELDO T1","TECNICO 1","T1"].includes(concepto)) return "SUELDO TECNICO 1";
+  if (["SUELDO TECNICO 2","SUELDO T2","TECNICO 2","T2"].includes(concepto)) return "SUELDO TECNICO 2";
   if (["COMBUSTIBLE","GASOLINA","PETROLEO","DIESEL"].includes(concepto)) return "COMBUSTIBLE";
   if (["ALQUILER","ALQUILER UNIDAD","ALQUILER DE UNIDAD","UNIDAD","ALQUILER VEHICULO","ALQUILER DE VEHICULO"].includes(concepto)) return "ALQUILER UNIDAD";
   throw new Error("Tipo de gasto no válido");
@@ -7038,14 +7145,135 @@ function importarGastosUtilidadCuadrilla(data) {
   };
 }
 
+function guardarCostosOperativosCuadrillas(data) {
+  const acceso = exigirAccesoUtilidadCuadrilla_(data,"REGISTRAR");
+  const periodo = resolverPeriodoAnalisisEconomico({periodo:data.periodo}).clave;
+  const modo = normalizarTexto(data.modo || "GUARDAR");
+  if (!["GUARDAR","ACTUALIZAR"].includes(modo)) throw new Error("Acción de guardado no válida");
+  const recibidas = Array.isArray(data.filas) ? data.filas : [];
+  if (!recibidas.length) throw new Error("Complete al menos una cuadrilla");
+
+  const activas = {};
+  obtenerCuadrillasActivasEconomico().forEach(function(x) {
+    const cuadrilla = normalizarCuadrilla(x.cuadrilla);
+    if (!esCuadrillaPdgUtilidad_(cuadrilla)) activas[cuadrilla] = x;
+  });
+
+  const validadas = [];
+  recibidas.forEach(function(fila) {
+    const cuadrilla = normalizarCuadrilla(fila.cuadrilla);
+    if (!activas[cuadrilla]) throw new Error("La cuadrilla no está activa o corresponde a modalidad PDG: " + cuadrilla);
+    const valores = {
+      "SUELDO TECNICO 1":numeroMonedaUtilidad_(fila.sueldoTecnico1),
+      "SUELDO TECNICO 2":numeroMonedaUtilidad_(fila.sueldoTecnico2),
+      "ALQUILER UNIDAD":numeroMonedaUtilidad_(fila.alquilerUnidad),
+      "COMBUSTIBLE":numeroMonedaUtilidad_(fila.combustible)
+    };
+    Object.keys(valores).forEach(function(concepto) {
+      if (valores[concepto] === null || valores[concepto] < 0) {
+        throw new Error("Complete los cuatro montos con valores válidos para " + cuadrilla);
+      }
+    });
+    validadas.push({
+      cuadrilla,
+      sede:normalizarTexto(activas[cuadrilla].sede),
+      valores
+    });
+  });
+
+  const hoja = asegurarHojaGastosCuadrilla_();
+  const lock = LockService.getScriptLock();
+  const ahora = new Date();
+  const conceptosGestionados = {
+    "SUELDOS":true,
+    "SUELDO TECNICO 1":true,
+    "SUELDO TECNICO 2":true,
+    "COMBUSTIBLE":true,
+    "ALQUILER UNIDAD":true
+  };
+  let guardadas = [];
+  let omitidas = [];
+  lock.waitLock(30000);
+  try {
+    const anteriores = hoja.getLastRow() > 1
+      ? hoja.getRange(2,1,hoja.getLastRow()-1,11).getValues()
+      : [];
+    const existentes = {};
+    anteriores.forEach(function(fila) {
+      if (String(fila[1] || "") !== periodo) return;
+      let concepto = "";
+      try { concepto = conceptoGastoUtilidad_(fila[5]); } catch (_) { return; }
+      if (!conceptosGestionados[concepto]) return;
+      existentes[normalizarCuadrilla(fila[4])] = true;
+    });
+
+    const procesar = validadas.filter(function(x) {
+      if (modo === "GUARDAR" && existentes[x.cuadrilla]) {
+        omitidas.push(x.cuadrilla);
+        return false;
+      }
+      guardadas.push(x.cuadrilla);
+      return true;
+    });
+    if (!procesar.length && modo === "ACTUALIZAR") throw new Error("No hay cuadrillas válidas para actualizar");
+
+    const afectadas = {};
+    procesar.forEach(function(x){ afectadas[x.cuadrilla] = true; });
+    const conservar = anteriores.filter(function(fila) {
+      if (String(fila[1] || "") !== periodo) return true;
+      const cuadrilla = normalizarCuadrilla(fila[4]);
+      if (!afectadas[cuadrilla]) return true;
+      let concepto = "";
+      try { concepto = conceptoGastoUtilidad_(fila[5]); } catch (_) { return true; }
+      return !conceptosGestionados[concepto];
+    });
+
+    const nuevas = [];
+    procesar.forEach(function(x) {
+      ["SUELDO TECNICO 1","SUELDO TECNICO 2","ALQUILER UNIDAD","COMBUSTIBLE"].forEach(function(concepto) {
+        nuevas.push([
+          "GCU-" + periodo.replace("-","") + "-" + concepto.replace(/\s/g,"") + "-" + Utilities.getUuid().slice(0,8).toUpperCase(),
+          periodo,ahora,x.sede,x.cuadrilla,concepto,
+          Math.round(x.valores[concepto]*100)/100,1,
+          "Registro manual de costos operativos",acceso.usuario.usuario,
+          "MANUAL-" + periodo.replace("-","") + "-" + Utilities.getUuid().slice(0,8).toUpperCase()
+        ]);
+      });
+    });
+
+    const salida = conservar.concat(nuevas);
+    if (hoja.getLastRow() > 1) hoja.getRange(2,1,hoja.getLastRow()-1,11).clearContent();
+    if (salida.length) {
+      hoja.getRange(2,1,salida.length,11).setValues(salida);
+      hoja.getRange(2,3,salida.length,1).setNumberFormat("dd/mm/yyyy hh:mm:ss");
+      hoja.getRange(2,7,salida.length,1).setNumberFormat('"S/ "0.00');
+    }
+  } finally {
+    lock.releaseLock();
+  }
+
+  return {
+    ok:true,modulo:MODULO_UTILIDAD_CUADRILLA,
+    accion:modo,periodo,
+    cuadrillasGuardadas:guardadas,
+    cuadrillasOmitidas:omitidas,
+    mensaje:guardadas.length
+      ? (modo === "GUARDAR" ? "Costos guardados correctamente" : "Costos actualizados correctamente")
+      : "No se guardaron cambios; las cuadrillas seleccionadas ya tenían costos registrados",
+    fechaActualizacion:Utilities.formatDate(ahora,"America/Lima","dd/MM/yyyy · hh:mm a")
+  };
+}
+
 function asegurarAcumuladorUtilidad_(mapa, cuadrilla, sede) {
   const clave = normalizarCuadrilla(cuadrilla);
   if (!clave) return null;
   if (!mapa[clave]) {
     mapa[clave] = {
       cuadrilla:clave,sede:normalizarTexto(sede || "SIN SEDE"),
-      produccion:0,materiales:0,sueldos:0,combustible:0,alquilerUnidad:0,
-      bonos:0,penalidadesWin:0,presenciaGastos:{}
+      produccion:0,materiales:0,sueldoTecnico1:0,sueldoTecnico2:0,sueldosLegacy:0,
+      sueldos:0,combustible:0,alquilerUnidad:0,pagoPdg:0,
+      bonos:0,penalidadesWin:0,presenciaGastos:{},
+      esPdg:false,totalTrabajosPdg:0,tramoPdg:"",detallePdg:[],partidasPdgSinTarifa:[]
     };
   } else if ((!mapa[clave].sede || mapa[clave].sede === "SIN SEDE") && sede) {
     mapa[clave].sede = normalizarTexto(sede);
@@ -7105,9 +7333,23 @@ function cargarGastosDirectosUtilidad_(periodo, mapa) {
     if (String(fila[1]||"")!==periodo) return;
     const item=asegurarAcumuladorUtilidad_(mapa,fila[4],fila[3]);
     if (!item) return;
-    const concepto=conceptoGastoUtilidad_(fila[5]);
+    let concepto="";
+    try { concepto=conceptoGastoUtilidad_(fila[5]); } catch (_) { return; }
     const monto=Number(fila[6])||0;
-    if (concepto==="SUELDOS") item.sueldos+=monto;
+    if (concepto==="SUELDOS") {
+      item.sueldosLegacy+=monto;
+      item.sueldos+=monto;
+      item.presenciaGastos["SUELDO TECNICO 1"]=true;
+      item.presenciaGastos["SUELDO TECNICO 2"]=true;
+    }
+    if (concepto==="SUELDO TECNICO 1") {
+      item.sueldoTecnico1+=monto;
+      item.sueldos+=monto;
+    }
+    if (concepto==="SUELDO TECNICO 2") {
+      item.sueldoTecnico2+=monto;
+      item.sueldos+=monto;
+    }
     if (concepto==="COMBUSTIBLE") item.combustible+=monto;
     if (concepto==="ALQUILER UNIDAD") item.alquilerUnidad+=monto;
     item.presenciaGastos[concepto]=true;
@@ -7145,6 +7387,72 @@ function cumpleReglaCuadrillaUtilidad_(cuadrilla,regla) {
   return codigo===regla.codigo &&
     (regla.terminos||[]).every(function(x){return nombre.indexOf(x)>=0;}) &&
     (regla.nombres||[]).some(function(x){return nombre.indexOf(x)>=0;});
+}
+
+function esCuadrillaPdgUtilidad_(cuadrilla) {
+  return CUADRILLAS_PDG_UTILIDAD_.some(function(regla) {
+    return cumpleReglaCuadrillaUtilidad_(cuadrilla,regla);
+  });
+}
+
+function cargarPagosPdgUtilidad_(periodo,mapa) {
+  const tarifario=obtenerTarifarioPdg_();
+  const catalogo=obtenerCatalogoEconomico();
+  const produccion=obtenerHoja(HOJA_PRODUCCION).getDataRange().getValues();
+  const acumulados={};
+
+  Object.keys(mapa).forEach(function(clave) {
+    if (!esCuadrillaPdgUtilidad_(clave)) return;
+    mapa[clave].esPdg=true;
+    acumulados[clave]={total:0,partidas:{}};
+  });
+
+  for (let i=1;i<produccion.length;i++) {
+    const fila=produccion[i],fecha=convertirFechaAnalisisEconomico(fila[2]);
+    if (!fecha||Utilities.formatDate(fecha,Session.getScriptTimeZone(),"yyyy-MM")!==periodo) continue;
+    const cuadrilla=normalizarCuadrilla(fila[1]);
+    if (!esCuadrillaPdgUtilidad_(cuadrilla)) continue;
+    const codigo=String(fila[3]||"").trim();
+    const cantidad=Math.max(0,Number(fila[4])||0);
+    if (!codigo||cantidad<=0) continue;
+    if (!acumulados[cuadrilla]) acumulados[cuadrilla]={total:0,partidas:{}};
+    if (!acumulados[cuadrilla].partidas[codigo]) acumulados[cuadrilla].partidas[codigo]=0;
+    acumulados[cuadrilla].partidas[codigo]+=cantidad;
+    acumulados[cuadrilla].total+=cantidad;
+  }
+
+  Object.keys(acumulados).forEach(function(cuadrilla) {
+    const item=asegurarAcumuladorUtilidad_(mapa,cuadrilla,"");
+    item.esPdg=true;
+    const total=acumulados[cuadrilla].total;
+    const tarifaAlta=total>=61;
+    item.totalTrabajosPdg=total;
+    item.tramoPdg=total===0?"SIN TRABAJOS":(tarifaAlta?"61 A MAS":"1 A 60");
+    const sinTarifa=[];
+    const detalle=[];
+    let pago=0;
+    Object.keys(acumulados[cuadrilla].partidas).sort().forEach(function(codigo) {
+      const cantidad=acumulados[cuadrilla].partidas[codigo];
+      const catalogoItem=obtenerCatalogoEconomicoPorCodigo(codigo,catalogo);
+      const nombre=catalogoItem?catalogoItem.tipoOrden:codigo;
+      const tarifaItem=tarifario.porCodigo[codigo]||tarifario.porNombre[normalizarNombreTarifaPdg_(nombre)]||null;
+      const tarifa=tarifaItem?(tarifaAlta?tarifaItem.tarifa61Mas:tarifaItem.tarifaHasta60):0;
+      const subtotal=Math.round(cantidad*tarifa*100)/100;
+      if (!tarifaItem) sinTarifa.push(codigo+" · "+nombre);
+      pago+=subtotal;
+      detalle.push({
+        codigo,
+        partida:nombre,
+        cantidad,
+        tarifa:Math.round(tarifa*100)/100,
+        subtotal,
+        conTarifa:!!tarifaItem
+      });
+    });
+    item.pagoPdg=Math.round(pago*100)/100;
+    item.detallePdg=detalle;
+    item.partidasPdgSinTarifa=sinTarifa;
+  });
 }
 
 function calcularBonoDiaUtilidad_(produccion,pext,cuadrilla) {
@@ -7231,48 +7539,75 @@ function obtenerUtilidadCuadrillas(data) {
   cargarProduccionUtilidad_(periodo.clave,mapa);
   cargarMaterialesUtilidad_(periodo.clave,mapa);
   const estadoGastos=cargarGastosDirectosUtilidad_(periodo.clave,mapa);
+  cargarPagosPdgUtilidad_(periodo.clave,mapa);
   cargarBonosUtilidad_(periodo.clave,mapa);
   cargarPenalidadesWinUtilidad_(periodo.clave,mapa);
 
   const cuadrillas=Object.keys(mapa).map(function(clave) {
     const x=mapa[clave];
-    const costos=x.materiales+x.sueldos+x.combustible+x.alquilerUnidad+x.bonos+x.penalidadesWin;
+    const esPdg=!!x.esPdg;
+    const sueldos=esPdg?0:x.sueldos;
+    const combustible=esPdg?0:x.combustible;
+    const alquilerUnidad=esPdg?0:x.alquilerUnidad;
+    const bonos=esPdg?0:x.bonos;
+    const pagoPdg=esPdg?x.pagoPdg:0;
+    const costos=x.materiales+sueldos+combustible+alquilerUnidad+bonos+pagoPdg+x.penalidadesWin;
     const utilidad=x.produccion-costos;
-    const faltantes=CONCEPTOS_GASTO_UTILIDAD.filter(function(c){return !x.presenciaGastos[c];});
+    const faltantes=esPdg
+      ? x.partidasPdgSinTarifa.slice()
+      : CONCEPTOS_GASTO_UTILIDAD.filter(function(c){return !x.presenciaGastos[c];});
     return {
       cuadrilla:x.cuadrilla,sede:x.sede,
+      esPdg,
       produccion:Math.round(x.produccion*100)/100,
       materiales:Math.round(x.materiales*100)/100,
-      sueldos:Math.round(x.sueldos*100)/100,
-      combustible:Math.round(x.combustible*100)/100,
-      alquilerUnidad:Math.round(x.alquilerUnidad*100)/100,
-      bonos:Math.round(x.bonos*100)/100,
+      sueldoTecnico1:Math.round((esPdg?0:x.sueldoTecnico1)*100)/100,
+      sueldoTecnico2:Math.round((esPdg?0:x.sueldoTecnico2)*100)/100,
+      sueldosLegacy:Math.round((esPdg?0:x.sueldosLegacy)*100)/100,
+      sueldos:Math.round(sueldos*100)/100,
+      combustible:Math.round(combustible*100)/100,
+      alquilerUnidad:Math.round(alquilerUnidad*100)/100,
+      pagoPdg:Math.round(pagoPdg*100)/100,
+      totalTrabajosPdg:esPdg?x.totalTrabajosPdg:0,
+      tramoPdg:esPdg?x.tramoPdg:"",
+      detallePdg:esPdg?x.detallePdg:[],
+      partidasPdgSinTarifa:esPdg?x.partidasPdgSinTarifa:[],
+      bonos:Math.round(bonos*100)/100,
       penalidadesWin:Math.round(x.penalidadesWin*100)/100,
       costos:Math.round(costos*100)/100,
       utilidad:Math.round(utilidad*100)/100,
       margen:x.produccion>0?utilidad/x.produccion:0,
       gastosFaltantes:faltantes,
-      gastosCompletos:faltantes.length===0
+      gastosCompletos:faltantes.length===0,
+      costosRegistrados:esPdg?true:CONCEPTOS_GASTO_UTILIDAD.every(function(c){return !!x.presenciaGastos[c];})
     };
   }).sort(function(a,b){return b.utilidad-a.utilidad||a.cuadrilla.localeCompare(b.cuadrilla,undefined,{numeric:true});});
 
   const resumen=cuadrillas.reduce(function(r,x) {
     r.produccion+=x.produccion;r.materiales+=x.materiales;r.sueldos+=x.sueldos;
     r.combustible+=x.combustible;r.alquilerUnidad+=x.alquilerUnidad;r.bonos+=x.bonos;
-    r.penalidadesWin+=x.penalidadesWin;r.costos+=x.costos;r.utilidad+=x.utilidad;
+    r.pagoPdg+=x.pagoPdg;r.penalidadesWin+=x.penalidadesWin;r.costos+=x.costos;r.utilidad+=x.utilidad;
     if (!x.gastosCompletos) r.cuadrillasIncompletas++;
     return r;
-  },{produccion:0,materiales:0,sueldos:0,combustible:0,alquilerUnidad:0,bonos:0,penalidadesWin:0,costos:0,utilidad:0,cuadrillasIncompletas:0});
+  },{produccion:0,materiales:0,sueldos:0,combustible:0,alquilerUnidad:0,bonos:0,pagoPdg:0,penalidadesWin:0,costos:0,utilidad:0,cuadrillasIncompletas:0});
   resumen.margen=resumen.produccion>0?resumen.utilidad/resumen.produccion:0;
+  const tarifarioPdg=obtenerTarifarioPdg_().lista.map(function(x) {
+    return {
+      codigo:x.codigo,tipoServicio:x.tipoServicio,nombre:x.nombre,
+      tarifaHasta60:x.tarifaHasta60,tarifa61Mas:x.tarifa61Mas
+    };
+  });
 
   return {
     ok:true,modulo:MODULO_UTILIDAD_CUADRILLA,accion:"CONSULTAR",
     periodo:periodo.nombre,periodoClave:periodo.clave,
     actualizado:Utilities.formatDate(new Date(),"America/Lima","dd/MM/yyyy · hh:mm a"),
     ultimaCargaGastos:estadoGastos.ultimaActualizacion,
-    resumen,cuadrillas,
+    resumen,cuadrillas,tarifarioPdg,
     reglas:{
-      formula:"PRODUCCION - MATERIALES - SUELDOS - COMBUSTIBLE - ALQUILER UNIDAD - BONOS - PENALIDADES WIN",
+      formula:"REGULAR: PRODUCCION - MATERIALES - SUELDOS - COMBUSTIBLE - ALQUILER UNIDAD - BONOS - PENALIDADES WIN",
+      formulaPdg:"PDG: PRODUCCION - MATERIALES - PAGO POR PARTIDAS - PENALIDADES WIN",
+      pagoPdg:"Tarifa 1 a 60; desde 61 trabajos se aplica la tarifa 61+ a todas las partidas del mes",
       bonos:"Producción normal más PEXT validado",
       penalidades:"Solo fuente WIN con estado PENALIZADO"
     },
@@ -10949,6 +11284,7 @@ function doPost(e) {
     if (data.accion === "restablecerConsultaReclamo") return respuestaJson(restablecerConsultaReclamo(data));
     if (data.accion === "agregarComentarioReclamo") return respuestaJson(agregarComentarioReclamo(data));
     if (data.accion === "importarGastosUtilidadCuadrilla") return respuestaJson(importarGastosUtilidadCuadrilla(data));
+    if (data.accion === "guardarCostosOperativosCuadrillas") return respuestaJson(guardarCostosOperativosCuadrillas(data));
     if (data.accion === "obtenerUtilidadCuadrillas") return respuestaJson(obtenerUtilidadCuadrillas(data));
     if (data.accion === "procesarImportacionMateriales") return respuestaJson(procesarImportacionMaterialesV184(data));
     if (data.accion === "obtenerResumenMateriales") return respuestaJson(obtenerResumenMaterialesV184(data));

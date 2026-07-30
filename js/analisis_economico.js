@@ -633,12 +633,15 @@ function util292Estilos(){
   .util292-filtros{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;align-items:end}.util292-filtros label,.util292-import label{font-size:12px;font-weight:900}.util292-filtros select,.util292-import select,.util292-import textarea{width:100%;box-sizing:border-box;border:1px solid #94a3b8;border-radius:9px;padding:10px;background:#fff}
   .util292-sello{background:#ecfeff;border:1px solid #67e8f9;border-radius:11px;padding:9px 11px;font-size:11px;color:#155e75}.util292-sello b{display:block;font-size:12px;color:#0f172a;margin-top:2px}
   .util292-kpis{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin:14px 0}.util292-kpi{border-radius:14px;padding:14px;background:#f1f5f9;border:1px solid #cbd5e1}.util292-kpi span{display:block;font-size:11px;font-weight:900;color:#475569}.util292-kpi strong{display:block;font-size:23px;margin:5px 0}.util292-kpi small{color:#64748b}.util292-kpi.ok{background:#dcfce7;border-color:#86efac}.util292-kpi.bajo{background:#fee2e2;border-color:#fca5a5}
-  .util292-costos{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:8px;margin-bottom:14px}.util292-costo{padding:10px;border-radius:10px;background:#fff7ed;border:1px solid #fed7aa}.util292-costo span{display:block;font-size:10px;color:#7c2d12;font-weight:900}.util292-costo b{display:block;margin-top:4px;font-size:13px}
+  .util292-costos{display:grid;grid-template-columns:repeat(8,minmax(0,1fr));gap:8px;margin-bottom:14px}.util292-costo{padding:10px;border-radius:10px;background:#fff7ed;border:1px solid #fed7aa}.util292-costo span{display:block;font-size:10px;color:#7c2d12;font-weight:900}.util292-costo b{display:block;margin-top:4px;font-size:13px}
   .util292-alerta{background:#fef3c7;border:1px solid #f59e0b;border-radius:12px;padding:12px;margin:12px 0;color:#78350f}.util292-alerta.ok{background:#dcfce7;border-color:#22c55e;color:#166534}
   .util292-sede{margin-top:15px;border:1px solid #a7f3d0;border-radius:15px;overflow:hidden}.util292-sede>h3{margin:0;padding:13px 15px;background:#d1fae5;display:flex;justify-content:space-between;gap:12px}.util292-lista{padding:12px;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
   .util292-card{border:1px solid #cbd5e1;border-radius:13px;padding:13px;background:#fff}.util292-card.positiva{border-left:6px solid #16a34a}.util292-card.negativa{border-left:6px solid #dc2626}.util292-card-head{display:flex;justify-content:space-between;gap:10px;align-items:flex-start}.util292-card-head h4{margin:0;font-size:15px}.util292-card-head small{color:#64748b}.util292-estado{display:inline-flex;border-radius:999px;padding:4px 8px;font-size:10px;font-weight:900;background:#dcfce7;color:#166534}.util292-estado.falta{background:#fef3c7;color:#92400e}
   .util292-card-metricas{display:grid;grid-template-columns:repeat(3,1fr);gap:7px;margin:11px 0}.util292-card-metricas div{background:#f8fafc;border-radius:9px;padding:8px}.util292-card-metricas span{display:block;font-size:9px;color:#64748b;font-weight:900}.util292-card-metricas b{display:block;margin-top:3px;font-size:13px}.util292-card details{border-top:1px solid #e2e8f0;padding-top:9px}.util292-card summary{cursor:pointer;font-size:12px;font-weight:900;color:#0369a1}.util292-detalle{width:100%;border-collapse:collapse;margin-top:8px}.util292-detalle td{padding:6px;border-bottom:1px solid #e2e8f0;font-size:12px}.util292-detalle td:last-child{text-align:right;font-weight:900}
   .util292-import{display:grid;grid-template-columns:220px 220px 1fr;gap:12px;align-items:end}.util292-import textarea{grid-column:1/-1;height:290px;font-family:monospace;white-space:pre}.util292-nota{background:#eff6ff;border:1px solid #93c5fd;border-radius:11px;padding:11px;color:#1e3a8a;font-size:12px}.util292-estado-import{margin-top:12px;padding:12px;border-radius:11px;background:#f1f5f9;line-height:1.55}.util292-vacio{padding:20px;text-align:center;color:#64748b}
+  .util293-config-head{display:flex;gap:10px;align-items:end;flex-wrap:wrap;margin-bottom:13px}.util293-config-head label{font-size:12px;font-weight:900}.util293-config-head select{display:block;min-width:210px;border:1px solid #94a3b8;border-radius:9px;padding:10px;background:#fff}
+  .util293-config-grid{display:grid;grid-template-columns:minmax(0,1.65fr) minmax(310px,.85fr);gap:14px;align-items:start}.util293-bloque{border:1px solid #cbd5e1;border-radius:15px;overflow:hidden;background:#fff}.util293-bloque>header{padding:13px 14px;background:#e0f2fe;border-bottom:1px solid #bae6fd}.util293-bloque>header h3{margin:0 0 3px;font-size:16px}.util293-bloque>header p{margin:0;color:#475569;font-size:11px}.util293-tabla-wrap{overflow:auto;max-height:620px}.util293-tabla{width:100%;border-collapse:collapse;min-width:780px}.util293-tabla th,.util293-tabla td{padding:8px;border-bottom:1px solid #e2e8f0;font-size:11px;text-align:left}.util293-tabla th{position:sticky;top:0;background:#f8fafc;z-index:1}.util293-tabla input{width:105px;box-sizing:border-box;padding:8px;border:1px solid #94a3b8;border-radius:7px}.util293-tabla tr.guardado{background:#f0fdf4}.util293-acciones{display:flex;gap:8px;flex-wrap:wrap;padding:12px;background:#f8fafc}.util293-acciones .actualizar{background:#f59e0b}.util293-pdg-lista{padding:12px;display:grid;gap:10px}.util293-pdg-card{border:1px solid #fdba74;border-radius:12px;padding:12px;background:#fff7ed}.util293-pdg-card h4{margin:0 0 8px;font-size:13px}.util293-pdg-metricas{display:grid;grid-template-columns:1fr 1fr;gap:7px}.util293-pdg-metricas div{background:#fff;border-radius:8px;padding:8px}.util293-pdg-metricas span{display:block;font-size:9px;font-weight:900;color:#7c2d12}.util293-pdg-metricas b{display:block;margin-top:3px}.util293-pdg-detalle{width:100%;border-collapse:collapse;margin-top:8px}.util293-pdg-detalle td{padding:5px;border-bottom:1px solid #fed7aa;font-size:10px}.util293-pdg-detalle td:last-child{text-align:right}.util293-sin-tarifa{margin-top:8px;background:#fee2e2;border:1px solid #fca5a5;border-radius:8px;padding:8px;color:#991b1b;font-size:10px}.util293-tarifario{margin:0 12px 12px;border:1px solid #cbd5e1;border-radius:10px;padding:9px}.util293-tarifario summary{cursor:pointer;font-weight:900;font-size:11px}.util293-tarifario table{width:100%;border-collapse:collapse;margin-top:8px}.util293-tarifario th,.util293-tarifario td{padding:5px;border-bottom:1px solid #e2e8f0;font-size:9px}.util293-estado{margin-top:12px;padding:11px;border-radius:10px;background:#eff6ff;color:#1e3a8a;font-size:12px}
+  @media(max-width:980px){.util293-config-grid{grid-template-columns:1fr}}
   @media(max-width:850px){.util292-filtros{grid-template-columns:1fr 1fr}.util292-kpis{grid-template-columns:1fr 1fr}.util292-costos{grid-template-columns:1fr 1fr}.util292-lista{grid-template-columns:1fr}.util292-import{grid-template-columns:1fr 1fr}.util292-import .util292-nota{grid-column:1/-1}}
   @media(max-width:520px){.util292-head{display:block}.util292-head button{margin-top:10px}.util292-filtros,.util292-kpis,.util292-import{grid-template-columns:1fr}.util292-card-metricas{grid-template-columns:1fr}.util292-import textarea,.util292-import .util292-nota{grid-column:1}}
   </style>`;
@@ -652,7 +655,7 @@ function mostrarUtilidadCuadrillas(){
   const pantalla=document.getElementById("pantalla");if(!pantalla)return;
   pantalla.innerHTML=`${util292Estilos()}<section class="util292">
     <div class="util292-head"><div><h2>📈 Utilidad por cuadrilla</h2><p>Resultado mensual después de todos los costos operativos.</p></div><button onclick="mostrarAnalisisEconomico()">Volver a Análisis Económico</button></div>
-    <div class="util292-tabs"><button id="util292TabResumen" class="activo" onclick="util292CambiarVista('resumen')">Resumen y ranking</button>${aePuedeCargarUtilidad()?`<button id="util292TabImportar" onclick="util292CambiarVista('importar')">Subir gastos</button>`:""}</div>
+    <div class="util292-tabs"><button id="util292TabResumen" class="activo" onclick="util292CambiarVista('resumen')">Resumen y ranking</button>${aePuedeCargarUtilidad()?`<button id="util292TabCostos" onclick="util292CambiarVista('costos')">Costos operativos por cuadrilla</button>`:""}</div>
     <div id="util292Contenido"></div>
   </section>`;
   UTIL292_DATOS=null;
@@ -661,10 +664,10 @@ function mostrarUtilidadCuadrillas(){
 }
 
 function util292CambiarVista(vista){
-  if(vista==="importar"&&!aePuedeCargarUtilidad()){alert("No tienes permiso para subir gastos.");vista="resumen"}
+  if(vista==="costos"&&!aePuedeCargarUtilidad()){alert("No tienes permiso para registrar costos operativos.");vista="resumen"}
   document.getElementById("util292TabResumen")?.classList.toggle("activo",vista==="resumen");
-  document.getElementById("util292TabImportar")?.classList.toggle("activo",vista==="importar");
-  if(vista==="importar")util292RenderImportar();
+  document.getElementById("util292TabCostos")?.classList.toggle("activo",vista==="costos");
+  if(vista==="costos")util293RenderCostosOperativos();
   else util292RenderResumenBase();
 }
 
@@ -723,27 +726,36 @@ function util292CambiarSede(){
 
 function util292ResumenLista(lista){
   const r=lista.reduce((t,x)=>{
-    ["produccion","materiales","sueldos","combustible","alquilerUnidad","bonos","penalidadesWin","costos","utilidad"].forEach(k=>t[k]+=Number(x[k])||0);
+    ["produccion","materiales","sueldos","combustible","alquilerUnidad","pagoPdg","bonos","penalidadesWin","costos","utilidad"].forEach(k=>t[k]+=Number(x[k])||0);
     if(!x.gastosCompletos)t.incompletas++;
     return t;
-  },{produccion:0,materiales:0,sueldos:0,combustible:0,alquilerUnidad:0,bonos:0,penalidadesWin:0,costos:0,utilidad:0,incompletas:0});
+  },{produccion:0,materiales:0,sueldos:0,combustible:0,alquilerUnidad:0,pagoPdg:0,bonos:0,penalidadesWin:0,costos:0,utilidad:0,incompletas:0});
   r.margen=r.produccion?r.utilidad/r.produccion:0;
   return r;
 }
 
 function util292CardCuadrilla(x,puesto){
   const positiva=Number(x.utilidad)>=0,clase=positiva?"positiva":"negativa";
-  const estado=x.gastosCompletos?'<span class="util292-estado">GASTOS COMPLETOS</span>':`<span class="util292-estado falta">FALTA: ${aeEscape((x.gastosFaltantes||[]).join(", "))}</span>`;
+  const estado=x.esPdg
+    ? (x.gastosCompletos?`<span class="util292-estado">PDG · ${aeEscape(x.tramoPdg||"SIN TRABAJOS")}</span>`:`<span class="util292-estado falta">PDG · PARTIDA SIN TARIFA</span>`)
+    : (x.gastosCompletos?'<span class="util292-estado">COSTOS COMPLETOS</span>':`<span class="util292-estado falta">FALTA: ${aeEscape((x.gastosFaltantes||[]).join(", "))}</span>`);
+  const detallePdg=(x.detallePdg||[]).map(d=>`<tr><td>${aeEscape(d.partida||d.codigo)} · ${aeNumero(d.cantidad)} × ${d.conTarifa?aeMoneda(d.tarifa):"SIN TARIFA"}</td><td>${aeMoneda(d.subtotal)}</td></tr>`).join("");
+  const filasCostos=x.esPdg
+    ? `<tr><td>− Pago PDG por ${aeNumero(x.totalTrabajosPdg)} partidas</td><td>${aeMoneda(x.pagoPdg)}</td></tr>
+       ${detallePdg}`
+    : `<tr><td>− Sueldo Técnico 1</td><td>${aeMoneda(x.sueldoTecnico1)}</td></tr>
+       <tr><td>− Sueldo Técnico 2</td><td>${aeMoneda(x.sueldoTecnico2)}</td></tr>
+       ${Number(x.sueldosLegacy)>0?`<tr><td>− Sueldo total anterior</td><td>${aeMoneda(x.sueldosLegacy)}</td></tr>`:""}
+       <tr><td>− Combustible</td><td>${aeMoneda(x.combustible)}</td></tr>
+       <tr><td>− Alquiler de unidad</td><td>${aeMoneda(x.alquilerUnidad)}</td></tr>
+       <tr><td>− Bonos del mes</td><td>${aeMoneda(x.bonos)}</td></tr>`;
   return `<article class="util292-card ${clase}">
     <div class="util292-card-head"><div><small>Puesto ${puesto} · ${aeEscape(x.sede||"SIN SEDE")}</small><h4>${aeEscape(x.cuadrilla)}</h4></div>${estado}</div>
     <div class="util292-card-metricas"><div><span>PRODUCCIÓN</span><b>${aeMoneda(x.produccion)}</b></div><div><span>COSTOS</span><b>${aeMoneda(x.costos)}</b></div><div><span>UTILIDAD · MARGEN</span><b>${aeMoneda(x.utilidad)} · ${aePorcentaje(x.margen)}</b></div></div>
     <details><summary>Ver detalle del cálculo</summary><table class="util292-detalle"><tbody>
       <tr><td>Producción valorizada</td><td>${aeMoneda(x.produccion)}</td></tr>
       <tr><td>− Materiales</td><td>${aeMoneda(x.materiales)}</td></tr>
-      <tr><td>− Sueldos</td><td>${aeMoneda(x.sueldos)}</td></tr>
-      <tr><td>− Combustible</td><td>${aeMoneda(x.combustible)}</td></tr>
-      <tr><td>− Alquiler de unidad</td><td>${aeMoneda(x.alquilerUnidad)}</td></tr>
-      <tr><td>− Bonos del mes</td><td>${aeMoneda(x.bonos)}</td></tr>
+      ${filasCostos}
       <tr><td>− Penalidades WIN</td><td>${aeMoneda(x.penalidadesWin)}</td></tr>
       <tr><td><b>UTILIDAD NETA</b></td><td>${aeMoneda(x.utilidad)}</td></tr>
     </tbody></table></details>
@@ -764,8 +776,8 @@ function util292AplicarFiltros(){
   lista.forEach((x,i)=>{const s=x.sede||"SIN SEDE";if(!grupos[s])grupos[s]=[];grupos[s].push({x,puesto:i+1})});
   const sedes=Object.keys(grupos).sort(aeOrdenSedesDiarias);
   const alerta=r.incompletas
-    ? `<div class="util292-alerta"><b>⚠ Resultado provisional:</b> ${r.incompletas} cuadrilla(s) aún no tienen cargados los tres gastos: Sueldos, Combustible y Alquiler de unidad.</div>`
-    : `<div class="util292-alerta ok"><b>✅ Gastos completos:</b> todas las cuadrillas filtradas tienen registrados los tres conceptos.</div>`;
+    ? `<div class="util292-alerta"><b>⚠ Resultado provisional:</b> ${r.incompletas} cuadrilla(s) tienen costos operativos incompletos o partidas PDG sin tarifa.</div>`
+    : `<div class="util292-alerta ok"><b>✅ Costos completos:</b> las cuadrillas regulares y PDG están correctamente valorizadas.</div>`;
   const contenido=sedes.map(s=>{
     const total=grupos[s].reduce((t,y)=>t+Number(y.x.utilidad||0),0);
     return `<section class="util292-sede"><h3><span>🏢 ${aeEscape(s)}</span><b>${aeMoneda(total)}</b></h3><div class="util292-lista">${grupos[s].map(y=>util292CardCuadrilla(y.x,y.puesto)).join("")}</div></section>`;
@@ -783,57 +795,131 @@ function util292AplicarFiltros(){
       <div class="util292-costo"><span>SUELDOS</span><b>${aeMoneda(r.sueldos)}</b></div>
       <div class="util292-costo"><span>COMBUSTIBLE</span><b>${aeMoneda(r.combustible)}</b></div>
       <div class="util292-costo"><span>ALQUILER UNIDAD</span><b>${aeMoneda(r.alquilerUnidad)}</b></div>
+      <div class="util292-costo"><span>PAGO PDG</span><b>${aeMoneda(r.pagoPdg)}</b></div>
       <div class="util292-costo"><span>BONOS</span><b>${aeMoneda(r.bonos)}</b></div>
       <div class="util292-costo"><span>PENALIDADES WIN</span><b>${aeMoneda(r.penalidadesWin)}</b></div>
       <div class="util292-costo"><span>TOTAL COSTOS</span><b>${aeMoneda(r.costos)}</b></div>
     </div>${alerta}${contenido||'<div class="util292-vacio">Sin cuadrillas para los filtros seleccionados.</div>'}`;
 }
 
-function util292RenderImportar(){
+function util293RenderCostosOperativos(){
   const cont=document.getElementById("util292Contenido");if(!cont)return;
   cont.innerHTML=`<div class="util292-panel">
-    <div class="util292-import">
-      <label>Periodo<select id="util292ImportPeriodo">${aeOpcionesPeriodo()}</select></label>
-      <label>Tipo de gasto<select id="util292Concepto" onchange="util292ActualizarEjemplo()"><option value="SUELDOS">Sueldos</option><option value="COMBUSTIBLE">Combustible</option><option value="ALQUILER UNIDAD">Alquiler de unidad</option></select></label>
-      <div class="util292-nota"><b>Importación independiente.</b><br>La nueva carga reemplaza solamente el concepto y periodo seleccionados. No borra los otros gastos ni otros meses.</div>
-      <textarea id="util292Texto" placeholder="CUADRILLA&#9;MONTO&#10;P3 VISUAL SGI ROBERTO...&#9;3000"></textarea>
-      <button class="util292-btn" id="util292Guardar" onclick="util292ImportarGasto()">Procesar y guardar</button>
+    <div class="util293-config-head">
+      <label>Periodo<select id="util293Periodo">${aeOpcionesPeriodo()}</select></label>
+      <button class="util292-btn" id="util293Consultar" onclick="util293CargarCostos()">Consultar costos</button>
+      <div class="util292-nota"><b>Cuadrillas regulares:</b> los montos quedan guardados por mes. Use Actualizar cuando cambie algún valor.</div>
     </div>
-    <div id="util292Ejemplo" class="util292-nota" style="margin-top:12px"></div>
-    <div id="util292EstadoImport" class="util292-estado-import">Copie la tabla desde Excel incluyendo los encabezados. Se acepta CUADRILLA + MONTO; para Sueldos también puede usar TÉCNICO + MONTO.</div>
+    <div id="util293Contenido"><div class="util292-vacio">Consultando costos operativos y pagos PDG...</div></div>
+    <div id="util293Estado" class="util293-estado">Seleccione el periodo para registrar o actualizar los costos.</div>
   </div>`;
-  document.getElementById("util292ImportPeriodo").value=aePeriodoActual();
-  util292ActualizarEjemplo();
+  document.getElementById("util293Periodo").value=aePeriodoActual();
+  util293CargarCostos();
 }
 
-function util292ActualizarEjemplo(){
-  const concepto=document.getElementById("util292Concepto")?.value||"SUELDOS";
-  const ejemplo=concepto==="SUELDOS"
-    ?"Ejemplo: CUADRILLA | SUELDOS. También acepta TÉCNICO | SUELDO y agrupa automáticamente por cuadrilla."
-    : concepto==="COMBUSTIBLE"
-      ?"Ejemplo: CUADRILLA | COMBUSTIBLE. Si existen varias filas de una cuadrilla, el sistema las suma."
-      :"Ejemplo: CUADRILLA | ALQUILER UNIDAD. Puede incluir SEDE, PLACA u OBSERVACIÓN.";
-  const el=document.getElementById("util292Ejemplo");if(el)el.textContent=ejemplo;
+function util293ValorInput(x,campo){
+  const valor=Number(x[campo])||0;
+  return x.costosRegistrados||valor>0?valor.toFixed(2):"";
 }
 
-async function util292ImportarGasto(){
-  const periodo=document.getElementById("util292ImportPeriodo")?.value||"";
-  const concepto=document.getElementById("util292Concepto")?.value||"";
-  const texto=document.getElementById("util292Texto")?.value||"";
-  const boton=document.getElementById("util292Guardar"),estado=document.getElementById("util292EstadoImport");
-  if(!texto.trim()){alert("Pegue primero la información copiada desde Excel.");return}
-  if(boton){boton.disabled=true;boton.textContent="Procesando..."}
-  if(estado)estado.textContent="Validando cuadrillas y consolidando montos...";
+function util293FilaCosto(x,i){
+  const estado=Number(x.sueldosLegacy)>0
+    ? '<span class="util292-estado falta">DESGLOSAR SUELDOS</span>'
+    : (x.costosRegistrados?'<span class="util292-estado">GUARDADO</span>':'<span class="util292-estado falta">PENDIENTE</span>');
+  return `<tr class="util293-fila-costo ${x.costosRegistrados?"guardado":""}" data-cuadrilla="${aeEscape(x.cuadrilla)}" data-sede="${aeEscape(x.sede||"")}">
+    <td><b>${aeEscape(x.cuadrilla)}</b><small style="display:block;color:#64748b">${aeEscape(x.sede||"SIN SEDE")}</small></td>
+    <td><input class="costo-t1" type="number" min="0" step="0.01" value="${Number(x.sueldosLegacy)>0?"":util293ValorInput(x,"sueldoTecnico1")}" placeholder="0.00"></td>
+    <td><input class="costo-t2" type="number" min="0" step="0.01" value="${Number(x.sueldosLegacy)>0?"":util293ValorInput(x,"sueldoTecnico2")}" placeholder="0.00"></td>
+    <td><input class="costo-alquiler" type="number" min="0" step="0.01" value="${util293ValorInput(x,"alquilerUnidad")}" placeholder="0.00"></td>
+    <td><input class="costo-combustible" type="number" min="0" step="0.01" value="${util293ValorInput(x,"combustible")}" placeholder="0.00"></td>
+    <td>${estado}${Number(x.sueldosLegacy)>0?`<small style="display:block;margin-top:4px">Total anterior: ${aeMoneda(x.sueldosLegacy)}</small>`:""}</td>
+  </tr>`;
+}
+
+function util293DetallePdg(x){
+  const detalle=(x.detallePdg||[]).map(d=>`<tr><td>${aeEscape(d.partida||d.codigo)}<small style="display:block;color:#64748b">${aeEscape(d.codigo||"")}</small></td><td>${aeNumero(d.cantidad)} × ${d.conTarifa?aeMoneda(d.tarifa):"SIN TARIFA"}</td><td>${aeMoneda(d.subtotal)}</td></tr>`).join("");
+  const sin=(x.partidasPdgSinTarifa||[]);
+  return `<article class="util293-pdg-card">
+    <h4>${aeEscape(x.cuadrilla)}<small style="display:block;color:#7c2d12">${aeEscape(x.sede||"SIN SEDE")}</small></h4>
+    <div class="util293-pdg-metricas">
+      <div><span>TRABAJOS DEL MES</span><b>${aeNumero(x.totalTrabajosPdg)}</b></div>
+      <div><span>TRAMO APLICADO</span><b>${aeEscape(x.tramoPdg||"SIN TRABAJOS")}</b></div>
+      <div><span>PAGO PDG</span><b>${aeMoneda(x.pagoPdg)}</b></div>
+      <div><span>PRODUCCIÓN</span><b>${aeMoneda(x.produccion)}</b></div>
+    </div>
+    <details><summary style="cursor:pointer;margin-top:9px;font-size:11px;font-weight:900">Ver partidas valorizadas</summary>
+      <table class="util293-pdg-detalle"><tbody>${detalle||'<tr><td colspan="3">Sin trabajos en el periodo</td></tr>'}</tbody></table>
+    </details>
+    ${sin.length?`<div class="util293-sin-tarifa"><b>Partidas sin tarifa:</b><br>${sin.map(aeEscape).join("<br>")}</div>`:""}
+  </article>`;
+}
+
+function util293Tarifario(datos){
+  const filas=(datos.tarifarioPdg||[]).map(x=>`<tr><td>${aeEscape(x.nombre)}</td><td>${aeMoneda(x.tarifaHasta60)}</td><td>${aeMoneda(x.tarifa61Mas)}</td></tr>`).join("");
+  return `<details class="util293-tarifario"><summary>Ver tarifario PDG aplicado</summary><div style="overflow:auto;max-height:330px"><table><thead><tr><th>Partida</th><th>1 a 60</th><th>61 a más</th></tr></thead><tbody>${filas}</tbody></table></div></details>`;
+}
+
+async function util293CargarCostos(){
+  const periodo=document.getElementById("util293Periodo")?.value||aePeriodoActual();
+  const boton=document.getElementById("util293Consultar"),cont=document.getElementById("util293Contenido");
+  if(boton){boton.disabled=true;boton.textContent="Consultando..."}
+  if(cont)cont.innerHTML='<div class="util292-vacio">Cargando cuadrillas y calculando pagos PDG...</div>';
   try{
-    const r=await util292Api({accion:"importarGastosUtilidadCuadrilla",usuario:localStorage.getItem("usuario"),periodo,concepto,texto});
-    const noEncontrados=(r.noEncontrados||[]),ambiguos=(r.ambiguos||[]);
-    if(estado)estado.innerHTML=`<b>✅ ${aeEscape(r.concepto)} guardado para ${aeEscape(r.periodo)}</b><br>Cuadrillas: ${r.cuadrillasGuardadas}<br>Total: ${aeMoneda(r.montoTotal)}<br>Registros anteriores reemplazados: ${r.reemplazados}${noEncontrados.length?`<br><b>No encontrados:</b> ${noEncontrados.map(aeEscape).join(" · ")}`:""}${ambiguos.length?`<br><b>Ambiguos:</b> ${ambiguos.map(aeEscape).join(" · ")}`:""}${r.totalInvalidos?`<br><b>Montos inválidos:</b> ${r.totalInvalidos}`:""}`;
-    document.getElementById("util292Texto").value="";
-    UTIL292_DATOS=null;
+    const datos=await util292Api({accion:"obtenerUtilidadCuadrillas",usuario:localStorage.getItem("usuario"),periodo});
+    UTIL292_DATOS=datos;
+    const regulares=(datos.cuadrillas||[]).filter(x=>!x.esPdg).sort((a,b)=>String(a.sede).localeCompare(String(b.sede))||String(a.cuadrilla).localeCompare(String(b.cuadrilla),undefined,{numeric:true}));
+    const pdg=(datos.cuadrillas||[]).filter(x=>x.esPdg).sort((a,b)=>String(a.cuadrilla).localeCompare(String(b.cuadrilla),undefined,{numeric:true}));
+    if(cont)cont.innerHTML=`<div class="util293-config-grid">
+      <section class="util293-bloque">
+        <header><h3>Costos operativos por cuadrilla</h3><p>Sueldo Técnico 1, Sueldo Técnico 2, alquiler de unidad y combustible.</p></header>
+        <div class="util293-tabla-wrap"><table class="util293-tabla"><thead><tr><th>Cuadrilla</th><th>Sueldo T1</th><th>Sueldo T2</th><th>Alquiler</th><th>Combustible</th><th>Estado</th></tr></thead><tbody>${regulares.map(util293FilaCosto).join("")}</tbody></table></div>
+        <div class="util293-acciones"><button class="util292-btn" onclick="util293GuardarCostos('GUARDAR')">Guardar nuevos</button><button class="util292-btn actualizar" onclick="util293GuardarCostos('ACTUALIZAR')">Actualizar valores</button></div>
+      </section>
+      <aside class="util293-bloque">
+        <header><h3>Pago PDG por partidas</h3><p>Automático: tarifa hasta 60 trabajos y tarifa 61+ al superar el límite.</p></header>
+        <div class="util293-pdg-lista">${pdg.map(util293DetallePdg).join("")||'<div class="util292-vacio">No se encontraron cuadrillas PDG activas.</div>'}</div>
+        ${util293Tarifario(datos)}
+      </aside>
+    </div>`;
   }catch(e){
-    if(estado)estado.innerHTML=`<b>❌ No se guardó la información.</b><br>${aeEscape(e.message||e)}`;
+    if(cont)cont.innerHTML=`<div class="util292-alerta"><b>No se pudieron cargar los costos.</b><br>${aeEscape(e.message||e)}</div>`;
   }finally{
-    if(boton){boton.disabled=false;boton.textContent="Procesar y guardar"}
+    if(boton){boton.disabled=false;boton.textContent="Consultar costos"}
+  }
+}
+
+function util293RecolectarCostos(){
+  const filas=[];
+  document.querySelectorAll(".util293-fila-costo").forEach(tr=>{
+    const entradas={
+      sueldoTecnico1:tr.querySelector(".costo-t1")?.value??"",
+      sueldoTecnico2:tr.querySelector(".costo-t2")?.value??"",
+      alquilerUnidad:tr.querySelector(".costo-alquiler")?.value??"",
+      combustible:tr.querySelector(".costo-combustible")?.value??""
+    };
+    const valores=Object.values(entradas);
+    if(valores.every(v=>String(v).trim()===""))return;
+    if(valores.some(v=>String(v).trim()===""))throw new Error(`Complete los cuatro montos para ${tr.dataset.cuadrilla}`);
+    if(valores.some(v=>!Number.isFinite(Number(v))||Number(v)<0))throw new Error(`Revise los montos de ${tr.dataset.cuadrilla}`);
+    filas.push({cuadrilla:tr.dataset.cuadrilla,sede:tr.dataset.sede,...entradas});
+  });
+  if(!filas.length)throw new Error("Complete los costos de al menos una cuadrilla");
+  return filas;
+}
+
+async function util293GuardarCostos(modo){
+  const estado=document.getElementById("util293Estado");
+  try{
+    const filas=util293RecolectarCostos();
+    const periodo=document.getElementById("util293Periodo")?.value||aePeriodoActual();
+    if(estado)estado.textContent=modo==="GUARDAR"?"Guardando nuevos costos...":"Actualizando costos...";
+    const r=await util292Api({accion:"guardarCostosOperativosCuadrillas",usuario:localStorage.getItem("usuario"),periodo,modo,filas});
+    const omitidas=r.cuadrillasOmitidas||[];
+    if(estado)estado.innerHTML=`<b>✅ ${aeEscape(r.mensaje)}</b><br>Cuadrillas procesadas: ${(r.cuadrillasGuardadas||[]).length}${omitidas.length?`<br>No modificadas porque ya tenían datos: ${omitidas.map(aeEscape).join(" · ")}. Use Actualizar valores.`:""}`;
+    UTIL292_DATOS=null;
+    await util293CargarCostos();
+  }catch(e){
+    if(estado)estado.innerHTML=`<b>❌ No se guardaron los costos.</b><br>${aeEscape(e.message||e)}`;
   }
 }
 
@@ -842,5 +928,5 @@ window.util292CambiarVista=util292CambiarVista;
 window.util292Consultar=util292Consultar;
 window.util292CambiarSede=util292CambiarSede;
 window.util292AplicarFiltros=util292AplicarFiltros;
-window.util292ActualizarEjemplo=util292ActualizarEjemplo;
-window.util292ImportarGasto=util292ImportarGasto;
+window.util293CargarCostos=util293CargarCostos;
+window.util293GuardarCostos=util293GuardarCostos;

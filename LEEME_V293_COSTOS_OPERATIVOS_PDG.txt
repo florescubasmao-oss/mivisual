@@ -1,0 +1,48 @@
+MI VISUAL V293 - COSTOS OPERATIVOS Y PAGO PDG
+
+CAMBIOS
+
+1. Se reemplaza "Subir gastos" por "Costos operativos por cuadrilla".
+2. Se muestran automáticamente las cuadrillas regulares activas.
+3. Cada cuadrilla permite registrar:
+   - Sueldo Técnico 1
+   - Sueldo Técnico 2
+   - Alquiler de unidad
+   - Combustible
+4. "Guardar nuevos" registra cuadrillas sin costos del periodo.
+5. "Actualizar valores" reemplaza los cuatro valores del periodo y cuadrilla.
+6. Las cuadrillas PDG aparecen al costado y no registran sueldos, alquiler,
+   combustible ni bonos.
+7. El pago PDG se calcula automáticamente por partida:
+   - De 1 a 60 trabajos: tarifa de la segunda columna monetaria.
+   - Desde 61 trabajos: tarifa de la tercera columna monetaria para todas
+     las partidas del mes.
+8. El tarifario se crea en la hoja TARIFARIO_PDG y puede actualizarse allí.
+9. La utilidad PDG se calcula:
+   Producción - Materiales - Pago PDG - Penalidades WIN.
+10. Se mantienen los datos anteriores de GASTOS_CUADRILLA.
+
+ARCHIVOS A REEMPLAZAR
+
+APPS SCRIPT
+- Code.gs
+
+GITHUB
+- Code.gs
+- apps_script/Code.gs
+- js/analisis_economico.js
+- index.html
+
+ORDEN
+
+1. Reemplazar Code.gs en Apps Script.
+2. Guardar y crear una nueva versión de la implementación.
+3. Reemplazar los cuatro archivos indicados en GitHub.
+4. Realizar commit y push.
+5. Cerrar sesión, ingresar nuevamente y abrir:
+   Análisis Económico > Utilidad por cuadrilla > Costos operativos por cuadrilla.
+
+NOTA
+
+Las hojas TARIFARIO_PDG y GASTOS_CUADRILLA se verifican automáticamente.
+No se debe borrar información histórica.
