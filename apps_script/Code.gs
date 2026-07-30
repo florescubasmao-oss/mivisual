@@ -16,6 +16,7 @@ const HOJA_CARGOS_ACTAS = "CARGOS_ACTAS";
 const HOJA_EQUIPOS_AVERIADOS = "EQUIPOS_AVERIADOS";
 const HOJA_CARGOS_EQUIPOS_AVERIADOS = "CARGOS_EQUIPOS_AVERIADOS";
 const HOJA_ANALISIS_ECONOMICO = "ANALISIS_ECONOMICO";
+const HOJA_GASTOS_CUADRILLA = "GASTOS_CUADRILLA";
 const CARPETA_ACTAS_ESCANEADAS = "1EZALuMsXo_ZRO93FjKyuDgRmvAe2C69L";
 const HOJA_CHECKLIST_ALMACEN = "CHECKLIST_ALMACEN";
 const CARPETA_CHECKLIST_ALMACEN = "1nL5if5dRs3y1_OpKfzu7N9BNjiSvXVgp";
@@ -5649,8 +5650,8 @@ const HOJA_PERMISOS_MODULOS = "PERMISOS_MODULOS";
 function encabezadoPermisosModulos(){return [["PERFIL","MODULO","ACTIVO","ORDEN_MENU","MOSTRAR_MODULO","VER","REGISTRAR","EDITAR","OBSERVAR","APROBAR","VALIDAR","DESCARGAR","ADMINISTRAR","ALCANCE_DATOS","VISTA_PERFIL","OBSERVACION"]];}
 function asegurarHojaPermisosModulos(){const ss=SpreadsheetApp.getActiveSpreadsheet();let h=ss.getSheetByName(HOJA_PERMISOS_MODULOS);if(!h)h=ss.insertSheet(HOJA_PERMISOS_MODULOS);if(h.getMaxColumns()<16)h.insertColumnsAfter(h.getMaxColumns(),16-h.getMaxColumns());if(h.getLastRow()===0||!h.getRange(1,1).getValue())h.getRange(1,1,1,16).setValues(encabezadoPermisosModulos());return h;}
 function filaPermisoAObjeto(f){return {perfil:normalizarTexto(f[0]),modulo:normalizarTexto(f[1]),activo:normalizarTexto(f[2]||"SI"),ordenMenu:f[3],mostrarModulo:normalizarTexto(f[4]||"NO"),ver:normalizarTexto(f[5]||"NO"),registrar:normalizarTexto(f[6]||"NO"),editar:normalizarTexto(f[7]||"NO"),observar:normalizarTexto(f[8]||"NO"),aprobar:normalizarTexto(f[9]||"NO"),validar:normalizarTexto(f[10]||"NO"),descargar:normalizarTexto(f[11]||"NO"),administrar:normalizarTexto(f[12]||"NO"),alcanceDatos:normalizarTexto(f[13]||"SIN ACCESO"),vistaPerfil:(f[14]||"").toString(),observacion:(f[15]||"").toString()};}
-function obtenerPermisosUsuario(data){asegurarPermisosMapaOperativo();asegurarPermisosEquiposAveriados_();const u=obtenerUsuarioApp(data.usuario),h=asegurarHojaPermisosModulos(),d=h.getDataRange().getValues(),p=normalizarTexto(u.perfil),lista=[];for(let i=1;i<d.length;i++){const x=filaPermisoAObjeto(d[i]);if(x.perfil===p)lista.push(x);}return {ok:true,modulo:"PERMISOS",perfil:p,permisos:lista};}
-function listarPermisosAdministracion(data){asegurarPermisosEquiposAveriados_();const u=obtenerUsuarioApp(data.usuario);if(!esPerfilJefatura(u.perfil))throw new Error("Solo Jefatura puede administrar permisos");const d=asegurarHojaPermisosModulos().getDataRange().getValues(),lista=[];for(let i=1;i<d.length;i++)if(d[i][0]&&d[i][1])lista.push(filaPermisoAObjeto(d[i]));return {ok:true,permisos:lista};}
+function obtenerPermisosUsuario(data){asegurarPermisosMapaOperativo();asegurarPermisosEquiposAveriados_();asegurarPermisoUtilidadCuadrilla_();const u=obtenerUsuarioApp(data.usuario),h=asegurarHojaPermisosModulos(),d=h.getDataRange().getValues(),p=normalizarTexto(u.perfil),lista=[];for(let i=1;i<d.length;i++){const x=filaPermisoAObjeto(d[i]);if(x.perfil===p)lista.push(x);}return {ok:true,modulo:"PERMISOS",perfil:p,permisos:lista};}
+function listarPermisosAdministracion(data){asegurarPermisosEquiposAveriados_();asegurarPermisoUtilidadCuadrilla_();const u=obtenerUsuarioApp(data.usuario);if(!esPerfilJefatura(u.perfil))throw new Error("Solo Jefatura puede administrar permisos");const d=asegurarHojaPermisosModulos().getDataRange().getValues(),lista=[];for(let i=1;i<d.length;i++)if(d[i][0]&&d[i][1])lista.push(filaPermisoAObjeto(d[i]));return {ok:true,permisos:lista};}
 function guardarPermisoModulo(data){const u=obtenerUsuarioApp(data.usuario);if(!esPerfilJefatura(u.perfil))throw new Error("Solo Jefatura puede administrar permisos");const h=asegurarHojaPermisosModulos(),d=h.getDataRange().getValues(),p=normalizarTexto(data.perfil),m=normalizarTexto(data.modulo);if(!p||!m)throw new Error("Perfil y módulo son obligatorios");const sn=v=>normalizarTexto(v)==="SI"?"SI":"NO";const fila=[p,m,sn(data.activo||"SI"),Number(data.ordenMenu)||"",sn(data.mostrarModulo),sn(data.ver),sn(data.registrar),sn(data.editar),sn(data.observar),sn(data.aprobar),sn(data.validar),sn(data.descargar),sn(data.administrar),normalizarTexto(data.alcanceDatos||"SIN ACCESO"),(data.vistaPerfil||p).toString(),(data.observacion||"").toString()];let n=0;for(let i=1;i<d.length;i++)if(normalizarTexto(d[i][0])===p&&normalizarTexto(d[i][1])===m){n=i+1;break;}if(n)h.getRange(n,1,1,16).setValues([fila]);else h.appendRow(fila);try{CacheService.getScriptCache().remove("PM_CENTRAL|"+p+"|"+m);}catch(e){}return {ok:true,perfil:p,modulo:m};}
 function permisoUsuarioAccion(usuario,modulo,accion){const h=asegurarHojaPermisosModulos(),d=h.getDataRange().getValues(),p=normalizarTexto(usuario.perfil),m=normalizarTexto(modulo),col={VER:5,REGISTRAR:6,EDITAR:7,OBSERVAR:8,APROBAR:9,VALIDAR:10,DESCARGAR:11,ADMINISTRAR:12}[normalizarTexto(accion)];if(col===undefined)return false;for(let i=1;i<d.length;i++)if(normalizarTexto(d[i][0])===p&&normalizarTexto(d[i][1])===m)return normalizarTexto(d[i][2]||"SI")==="SI"&&normalizarTexto(d[i][col]||"NO")==="SI";return false;}
 
@@ -6819,6 +6820,463 @@ function obtenerResumenMaterialesV184(data) {
     porSede:Object.keys(porSede).map(k=>porSede[k]).sort((a,b)=>b.costo-a.costo),
     porTipo:Object.keys(porTipo).map(k=>porTipo[k]).sort((a,b)=>b.costo-a.costo),
     porCuadrilla:listaCuadrillas
+  };
+}
+
+/* =====================================================
+   V292 - UTILIDAD MENSUAL POR CUADRILLA
+   Producción valorizada menos materiales, sueldos,
+   combustible, alquiler de unidad, bonos y penalidades WIN.
+===================================================== */
+const MODULO_UTILIDAD_CUADRILLA = "UTILIDAD CUADRILLA";
+const CONCEPTOS_GASTO_UTILIDAD = ["SUELDOS","COMBUSTIBLE","ALQUILER UNIDAD"];
+
+function asegurarPermisoUtilidadCuadrilla_() {
+  const hoja = asegurarHojaPermisosModulos();
+  const datos = hoja.getDataRange().getValues();
+  const existentes = {};
+  for (let i = 1; i < datos.length; i++) {
+    existentes[normalizarTexto(datos[i][0]) + "|" + normalizarTexto(datos[i][1])] = true;
+  }
+  const filas = [
+    ["JEFATURA",MODULO_UTILIDAD_CUADRILLA,"SI",23,"NO","SI","SI","NO","NO","NO","NO","SI","NO","ZONA NORTE","JEFATURA","Utilidad mensual por cuadrilla, exclusiva de Jefatura General"],
+    ["JEFATURA GENERAL",MODULO_UTILIDAD_CUADRILLA,"SI",23,"NO","SI","SI","NO","NO","NO","NO","SI","NO","ZONA NORTE","JEFATURA GENERAL","Utilidad mensual por cuadrilla, exclusiva de Jefatura General"]
+  ];
+  const nuevas = filas.filter(function(fila) {
+    return !existentes[normalizarTexto(fila[0]) + "|" + MODULO_UTILIDAD_CUADRILLA];
+  });
+  if (nuevas.length) hoja.getRange(hoja.getLastRow() + 1, 1, nuevas.length, 16).setValues(nuevas);
+  return nuevas.length;
+}
+
+function encabezadoGastosCuadrilla_() {
+  return [[
+    "ID","PERIODO","FECHA_CARGA","SEDE","CUADRILLA","CONCEPTO",
+    "MONTO","FILAS_ORIGEN","OBSERVACION","USUARIO_CARGA","LOTE"
+  ]];
+}
+
+function asegurarHojaGastosCuadrilla_() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  let hoja = ss.getSheetByName(HOJA_GASTOS_CUADRILLA);
+  if (!hoja) hoja = ss.insertSheet(HOJA_GASTOS_CUADRILLA);
+  if (hoja.getMaxColumns() < 11) hoja.insertColumnsAfter(hoja.getMaxColumns(), 11 - hoja.getMaxColumns());
+  if (hoja.getLastRow() === 0 || !hoja.getRange(1,1).getValue()) {
+    hoja.getRange(1,1,1,11).setValues(encabezadoGastosCuadrilla_());
+    hoja.setFrozenRows(1);
+  }
+  return hoja;
+}
+
+function exigirAccesoUtilidadCuadrilla_(data, accion) {
+  asegurarPermisoUtilidadCuadrilla_();
+  const usuario = obtenerUsuarioApp(data.usuario);
+  const permiso = exigirPermisoModuloCentral(usuario, MODULO_UTILIDAD_CUADRILLA, accion || "VER");
+  return { usuario, permiso };
+}
+
+function numeroMonedaUtilidad_(valor) {
+  if (typeof valor === "number") return isFinite(valor) ? valor : null;
+  let texto = String(valor == null ? "" : valor).trim();
+  if (!texto) return null;
+  texto = texto.replace(/S\/\.?/gi,"").replace(/\s+/g,"").replace(/[^\d,.\-]/g,"");
+  if (!texto || texto === "-") return null;
+  const ultimaComa = texto.lastIndexOf(",");
+  const ultimoPunto = texto.lastIndexOf(".");
+  if (ultimaComa >= 0 && ultimoPunto >= 0) {
+    if (ultimaComa > ultimoPunto) texto = texto.replace(/\./g,"").replace(",",".");
+    else texto = texto.replace(/,/g,"");
+  } else if (ultimaComa >= 0) {
+    const decimales = texto.length - ultimaComa - 1;
+    texto = decimales > 0 && decimales <= 2 ? texto.replace(/\./g,"").replace(",",".") : texto.replace(/,/g,"");
+  } else if (ultimoPunto >= 0) {
+    const puntos = (texto.match(/\./g) || []).length;
+    const decimales = texto.length - ultimoPunto - 1;
+    if (puntos > 1 || decimales === 3) texto = texto.replace(/\./g,"");
+  }
+  const numero = Number(texto);
+  return isFinite(numero) ? numero : null;
+}
+
+function conceptoGastoUtilidad_(valor) {
+  const concepto = normalizarTexto(valor);
+  if (["SUELDO","SUELDOS","PLANILLA","REMUNERACION","REMUNERACIONES"].includes(concepto)) return "SUELDOS";
+  if (["COMBUSTIBLE","GASOLINA","PETROLEO","DIESEL"].includes(concepto)) return "COMBUSTIBLE";
+  if (["ALQUILER","ALQUILER UNIDAD","ALQUILER DE UNIDAD","UNIDAD","ALQUILER VEHICULO","ALQUILER DE VEHICULO"].includes(concepto)) return "ALQUILER UNIDAD";
+  throw new Error("Tipo de gasto no válido");
+}
+
+function loteGastosUtilidad_(texto, periodo, concepto, usuario) {
+  const base = [periodo,concepto,usuario,String(texto)].join("|");
+  const digest = Utilities.computeDigest(Utilities.DigestAlgorithm.MD5, base, Utilities.Charset.UTF_8);
+  return digest.map(function(b){ return ("0" + ((b < 0 ? b + 256 : b).toString(16))).slice(-2); }).join("");
+}
+
+function importarGastosUtilidadCuadrilla(data) {
+  const acceso = exigirAccesoUtilidadCuadrilla_(data, "REGISTRAR");
+  const periodo = resolverPeriodoAnalisisEconomico({periodo:data.periodo}).clave;
+  const concepto = conceptoGastoUtilidad_(data.concepto);
+  const texto = String(data.texto || "").trim();
+  if (!texto) throw new Error("Pegue primero la información copiada desde Excel");
+
+  const lineas = texto.split(/\r?\n/).filter(function(x){ return String(x).trim() !== ""; });
+  if (lineas.length < 2) throw new Error("La información debe incluir encabezados y al menos un registro");
+  const separador = lineas[0].indexOf("\t") >= 0 ? "\t" : (lineas[0].indexOf(";") >= 0 ? ";" : ",");
+  const matriz = lineas.map(function(linea){ return linea.split(separador).map(function(x){ return String(x).trim(); }); });
+  const cabecera = matriz[0].map(normalizarTexto);
+  const iCuadrilla = indiceEncabezadoV184(cabecera,["CUADRILLA","NOMBRE CUADRILLA","CONTRATA CUADRILLA"]);
+  const iTecnico = indiceEncabezadoV184(cabecera,["TECNICO","PERSONAL","TRABAJADOR","COLABORADOR","NOMBRES Y APELLIDOS"]);
+  const iSede = indiceEncabezadoV184(cabecera,["SEDE","PROVINCIA","CIUDAD"]);
+  const iObservacion = indiceEncabezadoV184(cabecera,["OBSERVACION","DETALLE","COMENTARIO","PLACA"]);
+  const alternativasMonto = concepto === "SUELDOS"
+    ? ["SUELDOS","SUELDO","MONTO","TOTAL","IMPORTE","COSTO"]
+    : concepto === "COMBUSTIBLE"
+      ? ["COMBUSTIBLE","MONTO","TOTAL","IMPORTE","COSTO"]
+      : ["ALQUILER UNIDAD","ALQUILER DE UNIDAD","ALQUILER","MONTO","TOTAL","IMPORTE","COSTO"];
+  const iMonto = indiceEncabezadoV184(cabecera,alternativasMonto);
+  if (iCuadrilla < 0 && iTecnico < 0) throw new Error("No se encontró la columna CUADRILLA ni la columna TÉCNICO");
+  if (iMonto < 0) throw new Error("No se encontró la columna MONTO, TOTAL o " + concepto);
+
+  const mapaTecnicos = iCuadrilla < 0 ? obtenerMapaTecnicosMaterialesV184() : null;
+  const consolidados = {};
+  const noEncontrados = {};
+  const ambiguos = {};
+  const valoresInvalidos = [];
+
+  for (let i = 1; i < matriz.length; i++) {
+    const fila = matriz[i];
+    let cuadrilla = "";
+    let sede = "";
+    if (iCuadrilla >= 0 && String(fila[iCuadrilla] || "").trim()) {
+      cuadrilla = normalizarCuadrilla(fila[iCuadrilla]);
+      try {
+        const datosCuadrilla = obtenerDatosCuadrillaApp(cuadrilla);
+        sede = normalizarTexto(datosCuadrilla.sede);
+        cuadrilla = normalizarCuadrilla(cuadrilla);
+      } catch (e) {
+        noEncontrados[String(fila[iCuadrilla] || "").trim()] = true;
+        continue;
+      }
+    } else {
+      const tecnico = String(fila[iTecnico] || "").trim();
+      if (!tecnico) continue;
+      const resolucion = resolverTecnicoMaterialesV185(tecnico, mapaTecnicos);
+      if (resolucion.estado === "NO_ENCONTRADO") {
+        noEncontrados[tecnico] = true;
+        continue;
+      }
+      if (resolucion.estado === "AMBIGUO") {
+        ambiguos[tecnico] = true;
+        continue;
+      }
+      cuadrilla = normalizarCuadrilla(resolucion.registro.cuadrilla);
+      sede = normalizarTexto(resolucion.registro.sede);
+    }
+
+    if (!sede && iSede >= 0) sede = normalizarTexto(fila[iSede]);
+    const montoTexto = fila[iMonto];
+    if (String(montoTexto == null ? "" : montoTexto).trim() === "") continue;
+    const monto = numeroMonedaUtilidad_(montoTexto);
+    if (monto === null || monto < 0) {
+      valoresInvalidos.push({fila:i+1,cuadrilla,valor:String(montoTexto || "")});
+      continue;
+    }
+    if (!consolidados[cuadrilla]) {
+      consolidados[cuadrilla] = {cuadrilla,sede,monto:0,filas:0,observaciones:{}};
+    }
+    consolidados[cuadrilla].monto += monto;
+    consolidados[cuadrilla].filas++;
+    const observacion = iObservacion >= 0 ? String(fila[iObservacion] || "").trim() : "";
+    if (observacion) consolidados[cuadrilla].observaciones[observacion] = true;
+  }
+
+  const lista = Object.keys(consolidados).map(function(clave){ return consolidados[clave]; });
+  if (!lista.length) throw new Error("No se encontraron registros válidos para guardar");
+  const ahora = new Date();
+  const lote = loteGastosUtilidad_(texto,periodo,concepto,acceso.usuario.usuario);
+  const nuevas = lista.map(function(x) {
+    return [
+      "GCU-" + periodo.replace("-","") + "-" + concepto.replace(/\s/g,"") + "-" + Utilities.getUuid().slice(0,8).toUpperCase(),
+      periodo,ahora,x.sede,x.cuadrilla,concepto,Math.round(x.monto*100)/100,x.filas,
+      Object.keys(x.observaciones).slice(0,10).join(" / "),acceso.usuario.usuario,lote
+    ];
+  });
+
+  const hoja = asegurarHojaGastosCuadrilla_();
+  const lock = LockService.getScriptLock();
+  let reemplazados = 0;
+  lock.waitLock(30000);
+  try {
+    const anteriores = hoja.getLastRow() > 1
+      ? hoja.getRange(2,1,hoja.getLastRow()-1,11).getValues()
+      : [];
+    const conservar = anteriores.filter(function(fila) {
+      return String(fila[1] || "") !== periodo || normalizarTexto(fila[5]) !== concepto;
+    });
+    reemplazados = anteriores.length - conservar.length;
+    const salida = conservar.concat(nuevas);
+    if (hoja.getLastRow() > 1) hoja.getRange(2,1,hoja.getLastRow()-1,11).clearContent();
+    if (salida.length) {
+      hoja.getRange(2,1,salida.length,11).setValues(salida);
+      hoja.getRange(2,3,salida.length,1).setNumberFormat("dd/mm/yyyy hh:mm:ss");
+      hoja.getRange(2,7,salida.length,1).setNumberFormat('"S/ "0.00');
+    }
+  } finally {
+    lock.releaseLock();
+  }
+
+  return {
+    ok:true,modulo:MODULO_UTILIDAD_CUADRILLA,accion:"IMPORTAR_GASTOS",
+    periodo,concepto,cuadrillasGuardadas:nuevas.length,filasOrigen:matriz.length-1,
+    montoTotal:nuevas.reduce(function(total,fila){return total+(Number(fila[6])||0);},0),
+    reemplazados,
+    noEncontrados:Object.keys(noEncontrados).sort(),
+    ambiguos:Object.keys(ambiguos).sort(),
+    valoresInvalidos:valoresInvalidos.slice(0,50),
+    totalInvalidos:valoresInvalidos.length,
+    fechaActualizacion:Utilities.formatDate(ahora,"America/Lima","dd/MM/yyyy · hh:mm a")
+  };
+}
+
+function asegurarAcumuladorUtilidad_(mapa, cuadrilla, sede) {
+  const clave = normalizarCuadrilla(cuadrilla);
+  if (!clave) return null;
+  if (!mapa[clave]) {
+    mapa[clave] = {
+      cuadrilla:clave,sede:normalizarTexto(sede || "SIN SEDE"),
+      produccion:0,materiales:0,sueldos:0,combustible:0,alquilerUnidad:0,
+      bonos:0,penalidadesWin:0,presenciaGastos:{}
+    };
+  } else if ((!mapa[clave].sede || mapa[clave].sede === "SIN SEDE") && sede) {
+    mapa[clave].sede = normalizarTexto(sede);
+  }
+  return mapa[clave];
+}
+
+function periodoClaveValorUtilidad_(valor) {
+  if (valor instanceof Date && !isNaN(valor.getTime())) return Utilities.formatDate(valor,Session.getScriptTimeZone(),"yyyy-MM");
+  const texto = normalizarTexto(valor);
+  if (/^\d{4}-\d{2}/.test(texto)) return texto.slice(0,7);
+  let m = String(valor || "").match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})/);
+  if (m) return m[3] + "-" + String(m[2]).padStart(2,"0");
+  m = texto.match(/^(ENERO|FEBRERO|MARZO|ABRIL|MAYO|JUNIO|JULIO|AGOSTO|SEPTIEMBRE|SETIEMBRE|OCTUBRE|NOVIEMBRE|DICIEMBRE)\s+(\d{4})$/);
+  if (m) {
+    const meses = {ENERO:1,FEBRERO:2,MARZO:3,ABRIL:4,MAYO:5,JUNIO:6,JULIO:7,AGOSTO:8,SEPTIEMBRE:9,SETIEMBRE:9,OCTUBRE:10,NOVIEMBRE:11,DICIEMBRE:12};
+    return m[2] + "-" + String(meses[m[1]]).padStart(2,"0");
+  }
+  return "";
+}
+
+function cargarProduccionUtilidad_(periodo, mapa) {
+  const hoja = obtenerHoja(HOJA_PRODUCCION);
+  const datos = hoja.getDataRange().getValues();
+  const catalogo = obtenerCatalogoEconomico();
+  const usuarios = obtenerMapaUsuarios();
+  for (let i=1;i<datos.length;i++) {
+    const fila=datos[i],fecha=convertirFechaAnalisisEconomico(fila[2]);
+    if (!fecha || Utilities.formatDate(fecha,Session.getScriptTimeZone(),"yyyy-MM") !== periodo) continue;
+    const cuadrilla=normalizarCuadrilla(fila[1]),codigo=String(fila[3]||"").trim(),cantidad=Number(fila[4])||0;
+    if (!cuadrilla || !codigo || cantidad<=0) continue;
+    const cat=obtenerCatalogoEconomicoPorCodigo(codigo,catalogo);
+    if (!cat || cat.estadoTarifa!=="ACTIVO" || Number(cat.monto)<=0) continue;
+    const usuario=usuarios[cuadrilla]||{};
+    const item=asegurarAcumuladorUtilidad_(mapa,cuadrilla,usuario.sede);
+    item.produccion += cantidad*Number(cat.monto);
+  }
+}
+
+function cargarMaterialesUtilidad_(periodo, mapa) {
+  const hoja = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(HOJA_CONSUMO_MATERIALES);
+  if (!hoja || hoja.getLastRow()<=1) return;
+  const datos=hoja.getRange(2,1,hoja.getLastRow()-1,Math.min(16,hoja.getLastColumn())).getValues();
+  datos.forEach(function(fila) {
+    if (periodoClaveValorUtilidad_(fila[0])!==periodo) return;
+    const item=asegurarAcumuladorUtilidad_(mapa,fila[4],fila[2]);
+    if (item) item.materiales += Number(fila[11])||0;
+  });
+}
+
+function cargarGastosDirectosUtilidad_(periodo, mapa) {
+  const hoja=asegurarHojaGastosCuadrilla_();
+  let ultima=null;
+  if (hoja.getLastRow()<=1) return {ultimaActualizacion:"Sin cargas registradas"};
+  const datos=hoja.getRange(2,1,hoja.getLastRow()-1,11).getValues();
+  datos.forEach(function(fila) {
+    if (String(fila[1]||"")!==periodo) return;
+    const item=asegurarAcumuladorUtilidad_(mapa,fila[4],fila[3]);
+    if (!item) return;
+    const concepto=conceptoGastoUtilidad_(fila[5]);
+    const monto=Number(fila[6])||0;
+    if (concepto==="SUELDOS") item.sueldos+=monto;
+    if (concepto==="COMBUSTIBLE") item.combustible+=monto;
+    if (concepto==="ALQUILER UNIDAD") item.alquilerUnidad+=monto;
+    item.presenciaGastos[concepto]=true;
+    const fecha=fila[2] instanceof Date?fila[2]:new Date(fila[2]);
+    if (!isNaN(fecha)&&(!ultima||fecha>ultima)) ultima=fecha;
+  });
+  return {
+    ultimaActualizacion:ultima
+      ? Utilities.formatDate(ultima,"America/Lima","dd/MM/yyyy · hh:mm a")
+      : "Sin cargas registradas"
+  };
+}
+
+const CUADRILLAS_PDG_UTILIDAD_ = [
+  {codigo:"P8",terminos:["SGI"],nombres:["BASTIDAS","GONZALEZ","ALEX"]},
+  {codigo:"P7",terminos:["SGI"],nombres:["PACHERRES","RUIZ","VICTOR"]}
+];
+const CUADRILLAS_BONO_ESPECIAL_UTILIDAD_ = [
+  {codigo:"P5",terminos:["SGI"],nombres:["SANCHEZ","TUME","MAXIMO"]},
+  {codigo:"P6",terminos:["SGI"],nombres:["ESPINOZA","ESTRADA","ROBERTO"]},
+  {codigo:"P10",terminos:["TRASLADO"],nombres:["VERGARA","TRELLES","ROBERTSON"]},
+  {codigo:"P4",terminos:["SGI"],nombres:["INGOL","RODRIGUEZ","CESAR"]},
+  {codigo:"P1",terminos:["TRASLADO"],nombres:["ATENCIO","RELUZ","DANY","DANI"]},
+  {codigo:"P3",terminos:["SGI"],nombres:["ELERA","CUEVA","ROBERTO"]},
+  {codigo:"P12",terminos:["SGI"],nombres:["FERNANDEZ","MUNDACA","MOISES"]},
+  {codigo:"P2",terminos:["TRASLADO"],nombres:["ESPIRE","CHIQUEZ","LUIS"]},
+  {codigo:"P10",terminos:["SGI"],nombres:["YNGA","MORE","JAIME"]},
+  {codigo:"P16",terminos:["SGI"],nombres:["AZABACHE","SANCHEZ","FRANK"]},
+  {codigo:"P14",terminos:["SGI"],nombres:["BARRANZUELA","ALEMAN","WILSON","RUBEN"]}
+];
+
+function cumpleReglaCuadrillaUtilidad_(cuadrilla,regla) {
+  const nombre=normalizarCuadrilla(cuadrilla);
+  const codigo=(nombre.match(/^P\d+/)||[""])[0];
+  return codigo===regla.codigo &&
+    (regla.terminos||[]).every(function(x){return nombre.indexOf(x)>=0;}) &&
+    (regla.nombres||[]).some(function(x){return nombre.indexOf(x)>=0;});
+}
+
+function calcularBonoDiaUtilidad_(produccion,pext,cuadrilla) {
+  const puntosProduccion=Math.max(0,Number(produccion)||0);
+  const puntosPext=Math.max(0,Number(pext)||0);
+  const total=puntosProduccion+puntosPext;
+  if (total+0.000001<4.5) return 0;
+  const especial=CUADRILLAS_BONO_ESPECIAL_UTILIDAD_.some(function(r){return cumpleReglaCuadrillaUtilidad_(cuadrilla,r);});
+  const tarifaProduccion=especial?45:30;
+  const puntosProduccionComisionables=Math.max(0,puntosProduccion-4);
+  const basePendiente=Math.max(0,4-puntosProduccion);
+  const puntosPextComisionables=Math.max(0,puntosPext-basePendiente);
+  return Math.round((puntosProduccionComisionables*tarifaProduccion+puntosPextComisionables*30)*100)/100;
+}
+
+function cargarBonosUtilidad_(periodo,mapa) {
+  const dias={};
+  const usuarios=obtenerMapaUsuarios();
+  const catalogoHoja=obtenerHoja(HOJA_CATALOGO_ORDENES).getDataRange().getValues();
+  const puntosCatalogo={};
+  for (let i=1;i<catalogoHoja.length;i++) {
+    const codigo=String(catalogoHoja[i][0]||"").trim();
+    if (codigo) puntosCatalogo[codigo]=Number(catalogoHoja[i][3])||0;
+  }
+  const produccion=obtenerHoja(HOJA_PRODUCCION).getDataRange().getValues();
+  for (let i=1;i<produccion.length;i++) {
+    const fila=produccion[i],fecha=convertirFechaAnalisisEconomico(fila[2]);
+    if (!fecha || Utilities.formatDate(fecha,Session.getScriptTimeZone(),"yyyy-MM")!==periodo) continue;
+    const cuadrilla=normalizarCuadrilla(fila[1]);
+    if (!cuadrilla || CUADRILLAS_PDG_UTILIDAD_.some(function(r){return cumpleReglaCuadrillaUtilidad_(cuadrilla,r);})) continue;
+    const puntos=(Number(fila[4])||0)*(Number(puntosCatalogo[String(fila[3]||"").trim()])||0);
+    const clave=cuadrilla+"|"+Utilities.formatDate(fecha,Session.getScriptTimeZone(),"yyyy-MM-dd");
+    if (!dias[clave]) dias[clave]={cuadrilla,produccion:0,pext:0};
+    dias[clave].produccion+=puntos;
+  }
+
+  procesarVistosBuenosAutomaticosPext();
+  const hojaPext=asegurarHojaTrabajosConjunta();
+  const vistos={};
+  if (hojaPext.getLastRow()>1) {
+    const filas=hojaPext.getRange(2,1,hojaPext.getLastRow()-1,37).getValues();
+    filas.forEach(function(fila) {
+      const x=filaTrabajoConjuntaAObjeto(fila),id=String(x.id||"").trim();
+      if (!id||vistos[id]) return;
+      vistos[id]=true;
+      const fecha=convertirFechaAnalisisEconomico(x.fechaTrabajo);
+      if (!fecha||Utilities.formatDate(fecha,Session.getScriptTimeZone(),"yyyy-MM")!==periodo) return;
+      if (!esVistoBuenoTecnicoPext(x.resultadoTecnico)||normalizarTexto(x.resultadoJefatura)!=="APROBADO") return;
+      const calculo=calcularPuntajeTrabajoPextParaBono(x);
+      if (Number(calculo.puntosPext)<=0) return;
+      const cuadrilla=normalizarCuadrilla(x.cuadrilla);
+      if (!cuadrilla||CUADRILLAS_PDG_UTILIDAD_.some(function(r){return cumpleReglaCuadrillaUtilidad_(cuadrilla,r);})) return;
+      const clave=cuadrilla+"|"+Utilities.formatDate(fecha,Session.getScriptTimeZone(),"yyyy-MM-dd");
+      if (!dias[clave]) dias[clave]={cuadrilla,produccion:0,pext:0};
+      dias[clave].pext+=Number(calculo.puntosPext)||0;
+    });
+  }
+
+  Object.keys(dias).forEach(function(clave) {
+    const dia=dias[clave],usuario=usuarios[dia.cuadrilla]||{};
+    const item=asegurarAcumuladorUtilidad_(mapa,dia.cuadrilla,usuario.sede);
+    item.bonos+=calcularBonoDiaUtilidad_(dia.produccion,dia.pext,dia.cuadrilla);
+  });
+}
+
+function cargarPenalidadesWinUtilidad_(periodo,mapa) {
+  const hoja=SpreadsheetApp.getActiveSpreadsheet().getSheetByName(HOJA_OBSERVACIONES);
+  if (!hoja||hoja.getLastRow()<=1) return;
+  const datos=hoja.getRange(2,1,hoja.getLastRow()-1,Math.min(20,hoja.getLastColumn())).getValues();
+  datos.forEach(function(fila) {
+    const periodoFila=periodoClaveValorUtilidad_(fila[2])||periodoClaveValorUtilidad_(fila[1]);
+    if (periodoFila!==periodo) return;
+    if (normalizarTexto(fila[9])!=="WIN"||normalizarTexto(fila[13])!=="PENALIZADO") return;
+    const item=asegurarAcumuladorUtilidad_(mapa,fila[8],fila[5]);
+    if (item) item.penalidadesWin+=Number(fila[14])||0;
+  });
+}
+
+function obtenerUtilidadCuadrillas(data) {
+  const acceso=exigirAccesoUtilidadCuadrilla_(data,"VER");
+  const periodo=resolverPeriodoAnalisisEconomico({periodo:data.periodo});
+  const mapa={};
+  obtenerCuadrillasActivasEconomico().forEach(function(x){asegurarAcumuladorUtilidad_(mapa,x.cuadrilla,x.sede);});
+  cargarProduccionUtilidad_(periodo.clave,mapa);
+  cargarMaterialesUtilidad_(periodo.clave,mapa);
+  const estadoGastos=cargarGastosDirectosUtilidad_(periodo.clave,mapa);
+  cargarBonosUtilidad_(periodo.clave,mapa);
+  cargarPenalidadesWinUtilidad_(periodo.clave,mapa);
+
+  const cuadrillas=Object.keys(mapa).map(function(clave) {
+    const x=mapa[clave];
+    const costos=x.materiales+x.sueldos+x.combustible+x.alquilerUnidad+x.bonos+x.penalidadesWin;
+    const utilidad=x.produccion-costos;
+    const faltantes=CONCEPTOS_GASTO_UTILIDAD.filter(function(c){return !x.presenciaGastos[c];});
+    return {
+      cuadrilla:x.cuadrilla,sede:x.sede,
+      produccion:Math.round(x.produccion*100)/100,
+      materiales:Math.round(x.materiales*100)/100,
+      sueldos:Math.round(x.sueldos*100)/100,
+      combustible:Math.round(x.combustible*100)/100,
+      alquilerUnidad:Math.round(x.alquilerUnidad*100)/100,
+      bonos:Math.round(x.bonos*100)/100,
+      penalidadesWin:Math.round(x.penalidadesWin*100)/100,
+      costos:Math.round(costos*100)/100,
+      utilidad:Math.round(utilidad*100)/100,
+      margen:x.produccion>0?utilidad/x.produccion:0,
+      gastosFaltantes:faltantes,
+      gastosCompletos:faltantes.length===0
+    };
+  }).sort(function(a,b){return b.utilidad-a.utilidad||a.cuadrilla.localeCompare(b.cuadrilla,undefined,{numeric:true});});
+
+  const resumen=cuadrillas.reduce(function(r,x) {
+    r.produccion+=x.produccion;r.materiales+=x.materiales;r.sueldos+=x.sueldos;
+    r.combustible+=x.combustible;r.alquilerUnidad+=x.alquilerUnidad;r.bonos+=x.bonos;
+    r.penalidadesWin+=x.penalidadesWin;r.costos+=x.costos;r.utilidad+=x.utilidad;
+    if (!x.gastosCompletos) r.cuadrillasIncompletas++;
+    return r;
+  },{produccion:0,materiales:0,sueldos:0,combustible:0,alquilerUnidad:0,bonos:0,penalidadesWin:0,costos:0,utilidad:0,cuadrillasIncompletas:0});
+  resumen.margen=resumen.produccion>0?resumen.utilidad/resumen.produccion:0;
+
+  return {
+    ok:true,modulo:MODULO_UTILIDAD_CUADRILLA,accion:"CONSULTAR",
+    periodo:periodo.nombre,periodoClave:periodo.clave,
+    actualizado:Utilities.formatDate(new Date(),"America/Lima","dd/MM/yyyy · hh:mm a"),
+    ultimaCargaGastos:estadoGastos.ultimaActualizacion,
+    resumen,cuadrillas,
+    reglas:{
+      formula:"PRODUCCION - MATERIALES - SUELDOS - COMBUSTIBLE - ALQUILER UNIDAD - BONOS - PENALIDADES WIN",
+      bonos:"Producción normal más PEXT validado",
+      penalidades:"Solo fuente WIN con estado PENALIZADO"
+    },
+    permiso:{ver:acceso.permiso.ver,registrar:acceso.permiso.registrar,descargar:acceso.permiso.descargar}
   };
 }
 
@@ -10490,6 +10948,8 @@ function doPost(e) {
     if (data.accion === "actualizarConsultaReclamo") return respuestaJson(actualizarConsultaReclamo(data));
     if (data.accion === "restablecerConsultaReclamo") return respuestaJson(restablecerConsultaReclamo(data));
     if (data.accion === "agregarComentarioReclamo") return respuestaJson(agregarComentarioReclamo(data));
+    if (data.accion === "importarGastosUtilidadCuadrilla") return respuestaJson(importarGastosUtilidadCuadrilla(data));
+    if (data.accion === "obtenerUtilidadCuadrillas") return respuestaJson(obtenerUtilidadCuadrillas(data));
     if (data.accion === "procesarImportacionMateriales") return respuestaJson(procesarImportacionMaterialesV184(data));
     if (data.accion === "obtenerResumenMateriales") return respuestaJson(obtenerResumenMaterialesV184(data));
     if (data.accion === "asegurarHojasMateriales") {

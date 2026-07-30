@@ -8,8 +8,8 @@ async function pmApi(payload){const r=await fetch(API_PERMISOS,{method:'POST',bo
 const PM_CACHE_TTL_MS = 5 * 60 * 1000;
 let PM_ACTUALIZACION_EN_CURSO = false;
 
-function pmCacheKey(usuario){ return 'permisosModulosV266:' + pmNorm(usuario); }
-function pmCacheFechaKey(usuario){ return 'permisosModulosFechaV266:' + pmNorm(usuario); }
+function pmCacheKey(usuario){ return 'permisosModulosV292:' + pmNorm(usuario); }
+function pmCacheFechaKey(usuario){ return 'permisosModulosFechaV292:' + pmNorm(usuario); }
 function pmLeerCache(usuario){
   try {
     const permisos = JSON.parse(localStorage.getItem(pmCacheKey(usuario)) || 'null');

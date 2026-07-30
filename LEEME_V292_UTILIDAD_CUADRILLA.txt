@@ -1,0 +1,75 @@
+MI VISUAL V292 - UTILIDAD POR CUADRILLA
+========================================
+
+CAMBIO PRINCIPAL
+Se añadió dentro de Análisis Económico la tarjeta:
+UTILIDAD POR CUADRILLA
+
+FÓRMULA MENSUAL
+Utilidad =
+Producción valorizada
+- Materiales
+- Sueldos
+- Combustible
+- Alquiler de unidad
+- Bonos del mes
+- Penalidades WIN
+
+FUENTES AUTOMÁTICAS
+- Producción valorizada: PRODUCCION_APP + CATALOGO_ORDENES.
+- Materiales: CONSUMO_MATERIALES.
+- Bonos: Producción normal + PEXT validado, con la regla diaria vigente.
+- Penalidades: solo OBSERVACIONES con FUENTE = WIN y ESTADO = PENALIZADO.
+
+GASTOS PARA COPIAR DESDE EXCEL
+- Sueldos.
+- Combustible.
+- Alquiler de unidad.
+
+Cada concepto se carga por separado.
+Una nueva carga reemplaza únicamente el mismo concepto y periodo.
+No elimina otros conceptos ni otros meses.
+
+Columnas aceptadas:
+- CUADRILLA + MONTO.
+- Para Sueldos también se acepta TECNICO + MONTO.
+- Se reconocen MONTO, TOTAL, IMPORTE, COSTO o el nombre del concepto.
+
+VISUALIZACIÓN
+- Filtros por periodo, sede y cuadrilla.
+- Resumen de Producción, Costos, Utilidad y Margen.
+- Desglose de los siete conceptos.
+- Ranking por utilidad.
+- Detalle desplegable por cuadrilla.
+- Alerta cuando falta cargar Sueldos, Combustible o Alquiler de unidad.
+
+PERMISO
+Se crea UTILIDAD CUADRILLA en PERMISOS_MODULOS.
+Queda habilitado inicialmente solo para JEFATURA y JEFATURA GENERAL.
+No aparece como tarjeta independiente en el menú principal.
+
+HOJA NUEVA
+GASTOS_CUADRILLA se crea automáticamente.
+No se debe crear ni editar manualmente.
+
+ARCHIVOS QUE CAMBIAN
+- Code.gs
+- apps_script/Code.gs
+- js/analisis_economico.js
+- js/permisos.js
+- index.html
+
+ORDEN DE ACTUALIZACIÓN
+1. Reemplazar Code.gs en Apps Script.
+2. Guardar.
+3. Implementar > Administrar implementaciones > Editar.
+4. Elegir Nueva versión e Implementar.
+5. En GitHub reemplazar todos los archivos web incluidos.
+6. Realizar commit y push.
+7. Cerrar sesión e ingresar nuevamente a MI VISUAL.
+
+IMPORTANTE
+Code.gs sí cambió.
+La hoja GASTOS_CUADRILLA y el permiso se crean automáticamente.
+No se modifican los datos actuales de Producción, Materiales, Bonos,
+Observaciones ni PEXT.
