@@ -1,0 +1,59 @@
+MI VISUAL V288
+PROGRAMACIÓN DE DESCANSOS: SUPERVISORES Y CONTINUIDAD ENTRE MESES
+
+CORRECCIONES
+
+1. Los registros PERSONAL|USUARIO se reconocen como Supervisores o
+   Responsables de Almacén y ya no se buscan como si fueran cuadrillas.
+
+2. Los descansos personales no participan en el cálculo de capacidad
+   operativa. Se guardan con cobertura "NO APLICA".
+
+3. Cuando la vista de un mes muestra días del mes siguiente, una sola consulta
+   carga también la programación de esos días visibles.
+
+4. Después de guardar, se limpia la caché mensual de Programación de Descansos
+   para que los cambios realizados desde julio aparezcan inmediatamente al
+   consultar agosto.
+
+ARCHIVOS MODIFICADOS
+
+- Code.gs
+- apps_script/Code.gs
+- js/programacion_descansos.js
+- index.html
+
+CODE.GS
+
+Sí cambió. Es obligatorio actualizar Apps Script y crear una nueva versión de
+la implementación.
+
+ORDEN DE ACTUALIZACIÓN
+
+1. En Apps Script, reemplazar Code.gs por el Code.gs incluido.
+2. Guardar.
+3. Ir a Implementar > Administrar implementaciones > Editar.
+4. Seleccionar Nueva versión y pulsar Implementar.
+5. En GitHub, reemplazar:
+   - Code.gs
+   - apps_script/Code.gs
+   - js/programacion_descansos.js
+   - index.html
+6. Realizar commit y push.
+7. Probar un descanso de supervisor en agosto y cambiar entre julio y agosto.
+
+NO MODIFICAR
+
+- La carpeta .git.
+- Google Sheets manualmente.
+- Otros archivos del proyecto.
+
+VALIDACIONES REALIZADAS
+
+- Guardado de PERSONAL|SUPPIURA como Supervisor de Piura.
+- Registro de descanso del 02/08/2026 con cobertura NO APLICA.
+- Vista julio con carga conjunta de julio y agosto.
+- Vista agosto con carga del periodo agosto.
+- Limpieza exclusiva de la caché del módulo.
+- Sintaxis de Code.gs y programacion_descansos.js.
+

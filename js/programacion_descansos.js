@@ -1,4 +1,4 @@
-// MI VISUAL - Programación de Descansos V272
+// MI VISUAL - Programación de Descansos V288
 const API_DESCANSOS = "https://script.google.com/macros/s/AKfycbzcbjCLweJNgZXDerdzmMN7Lwotc1G8NWdzoPkaLNGDivAgpYxDkq78xZwPRioSB4XY/exec";
 let PD_DATA={programacion:[],cuadrillas:[]};
 let PD_CAMBIOS={};
@@ -28,6 +28,11 @@ function pdPeriodosDisponibles(periodoSeleccionado){
 function pdOpcionesMesHtml(periodoSeleccionado){
   const seleccionado=periodoSeleccionado||pdPeriodoActual();
   return pdPeriodosDisponibles(seleccionado).map(periodo=>`<option value="${periodo}" ${periodo===seleccionado?'selected':''}>${pdEsc(pdNombreMes(periodo))}</option>`).join('');
+}
+function pdPeriodosVista(periodo){
+  const principal=periodo||pdPeriodoActual();
+  const rango=pdRangoVisualMes(principal);
+  return [...new Set([rango.desde.slice(0,7),principal,rango.hasta.slice(0,7)])].sort();
 }
 function pdDiasMes(periodo){const [y,m]=periodo.split("-").map(Number);return new Date(y,m,0).getDate();}
 function pdFecha(periodo,dia){return `${periodo}-${String(dia).padStart(2,"0")}`;}
@@ -155,11 +160,11 @@ async function mostrarMiProgramacionPersonal(){
 async function pdCargar(periodo, forzar){
   const u=pdUser();
   const per=periodo||document.getElementById("pdPeriodo")?.value||pdPeriodoActual();
-  const claveCache=`MI_VISUAL_PD_${pdNorm(u.usuario)}_${per}`;
+  const periodosConsulta=pdPeriodosVista(per);
+  const claveCache=`MI_VISUAL_PD_${pdNorm(u.usuario)}_${periodosConsulta.join("_")}`;
 
-  // La apertura inicial consulta únicamente el periodo seleccionado.
-  // Antes se realizaban tres solicitudes simultáneas (mes anterior, actual y siguiente),
-  // lo que multiplicaba el tiempo de Apps Script y podía superar un minuto.
+  // Se mantiene una sola solicitud a Apps Script. Si la vista mensual cruza de mes,
+  // esa misma solicitud incluye los periodos visibles para conservar la continuidad.
   if(!forzar){
     try{
       const guardado=sessionStorage.getItem(claveCache);
@@ -174,7 +179,7 @@ async function pdCargar(periodo, forzar){
     }catch(e){}
   }
 
-  const respuesta=await pdApi({accion:"listarProgramacionDescansos",usuario:u.usuario,periodo:per});
+  const respuesta=await pdApi({accion:"listarProgramacionDescansos",usuario:u.usuario,periodo:per,periodos:periodosConsulta});
   PD_DATA={...respuesta,periodo:per,programacion:respuesta.programacion||[],cuadrillas:respuesta.cuadrillas||[]};
   PD_CAMBIOS={};PD_MOTIVO_CAMBIO="";
 
@@ -185,8 +190,13 @@ async function pdCargar(periodo, forzar){
 
 function pdLimpiarCachePeriodo(periodo){
   const u=pdUser();
-  const per=periodo||PD_DATA.periodo||pdPeriodoActual();
-  try{sessionStorage.removeItem(`MI_VISUAL_PD_${pdNorm(u.usuario)}_${per}`);}catch(e){}
+  const prefijo=`MI_VISUAL_PD_${pdNorm(u.usuario)}_`;
+  try{
+    for(let i=sessionStorage.length-1;i>=0;i--){
+      const clave=sessionStorage.key(i);
+      if(clave&&clave.startsWith(prefijo))sessionStorage.removeItem(clave);
+    }
+  }catch(e){}
 }
 
 function pdRender(){
@@ -536,7 +546,28 @@ async function pdCargarCobertura(){
   }
 }
 
-async function pdGuardarCambios(){try{const u=pdUser(),registros=Object.entries(PD_CAMBIOS).map(([k,estadoDia])=>{const i=k.lastIndexOf('|');return {cuadrilla:k.slice(0,i),fecha:k.slice(i+1),estadoDia};});if(!registros.length)return;const motivo=(prompt(u.perfil==='SUPERVISOR'?'Motivo de los cambios que se enviarán a Jefatura:':'Motivo del cambio realizado por Jefatura:')||'').trim();if(!motivo)return alert('Debe ingresar el motivo.');const r=await pdApi({accion:'guardarProgramacionDescansos',usuario:u.usuario,registros,motivo});if(!r.guardados){return alert('No se guardó ningún cambio. Revise que el estado seleccionado sea diferente al vigente.');}alert(u.perfil==='SUPERVISOR'?`${r.guardados} cambio(s) enviados a validación de Jefatura.`:`${r.guardados} cambio(s) aplicados y registrados en el historial del Supervisor.`);PD_CAMBIOS={};const per=document.getElementById('pdPeriodo').value;pdCapturarFiltros();await pdCargar(per,true);pdRenderGestion();await pdActualizarNotificacionesDescansosMenu();}catch(e){alert(e.message);}}
+async function pdGuardarCambios(){
+  try{
+    const u=pdUser();
+    const registros=Object.entries(PD_CAMBIOS).map(([k,estadoDia])=>{
+      const i=k.lastIndexOf('|');
+      return {cuadrilla:k.slice(0,i),fecha:k.slice(i+1),estadoDia};
+    });
+    if(!registros.length)return;
+    const motivo=(prompt(u.perfil==='SUPERVISOR'?'Motivo de los cambios que se enviarán a Jefatura:':'Motivo del cambio realizado por Jefatura:')||'').trim();
+    if(!motivo)return alert('Debe ingresar el motivo.');
+    const r=await pdApi({accion:'guardarProgramacionDescansos',usuario:u.usuario,registros,motivo});
+    if(!r.guardados)return alert('No se guardó ningún cambio. Revise que el estado seleccionado sea diferente al vigente.');
+    alert(u.perfil==='SUPERVISOR'?`${r.guardados} cambio(s) enviados a validación de Jefatura.`:`${r.guardados} cambio(s) aplicados y registrados en el historial del Supervisor.`);
+    PD_CAMBIOS={};
+    pdLimpiarCachePeriodo();
+    const per=document.getElementById('pdPeriodo').value;
+    pdCapturarFiltros();
+    await pdCargar(per,true);
+    pdRenderGestion();
+    await pdActualizarNotificacionesDescansosMenu();
+  }catch(e){alert(e.message);}
+}
 async function pdAprobarProgramacion(){try{const u=pdUser();if(!confirm('¿Validar y aprobar las programaciones/cambios pendientes? Las alertas de capacidad quedarán aceptadas por Jefatura.'))return;const r=await pdApi({accion:'aprobarProgramacionDescansos',usuario:u.usuario,ids:[]});alert(`${r.actualizados} registros aprobados.`);const per=document.getElementById('pdPeriodo').value;pdCapturarFiltros();await pdCargar(per,true);pdRenderGestion();await pdActualizarNotificacionesDescansosMenu();}catch(e){alert(e.message);}}
 function pdSolicitudCard(x){
   const u=pdUser(),solicitud=!!x.solicitudCambio,esJefatura=u.perfil!=='SUPERVISOR',checked=PD_PENDIENTES_SELECCIONADOS.has(x.id);
@@ -791,4 +822,3 @@ async function pdGenerarExcelDescansos(){
   }catch(e){alert(e.message||e);}
   finally{if(boton){boton.disabled=false;boton.textContent='Descargar Excel';}}
 }
-

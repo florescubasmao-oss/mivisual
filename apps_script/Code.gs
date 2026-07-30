@@ -5173,11 +5173,57 @@ function leerUsuariosDescansosUnaVez(usuario) {
   return lista;
 }
 
-function leerProgramacionDescansosPeriodo(periodo) {
+function obtenerEntidadProgramacionDescansos(claveEntidad) {
+  const clave = normalizarCuadrilla(claveEntidad);
+  const esPersonal = normalizarTexto(clave).indexOf("PERSONAL|") === 0;
+
+  if (!esPersonal) {
+    const dc = obtenerDatosCuadrillaApp(clave);
+    return {
+      cuadrilla: clave,
+      sede: normalizarTexto(dc.sede),
+      plataforma: plataformaDescansos(dc.plataforma),
+      supervisor: dc.usuarioSupervisor || "",
+      tecnicosAfectados: dc.usuario || "",
+      tipoPersonal: "CUADRILLA"
+    };
+  }
+
+  const personal = leerUsuariosDescansosUnaVez({perfil:"JEFATURA",sede:""}).find(item =>
+    normalizarTexto(item.cuadrilla) === normalizarTexto(clave) &&
+    normalizarTexto(item.tipoPersonal) !== "CUADRILLA"
+  );
+  if (!personal) throw new Error("No se encontró el personal en USUARIOS: " + clave);
+
+  return {
+    cuadrilla: personal.cuadrilla,
+    sede: normalizarTexto(personal.sede),
+    plataforma: "PERSONAL",
+    supervisor: personal.supervisor || "",
+    tecnicosAfectados: personal.usuario || personal.tecnico || "",
+    tipoPersonal: normalizarTexto(personal.tipoPersonal || "PERSONAL")
+  };
+}
+
+function periodosConsultaDescansos(periodoPrincipal, periodosSolicitados) {
+  const lista = [periodoPrincipal].concat(Array.isArray(periodosSolicitados) ? periodosSolicitados : []);
+  const periodos = [];
+  lista.forEach(valor => {
+    const periodo = String(valor || "").trim();
+    if (!/^\d{4}-\d{2}$/.test(periodo)) return;
+    if (periodos.indexOf(periodo) === -1) periodos.push(periodo);
+  });
+  return periodos.slice(0, 3);
+}
+
+function leerProgramacionDescansosPeriodo(periodo, periodosSolicitados) {
   const hoja = asegurarHojaProgramacionDescansos();
   const ultimaFila = hoja.getLastRow();
   if (ultimaFila <= 1) return [];
 
+  const periodos = periodosConsultaDescansos(periodo, periodosSolicitados);
+  const mapaPeriodos = {};
+  periodos.forEach(valor => { mapaPeriodos[valor] = true; });
   const datos = hoja.getRange(2, 1, ultimaFila - 1, 38).getValues();
   const lista = [];
 
@@ -5185,7 +5231,7 @@ function leerProgramacionDescansosPeriodo(periodo) {
     const fila = datos[i];
     if (!fila[0] && !fila[2] && !fila[5]) continue;
     const item = filaProgramacionAObjeto(fila);
-    if (item.periodo !== periodo) continue;
+    if (!mapaPeriodos[item.periodo]) continue;
     lista.push({ item, indice: i });
   }
 
@@ -5199,10 +5245,14 @@ function listarProgramacionDescansos(data) {
     ? {existe:true,activo:true,mostrar:true,ver:true,registrar:true,editar:false,observar:false,aprobar:false,validar:false,descargar:false,administrar:false,alcanceDatos:"CUADRILLA",vistaPerfil:"TECNICO"}
     : exigirPermisoModuloCentral(usuario, "PROGRAMACION DESCANSOS", "VER");
 
-  const periodo = (data.periodo || Utilities.formatDate(new Date(), Session.getScriptTimeZone(), "yyyy-MM")).toString();
+  const periodoRecibido = (data.periodo || Utilities.formatDate(new Date(), Session.getScriptTimeZone(), "yyyy-MM")).toString();
+  const periodo = /^\d{4}-\d{2}$/.test(periodoRecibido)
+    ? periodoRecibido
+    : Utilities.formatDate(new Date(), Session.getScriptTimeZone(), "yyyy-MM");
+  const periodosConsulta = periodosConsultaDescansos(periodo, data.periodos);
   const filtroSede = normalizarTexto(data.sede || "TODAS");
   const version = versionCacheDescansos();
-  const clave = claveCacheDescansos(usuario, periodo, filtroSede) + "|" + version;
+  const clave = claveCacheDescansos(usuario, periodo, filtroSede) + "|" + periodosConsulta.join(",") + "|" + version;
 
   try {
     const cache = CacheService.getScriptCache();
@@ -5214,7 +5264,7 @@ function listarProgramacionDescansos(data) {
 
   // Solo dos lecturas de Sheets: USUARIOS y PROGRAMACION_DESCANSOS.
   let cuadrillas = leerUsuariosDescansosUnaVez(usuario);
-  const registrosPeriodo = leerProgramacionDescansosPeriodo(periodo);
+  const registrosPeriodo = leerProgramacionDescansosPeriodo(periodo, periodosConsulta);
   const soloLecturaOperaciones = !(permisoDescansos.registrar || permisoDescansos.editar || permisoDescansos.observar || permisoDescansos.aprobar || permisoDescansos.validar || permisoDescansos.administrar);
 
   cuadrillas = cuadrillas.filter(item => registroCumpleAlcanceCentral(usuario, permisoDescansos, item));
@@ -5306,6 +5356,7 @@ function listarProgramacionDescansos(data) {
     accion: "LISTAR",
     perfil: usuario.perfil,
     periodo,
+    periodosConsulta,
     cuadrillas,
     programacion,
     historial,
@@ -5382,18 +5433,25 @@ function guardarProgramacionDescansos(data) {
     const nuevo=normalizarEstadoDiaDescansos(r.estadoDia||"EN CAMPO");
     const estadosPermitidos=["EN CAMPO","EN CAMPO BOLSA","DESCANSO","VACACIONES"];
     if(!cuadrilla||!fecha||!estadosPermitidos.includes(nuevo))return;
-    const dc=obtenerDatosCuadrillaApp(cuadrilla),sede=normalizarTexto(dc.sede),plataforma=plataformaDescansos(dc.plataforma);
+    const entidad=obtenerEntidadProgramacionDescansos(cuadrilla);
+    const sede=normalizarTexto(entidad.sede);
+    const plataforma=entidad.tipoPersonal==="CUADRILLA"?plataformaDescansos(entidad.plataforma):"PERSONAL";
+    const esPersonal=entidad.tipoPersonal!=="CUADRILLA";
+    if(esSupervisor&&esPersonal)throw new Error("Supervisor solo puede programar sus cuadrillas");
     if(esSupervisor&&sede!==normalizarTexto(usuario.sede))throw new Error("Supervisor solo puede programar su sede");
     const anterior=ultimoEstadoAprobadoDescansos(cuadrilla,fecha);
     if(anterior===nuevo)return;
-    const cobertura=calcularCoberturaDescansos(fecha,sede,plataforma,cambiosTemporales);if(cobertura.estado==="ROJO")alertas++;
+    const cobertura=esPersonal
+      ? {porcentaje:1,estado:"NO APLICA"}
+      : calcularCoberturaDescansos(fecha,sede,plataforma,cambiosTemporales);
+    if(!esPersonal&&cobertura.estado==="ROJO")alertas++;
     const ahora=new Date(),periodo=periodoDescansos(fecha),origen=idOrigenDescansos(cuadrilla,fecha);
     const tipoInicial = obtenerFilasDescansos().some(x=>normalizarTexto(x.item.idOrigen)===normalizarTexto(origen));
     const estadoValidacion=esJefatura?"APLICADO":"PENDIENTE_JEFATURA";
     const tipoRegistro=esJefatura?"CAMBIO_JEFATURA":(tipoInicial?"CAMBIO_SUPERVISOR":"PROGRAMACION_INICIAL");
     const fila=construirFilaDescansos({
       id:idMovimientoDescansos(cuadrilla,fecha),periodo,fecha,diaSemana:diaSemanaDescansos(fecha),sede,cuadrilla,plataforma,
-      supervisor:dc.usuarioSupervisor||"",tecnicosAfectados:dc.usuario||"",estadoDia:esJefatura?nuevo:anterior,
+      supervisor:entidad.supervisor||"",tecnicosAfectados:entidad.tecnicosAfectados||"",estadoDia:esJefatura?nuevo:anterior,
       estadoProgramacion:esJefatura?"APROBADO":"PENDIENTE JEFATURA",solicitudCambio:esJefatura?"":nuevo,
       motivoSolicitud:motivo,solicitadoPor:usuario.usuario,fechaSolicitud:ahora,horaSolicitud:ahora,
       resultadoSupervisor:esSupervisor?"ENVIADO":"",motivoSupervisor:esSupervisor?motivo:"",validadoSupervisorPor:esSupervisor?usuario.usuario:"",
