@@ -1,0 +1,32 @@
+MI VISUAL V290 - CHECKLIST ALMACÉN: RESPUESTA JSON SEGURA
+
+OBJETIVO
+Corregir el mensaje:
+Unexpected token 'M', "MI VISUAL API OK" is not valid JSON.
+
+CAMBIO APLICADO
+- Checklist Almacén realiza la solicitud como POST explícito.
+- Se evita utilizar una respuesta almacenada en caché.
+- La respuesta se valida antes de convertirla a JSON.
+- Si Apps Script devuelve "MI VISUAL API OK", se realiza un único reintento seguro.
+- Se conserva el mensaje técnico controlado si la respuesta sigue siendo inválida.
+
+ARCHIVOS PARA GITHUB
+1. js/checklist_almacen.js
+2. index.html
+
+APPS SCRIPT
+- Code.gs no cambió.
+- No crear una nueva implementación de Apps Script.
+
+ALCANCE
+- No cambia la hoja CHECKLIST_ALMACEN.
+- No cambia sus 51 columnas.
+- No cambia permisos, registros, validaciones, evidencias ni informes.
+- No cambia Programación de Descansos ni otros módulos.
+
+ORDEN
+1. Reemplazar los dos archivos indicados en GitHub.
+2. Realizar commit y push.
+3. Esperar la publicación de GitHub Pages.
+4. Actualizar la aplicación y abrir Checklist Almacén.
