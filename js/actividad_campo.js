@@ -411,12 +411,13 @@ function fechaVisiblePeruActividad(valor){
 
 function horaVisiblePeruActividad(valor,fechaValor){
     const texto=String(valor||"").trim();
-    const directa=texto.match(/^(\d{1,2}):(\d{2})(?::\d{2})?/);
-    if(directa)return `${directa[1].padStart(2,"0")}:${directa[2]}`;
+    if(texto&&typeof formatearHoraPeruApp==="function")return formatearHoraPeruApp(texto,false);
     let d=texto?new Date(texto):null;
     if((!d||Number.isNaN(d.getTime()))&&fechaValor)d=new Date(fechaValor);
     if(!d||Number.isNaN(d.getTime()))return "";
-    return new Intl.DateTimeFormat("es-PE",{timeZone:"America/Lima",hour:"2-digit",minute:"2-digit",hour12:false}).format(d);
+    return new Intl.DateTimeFormat("es-PE",{timeZone:"America/Lima",hour:"numeric",minute:"2-digit",hour12:true}).format(d)
+        .replace(/\ba\.\s*m\.\b/i,"a. m.")
+        .replace(/\bp\.\s*m\.\b/i,"p. m.");
 }
 
 function fechaHoraPeruActividad(a){

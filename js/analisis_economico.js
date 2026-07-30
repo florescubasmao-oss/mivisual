@@ -83,7 +83,8 @@ function mostrarCostoMateriales(){
 function mat261ActualizarSelloMateriales(valor){
   const sello=document.getElementById("mat261UltimaActualizacion");
   if(!sello)return;
-  const texto=(valor||"Sin actualización registrada").toString();
+  const original=(valor||"Sin actualización registrada").toString();
+  const texto=typeof formatearFechaHoraTextoPeruApp==="function"?formatearFechaHoraTextoPeruApp(original,false):original;
   sello.innerHTML=`<span>ÚLTIMA ACTUALIZACIÓN</span><b>${aeEscape(texto)}</b>`;
 }
 

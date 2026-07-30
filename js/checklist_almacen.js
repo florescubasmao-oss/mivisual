@@ -1,4 +1,4 @@
-// MI VISUAL - Checklist Almacén V290 - respuesta JSON segura
+// MI VISUAL - Checklist Almacén V291 - fecha y hora Perú 12 horas
 let CK_GUARDANDO_CHECKLIST = false;
 
 const API_CHECKLIST_ALMACEN = "https://script.google.com/macros/s/AKfycbzcbjCLweJNgZXDerdzmMN7Lwotc1G8NWdzoPkaLNGDivAgpYxDkq78xZwPRioSB4XY/exec";
@@ -234,14 +234,15 @@ function ckCard(x,u){
   const quien=x.validadoJefaturaPor||x.validadoAlmacenPor||'';
   const fechaObs=x.fechaValidacionJefatura||x.fechaValidacionAlmacen||'';
   const horaObs=x.horaValidacionJefatura||x.horaValidacionAlmacen||'';
+  const fechaHoraObs=fechaObs?formatearFechaHoraPeruApp(fechaObs,horaObs):'';
   const alerta=observado
-    ?`<div class="ck-alerta-obs"><b>Motivo de observación:</b> ${ckEsc(motivo||'Sin motivo registrado')}${quien?`<br><b>Observado por:</b> ${ckEsc(quien)}`:''}${fechaObs?` · ${ckEsc(fechaObs)} ${ckEsc(horaObs)}`:''}</div>`
+    ?`<div class="ck-alerta-obs"><b>Motivo de observación:</b> ${ckEsc(motivo||'Sin motivo registrado')}${quien?`<br><b>Observado por:</b> ${ckEsc(quien)}`:''}${fechaHoraObs?` · ${ckEsc(fechaHoraObs)}`:''}</div>`
     :conforme
-      ?`<div class="ck-alerta-ok"><b>Detalle de conformidad:</b> ${ckEsc(motivo||'Sin detalle registrado')}${quien?`<br><b>Conforme por:</b> ${ckEsc(quien)}`:''}${fechaObs?` · ${ckEsc(fechaObs)} ${ckEsc(horaObs)}`:''}</div>`
+      ?`<div class="ck-alerta-ok"><b>Detalle de conformidad:</b> ${ckEsc(motivo||'Sin detalle registrado')}${quien?`<br><b>Conforme por:</b> ${ckEsc(quien)}`:''}${fechaHoraObs?` · ${ckEsc(fechaHoraObs)}`:''}</div>`
       :'';
   const esCampo=ckNorm(x.origenRegistro)==='ACTIVIDAD_CAMPO';
   const origen=esCampo?`<div class="ck-alerta-ok" style="margin-top:8px"><b>Ejecutado en campo por Supervisor:</b> ${ckEsc(x.registradoPor||'Supervisor')}${x.comentarioFinal?`<br><b>Comentario final:</b> ${ckEsc(x.comentarioFinal)}`:''}</div>`:'';
-  return `<div class="ck-card"><div style="display:flex;justify-content:space-between;gap:8px"><div><b>${ckEsc(x.cuadrilla)}</b><div class="ck-meta">${ckEsc(x.nombresApellidos)} · ${ckEsc(x.sede)}<br>${ckEsc(x.fechaGestion||x.fechaRegistro)}</div></div>${ckEstado(x.estadoGeneral)}</div>${origen}${alerta}${ckDetalle(x)}${acciones?`<div class="ck-actions" style="margin-top:8px">${acciones}</div>`:''}</div>`;
+  return `<div class="ck-card"><div style="display:flex;justify-content:space-between;gap:8px"><div><b>${ckEsc(x.cuadrilla)}</b><div class="ck-meta">${ckEsc(x.nombresApellidos)} · ${ckEsc(x.sede)}<br>${ckEsc(formatearFechaPeruApp(x.fechaGestion||x.fechaRegistro))}</div></div>${ckEstado(x.estadoGeneral)}</div>${origen}${alerta}${ckDetalle(x)}${acciones?`<div class="ck-actions" style="margin-top:8px">${acciones}</div>`:''}</div>`;
 }
 async function ckCargarHistorialTecnico(){const box=document.getElementById('ckLista');if(!box)return;try{const d=await ckApi({accion:'listarChecklistAlmacen',usuario:ckUser().usuario});box.innerHTML='<h3 class="ck-sec">Historial</h3>'+d.checklist.map(x=>ckCard(x,ckUser())).join('');}catch(e){box.innerHTML=`<div class="ck-card">${ckEsc(e.message)}</div>`}}
 function ckEsJefaturaVisualChecklist(perfil){
@@ -384,11 +385,12 @@ function ckHtmlExcelCell(v){return ckEsc(v===undefined||v===null?'':v);}
 function ckDescargarInformeChecklist(){
   const arr=ckFiltrarInforme(CK_LISTA_ACTUAL||[]);if(!arr.length)return alert('No existen registros con los filtros seleccionados.');
   const head=['ID','FECHA REGISTRO','HORA REGISTRO','SEDE','CUADRILLA','NOMBRES Y APELLIDOS','FECHA GESTIÓN','ESTADO','ONT ZTE','ONT HUAWEI','MESH ZTE','MESH HUAWEI','WINBOX','FONOWIN','CABLE DROP','PRE 50','PRE 100','PRE 150','PRE 200','ANCLAJE P','CINTA BAND-IT','HEBILLA','ACOPLADOR','ROSETA','CONECTORES','TEMPLADORES','SPLITTER','CLEVIS','UTP CAT5','UTP CAT6','PATCH APC','PATCH UPC','RJ45','RESULTADO ALMACÉN','MOTIVO ALMACÉN','VALIDADO ALMACÉN POR','RESULTADO JEFATURA','MOTIVO JEFATURA','VALIDADO JEFATURA POR'];
-  const rows=arr.map(x=>[x.id,x.fechaRegistro,x.horaRegistro,x.sede,x.cuadrilla,x.nombresApellidos,x.fechaGestion,x.estadoGeneral,x.ontZte,x.ontHuawei,x.meshZte,x.meshHuawei,x.winbox,x.fonowin,x.cableDrop,x.pre50,x.pre100,x.pre150,x.pre200,x.anclajeP,x.cintaBandIt,x.hebilla,x.acoplador,x.roseta,x.conectoresOpticos,x.templadores,x.splitter,x.clevis,x.utpCat5,x.utpCat6,x.patchApcApc,x.patchUpcApc,x.rj45,x.resultadoAlmacen,x.motivoAlmacen,x.validadoAlmacenPor,x.resultadoJefatura,x.motivoJefatura,x.validadoJefaturaPor]);
+  const rows=arr.map(x=>[x.id,formatearFechaPeruApp(x.fechaRegistro),formatearHoraPeruApp(x.horaRegistro,false),x.sede,x.cuadrilla,x.nombresApellidos,formatearFechaPeruApp(x.fechaGestion),x.estadoGeneral,x.ontZte,x.ontHuawei,x.meshZte,x.meshHuawei,x.winbox,x.fonowin,x.cableDrop,x.pre50,x.pre100,x.pre150,x.pre200,x.anclajeP,x.cintaBandIt,x.hebilla,x.acoplador,x.roseta,x.conectoresOpticos,x.templadores,x.splitter,x.clevis,x.utpCat5,x.utpCat6,x.patchApcApc,x.patchUpcApc,x.rj45,x.resultadoAlmacen,x.motivoAlmacen,x.validadoAlmacenPor,x.resultadoJefatura,x.motivoJefatura,x.validadoJefaturaPor]);
   const eq=[];const defs=[['ONT ZTE','ontZte','fotosOntZte'],['ONT Huawei','ontHuawei','fotosOntHuawei'],['Mesh/Repetidor ZTE','meshZte','fotosMeshZte'],['Mesh/Repetidor Huawei','meshHuawei','fotosMeshHuawei'],['WINBOX','winbox','fotosWinbox'],['FONOWIN','fonowin','fotosFonowin']];
-  arr.forEach(x=>defs.forEach(d=>{const ss=ckPartes(x[d[1]]),ls=ckPartes(x[d[2]]);for(let i=0;i<Math.max(ss.length,ls.length);i++)eq.push([x.sede,x.cuadrilla,x.fechaGestion,d[0],ss[i]||'',ls[i]||'']);}));
+  arr.forEach(x=>defs.forEach(d=>{const ss=ckPartes(x[d[1]]),ls=ckPartes(x[d[2]]);for(let i=0;i<Math.max(ss.length,ls.length);i++)eq.push([x.sede,x.cuadrilla,formatearFechaPeruApp(x.fechaGestion),d[0],ss[i]||'',ls[i]||'']);}));
   const table=(h,r)=>`<table border="1"><tr>${h.map(v=>`<th style="background:#1f4e78;color:white">${ckHtmlExcelCell(v)}</th>`).join('')}</tr>${r.map(a=>`<tr>${a.map(v=>`<td>${ckHtmlExcelCell(v)}</td>`).join('')}</tr>`).join('')}</table>`;
-  const html=`<html><head><meta charset="UTF-8"></head><body><h2>INFORME DE CHECKLIST ALMACÉN</h2><p>Generado: ${new Date().toLocaleString('es-PE')}</p>${table(head,rows)}<br><h2>EQUIPOS Y SERIES</h2>${table(['SEDE','CUADRILLA','FECHA','EQUIPO','SERIE','EVIDENCIA'],eq)}</body></html>`;
+  const ahora=new Date();
+  const html=`<html><head><meta charset="UTF-8"></head><body><h2>INFORME DE CHECKLIST ALMACÉN</h2><p>Generado: ${formatearFechaHoraPeruApp(ahora,ahora,false)} — Hora Perú</p>${table(head,rows)}<br><h2>EQUIPOS Y SERIES</h2>${table(['SEDE','CUADRILLA','FECHA','EQUIPO','SERIE','EVIDENCIA'],eq)}</body></html>`;
   const blob=new Blob(['\ufeff',html],{type:'application/vnd.ms-excel'});const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=`INFORME_CHECKLIST_${new Date().toISOString().slice(0,10)}.xls`;document.body.appendChild(a);a.click();setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove();},500);ckCerrarModal();
 }
 
@@ -525,7 +527,7 @@ function ckCard(x,u){
   const alerta=observado?`<div class="ck-alerta-obs"><b>Motivo:</b> ${ckEsc(motivo||'Sin motivo registrado')}${quien?`<br><b>Validado por:</b> ${ckEsc(quien)}`:''}</div>`:conforme?`<div class="ck-alerta-ok"><b>Conformidad:</b> ${ckEsc(motivo||'Registro conforme')}${quien?`<br><b>Validado por:</b> ${ckEsc(quien)}`:''}</div>`:'';
   const esCampo=ckNorm(x.origenRegistro)==='ACTIVIDAD_CAMPO',origen=esCampo?`<div class="ck-alerta-ok"><b>Ejecutado en campo por Supervisor:</b> ${ckEsc(x.registradoPor||'Supervisor')}${x.comentarioFinal?`<br><b>Comentario final:</b> ${ckEsc(x.comentarioFinal)}`:''}</div>`:'';
   const acciones=ckAccionesV141(x,u);
-  return `<div class="ck-card"><div style="display:flex;justify-content:space-between;gap:8px"><div><b>${ckEsc(x.cuadrilla)} · ${ckEsc(ckTipoLabelV141(x.tipoChecklist))}</b><div class="ck-meta">${ckEsc(x.nombresApellidos)} · ${ckEsc(x.sede)}<br>${ckEsc(x.fechaGestion||x.fechaRegistro)}${x.supervisor?` · Supervisor: ${ckEsc(x.supervisor)}`:''}</div></div>${ckEstado(x.estadoGeneral)}</div>${origen}${alerta}${ckDetallePorTipoV141(x)}${acciones?`<div class="ck-actions" style="margin-top:8px">${acciones}</div>`:''}</div>`;
+  return `<div class="ck-card"><div style="display:flex;justify-content:space-between;gap:8px"><div><b>${ckEsc(x.cuadrilla)} · ${ckEsc(ckTipoLabelV141(x.tipoChecklist))}</b><div class="ck-meta">${ckEsc(x.nombresApellidos)} · ${ckEsc(x.sede)}<br>${ckEsc(formatearFechaPeruApp(x.fechaGestion||x.fechaRegistro))}${x.supervisor?` · Supervisor: ${ckEsc(x.supervisor)}`:''}</div></div>${ckEstado(x.estadoGeneral)}</div>${origen}${alerta}${ckDetallePorTipoV141(x)}${acciones?`<div class="ck-actions" style="margin-top:8px">${acciones}</div>`:''}</div>`;
 }
 function ckTiposPermitidosPerfilV141(perfil){const p=ckNorm(perfil);if(p==='ALMACEN'||p==='JEFATURA ALMACEN'||p==='JEFATURA DE ALMACEN')return ['MATERIALES','HERRAMIENTAS'];if(p==='SUPERVISOR')return CK_TIPOS_V140;return CK_TIPOS_V140;}
 function ckRenderFiltrosRolV141(arr,u){

@@ -55,11 +55,10 @@ function liberarBotonObs(btn){
 
 function formatoFechaObs(valor){
     if(!valor) return "-";
-    const f = new Date(valor);
-    if(!isNaN(f.getTime())){
-        return f.toLocaleString("es-PE", { day:"2-digit", month:"2-digit", year:"numeric", hour:"2-digit", minute:"2-digit" });
+    if(typeof formatearFechaHoraPeruApp === "function"){
+        return formatearFechaHoraPeruApp(valor, valor, false);
     }
-    return valor;
+    return valor.toString();
 }
 
 function claseEstadoObs(estado){

@@ -1,0 +1,64 @@
+MI VISUAL V291 - FORMATO DE HORA PERÚ 12 HORAS
+================================================
+
+OBJETIVO
+-------
+Normalizar en toda la aplicación la visualización de fechas y horas:
+
+- Zona horaria: America/Lima.
+- Formato de hora: 1 a 12 con a. m. / p. m.
+- Ejemplos:
+  - 08:15:00 -> 8:15 a. m.
+  - 15:40:00 -> 3:40 p. m.
+- Los valores ISO, por ejemplo 2026-07-28T05:00:00.000Z, ya no se muestran
+  directamente al usuario.
+- En Checklist Almacén, una fecha ISO se presenta como 28/07/2026.
+
+ALCANCE
+-------
+El formato se aplicó de manera central y en los módulos que muestran o
+descargan horas desde el navegador:
+
+- Checklist Almacén.
+- PEXT.
+- Validación Técnica.
+- Actividad en Campo.
+- Gestión de Actas.
+- Equipos Averiados.
+- Programación de Descansos.
+- Observaciones.
+- Mapa Operativo.
+- Plantilla de Orden.
+- Análisis Económico.
+
+SEGURIDAD DEL CAMBIO
+--------------------
+- No modifica fechas u horas guardadas.
+- No modifica cálculos, filtros, permisos ni flujos de aprobación.
+- No modifica Code.gs.
+- No requiere nueva implementación de Apps Script.
+- Conserva las correcciones de V289 y V290.
+
+ARCHIVOS PARA REEMPLAZAR EN GITHUB
+----------------------------------
+- index.html
+- js/utilidades.js
+- js/checklist_almacen.js
+- js/trabajos_conjunta.js
+- js/validacion_tecnica_v173.js
+- js/actividad_campo.js
+- js/actas.js
+- js/equipos_averiados.js
+- js/programacion_descansos.js
+- js/observaciones.js
+- js/mapa_operativo.js
+- js/plantilla_orden.js
+- js/analisis_economico.js
+
+PASOS
+-----
+1. Reemplazar en GitHub únicamente los archivos incluidos en este ZIP.
+2. Realizar commit y push.
+3. Esperar la publicación de GitHub Pages.
+4. Actualizar la aplicación y probar Checklist Almacén.
+

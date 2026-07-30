@@ -1007,7 +1007,7 @@ async function verDetalleActa(id){
         if(!a) throw new Error("No se encontró el acta");
         alert(`DETALLE DE ACTA
 
-Fecha registro: ${fechaVisibleActas(a.fechaRegistro)} ${a.horaRegistro || ""}
+Fecha registro: ${fechaVisibleActas(a.fechaRegistro)} ${formatearHoraPeruApp(a.horaRegistro || "", false)}
 Fecha gestión: ${fechaVisibleActas(a.fechaGestion)}
 Número de acta: ${a.numeroActa || "-"}
 Código de pedido: ${a.codigoPedido || "-"}
@@ -1033,7 +1033,7 @@ Estado: ${a.estadoEntregaFisica || "PENDIENTE"}
 Confirmado por: ${a.confirmadoFisicoPor || "-"}
 Perfil: ${a.perfilConfirmacionFisica || "-"}
 Fecha: ${fechaVisibleActas(a.fechaConfirmacionFisica)}
-Hora: ${a.horaConfirmacionFisica || "-"}
+Hora: ${formatearHoraPeruApp(a.horaConfirmacionFisica || "", false) || "-"}
 Motivo reversión: ${a.motivoReversionFisica || "-"}
 
 ACTA FALTANTE
@@ -1041,7 +1041,7 @@ Origen registro: ${a.origenRegistro || "TECNICO"}
 Motivo faltante: ${a.motivoActaFaltante || "-"}
 Registrado por: ${a.registradoFaltantePor || "-"}
 Fecha registro faltante: ${fechaVisibleActas(a.fechaRegistroFaltante)}
-Hora registro faltante: ${a.horaRegistroFaltante || "-"}
+Hora registro faltante: ${formatearHoraPeruApp(a.horaRegistroFaltante || "", false) || "-"}
 
 Versión PDF: ${a.version || 1}`);
     }catch(err){
@@ -1174,7 +1174,7 @@ async function confirmarRecepcionMasivaActasFrontend(btn){
         if(btn){btn.disabled=true;btn.textContent="Generando cargo...";}
         const data=await apiActas({accion:"confirmarRecepcionMasivaActas",usuario:u.usuario,cuadrilla,numerosActa:numeros});
         descargarPdfBase64CargoActas(data.pdfBase64,data.nombrePdf||`${data.idCargo}.pdf`);
-        if(cont)cont.innerHTML=`<div class="actas-cargo-result"><h3 style="margin:0 0 7px">✅ Cargo generado</h3><div><b>${limpiarHtmlActas(data.idCargo)}</b> · ${data.totalActas||0} actas · ${limpiarHtmlActas(data.fechaVisible||"")} ${limpiarHtmlActas(data.horaVisible||"")} — Hora Perú</div><div class="actas-actions"><a class="actas-btn blue" href="${limpiarHtmlActas(data.linkPdf||data.descargaPdf||"")}" target="_blank" rel="noopener">Ver / imprimir cargo</a><button class="actas-btn sec" onclick="mostrarGestionActas()">Volver a Gestión de Actas</button></div></div>`;
+        if(cont)cont.innerHTML=`<div class="actas-cargo-result"><h3 style="margin:0 0 7px">✅ Cargo generado</h3><div><b>${limpiarHtmlActas(data.idCargo)}</b> · ${data.totalActas||0} actas · ${limpiarHtmlActas(data.fechaVisible||"")} ${limpiarHtmlActas(formatearHoraPeruApp(data.horaVisible||"",false))} — Hora Perú</div><div class="actas-actions"><a class="actas-btn blue" href="${limpiarHtmlActas(data.linkPdf||data.descargaPdf||"")}" target="_blank" rel="noopener">Ver / imprimir cargo</a><button class="actas-btn sec" onclick="mostrarGestionActas()">Volver a Gestión de Actas</button></div></div>`;
     }catch(err){if(cont)cont.innerHTML+=`<div class="actas-msg err">❌ ${limpiarHtmlActas(err.message)}</div>`;}
     finally{if(btn){btn.disabled=false;btn.textContent="Confirmar recepción y generar cargo";}}
 }
@@ -1228,5 +1228,5 @@ function aplicarFiltrosCargosActas(){
 function renderListaCargosActas(lista){
     const cont=document.getElementById("listaCargosActas");if(!cont)return;
     if(!lista.length){cont.innerHTML=`<div class="actas-empty">No hay cargos para los filtros seleccionados.</div>`;return;}
-    cont.innerHTML=lista.map(x=>`<div class="actas-cargo-card"><div><b>${limpiarHtmlActas(x.idCargo||"")}</b><br><small>${fechaVisibleActas(x.fechaEntrega)} ${limpiarHtmlActas(x.horaEntrega||"")} — Hora Perú</small></div><div><b>${limpiarHtmlActas(x.cuadrilla||"")}</b><br><small>${limpiarHtmlActas(x.sede||"")} · ${limpiarHtmlActas(x.plataforma||"")}</small></div><div><b>${x.totalActas||0} actas</b><br><small>${limpiarHtmlActas(x.usuarioRecibe||"")}</small></div><div><a class="actas-btn blue" href="${limpiarHtmlActas(x.linkPdf||"")}" target="_blank" rel="noopener">Ver / descargar PDF</a></div></div>`).join("");
+    cont.innerHTML=lista.map(x=>`<div class="actas-cargo-card"><div><b>${limpiarHtmlActas(x.idCargo||"")}</b><br><small>${fechaVisibleActas(x.fechaEntrega)} ${limpiarHtmlActas(formatearHoraPeruApp(x.horaEntrega||"",false))} — Hora Perú</small></div><div><b>${limpiarHtmlActas(x.cuadrilla||"")}</b><br><small>${limpiarHtmlActas(x.sede||"")} · ${limpiarHtmlActas(x.plataforma||"")}</small></div><div><b>${x.totalActas||0} actas</b><br><small>${limpiarHtmlActas(x.usuarioRecibe||"")}</small></div><div><a class="actas-btn blue" href="${limpiarHtmlActas(x.linkPdf||"")}" target="_blank" rel="noopener">Ver / descargar PDF</a></div></div>`).join("");
 }

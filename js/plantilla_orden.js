@@ -97,7 +97,7 @@ function renderPlantillaOrden(orden, plantilla){
       <div class="po-result-top">
         <div>
           <b>Plantilla encontrada</b>
-          <small>${poEsc(orden.fechaSolicitud || "")} ${poEsc(orden.horaSolicitud || "")} · ${poEsc(orden.estado || "")}</small>
+          <small>${poEsc(typeof formatearFechaHoraPeruApp==="function"?formatearFechaHoraPeruApp(orden.fechaSolicitud||"",orden.horaSolicitud||"",false):`${orden.fechaSolicitud||""} ${orden.horaSolicitud||""}`)} · ${poEsc(orden.estado || "")}</small>
         </div>
         <span>${poEsc(orden.codigoCliente || "")}</span>
       </div>

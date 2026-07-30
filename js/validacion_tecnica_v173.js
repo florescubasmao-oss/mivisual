@@ -1114,9 +1114,12 @@ function formatearFechaExcelVT(valor){
 }
 
 function formatearHoraDesdePartesVT(horas, minutos, segundos){
-    const periodo = horas >= 12 ? "PM" : "AM";
+    if(typeof formatearHoraDesdePartesPeruApp === "function"){
+        return formatearHoraDesdePartesPeruApp(horas, minutos, segundos, false);
+    }
+    const periodo = horas >= 12 ? "p. m." : "a. m.";
     const hora12 = horas % 12 || 12;
-    return `${String(hora12).padStart(2, "0")}:${String(minutos).padStart(2, "0")}:${String(segundos).padStart(2, "0")} ${periodo}`;
+    return `${hora12}:${String(minutos).padStart(2, "0")} ${periodo}`;
 }
 
 function formatearHoraExcelVT(valor){
@@ -1214,7 +1217,9 @@ async function generarInformeValidacionTecnicaExcel(btn){
         const tipoTexto = document.getElementById("vtInformeTipo")?.selectedOptions[0]?.textContent || "Todos";
         const estadoTexto = document.getElementById("vtInformeEstado")?.selectedOptions[0]?.textContent || "Todos";
         const ahora = new Date();
-        const generado = ahora.toLocaleString("es-PE");
+        const generado = typeof formatearFechaHoraPeruApp === "function"
+            ? formatearFechaHoraPeruApp(ahora, ahora, false)
+            : ahora.toLocaleString("es-PE");
         const resumen = [
             ["VISUAL CONNECTIONS SAC - ZONA NORTE"],
             ["INFORME DE VALIDACION TECNICA"],

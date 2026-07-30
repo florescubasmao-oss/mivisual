@@ -12,29 +12,7 @@ function tcEsc(v){return (v??"").toString().replace(/[&<>"']/g,c=>({"&":"&amp;",
 function tcFmtFecha(v){if(!v)return "-";if(v instanceof Date)return v.toLocaleDateString("es-PE");const s=v.toString();return /^\d{4}-\d{2}-\d{2}$/.test(s)?s.split("-").reverse().join("/"):s;}
 function tcFmtHoraPE(v){
   if(v===null||v===undefined||v==="")return "-";
-  if(v instanceof Date&&!isNaN(v.getTime())){
-    const esHoraExcel=v.getUTCFullYear()<=1900;
-    const h=esHoraExcel?v.getUTCHours():Number(new Intl.DateTimeFormat("en-US",{timeZone:"America/Lima",hour:"2-digit",hour12:false}).format(v));
-    const m=esHoraExcel?v.getUTCMinutes():Number(new Intl.DateTimeFormat("en-US",{timeZone:"America/Lima",minute:"2-digit"}).format(v));
-    const seg=esHoraExcel?v.getUTCSeconds():Number(new Intl.DateTimeFormat("en-US",{timeZone:"America/Lima",second:"2-digit"}).format(v));
-    return `${String(h).padStart(2,"0")}:${String(m).padStart(2,"0")}:${String(seg).padStart(2,"0")}`;
-  }
-  if(typeof v==="number"&&isFinite(v)){
-    let total=Math.round((((v%1)+1)%1)*86400)%86400;
-    const h=Math.floor(total/3600),m=Math.floor((total%3600)/60),seg=total%60;
-    return `${String(h).padStart(2,"0")}:${String(m).padStart(2,"0")}:${String(seg).padStart(2,"0")}`;
-  }
-  const s=v.toString().trim();
-  let m=s.match(/T(\d{2}):(\d{2})(?::(\d{2}))?/);
-  if(m)return `${m[1]}:${m[2]}:${m[3]||"00"}`;
-  m=s.match(/^(\d{1,2}):(\d{2})(?::(\d{2}))?\s*(AM|PM|A\.?\s*M\.?|P\.?\s*M\.?)?$/i);
-  if(m){
-    let h=Number(m[1]);const min=m[2],seg=m[3]||"00",periodo=(m[4]||"").toUpperCase().replace(/[^APM]/g,"");
-    if(periodo.startsWith("P")&&h<12)h+=12;
-    if(periodo.startsWith("A")&&h===12)h=0;
-    return `${String(h).padStart(2,"0")}:${min}:${seg}`;
-  }
-  return s;
+  return typeof formatearHoraPeruApp==="function"?formatearHoraPeruApp(v,false):v.toString();
 }
 function tcLoading(txt){let o=document.getElementById("tcLoading");if(!o){o=document.createElement("div");o.id="tcLoading";o.className="tc-loading";o.innerHTML='<div><span class="tc-spin"></span><b id="tcLoadingTxt">Procesando...</b></div>';document.body.appendChild(o)}document.getElementById("tcLoadingTxt").textContent=txt||"Procesando...";o.style.display="flex";}
 function tcLoadingOff(){const o=document.getElementById("tcLoading");if(o)o.style.display="none";}
