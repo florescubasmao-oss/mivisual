@@ -7627,6 +7627,256 @@ function obtenerUtilidadCuadrillas(data) {
   };
 }
 
+/* =====================================================
+   V296 - INFORME MENSUAL EJECUTIVO
+   Datos consolidados para PowerPoint generado en navegador
+===================================================== */
+function im296Porcentaje_(valor) {
+  const numero=Number(valor)||0;
+  return numero>1&&numero<=100?numero/100:numero;
+}
+
+function im296Redondear_(valor) {
+  return Math.round((Number(valor)||0)*100)/100;
+}
+
+function im296OrdenSede_(sede) {
+  const orden={CHICLAYO:1,PIURA:2,TRUJILLO:3};
+  return orden[normalizarTexto(sede)]||99;
+}
+
+function im296AcumuladorSede_(sede) {
+  return {
+    sede,cuadrillas:0,ordenes:0,puntos:0,finalizadas:0,totalGestionado:0,
+    rojos:0,recableados:0,incidenciasVtrGar:0,observaciones:0,montoObservaciones:0,
+    produccion:0,materiales:0,sueldos:0,combustible:0,alquilerUnidad:0,
+    pagoPdg:0,bonos:0,penalidadesWin:0,costos:0,utilidad:0,
+    efectividad:0,recableado:0,vtrgar:0,margen:0
+  };
+}
+
+function im296Conclusiones_(resumen,porSede,cuadrillas,provisional) {
+  const sedesUtilidad=porSede.slice().sort(function(a,b){return b.utilidad-a.utilidad;});
+  const gestion=cuadrillas.slice().sort(function(a,b){return b.puntajeGestion-a.puntajeGestion;});
+  const utilidad=cuadrillas.slice().sort(function(a,b){return b.utilidad-a.utilidad;});
+  const negativas=cuadrillas.filter(function(x){return x.utilidad<0;});
+  const conObservaciones=cuadrillas.filter(function(x){return x.observaciones>0;});
+  const salida=[];
+  salida.push({
+    tipo:"resultado",
+    texto:"La operación registró "+resumen.ordenes+" trabajos, una efectividad de "+im296Redondear_(resumen.efectividad*100)+"% y una utilidad de S/ "+im296Redondear_(resumen.utilidad)+"."
+  });
+  if (sedesUtilidad[0]) salida.push({
+    tipo:"sede",
+    texto:sedesUtilidad[0].sede+" obtuvo la mayor utilidad del periodo: S/ "+im296Redondear_(sedesUtilidad[0].utilidad)+"."
+  });
+  if (gestion[0]) salida.push({
+    tipo:"gestion",
+    texto:gestion[0].cuadrilla+" lideró el resultado operativo con "+im296Redondear_(gestion[0].puntajeGestion)+" puntos de gestión."
+  });
+  if (utilidad[0]) salida.push({
+    tipo:"economico",
+    texto:utilidad[0].cuadrilla+" alcanzó la mayor utilidad: S/ "+im296Redondear_(utilidad[0].utilidad)+"."
+  });
+  if (negativas.length) salida.push({
+    tipo:"alerta",
+    texto:negativas.length+" cuadrilla(s) cerraron con utilidad negativa y requieren revisión de producción y costos."
+  });
+  if (conObservaciones.length) salida.push({
+    tipo:"calidad",
+    texto:conObservaciones.length+" cuadrilla(s) registraron observaciones durante el periodo."
+  });
+  salida.push({
+    tipo:provisional?"alerta":"control",
+    texto:provisional
+      ?"El informe es provisional porque existen costos incompletos o partidas sin valorización."
+      :"Todos los costos operativos y partidas PDG están completos para el periodo."
+  });
+  return salida;
+}
+
+function obtenerInformeMensualEjecutivo(data) {
+  const acceso=exigirAccesoUtilidadCuadrilla_(data,"DESCARGAR");
+  const periodo=resolverPeriodoAnalisisEconomico({periodo:data.periodo});
+  const economico=obtenerAnalisisEconomico({
+    usuario:data.usuario,
+    periodo:periodo.clave
+  });
+  const utilidad=obtenerUtilidadCuadrillas({
+    usuario:data.usuario,
+    periodo:periodo.clave
+  });
+  const referencia=periodo.inicio;
+  const activos=obtenerCuadrillasActivasEconomico();
+  const usuarios=obtenerMapaUsuarios();
+  const produccion=obtenerProduccionPorCuadrilla(referencia);
+  const efectividad=obtenerEfectividadPorCuadrilla(referencia);
+  const recableado=obtenerRecableadoPorCuadrilla(referencia);
+  const vtrgar=obtenerVtrGarPorCuadrilla(referencia);
+  const observaciones=obtenerResumenObservacionesPorCuadrilla(referencia);
+  const utilidadMapa={};
+  (utilidad.cuadrillas||[]).forEach(function(x){
+    utilidadMapa[normalizarCuadrilla(x.cuadrilla)]=x;
+  });
+
+  const cuadrillas=activos.map(function(activa) {
+    const clave=normalizarCuadrilla(activa.cuadrilla);
+    const p=produccion[clave]||{};
+    const e=efectividad[clave]||{};
+    const r=recableado[clave]||{};
+    const v=vtrgar[clave]||{};
+    const o=observaciones[clave]||{};
+    const u=utilidadMapa[clave]||{};
+    const datosUsuario=usuarios[clave]||{};
+    const finalizadas=Number(e.finalizadas)||0;
+    const totalGestionado=Number(e.total)||0;
+    const rojos=Number(r.rojoAsignadas)||0;
+    const recableados=Number(r.recableados)||0;
+    const incidencias=Number(v.totalGarVtr)||0;
+    const finalizadasVtr=Number(v.finalizadas)||finalizadas;
+    return {
+      cuadrilla:clave,
+      sede:normalizarTexto(activa.sede||u.sede||datosUsuario.sede||"SIN SEDE"),
+      plataforma:normalizarTexto(activa.plataforma||datosUsuario.plataforma||""),
+      esPdg:!!u.esPdg,
+      ordenes:Number(p.ordenes)||0,
+      puntos:im296Redondear_(p.produccion),
+      finalizadas,
+      totalGestionado,
+      efectividad:totalGestionado>0?finalizadas/totalGestionado:im296Porcentaje_(e.efectividad),
+      rojos,
+      recableados,
+      recableado:rojos>0?recableados/rojos:im296Porcentaje_(r.porcentajeRecableado),
+      incidenciasVtrGar:incidencias,
+      vtrgar:finalizadasVtr>0?incidencias/finalizadasVtr:im296Porcentaje_(v.porcentajeVtrGar),
+      observaciones:Number(o.observaciones)||0,
+      montoObservaciones:im296Redondear_(o.montoAfectado),
+      produccion:im296Redondear_(u.produccion),
+      materiales:im296Redondear_(u.materiales),
+      sueldos:im296Redondear_(u.sueldos),
+      combustible:im296Redondear_(u.combustible),
+      alquilerUnidad:im296Redondear_(u.alquilerUnidad),
+      pagoPdg:im296Redondear_(u.pagoPdg),
+      bonos:im296Redondear_(u.bonos),
+      penalidadesWin:im296Redondear_(u.penalidadesWin),
+      costos:im296Redondear_(u.costos),
+      utilidad:im296Redondear_(u.utilidad),
+      margen:im296Porcentaje_(u.margen),
+      gastosCompletos:u.gastosCompletos!==false,
+      costosRegistrados:u.costosRegistrados!==false,
+      gastosFaltantes:(u.gastosFaltantes||[]).slice(),
+      puntajeGestion:0
+    };
+  });
+
+  const maximos={
+    puntos:Math.max.apply(null,cuadrillas.map(function(x){return x.puntos;} ).concat([0])),
+    recableado:Math.max.apply(null,cuadrillas.map(function(x){return x.recableado;} ).concat([0])),
+    vtrgar:Math.max.apply(null,cuadrillas.map(function(x){return x.vtrgar;} ).concat([0])),
+    observaciones:Math.max.apply(null,cuadrillas.map(function(x){return x.montoObservaciones;} ).concat([0]))
+  };
+  cuadrillas.forEach(function(x) {
+    const scoreProduccion=maximos.puntos>0?(x.puntos/maximos.puntos)*100:0;
+    const scoreEfectividad=Math.max(0,Math.min(100,x.efectividad*100));
+    const scoreObservaciones=maximos.observaciones>0?Math.max(0,100-(x.montoObservaciones/maximos.observaciones)*100):100;
+    const scoreRecableado=maximos.recableado>0?Math.max(0,100-(x.recableado/maximos.recableado)*100):100;
+    const scoreVtrGar=maximos.vtrgar>0?Math.max(0,100-(x.vtrgar/maximos.vtrgar)*100):100;
+    x.puntajeGestion=im296Redondear_(
+      scoreProduccion*0.30+
+      scoreEfectividad*0.20+
+      scoreObservaciones*0.20+
+      scoreRecableado*0.15+
+      scoreVtrGar*0.15
+    );
+  });
+
+  const sedesMapa={};
+  cuadrillas.forEach(function(x) {
+    if (!sedesMapa[x.sede]) sedesMapa[x.sede]=im296AcumuladorSede_(x.sede);
+    const s=sedesMapa[x.sede];
+    s.cuadrillas++;
+    [
+      "ordenes","puntos","finalizadas","totalGestionado","rojos","recableados",
+      "incidenciasVtrGar","observaciones","montoObservaciones","produccion",
+      "materiales","sueldos","combustible","alquilerUnidad","pagoPdg","bonos",
+      "penalidadesWin","costos","utilidad"
+    ].forEach(function(campo){s[campo]+=Number(x[campo])||0;});
+  });
+  const porSede=Object.keys(sedesMapa).map(function(clave) {
+    const s=sedesMapa[clave];
+    s.efectividad=s.totalGestionado>0?s.finalizadas/s.totalGestionado:0;
+    s.recableado=s.rojos>0?s.recableados/s.rojos:0;
+    s.vtrgar=s.finalizadas>0?s.incidenciasVtrGar/s.finalizadas:0;
+    s.margen=s.produccion>0?s.utilidad/s.produccion:0;
+    Object.keys(s).forEach(function(k){if(typeof s[k]==="number")s[k]=im296Redondear_(s[k]);});
+    return s;
+  }).sort(function(a,b){return im296OrdenSede_(a.sede)-im296OrdenSede_(b.sede);});
+
+  const resumen=cuadrillas.reduce(function(t,x) {
+    [
+      "ordenes","puntos","finalizadas","totalGestionado","rojos","recableados",
+      "incidenciasVtrGar","observaciones","montoObservaciones"
+    ].forEach(function(campo){t[campo]+=Number(x[campo])||0;});
+    return t;
+  },{
+    cuadrillas:cuadrillas.length,ordenes:0,puntos:0,finalizadas:0,totalGestionado:0,
+    rojos:0,recableados:0,incidenciasVtrGar:0,observaciones:0,montoObservaciones:0
+  });
+  Object.assign(resumen,utilidad.resumen||{});
+  resumen.efectividad=resumen.totalGestionado>0?resumen.finalizadas/resumen.totalGestionado:0;
+  resumen.recableado=resumen.rojos>0?resumen.recableados/resumen.rojos:0;
+  resumen.vtrgar=resumen.finalizadas>0?resumen.incidenciasVtrGar/resumen.finalizadas:0;
+  resumen.margen=resumen.produccion>0?resumen.utilidad/resumen.produccion:0;
+  Object.keys(resumen).forEach(function(k){if(typeof resumen[k]==="number")resumen[k]=im296Redondear_(resumen[k]);});
+
+  const rankingGestion=cuadrillas.slice().sort(function(a,b){
+    return b.puntajeGestion-a.puntajeGestion||b.puntos-a.puntos;
+  }).map(function(x,i){return Object.assign({puesto:i+1},x);});
+  const rankingUtilidad=cuadrillas.slice().sort(function(a,b){
+    return b.utilidad-a.utilidad||b.margen-a.margen;
+  }).map(function(x,i){return Object.assign({puesto:i+1},x);});
+  const tiposTrabajo=(economico.porTipoPartida||[]).map(function(x){
+    return {
+      tipo:x.tipoOrden||x.clave||"SIN TIPO",
+      cantidad:im296Redondear_(x.cantidad),
+      monto:im296Redondear_(x.monto)
+    };
+  }).sort(function(a,b){return b.cantidad-a.cantidad||b.monto-a.monto;});
+
+  const alertas=[];
+  if (Number(utilidad.resumen&&utilidad.resumen.cuadrillasIncompletas)>0) {
+    alertas.push((utilidad.resumen.cuadrillasIncompletas||0)+" cuadrilla(s) con costos o partidas incompletas");
+  }
+  if ((economico.codigosSinTarifa||[]).length) {
+    alertas.push((economico.codigosSinTarifa||[]).length+" código(s) de producción sin tarifa");
+  }
+  const provisional=alertas.length>0;
+
+  return {
+    ok:true,
+    modulo:"INFORME MENSUAL EJECUTIVO",
+    accion:"DESCARGAR",
+    periodo:periodo.nombre,
+    periodoClave:periodo.clave,
+    generado:Utilities.formatDate(new Date(),"America/Lima","dd/MM/yyyy · hh:mm a"),
+    provisional,
+    alertas,
+    resumen,
+    porSede,
+    cuadrillas,
+    tiposTrabajo,
+    rankingGestion,
+    rankingUtilidad,
+    conclusiones:im296Conclusiones_(resumen,porSede,cuadrillas,provisional),
+    reglas:{
+      ranking:"Producción 30% · Efectividad 20% · Observaciones 20% · Recableado 15% · VTR/GAR 15%",
+      utilidadRegular:"Producción - Materiales - Sueldos - Combustible - Alquiler - Bonos - Penalidades WIN",
+      utilidadPdg:"Producción - Materiales - Pago PDG - Penalidades WIN"
+    },
+    permiso:{descargar:acceso.permiso.descargar}
+  };
+}
+
 
 /* =========================
    API PRINCIPAL
@@ -11298,6 +11548,7 @@ function doPost(e) {
     if (data.accion === "importarGastosUtilidadCuadrilla") return respuestaJson(importarGastosUtilidadCuadrilla(data));
     if (data.accion === "guardarCostosOperativosCuadrillas") return respuestaJson(guardarCostosOperativosCuadrillas(data));
     if (data.accion === "obtenerUtilidadCuadrillas") return respuestaJson(obtenerUtilidadCuadrillas(data));
+    if (data.accion === "obtenerInformeMensualEjecutivo") return respuestaJson(obtenerInformeMensualEjecutivo(data));
     if (data.accion === "procesarImportacionMateriales") return respuestaJson(procesarImportacionMaterialesV184(data));
     if (data.accion === "obtenerResumenMateriales") return respuestaJson(obtenerResumenMaterialesV184(data));
     if (data.accion === "asegurarHojasMateriales") {

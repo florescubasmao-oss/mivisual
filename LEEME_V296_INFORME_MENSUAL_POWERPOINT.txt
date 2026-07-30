@@ -1,0 +1,57 @@
+MI VISUAL V296 - INFORME MENSUAL EJECUTIVO EN POWERPOINT
+
+OBJETIVO
+Agregar dentro de Utilidad por cuadrilla la opción "Informe mensual".
+El informe toma exclusivamente el periodo seleccionado, por ejemplo JULIO 2026.
+
+CONTENIDO DEL INFORME
+- Portada del periodo.
+- Resumen ejecutivo Zona Norte.
+- Producción y tipos de trabajo.
+- Comparativo Chiclayo, Piura y Trujillo.
+- Efectividad, recableado, VTR/GAR y observaciones.
+- Gestión operativa por cuadrilla y sede.
+- Producción valorizada, costos, utilidad y margen.
+- Resultado económico por cuadrilla y sede.
+- Ranking operativo y ranking de utilidad.
+- Conclusiones automáticas.
+
+REGLAS ECONÓMICAS RESPETADAS
+- Cuadrilla regular:
+  Producción - Materiales - Sueldos - Combustible - Alquiler - Bonos - Penalidades WIN.
+- Cuadrilla PDG:
+  Producción - Materiales - Pago PDG - Penalidades WIN.
+- Si faltan costos o tarifas, el PowerPoint se identifica como PROVISIONAL.
+
+PERMISOS
+El botón aparece únicamente cuando el permiso dinámico:
+UTILIDAD CUADRILLA -> DESCARGAR
+está habilitado.
+
+ARCHIVOS A ACTUALIZAR EN APPS SCRIPT
+1. Code.gs
+2. Crear una nueva implementación.
+
+ARCHIVOS A REEMPLAZAR O AGREGAR EN GITHUB
+1. Code.gs
+2. apps_script/Code.gs
+3. index.html
+4. js/analisis_economico.js
+5. js/vendor/pptxgen.bundle.js
+6. js/vendor/LICENSE_PPTXGENJS.txt
+
+IMPORTANTE
+- No crea hojas nuevas.
+- No modifica TARIFARIO_PDG.
+- No modifica GASTOS_CUADRILLA.
+- No reemplaza información de Producción, Efectividad, Observaciones ni Materiales.
+- El archivo descargado tiene formato .pptx.
+
+PRUEBA
+1. Ingresar con Jefatura General.
+2. Abrir Análisis Económico.
+3. Abrir Utilidad por cuadrilla.
+4. Seleccionar el periodo.
+5. Pulsar Consultar.
+6. Pulsar Informe mensual.
+7. Esperar la descarga del PowerPoint.

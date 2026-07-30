@@ -25,6 +25,7 @@ function aePuedeUtilidadCuadrilla(){
   return !!permiso&&typeof pmPuede==="function"&&pmPuede("UTILIDAD CUADRILLA","VER")&&pmNorm(permiso.alcanceDatos||"SIN ACCESO")!=="SIN ACCESO";
 }
 function aePuedeCargarUtilidad(){return aePuedeUtilidadCuadrilla()&&typeof pmPuede==="function"&&pmPuede("UTILIDAD CUADRILLA","REGISTRAR")}
+function aePuedeDescargarUtilidad(){return aePuedeUtilidadCuadrilla()&&typeof pmPuede==="function"&&pmPuede("UTILIDAD CUADRILLA","DESCARGAR")}
 
 function mostrarAnalisisEconomico(){
   if(!aePerfilPermitido()){alert("No tienes acceso a Análisis Económico.");return}
@@ -630,7 +631,7 @@ function util292Estilos(){
   .util292-head h2{margin:0 0 5px}.util292-head p{margin:0;opacity:.9}.util292-head button,.util292-btn{border:0;border-radius:10px;padding:11px 14px;font-weight:900;cursor:pointer;background:#0ea5e9;color:#fff}
   .util292-tabs{display:flex;gap:8px;flex-wrap:wrap;margin:14px 0}.util292-tabs button{border:0;border-radius:10px;padding:10px 14px;font-weight:900;background:#334155;color:#fff;cursor:pointer}.util292-tabs button.activo{background:#0f766e}
   .util292-panel{background:#fff;border:1px solid #cbd5e1;border-radius:18px;padding:16px;box-shadow:0 10px 25px rgba(2,6,23,.16)}
-  .util292-filtros{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;align-items:end}.util292-filtros label,.util292-import label{font-size:12px;font-weight:900}.util292-filtros select,.util292-import select,.util292-import textarea{width:100%;box-sizing:border-box;border:1px solid #94a3b8;border-radius:9px;padding:10px;background:#fff}
+  .util292-filtros{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:10px;align-items:end}.util292-filtros label,.util292-import label{font-size:12px;font-weight:900}.util292-filtros select,.util292-import select,.util292-import textarea{width:100%;box-sizing:border-box;border:1px solid #94a3b8;border-radius:9px;padding:10px;background:#fff}
   .util292-sello{background:#ecfeff;border:1px solid #67e8f9;border-radius:11px;padding:9px 11px;font-size:11px;color:#155e75}.util292-sello b{display:block;font-size:12px;color:#0f172a;margin-top:2px}
   .util292-kpis{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin:14px 0}.util292-kpi{border-radius:14px;padding:14px;background:#f1f5f9;border:1px solid #cbd5e1}.util292-kpi span{display:block;font-size:11px;font-weight:900;color:#475569}.util292-kpi strong{display:block;font-size:23px;margin:5px 0}.util292-kpi small{color:#64748b}.util292-kpi.ok{background:#dcfce7;border-color:#86efac}.util292-kpi.bajo{background:#fee2e2;border-color:#fca5a5}
   .util292-costos{display:grid;grid-template-columns:repeat(8,minmax(0,1fr));gap:8px;margin-bottom:14px}.util292-costo{padding:10px;border-radius:10px;background:#fff7ed;border:1px solid #fed7aa}.util292-costo span{display:block;font-size:10px;color:#7c2d12;font-weight:900}.util292-costo b{display:block;margin-top:4px;font-size:13px}
@@ -679,6 +680,7 @@ function util292RenderResumenBase(){
       <label>Sede<select id="util292Sede" onchange="util292CambiarSede()"><option value="TODAS">TODAS LAS SEDES</option></select></label>
       <label>Cuadrilla<select id="util292Cuadrilla" onchange="util292AplicarFiltros()"><option value="TODAS">TODAS LAS CUADRILLAS</option></select></label>
       <button class="util292-btn" id="util292Consultar" onclick="util292Consultar()">Consultar</button>
+      ${aePuedeDescargarUtilidad()?`<button class="util292-btn" style="background:#ea580c" id="util296Descargar" onclick="util296DescargarInformeMensual()">⬇ Informe mensual</button>`:""}
     </div>
     <div id="util292Resultado"><div class="util292-vacio">Consultando información económica...</div></div>
   </div>`;
@@ -969,6 +971,343 @@ async function util293GuardarCostos(modo){
   }
 }
 
+/* =====================================================
+   V296 - INFORME MENSUAL EJECUTIVO POWERPOINT
+===================================================== */
+const IM296_COLOR={
+  azul:"0B2A4A",azul2:"135C9E",celeste:"DDEFFC",naranja:"F36C21",
+  verde:"16845B",verdeClaro:"DDF4EA",rojo:"C62828",amarillo:"F3B61F",
+  gris:"64748B",grisClaro:"EEF2F6",blanco:"FFFFFF",texto:"172033"
+};
+
+function im296Moneda(v){
+  return "S/ "+(Number(v)||0).toLocaleString("es-PE",{minimumFractionDigits:2,maximumFractionDigits:2});
+}
+function im296Numero(v){
+  return (Number(v)||0).toLocaleString("es-PE",{maximumFractionDigits:1});
+}
+function im296Porcentaje(v){
+  return `${((Number(v)||0)*100).toFixed(1)}%`;
+}
+function im296Recortar(v,max=34){
+  const t=String(v||"");
+  return t.length>max?t.slice(0,max-1)+"…":t;
+}
+function im296ColorSede(sede){
+  const s=String(sede||"").toUpperCase();
+  if(s.includes("CHICLAYO"))return "F36C21";
+  if(s.includes("PIURA"))return "1D5FA7";
+  if(s.includes("TRUJILLO"))return "16845B";
+  return IM296_COLOR.azul2;
+}
+function im296ColorResultado(valor){
+  return Number(valor)>=0?IM296_COLOR.verde:IM296_COLOR.rojo;
+}
+function im296Shape(pptx,slide,x,y,w,h,color,line=color,radio=false){
+  slide.addShape(radio?pptx.ShapeType.roundRect:pptx.ShapeType.rect,{
+    x,y,w,h,rectRadius:radio?0.08:0,
+    fill:{color},line:{color:line,pt:0.6}
+  });
+}
+function im296Texto(slide,texto,x,y,w,h,opciones={}){
+  slide.addText(String(texto==null?"":texto),{
+    x,y,w,h,fontFace:"Aptos",fontSize:opciones.fontSize||12,
+    bold:!!opciones.bold,color:opciones.color||IM296_COLOR.texto,
+    align:opciones.align||"left",valign:opciones.valign||"mid",
+    margin:opciones.margin===undefined?0.05:opciones.margin,
+    breakLine: false,fit:"shrink",
+    isTextBox:true
+  });
+}
+function im296Encabezado(pptx,slide,titulo,subtitulo,pagina,periodo,color=IM296_COLOR.naranja){
+  slide.background={color:"F8FAFC"};
+  im296Shape(pptx,slide,0,0,13.333,0.13,color,color);
+  im296Texto(slide,titulo,0.45,0.25,8.8,0.42,{fontSize:22,bold:true,color:IM296_COLOR.azul});
+  im296Texto(slide,subtitulo,0.47,0.7,8.8,0.25,{fontSize:9.5,color:IM296_COLOR.gris});
+  im296Texto(slide,"MI VISUAL",10.35,0.25,1.45,0.34,{fontSize:16,bold:true,color:IM296_COLOR.azul,align:"right"});
+  im296Texto(slide,"VISUAL CONNECTIONS",11.85,0.28,1.03,0.28,{fontSize:7.5,bold:true,color:color,align:"right"});
+  im296Shape(pptx,slide,0.45,7.12,12.43,0.02,"D8E0E9","D8E0E9");
+  im296Texto(slide,periodo,0.47,7.18,3.8,0.18,{fontSize:7.5,color:IM296_COLOR.gris});
+  im296Texto(slide,`Página ${pagina}`,11.5,7.18,1.35,0.18,{fontSize:7.5,color:IM296_COLOR.gris,align:"right"});
+}
+function im296Kpi(pptx,slide,x,y,w,h,titulo,valor,detalle,color){
+  im296Shape(pptx,slide,x,y,w,h,"FFFFFF",color,true);
+  im296Shape(pptx,slide,x,y,0.08,h,color,color);
+  im296Texto(slide,titulo,x+0.2,y+0.14,w-0.35,0.24,{fontSize:9,bold:true,color:IM296_COLOR.gris});
+  im296Texto(slide,valor,x+0.2,y+0.43,w-0.35,0.48,{fontSize:22,bold:true,color});
+  im296Texto(slide,detalle,x+0.2,y+h-0.34,w-0.35,0.2,{fontSize:8,color:IM296_COLOR.gris});
+}
+function im296CabeceraTabla(titulos,color){
+  return titulos.map(t=>({text:t,options:{bold:true,color:"FFFFFF",fill:{color},align:"center",valign:"mid"}}));
+}
+function im296AgregarTabla(slide,filas,x,y,w,h,colW,fontSize=9.5){
+  slide.addTable(filas,{
+    x,y,w,h,colW,rowH:0.39,fontFace:"Aptos",fontSize,
+    color:IM296_COLOR.texto,fill:"FFFFFF",margin:0.045,
+    valign:"mid",border:{type:"solid",pt:0.45,color:"CBD5E1"},
+    autoFit:false,autoPage:false
+  });
+}
+function im296TituloBloque(pptx,slide,texto,x,y,w,color){
+  im296Shape(pptx,slide,x,y,w,0.36,color,color,true);
+  im296Texto(slide,texto,x+0.12,y+0.03,w-0.24,0.27,{fontSize:11,bold:true,color:"FFFFFF"});
+}
+function im296FilaEconomica(x){
+  const operativo=x.esPdg
+    ? Number(x.pagoPdg)||0
+    :(Number(x.sueldos)||0)+(Number(x.combustible)||0)+(Number(x.alquilerUnidad)||0);
+  return [
+    im296Recortar(x.cuadrilla,30),
+    im296Moneda(x.produccion),
+    im296Moneda(x.materiales),
+    im296Moneda(operativo),
+    im296Moneda(x.bonos),
+    im296Moneda(x.penalidadesWin),
+    im296Moneda(x.utilidad),
+    im296Porcentaje(x.margen)
+  ];
+}
+function im296AgregarPortada(pptx,datos){
+  const slide=pptx.addSlide();
+  slide.background={color:IM296_COLOR.azul};
+  im296Shape(pptx,slide,0,0,0.28,7.5,IM296_COLOR.naranja,IM296_COLOR.naranja);
+  im296Shape(pptx,slide,0.75,0.85,1.0,0.08,IM296_COLOR.naranja,IM296_COLOR.naranja);
+  im296Texto(slide,"MI VISUAL",0.75,1.08,3.1,0.6,{fontSize:28,bold:true,color:"FFFFFF"});
+  im296Texto(slide,"INFORME EJECUTIVO",0.75,2.0,8.9,0.72,{fontSize:38,bold:true,color:"FFFFFF"});
+  im296Texto(slide,"MENSUAL",0.75,2.75,5.2,0.72,{fontSize:38,bold:true,color:IM296_COLOR.naranja});
+  im296Texto(slide,datos.periodo,0.78,3.75,5.2,0.5,{fontSize:25,bold:true,color:"FFFFFF"});
+  im296Texto(slide,"GESTIÓN OPERATIVA · CALIDAD · RESULTADO ECONÓMICO",0.78,4.42,7.8,0.35,{fontSize:12,bold:true,color:"C7D7E8"});
+  im296Shape(pptx,slide,9.25,1.15,3.0,3.0,"12395E","2A5A82",true);
+  im296Texto(slide,"ZONA\nNORTE",9.62,1.72,2.25,1.12,{fontSize:34,bold:true,color:"FFFFFF",align:"center"});
+  im296Texto(slide,"Chiclayo · Piura · Trujillo",9.5,3.25,2.5,0.38,{fontSize:11,bold:true,color:IM296_COLOR.naranja,align:"center"});
+  im296Texto(slide,datos.provisional?"RESULTADO PROVISIONAL":"PERIODO CONSOLIDADO",0.8,5.55,3.2,0.34,{fontSize:11,bold:true,color:datos.provisional?"FDE68A":"9FE3C3"});
+  im296Texto(slide,`Generado: ${datos.generado}`,0.8,6.25,4.2,0.25,{fontSize:8.5,color:"B8C8D9"});
+  im296Texto(slide,"Visual Connections SAC",9.0,6.25,3.1,0.25,{fontSize:10,bold:true,color:"FFFFFF",align:"right"});
+}
+function im296AgregarResumen(pptx,datos,pagina){
+  const slide=pptx.addSlide();
+  im296Encabezado(pptx,slide,"Resumen ejecutivo Zona Norte","Desempeño mensual consolidado",pagina,datos.periodo);
+  const r=datos.resumen||{};
+  const kpis=[
+    ["CUADRILLAS",im296Numero(r.cuadrillas),`${im296Numero(r.ordenes)} trabajos`,IM296_COLOR.azul2],
+    ["PRODUCCIÓN VALORIZADA",im296Moneda(r.produccion),`${im296Numero(r.puntos)} puntos`,IM296_COLOR.naranja],
+    ["EFECTIVIDAD",im296Porcentaje(r.efectividad),`${im296Numero(r.finalizadas)} de ${im296Numero(r.totalGestionado)}`,IM296_COLOR.azul2],
+    ["TOTAL COSTOS",im296Moneda(r.costos),"Incluye costos regulares y PDG",IM296_COLOR.rojo],
+    ["UTILIDAD NETA",im296Moneda(r.utilidad),"Producción menos costos",im296ColorResultado(r.utilidad)],
+    ["MARGEN",im296Porcentaje(r.margen),"Utilidad / Producción",im296ColorResultado(r.margen)]
+  ];
+  kpis.forEach((k,i)=>{
+    const col=i%3,row=Math.floor(i/3);
+    im296Kpi(pptx,slide,0.55+col*4.18,1.2+row*1.65,3.82,1.35,...k);
+  });
+  const estado=datos.provisional
+    ? `⚠ INFORME PROVISIONAL · ${(datos.alertas||[]).join(" · ")}`
+    :"✓ INFORMACIÓN COMPLETA · costos operativos, PDG y producción valorizados";
+  im296Shape(pptx,slide,0.55,4.65,12.16,0.58,datos.provisional?"FFF7D6":"E5F7EE",datos.provisional?IM296_COLOR.amarillo:IM296_COLOR.verde,true);
+  im296Texto(slide,estado,0.75,4.79,11.75,0.27,{fontSize:10.5,bold:true,color:datos.provisional?"7A4D00":IM296_COLOR.verde});
+  const mejores=(datos.rankingGestion||[]).slice(0,3);
+  im296TituloBloque(pptx,slide,"Liderazgo operativo del periodo",0.55,5.55,5.9,IM296_COLOR.azul);
+  mejores.forEach((x,i)=>{
+    im296Texto(slide,`${i+1}. ${im296Recortar(x.cuadrilla,38)}`,0.72,6.0+i*0.28,4.2,0.22,{fontSize:9.5,bold:i===0,color:IM296_COLOR.texto});
+    im296Texto(slide,`${Number(x.puntajeGestion||0).toFixed(1)} pts`,5.1,6.0+i*0.28,1.1,0.22,{fontSize:9.5,bold:true,color:IM296_COLOR.azul2,align:"right"});
+  });
+  im296TituloBloque(pptx,slide,"Mayor utilidad por cuadrilla",6.8,5.55,5.9,IM296_COLOR.verde);
+  (datos.rankingUtilidad||[]).slice(0,3).forEach((x,i)=>{
+    im296Texto(slide,`${i+1}. ${im296Recortar(x.cuadrilla,38)}`,6.97,6.0+i*0.28,3.8,0.22,{fontSize:9.5,bold:i===0,color:IM296_COLOR.texto});
+    im296Texto(slide,im296Moneda(x.utilidad),10.9,6.0+i*0.28,1.55,0.22,{fontSize:9.5,bold:true,color:im296ColorResultado(x.utilidad),align:"right"});
+  });
+}
+function im296AgregarProduccion(pptx,datos,pagina){
+  const slide=pptx.addSlide();
+  im296Encabezado(pptx,slide,"Composición de la producción","Trabajos ejecutados y contribución económica",pagina,datos.periodo,IM296_COLOR.naranja);
+  const tipos=(datos.tiposTrabajo||[]).slice(0,8);
+  const max=Math.max(...tipos.map(x=>Number(x.cantidad)||0),1);
+  im296TituloBloque(pptx,slide,"Principales tipos de trabajo",0.55,1.13,6.25,IM296_COLOR.naranja);
+  tipos.forEach((x,i)=>{
+    const y=1.66+i*0.58;
+    im296Texto(slide,im296Recortar(x.tipo,32),0.65,y,2.38,0.22,{fontSize:8.6,bold:true});
+    im296Shape(pptx,slide,3.05,y+0.03,2.55,0.15,"E7EDF3","E7EDF3",true);
+    im296Shape(pptx,slide,3.05,y+0.03,Math.max(0.08,2.55*(Number(x.cantidad||0)/max)),0.15,IM296_COLOR.naranja,IM296_COLOR.naranja,true);
+    im296Texto(slide,`${im296Numero(x.cantidad)} · ${im296Moneda(x.monto)}`,5.62,y,1.05,0.22,{fontSize:8.2,bold:true,color:IM296_COLOR.azul,align:"right"});
+  });
+  im296TituloBloque(pptx,slide,"Resultado por sede",7.05,1.13,5.73,IM296_COLOR.azul);
+  const filas=[im296CabeceraTabla(["SEDE","TRABAJOS","PRODUCCIÓN","UTILIDAD","MARGEN"],IM296_COLOR.azul)];
+  (datos.porSede||[]).forEach(s=>filas.push([
+    s.sede,im296Numero(s.ordenes),im296Moneda(s.produccion),im296Moneda(s.utilidad),im296Porcentaje(s.margen)
+  ]));
+  im296AgregarTabla(slide,filas,7.05,1.62,5.73,2.15,[1.2,0.85,1.35,1.35,0.85],8.6);
+  im296Shape(pptx,slide,7.05,4.18,5.73,1.22,"EAF4FB","B6D6EC",true);
+  im296Texto(slide,"Lectura ejecutiva",7.27,4.34,2.2,0.27,{fontSize:11,bold:true,color:IM296_COLOR.azul});
+  const mejor=(datos.porSede||[]).slice().sort((a,b)=>b.produccion-a.produccion)[0];
+  const mensaje=mejor
+    ? `${mejor.sede} registró la mayor producción valorizada del periodo con ${im296Moneda(mejor.produccion)}.`
+    :"Sin producción valorizada para el periodo seleccionado.";
+  im296Texto(slide,mensaje,7.27,4.7,5.2,0.48,{fontSize:10,color:IM296_COLOR.texto});
+  im296Texto(slide,"El informe usa las partidas y tarifas registradas en MI VISUAL para el mes seleccionado.",7.27,5.42,5.15,0.46,{fontSize:9,color:IM296_COLOR.gris});
+}
+function im296AgregarCalidad(pptx,datos,pagina){
+  const slide=pptx.addSlide();
+  im296Encabezado(pptx,slide,"Calidad y efectividad por sede","Indicadores que afectan el desempeño operativo",pagina,datos.periodo,IM296_COLOR.azul2);
+  const filas=[im296CabeceraTabla(["SEDE","CUADRILLAS","EFECTIVIDAD","RE cableado","VTR / GAR","OBS.","MONTO OBS.","PENALIDAD WIN"],IM296_COLOR.azul)];
+  (datos.porSede||[]).forEach(s=>filas.push([
+    s.sede,im296Numero(s.cuadrillas),im296Porcentaje(s.efectividad),im296Porcentaje(s.recableado),
+    im296Porcentaje(s.vtrgar),im296Numero(s.observaciones),im296Moneda(s.montoObservaciones),im296Moneda(s.penalidadesWin)
+  ]));
+  im296AgregarTabla(slide,filas,0.55,1.25,12.2,2.05,[1.3,1.05,1.3,1.25,1.25,0.7,1.6,1.7],10);
+  const r=datos.resumen||{};
+  const bloques=[
+    ["EFECTIVIDAD GENERAL",im296Porcentaje(r.efectividad),`${im296Numero(r.finalizadas)} finalizadas`,IM296_COLOR.azul2],
+    ["RE CABLEADO",im296Porcentaje(r.recableado),`${im296Numero(r.recableados)} de ${im296Numero(r.rojos)}`,IM296_COLOR.naranja],
+    ["VTR / GAR",im296Porcentaje(r.vtrgar),`${im296Numero(r.incidenciasVtrGar)} incidencias`,IM296_COLOR.rojo],
+    ["OBSERVACIONES",im296Numero(r.observaciones),im296Moneda(r.montoObservaciones),IM296_COLOR.amarillo]
+  ];
+  bloques.forEach((k,i)=>im296Kpi(pptx,slide,0.55+i*3.12,3.85,2.82,1.42,...k));
+  im296Shape(pptx,slide,0.55,5.68,12.2,0.82,"FFFFFF","CBD5E1",true);
+  im296Texto(slide,"Lectura: menor recableado, menor VTR/GAR y menor impacto de observaciones representan mejor calidad operativa.",0.82,5.91,11.65,0.32,{fontSize:10.5,bold:true,color:IM296_COLOR.azul});
+}
+function im296AgregarOperacionSede(pptx,datos,sede,pagina){
+  const color=im296ColorSede(sede);
+  const slide=pptx.addSlide();
+  im296Encabezado(pptx,slide,`Gestión operativa · ${sede}`,"Indicadores y ranking por cuadrilla",pagina,datos.periodo,color);
+  const lista=(datos.cuadrillas||[]).filter(x=>String(x.sede)===String(sede)).sort((a,b)=>b.puntajeGestion-a.puntajeGestion);
+  const filas=[im296CabeceraTabla(["#","CUADRILLA","PUNTOS","FINALIZADAS","EFECT.","RE CABLEADO","VTR/GAR","OBS.","GESTIÓN"],color)];
+  lista.forEach((x,i)=>filas.push([
+    String(i+1),im296Recortar(x.cuadrilla,35),im296Numero(x.puntos),
+    `${im296Numero(x.finalizadas)} / ${im296Numero(x.totalGestionado)}`,
+    im296Porcentaje(x.efectividad),im296Porcentaje(x.recableado),im296Porcentaje(x.vtrgar),
+    im296Numero(x.observaciones),Number(x.puntajeGestion||0).toFixed(1)
+  ]));
+  im296AgregarTabla(slide,filas,0.45,1.22,12.45,5.35,[0.35,3.15,0.85,1.25,0.95,1.15,1.0,0.55,0.9],9.2);
+  const mejor=lista[0];
+  if(mejor)im296Texto(slide,`Líder de sede: ${mejor.cuadrilla} · ${Number(mejor.puntajeGestion||0).toFixed(1)} puntos de gestión`,0.58,6.67,8.6,0.25,{fontSize:9.5,bold:true,color});
+  im296Texto(slide,datos.reglas?.ranking||"",9.1,6.67,3.6,0.25,{fontSize:6.8,color:IM296_COLOR.gris,align:"right"});
+}
+function im296AgregarEconomicoGeneral(pptx,datos,pagina){
+  const slide=pptx.addSlide();
+  im296Encabezado(pptx,slide,"Análisis económico consolidado","Ingresos, costos y rentabilidad Zona Norte",pagina,datos.periodo,IM296_COLOR.verde);
+  const r=datos.resumen||{};
+  im296Kpi(pptx,slide,0.55,1.2,2.82,1.35,"PRODUCCIÓN",im296Moneda(r.produccion),`${im296Numero(r.ordenes)} trabajos`,IM296_COLOR.azul2);
+  im296Kpi(pptx,slide,3.67,1.2,2.82,1.35,"TOTAL COSTOS",im296Moneda(r.costos),"Todos los conceptos",IM296_COLOR.rojo);
+  im296Kpi(pptx,slide,6.79,1.2,2.82,1.35,"UTILIDAD",im296Moneda(r.utilidad),"Resultado neto",im296ColorResultado(r.utilidad));
+  im296Kpi(pptx,slide,9.91,1.2,2.82,1.35,"RENTABILIDAD",im296Porcentaje(r.margen),"Utilidad / Producción",im296ColorResultado(r.margen));
+  im296TituloBloque(pptx,slide,"Composición de costos",0.55,2.95,7.1,IM296_COLOR.rojo);
+  const costos=[
+    ["Materiales",r.materiales],["Sueldos",r.sueldos],["Combustible",r.combustible],
+    ["Alquiler de unidad",r.alquilerUnidad],["Pago PDG",r.pagoPdg],
+    ["Bonos",r.bonos],["Penalidades WIN",r.penalidadesWin]
+  ];
+  const max=Math.max(...costos.map(x=>Number(x[1])||0),1);
+  costos.forEach((x,i)=>{
+    const y=3.48+i*0.43;
+    im296Texto(slide,x[0],0.72,y,1.55,0.22,{fontSize:8.6,bold:true});
+    im296Shape(pptx,slide,2.3,y+0.04,3.7,0.13,"E7EDF3","E7EDF3",true);
+    im296Shape(pptx,slide,2.3,y+0.04,Math.max(0.07,3.7*(Number(x[1]||0)/max)),0.13,IM296_COLOR.rojo,IM296_COLOR.rojo,true);
+    im296Texto(slide,im296Moneda(x[1]),6.08,y,1.3,0.22,{fontSize:8.6,bold:true,align:"right"});
+  });
+  im296TituloBloque(pptx,slide,"Resultado por sede",7.95,2.95,4.78,IM296_COLOR.verde);
+  const filas=[im296CabeceraTabla(["SEDE","PRODUCCIÓN","COSTOS","UTILIDAD","MARGEN"],IM296_COLOR.verde)];
+  (datos.porSede||[]).forEach(s=>filas.push([
+    s.sede,im296Moneda(s.produccion),im296Moneda(s.costos),im296Moneda(s.utilidad),im296Porcentaje(s.margen)
+  ]));
+  im296AgregarTabla(slide,filas,7.95,3.45,4.78,2.05,[0.95,1.15,1.05,1.05,0.75],8.2);
+  im296Shape(pptx,slide,7.95,5.82,4.78,0.62,datos.provisional?"FFF7D6":"E5F7EE",datos.provisional?IM296_COLOR.amarillo:IM296_COLOR.verde,true);
+  im296Texto(slide,datos.provisional?"Resultado provisional: revise las alertas de costos.":"Resultado consolidado con costos completos.",8.15,5.99,4.35,0.27,{fontSize:9,bold:true,color:datos.provisional?"7A4D00":IM296_COLOR.verde});
+}
+function im296AgregarEconomicoSede(pptx,datos,sede,pagina){
+  const color=im296ColorSede(sede);
+  const slide=pptx.addSlide();
+  im296Encabezado(pptx,slide,`Resultado económico · ${sede}`,"Producción, costos, utilidad y margen por cuadrilla",pagina,datos.periodo,color);
+  const lista=(datos.cuadrillas||[]).filter(x=>String(x.sede)===String(sede)).sort((a,b)=>b.utilidad-a.utilidad);
+  const filas=[im296CabeceraTabla(["CUADRILLA","PRODUCCIÓN","MATERIALES","OPERATIVO / PDG","BONOS","PENALIDAD","UTILIDAD","MARGEN"],color)];
+  lista.forEach(x=>filas.push(im296FilaEconomica(x)));
+  im296AgregarTabla(slide,filas,0.42,1.22,12.5,5.18,[3.05,1.45,1.25,1.45,1.0,1.05,1.4,0.85],8.45);
+  const resumen=(datos.porSede||[]).find(x=>String(x.sede)===String(sede))||{};
+  im296Shape(pptx,slide,0.55,6.56,12.2,0.44,"FFFFFF",color,true);
+  im296Texto(slide,`Producción ${im296Moneda(resumen.produccion)}  ·  Costos ${im296Moneda(resumen.costos)}  ·  Utilidad ${im296Moneda(resumen.utilidad)}  ·  Margen ${im296Porcentaje(resumen.margen)}`,0.78,6.64,11.7,0.25,{fontSize:10,bold:true,color});
+}
+function im296AgregarRankings(pptx,datos,pagina){
+  const slide=pptx.addSlide();
+  im296Encabezado(pptx,slide,"Rankings ejecutivos","Gestión operativa y utilidad mensual",pagina,datos.periodo,IM296_COLOR.amarillo);
+  im296TituloBloque(pptx,slide,"Ranking de gestión",0.55,1.15,5.95,IM296_COLOR.azul);
+  const rg=[im296CabeceraTabla(["#","SEDE","CUADRILLA","PUNTAJE"],IM296_COLOR.azul)];
+  (datos.rankingGestion||[]).slice(0,10).forEach(x=>rg.push([
+    String(x.puesto),x.sede,im296Recortar(x.cuadrilla,30),Number(x.puntajeGestion||0).toFixed(1)
+  ]));
+  im296AgregarTabla(slide,rg,0.55,1.63,5.95,4.85,[0.38,0.95,3.7,0.75],8.7);
+  im296TituloBloque(pptx,slide,"Ranking de utilidad",6.82,1.15,5.95,IM296_COLOR.verde);
+  const ru=[im296CabeceraTabla(["#","SEDE","CUADRILLA","UTILIDAD","MARGEN"],IM296_COLOR.verde)];
+  (datos.rankingUtilidad||[]).slice(0,10).forEach(x=>ru.push([
+    String(x.puesto),x.sede,im296Recortar(x.cuadrilla,28),im296Moneda(x.utilidad),im296Porcentaje(x.margen)
+  ]));
+  im296AgregarTabla(slide,ru,6.82,1.63,5.95,4.85,[0.35,0.85,2.7,1.35,0.7],8.2);
+  im296Texto(slide,datos.reglas?.ranking||"",0.62,6.66,6.2,0.23,{fontSize:7.2,color:IM296_COLOR.gris});
+  im296Texto(slide,"PDG: la utilidad descuenta pago por partidas, materiales y penalidades WIN.",7.0,6.66,5.55,0.23,{fontSize:7.2,color:IM296_COLOR.gris,align:"right"});
+}
+function im296AgregarConclusiones(pptx,datos,pagina){
+  const slide=pptx.addSlide();
+  im296Encabezado(pptx,slide,"Conclusiones y foco de gestión","Lectura automática del periodo seleccionado",pagina,datos.periodo,IM296_COLOR.naranja);
+  const conclusiones=datos.conclusiones||[];
+  const colores={
+    resultado:IM296_COLOR.azul2,sede:IM296_COLOR.naranja,gestion:IM296_COLOR.azul,
+    economico:IM296_COLOR.verde,alerta:IM296_COLOR.rojo,calidad:IM296_COLOR.amarillo,control:IM296_COLOR.verde
+  };
+  conclusiones.slice(0,7).forEach((x,i)=>{
+    const y=1.18+i*0.74;
+    const color=colores[x.tipo]||IM296_COLOR.azul2;
+    im296Shape(pptx,slide,0.65,y,12.0,0.57,"FFFFFF",color,true);
+    im296Shape(pptx,slide,0.65,y,0.08,0.57,color,color);
+    im296Texto(slide,x.texto,0.92,y+0.1,11.45,0.34,{fontSize:10.5,bold:i<2,color:IM296_COLOR.texto});
+  });
+  im296Shape(pptx,slide,0.65,6.55,12.0,0.38,IM296_COLOR.azul,IM296_COLOR.azul,true);
+  im296Texto(slide,"Prioridad: sostener productividad, corregir indicadores de calidad y controlar costos por cuadrilla.",0.9,6.62,11.5,0.22,{fontSize:10,bold:true,color:"FFFFFF",align:"center"});
+}
+async function im296GenerarPowerPoint(datos){
+  if(typeof window.PptxGenJS!=="function")throw new Error("No se pudo iniciar el generador de PowerPoint. Actualice la aplicación e inténtelo nuevamente.");
+  const pptx=new window.PptxGenJS();
+  pptx.layout="LAYOUT_WIDE";
+  pptx.author="MI VISUAL · Visual Connections SAC";
+  pptx.company="Visual Connections SAC";
+  pptx.subject=`Informe ejecutivo mensual ${datos.periodo}`;
+  pptx.title=`MI VISUAL · Informe ${datos.periodo}`;
+  pptx.lang="es-PE";
+  pptx.theme={
+    headFontFace:"Aptos Display",bodyFontFace:"Aptos",lang:"es-PE"
+  };
+  im296AgregarPortada(pptx,datos);
+  let pagina=2;
+  im296AgregarResumen(pptx,datos,pagina++);
+  im296AgregarProduccion(pptx,datos,pagina++);
+  im296AgregarCalidad(pptx,datos,pagina++);
+  (datos.porSede||[]).forEach(s=>im296AgregarOperacionSede(pptx,datos,s.sede,pagina++));
+  im296AgregarEconomicoGeneral(pptx,datos,pagina++);
+  (datos.porSede||[]).forEach(s=>im296AgregarEconomicoSede(pptx,datos,s.sede,pagina++));
+  im296AgregarRankings(pptx,datos,pagina++);
+  im296AgregarConclusiones(pptx,datos,pagina++);
+  const nombre=`MI_VISUAL_INFORME_${String(datos.periodoClave||"PERIODO").replace("-","_")}.pptx`;
+  await pptx.writeFile({fileName:nombre,compression:true});
+  return nombre;
+}
+async function util296DescargarInformeMensual(){
+  if(!aePuedeDescargarUtilidad()){alert("No tienes permiso para descargar el informe mensual.");return}
+  const periodo=document.getElementById("util292Periodo")?.value||aePeriodoActual();
+  const boton=document.getElementById("util296Descargar");
+  const textoOriginal=boton?.innerHTML||"⬇ Informe mensual";
+  try{
+    if(boton){boton.disabled=true;boton.textContent="Preparando datos..."}
+    const datos=await util292Api({
+      accion:"obtenerInformeMensualEjecutivo",
+      usuario:localStorage.getItem("usuario"),
+      periodo
+    });
+    if(boton)boton.textContent="Creando PowerPoint...";
+    await im296GenerarPowerPoint(datos);
+  }catch(e){
+    alert("No se pudo generar el informe mensual.\n\n"+(e.message||e));
+  }finally{
+    if(boton){boton.disabled=false;boton.innerHTML=textoOriginal}
+  }
+}
+
 window.mostrarUtilidadCuadrillas=mostrarUtilidadCuadrillas;
 window.util292CambiarVista=util292CambiarVista;
 window.util292Consultar=util292Consultar;
@@ -978,3 +1317,4 @@ window.util293CargarCostos=util293CargarCostos;
 window.util293GuardarCostos=util293GuardarCostos;
 window.util293AlternarVisualizacion=util293AlternarVisualizacion;
 window.util293AlternarEdicion=util293AlternarEdicion;
+window.util296DescargarInformeMensual=util296DescargarInformeMensual;
