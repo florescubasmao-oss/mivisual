@@ -1,0 +1,26 @@
+MI VISUAL V297 - LECTURA DE COSTOS GUARDADOS
+
+CORRECCIÓN
+- Los costos que ya aparecen en GASTOS_CUADRILLA vuelven a ser reconocidos por la aplicación.
+- PERIODO se admite tanto como texto 2026-07 como en formato de fecha interna de Google Sheets.
+- MONTO se admite como número o con formato visible de moneda, por ejemplo S/ 1,650.00.
+- Las cuadrillas con sus cuatro conceptos guardados muestran REGISTRADO.
+- Los importes se aplican en Utilidad por cuadrilla y dejan de aparecer en S/ 0.00.
+
+INFORMACIÓN EXISTENTE
+- No vuelva a ingresar los costos.
+- No borre ni cambie filas de GASTOS_CUADRILLA.
+- La corrección lee los 84 registros existentes de julio: 21 cuadrillas regulares por cuatro conceptos.
+
+ARCHIVOS
+- Code.gs
+- apps_script/Code.gs
+
+ORDEN DE ACTUALIZACIÓN
+1. Reemplazar Code.gs en Apps Script.
+2. Crear una nueva implementación y conservar la URL vigente.
+3. Reemplazar Code.gs y apps_script/Code.gs en GitHub.
+4. Hacer commit y push.
+5. Cerrar sesión, volver a ingresar y consultar JULIO 2026.
+
+No cambian archivos web, fórmulas de utilidad, PDG, TARIFARIO_PDG ni las hojas existentes.

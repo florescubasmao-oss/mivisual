@@ -7108,7 +7108,7 @@ function importarGastosUtilidadCuadrilla(data) {
       ? hoja.getRange(2,1,hoja.getLastRow()-1,11).getValues()
       : [];
     const conservar = anteriores.filter(function(fila) {
-      return String(fila[1] || "") !== periodo || normalizarTexto(fila[5]) !== concepto;
+      return !esPeriodoGastoUtilidad_(fila[1],periodo) || normalizarTexto(fila[5]) !== concepto;
     });
     reemplazados = anteriores.length - conservar.length;
     const salida = conservar.concat(nuevas);
@@ -7190,7 +7190,7 @@ function guardarCostosOperativosCuadrillas(data) {
       : [];
     const existentes = {};
     anteriores.forEach(function(fila) {
-      if (String(fila[1] || "") !== periodo) return;
+      if (!esPeriodoGastoUtilidad_(fila[1],periodo)) return;
       let concepto = "";
       try { concepto = conceptoGastoUtilidad_(fila[5]); } catch (_) { return; }
       if (!conceptosGestionados[concepto]) return;
@@ -7210,7 +7210,7 @@ function guardarCostosOperativosCuadrillas(data) {
     const afectadas = {};
     procesar.forEach(function(x){ afectadas[x.cuadrilla] = true; });
     const conservar = anteriores.filter(function(fila) {
-      if (String(fila[1] || "") !== periodo) return true;
+      if (!esPeriodoGastoUtilidad_(fila[1],periodo)) return true;
       const cuadrilla = normalizarCuadrilla(fila[4]);
       if (!afectadas[cuadrilla]) return true;
       let concepto = "";
@@ -7285,6 +7285,11 @@ function periodoClaveValorUtilidad_(valor) {
   return "";
 }
 
+// V297: Google Sheets puede devolver PERIODO como texto o como fecha interna.
+function esPeriodoGastoUtilidad_(valor, periodo) {
+  return periodoClaveValorUtilidad_(valor) === String(periodo || "").trim();
+}
+
 function cargarProduccionUtilidad_(periodo, mapa) {
   const hoja = obtenerHoja(HOJA_PRODUCCION);
   const datos = hoja.getDataRange().getValues();
@@ -7318,14 +7323,21 @@ function cargarGastosDirectosUtilidad_(periodo, mapa) {
   const hoja=asegurarHojaGastosCuadrilla_();
   let ultima=null;
   if (hoja.getLastRow()<=1) return {ultimaActualizacion:"Sin cargas registradas"};
-  const datos=hoja.getRange(2,1,hoja.getLastRow()-1,11).getValues();
-  datos.forEach(function(fila) {
-    if (String(fila[1]||"")!==periodo) return;
+  const rango=hoja.getRange(2,1,hoja.getLastRow()-1,11);
+  const datos=rango.getValues();
+  const visibles=rango.getDisplayValues();
+  datos.forEach(function(fila,indice) {
+    const visible=visibles[indice]||[];
+    if (!esPeriodoGastoUtilidad_(fila[1],periodo) &&
+        !esPeriodoGastoUtilidad_(visible[1],periodo)) return;
     const item=asegurarAcumuladorUtilidad_(mapa,fila[4],fila[3]);
     if (!item) return;
     let concepto="";
     try { concepto=conceptoGastoUtilidad_(fila[5]); } catch (_) { return; }
-    const monto=Number(fila[6])||0;
+    let montoLeido=numeroMonedaUtilidad_(fila[6]);
+    if (montoLeido===null) montoLeido=numeroMonedaUtilidad_(visible[6]);
+    if (montoLeido===null || montoLeido<0) return;
+    const monto=montoLeido;
     if (concepto==="SUELDOS") {
       item.sueldosLegacy+=monto;
       item.sueldos+=monto;
