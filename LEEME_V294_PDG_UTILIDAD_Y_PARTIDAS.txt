@@ -1,0 +1,51 @@
+MI VISUAL V294 - CORRECCION DE UTILIDAD Y PARTIDAS PDG
+
+CAMBIOS
+
+1. La utilidad de una cuadrilla PDG se calcula de forma independiente:
+   PRODUCCION - MATERIALES - PAGO PDG - PENALIDADES WIN.
+
+2. Para PDG no se descuentan:
+   - Sueldo Tecnico 1
+   - Sueldo Tecnico 2
+   - Alquiler de unidad
+   - Combustible
+   - Bonos
+
+3. Se reconocen correctamente las equivalencias:
+   - IC: instalacion y activacion de abonados en condominios-V3.
+   - UTP5: cableado UTP CAT 5 o CAT 6 - post venta.
+
+4. La hoja TARIFARIO_PDG queda protegida por la logica de solo lectura:
+   - No se crea automaticamente.
+   - No se agregan columnas.
+   - No se escriben encabezados.
+   - No se agregan ni reemplazan filas.
+
+5. Las cuadrillas regulares mantienen su calculo:
+   PRODUCCION - MATERIALES - SUELDOS - COMBUSTIBLE
+   - ALQUILER - BONOS - PENALIDADES WIN.
+
+ARCHIVOS A REEMPLAZAR
+
+APPS SCRIPT
+- Code.gs
+
+GITHUB
+- Code.gs
+- apps_script/Code.gs
+
+ORDEN
+
+1. Reemplazar Code.gs en Apps Script.
+2. Guardar y crear una nueva version de la implementacion.
+3. Reemplazar Code.gs y apps_script/Code.gs en GitHub.
+4. Realizar commit y push.
+5. Ingresar a Analisis Economico > Utilidad por cuadrilla
+   > Costos operativos por cuadrilla y pulsar Consultar costos.
+
+IMPORTANTE
+
+- No modificar la hoja TARIFARIO_PDG.
+- No se reemplazan archivos web.
+- Se mantienen todos los cambios de V293.

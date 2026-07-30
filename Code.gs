@@ -6871,43 +6871,6 @@ function asegurarHojaGastosCuadrilla_() {
   return hoja;
 }
 
-function filasInicialesTarifarioPdg_() {
-  return [
-    ["INSTALACION NUEVA","INSTALACION Y ACTIVACION DE ABONADOS EN RESIDENCIALES",100,120],
-    ["INSTALACION NUEVA","INSTALACION Y ACTIVACION DE ABONADOS EN CONDOMINIOS-V3",70,80],
-    ["INSTALACION ADICIONAL","CABLEADO UTP CAT 5 O CAT 6 - ADICIONAL - INSTALACIONES",18,20],
-    ["INSTALACION ADICIONAL","CABLEADO CAT 5 O CAT 6 Y CONFIGURACION DE MESH DURANTE LA INSTALACION",18,20],
-    ["POST VENTA - VT","INSTALACION DE MESH MAS CABLEADO CAT 5 O CAT 6 - POST VENTA",35,40],
-    ["POST VENTA - VT","SERVICIO COMPLETO DE RECABLEADO EN ABONADO RESIDENCIAL - POST VENTA",82.50,96.80],
-    ["POST VENTA - VT","SERVICIO COMPLETO DE RECABLEADO EN ABONADO CONDOMINIO - POST VENTA",60.67,69.33],
-    ["POST VENTA - VT","CABLEADO UTP CAT 5 O CAT 6 - POST VENTA",32.94,37.65],
-    ["POST VENTA - VT","REUBICACION DE ROUTER CON RESERVA - POST VENTA",30,35],
-    ["POST VENTA - VT","REUBICACION DE ROUTER SIN RESERVA - POST VENTA",90,105.60],
-    ["POST VENTA - VT","RE-INSTALACION DE ONT - CONDOMINIO",60.67,69.33],
-    ["POST VENTA - VT","RE-INSTALACION DE ONT - RESIDENCIAL",90,105.60],
-    ["POST VENTA - VT","CAMBIO DE ONT POR REPOSICION - POST VENTA",37.06,42.35],
-    ["POST VENTA - VT","TRASLADO DE SERVICIOS POR MUDANZA EN CONDOMINIO - POST VENTA",70,80],
-    ["POST VENTA - VT","TRASLADO DE SERVICIOS POR MUDANZA EN RESIDENCIALES - POST VENTA",100,120],
-    ["POST VENTA - VT","SERVICIO DE ENTREGA Y CONFIGURACION DE TV BOX - POST VENTA",25,30],
-    ["POST VENTA - VT","SERVICIO DE ENTREGA Y CONFIGURACION DE MESH - POST VENTA",25,30],
-    ["POST VENTA - VT","SERVICIO DE ENTREGA Y CONFIGURACION DE FONO WIN - POST VENTA",25,30],
-    ["POST VENTA - VT","MIGRA XGSPON",77,88],
-    ["TRABAJOS ADICIONALES - POST VENTA","CABLEADO UTP CAT 5 O CAT 6 - ADICIONAL - POST VENTA",18,20],
-    ["TRABAJOS ADICIONALES - POST VENTA","INSTALACION DE MESH MAS CABLEADO CAT 5 O CAT 6 DURANTE LA ATENCION - POST VENTA",18,20],
-    ["AVERIAS VT","ATENCION DE AVERIAS ULTIMA MILLA",39.38,45],
-    ["AVERIAS VT","PRUEBAS DE SERVICIO",39.38,45],
-    ["AVERIAS VT","CAMBIO DE EQUIPO ONT",39.38,45],
-    ["AVERIAS VT","CAMBIO DE EQUIPO MESH",39.38,52.50],
-    ["AVERIAS VT","CAMBIO DE TV BOX",39.38,52.50],
-    ["AVERIAS VT","CAMBIO DE FONO WIN",39.38,45],
-    ["AVERIAS VT","SERVICIO COMPLETO DE RECABLEADO EN ABONADO RESIDENCIAL - VISITA TECNICA",82.50,96.80],
-    ["AVERIAS VT","SERVICIO COMPLETO DE RECABLEADO EN ABONADO CONDOMINIO - VISITA TECNICA",60.67,69.33],
-    ["TRABAJOS ADICIONALES - AVERIAS","RETIRO DE 1 KILOGRAMO DE FIBRA OPTICA",1,1],
-    ["TRABAJOS ADICIONALES - AVERIAS","CABLEADO CAT 5 O CAT 6 Y CONFIGURACION DE MESH DURANTE LA ATENCION - VISITA TECNICA",23.50,27.42],
-    ["TRABAJOS ADICIONALES - AVERIAS","INSTALACION DE SPLITTERS 1X2",14.58,17.50]
-  ];
-}
-
 function normalizarNombreTarifaPdg_(valor) {
   return normalizarTexto(valor)
     .replace(/\bPOS VENTA\b/g,"POST VENTA")
@@ -6918,59 +6881,86 @@ function normalizarNombreTarifaPdg_(valor) {
     .trim();
 }
 
-function asegurarHojaTarifarioPdg_() {
+function obtenerHojaTarifarioPdgSoloLectura_() {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
-  let hoja = ss.getSheetByName(HOJA_TARIFARIO_PDG);
-  if (!hoja) hoja = ss.insertSheet(HOJA_TARIFARIO_PDG);
-  if (hoja.getMaxColumns() < 6) hoja.insertColumnsAfter(hoja.getMaxColumns(),6-hoja.getMaxColumns());
-  if (hoja.getLastRow() === 0 || !hoja.getRange(1,1).getValue()) {
-    hoja.getRange(1,1,1,6).setValues([[
-      "CODIGO_PARTIDA","TIPO_SERVICIO","NOMBRE_PARTIDA",
-      "TARIFA_1_60","TARIFA_61_MAS","ESTADO"
-    ]]);
-    hoja.setFrozenRows(1);
-  }
-  if (hoja.getLastRow() <= 1) {
-    const catalogo = catalogoPartidasBaseOperativa().lista;
-    const codigosPorNombre = {};
-    catalogo.forEach(function(x) {
-      codigosPorNombre[normalizarNombreTarifaPdg_(x.tipoOrden)] = x.codigo;
-    });
-    const filas = filasInicialesTarifarioPdg_().map(function(x) {
-      return [
-        codigosPorNombre[normalizarNombreTarifaPdg_(x[1])] || "",
-        x[0],x[1],x[2],x[3],"ACTIVO"
-      ];
-    });
-    hoja.getRange(2,1,filas.length,6).setValues(filas);
-    hoja.getRange(2,4,filas.length,2).setNumberFormat('"S/ "0.00');
+  const hoja = ss.getSheetByName(HOJA_TARIFARIO_PDG);
+  if (!hoja) throw new Error("No existe la hoja TARIFARIO_PDG. El módulo no la creará ni modificará automáticamente.");
+  if (hoja.getLastRow() < 1 || hoja.getLastColumn() < 5) {
+    throw new Error("TARIFARIO_PDG no contiene la estructura necesaria para calcular los pagos.");
   }
   return hoja;
 }
 
 function obtenerTarifarioPdg_() {
-  const hoja = asegurarHojaTarifarioPdg_();
+  const hoja = obtenerHojaTarifarioPdgSoloLectura_();
+  const encabezados = hoja.getRange(1,1,1,hoja.getLastColumn()).getDisplayValues()[0]
+    .map(function(x){ return normalizarNombreTarifaPdg_(x); });
+  function indiceEncabezado_(nombres, obligatorio) {
+    for (let i=0;i<nombres.length;i++) {
+      const indice=encabezados.indexOf(normalizarNombreTarifaPdg_(nombres[i]));
+      if (indice>=0) return indice;
+    }
+    if (obligatorio) throw new Error("TARIFARIO_PDG no contiene la columna " + nombres[0] + ". No se realizó ningún cambio en la hoja.");
+    return -1;
+  }
+  const columnas = {
+    codigo:indiceEncabezado_(["CODIGO_PARTIDA","CODIGO PARTIDA","CODIGO"],true),
+    tipoServicio:indiceEncabezado_(["TIPO_SERVICIO","TIPO DE SERVICIO","TIPO SERVICIO"],false),
+    nombre:indiceEncabezado_(["NOMBRE_PARTIDA","NOMBRE DE LA PARTIDA","NOMBRE PARTIDA","PARTIDA"],true),
+    tarifaHasta60:indiceEncabezado_(["TARIFA_1_60","TARIFA 1 A 60","DE 1 A 60","1 A 60"],true),
+    tarifa61Mas:indiceEncabezado_(["TARIFA_61_MAS","TARIFA 61 A MAS","DE 61 A MAS","61 A MAS"],true),
+    estado:indiceEncabezado_(["ESTADO"],false)
+  };
   const datos = hoja.getLastRow() > 1
-    ? hoja.getRange(2,1,hoja.getLastRow()-1,6).getValues()
+    ? hoja.getRange(2,1,hoja.getLastRow()-1,hoja.getLastColumn()).getValues()
     : [];
   const porCodigo = {};
   const porNombre = {};
   const lista = [];
   datos.forEach(function(fila) {
-    if (normalizarTexto(fila[5] || "ACTIVO") !== "ACTIVO") return;
+    if (columnas.estado>=0 && normalizarTexto(fila[columnas.estado] || "ACTIVO") !== "ACTIVO") return;
     const item = {
-      codigo:String(fila[0] || "").trim(),
-      tipoServicio:normalizarTexto(fila[1]),
-      nombre:String(fila[2] || "").trim(),
-      tarifaHasta60:Number(fila[3]) || 0,
-      tarifa61Mas:Number(fila[4]) || 0
+      codigo:String(fila[columnas.codigo] || "").trim(),
+      tipoServicio:columnas.tipoServicio>=0 ? normalizarTexto(fila[columnas.tipoServicio]) : "",
+      nombre:String(fila[columnas.nombre] || "").trim(),
+      tarifaHasta60:Number(fila[columnas.tarifaHasta60]) || 0,
+      tarifa61Mas:Number(fila[columnas.tarifa61Mas]) || 0
     };
     if (!item.nombre || item.tarifaHasta60 < 0 || item.tarifa61Mas < 0) return;
-    if (item.codigo) porCodigo[item.codigo] = item;
+    if (item.codigo) {
+      porCodigo[item.codigo] = item;
+      porCodigo[normalizarTexto(item.codigo)] = item;
+    }
     porNombre[normalizarNombreTarifaPdg_(item.nombre)] = item;
     lista.push(item);
   });
   return {porCodigo,porNombre,lista};
+}
+
+const ALIASES_PARTIDAS_PDG_ = {
+  "IC":[
+    "INSTALACION Y ACTIVACION DE ABONADOS EN CONDOMINIOS-V3",
+    "INSTALACION Y ACTIVACION DE ABONADOS EN CONDOMINIOS"
+  ],
+  "UTP5":[
+    "CABLEADO UTP CAT 5 O CAT 6 - POST VENTA",
+    "CABLEADO UTP CAT 5 - POST VENTA",
+    "CABLEADO CAT 5 O CAT 6 - POST VENTA"
+  ]
+};
+
+function resolverTarifaPdg_(tarifario,codigo,nombre) {
+  const codigoNormalizado=normalizarTexto(codigo);
+  const porCodigo=tarifario.porCodigo[codigo]||tarifario.porCodigo[codigoNormalizado];
+  if (porCodigo) return porCodigo;
+  const porNombre=tarifario.porNombre[normalizarNombreTarifaPdg_(nombre)];
+  if (porNombre) return porNombre;
+  const aliases=ALIASES_PARTIDAS_PDG_[codigoNormalizado]||[];
+  for (let i=0;i<aliases.length;i++) {
+    const tarifa=tarifario.porNombre[normalizarNombreTarifaPdg_(aliases[i])];
+    if (tarifa) return tarifa;
+  }
+  return null;
 }
 
 function exigirAccesoUtilidadCuadrilla_(data, accion) {
@@ -7435,7 +7425,7 @@ function cargarPagosPdgUtilidad_(periodo,mapa) {
       const cantidad=acumulados[cuadrilla].partidas[codigo];
       const catalogoItem=obtenerCatalogoEconomicoPorCodigo(codigo,catalogo);
       const nombre=catalogoItem?catalogoItem.tipoOrden:codigo;
-      const tarifaItem=tarifario.porCodigo[codigo]||tarifario.porNombre[normalizarNombreTarifaPdg_(nombre)]||null;
+      const tarifaItem=resolverTarifaPdg_(tarifario,codigo,nombre);
       const tarifa=tarifaItem?(tarifaAlta?tarifaItem.tarifa61Mas:tarifaItem.tarifaHasta60):0;
       const subtotal=Math.round(cantidad*tarifa*100)/100;
       if (!tarifaItem) sinTarifa.push(codigo+" · "+nombre);
@@ -7531,6 +7521,20 @@ function cargarPenalidadesWinUtilidad_(periodo,mapa) {
   });
 }
 
+function calcularCostosUtilidadCuadrilla_(valores,esPdg) {
+  const materiales=Number(valores.materiales)||0;
+  const penalidadesWin=Number(valores.penalidadesWin)||0;
+  if (esPdg) {
+    return materiales+(Number(valores.pagoPdg)||0)+penalidadesWin;
+  }
+  return materiales+
+    (Number(valores.sueldos)||0)+
+    (Number(valores.combustible)||0)+
+    (Number(valores.alquilerUnidad)||0)+
+    (Number(valores.bonos)||0)+
+    penalidadesWin;
+}
+
 function obtenerUtilidadCuadrillas(data) {
   const acceso=exigirAccesoUtilidadCuadrilla_(data,"VER");
   const periodo=resolverPeriodoAnalisisEconomico({periodo:data.periodo});
@@ -7551,7 +7555,15 @@ function obtenerUtilidadCuadrillas(data) {
     const alquilerUnidad=esPdg?0:x.alquilerUnidad;
     const bonos=esPdg?0:x.bonos;
     const pagoPdg=esPdg?x.pagoPdg:0;
-    const costos=x.materiales+sueldos+combustible+alquilerUnidad+bonos+pagoPdg+x.penalidadesWin;
+    const costos=calcularCostosUtilidadCuadrilla_({
+      materiales:x.materiales,
+      sueldos,
+      combustible,
+      alquilerUnidad,
+      bonos,
+      pagoPdg,
+      penalidadesWin:x.penalidadesWin
+    },esPdg);
     const utilidad=x.produccion-costos;
     const faltantes=esPdg
       ? x.partidasPdgSinTarifa.slice()
