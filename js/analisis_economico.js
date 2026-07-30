@@ -640,7 +640,7 @@ function util292Estilos(){
   .util292-card-metricas{display:grid;grid-template-columns:repeat(3,1fr);gap:7px;margin:11px 0}.util292-card-metricas div{background:#f8fafc;border-radius:9px;padding:8px}.util292-card-metricas span{display:block;font-size:9px;color:#64748b;font-weight:900}.util292-card-metricas b{display:block;margin-top:3px;font-size:13px}.util292-card details{border-top:1px solid #e2e8f0;padding-top:9px}.util292-card summary{cursor:pointer;font-size:12px;font-weight:900;color:#0369a1}.util292-detalle{width:100%;border-collapse:collapse;margin-top:8px}.util292-detalle td{padding:6px;border-bottom:1px solid #e2e8f0;font-size:12px}.util292-detalle td:last-child{text-align:right;font-weight:900}
   .util292-import{display:grid;grid-template-columns:220px 220px 1fr;gap:12px;align-items:end}.util292-import textarea{grid-column:1/-1;height:290px;font-family:monospace;white-space:pre}.util292-nota{background:#eff6ff;border:1px solid #93c5fd;border-radius:11px;padding:11px;color:#1e3a8a;font-size:12px}.util292-estado-import{margin-top:12px;padding:12px;border-radius:11px;background:#f1f5f9;line-height:1.55}.util292-vacio{padding:20px;text-align:center;color:#64748b}
   .util293-config-head{display:flex;gap:10px;align-items:end;flex-wrap:wrap;margin-bottom:13px}.util293-config-head label{font-size:12px;font-weight:900}.util293-config-head select{display:block;min-width:210px;border:1px solid #94a3b8;border-radius:9px;padding:10px;background:#fff}
-  .util293-config-grid{display:grid;grid-template-columns:minmax(0,1.65fr) minmax(310px,.85fr);gap:14px;align-items:start}.util293-bloque{border:1px solid #cbd5e1;border-radius:15px;overflow:hidden;background:#fff}.util293-bloque>header{padding:13px 14px;background:#e0f2fe;border-bottom:1px solid #bae6fd}.util293-bloque>header h3{margin:0 0 3px;font-size:16px}.util293-bloque>header p{margin:0;color:#475569;font-size:11px}.util293-tabla-wrap{overflow:auto;max-height:620px}.util293-tabla{width:100%;border-collapse:collapse;min-width:780px}.util293-tabla th,.util293-tabla td{padding:8px;border-bottom:1px solid #e2e8f0;font-size:11px;text-align:left}.util293-tabla th{position:sticky;top:0;background:#f8fafc;z-index:1}.util293-tabla input{width:105px;box-sizing:border-box;padding:8px;border:1px solid #94a3b8;border-radius:7px}.util293-tabla tr.guardado{background:#f0fdf4}.util293-acciones{display:flex;gap:8px;flex-wrap:wrap;padding:12px;background:#f8fafc}.util293-acciones .actualizar{background:#f59e0b}.util293-pdg-lista{padding:12px;display:grid;gap:10px}.util293-pdg-card{border:1px solid #fdba74;border-radius:12px;padding:12px;background:#fff7ed}.util293-pdg-card h4{margin:0 0 8px;font-size:13px}.util293-pdg-metricas{display:grid;grid-template-columns:1fr 1fr;gap:7px}.util293-pdg-metricas div{background:#fff;border-radius:8px;padding:8px}.util293-pdg-metricas span{display:block;font-size:9px;font-weight:900;color:#7c2d12}.util293-pdg-metricas b{display:block;margin-top:3px}.util293-pdg-detalle{width:100%;border-collapse:collapse;margin-top:8px}.util293-pdg-detalle td{padding:5px;border-bottom:1px solid #fed7aa;font-size:10px}.util293-pdg-detalle td:last-child{text-align:right}.util293-sin-tarifa{margin-top:8px;background:#fee2e2;border:1px solid #fca5a5;border-radius:8px;padding:8px;color:#991b1b;font-size:10px}.util293-tarifario{margin:0 12px 12px;border:1px solid #cbd5e1;border-radius:10px;padding:9px}.util293-tarifario summary{cursor:pointer;font-weight:900;font-size:11px}.util293-tarifario table{width:100%;border-collapse:collapse;margin-top:8px}.util293-tarifario th,.util293-tarifario td{padding:5px;border-bottom:1px solid #e2e8f0;font-size:9px}.util293-estado{margin-top:12px;padding:11px;border-radius:10px;background:#eff6ff;color:#1e3a8a;font-size:12px}
+  .util293-config-grid{display:grid;grid-template-columns:minmax(0,1.65fr) minmax(310px,.85fr);gap:14px;align-items:start}.util293-bloque{border:1px solid #cbd5e1;border-radius:15px;overflow:hidden;background:#fff}.util293-bloque>header{padding:13px 14px;background:#e0f2fe;border-bottom:1px solid #bae6fd}.util293-bloque>header h3{margin:0 0 3px;font-size:16px}.util293-bloque>header p{margin:0;color:#475569;font-size:11px}.util293-tabla-wrap{overflow:auto;max-height:620px}.util293-tabla{width:100%;border-collapse:collapse;min-width:820px}.util293-tabla th,.util293-tabla td{padding:8px;border-bottom:1px solid #e2e8f0;font-size:11px;text-align:left}.util293-tabla th{position:sticky;top:0;background:#f8fafc;z-index:1}.util293-tabla input{width:105px;box-sizing:border-box;padding:8px;border:1px solid #94a3b8;border-radius:7px}.util293-tabla tr.guardado{background:#f0fdf4}.util293-celda-costo{min-width:105px}.util293-dato-guardado{display:block;min-width:105px;box-sizing:border-box;padding:8px;border:1px solid #86efac;border-radius:7px;background:#fff;text-align:center;font-weight:900;color:#166534}.util293-valor-visible{display:none}.util293-fila-costo.guardado .util293-input-costo{display:none}.util293-fila-costo.guardado.visualizando .util293-valor-mascara{display:none}.util293-fila-costo.guardado.visualizando .util293-valor-visible{display:inline}.util293-fila-costo.guardado.editando .util293-dato-guardado{display:none}.util293-fila-costo.guardado.editando .util293-input-costo{display:block;background:#fff7ed;border-color:#f59e0b}.util293-fila-costo.editando{background:#fffbeb}.util293-fila-acciones{display:flex;gap:5px;flex-wrap:wrap;margin-top:6px}.util293-mini-btn{border:0;border-radius:7px;padding:6px 8px;background:#0369a1;color:#fff;font-size:10px;font-weight:900;cursor:pointer}.util293-mini-btn.editar{background:#f59e0b;color:#78350f}.util293-acciones{display:flex;gap:8px;flex-wrap:wrap;padding:12px;background:#f8fafc}.util293-acciones .actualizar{background:#f59e0b}.util293-pdg-lista{padding:12px;display:grid;gap:10px}.util293-pdg-card{border:1px solid #fdba74;border-radius:12px;padding:12px;background:#fff7ed}.util293-pdg-card h4{margin:0 0 8px;font-size:13px}.util293-pdg-metricas{display:grid;grid-template-columns:1fr 1fr;gap:7px}.util293-pdg-metricas div{background:#fff;border-radius:8px;padding:8px}.util293-pdg-metricas span{display:block;font-size:9px;font-weight:900;color:#7c2d12}.util293-pdg-metricas b{display:block;margin-top:3px}.util293-pdg-detalle{width:100%;border-collapse:collapse;margin-top:8px}.util293-pdg-detalle td{padding:5px;border-bottom:1px solid #fed7aa;font-size:10px}.util293-pdg-detalle td:last-child{text-align:right}.util293-sin-tarifa{margin-top:8px;background:#fee2e2;border:1px solid #fca5a5;border-radius:8px;padding:8px;color:#991b1b;font-size:10px}.util293-tarifario{margin:0 12px 12px;border:1px solid #cbd5e1;border-radius:10px;padding:9px}.util293-tarifario summary{cursor:pointer;font-weight:900;font-size:11px}.util293-tarifario table{width:100%;border-collapse:collapse;margin-top:8px}.util293-tarifario th,.util293-tarifario td{padding:5px;border-bottom:1px solid #e2e8f0;font-size:9px}.util293-estado{margin-top:12px;padding:11px;border-radius:10px;background:#eff6ff;color:#1e3a8a;font-size:12px}
   @media(max-width:980px){.util293-config-grid{grid-template-columns:1fr}}
   @media(max-width:850px){.util292-filtros{grid-template-columns:1fr 1fr}.util292-kpis{grid-template-columns:1fr 1fr}.util292-costos{grid-template-columns:1fr 1fr}.util292-lista{grid-template-columns:1fr}.util292-import{grid-template-columns:1fr 1fr}.util292-import .util292-nota{grid-column:1/-1}}
   @media(max-width:520px){.util292-head{display:block}.util292-head button{margin-top:10px}.util292-filtros,.util292-kpis,.util292-import{grid-template-columns:1fr}.util292-card-metricas{grid-template-columns:1fr}.util292-import textarea,.util292-import .util292-nota{grid-column:1}}
@@ -822,18 +822,59 @@ function util293ValorInput(x,campo){
   return x.costosRegistrados||valor>0?valor.toFixed(2):"";
 }
 
+function util293TieneDatosGuardados(x){
+  return !!x.costosRegistrados||Number(x.sueldosLegacy)>0;
+}
+
+function util293CeldaCosto(x,campo,clase){
+  const guardado=util293TieneDatosGuardados(x);
+  const legado=Number(x.sueldosLegacy)>0&&!x.costosRegistrados;
+  const pendienteDesglose=legado&&(campo==="sueldoTecnico1"||campo==="sueldoTecnico2");
+  const valorInput=pendienteDesglose?"":util293ValorInput(x,campo);
+  const valorVisible=pendienteDesglose?"POR COMPLETAR":aeMoneda(Number(x[campo])||0);
+  return `<td class="util293-celda-costo">
+    ${guardado?`<span class="util293-dato-guardado"><span class="util293-valor-mascara">GUARDADO</span><span class="util293-valor-visible">${aeEscape(valorVisible)}</span></span>`:""}
+    <input class="util293-input-costo ${clase}" type="number" min="0" step="0.01" value="${aeEscape(valorInput)}" data-original="${aeEscape(valorInput)}" placeholder="0.00">
+  </td>`;
+}
+
 function util293FilaCosto(x,i){
-  const estado=Number(x.sueldosLegacy)>0
+  const guardado=util293TieneDatosGuardados(x);
+  const legado=Number(x.sueldosLegacy)>0&&!x.costosRegistrados;
+  const estado=legado
     ? '<span class="util292-estado falta">DESGLOSAR SUELDOS</span>'
-    : (x.costosRegistrados?'<span class="util292-estado">GUARDADO</span>':'<span class="util292-estado falta">PENDIENTE</span>');
-  return `<tr class="util293-fila-costo ${x.costosRegistrados?"guardado":""}" data-cuadrilla="${aeEscape(x.cuadrilla)}" data-sede="${aeEscape(x.sede||"")}">
+    : (guardado?'<span class="util292-estado">REGISTRADO</span>':'<span class="util292-estado falta">PENDIENTE</span>');
+  const acciones=guardado?`<div class="util293-fila-acciones">
+    <button type="button" class="util293-mini-btn util293-ver" onclick="util293AlternarVisualizacion(this)">Visualizar</button>
+    <button type="button" class="util293-mini-btn editar util293-editar" onclick="util293AlternarEdicion(this)">${legado?"Completar":"Editar"}</button>
+  </div>`:"";
+  return `<tr class="util293-fila-costo ${guardado?"guardado":""}" data-cuadrilla="${aeEscape(x.cuadrilla)}" data-sede="${aeEscape(x.sede||"")}" data-registrado="${guardado?"1":"0"}">
     <td><b>${aeEscape(x.cuadrilla)}</b><small style="display:block;color:#64748b">${aeEscape(x.sede||"SIN SEDE")}</small></td>
-    <td><input class="costo-t1" type="number" min="0" step="0.01" value="${Number(x.sueldosLegacy)>0?"":util293ValorInput(x,"sueldoTecnico1")}" placeholder="0.00"></td>
-    <td><input class="costo-t2" type="number" min="0" step="0.01" value="${Number(x.sueldosLegacy)>0?"":util293ValorInput(x,"sueldoTecnico2")}" placeholder="0.00"></td>
-    <td><input class="costo-alquiler" type="number" min="0" step="0.01" value="${util293ValorInput(x,"alquilerUnidad")}" placeholder="0.00"></td>
-    <td><input class="costo-combustible" type="number" min="0" step="0.01" value="${util293ValorInput(x,"combustible")}" placeholder="0.00"></td>
-    <td>${estado}${Number(x.sueldosLegacy)>0?`<small style="display:block;margin-top:4px">Total anterior: ${aeMoneda(x.sueldosLegacy)}</small>`:""}</td>
+    ${util293CeldaCosto(x,"sueldoTecnico1","costo-t1")}
+    ${util293CeldaCosto(x,"sueldoTecnico2","costo-t2")}
+    ${util293CeldaCosto(x,"alquilerUnidad","costo-alquiler")}
+    ${util293CeldaCosto(x,"combustible","costo-combustible")}
+    <td>${estado}${legado?`<small style="display:block;margin-top:4px">Total anterior: ${aeMoneda(x.sueldosLegacy)}</small>`:""}${acciones}</td>
   </tr>`;
+}
+
+function util293AlternarVisualizacion(boton){
+  const fila=boton?.closest(".util293-fila-costo");if(!fila||fila.classList.contains("editando"))return;
+  const visible=fila.classList.toggle("visualizando");
+  boton.textContent=visible?"Ocultar":"Visualizar";
+}
+
+function util293AlternarEdicion(boton){
+  const fila=boton?.closest(".util293-fila-costo");if(!fila)return;
+  const editar=!fila.classList.contains("editando");
+  fila.classList.toggle("editando",editar);
+  fila.classList.remove("visualizando");
+  const ver=fila.querySelector(".util293-ver");
+  if(ver){ver.textContent="Visualizar";ver.disabled=editar}
+  boton.textContent=editar?"Cancelar":(fila.querySelector(".util292-estado.falta")?"Completar":"Editar");
+  if(!editar){
+    fila.querySelectorAll(".util293-input-costo").forEach(input=>{input.value=input.dataset.original||""});
+  }
 }
 
 function util293DetallePdg(x){
@@ -888,9 +929,12 @@ async function util293CargarCostos(){
   }
 }
 
-function util293RecolectarCostos(){
+function util293RecolectarCostos(modo){
   const filas=[];
   document.querySelectorAll(".util293-fila-costo").forEach(tr=>{
+    const registrado=tr.dataset.registrado==="1";
+    if(modo==="GUARDAR"&&registrado)return;
+    if(modo==="ACTUALIZAR"&&(!registrado||!tr.classList.contains("editando")))return;
     const entradas={
       sueldoTecnico1:tr.querySelector(".costo-t1")?.value??"",
       sueldoTecnico2:tr.querySelector(".costo-t2")?.value??"",
@@ -903,14 +947,16 @@ function util293RecolectarCostos(){
     if(valores.some(v=>!Number.isFinite(Number(v))||Number(v)<0))throw new Error(`Revise los montos de ${tr.dataset.cuadrilla}`);
     filas.push({cuadrilla:tr.dataset.cuadrilla,sede:tr.dataset.sede,...entradas});
   });
-  if(!filas.length)throw new Error("Complete los costos de al menos una cuadrilla");
+  if(!filas.length)throw new Error(modo==="ACTUALIZAR"
+    ?"Use Editar en la cuadrilla que desea actualizar"
+    :"Complete los costos de al menos una cuadrilla pendiente");
   return filas;
 }
 
 async function util293GuardarCostos(modo){
   const estado=document.getElementById("util293Estado");
   try{
-    const filas=util293RecolectarCostos();
+    const filas=util293RecolectarCostos(modo);
     const periodo=document.getElementById("util293Periodo")?.value||aePeriodoActual();
     if(estado)estado.textContent=modo==="GUARDAR"?"Guardando nuevos costos...":"Actualizando costos...";
     const r=await util292Api({accion:"guardarCostosOperativosCuadrillas",usuario:localStorage.getItem("usuario"),periodo,modo,filas});
@@ -930,3 +976,5 @@ window.util292CambiarSede=util292CambiarSede;
 window.util292AplicarFiltros=util292AplicarFiltros;
 window.util293CargarCostos=util293CargarCostos;
 window.util293GuardarCostos=util293GuardarCostos;
+window.util293AlternarVisualizacion=util293AlternarVisualizacion;
+window.util293AlternarEdicion=util293AlternarEdicion;

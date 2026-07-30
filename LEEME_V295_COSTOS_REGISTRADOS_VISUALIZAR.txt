@@ -1,0 +1,29 @@
+MI VISUAL V295 - COSTOS REGISTRADOS Y VISUALIZAR
+
+CAMBIO REALIZADO
+
+- Las cuadrillas con los cuatro costos guardados muestran REGISTRADO.
+- Un registro guardado con montos S/ 0.00 también se reconoce como REGISTRADO.
+- Los valores guardados permanecen protegidos inicialmente.
+- El botón Visualizar muestra los cuatro montos.
+- El botón Ocultar vuelve a protegerlos.
+- El botón Editar habilita solamente la fila seleccionada.
+- Actualizar valores procesa únicamente las filas abiertas con Editar.
+- Las cuadrillas sin registro mantienen los cuatro campos de ingreso y el estado PENDIENTE.
+
+NO SE MODIFICA
+
+- La fórmula de utilidad de cuadrillas regulares.
+- La fórmula especial de utilidad PDG.
+- La lectura de TARIFARIO_PDG.
+- Google Sheets.
+- Code.gs ni Apps Script.
+- Otros módulos, permisos o perfiles.
+
+ARCHIVOS PARA REEMPLAZAR EN GITHUB
+
+1. js/analisis_economico.js
+2. index.html
+
+Después de reemplazarlos, realizar commit y push, esperar la publicación y
+actualizar la aplicación.
