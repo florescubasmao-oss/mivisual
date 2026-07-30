@@ -1,0 +1,50 @@
+MI VISUAL V289
+PROGRAMACIÓN DE DESCANSOS: RESPUESTA JSON SEGURA
+
+CORRECCIÓN
+
+Se corrigió el mensaje:
+
+Unexpected token "M", "MI VISUAL API OK" is not valid JSON
+
+El módulo ahora:
+
+1. Envía la consulta de Descansos como POST explícito.
+2. Evita respuestas guardadas en caché.
+3. Verifica el contenido antes de convertirlo a JSON.
+4. Si Google devuelve temporalmente "MI VISUAL API OK", repite una vez la
+   consulta correcta de manera automática.
+5. Muestra un mensaje comprensible si la API no devuelve datos válidos.
+
+ARCHIVOS MODIFICADOS
+
+- js/programacion_descansos.js
+- index.html
+
+CODE.GS
+
+No cambió.
+No se debe actualizar ni volver a implementar Apps Script.
+
+ORDEN DE ACTUALIZACIÓN
+
+1. Reemplazar en GitHub:
+   - js/programacion_descansos.js
+   - index.html
+2. Realizar commit y push.
+3. Esperar la publicación de GitHub Pages.
+4. Actualizar la página e ingresar nuevamente a Programación de Descansos.
+
+NO MODIFICAR
+
+- Code.gs.
+- Google Sheets.
+- La carpeta .git.
+- Otros módulos del aplicativo.
+
+VALIDACIONES
+
+- Sintaxis JavaScript correcta.
+- Solicitud POST con JSON y sin caché.
+- Reintento automático probado frente a la respuesta "MI VISUAL API OK".
+- Se conservan las correcciones V288 para supervisores y continuidad julio/agosto.

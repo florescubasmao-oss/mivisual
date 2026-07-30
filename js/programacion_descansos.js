@@ -1,4 +1,4 @@
-// MI VISUAL - Programación de Descansos V288
+// MI VISUAL - Programación de Descansos V289
 const API_DESCANSOS = "https://script.google.com/macros/s/AKfycbzcbjCLweJNgZXDerdzmMN7Lwotc1G8NWdzoPkaLNGDivAgpYxDkq78xZwPRioSB4XY/exec";
 let PD_DATA={programacion:[],cuadrillas:[]};
 let PD_CAMBIOS={};
@@ -10,7 +10,35 @@ function pdNorm(v){return (v||"").toString().toUpperCase().normalize("NFD").repl
 function pdUser(){return {usuario:localStorage.getItem("usuario")||"",perfil:pdNorm(localStorage.getItem("perfil")),sede:pdNorm(localStorage.getItem("sede")),cuadrilla:localStorage.getItem("cuadrilla")||""};}
 function pdSoloLectura(){if(typeof pmPuede==="function")return !pmPuede("PROGRAMACION DESCANSOS","REGISTRAR")&&!pmPuede("PROGRAMACION DESCANSOS","EDITAR")&&!pmPuede("PROGRAMACION DESCANSOS","OBSERVAR")&&!pmPuede("PROGRAMACION DESCANSOS","APROBAR")&&!pmPuede("PROGRAMACION DESCANSOS","VALIDAR")&&!pmPuede("PROGRAMACION DESCANSOS","ADMINISTRAR");const u=pdUser();return u.perfil==="OPERACIONES LIMA";}
 function pdEsc(v){return (v??"").toString().replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");}
-async function pdApi(payload){const r=await fetch(API_DESCANSOS,{method:"POST",body:JSON.stringify(payload)});const d=await r.json();if(!d.ok)throw new Error(d.error||"Error en Programación de Descansos");return d;}
+async function pdApi(payload){
+  const cuerpo=JSON.stringify(payload||{});
+  async function solicitar(intento){
+    const separador=API_DESCANSOS.includes("?")?"&":"?";
+    const url=`${API_DESCANSOS}${separador}pd=${Date.now()}-${intento}`;
+    const r=await fetch(url,{
+      method:"POST",
+      headers:{"Content-Type":"text/plain;charset=UTF-8","Accept":"application/json"},
+      body:cuerpo,
+      cache:"no-store",
+      redirect:"follow"
+    });
+    const texto=(await r.text()).trim();
+    if(!r.ok)throw new Error(`No se pudo conectar con Programación de Descansos (${r.status}).`);
+    let d;
+    try{
+      d=JSON.parse(texto);
+    }catch(e){
+      const respuestaPrueba=/^MI VISUAL API OK$/i.test(texto);
+      if(respuestaPrueba&&intento===0)return solicitar(1);
+      throw new Error(respuestaPrueba
+        ?"Apps Script respondió en modo de prueba. Actualice la página e intente nuevamente."
+        :"La API de Programación de Descansos no devolvió una respuesta válida.");
+    }
+    if(!d.ok)throw new Error(d.error||"Error en Programación de Descansos");
+    return d;
+  }
+  return solicitar(0);
+}
 function pdHoy(){const d=new Date(),m=String(d.getMonth()+1).padStart(2,"0"),day=String(d.getDate()).padStart(2,"0");return `${d.getFullYear()}-${m}-${day}`;}
 function pdPeriodoActual(){return pdHoy().slice(0,7);}
 function pdSumarMes(periodo,desplazamiento){
