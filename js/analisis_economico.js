@@ -1038,13 +1038,13 @@ function im296Kpi(pptx,slide,x,y,w,h,titulo,valor,detalle,color){
   im296Texto(slide,detalle,x+0.2,y+h-0.34,w-0.35,0.2,{fontSize:8,color:IM296_COLOR.gris});
 }
 function im296CabeceraTabla(titulos,color){
-  return titulos.map(t=>({text:t,options:{bold:true,color:"FFFFFF",fill:{color},align:"center",valign:"mid"}}));
+  return titulos.map(t=>({text:t,options:{bold:true,color:"FFFFFF",fill:{color},align:"center",valign:"middle"}}));
 }
 function im296AgregarTabla(slide,filas,x,y,w,h,colW,fontSize=9.5){
   slide.addTable(filas,{
     x,y,w,h,colW,rowH:0.39,fontFace:"Aptos",fontSize,
     color:IM296_COLOR.texto,fill:"FFFFFF",margin:0.045,
-    valign:"mid",border:{type:"solid",pt:0.45,color:"CBD5E1"},
+    valign:"middle",border:{type:"solid",pt:0.45,color:"CBD5E1"},
     autoFit:false,autoPage:false
   });
 }
@@ -1261,6 +1261,107 @@ function im296AgregarConclusiones(pptx,datos,pagina){
   im296Shape(pptx,slide,0.65,6.55,12.0,0.38,IM296_COLOR.azul,IM296_COLOR.azul,true);
   im296Texto(slide,"Prioridad: sostener productividad, corregir indicadores de calidad y controlar costos por cuadrilla.",0.9,6.62,11.5,0.22,{fontSize:10,bold:true,color:"FFFFFF",align:"center"});
 }
+
+async function im298LeerXml(zip,ruta){
+  const archivo=zip.file(ruta);
+  return archivo?archivo.async("string"):"";
+}
+function im298GuardarXml(zip,ruta,contenido){
+  if(contenido)zip.file(ruta,contenido);
+}
+function im298RepararFondosYFormas(xml){
+  if(!xml)return xml;
+  return xml
+    .replace(/prst="oval"/g,'prst="ellipse"')
+    .replace(/prst="roundedRectangle"/g,'prst="roundRect"')
+    .replace(/anchor="mid"/g,'anchor="ctr"')
+    .replace(/<p:bgPr>([\s\S]*?)<\/p:bgPr>/g,(bloque,contenido)=>{
+      return /<a:effectLst\b/.test(contenido)
+        ?bloque
+        :`<p:bgPr>${contenido}<a:effectLst/></p:bgPr>`;
+    });
+}
+async function im298CrearPowerPointCompatible(pptx){
+  if(typeof window.JSZip!=="function"){
+    throw new Error("No se pudo iniciar la validación del PowerPoint. Actualice la aplicación e inténtelo nuevamente.");
+  }
+
+  const original=await pptx.write({outputType:"arraybuffer",compression:true});
+  const zip=await window.JSZip.loadAsync(original);
+
+  zip.remove("ppt/notesMasters/");
+  zip.remove("ppt/notesSlides/");
+
+  const tieneGraficos=Object.keys(zip.files).some(ruta=>/^ppt\/charts\/chart\d+\.xml$/i.test(ruta));
+  const tieneAdjuntos=Object.keys(zip.files).some(ruta=>/^ppt\/embeddings\/[^/]+$/i.test(ruta));
+  if(!tieneGraficos)zip.remove("ppt/charts/");
+  if(!tieneAdjuntos)zip.remove("ppt/embeddings/");
+
+  let presentacion=await im298LeerXml(zip,"ppt/presentation.xml");
+  presentacion=presentacion.replace(/<p:notesMasterIdLst>[\s\S]*?<\/p:notesMasterIdLst>/g,"");
+  im298GuardarXml(zip,"ppt/presentation.xml",presentacion);
+
+  let relaciones=await im298LeerXml(zip,"ppt/_rels/presentation.xml.rels");
+  relaciones=relaciones.replace(/<Relationship\b[^>]*notesMaster[^>]*\/>/g,"");
+  im298GuardarXml(zip,"ppt/_rels/presentation.xml.rels",relaciones);
+
+  const rutas=Object.keys(zip.files);
+  for(const ruta of rutas.filter(x=>/^ppt\/slides\/_rels\/slide\d+\.xml\.rels$/i.test(x))){
+    let xml=await im298LeerXml(zip,ruta);
+    xml=xml.replace(/<Relationship\b[^>]*notesSlide[^>]*\/>/g,"");
+    im298GuardarXml(zip,ruta,xml);
+  }
+
+  const patronesReales=new Set(
+    Object.keys(zip.files)
+      .filter(x=>/^ppt\/slideMasters\/slideMaster\d+\.xml$/i.test(x))
+      .map(x=>x.split("/").pop())
+  );
+  let tipos=await im298LeerXml(zip,"[Content_Types].xml");
+  tipos=tipos
+    .replace(/<Override\b[^>]*PartName="\/ppt\/slideMasters\/([^"]+)"[^>]*\/>/g,(bloque,archivo)=>{
+      return patronesReales.has(archivo)?bloque:"";
+    })
+    .replace(/<Override\b[^>]*PartName="\/ppt\/notes(?:Masters|Slides)\/[^"]+"[^>]*\/>/g,"");
+
+  const extensionesUsadas=new Set(
+    Object.keys(zip.files)
+      .filter(x=>!zip.files[x].dir&&x.includes("."))
+      .map(x=>x.split(".").pop().toLowerCase())
+  );
+  tipos=tipos.replace(/<Default\b[^>]*Extension="([^"]+)"[^>]*\/>/g,(bloque,extension)=>{
+    return extensionesUsadas.has(String(extension).toLowerCase())?bloque:"";
+  });
+  im298GuardarXml(zip,"[Content_Types].xml",tipos);
+
+  for(const ruta of Object.keys(zip.files).filter(x=>/^ppt\/(?:slides|slideMasters|slideLayouts)\/[^/]+\.xml$/i.test(x))){
+    const xml=im298RepararFondosYFormas(await im298LeerXml(zip,ruta));
+    im298GuardarXml(zip,ruta,xml);
+  }
+
+  return zip.generateAsync({
+    type:"uint8array",
+    compression:"DEFLATE",
+    compressionOptions:{level:6},
+    mimeType:"application/vnd.openxmlformats-officedocument.presentationml.presentation"
+  });
+}
+function im298DescargarPowerPoint(contenido,nombre){
+  const blob=new Blob([contenido],{
+    type:"application/vnd.openxmlformats-officedocument.presentationml.presentation"
+  });
+  const url=URL.createObjectURL(blob);
+  const enlace=document.createElement("a");
+  enlace.href=url;
+  enlace.download=nombre;
+  enlace.style.display="none";
+  document.body.appendChild(enlace);
+  enlace.click();
+  setTimeout(()=>{
+    URL.revokeObjectURL(url);
+    enlace.remove();
+  },1500);
+}
 async function im296GenerarPowerPoint(datos){
   if(typeof window.PptxGenJS!=="function")throw new Error("No se pudo iniciar el generador de PowerPoint. Actualice la aplicación e inténtelo nuevamente.");
   const pptx=new window.PptxGenJS();
@@ -1284,7 +1385,8 @@ async function im296GenerarPowerPoint(datos){
   im296AgregarRankings(pptx,datos,pagina++);
   im296AgregarConclusiones(pptx,datos,pagina++);
   const nombre=`MI_VISUAL_INFORME_${String(datos.periodoClave||"PERIODO").replace("-","_")}.pptx`;
-  await pptx.writeFile({fileName:nombre,compression:true});
+  const contenido=await im298CrearPowerPointCompatible(pptx);
+  im298DescargarPowerPoint(contenido,nombre);
   return nombre;
 }
 async function util296DescargarInformeMensual(){

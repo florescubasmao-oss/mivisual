@@ -1,0 +1,36 @@
+MI VISUAL V298 - POWERPOINT COMPATIBLE
+======================================
+
+CORRECCIÓN
+----------
+- Corrige el mensaje de PowerPoint: "PowerPoint encontró un problema con el contenido".
+- El informe mensual se valida y limpia antes de descargarse.
+- Conserva las 13 diapositivas, tablas, indicadores, utilidad y regla especial PDG.
+- No modifica datos, hojas de Google Sheets, fórmulas ni permisos.
+
+CODE.GS
+-------
+Code.gs NO cambió.
+No actualice ni vuelva a implementar Apps Script.
+
+ARCHIVOS QUE DEBE REEMPLAZAR EN GITHUB
+--------------------------------------
+- index.html
+- js/analisis_economico.js
+- js/vendor/jszip.min.js
+- js/vendor/LICENSE_JSZIP.txt
+- js/vendor/pptxgen.bundle.js
+- js/vendor/LICENSE_PPTXGENJS.txt
+
+PASOS
+-----
+1. Reemplace en GitHub todos los archivos incluidos en este ZIP.
+2. Realice commit y push.
+3. Espere la publicación de GitHub Pages.
+4. Cierre y vuelva a abrir MI VISUAL. Si conserva la versión anterior, actualice la página sin caché.
+5. Seleccione el periodo y descargue un informe nuevo.
+
+IMPORTANTE
+----------
+Los PowerPoint descargados antes de esta corrección no se reparan automáticamente.
+Debe generar y descargar nuevamente el informe desde MI VISUAL después de publicar V298.
