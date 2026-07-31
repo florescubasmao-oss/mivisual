@@ -1,0 +1,29 @@
+MI VISUAL V299 - CORRECCION DE CONSULTA DE MATERIALES
+
+Problema corregido
+- El módulo mostraba: Unexpected token 'M', "MI VISUAL API OK" is not valid JSON.
+- La consulta de lectura llegaba al saludo general de doGet en lugar del JSON del resumen.
+
+Cambios
+- La lectura de obtenerResumenMateriales usa una ruta GET segura con parámetros.
+- doGet atiende únicamente esa consulta de lectura y mantiene el saludo para aperturas normales.
+- La pantalla valida el texto antes de convertirlo a JSON y muestra un mensaje claro si la implementación no está actualizada.
+- No se modifican cálculos, hojas, materiales, utilidad, PDG ni PowerPoint.
+
+Archivos incluidos
+- Code.gs
+- apps_script/Code.gs
+- js/analisis_economico.js
+- index.html
+
+Orden de actualización
+1. Reemplazar Code.gs en Apps Script.
+2. Actualizar la implementación vigente del Web App conservando la misma URL /exec.
+3. Reemplazar en GitHub js/analisis_economico.js e index.html.
+4. Realizar commit y push.
+5. Cerrar MI VISUAL, abrir nuevamente y consultar JULIO 2026.
+
+IMPORTANTE
+- Code.gs sí cambió.
+- No crear otro proyecto de Apps Script.
+- No cambiar la URL vigente de MI VISUAL.

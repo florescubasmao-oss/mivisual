@@ -23,7 +23,22 @@ const HOJA_CHECKLIST_ALMACEN = "CHECKLIST_ALMACEN";
 const CARPETA_CHECKLIST_ALMACEN = "1nL5if5dRs3y1_OpKfzu7N9BNjiSvXVgp";
 const HOJA_CONFIG_MODULOS = "CONFIG_MODULOS";
 
-function doGet() {
+function doGet(e) {
+  const parametros = e && e.parameter ? e.parameter : {};
+
+  // V299: ruta de solo lectura para materiales. Evita que una redirección
+  // del Web App convierta la consulta POST en el saludo general de la API.
+  if (parametros.accion === "obtenerResumenMateriales") {
+    try {
+      return respuestaJson(obtenerResumenMaterialesV184(parametros));
+    } catch (error) {
+      return respuestaJson({
+        ok: false,
+        error: error && error.message ? error.message : String(error)
+      });
+    }
+  }
+
   return ContentService
     .createTextOutput("MI VISUAL API OK")
     .setMimeType(ContentService.MimeType.TEXT);

@@ -1,15 +1,39 @@
 
 // V274 - Lectura al corte y proyección diaria por jornadas programadas
-function aeApiMateriales(payload){
-  return fetch(API_ANALISIS_ECONOMICO,{
-    method:"POST",
-    headers:{"Content-Type":"text/plain;charset=utf-8"},
-    body:JSON.stringify(payload)
-  }).then(async r=>{
-    const data=await r.json();
-    if(!data.ok)throw new Error(data.error||"Error en materiales");
-    return data;
-  });
+async function aeApiMateriales(payload){
+  const base=window.MI_VISUAL_API_URL||API_ANALISIS_ECONOMICO;
+  const esConsulta=payload?.accion==="obtenerResumenMateriales";
+  const url=new URL(base);
+  url.searchParams.set("mv299",Date.now().toString());
+
+  let opciones;
+  if(esConsulta){
+    Object.entries(payload||{}).forEach(([clave,valor])=>{
+      if(valor!==undefined&&valor!==null)url.searchParams.set(clave,String(valor));
+    });
+    opciones={method:"GET",cache:"no-store"};
+  }else{
+    opciones={
+      method:"POST",
+      cache:"no-store",
+      headers:{"Content-Type":"text/plain;charset=utf-8"},
+      body:JSON.stringify(payload)
+    };
+  }
+
+  const respuesta=await fetch(url.toString(),opciones);
+  const texto=await respuesta.text();
+  let data;
+  try{
+    data=JSON.parse(texto);
+  }catch(_){
+    if(texto.trim()==="MI VISUAL API OK"){
+      throw new Error("La implementación activa de Apps Script no atendió la consulta. Actualice Code.gs y la implementación.");
+    }
+    throw new Error("La API de materiales devolvió una respuesta no válida.");
+  }
+  if(!respuesta.ok||!data.ok)throw new Error(data.error||"Error en materiales");
+  return data;
 }
 function aeEscape(v){return String(v==null?"":v).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]))}
 function aePerfilActual(){return (localStorage.getItem("perfil")||"").toUpperCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"").trim()}
