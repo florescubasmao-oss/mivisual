@@ -36,6 +36,28 @@ function moEscape(v){return moNorm(v).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&l
 function moUsuario(){return localStorage.getItem('usuario')||''}
 function moPerfil(){return moNormCab(localStorage.getItem('perfil'))}
 function moPuedeImportar(){return ['JEFATURA','ADMIN','ADMINISTRADOR','JEFATURAOPERACIONES','JEFATURADEOPERACIONES','OPERACIONES'].includes(moPerfil())}
+function moPeriodoActual(){const d=new Date();return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`}
+function moPeriodoValido(valor){const t=moNorm(valor);return /^\d{4}-(0[1-9]|1[0-2])$/.test(t)?t:''}
+function moEtiquetaPeriodo(valor){
+  const p=moPeriodoValido(valor);if(!p)return '';
+  const meses=['ENERO','FEBRERO','MARZO','ABRIL','MAYO','JUNIO','JULIO','AGOSTO','SEPTIEMBRE','OCTUBRE','NOVIEMBRE','DICIEMBRE'];
+  const partes=p.split('-'),etiqueta=`${meses[Number(partes[1])-1]} ${partes[0]}`;
+  return `${etiqueta} — ${p===moPeriodoActual()?'EN CURSO':'HISTÓRICO'}`;
+}
+function moCargarPeriodos(periodos){
+  const select=document.getElementById('moFiltroPeriodo');if(!select)return;
+  const actual=moPeriodoActual(),lista=[...new Set([actual,...(periodos||[]).map(moPeriodoValido).filter(Boolean)])].sort().reverse();
+  select.innerHTML=lista.map(p=>`<option value="${p}">${moEscape(moEtiquetaPeriodo(p))}</option>`).join('');
+  select.value=actual;moActualizarRangoFecha();
+}
+function moActualizarRangoFecha(){
+  const periodo=moPeriodoValido(document.getElementById('moFiltroPeriodo')?.value),fecha=document.getElementById('moFiltroFecha');
+  if(!fecha)return;
+  if(!periodo){fecha.min='';fecha.max='';fecha.value='';return;}
+  const [anio,mes]=periodo.split('-').map(Number),ultimo=new Date(anio,mes,0).getDate();
+  fecha.min=`${periodo}-01`;fecha.max=`${periodo}-${String(ultimo).padStart(2,'0')}`;
+  if(fecha.value&&!fecha.value.startsWith(periodo+'-'))fecha.value='';
+}
 function moEtiquetasCuadrillaActivas(){
   try{return localStorage.getItem(MO_ETIQUETAS_CUADRILLA_KEY)!=='0'}catch(e){return true}
 }
@@ -121,8 +143,9 @@ async function mostrarMapaOperativo(){
   <div id="moVistaFiltros" class="mo-panel">
     <b>Seleccione la información que desea visualizar</b>
     <div class="mo-filtros mo-filtros-amplios" style="margin-top:9px">
+      <div><label class="mo-label">Período</label><select id="moFiltroPeriodo" class="mo-select" onchange="moActualizarRangoFecha()"><option value="">Cargando...</option></select></div>
       <div><label class="mo-label">Sede</label><select id="moFiltroSede" class="mo-select"><option value="">Todas</option></select></div>
-      <div><label class="mo-label">Fecha</label><input id="moFiltroFecha" class="mo-input" type="date"></div>
+      <div><label class="mo-label">Fecha (opcional)</label><input id="moFiltroFecha" class="mo-input" type="date"></div>
       <div><label class="mo-label">Grupo de trabajo</label><select id="moFiltroGrupo" class="mo-select"><option value="">Todos</option></select></div>
       <div><label class="mo-label">Estado</label><select id="moFiltroEstado" class="mo-select"><option value="">Todos</option></select></div>
       <div><label class="mo-label">Cuadrilla</label><select id="moFiltroCuadrilla" class="mo-select"><option value="">Todas</option></select></div>
@@ -171,16 +194,19 @@ function moPrepararCargaArchivoMapa(){
 }
 function moMostrarImportacion(){document.getElementById('moVistaFiltros').style.display='none';document.getElementById('moMapa').style.display='none';document.getElementById('moVistaImportacion').style.display='block'}
 function moVolverFiltros(){document.getElementById('moVistaImportacion').style.display='none';document.getElementById('moVistaFiltros').style.display='block';document.getElementById('moMapa').style.display='block';setTimeout(()=>moMapa&&moMapa.invalidateSize(),50)}
-function moLimpiarFiltros(){['moFiltroSede','moFiltroFecha','moFiltroGrupo','moFiltroEstado','moFiltroCuadrilla','moBuscarCodigo'].forEach(id=>{const e=document.getElementById(id);if(e)e.value=''});const cto=document.getElementById('moMostrarCtosCercanas');if(cto)cto.checked=false;moOcultarCatalogoCto();moRegistros=[];moRenderMarcadores([]);document.getElementById('moContador').textContent='Seleccione por lo menos un filtro y presione Ver mapa.'}
+function moLimpiarFiltros(){['moFiltroSede','moFiltroFecha','moFiltroGrupo','moFiltroEstado','moFiltroCuadrilla','moBuscarCodigo'].forEach(id=>{const e=document.getElementById(id);if(e)e.value=''});const periodo=document.getElementById('moFiltroPeriodo');if(periodo)periodo.value=moPeriodoActual();moActualizarRangoFecha();const cto=document.getElementById('moMostrarCtosCercanas');if(cto)cto.checked=false;moOcultarCatalogoCto();moRegistros=[];moRenderMarcadores([]);document.getElementById('moContador').textContent='Seleccione filtros y presione Ver mapa.'}
 async function moCargarCatalogos(){
   const d=await moApiLectura({accion:'catalogosMapaOperativo',usuario:moUsuario()});
   const llenar=(id,lista,todos)=>{const e=document.getElementById(id);if(e)e.innerHTML=`<option value="">${todos}</option>`+(lista||[]).map(x=>`<option>${moEscape(x)}</option>`).join('')};
+  moCargarPeriodos(d.periodos||[]);
   llenar('moFiltroSede',d.sedes,'Todas');llenar('moFiltroGrupo',d.gruposTrabajo,'Todos');llenar('moFiltroEstado',d.estados,'Todos');llenar('moFiltroCuadrilla',d.cuadrillas,'Todas');
   moConstruirEstilosCuadrillas(d.cuadrillas||[]);
   moPintarUltimaActualizacion(d.ultimaActualizacionTexto);
 }
 async function moConsultarMapa(){
-  const filtros={sede:moNorm(document.getElementById('moFiltroSede')?.value),fecha:moNorm(document.getElementById('moFiltroFecha')?.value),grupoTrabajo:moNorm(document.getElementById('moFiltroGrupo')?.value),estado:moNorm(document.getElementById('moFiltroEstado')?.value),cuadrilla:moNorm(document.getElementById('moFiltroCuadrilla')?.value),codigo:moNorm(document.getElementById('moBuscarCodigo')?.value)};
+  const filtros={periodo:moPeriodoValido(document.getElementById('moFiltroPeriodo')?.value),sede:moNorm(document.getElementById('moFiltroSede')?.value),fecha:moNorm(document.getElementById('moFiltroFecha')?.value),grupoTrabajo:moNorm(document.getElementById('moFiltroGrupo')?.value),estado:moNorm(document.getElementById('moFiltroEstado')?.value),cuadrilla:moNorm(document.getElementById('moFiltroCuadrilla')?.value),codigo:moNorm(document.getElementById('moBuscarCodigo')?.value)};
+  if(!filtros.periodo){document.getElementById('moContador').textContent='Debe seleccionar el período que desea consultar.';return}
+  if(filtros.fecha&&!filtros.fecha.startsWith(filtros.periodo+'-')){document.getElementById('moContador').textContent='La fecha debe pertenecer al período seleccionado.';return}
   if(!Object.values(filtros).some(Boolean)){document.getElementById('moContador').textContent='Debe seleccionar al menos un filtro para evitar cargar toda la base.';return}
   document.getElementById('moContador').textContent='Consultando órdenes...';
   const d=await moApiLectura(Object.assign({accion:'listarMapaOperativo',usuario:moUsuario()},filtros));moRegistros=d.ordenes||[];moPintarUltimaActualizacion(d.ultimaActualizacionTexto);moRenderMarcadores(moRegistros);if(document.getElementById('moMostrarCtosCercanas')?.checked)await moCargarCtosCercanas();

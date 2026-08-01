@@ -1,0 +1,33 @@
+MI VISUAL V315 - FILTRO DE PERIODO EN MAPA OPERATIVO
+
+CAMBIO IMPLEMENTADO
+- Se agrega el selector Período en Mapa Operativo.
+- El mes actual aparece automáticamente como EN CURSO.
+- Los meses anteriores aparecen como HISTÓRICO.
+- Se puede combinar Período + Cuadrilla para consultar un mes completo.
+- Fecha queda como filtro opcional para consultar un día dentro del período.
+- Si la fecha no pertenece al período seleccionado, la consulta se bloquea.
+- Limpiar restablece el mes actual sin modificar registros históricos.
+
+ARCHIVOS QUE CAMBIAN
+- Code.gs
+- index.html
+- js/mapa_operativo.js
+- css/estilos.css
+
+INSTALACION
+1. Reemplazar Code.gs en Apps Script.
+2. Guardar y crear una nueva versión del despliegue de Apps Script.
+3. Reemplazar en GitHub index.html, js/mapa_operativo.js y css/estilos.css.
+4. Realizar commit y push.
+5. Cerrar MI VISUAL y volver a ingresar.
+
+EJEMPLO
+- Período: JULIO 2026 - HISTÓRICO
+- Cuadrilla: P2 TRASLADO VISUAL LUIS FRANCISCO...
+- Fecha: vacía
+- Resultado: todas las órdenes de esa cuadrilla correspondientes a julio.
+
+IMPORTANTE
+- Este ajuste solo consulta y filtra información.
+- No elimina, reemplaza ni mueve registros de julio o agosto.
