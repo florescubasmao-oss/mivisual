@@ -1065,7 +1065,16 @@ body{background:linear-gradient(180deg,var(--mv4-bg),var(--mv4-bg2));font-family
 .mo-cto-item{display:grid;grid-template-columns:68px 1fr;gap:3px 7px;padding:8px;border:1px solid #cfe3df;border-radius:9px;background:#f0fdfa;font-size:12px}
 .mo-cto-item>b{color:#0f766e}.mo-cto-item>span{font-weight:800;color:#0f172a;overflow-wrap:anywhere}
 .mo-cto-item>small,.mo-cto-item>.mo-cto-link{grid-column:2;color:#475569;overflow-wrap:anywhere}
-.mo-cto-item>.mo-cto-link{color:#087cc1;font-weight:800;text-decoration:none}
+.mo-cto-item>.mo-cto-link{justify-self:start;border:0;background:transparent;padding:0;color:#087cc1;font-weight:800;text-decoration:none;cursor:pointer;font:inherit}
+.mo-cto-item>.mo-cto-link.is-active{color:#b45309}
+
+/* V303 - CTO visibles en el mapa únicamente bajo solicitud */
+.mo-cto-marker-wrap{background:transparent!important;border:0!important}
+.mo-cto-marker-stack{display:flex;align-items:center;gap:4px;position:relative;white-space:nowrap;filter:drop-shadow(0 2px 3px rgba(15,23,42,.32))}
+.mo-cto-map-marker{display:block;position:relative;flex:0 0 auto;width:20px;height:20px;background:#0f766e;border:3px solid #fff;border-radius:50% 50% 50% 0;transform:rotate(-45deg)}
+.mo-cto-map-marker:after{content:"";position:absolute;width:6px;height:6px;background:#fff;border-radius:50%;left:7px;top:7px}
+.mo-cto-map-label{display:inline-flex;align-items:center;gap:5px;max-width:195px;padding:4px 7px;border:2px solid #0f766e;border-radius:7px;background:rgba(255,255,255,.96);color:#0f172a;font-size:11px;font-weight:900;line-height:1.1;overflow:hidden;text-overflow:ellipsis}
+.mo-cto-map-label b{flex:0 0 auto;color:#0f766e;font-size:10px}
 
 /* =====================================================
    V213 - Menú categorizado exclusivo para Jefatura

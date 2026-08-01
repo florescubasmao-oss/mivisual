@@ -1,0 +1,21 @@
+MI VISUAL V303 - CTO TEMPORALES EN MAPA OPERATIVO
+
+CAMBIO REALIZADO
+- En Mapa Operativo, cualquier botón "Ver en mapa" de CTO1, CTO2 o CTO3 muestra juntas todas las CTO de la orden que tengan coordenadas.
+- Cada marcador CTO muestra al costado su número y código.
+- Las CTO permanecen ocultas por defecto.
+- Se ocultan al pulsar "Ocultar CTO", cerrar el detalle, cerrar la ventana de la orden, abrir otra orden, cambiar filtros o limpiar el mapa.
+- Los trabajos sin coordenadas CTO mantienen solamente la información CTO y Puerto.
+
+ARCHIVOS QUE CAMBIAN EN GITHUB
+- index.html
+- css/estilos.css
+- js/mapa_operativo.js
+
+APPS SCRIPT
+- Code.gs no cambia.
+- No se requiere nueva implementación de Apps Script.
+
+HOJAS Y DATOS
+- No se modifica MAPA_ORDENES.
+- No se requiere volver a importar el Excel por este ajuste.

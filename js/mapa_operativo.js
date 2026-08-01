@@ -1,5 +1,6 @@
 const API_MAPA_OPERATIVO = (window.MI_VISUAL_API_URL || "https://script.google.com/macros/s/AKfycbzcbjCLweJNgZXDerdzmMN7Lwotc1G8NWdzoPkaLNGDivAgpYxDkq78xZwPRioSB4XY/exec");
-let moMapa=null, moCapa=null, moRegistros=[], moImportacion=[], moMarcadores={}, moArchivoSeleccionado=null;
+let moMapa=null, moCapa=null, moCapaCto=null, moRegistros=[], moImportacion=[], moMarcadores={}, moArchivoSeleccionado=null;
+let moOrdenCtoVisible='';
 let moEstilosCuadrilla={};
 const MO_ETIQUETAS_CUADRILLA_KEY='miVisualMapaEtiquetasCuadrillaV254';
 const MO_ESTILOS_CUADRILLA_KEY='miVisualMapaEstilosCuadrillaV254';
@@ -172,6 +173,8 @@ function moInicializarMapa(){
   moMapa=L.map('moMapa',{zoomControl:true}).setView([-7.5,-79.0],7);
   L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,attribution:'© OpenStreetMap'}).addTo(moMapa);
   moCapa=L.layerGroup().addTo(moMapa);
+  moCapaCto=L.layerGroup().addTo(moMapa);
+  moOrdenCtoVisible='';
   moMapa.on('zoomend',moAplicarModoZoomEtiquetas);
   moAplicarModoZoomEtiquetas();
 }
@@ -259,11 +262,65 @@ async function moRegistrarImportacion(){
 }
 function moMotivo(x){return x.motivoCancelacion||x.motivoFinalizacion||x.motivoAnulacion||''}
 function moEsInstalacionCto(tipoTrabajo){return ['INSTALACION','INSTALACIONPOSIBLEFRAUDE'].includes(moNormCab(tipoTrabajo))}
-function moHtmlCoordenadaCto(coordenada){
+function moHtmlCoordenadaCto(coordenada,ordenId){
   const [lat,lng]=moCoord(coordenada);
   if(!Number.isFinite(lat)||!Number.isFinite(lng))return '';
   const valor=`${lat},${lng}`;
-  return `<span class="mo-cto-coord">${moEscape(valor)}</span><a class="mo-cto-link" href="https://www.google.com/maps?q=${encodeURIComponent(valor)}" target="_blank" rel="noopener noreferrer">Ver en mapa</a>`;
+  return `<span class="mo-cto-coord">${moEscape(valor)}</span><button type="button" class="mo-cto-link mo-cto-map-action" data-orden="${moEscape(ordenId)}" onclick="moMostrarCtosOrdenPorBoton(this)">Ver en mapa</button>`;
+}
+function moCtosConCoordenadas(x){
+  if(!x||!moEsInstalacionCto(x.tipoTrabajo))return [];
+  return [1,2,3].map(n=>{
+    const [lat,lng]=moCoord(x[`coordenadaCto${n}`]);
+    return {numero:n,codigo:moNorm(x[`cto${n}`]),lat,lng};
+  }).filter(c=>Number.isFinite(c.lat)&&Number.isFinite(c.lng));
+}
+function moIconoCto(cto){
+  const codigo=cto.codigo||`CTO ${cto.numero}`;
+  return L.divIcon({
+    className:'mo-cto-marker-wrap',
+    html:`<span class="mo-cto-marker-stack"><span class="mo-cto-map-marker"></span><span class="mo-cto-map-label"><b>CTO ${cto.numero}</b>${moEscape(codigo)}</span></span>`,
+    iconSize:[235,45],
+    iconAnchor:[14,42]
+  });
+}
+function moActualizarBotonesCto(ordenId,visible){
+  const clave=moNorm(ordenId);
+  document.querySelectorAll('.mo-cto-map-action').forEach(b=>{
+    if(moNorm(b.dataset.orden)!==clave)return;
+    b.textContent=visible?'Ocultar CTO':'Ver en mapa';
+    b.classList.toggle('is-active',!!visible);
+  });
+}
+function moOcultarCtos(){
+  const anterior=moOrdenCtoVisible;
+  if(moCapaCto)moCapaCto.clearLayers();
+  moOrdenCtoVisible='';
+  if(anterior)moActualizarBotonesCto(anterior,false);
+}
+function moMostrarCtosOrdenPorBoton(boton){
+  const ordenId=moNorm(boton&&boton.dataset&&boton.dataset.orden);
+  if(!ordenId||!moMapa||!moCapaCto)return;
+  if(moOrdenCtoVisible===ordenId){moOcultarCtos();return;}
+  moOcultarCtos();
+  const orden=moRegistros.find(x=>moNorm(x.ordenId)===ordenId);
+  const ctos=moCtosConCoordenadas(orden);
+  if(!ctos.length)return;
+  const puntos=[];
+  ctos.forEach(cto=>{
+    L.marker([cto.lat,cto.lng],{icon:moIconoCto(cto),riseOnHover:true,zIndexOffset:900})
+      .addTo(moCapaCto);
+    puntos.push([cto.lat,cto.lng]);
+  });
+  const latCliente=Number(orden.latitud),lngCliente=Number(orden.longitud);
+  if(Number.isFinite(latCliente)&&Number.isFinite(lngCliente))puntos.push([latCliente,lngCliente]);
+  moOrdenCtoVisible=ordenId;
+  moActualizarBotonesCto(ordenId,true);
+  moMapa.fitBounds(puntos,{padding:[38,38],maxZoom:18});
+}
+function moAlternarDetalleCto(detalle){
+  const ordenId=moNorm(detalle&&detalle.dataset&&detalle.dataset.orden);
+  if(!detalle.open&&ordenId&&ordenId===moOrdenCtoVisible)moOcultarCtos();
 }
 function moCtoDetalleHtml(x){
   const instalacion=moEsInstalacionCto(x.tipoTrabajo),filas=[];
@@ -271,13 +328,13 @@ function moCtoDetalleHtml(x){
     [1,2,3].forEach(n=>{
       const rotulo=moNorm(x[`cto${n}`]),coordenada=moNorm(x[`coordenadaCto${n}`]);
       if(!rotulo&&!coordenada)return;
-      filas.push(`<div class="mo-cto-item"><b>CTO ${n}</b><span>${moEscape(rotulo||'Sin rótulo')}</span>${moHtmlCoordenadaCto(coordenada)}</div>`);
+      filas.push(`<div class="mo-cto-item"><b>CTO ${n}</b><span>${moEscape(rotulo||'Sin rótulo')}</span>${moHtmlCoordenadaCto(coordenada,x.ordenId)}</div>`);
     });
     if(!filas.length&&moNorm(x.cto))filas.push(`<div class="mo-cto-item"><b>CTO</b><span>${moEscape(x.cto)}</span>${moNorm(x.puerto)?`<small>Puerto ${moEscape(x.puerto)}</small>`:''}</div>`);
   }else if(moNorm(x.cto)||moNorm(x.puerto)){
     filas.push(`<div class="mo-cto-item"><b>CTO</b><span>${moEscape(x.cto||'Sin rótulo')}</span>${moNorm(x.puerto)?`<small>Puerto ${moEscape(x.puerto)}</small>`:''}</div>`);
   }
-  return filas.length?`<details class="mo-cto-detalle"><summary>Ver CTO del cliente</summary><div class="mo-cto-list">${filas.join('')}</div></details>`:'';
+  return filas.length?`<details class="mo-cto-detalle" data-orden="${moEscape(x.ordenId)}" ontoggle="moAlternarDetalleCto(this)"><summary>Ver CTO del cliente</summary><div class="mo-cto-list">${filas.join('')}</div></details>`:'';
 }
 function moPopup(x){const fields=[['Fecha',x.fechaSolicitud],['Hora',typeof formatearHoraPeruApp==='function'?formatearHoraPeruApp(x.horaSolicitud,false):x.horaSolicitud],['Cliente',x.cliente],['Tipo',x.tipo],['Producto',x.productoServicio||x.productoOrigen],['Dirección',x.direccion],['Dirección adicional',x.direccionAdicional],['Región',x.region],['Código de cliente',x.codigoCliente],['Documento',x.numeroDocumento],['Teléfono móvil',x.telefonoMovil],['Teléfono fijo',x.telefonoFijo],['Inicio de visita',typeof formatearFechaHoraTextoPeruApp==='function'?formatearFechaHoraTextoPeruApp(x.fechaInicioVisita,false):x.fechaInicioVisita],['Fin de visita',typeof formatearFechaHoraTextoPeruApp==='function'?formatearFechaHoraTextoPeruApp(x.fechaFinVisita,false):x.fechaFinVisita],['Motivo',moMotivo(x)],['Detalle',x.detalle]].filter(y=>moNorm(y[1]));const lat=Number(x.latitud),lng=Number(x.longitud);const ruta=Number.isFinite(lat)&&Number.isFinite(lng)?`https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(lat+','+lng)}`:'';return `<div class="mo-popup"><div class="mo-main-row"><b>Tipo de trabajo</b><span>${moEscape(x.tipoTrabajo)}</span></div><div class="mo-main-row"><b>Cuadrilla</b><span>${moEscape(x.cuadrilla)}</span></div><div class="mo-main-row"><b>Estado</b><span>${moEscape(x.estado)}</span></div><div class="mo-main-row"><b>Código</b><span>${moEscape(x.ordenId)}</span></div><details class="mo-detalle"><summary>Detalle</summary><div class="mo-detalle-grid">${fields.map(y=>`<b>${moEscape(y[0])}</b><span>${moEscape(y[1])}</span>`).join('')}</div>${moCtoDetalleHtml(x)}</details>${ruta?`<a class="mo-como-llegar" href="${ruta}" target="_blank" rel="noopener noreferrer">📍 Cómo llegar en Google Maps</a>`:''}</div>`}
 function moColorEstado(estado){
@@ -302,5 +359,5 @@ function moLeyendaCuadrillas(lista){
   const chips=nombres.map(nombre=>{const e=moEstiloCuadrilla(nombre);return `<span class="mo-cuadrilla-chip mo-patron-${e.patron}" style="--mo-cuadrilla-color:${e.color}" title="${moEscape(nombre)}">${moEscape(moCodigoCortoCuadrilla(nombre))}</span>`}).join('');
   return `<details class="mo-leyenda-cuadrillas"><summary>Cuadrillas visibles (${nombres.length})</summary><div>${chips}</div></details>`;
 }
-function moRenderMarcadores(lista){if(!moMapa||!moCapa)return;moCapa.clearLayers();moMarcadores={};const bounds=[];let validos=0;moConstruirEstilosCuadrillas((lista||[]).map(x=>x.cuadrilla));lista.forEach(x=>{const lat=Number(x.latitud),lng=Number(x.longitud);if(!Number.isFinite(lat)||!Number.isFinite(lng))return;const m=L.marker([lat,lng],{icon:moIconoEstado(x.estado,x.cuadrilla),riseOnHover:true}).bindPopup(moPopup(x),{autoClose:true,closeOnClick:true,maxWidth:310});m.on('click',()=>{moMapa.panTo([lat,lng]);});m.addTo(moCapa);moMarcadores[moNorm(x.ordenId)]=m;bounds.push([lat,lng]);validos++});if(bounds.length)moMapa.fitBounds(bounds,{padding:[25,25],maxZoom:16});setTimeout(moAplicarModoZoomEtiquetas,0);document.getElementById('moContador').innerHTML=`${validos} puntos visibles de ${lista.length} órdenes filtradas.<div class="mo-leyenda"><span><i style="--c:#16a34a"></i>Finalizada</span><span><i style="--c:#dc2626"></i>Cancelada</span><span><i style="--c:#eab308"></i>Reprogramada</span><span><i style="--c:#f97316"></i>Regestión</span><span><i style="--c:#64748b"></i>Anulada</span><span><i style="--c:#2563eb"></i>Pendiente/Agendada</span><span><i style="--c:#7c3aed"></i>En proceso</span></div>${moLeyendaCuadrillas(lista)}`}
+function moRenderMarcadores(lista){if(!moMapa||!moCapa)return;moOcultarCtos();moCapa.clearLayers();moMarcadores={};const bounds=[];let validos=0;moConstruirEstilosCuadrillas((lista||[]).map(x=>x.cuadrilla));lista.forEach(x=>{const lat=Number(x.latitud),lng=Number(x.longitud);if(!Number.isFinite(lat)||!Number.isFinite(lng))return;const ordenId=moNorm(x.ordenId);const m=L.marker([lat,lng],{icon:moIconoEstado(x.estado,x.cuadrilla),riseOnHover:true}).bindPopup(moPopup(x),{autoClose:true,closeOnClick:true,maxWidth:310});m.on('click',()=>{if(moOrdenCtoVisible&&moOrdenCtoVisible!==ordenId)moOcultarCtos();moMapa.panTo([lat,lng]);});m.on('popupclose',()=>{if(moOrdenCtoVisible===ordenId)moOcultarCtos();});m.addTo(moCapa);moMarcadores[ordenId]=m;bounds.push([lat,lng]);validos++});if(bounds.length)moMapa.fitBounds(bounds,{padding:[25,25],maxZoom:16});setTimeout(moAplicarModoZoomEtiquetas,0);document.getElementById('moContador').innerHTML=`${validos} puntos visibles de ${lista.length} órdenes filtradas.<div class="mo-leyenda"><span><i style="--c:#16a34a"></i>Finalizada</span><span><i style="--c:#dc2626"></i>Cancelada</span><span><i style="--c:#eab308"></i>Reprogramada</span><span><i style="--c:#f97316"></i>Regestión</span><span><i style="--c:#64748b"></i>Anulada</span><span><i style="--c:#2563eb"></i>Pendiente/Agendada</span><span><i style="--c:#7c3aed"></i>En proceso</span></div>${moLeyendaCuadrillas(lista)}`}
 function moBuscarCodigo(){moConsultarMapa()}
