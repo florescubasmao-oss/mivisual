@@ -178,12 +178,20 @@ function mat184CambiarVista(vista){
 }
 
 function mat184RenderImportar(){
-  const hoy=new Date().toISOString().slice(0,10);
   document.getElementById("mat184Contenido").innerHTML=`
     <div class="mat184-panel">
       <div class="mat184-grid">
-        <label>Fecha de referencia<input id="mat184Fecha" type="date" value="${hoy}"></label>
+        <label>Periodo del consumo (obligatorio)
+          <select id="mat184PeriodoCarga">
+            <option value="" selected>SELECCIONE EL PERIODO</option>
+            ${aePeriodoMesesMateriales()}
+          </select>
+        </label>
         <div><b>Base original</b><small style="display:block;color:#64748b">Debe incluir las columnas Técnico, Comentario y materiales.</small></div>
+      </div>
+      <div class="mat184-status" style="margin-top:12px;background:#fff7ed;border:1px solid #fdba74">
+        <b>Importante:</b> el periodo corresponde al mes del consumo, no al día en que se sube la información.
+        Ejemplo: un cierre cargado el 1 de agosto puede pertenecer a JULIO 2026.
       </div>
       <textarea id="mat184Texto" style="width:100%;height:330px;margin-top:12px;box-sizing:border-box;border:1px solid #94a3b8;border-radius:10px;padding:10px;font-family:monospace" placeholder="Pegue aquí la base desde Excel o Google Sheets..."></textarea>
       <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:12px">
@@ -204,17 +212,27 @@ async function mat184CrearHojas(){
 
 async function mat184Procesar(){
   const texto=document.getElementById("mat184Texto")?.value||"";
-  const fechaReferencia=document.getElementById("mat184Fecha")?.value||"";
+  const selectorPeriodo=document.getElementById("mat184PeriodoCarga");
+  const periodo=selectorPeriodo?.value||"";
+  const periodoTexto=selectorPeriodo?.selectedOptions?.[0]?.textContent?.trim()||periodo;
   const est=document.getElementById("mat184Estado");
   if(!texto.trim()){alert("Pegue primero la base de materiales.");return}
-  if(est)est.textContent="Procesando y consolidando por cuadrilla...";
+  if(!/^\d{4}-(0[1-9]|1[0-2])$/.test(periodo)){
+    alert("Seleccione manualmente el periodo al que corresponde el consumo.");
+    selectorPeriodo?.focus();
+    return;
+  }
+  if(!confirm(`Confirme la carga de materiales para ${periodoTexto}.\n\nSe actualizarán únicamente los datos de este periodo.`))return;
+  if(est)est.textContent=`Procesando y consolidando ${periodoTexto} por cuadrilla...`;
   try{
-    const r=await aeApiMateriales({accion:"procesarImportacionMateriales",usuario:localStorage.getItem("usuario"),fechaReferencia,texto});
+    const r=await aeApiMateriales({accion:"procesarImportacionMateriales",usuario:localStorage.getItem("usuario"),periodo,texto});
     const noEncontrados=(r.tecnicosNoEncontrados||[]);
     const ambiguos=(r.tecnicosAmbiguos||[]);
     const invalidos=(r.valoresInvalidos||[]);
     if(est)est.innerHTML=`
       <b>✅ Importación procesada</b><br>
+      Periodo aplicado: <b>${aeEscape(r.periodoTexto||periodoTexto)}</b><br>
+      ${(r.periodosCorregidos||[]).length?`Periodo anterior corregido: <b>${(r.periodosCorregidos||[]).map(aeEscape).join(" / ")}</b><br>`:""}
       Filas origen: ${r.filasOrigen}<br>
       Registros consolidados: ${r.filasConsolidadas}<br>
       Técnicos no encontrados: ${noEncontrados.length}${noEncontrados.length?`<br><small>${noEncontrados.map(aeEscape).join(" · ")}</small>`:""}<br>

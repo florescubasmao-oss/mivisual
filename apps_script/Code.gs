@@ -6573,6 +6573,52 @@ function parseFechaMaterialesV184(valor) {
   return isNaN(f) ? new Date() : f;
 }
 
+// V310: el periodo del consumo se selecciona manualmente y no depende
+// de la fecha en que el usuario realiza la importación.
+function resolverPeriodoMaterialesV310(valor) {
+  const periodo = String(valor || "").trim();
+  const coincidencia = periodo.match(/^(\d{4})-(0[1-9]|1[0-2])$/);
+  if (!coincidencia) {
+    throw new Error("Seleccione manualmente un periodo válido para el consumo de materiales");
+  }
+  const anio = Number(coincidencia[1]);
+  const numeroMes = Number(coincidencia[2]);
+  const fecha = new Date(anio, numeroMes - 1, 1);
+  return {
+    clave: periodo,
+    fecha: fecha,
+    mes: mesNombreV184(fecha),
+    texto: mesNombreV184(fecha) + " " + anio
+  };
+}
+
+function periodoFilaMaterialesV310(valor) {
+  if (valor instanceof Date && !isNaN(valor.getTime())) {
+    return Utilities.formatDate(valor, Session.getScriptTimeZone(), "yyyy-MM");
+  }
+  const texto = String(valor || "").trim();
+  let coincidencia = texto.match(/^(\d{4})-(\d{2})(?:-\d{2})?/);
+  if (coincidencia) return coincidencia[1] + "-" + coincidencia[2];
+  coincidencia = texto.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})/);
+  if (coincidencia) return coincidencia[3] + "-" + String(coincidencia[2]).padStart(2,"0");
+  const fecha = new Date(texto);
+  return isNaN(fecha.getTime()) ? "" : Utilities.formatDate(fecha, Session.getScriptTimeZone(), "yyyy-MM");
+}
+
+function firmaContenidoMaterialesV310(filas) {
+  return (filas || []).map(function(fila) {
+    return [
+      normalizarTexto(fila[2]),
+      normalizarTexto(fila[3]),
+      normalizarCuadrilla(fila[4]),
+      normalizarTexto(fila[5]),
+      normalizarTexto(fila[6]),
+      normalizarTexto(fila[8]),
+      Number(fila[9]) || 0
+    ].join("|");
+  }).sort().join("\n");
+}
+
 function numeroMaterialV184(valor) {
   if (typeof valor === "number") return isFinite(valor) ? valor : 0;
   const t = String(valor == null ? "" : valor).trim().replace(",", ".");
@@ -6597,10 +6643,11 @@ function procesarImportacionMaterialesV184(data) {
   const texto = String(data.texto || "").trim();
   if (!texto) throw new Error("Pegue primero la base de materiales");
 
-  const fechaReferencia = parseFechaMaterialesV184(data.fechaReferencia);
-  const fechaISO = Utilities.formatDate(fechaReferencia, Session.getScriptTimeZone(), "yyyy-MM-dd");
-  const mes = mesNombreV184(fechaReferencia);
-  const lote = loteMaterialesV184(texto, fechaISO, usuario.usuario);
+  const periodoInfo = resolverPeriodoMaterialesV310(data.periodo);
+  const fechaReferencia = periodoInfo.fecha;
+  const fechaISO = periodoInfo.clave + "-01";
+  const mes = periodoInfo.mes;
+  const lote = loteMaterialesV184(texto, periodoInfo.clave, usuario.usuario);
   const hojas = asegurarHojasMaterialesV184();
 
   const lineas = texto.split(/\r?\n/).filter(x => String(x).trim() !== "");
@@ -6731,37 +6778,74 @@ function procesarImportacionMaterialesV184(data) {
     throw new Error("No se generaron consumos válidos. Revise técnicos, cantidades y columnas");
   }
 
-  if (rawSalida.length) {
-    hojas.importar.getRange(
-      hojas.importar.getLastRow()+1,1,rawSalida.length,rawSalida[0].length
-    ).setValues(rawSalida);
+  // V310: una reimportación reemplaza únicamente el periodo elegido.
+  // Los demás meses quedan disponibles para consultas y cruces históricos.
+  const lock = LockService.getScriptLock();
+  lock.waitLock(30000);
+  let filasReemplazadas = 0;
+  let filasPreservadas = [];
+  let periodosCorregidos = [];
+  try {
+    if (rawSalida.length) {
+      hojas.importar.getRange(
+        hojas.importar.getLastRow()+1,1,rawSalida.length,rawSalida[0].length
+      ).setValues(rawSalida);
+    }
+
+    const ultimaFilaConsumoAnterior = hojas.consumo.getLastRow();
+    if (ultimaFilaConsumoAnterior > 1) {
+      const anteriores = hojas.consumo.getRange(2,1,ultimaFilaConsumoAnterior-1,16).getValues();
+      const gruposPorPeriodo = {};
+      anteriores.forEach(function(fila) {
+        const periodoFila = periodoFilaMaterialesV310(fila[0]);
+        if (!periodoFila || periodoFila === periodoInfo.clave) return;
+        if (!gruposPorPeriodo[periodoFila]) gruposPorPeriodo[periodoFila] = [];
+        gruposPorPeriodo[periodoFila].push(fila);
+      });
+
+      // Si exactamente la misma base quedó guardada en otro mes, se interpreta
+      // como una corrección de periodo y se mueve sin dejar una copia equivocada.
+      const firmaNueva = firmaContenidoMaterialesV310(salidaConsumo);
+      Object.keys(gruposPorPeriodo).forEach(function(periodoAnterior) {
+        const filasPeriodo = gruposPorPeriodo[periodoAnterior];
+        if (filasPeriodo.length === salidaConsumo.length &&
+            firmaContenidoMaterialesV310(filasPeriodo) === firmaNueva) {
+          periodosCorregidos.push(periodoAnterior);
+        }
+      });
+
+      anteriores.forEach(function(fila) {
+        const periodoFila = periodoFilaMaterialesV310(fila[0]);
+        if (periodoFila === periodoInfo.clave || periodosCorregidos.indexOf(periodoFila) >= 0) filasReemplazadas++;
+        else filasPreservadas.push(fila);
+      });
+      hojas.consumo.getRange(2,1,ultimaFilaConsumoAnterior-1,hojas.consumo.getLastColumn()).clearContent();
+    }
+
+    const salidaTotal = filasPreservadas.concat(salidaConsumo);
+    if (salidaTotal.length) {
+      hojas.consumo.getRange(2,1,salidaTotal.length,16).setValues(salidaTotal);
+      hojas.consumo.getRange(2,1,salidaTotal.length,1).setNumberFormat("dd/mm/yyyy");
+      hojas.consumo.getRange(2,11,salidaTotal.length,3).setNumberFormat('"S/ "0.00');
+      hojas.consumo.getRange(2,15,salidaTotal.length,1).setNumberFormat("dd/mm/yyyy hh:mm:ss");
+    }
+    SpreadsheetApp.flush();
+  } finally {
+    lock.releaseLock();
   }
-
-  // V186: cada importación válida reemplaza completamente la base consolidada anterior.
-  // Se conserva únicamente la fila de encabezados de CONSUMO_MATERIALES.
-  // La limpieza se ejecuta después de validar toda la nueva base para evitar
-  // perder información cuando la importación contiene errores o no genera datos.
-  const ultimaFilaConsumoAnterior = hojas.consumo.getLastRow();
-  if (ultimaFilaConsumoAnterior > 1) {
-    hojas.consumo.getRange(2, 1, ultimaFilaConsumoAnterior - 1, hojas.consumo.getLastColumn()).clearContent();
-  }
-
-  hojas.consumo.getRange(
-    2,1,salidaConsumo.length,salidaConsumo[0].length
-  ).setValues(salidaConsumo);
-
-  const inicio = 2;
-  hojas.consumo.getRange(inicio,1,salidaConsumo.length,1).setNumberFormat("dd/mm/yyyy");
-  hojas.consumo.getRange(inicio,11,salidaConsumo.length,3).setNumberFormat('"S/ "0.00');
-  hojas.consumo.getRange(inicio,15,salidaConsumo.length,1).setNumberFormat("dd/mm/yyyy hh:mm:ss");
 
   return {
     ok: true,
     modulo: "MATERIALES",
     accion: "IMPORTAR",
+    periodo: periodoInfo.clave,
+    periodoTexto: periodoInfo.texto,
     lote: lote,
     filasOrigen: matriz.length - 1,
     filasConsolidadas: salidaConsumo.length,
+    filasReemplazadas: filasReemplazadas,
+    filasOtrosPeriodosConservadas: filasPreservadas.length,
+    periodosCorregidos: periodosCorregidos,
     tecnicosNoEncontrados: Object.keys(erroresTecnico).sort(),
     tecnicosAmbiguos: Object.keys(ambiguos).sort(),
     valoresInvalidos: valoresInvalidos.slice(0,100),

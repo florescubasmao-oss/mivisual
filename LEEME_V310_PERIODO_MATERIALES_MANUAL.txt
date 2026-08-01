@@ -1,0 +1,34 @@
+MI VISUAL V310 - PERIODO MANUAL EN MATERIALES
+
+Problema corregido
+- La carga usaba la fecha del día como referencia.
+- Un cierre de JULIO subido el 1 de agosto podía quedar clasificado como AGOSTO.
+
+Cambios
+- En Subir datos se reemplaza Fecha de referencia por Periodo del consumo.
+- El periodo es obligatorio y no queda seleccionado automáticamente.
+- Antes de procesar se confirma el mes elegido.
+- La fecha de Última actualización conserva el día y hora reales de la carga.
+- Los cruces de materiales y utilidad usan el periodo seleccionado.
+- Reimportar un periodo reemplaza únicamente ese mismo periodo y conserva los demás meses.
+- Si la misma base estaba registrada en otro mes por error, se corrige el periodo sin duplicarla.
+- No se modifican catálogos, precios, perfiles, cálculos ni otros módulos.
+
+Archivos incluidos
+- Code.gs
+- apps_script/Code.gs
+- index.html
+- js/analisis_economico.js
+
+Orden de actualización
+1. Reemplazar Code.gs en Apps Script.
+2. Crear una nueva versión de la misma implementación Web App, conservando la URL /exec.
+3. Reemplazar index.html y js/analisis_economico.js en GitHub.
+4. Realizar commit y push.
+5. Cerrar MI VISUAL e ingresar nuevamente.
+6. Reimportar el cierre seleccionando JULIO 2026.
+
+IMPORTANTE
+- Code.gs sí cambió.
+- No crear otro proyecto de Apps Script.
+- No cambiar la URL vigente de MI VISUAL.
