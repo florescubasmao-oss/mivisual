@@ -84,6 +84,12 @@ function mostrarObservaciones(){
             <h2>📝 Observaciones</h2>
             <p class="obs-sub">Control de observaciones, descargos y evidencias.</p>
             ${acciones}
+            <div class="obs-filtros" style="margin:12px 0;align-items:end;">
+                <label style="display:flex;flex-direction:column;gap:5px;font-weight:700;">Periodo
+                    <select id="filtroPeriodoObs" onchange="aplicarFiltrosObservaciones()"><option value="${obsPeriodoActual()}">${obsNombrePeriodo(obsPeriodoActual())} — EN CURSO</option></select>
+                </label>
+                <span id="estadoPeriodoObs" class="obs-sub">Mes de origen de la observación</span>
+            </div>
             <div id="resumenObservaciones" class="obs-resumen-kpis">
                 <div class="obs-kpi obs-total"><b>-</b><span>Total</span></div>
                 <div class="obs-kpi obs-der"><b>-</b><span>Derivadas</span></div>
@@ -290,7 +296,16 @@ function fechaISOObs(valor){
     return "";
 }
 
+// V311 - el periodo corresponde al mes de origen. Cambiar el estado o enviar
+// un descargo no traslada la observación a otro mes.
+function obsPeriodoActual(){const p=new Intl.DateTimeFormat("en-CA",{timeZone:"America/Lima",year:"numeric",month:"2-digit"}).formatToParts(new Date());return `${p.find(x=>x.type==="year")?.value}-${p.find(x=>x.type==="month")?.value}`;}
+function obsClavePeriodoValor(valor){const texto=textoObs(valor);let m=texto.match(/^(\d{4})-(\d{2})/);if(m)return `${m[1]}-${m[2]}`;m=texto.match(/^(\d{1,2})\/(\d{4})$/);if(m)return `${m[2]}-${String(Number(m[1])).padStart(2,"0")}`;const meses={ENERO:1,FEBRERO:2,MARZO:3,ABRIL:4,MAYO:5,JUNIO:6,JULIO:7,AGOSTO:8,SEPTIEMBRE:9,OCTUBRE:10,NOVIEMBRE:11,DICIEMBRE:12},nombre=Object.keys(meses).find(mes=>texto.includes(mes)),anio=texto.match(/\b(20\d{2})\b/);return nombre&&anio?`${anio[1]}-${String(meses[nombre]).padStart(2,"0")}`:"";}
+function obsClavePeriodo(o){return obsClavePeriodoValor(o?.periodo)||fechaISOObs(o?.fechaRegistro||o?.fecha||o?.fechaAuditoria).slice(0,7);}
+function obsNombrePeriodo(clave){const m=String(clave||"").match(/^(\d{4})-(\d{2})$/);if(!m)return "SIN PERIODO";return new Intl.DateTimeFormat("es-PE",{month:"long",year:"numeric",timeZone:"UTC"}).format(new Date(Date.UTC(Number(m[1]),Number(m[2])-1,1))).toUpperCase();}
+function obsPrepararSelectorPeriodos(lista){const sel=document.getElementById("filtroPeriodoObs");if(!sel)return;const actual=sel.value||obsPeriodoActual(),claves=[...new Set([obsPeriodoActual(),...(lista||[]).map(obsClavePeriodo).filter(Boolean)])].sort().reverse();sel.innerHTML=claves.map(clave=>`<option value="${clave}">${obsNombrePeriodo(clave)} — ${clave===obsPeriodoActual()?"EN CURSO":"HISTÓRICO"}</option>`).join("");sel.value=claves.includes(actual)?actual:obsPeriodoActual();}
+
 function obtenerObservacionesFiltradas(){
+    const periodo = document.getElementById("filtroPeriodoObs")?.value || obsPeriodoActual();
     const estado = textoObs(document.getElementById("filtroEstadoObs")?.value);
     const fuente = textoObs(document.getElementById("filtroFuenteObs")?.value);
     const codigo = textoObs(document.getElementById("filtroCodigoObs")?.value);
@@ -301,6 +316,7 @@ function obtenerObservacionesFiltradas(){
     const hasta = document.getElementById("filtroFechaHastaObs")?.value || "";
 
     return (observacionesCache || []).filter(o => {
+        if(periodo && obsClavePeriodo(o) !== periodo) return false;
         if(estado && textoObs(o.estado) !== estado) return false;
         if(fuente && textoObs(o.fuente) !== fuente) return false;
         if(codigo && !textoObs(o.codigo).includes(codigo)) return false;
@@ -351,6 +367,8 @@ function aplicarFiltrosObservaciones(){
     const cont = document.getElementById("listaObservaciones");
     if(!cont) return;
     const lista = obtenerObservacionesFiltradas();
+    const periodo=document.getElementById("filtroPeriodoObs")?.value||obsPeriodoActual(),estadoPeriodo=document.getElementById("estadoPeriodoObs");
+    if(estadoPeriodo)estadoPeriodo.textContent=`${obsNombrePeriodo(periodo)} — ${periodo===obsPeriodoActual()?"EN CURSO":"HISTÓRICO"}`;
     pintarResumenObservaciones(lista);
     if(esVistaJefaturaObs(u)) pintarResumenObservacionesPorSede(lista);
     if(!lista.length){
@@ -366,6 +384,7 @@ function limpiarFiltrosObservaciones(){
         const el = document.getElementById(id);
         if(el) el.value = "";
     });
+    const periodo=document.getElementById("filtroPeriodoObs");if(periodo)periodo.value=obsPeriodoActual();
     aplicarFiltrosObservaciones();
 }
 
@@ -378,6 +397,7 @@ async function cargarObservaciones(){
         const data = await apiObservaciones({accion:"listarObservaciones", usuario:u.usuario});
         if(!data.ok) throw new Error(data.error || "Error al listar observaciones");
         observacionesCache = Array.isArray(data.observaciones) ? data.observaciones : [];
+        obsPrepararSelectorPeriodos(observacionesCache);
         aplicarFiltrosObservaciones();
     }catch(err){
         cont.innerHTML = `<div class="obs-error">❌ ${err.message}</div>`;

@@ -2,6 +2,14 @@
 const API_TRABAJOS_CONJUNTA = "https://script.google.com/macros/s/AKfycbzcbjCLweJNgZXDerdzmMN7Lwotc1G8NWdzoPkaLNGDivAgpYxDkq78xZwPRioSB4XY/exec";
 let tcRegistros = [];
 let tcCuadrillas = [];
+let TC_PERIODO_SELECCIONADO=tcPeriodoActual();
+
+// V311 - PEXT se agrupa por la fecha de ejecución del trabajo.
+function tcPeriodoActual(){const p=new Intl.DateTimeFormat('en-CA',{timeZone:'America/Lima',year:'numeric',month:'2-digit'}).formatToParts(new Date());return `${p.find(x=>x.type==='year')?.value}-${p.find(x=>x.type==='month')?.value}`;}
+function tcClavePeriodo(x){const fecha=String(x?.fechaTrabajo||'').trim();let m=fecha.match(/^(\d{4})-(\d{2})/);if(m)return `${m[1]}-${m[2]}`;m=fecha.match(/^(\d{1,2})[\/-](\d{1,2})[\/-](\d{4})/);return m?`${m[3]}-${String(Number(m[2])).padStart(2,'0')}`:'';}
+function tcNombrePeriodo(clave){const m=String(clave||'').match(/^(\d{4})-(\d{2})$/);if(!m)return 'SIN PERIODO';return new Intl.DateTimeFormat('es-PE',{month:'long',year:'numeric',timeZone:'UTC'}).format(new Date(Date.UTC(Number(m[1]),Number(m[2])-1,1))).toUpperCase();}
+function tcPrepararPeriodos(){const sel=document.getElementById('tcFiltroPeriodo');if(!sel)return;const actual=TC_PERIODO_SELECCIONADO||tcPeriodoActual(),periodos=[...new Set([tcPeriodoActual(),...tcRegistros.map(tcClavePeriodo).filter(Boolean)])].sort().reverse();sel.innerHTML=periodos.map(p=>`<option value="${p}">${tcNombrePeriodo(p)} — ${p===tcPeriodoActual()?'EN CURSO':'HISTÓRICO'}</option>`).join('');TC_PERIODO_SELECCIONADO=periodos.includes(actual)?actual:tcPeriodoActual();sel.value=TC_PERIODO_SELECCIONADO;}
+function tcCambiarPeriodo(){TC_PERIODO_SELECCIONADO=document.getElementById('tcFiltroPeriodo')?.value||tcPeriodoActual();tcRenderLista();}
 
 function tcUsuario(){return {usuario:localStorage.getItem("usuario")||"",perfil:(localStorage.getItem("perfil")||"").toUpperCase(),sede:localStorage.getItem("sede")||"",cuadrilla:localStorage.getItem("cuadrilla")||""};}
 function tcJefatura(p){return ["JEFATURA","ADMIN","ADMINISTRADOR"].includes((p||"").toUpperCase());}
@@ -145,7 +153,8 @@ function tcFiltrados(){
   const sede=(document.getElementById("tcFiltroSede")?.value||"").toUpperCase();
   const desde=document.getElementById("tcFiltroDesde")?.value||"";
   const hasta=document.getElementById("tcFiltroHasta")?.value||"";
-  return tcRegistros.filter(x=>(!tipo||x.tipoTrabajo===tipo)
+  return tcRegistros.filter(x=>tcClavePeriodo(x)===TC_PERIODO_SELECCIONADO
+    &&(!tipo||x.tipoTrabajo===tipo)
     &&(!estado||x.estadoGeneral===estado)
     &&(!cuad||(x.cuadrilla||"").toUpperCase().includes(cuad))
     &&(!cto||(x.cto||"").toUpperCase().includes(cto))
@@ -178,6 +187,7 @@ async function mostrarTrabajosConjunta(){
     </div>
     <section id="tcFormulario"></section>
     <section class="tc-card"><h3>Consulta de registros</h3><div class="tc-filtros">
+      <select id="tcFiltroPeriodo" onchange="tcCambiarPeriodo()"><option value="${TC_PERIODO_SELECCIONADO}">${tcNombrePeriodo(TC_PERIODO_SELECCIONADO)} — EN CURSO</option></select>
       <select id="tcFiltroTipo" onchange="tcRenderLista()"><option value="">Todos los tipos</option><option>NORMALIZACION</option><option>CONJUNTA PEXT</option><option>ORDENAMIENTO</option></select>
       <select id="tcFiltroEstado" onchange="tcRenderLista()"><option value="">Todos los estados</option><option>PENDIENTE DE VISTO BUENO TECNICO</option><option>OBSERVADO POR TECNICO</option><option>PENDIENTE DE VALIDACION JEFATURA</option><option>PENDIENTE CONFORMIDAD FINAL</option><option>CONFORMIDAD FINAL</option><option>OBSERVADO POR JEFATURA</option><option>RECHAZADO</option></select>
       <select id="tcFiltroSede" onchange="tcRenderLista()"><option value="">Todas las sedes</option></select>
@@ -195,6 +205,8 @@ async function tcCargar(){
     const u=tcUsuario();
     const d=await tcApi({accion:"listarTrabajosConjunta",usuario:u.usuario});
     tcRegistros=d.trabajos||[];
+    TC_PERIODO_SELECCIONADO=tcPeriodoActual();
+    tcPrepararPeriodos();
     const sedes=[...new Set(tcRegistros.map(x=>(x.sede||"").toString().trim()).filter(Boolean))].sort();
     const sel=document.getElementById("tcFiltroSede");
     if(sel){const actual=sel.value;sel.innerHTML='<option value="">Todas las sedes</option>'+sedes.map(s=>`<option value="${tcEsc(s)}">${tcEsc(s)}</option>`).join("");sel.value=actual;}

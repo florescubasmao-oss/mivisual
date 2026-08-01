@@ -26,6 +26,34 @@ function esJefaturaActividad(perfil){
     return p === "JEFATURA" || p === "ADMIN" || p === "ADMINISTRADOR" || p === "OPERACIONES LIMA" || p === "GERENCIA LIMA";
 }
 
+// V311 - consulta mensual. El mes vigente se abre automáticamente y los
+// periodos anteriores continúan disponibles como historial.
+function actPeriodoActual(){
+    const partes = new Intl.DateTimeFormat("en-CA", {timeZone:"America/Lima", year:"numeric", month:"2-digit"}).formatToParts(new Date());
+    return `${partes.find(x=>x.type==="year")?.value}-${partes.find(x=>x.type==="month")?.value}`;
+}
+function actNombrePeriodo(clave){
+    const m=String(clave||"").match(/^(\d{4})-(\d{2})$/);if(!m)return "PERIODO PERSONALIZADO";
+    return new Intl.DateTimeFormat("es-PE",{month:"long",year:"numeric",timeZone:"UTC"}).format(new Date(Date.UTC(Number(m[1]),Number(m[2])-1,1))).toUpperCase();
+}
+function actLimitesPeriodo(clave){
+    const m=String(clave||"").match(/^(\d{4})-(\d{2})$/);if(!m)return {desde:"",hasta:""};
+    const anio=Number(m[1]),mes=Number(m[2]);
+    return {desde:`${anio}-${String(mes).padStart(2,"0")}-01`,hasta:`${anio}-${String(mes).padStart(2,"0")}-${String(new Date(anio,mes,0).getDate()).padStart(2,"0")}`};
+}
+function actOpcionesPeriodo(cantidad=24){
+    const actual=actPeriodoActual().split("-").map(Number),opciones=[];
+    for(let i=0;i<cantidad;i++){const f=new Date(actual[0],actual[1]-1-i,1),clave=`${f.getFullYear()}-${String(f.getMonth()+1).padStart(2,"0")}`;opciones.push(`<option value="${clave}">${actNombrePeriodo(clave)}${i===0?" — EN CURSO":" — HISTÓRICO"}</option>`);}
+    return opciones.join("");
+}
+function actAplicarPeriodo(cargar=true){
+    const periodo=document.getElementById("actFiltroPeriodo")?.value||actPeriodoActual(),limites=actLimitesPeriodo(periodo),desde=document.getElementById("actFechaDesde"),hasta=document.getElementById("actFechaHasta");
+    if(desde)desde.value=limites.desde;if(hasta)hasta.value=limites.hasta;
+    const estado=document.getElementById("actEstadoPeriodo");if(estado)estado.textContent=`${actNombrePeriodo(periodo)} — ${periodo===actPeriodoActual()?"EN CURSO":"HISTÓRICO"}`;
+    if(cargar)cargarActividadCampo();
+}
+function actMarcarPeriodoPersonalizado(){const estado=document.getElementById("actEstadoPeriodo");if(estado)estado.textContent="RANGO PERSONALIZADO";}
+
 async function apiActividadCampo(payload){
     const res = await fetch(API_ACTIVIDAD_CAMPO, {
         method: "POST",
@@ -487,10 +515,11 @@ function prepararFiltrosActividadCampo(){
     const esGestion = esJefaturaActividad(u.perfil);
     cont.innerHTML = `
         <div class="act-card">
-            <b>Filtros</b>
+            <b>Periodo: <span id="actEstadoPeriodo"></span></b>
             <div class="act-filter">
-                <div class="act-field"><label>Desde</label><input type="date" id="actFechaDesde"></div>
-                <div class="act-field"><label>Hasta</label><input type="date" id="actFechaHasta"></div>
+                <div class="act-field"><label>Mes</label><select id="actFiltroPeriodo" onchange="actAplicarPeriodo(true)">${actOpcionesPeriodo()}</select></div>
+                <div class="act-field"><label>Desde</label><input type="date" id="actFechaDesde" onchange="actMarcarPeriodoPersonalizado()"></div>
+                <div class="act-field"><label>Hasta</label><input type="date" id="actFechaHasta" onchange="actMarcarPeriodoPersonalizado()"></div>
                 <div class="act-field"><label>Tipo</label><select id="actFiltroTipo"><option value="">Todos</option>${TIPOS_ACTIVIDAD_CAMPO.map(t => `<option>${t}</option>`).join("")}</select></div>
                 ${esGestion ? `<div class="act-field"><label>Sede</label><select id="actFiltroSede"><option value="">Todas</option><option>CHICLAYO</option><option>PIURA</option><option>TRUJILLO</option></select></div><div class="act-field"><label>Supervisor</label><input id="actFiltroSupervisor" placeholder="Usuario supervisor"></div>` : ""}
                 <div class="act-field"><label>Cuadrilla</label><input id="actFiltroCuadrilla" placeholder="Nombre de cuadrilla"></div>
@@ -498,6 +527,7 @@ function prepararFiltrosActividadCampo(){
             </div>
             <button class="act-btn warn" onclick="cargarActividadCampo()">Aplicar filtros</button>
         </div>`;
+    actAplicarPeriodo(false);
 }
 
 async function cargarActividadCampo(){

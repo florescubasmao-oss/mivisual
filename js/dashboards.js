@@ -66,6 +66,10 @@ function mv276PeriodosDesdeValores(valores){
             if(!mapa[clave].corte || mv276ClaveOrdenFecha(visible) > mv276ClaveOrdenFecha(mapa[clave].corte)) mapa[clave].corte = visible;
         }
     });
+    // V311: el mes vigente debe aparecer incluso antes de la primera carga.
+    // Así una pantalla de agosto no reutiliza silenciosamente el cierre de julio.
+    const actual = mv276ClavePeriodo(new Date());
+    if(actual && !mapa[actual]) mapa[actual] = {clave:actual, etiqueta:mv276EtiquetaPeriodo(actual), corte:""};
     return Object.values(mapa).sort((a,b)=>b.clave.localeCompare(a.clave));
 }
 
@@ -90,7 +94,7 @@ function mv276SelectorPeriodo(periodos, seleccionado, funcion, id){
     return `<div class="mv276-periodo-filtro">
         <label for="${identificador}">📅 Período</label>
         <select id="${identificador}" onchange="${funcion}(this.value)">
-            ${lista.map(x=>`<option value="${x.clave}" ${x.clave===seleccionado?"selected":""}>${x.etiqueta}${x.corte?` · al ${x.corte}`:""}</option>`).join("")}
+            ${lista.map(x=>`<option value="${x.clave}" ${x.clave===seleccionado?"selected":""}>${x.etiqueta} — ${x.clave===mv276ClavePeriodo(new Date())?"EN CURSO":"HISTÓRICO"}${x.corte?` · al ${x.corte}`:""}</option>`).join("")}
         </select>
     </div>`;
 }

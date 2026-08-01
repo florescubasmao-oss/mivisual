@@ -1,0 +1,48 @@
+MI VISUAL V311 - PERIODOS MENSUALES
+
+OBJETIVO
+Agosto inicia una medición independiente y julio permanece disponible como
+evidencia histórica, sin mezclar resultados entre meses.
+
+CAMBIOS
+- El mes actual aparece automáticamente como EN CURSO.
+- Los meses anteriores aparecen como HISTÓRICO.
+- Actividad en Campo queda separada por mes, conservando sus filtros de fecha,
+  tipo, sede, supervisor, cuadrilla y auditoría.
+- Observaciones se consulta por el mes de origen. Los descargos y cambios de
+  estado no trasladan la observación a otro periodo.
+- Checklist Almacén se consulta por la fecha de gestión, para Técnico,
+  Supervisor, Jefatura, Gerencia y perfiles de Almacén.
+- PEXT se consulta y descarga por el mes de ejecución del trabajo, no por la
+  fecha posterior de visto bueno o validación.
+- Ranking recupera el selector mensual y conserva el orden del primer puesto
+  al último para Supervisor, Jefatura y Gerencia.
+- Dashboard, Producción, Efectividad, Recableado y VTR/GAR muestran primero el
+  mes actual. Los cierres anteriores continúan disponibles.
+
+REGLAS CONSERVADAS
+- Producción se calcula con toda la base del mes; no se toma una fotografía del
+  último día.
+- Efectividad, Recableado, VTR/GAR y Ranking conservan el histórico mensual ya
+  implementado desde V276. Una carga de agosto no reemplaza julio.
+- Programación de Descansos no cambia: mantiene su historial por fecha y
+  periodo ya existente.
+- No cambia ninguna hoja, permiso, cálculo, aprobación ni validación.
+
+ARCHIVOS PARA GITHUB
+- index.html
+- js/dashboards.js
+- js/ranking.js
+- js/actividad_campo.js
+- js/observaciones.js
+- js/checklist_almacen.js
+- js/trabajos_conjunta.js
+
+APPS SCRIPT
+Code.gs NO CAMBIA. No se requiere crear una nueva versión ni implementación.
+
+PUBLICACIÓN
+1. Reemplazar en GitHub únicamente los archivos incluidos.
+2. Realizar commit y push.
+3. Cerrar MI VISUAL y volver a ingresar para limpiar la caché anterior.
+

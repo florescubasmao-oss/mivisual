@@ -1,5 +1,8 @@
 // MI VISUAL - RANKING
 
+let MV276_RANKING_PERIODOS = [];
+let MV276_RANKING_PERIODO = "";
+
 function normalizarTextoRanking(txt){
     return (txt || "")
         .toString()
@@ -174,6 +177,7 @@ function encabezadoPeriodoRanking(item){
                 Actualizado al: <b>${actualizado || "-"}</b>
             </div>
         </div>
+        ${mv276SelectorPeriodo(MV276_RANKING_PERIODOS, MV276_RANKING_PERIODO, "mostrarRanking", "mv276RankingPeriodo")}
     `;
 }
 
@@ -279,26 +283,23 @@ function tarjetaCuadrillaRanking(r, tipoPuesto){
     `;
 }
 
-function ordenarRankingPorPuesto(lista, tipoPuesto){
-    const campo = tipoPuesto === "sede"
-        ? "puestoSede"
-        : (tipoPuesto === "plataforma" ? "puestoPlataforma" : "puestoRegion");
-
-    return (lista || []).slice().sort((a,b) => {
-        const pa = Number(a[campo]) || 999999;
-        const pb = Number(b[campo]) || 999999;
-        if(pa !== pb) return pa - pb;
-        return (a.cuadrilla || "").localeCompare(b.cuadrilla || "", undefined, {numeric:true});
-    });
-}
-
 function listaTarjetasRanking(lista, tipoPuesto){
     if(!lista || lista.length === 0){
         return `<div class="card">No hay datos para mostrar.</div>`;
     }
 
-    const ordenada = ordenarRankingPorPuesto(lista, tipoPuesto);
-    return ordenada.map(r => tarjetaCuadrillaRanking(r, tipoPuesto)).join("");
+    return ordenarRankingPorPuesto(lista, tipoPuesto).map(r => tarjetaCuadrillaRanking(r, tipoPuesto)).join("");
+}
+
+// V308 + V311: conserva el selector mensual y ordena siempre del primer
+// puesto al último, aunque la hoja publicada llegue desordenada.
+function ordenarRankingPorPuesto(lista, tipoPuesto){
+    const campo = tipoPuesto === "sede" ? "puestoSede" : (tipoPuesto === "plataforma" ? "puestoPlataforma" : "puestoRegion");
+    return (lista || []).slice().sort((a,b) => {
+        const pa=Number(a[campo])||999999,pb=Number(b[campo])||999999;
+        if(pa!==pb)return pa-pb;
+        return (a.cuadrilla||"").localeCompare(b.cuadrilla||"",undefined,{numeric:true});
+    });
 }
 
 
@@ -429,7 +430,7 @@ function vistaTecnicoRanking(item){
     `;
 }
 
-async function mostrarRanking(){
+async function mostrarRanking(periodoSeleccionado){
 
     const perfil = normalizarTextoRanking(localStorage.getItem("perfil"));
     const cuadrillaUsuario = normalizarCuadrillaRanking(localStorage.getItem("cuadrilla"));
@@ -449,10 +450,13 @@ async function mostrarRanking(){
         const texto = await respuesta.text();
         const filas = parseCSVRanking(texto);
 
-        const lista = filas
+        const listaCompleta = filas
             .slice(1)
             .map(filaRanking)
             .filter(x => x.cuadrilla);
+        MV276_RANKING_PERIODOS = mv276PeriodosDesdeValores(listaCompleta.map(x=>x.actualizacion));
+        MV276_RANKING_PERIODO = mv276PeriodoPredeterminado(MV276_RANKING_PERIODOS, periodoSeleccionado);
+        const lista = listaCompleta.filter(x=>mv276ClavePeriodo(x.actualizacion)===MV276_RANKING_PERIODO);
 
         if(lista.length === 0){
             mostrarPantalla(`<div style="padding:20px;"><h2>🏆 RANKING</h2>No hay datos de ranking.</div>`);
