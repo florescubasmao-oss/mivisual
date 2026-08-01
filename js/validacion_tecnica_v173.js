@@ -1,4 +1,4 @@
-// MI VISUAL - Módulo Validación Técnica V253 · Origen PROPIA / ASIGNADA
+// MI VISUAL - Módulo Validación Técnica V300 · Lectura segura GET
 
 const API_VALIDACION_TECNICA = "https://script.google.com/macros/s/AKfycbzcbjCLweJNgZXDerdzmMN7Lwotc1G8NWdzoPkaLNGDivAgpYxDkq78xZwPRioSB4XY/exec";
 
@@ -18,12 +18,34 @@ function esJefaturaValidacion(perfil){
 }
 
 async function apiValidacionTecnica(payload){
-    const res = await fetch(API_VALIDACION_TECNICA, {
-        method: "POST",
-        body: JSON.stringify(payload)
-    });
+    const esLectura = payload && payload.accion === "listarValidacionTecnica";
+    let url = API_VALIDACION_TECNICA;
+    const opciones = esLectura
+        ? { method: "GET", cache: "no-store" }
+        : { method: "POST", body: JSON.stringify(payload) };
+
+    if(esLectura){
+        const parametros = new URLSearchParams();
+        Object.entries(payload || {}).forEach(([clave, valor]) => {
+            if(valor !== undefined && valor !== null){
+                parametros.set(clave, typeof valor === "object" ? JSON.stringify(valor) : String(valor));
+            }
+        });
+        parametros.set("_ts", String(Date.now()));
+        url += "?" + parametros.toString();
+    }
+
+    const res = await fetch(url, opciones);
     const txt = await res.text();
-    try { return JSON.parse(txt); } catch(e){ throw new Error(txt); }
+    try {
+        return JSON.parse(txt);
+    } catch(e){
+        const mensaje = (txt || "").trim();
+        if(mensaje === "MI VISUAL API OK"){
+            throw new Error("La API no reconoció la acción de Validación Técnica. Actualice la implementación de Apps Script.");
+        }
+        throw new Error(mensaje || "Respuesta inválida de la API");
+    }
 }
 
 function estiloValidacionTecnica(){

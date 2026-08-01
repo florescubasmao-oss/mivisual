@@ -1,0 +1,30 @@
+MI VISUAL V300 - CORRECCION VALIDACION TECNICA JSON
+
+PROBLEMA CORREGIDO
+- Al abrir Validacion Tecnica aparecia "MI VISUAL API OK".
+- La consulta del historial y pendientes usaba POST y la redireccion del Web App podia convertirla en GET.
+
+CAMBIOS
+- listarValidacionTecnica ahora se consulta de forma segura mediante GET.
+- doGet reconoce esta accion y devuelve JSON.
+- Registrar, aprobar, observar y rechazar siguen usando POST.
+- Se actualiza la version del archivo JS en index.html para evitar cache anterior.
+
+ARCHIVOS A REEMPLAZAR
+- Code.gs
+- apps_script/Code.gs
+- js/validacion_tecnica_v173.js
+- index.html
+
+ORDEN
+1. Reemplazar Code.gs en Apps Script.
+2. Crear una nueva version de la misma implementacion /exec.
+3. Reemplazar los archivos incluidos en GitHub.
+4. Hacer commit y push.
+5. Cerrar sesion, ingresar de nuevo y abrir Validacion Tecnica.
+
+NO CAMBIA
+- Hojas de Google Sheets.
+- Registros existentes.
+- Reglas de permisos.
+- Formularios, aprobaciones, bonos ni informes.

@@ -39,6 +39,19 @@ function doGet(e) {
     }
   }
 
+  // V300: Validación Técnica consulta pendientes e historial mediante GET.
+  // Las acciones que modifican datos continúan exclusivamente por POST.
+  if (parametros.accion === "listarValidacionTecnica") {
+    try {
+      return respuestaJson(listarValidacionTecnica(parametros));
+    } catch (error) {
+      return respuestaJson({
+        ok: false,
+        error: error && error.message ? error.message : String(error)
+      });
+    }
+  }
+
   return ContentService
     .createTextOutput("MI VISUAL API OK")
     .setMimeType(ContentService.MimeType.TEXT);
