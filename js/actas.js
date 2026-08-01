@@ -28,6 +28,19 @@ function esJefaturaAlmacenActas(perfil){
     return normalizarActas(perfil) === "JEFATURA ALMACEN";
 }
 
+function esPerfilConsultaActas(perfil){
+    const p = normalizarActas(perfil);
+    if(p === "SUPERVISOR") return true;
+    if(p.includes("GERENCIA")) return true;
+    if(p.includes("JEFATURA") && p !== "JEFATURA ALMACEN") return true;
+    return p === "ADMIN" || p === "ADMINISTRADOR";
+}
+
+function esPerfilConsultaActasPorSedes(perfil){
+    const p = normalizarActas(perfil);
+    return esPerfilConsultaActas(p) && p !== "SUPERVISOR";
+}
+
 function esPerfilJefaturaFiltroActas(perfil){
     const p = normalizarActas(perfil);
     return p.includes("JEFATURA") || p.includes("GERENCIA") || p === "ADMIN" || p === "ADMINISTRADOR";
@@ -200,9 +213,15 @@ function estiloActas(){
         .actas-read-main{display:grid;grid-template-columns:minmax(120px,1.1fr) minmax(110px,1fr) minmax(90px,.8fr);gap:8px;align-items:center;}
         .actas-read-main b{font-size:12px;color:#0f172a;}
         .actas-read-main span{font-size:11px;color:#475569;}
+        .actas-read-cuadrilla{margin-top:8px;padding:8px 10px;border:1px solid rgba(148,163,184,.35);border-radius:9px;background:rgba(255,255,255,.78);}
+        .actas-read-cuadrilla span{display:block;font-size:9px;font-weight:900;color:#64748b;text-transform:uppercase;margin-bottom:3px;}
+        .actas-read-cuadrilla b{display:block;font-size:12px;line-height:1.3;color:#0f172a;}
         .actas-read-states{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:7px;}
         .actas-read-state{border:1px solid rgba(148,163,184,.35);border-radius:9px;padding:6px 8px;background:rgba(255,255,255,.72);}
         .actas-read-state small{display:block;font-size:9px;font-weight:900;color:#64748b;text-transform:uppercase;margin-bottom:2px;}
+        .actas-read-action{display:flex;justify-content:flex-end;margin-top:8px;}
+        .actas-read-action .actas-btn{min-width:150px;text-align:center;}
+        .actas-btn.is-disabled{background:#e2e8f0;color:#64748b;box-shadow:none;cursor:not-allowed;}
 
         @media(max-width:520px){.actas-validation-grid{grid-template-columns:1fr}.actas-unified-states{grid-template-columns:1fr 1fr}.actas-compact-actions .actas-btn{font-size:9px;padding:6px 7px;}}
         .actas-readonly{background:#f1f5f9;color:#475569;border-radius:10px;padding:8px 10px;font-size:12px;font-weight:800;margin-top:8px;}
@@ -261,6 +280,7 @@ function mostrarGestionActas(){
     if(u.perfil === "ALMACEN") subtitulo = "Primera validación documental de actas de tu sede.";
     if(u.perfil === "SUPERVISOR") subtitulo = "Consulta de actas de tu sede: escaneo y entrega física. Solo lectura.";
     if(esJefaturaActas(u.perfil)) subtitulo = "Consulta general de actas: escaneo y entrega física. Solo lectura.";
+    if(esPerfilConsultaActasPorSedes(u.perfil)) subtitulo = "Consulta general de actas agrupadas por sede. Solo lectura.";
     if(esJefaturaAlmacenActas(u.perfil)) subtitulo = "Gestión por sede: escaneo y entrega física en una sola tarjeta por acta.";
 
     mostrarPantalla(`
@@ -274,7 +294,7 @@ function mostrarGestionActas(){
                 ${u.perfil === "TECNICO" ? `<button class="actas-btn ok" onclick="mostrarFormularioActa()">+ Subir Acta PDF</button>` : ""}
                 ${(esAlmacenActas(u.perfil) || esJefaturaAlmacenActas(u.perfil)) ? `<button class="actas-btn orange" onclick="mostrarFormularioActaFaltante()">⚠ Registrar acta faltante</button>` : ""}
                 ${(esAlmacenActas(u.perfil) || esJefaturaAlmacenActas(u.perfil)) ? `<button class="actas-btn ok" onclick="mostrarRecepcionMasivaActas()">📦 Recibir varias actas</button>` : ""}
-                ${(esAlmacenActas(u.perfil) || esJefaturaAlmacenActas(u.perfil) || esJefaturaActas(u.perfil)) ? `<button class="actas-btn blue" onclick="actualizarDatosAutomaticosActasFrontend(this)">🧩 Actualizar datos automáticos</button>` : ""}
+                ${(esAlmacenActas(u.perfil) || esJefaturaAlmacenActas(u.perfil)) ? `<button class="actas-btn blue" onclick="actualizarDatosAutomaticosActasFrontend(this)">🧩 Actualizar datos automáticos</button>` : ""}
                 <button class="actas-btn sec" onclick="cargarActas()">🔄 Actualizar vista</button>
             </div>
             <div id="actasResumen"></div>
@@ -284,7 +304,7 @@ function mostrarGestionActas(){
         </div>
     `);
     cargarActas();
-    if(esAlmacenActas(u.perfil) || esJefaturaAlmacenActas(u.perfil) || esJefaturaActas(u.perfil)) cargarHistorialCargosActas();
+    if(esAlmacenActas(u.perfil) || esJefaturaAlmacenActas(u.perfil)) cargarHistorialCargosActas();
 }
 
 async function actualizarDatosAutomaticosActasFrontend(btn){
@@ -414,6 +434,8 @@ function renderActasFiltradas(actas, opciones){
             </table>
             <div class="actas-mobile">${actas.map(a => cardActaLecturaHtml(a)).join("")}</div>
         `;
+    }else if(esPerfilConsultaActasPorSedes(u.perfil)){
+        lista.innerHTML = vistaConsultaActasPorSedes(actas);
     }else{
         lista.innerHTML = `<div>${actas.map(a => cardActaSoloEstadoHtml(a)).join("")}</div>`;
     }
@@ -495,6 +517,11 @@ function botonPdfActa(a){
     return a.linkActa ? `<a class="actas-btn blue" href="${a.linkActa}" target="_blank" rel="noopener">Ver PDF</a>` : "";
 }
 
+function botonVisualizarActaConsulta(a){
+    if(!a.linkActa) return `<span class="actas-btn is-disabled" aria-disabled="true">Acta no disponible</span>`;
+    return `<a class="actas-btn blue" href="${limpiarHtmlActas(a.linkActa)}" target="_blank" rel="noopener">Visualizar acta</a>`;
+}
+
 function botonesEscaneoActa(a){
     const u = usuarioActualActas();
     const id = (a.id || "").replace(/'/g,"\\'");
@@ -555,11 +582,30 @@ function cardActaSoloEstadoHtml(a){
             <div><span>Código</span><br><b>${limpiarHtmlActas(a.codigoPedido || "-")}</b></div>
             <div><span>Fecha</span><br><b>${fechaVisibleActas(a.fechaGestion || a.fechaRegistro)}</b></div>
         </div>
+        <div class="actas-read-cuadrilla"><span>Cuadrilla</span><b>${limpiarHtmlActas(a.cuadrilla || "-")}</b></div>
         <div class="actas-read-states">
             <div class="actas-read-state"><small>Escaneo</small>${badgeActa(a)}</div>
             <div class="actas-read-state"><small>Entrega física</small>${etiquetaEntregaFisicaActas(a.estadoEntregaFisica)}</div>
         </div>
+        <div class="actas-read-action">${botonVisualizarActaConsulta(a)}</div>
     </div>`;
+}
+
+function vistaConsultaActasPorSedes(actas){
+    const grupos = new Map();
+    (actas || []).forEach(a => {
+        const sede = normalizarActas(a.sede || "SIN SEDE") || "SIN SEDE";
+        if(!grupos.has(sede)) grupos.set(sede, []);
+        grupos.get(sede).push(a);
+    });
+    const ordenBase = ["CHICLAYO","PIURA","TRUJILLO"];
+    const otras = [...grupos.keys()].filter(s => !ordenBase.includes(s)).sort((a,b)=>a.localeCompare(b,"es"));
+    return [...ordenBase, ...otras]
+        .filter(sede => grupos.has(sede))
+        .map(sede => `<details class="actas-sede" data-sede="${limpiarHtmlActas(sede)}">
+            <summary><span>📍 ${limpiarHtmlActas(sede)}</span><span class="actas-count">${grupos.get(sede).length} actas</span></summary>
+            <div class="actas-sede-body">${grupos.get(sede).map(a => cardActaSoloEstadoHtml(a)).join("")}</div>
+        </details>`).join("");
 }
 
 function filaActaLecturaHtml(a){
@@ -693,7 +739,7 @@ async function cargarResumenActas(){
             <div class="actas-kpi"><b>${g.entregadasFisicas || 0}</b><span>Entregadas físicas</span></div>
             <div class="actas-kpi"><b>${g.pendientesEntregaFisica || 0}</b><span>Pendientes de entrega</span></div>
         </div>
-        ${(esJefaturaActas(u.perfil) || esJefaturaAlmacenActas(u.perfil)) ? resumenTablasActas(data) : ""}`;
+        ${(esPerfilConsultaActasPorSedes(u.perfil) || esJefaturaAlmacenActas(u.perfil)) ? resumenTablasActas(data) : ""}`;
     }catch(err){
         cont.innerHTML = `<div class="actas-msg err">No se pudo cargar resumen: ${err.message}</div>`;
     }

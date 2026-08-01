@@ -1,0 +1,17 @@
+MI VISUAL V313 - GESTION DE ACTAS: CONSULTA POR SEDE Y CUADRILLA
+
+ARCHIVOS A REEMPLAZAR EN GITHUB
+- index.html
+- js/actas.js
+
+CAMBIOS
+- Supervisor visualiza directamente las actas de su sede.
+- Jefatura y Gerencia visualizan las actas agrupadas por sede.
+- Cada tarjeta muestra el nombre completo de la cuadrilla.
+- La unica accion de Supervisor, Jefatura y Gerencia es Visualizar acta.
+- Se mantienen los filtros, estados y resumen informativo.
+- Tecnico, Responsable de Almacen y Jefatura de Almacen conservan sus funciones.
+
+APPS SCRIPT
+- Code.gs no cambia.
+- No se requiere nueva implementacion de Apps Script.
