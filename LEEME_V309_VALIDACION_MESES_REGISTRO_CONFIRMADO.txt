@@ -1,0 +1,24 @@
+MI VISUAL V309 - VALIDACION TECNICA POR MES Y REGISTRO CONFIRMADO
+
+CAMBIOS
+1. El historial de Supervisor, Jefatura y Gerencia se agrupa primero por mes.
+2. El mes mas reciente queda abierto; los anteriores quedan cerrados.
+3. Dentro de cada mes se mantienen los grupos RECABLEADO, VTR, GAR y OTRO.
+4. El registro usa bloqueo para evitar cruces entre solicitudes simultaneas.
+5. La confirmacion solo se muestra despues de verificar el ID en la hoja.
+6. La consulta de lectura permite verificar por ID o codigo.
+
+ARCHIVOS A REEMPLAZAR EN GITHUB
+- index.html
+- js/validacion_tecnica_v173.js
+
+APPS SCRIPT
+- Code.gs SI CAMBIA.
+- Reemplazar Code.gs y crear una nueva version de la misma implementacion.
+- Conservar la URL /exec vigente.
+
+IMPORTANTE
+- No cambia la estructura de VALIDACION_TECNICA.
+- No cambia permisos, aprobaciones, automaticos, GAR, VTR ni Telegram.
+- El codigo 650138 no existe en la base recibida y debe registrarse nuevamente
+  despues de actualizar V309.

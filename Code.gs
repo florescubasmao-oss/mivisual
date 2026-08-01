@@ -2720,9 +2720,6 @@ function registrarValidacionTecnica(data) {
   const codigo = (data.codigo || "").toString().trim();
   const id = generarIdValidacionTecnica(codigo, tipoValidacion);
 
-  if (existeValidacionTecnica(id)) {
-    throw new Error("Ya existe una validación registrada con este código y tipo: " + id);
-  }
   const numeroTicket = tipoTicket === "NO APLICA" ? "" : (data.numeroTicket || data.numero_ticket || "").toString().trim();
 
   if (tipoTicket !== "NO APLICA" && !numeroTicket) {
@@ -2746,60 +2743,84 @@ function registrarValidacionTecnica(data) {
   const sede = datosCuadrilla.sede || usuarioRegistro.sede;
   const linkTelegram = obtenerLinkTelegramValidacion(sede);
 
-  hoja.appendRow([
-    id,
-    fecha,
-    hora,
-    sede,
-    usuarioRegistro.usuario,
-    cuadrilla,
-    tipoValidacion,
-    codigo,
-    tipoTicket,
-    numeroTicket,
-    ticketFinal,
-    dni,
-    motivo,
-    "PENDIENTE",
-    "",
-    "",
-    "",
-    "",
-    "",
-    "",
-    linkTelegram,
-    horaLimite,
-    origenOrden
-  ]);
-
-  const fila = hoja.getLastRow();
-  if (tipoValidacion === "RECABLEADO") {
-    hoja.getRange(fila, 22).setNumberFormat("dd/mm/yyyy hh:mm:ss");
+  // V309: evita que dos solicitudes simultáneas ocupen la misma fila y no
+  // confirma hasta comprobar que el ID quedó escrito en VALIDACION_TECNICA.
+  const bloqueo = LockService.getScriptLock();
+  if (!bloqueo.tryLock(10000)) {
+    throw new Error("El sistema está registrando otra solicitud. Intente nuevamente en unos segundos");
   }
 
-  return {
-    ok: true,
-    modulo: "VALIDACION_TECNICA",
-    accion: "REGISTRAR",
-    id,
-    fecha,
-    hora,
-    sede,
-    tecnico: usuarioRegistro.usuario,
-    cuadrilla,
-    tipoValidacion,
-    codigo,
-    tipoTicket,
-    numeroTicket,
-    ticketFinal,
-    dniCliente: dni,
-    motivoTecnico: motivo,
-    estado: "PENDIENTE",
-    resultadoFinal: "",
-    origenOrden,
-    linkTelegram,
-    horaLimite: tipoValidacion === "RECABLEADO" ? Utilities.formatDate(horaLimite, Session.getScriptTimeZone(), "dd/MM/yyyy HH:mm:ss") : ""
-  };
+  try {
+    if (existeValidacionTecnica(id)) {
+      throw new Error("Ya existe una validación registrada con este código y tipo: " + id);
+    }
+
+    const valores = [
+      id,
+      fecha,
+      hora,
+      sede,
+      usuarioRegistro.usuario,
+      cuadrilla,
+      tipoValidacion,
+      codigo,
+      tipoTicket,
+      numeroTicket,
+      ticketFinal,
+      dni,
+      motivo,
+      "PENDIENTE",
+      "",
+      "",
+      "",
+      "",
+      "",
+      "",
+      linkTelegram,
+      horaLimite,
+      origenOrden
+    ];
+    const fila = hoja.getLastRow() + 1;
+    hoja.getRange(fila, 1, 1, valores.length).setValues([valores]);
+
+    if (tipoValidacion === "RECABLEADO") {
+      hoja.getRange(fila, 22).setNumberFormat("dd/mm/yyyy hh:mm:ss");
+    }
+
+    SpreadsheetApp.flush();
+    const idConfirmado = hoja.getRange(fila, 1).getDisplayValue().toString().trim();
+    if (idConfirmado !== id || !existeValidacionTecnica(id)) {
+      throw new Error("No se pudo confirmar el registro en VALIDACION_TECNICA. Intente nuevamente");
+    }
+
+    return {
+      ok: true,
+      modulo: "VALIDACION_TECNICA",
+      accion: "REGISTRAR",
+      registroConfirmado: true,
+      filaRegistrada: fila,
+      id,
+      fecha,
+      hora,
+      sede,
+      tecnico: usuarioRegistro.usuario,
+      cuadrilla,
+      tipoValidacion,
+      codigo,
+      tipoTicket,
+      numeroTicket,
+      ticketFinal,
+      dniCliente: dni,
+      motivoTecnico: motivo,
+      estado: "PENDIENTE",
+      resultadoFinal: "",
+      origenOrden,
+      linkTelegram,
+      horaLimite: tipoValidacion === "RECABLEADO" ? Utilities.formatDate(horaLimite, Session.getScriptTimeZone(), "dd/MM/yyyy HH:mm:ss") : ""
+    };
+  } finally {
+    bloqueo.releaseLock();
+  }
 }
 
 function filaValidacionTecnicaAObjeto(fila) {
@@ -2854,6 +2875,8 @@ function listarValidacionTecnica(data) {
   for (let i = 1; i < datos.length; i++) {
     const item = filaValidacionTecnicaAObjeto(datos[i]);
     if (!registroCumpleAlcanceCentral(usuario, permisoValidacion, item)) continue;
+    if (data.id && normalizarTexto(data.id) !== normalizarTexto(item.id)) continue;
+    if (data.codigo && normalizarTexto(data.codigo) !== normalizarTexto(item.codigo)) continue;
     if (data.estado && normalizarTexto(data.estado) !== normalizarTexto(item.estado)) continue;
     if (data.tipoValidacion && normalizarTexto(data.tipoValidacion) !== normalizarTexto(item.tipoValidacion)) continue;
     if (data.sede && normalizarTexto(data.sede) !== normalizarTexto(item.sede)) continue;

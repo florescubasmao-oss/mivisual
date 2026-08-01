@@ -1,4 +1,4 @@
-// MI VISUAL - Módulo Validación Técnica V300 · Lectura segura GET
+// MI VISUAL - Módulo Validación Técnica V309 · Confirmación real y meses
 
 const API_VALIDACION_TECNICA = "https://script.google.com/macros/s/AKfycbzcbjCLweJNgZXDerdzmMN7Lwotc1G8NWdzoPkaLNGDivAgpYxDkq78xZwPRioSB4XY/exec";
 
@@ -111,6 +111,13 @@ function estiloValidacionTecnica(){
     .vt-group summary::after{content:"▼";font-size:11px;color:#64748b;transition:transform .2s ease}
     .vt-group[open] summary::after{transform:rotate(180deg)}
     .vt-group-body{padding:10px}
+    .vt-month-group{border:2px solid #cbd5e1;border-radius:17px;background:#fff;margin-top:12px;overflow:hidden;box-shadow:0 6px 16px rgba(15,23,42,.07)}
+    .vt-month-group>summary{cursor:pointer;list-style:none;padding:13px 15px;font-weight:900;color:#fff;display:flex;justify-content:space-between;align-items:center;background:linear-gradient(135deg,#1e3a8a,#2563eb)}
+    .vt-month-group>summary::-webkit-details-marker{display:none}
+    .vt-month-group>summary::after{content:"▼";font-size:11px;color:#dbeafe;transition:transform .2s ease}
+    .vt-month-group[open]>summary::after{transform:rotate(180deg)}
+    .vt-month-body{padding:10px;background:#f8fafc}
+    .vt-month-body .vt-group:first-child{margin-top:0}
     .vt-header-row{display:flex;justify-content:space-between;gap:12px;align-items:center}
     .vt-report-btn{background:#fff;color:#1d4ed8;box-shadow:none;border:1px solid rgba(255,255,255,.75);white-space:nowrap}
     .vt-modal-backdrop{position:fixed;inset:0;background:rgba(15,23,42,.58);z-index:10020;display:flex;align-items:center;justify-content:center;padding:14px}
@@ -395,6 +402,8 @@ async function guardarValidacionTecnica(btn){
             motivoTecnico: motivo
         });
         if(!r.ok) throw new Error(r.error || "No se pudo registrar");
+        if(!r.registroConfirmado) throw new Error("La API respondió, pero no confirmó la fila en VALIDACION_TECNICA.");
+        await confirmarRegistroValidacionTecnica(r.id, u.usuario);
         mostrarConfirmacionValidacionTecnica(r);
     }catch(e){
         alert("❌ " + e.message);
@@ -402,6 +411,24 @@ async function guardarValidacionTecnica(btn){
         ocultarCargandoValidacion();
         if(btn){ btn.disabled = false; btn.innerHTML = "Guardar solicitud"; }
     }
+}
+
+async function confirmarRegistroValidacionTecnica(id, usuario){
+    const pausas = [0, 350, 700];
+    for(let intento = 0; intento < pausas.length; intento++){
+        if(pausas[intento]){
+            await new Promise(resolve => setTimeout(resolve, pausas[intento]));
+        }
+        const r = await apiValidacionTecnica({
+            accion:"listarValidacionTecnica",
+            usuario,
+            id
+        });
+        if(r.ok && Array.isArray(r.validaciones) && r.validaciones.some(x => String(x.id || "").trim() === String(id || "").trim())){
+            return true;
+        }
+    }
+    throw new Error("La solicitud no pudo verificarse en la hoja. No se mostrará una confirmación falsa; pulse Guardar nuevamente.");
 }
 
 function safeValidacion(v){
@@ -659,7 +686,7 @@ function renderHistorialValidacionLocal(){
     histEl.innerHTML = resumen + consolidado + contenido;
 }
 
-function renderHistorialAgrupadoValidacion(lista){
+function renderTiposHistorialValidacion(lista){
     const orden = ["RECABLEADO", "VTR", "GAR", "OTRO"];
     const etiquetas = {RECABLEADO:"RECABLEADO", VTR:"VTR", GAR:"GAR", OTRO:"OTRO"};
     const grupos = {};
@@ -682,6 +709,39 @@ function renderHistorialAgrupadoValidacion(lista){
                 </div>
             </details>`;
         }).join("");
+}
+
+function datosMesHistorialVT(item){
+    const fecha = convertirFechaInformeVT(item && item.fechaRegistro);
+    if(!fecha) return {clave:"0000-00", etiqueta:"SIN FECHA"};
+    const meses = ["ENERO","FEBRERO","MARZO","ABRIL","MAYO","JUNIO","JULIO","AGOSTO","SEPTIEMBRE","OCTUBRE","NOVIEMBRE","DICIEMBRE"];
+    const anio = fecha.getFullYear();
+    const mes = fecha.getMonth();
+    return {
+        clave:`${anio}-${String(mes + 1).padStart(2,"0")}`,
+        etiqueta:`${meses[mes]} ${anio}`
+    };
+}
+
+function renderHistorialAgrupadoValidacion(lista){
+    if(!Array.isArray(lista) || !lista.length){
+        return `<div class="vt-sub">No hay registros para mostrar.</div>`;
+    }
+
+    const grupos = {};
+    lista.forEach(item => {
+        const mes = datosMesHistorialVT(item);
+        if(!grupos[mes.clave]) grupos[mes.clave] = {etiqueta:mes.etiqueta, items:[]};
+        grupos[mes.clave].items.push(item);
+    });
+
+    return Object.keys(grupos).sort().reverse().map((clave, indice) => {
+        const grupo = grupos[clave];
+        return `<details class="vt-month-group" ${indice === 0 ? "open" : ""}>
+            <summary><span>📅 ${grupo.etiqueta} (${grupo.items.length})</span></summary>
+            <div class="vt-month-body">${renderTiposHistorialValidacion(grupo.items)}</div>
+        </details>`;
+    }).join("");
 }
 
 function renderResumenValidaciones(lista){
