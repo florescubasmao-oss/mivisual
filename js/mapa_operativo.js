@@ -185,6 +185,38 @@ function moFmtHora(d){return d?`${String(d.getHours()).padStart(2,'0')}:${String
 function moFmtFechaHoraValor(v){const d=moFechaExcel(v);if(!d)return moNorm(v);const f=moFmtFecha(d),h=moFmtHora(d);return h&&h!=='00:00'?`${f} ${h}`:f}
 function moCoord(v){const t=moNorm(v).replace(/[()]/g,'').replace(/;/g,',');const m=t.match(/(-?\d+(?:\.\d+)?)\s*,\s*(-?\d+(?:\.\d+)?)/);return m?[Number(m[1]),Number(m[2])]:[null,null]}
 function moValor(row,map,...names){for(const n of names){const i=map[moNormCab(n)];if(i!==undefined&&row[i]!==undefined&&row[i]!==null)return row[i]}return ''}
+function moCoordCto(v){
+  const numeros=moNorm(v).match(/-?\d+(?:\.\d+)?/g)||[];
+  if(numeros.length<2)return '';
+  const lat=Number(numeros[0]),lng=Number(numeros[1]);
+  return Number.isFinite(lat)&&Number.isFinite(lng)?`${lat},${lng}`:'';
+}
+function moExtraerDatosCto(texto){
+  const campos={};
+  moNorm(texto).split(';').forEach(segmento=>{
+    const partes=segmento.split('/');
+    if(partes.length<3)return;
+    const clave=moNormCab(partes.shift());
+    partes.shift();
+    const valor=moNorm(partes.join('/'));
+    if(clave&&valor&&!campos[clave])campos[clave]=valor;
+  });
+  return {
+    cto1:moNorm(campos.CTO1),
+    coordenadaCto1:moCoordCto(campos.COORDENADACTO1),
+    cto2:moNorm(campos.CTO2),
+    coordenadaCto2:moCoordCto(campos.COORDENADACTO2),
+    cto3:moNorm(campos.CTO3),
+    coordenadaCto3:moCoordCto(campos.COORDENADACTO3),
+    cto:moNorm(campos.CTO),
+    puerto:moNorm(campos.PUERTO)
+  };
+}
+function moDatosComplementariosFila(row,map){
+  const indiceGeo=map.GEOREFERENCIA;
+  if(indiceGeo!==undefined&&row[indiceGeo+1]!==undefined)return moNorm(row[indiceGeo+1]);
+  return moNorm(moValor(row,map,'Datos CTO','Información CTO','Informacion CTO','Detalle CTO'));
+}
 async function moLeerArchivo(){
   const f=moArchivoSeleccionado||document.getElementById('moArchivo')?.files?.[0],msg=document.getElementById('moImportMsg'),btn=document.getElementById('moBtnImportar');
   if(!f){msg.className='mo-msg mo-error';msg.textContent='Arrastre o seleccione un archivo Excel.';return}
@@ -196,9 +228,29 @@ async function moLeerArchivo(){
     }
     if(headerIndex<0)throw new Error('No se encontró la fila de encabezados con OrdenId.');
     const headers=(rows[headerIndex]||[]).map(moNormCab),map={};headers.forEach((h,i)=>{if(h)map[h]=i});const out=[];
-    rows.slice(headerIndex+1).forEach(r=>{const orden=moValor(r,map,'OrdenId','ORDEN_ID');if(!moNorm(orden))return;const fs=moFechaExcel(moValor(r,map,'F.Soli','FSOLI','FECHA SOLICITUD'));let dir=moNorm(moValor(r,map,'Direccion'));let dir2=moNorm(moValor(r,map,'Direccion1'));if(dir&&dir2&&moNormCab(dir)===moNormCab(dir2))dir2='';if(!dir&&dir2){dir=dir2;dir2=''}const [lat,lng]=moCoord(moValor(r,map,'Georeferencia','GEOREFERENCIA'));
-      out.push({ordenId:moNorm(orden),tipoTrabajo:moNorm(moValor(r,map,'TipoTraba','TIPO_TRABAJO')),fechaSolicitud:moFmtFecha(fs),horaSolicitud:moFmtHora(fs),cliente:moNorm(moValor(r,map,'Cliente')),tipo:moNorm(moValor(r,map,'Tipo')),productoOrigen:moNorm(moValor(r,map,'Producto')),cuadrilla:moNorm(moValor(r,map,'Cuadrilla')),estado:moNorm(moValor(r,map,'Estado')),direccion:dir,direccionAdicional:dir2,fechaUltimoEstado:moFmtFechaHoraValor(moValor(r,map,'FechaUltimoEstado','Fecha Ultimo Estado')),productoServicio:moNorm(moValor(r,map,'IdenServi')),region:moNorm(moValor(r,map,'Region')),codigoCliente:moNorm(moValor(r,map,'CodiSeguiClien')),numeroDocumento:moNorm(moValor(r,map,'Número Documento','Numero Documento')),telefonoMovil:moNorm(moValor(r,map,'TeleMovilNume')),telefonoFijo:moNorm(moValor(r,map,'TeleFijoNume')),fechaInicioVisita:moFmtFechaHoraValor(moValor(r,map,'FechaIniVisi')),fechaFinVisita:moFmtFechaHoraValor(moValor(r,map,'FechaFinVisi')),motivoCancelacion:moNorm(moValor(r,map,'Motivo Cancelación','Motivo Cancelacion')),motivoFinalizacion:moNorm(moValor(r,map,'Motivo Finalización','Motivo Finalizacion')),motivoAnulacion:moNorm(moValor(r,map,'Motivo Anulación','Motivo Anulacion')),latitud:lat,longitud:lng,detalle:moNorm(moValor(r,map,'Detalle','UNNAMED','Motivo Regestión','Motivo Regestion'))});});
-    if(!out.length)throw new Error('No se encontraron filas con OrdenId.');moImportacion=out;btn.disabled=false;const conGeo=out.filter(x=>Number.isFinite(x.latitud)&&Number.isFinite(x.longitud)).length;msg.className='mo-msg mo-ok';msg.textContent=`Archivo leído: ${out.length} órdenes; ${conGeo} con georreferencia válida. El historial existente se conservará y las coincidencias del mismo día se actualizarán.`;
+    rows.slice(headerIndex+1).forEach(r=>{
+      const orden=moValor(r,map,'OrdenId','ORDEN_ID');if(!moNorm(orden))return;
+      const fs=moFechaExcel(moValor(r,map,'F.Soli','FSOLI','FECHA SOLICITUD'));
+      let dir=moNorm(moValor(r,map,'Direccion')),dir2=moNorm(moValor(r,map,'Direccion1'));
+      if(dir&&dir2&&moNormCab(dir)===moNormCab(dir2))dir2='';
+      if(!dir&&dir2){dir=dir2;dir2=''}
+      const [lat,lng]=moCoord(moValor(r,map,'Georeferencia','GEOREFERENCIA'));
+      const datosCto=moExtraerDatosCto(moDatosComplementariosFila(r,map));
+      out.push(Object.assign({
+        ordenId:moNorm(orden),tipoTrabajo:moNorm(moValor(r,map,'TipoTraba','TIPO_TRABAJO')),fechaSolicitud:moFmtFecha(fs),horaSolicitud:moFmtHora(fs),
+        cliente:moNorm(moValor(r,map,'Cliente')),tipo:moNorm(moValor(r,map,'Tipo')),productoOrigen:moNorm(moValor(r,map,'Producto')),
+        cuadrilla:moNorm(moValor(r,map,'Cuadrilla')),estado:moNorm(moValor(r,map,'Estado')),direccion:dir,direccionAdicional:dir2,
+        fechaUltimoEstado:moFmtFechaHoraValor(moValor(r,map,'FechaUltimoEstado','Fecha Ultimo Estado')),productoServicio:moNorm(moValor(r,map,'IdenServi')),
+        region:moNorm(moValor(r,map,'Region')),codigoCliente:moNorm(moValor(r,map,'CodiSeguiClien')),
+        numeroDocumento:moNorm(moValor(r,map,'Número Documento','Numero Documento')),telefonoMovil:moNorm(moValor(r,map,'TeleMovilNume')),
+        telefonoFijo:moNorm(moValor(r,map,'TeleFijoNume')),fechaInicioVisita:moFmtFechaHoraValor(moValor(r,map,'FechaIniVisi')),
+        fechaFinVisita:moFmtFechaHoraValor(moValor(r,map,'FechaFinVisi')),motivoCancelacion:moNorm(moValor(r,map,'Motivo Cancelación','Motivo Cancelacion')),
+        motivoFinalizacion:moNorm(moValor(r,map,'Motivo Finalización','Motivo Finalizacion')),
+        motivoAnulacion:moNorm(moValor(r,map,'Motivo Anulación','Motivo Anulacion')),latitud:lat,longitud:lng,
+        detalle:moNorm(moValor(r,map,'Detalle','Motivo Regestión','Motivo Regestion'))
+      },datosCto));
+    });
+    if(!out.length)throw new Error('No se encontraron filas con OrdenId.');moImportacion=out;btn.disabled=false;const conGeo=out.filter(x=>Number.isFinite(x.latitud)&&Number.isFinite(x.longitud)).length;const conCto=out.filter(x=>x.cto||x.puerto||x.cto1||x.cto2||x.cto3).length;msg.className='mo-msg mo-ok';msg.textContent=`Archivo leído: ${out.length} órdenes; ${conGeo} con georreferencia válida y ${conCto} con datos CTO. El historial existente se conservará y las coincidencias del mismo día se actualizarán.`;
   }catch(e){moImportacion=[];btn.disabled=true;msg.className='mo-msg mo-error';msg.textContent=e.message}
 }
 async function moRegistrarImportacion(){
@@ -206,7 +258,28 @@ async function moRegistrarImportacion(){
   try{const d=await moApi({accion:'importarMapaOperativo',usuario:moUsuario(),registros:moImportacion});msg.className='mo-msg mo-ok';msg.textContent=`Registro terminado: ${d.nuevos} nuevos, ${d.actualizados} actualizados, ${d.repetidosCarga||0} repetidos consolidados y ${d.omitidos||0} omitidos.${d.consolidadosExistentes?` Se depuraron ${d.consolidadosExistentes} duplicados anteriores.`:''}`;moPintarUltimaActualizacion(d.ultimaActualizacionTexto);moImportacion=[];await moCargarCatalogos()}catch(e){msg.className='mo-msg mo-error';msg.textContent=e.message;btn.disabled=false}
 }
 function moMotivo(x){return x.motivoCancelacion||x.motivoFinalizacion||x.motivoAnulacion||''}
-function moPopup(x){const fields=[['Fecha',x.fechaSolicitud],['Hora',typeof formatearHoraPeruApp==='function'?formatearHoraPeruApp(x.horaSolicitud,false):x.horaSolicitud],['Cliente',x.cliente],['Tipo',x.tipo],['Producto',x.productoServicio||x.productoOrigen],['Dirección',x.direccion],['Dirección adicional',x.direccionAdicional],['Región',x.region],['Código de cliente',x.codigoCliente],['Documento',x.numeroDocumento],['Teléfono móvil',x.telefonoMovil],['Teléfono fijo',x.telefonoFijo],['Inicio de visita',typeof formatearFechaHoraTextoPeruApp==='function'?formatearFechaHoraTextoPeruApp(x.fechaInicioVisita,false):x.fechaInicioVisita],['Fin de visita',typeof formatearFechaHoraTextoPeruApp==='function'?formatearFechaHoraTextoPeruApp(x.fechaFinVisita,false):x.fechaFinVisita],['Motivo',moMotivo(x)],['Detalle',x.detalle]].filter(y=>moNorm(y[1]));const lat=Number(x.latitud),lng=Number(x.longitud);const ruta=Number.isFinite(lat)&&Number.isFinite(lng)?`https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(lat+','+lng)}`:'';return `<div class="mo-popup"><div class="mo-main-row"><b>Tipo de trabajo</b><span>${moEscape(x.tipoTrabajo)}</span></div><div class="mo-main-row"><b>Cuadrilla</b><span>${moEscape(x.cuadrilla)}</span></div><div class="mo-main-row"><b>Estado</b><span>${moEscape(x.estado)}</span></div><div class="mo-main-row"><b>Código</b><span>${moEscape(x.ordenId)}</span></div><details class="mo-detalle"><summary>Detalle</summary><div class="mo-detalle-grid">${fields.map(y=>`<b>${moEscape(y[0])}</b><span>${moEscape(y[1])}</span>`).join('')}</div></details>${ruta?`<a class="mo-como-llegar" href="${ruta}" target="_blank" rel="noopener noreferrer">📍 Cómo llegar en Google Maps</a>`:''}</div>`}
+function moEsInstalacionCto(tipoTrabajo){return ['INSTALACION','INSTALACIONPOSIBLEFRAUDE'].includes(moNormCab(tipoTrabajo))}
+function moHtmlCoordenadaCto(coordenada){
+  const [lat,lng]=moCoord(coordenada);
+  if(!Number.isFinite(lat)||!Number.isFinite(lng))return '';
+  const valor=`${lat},${lng}`;
+  return `<span class="mo-cto-coord">${moEscape(valor)}</span><a class="mo-cto-link" href="https://www.google.com/maps?q=${encodeURIComponent(valor)}" target="_blank" rel="noopener noreferrer">Ver en mapa</a>`;
+}
+function moCtoDetalleHtml(x){
+  const instalacion=moEsInstalacionCto(x.tipoTrabajo),filas=[];
+  if(instalacion){
+    [1,2,3].forEach(n=>{
+      const rotulo=moNorm(x[`cto${n}`]),coordenada=moNorm(x[`coordenadaCto${n}`]);
+      if(!rotulo&&!coordenada)return;
+      filas.push(`<div class="mo-cto-item"><b>CTO ${n}</b><span>${moEscape(rotulo||'Sin rótulo')}</span>${moHtmlCoordenadaCto(coordenada)}</div>`);
+    });
+    if(!filas.length&&moNorm(x.cto))filas.push(`<div class="mo-cto-item"><b>CTO</b><span>${moEscape(x.cto)}</span>${moNorm(x.puerto)?`<small>Puerto ${moEscape(x.puerto)}</small>`:''}</div>`);
+  }else if(moNorm(x.cto)||moNorm(x.puerto)){
+    filas.push(`<div class="mo-cto-item"><b>CTO</b><span>${moEscape(x.cto||'Sin rótulo')}</span>${moNorm(x.puerto)?`<small>Puerto ${moEscape(x.puerto)}</small>`:''}</div>`);
+  }
+  return filas.length?`<details class="mo-cto-detalle"><summary>Ver CTO del cliente</summary><div class="mo-cto-list">${filas.join('')}</div></details>`:'';
+}
+function moPopup(x){const fields=[['Fecha',x.fechaSolicitud],['Hora',typeof formatearHoraPeruApp==='function'?formatearHoraPeruApp(x.horaSolicitud,false):x.horaSolicitud],['Cliente',x.cliente],['Tipo',x.tipo],['Producto',x.productoServicio||x.productoOrigen],['Dirección',x.direccion],['Dirección adicional',x.direccionAdicional],['Región',x.region],['Código de cliente',x.codigoCliente],['Documento',x.numeroDocumento],['Teléfono móvil',x.telefonoMovil],['Teléfono fijo',x.telefonoFijo],['Inicio de visita',typeof formatearFechaHoraTextoPeruApp==='function'?formatearFechaHoraTextoPeruApp(x.fechaInicioVisita,false):x.fechaInicioVisita],['Fin de visita',typeof formatearFechaHoraTextoPeruApp==='function'?formatearFechaHoraTextoPeruApp(x.fechaFinVisita,false):x.fechaFinVisita],['Motivo',moMotivo(x)],['Detalle',x.detalle]].filter(y=>moNorm(y[1]));const lat=Number(x.latitud),lng=Number(x.longitud);const ruta=Number.isFinite(lat)&&Number.isFinite(lng)?`https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(lat+','+lng)}`:'';return `<div class="mo-popup"><div class="mo-main-row"><b>Tipo de trabajo</b><span>${moEscape(x.tipoTrabajo)}</span></div><div class="mo-main-row"><b>Cuadrilla</b><span>${moEscape(x.cuadrilla)}</span></div><div class="mo-main-row"><b>Estado</b><span>${moEscape(x.estado)}</span></div><div class="mo-main-row"><b>Código</b><span>${moEscape(x.ordenId)}</span></div><details class="mo-detalle"><summary>Detalle</summary><div class="mo-detalle-grid">${fields.map(y=>`<b>${moEscape(y[0])}</b><span>${moEscape(y[1])}</span>`).join('')}</div>${moCtoDetalleHtml(x)}</details>${ruta?`<a class="mo-como-llegar" href="${ruta}" target="_blank" rel="noopener noreferrer">📍 Cómo llegar en Google Maps</a>`:''}</div>`}
 function moColorEstado(estado){
   const e=moNormCab(estado);
   if(e.includes('FINALIZ'))return '#16a34a';

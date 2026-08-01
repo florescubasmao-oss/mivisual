@@ -509,8 +509,6 @@ body{background:linear-gradient(180deg,var(--mv4-bg),var(--mv4-bg2));font-family
 .obs-ape{background:linear-gradient(135deg,#a855f7,#6d28d9);}
 .obs-subsa{background:linear-gradient(135deg,#22c55e,#15803d);}
 .obs-money{background:linear-gradient(135deg,#14b8a6,#0f766e);}
-.obs-money-win{background:linear-gradient(135deg,#14b8a6,#0f766e);}
-.obs-money-visual{background:linear-gradient(135deg,#f59e0b,#b45309);}
 .obs-resumen-error{grid-column:1/-1;margin:0;}
 @media(max-width:760px){.obs-resumen-kpis{grid-template-columns:repeat(2,1fr);gap:8px}.obs-kpi{min-height:64px;padding:11px 8px}.obs-kpi b{font-size:20px}.obs-kpi span{font-size:10px}}
 @media(max-width:390px){.obs-resumen-kpis{grid-template-columns:1fr 1fr}.obs-kpi b{font-size:18px}}
@@ -706,18 +704,14 @@ body{background:linear-gradient(180deg,var(--mv4-bg),var(--mv4-bg2));font-family
 .obs-sede-mini{background:#ffffff;border:1px solid #dbe4ee;border-left:4px solid #0f766e;border-radius:11px;padding:8px 10px;box-shadow:0 4px 10px rgba(15,23,42,.06);min-width:0;}
 .obs-sede-mini b{display:block;color:#0f172a;font-size:12px;line-height:1.15;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
 .obs-sede-mini span{display:block;color:#475569;font-size:10px;margin-top:3px;}
-.obs-sede-mini small{display:block;font-size:10px;font-weight:800;margin-top:2px;}
-.obs-sede-impactos{display:flex;gap:3px 8px;align-items:center;justify-content:space-between;flex-wrap:wrap;margin-top:2px;}
-.obs-sede-impacto-win{color:#047857;}
-.obs-sede-impacto-visual{color:#b45309;}
+.obs-sede-mini small{display:block;color:#047857;font-size:11px;font-weight:800;margin-top:2px;}
 .obs-sede-lineal{font-size:12px;font-weight:800;color:#075985;background:#e0f2fe;border:1px solid #bae6fd;border-radius:999px;padding:6px 10px;}
 @media(max-width:520px){
   .obs-resumen-sedes{grid-template-columns:repeat(3,minmax(0,1fr));gap:5px;}
   .obs-sede-mini{padding:7px 6px;border-left-width:3px;}
   .obs-sede-mini b{font-size:10px;}
   .obs-sede-mini span{font-size:9px;}
-  .obs-sede-mini small{font-size:9px;}
-  .obs-sede-impactos{display:grid;gap:1px;}
+  .obs-sede-mini small{font-size:10px;}
   .obs-sede-lineal{display:inline-block!important;width:max-content;max-width:100%;}
 }
 
@@ -917,14 +911,10 @@ body{background:linear-gradient(180deg,var(--mv4-bg),var(--mv4-bg2));font-family
 
 
 /* MI VISUAL V199 - Filtros combinados de Jefatura por sede, indicador y cuadrilla */
-.mv199-filtros-jefatura{margin:12px 0;padding:12px;background:#132845;border:1px solid rgba(255,255,255,.09);border-radius:14px;display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;color:#fff}
+.mv199-filtros-jefatura{margin:12px 0;padding:12px;background:#132845;border:1px solid rgba(255,255,255,.09);border-radius:14px;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;color:#fff}
 .mv199-campo-filtro{display:flex;flex-direction:column;gap:6px;min-width:0}
 .mv199-campo-filtro label{font-size:12px;color:#dbeafe;font-weight:900}
 .mv199-campo-filtro select{width:100%;min-height:42px;border-radius:10px;border:1px solid #3b82f6;background:#fff;color:#0f172a;padding:8px 10px;font-weight:800;overflow:hidden;text-overflow:ellipsis}
-.mv276-periodo-filtro{display:flex;flex-direction:column;gap:6px;min-width:0;margin:8px 0 12px;padding:10px 12px;background:#132845;border:1px solid rgba(255,255,255,.12);border-radius:12px;color:#fff}
-.mv276-periodo-filtro label{font-size:12px;color:#dbeafe;font-weight:900}
-.mv276-periodo-filtro select{width:100%;min-height:42px;border-radius:10px;border:1px solid #3b82f6;background:#fff;color:#0f172a;padding:8px 10px;font-weight:800}
-.mv199-filtros-jefatura>.mv276-periodo-filtro{margin:0}
 .mv199-listado-indicador,.mv199-resumen-sede-seleccionada{margin-top:14px;padding:14px;background:#eef5ff;color:#0f172a;border-radius:15px;border:1px solid #cbd5e1}
 .mv199-listado-cabecera{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:12px}
 .mv199-listado-cabecera b{display:block;font-size:17px}
@@ -1067,6 +1057,15 @@ body{background:linear-gradient(180deg,var(--mv4-bg),var(--mv4-bg2));font-family
 .mo-como-llegar:active{
   transform:translateY(0);
 }
+
+/* V302 - Datos de CTO en Mapa Operativo */
+.mo-cto-detalle{margin-top:8px;border-top:1px solid #dbe5ef}
+.mo-cto-detalle>summary{color:#0f766e!important;padding:9px 0 4px!important}
+.mo-cto-list{display:grid;gap:7px;padding-top:5px}
+.mo-cto-item{display:grid;grid-template-columns:68px 1fr;gap:3px 7px;padding:8px;border:1px solid #cfe3df;border-radius:9px;background:#f0fdfa;font-size:12px}
+.mo-cto-item>b{color:#0f766e}.mo-cto-item>span{font-weight:800;color:#0f172a;overflow-wrap:anywhere}
+.mo-cto-item>small,.mo-cto-item>.mo-cto-link{grid-column:2;color:#475569;overflow-wrap:anywhere}
+.mo-cto-item>.mo-cto-link{color:#087cc1;font-weight:800;text-decoration:none}
 
 /* =====================================================
    V213 - Menú categorizado exclusivo para Jefatura
@@ -1363,7 +1362,7 @@ body{background:linear-gradient(180deg,var(--mv4-bg),var(--mv4-bg2));font-family
 .mv239-filtro-sede-ranking{margin:12px 0 18px;padding:12px;background:#132845;border:1px solid rgba(255,255,255,.10);border-radius:14px;display:grid;grid-template-columns:minmax(150px,auto) minmax(220px,1fr);align-items:center;gap:12px;color:#fff}
 .mv239-filtro-sede-ranking label{font-size:13px;color:#dbeafe;font-weight:900}
 .mv239-filtro-sede-ranking select{width:100%;min-height:42px;border-radius:10px;border:1px solid #3b82f6;background:#fff;color:#0f172a;padding:8px 10px;font-weight:800}
-.mv199-filtros-jefatura.mv239-filtros-supervisor{grid-template-columns:repeat(3,minmax(0,1fr))}
+.mv199-filtros-jefatura.mv239-filtros-supervisor{grid-template-columns:repeat(2,minmax(0,1fr))}
 @media(max-width:700px){
   .mv239-filtro-sede-ranking{grid-template-columns:1fr;gap:7px}
   .mv199-filtros-jefatura.mv239-filtros-supervisor{grid-template-columns:1fr}
@@ -1779,6 +1778,12 @@ body{background:linear-gradient(180deg,var(--mv4-bg),var(--mv4-bg2));font-family
 .po-result-top>span{background:#dbeafe;color:#1e3a8a;border-radius:999px;padding:7px 11px;font-size:12px;font-weight:950;}
 .po-text{width:100%;min-height:440px;resize:vertical;box-sizing:border-box;border-radius:13px;border:1px solid #b8c7d9;background:#0f1f35;color:#fff;padding:15px;font-family:Arial,sans-serif;font-size:14px;line-height:1.45;white-space:pre-wrap;}
 .po-actions{display:flex;flex-wrap:wrap;gap:9px;margin-top:11px;}
+.po-cto-panel{margin-top:12px;border:1px solid #99d5ca;border-radius:13px;background:#ecfdf5;padding:13px;color:#0f172a;}
+.po-cto-panel h3{margin:0 0 9px;color:#0f766e;font-size:16px;}
+.po-cto-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:9px;}
+.po-cto-item{display:grid;gap:5px;align-content:start;border:1px solid #b9ddd6;border-radius:11px;background:#fff;padding:11px;min-width:0;}
+.po-cto-item b{color:#0f766e;font-size:13px;}.po-cto-item span{font-weight:900;overflow-wrap:anywhere;}.po-cto-item small{color:#475569;overflow-wrap:anywhere;}
+.po-cto-item a{display:inline-flex;justify-content:center;margin-top:3px;border-radius:8px;background:#087cc1;color:#fff!important;padding:8px 9px;font-size:12px;font-weight:900;text-decoration:none!important;}
 
 @media(max-width:620px){
   .mv271-plantilla-btn{right:12px;width:42px;height:42px;border-radius:9px;}
@@ -1793,6 +1798,7 @@ body{background:linear-gradient(180deg,var(--mv4-bg),var(--mv4-bg2));font-family
   .po-text{min-height:390px;font-size:13px;padding:12px;}
   .po-actions{display:grid;grid-template-columns:1fr 1fr;}
   .po-actions button{min-height:44px;padding:9px 7px;font-size:12px;}
+  .po-cto-grid{grid-template-columns:1fr;}
 }
 
 /* V274 - Lectura al corte y proyección diaria de producción valorizada */
@@ -1803,46 +1809,3 @@ body{background:linear-gradient(180deg,var(--mv4-bg),var(--mv4-bg2));font-family
 .ae-proyeccion-tabla-wrap{overflow:auto;border:1px solid #dbe4e8;border-radius:12px}.ae-proyeccion-tabla{width:100%;min-width:860px;border-collapse:collapse;background:#fff;color:#0f172a}.ae-proyeccion-tabla th,.ae-proyeccion-tabla td{padding:10px 12px;border-bottom:1px solid #e2e8f0;text-align:right;white-space:nowrap}.ae-proyeccion-tabla th{background:#e2e8f0;font-size:12px;color:#0f2742}.ae-proyeccion-tabla th:first-child,.ae-proyeccion-tabla td:first-child{text-align:left}.ae-proyeccion-tabla tbody tr:hover{background:#f8fafc}
 @media(max-width:900px){.ae-corte-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(max-width:720px){.ae-corte-bloque{padding:11px}.ae-corte-titulo{display:block}.ae-corte-titulo small{display:block;margin-top:5px}.ae-corte-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:7px}.ae-corte-kpi{padding:9px}.ae-corte-kpi strong{font-size:16px}.ae-corte-lectura{grid-template-columns:1fr}.ae-proyeccion-tabla{min-width:800px}}
-
-/* V280 - Observaciones: filtros cerrados al ingresar */
-.obs-panel-filtros{
-  margin:12px 0;
-  border:1px solid rgba(96,165,250,.45);
-  border-radius:13px;
-  background:#0f2747;
-  overflow:hidden;
-  box-shadow:0 6px 16px rgba(0,0,0,.16);
-}
-.obs-panel-filtros>summary{
-  list-style:none;
-  cursor:pointer;
-  display:flex;
-  align-items:center;
-  justify-content:space-between;
-  gap:12px;
-  padding:12px 15px;
-  color:#fff;
-  font-size:14px;
-  font-weight:900;
-  user-select:none;
-}
-.obs-panel-filtros>summary::-webkit-details-marker{display:none;}
-.obs-panel-filtros-flecha{font-size:18px;line-height:1;transition:transform .2s ease;}
-.obs-panel-filtros[open] .obs-panel-filtros-flecha{transform:rotate(180deg);}
-.obs-panel-filtros .obs-filtros{
-  margin:0;
-  padding:4px 12px 2px;
-  border-top:1px solid rgba(148,163,184,.28);
-  background:#0b213d;
-}
-
-/* V282 - Trabajos diarios por cuadrilla */
-.mv282-panel{margin-top:14px;background:#f8fafc;color:#0f172a;border-radius:18px;padding:15px;box-shadow:0 10px 24px rgba(0,0,0,.18)}
-.mv282-titulo{display:flex;align-items:center;justify-content:space-between;gap:12px}.mv282-titulo b{display:block;color:#0f2742;font-size:16px}.mv282-titulo span{display:block;margin-top:4px;color:#64748b;font-size:12px;font-weight:700;line-height:1.35}
-.mv282-consulta{display:grid;grid-template-columns:minmax(0,1fr) 190px;gap:10px;align-items:end;margin-top:13px}.mv282-consulta label{display:grid;gap:6px;color:#334155;font-size:12px;font-weight:950;text-transform:uppercase}.mv282-consulta input{min-height:45px;border:1px solid #b8c7d9;border-radius:11px;padding:9px 11px;background:#fff;color:#0f172a;font-size:15px;font-weight:850;box-sizing:border-box}.mv282-consulta button{min-height:45px;border:0;border-radius:11px;padding:10px 13px;background:#087cc1;color:#fff;font-weight:950;cursor:pointer}.mv282-consulta button:disabled{opacity:.45;cursor:not-allowed}
-.mv282-ayuda,.mv282-aviso{margin-top:12px;border-radius:11px;padding:11px 12px;font-size:12px;font-weight:750;line-height:1.4}.mv282-ayuda{background:#e0f2fe;color:#075985}.mv282-aviso{background:#fff7ed;border:1px solid #fed7aa;color:#9a3412}
-.mv282-resultado{margin-top:12px}.mv282-resultado-cabecera{display:flex;justify-content:space-between;align-items:flex-start;gap:10px;margin-bottom:10px}.mv282-resultado-cabecera b{display:block;color:#0f2742;font-size:17px}.mv282-resultado-cabecera span{display:block;margin-top:3px;color:#64748b;font-size:12px;font-weight:750}
-.mv282-resumen-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px}.mv282-resumen-grid>div{background:#0f2742!important;min-height:72px!important;padding:10px!important}.mv282-resumen-grid>div>div:nth-child(2){font-size:19px!important}
-.mv282-lista{display:grid;gap:10px;margin-top:12px}.mv282-trabajo-card{background:#fff;border:1px solid #d9e2ec;border-left:4px solid #0ea5e9;border-radius:13px;padding:12px;box-shadow:0 5px 14px rgba(15,23,42,.06)}.mv282-trabajo-head{display:flex;align-items:flex-start;justify-content:space-between;gap:10px}.mv282-trabajo-head small{display:block;color:#64748b;font-size:10px;font-weight:950}.mv282-trabajo-head b{display:block;margin-top:3px;color:#0f172a;font-size:13px;line-height:1.3}.mv282-estado{flex:0 0 auto;border-radius:999px;padding:6px 9px;font-size:10px;font-weight:950}.mv282-estado.finalizada{background:#dcfce7;color:#166534}.mv282-estado.cancelada{background:#fee2e2;color:#991b1b}.mv282-estado.reprogramada{background:#fef3c7;color:#92400e}.mv282-estado.regestion{background:#e0e7ff;color:#3730a3}.mv282-estado.otro{background:#e2e8f0;color:#334155}
-.mv282-datos-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:7px;margin-top:11px}.mv282-datos-grid>div{min-width:0;background:#f1f5f9;border-radius:9px;padding:8px}.mv282-datos-grid span,.mv282-datos-grid b{display:block}.mv282-datos-grid span{color:#64748b;font-size:10px;font-weight:850}.mv282-datos-grid b{margin-top:3px;color:#0f172a;font-size:12px;overflow-wrap:anywhere}.mv282-trabajo-pie{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:10px;padding-top:9px;border-top:1px solid #e2e8f0;color:#475569;font-size:11px;font-weight:800}.mv282-trabajo-pie b{color:#0369a1;font-size:14px}
-@media(max-width:720px){.mv282-panel{padding:12px;border-radius:16px}.mv282-consulta{grid-template-columns:1fr}.mv282-resumen-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.mv282-datos-grid{grid-template-columns:1fr}.mv282-trabajo-head{display:block}.mv282-estado{display:inline-block;margin-top:8px}}

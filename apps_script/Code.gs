@@ -8132,6 +8132,11 @@ function agregarComentarioReclamo(data){
 const HOJA_MAPA_OPERATIVO = "MAPA_ORDENES";
 const PROPIEDAD_MAPA_ULTIMA_ACTUALIZACION = "MAPA_OPERATIVO_ULTIMA_ACTUALIZACION";
 const ZONA_HORARIA_MAPA_OPERATIVO = "America/Lima";
+const COLUMNAS_MAPA_OPERATIVO = 36;
+const ENCABEZADOS_CTO_MAPA_OPERATIVO = [
+  "CTO_1","COORDENADA_CTO_1","CTO_2","COORDENADA_CTO_2",
+  "CTO_3","COORDENADA_CTO_3","CTO","PUERTO"
+];
 
 function registrarUltimaActualizacionMapaOperativo(fecha) {
   try {
@@ -8183,7 +8188,9 @@ function encabezadoMapaOperativo() {
     "PRODUCTO_ORIGEN","CUADRILLA","ESTADO","DIRECCION","DIRECCION_ADICIONAL","FECHA_ULTIMO_ESTADO",
     "PRODUCTO_SERVICIO","REGION","CODIGO_CLIENTE","NUMERO_DOCUMENTO","TELEFONO_MOVIL","TELEFONO_FIJO",
     "FECHA_FIN_VISITA","FECHA_INICIO_VISITA","MOTIVO_CANCELACION","MOTIVO_FINALIZACION","MOTIVO_ANULACION",
-    "LATITUD","LONGITUD","DETALLE","FECHA_IMPORTACION","USUARIO_IMPORTACION"
+    "LATITUD","LONGITUD","DETALLE","FECHA_IMPORTACION","USUARIO_IMPORTACION",
+    "CTO_1","COORDENADA_CTO_1","CTO_2","COORDENADA_CTO_2",
+    "CTO_3","COORDENADA_CTO_3","CTO","PUERTO"
   ]];
 }
 
@@ -8191,10 +8198,12 @@ function asegurarHojaMapaOperativo() {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
   let hoja = ss.getSheetByName(HOJA_MAPA_OPERATIVO);
   if (!hoja) hoja = ss.insertSheet(HOJA_MAPA_OPERATIVO);
-  if (hoja.getMaxColumns() < 28) hoja.insertColumnsAfter(hoja.getMaxColumns(), 28 - hoja.getMaxColumns());
+  if (hoja.getMaxColumns() < COLUMNAS_MAPA_OPERATIVO) hoja.insertColumnsAfter(hoja.getMaxColumns(), COLUMNAS_MAPA_OPERATIVO - hoja.getMaxColumns());
   if (hoja.getLastRow() === 0 || !hoja.getRange(1,1).getValue()) {
-    hoja.getRange(1,1,1,28).setValues(encabezadoMapaOperativo());
+    hoja.getRange(1,1,1,COLUMNAS_MAPA_OPERATIVO).setValues(encabezadoMapaOperativo());
     hoja.setFrozenRows(1);
+  } else {
+    hoja.getRange(1,29,1,ENCABEZADOS_CTO_MAPA_OPERATIVO.length).setValues([ENCABEZADOS_CTO_MAPA_OPERATIVO]);
   }
   return hoja;
 }
@@ -8366,7 +8375,9 @@ function filaImportacionMapa(r, ahora, usuario) {
     textoMapa(r.productoOrigen), normalizarCuadrilla(r.cuadrilla), textoMapa(r.estado), textoMapa(r.direccion), textoMapa(r.direccionAdicional), textoMapa(r.fechaUltimoEstado),
     textoMapa(r.productoServicio), sedeMapaOperativo(r.region), textoMapa(r.codigoCliente), textoMapa(r.numeroDocumento), textoMapa(r.telefonoMovil), textoMapa(r.telefonoFijo),
     textoMapa(r.fechaFinVisita), textoMapa(r.fechaInicioVisita), textoMapa(r.motivoCancelacion), textoMapa(r.motivoFinalizacion), textoMapa(r.motivoAnulacion),
-    numeroMapa(r.latitud), numeroMapa(r.longitud), textoMapa(r.detalle), ahora, usuario.usuario
+    numeroMapa(r.latitud), numeroMapa(r.longitud), textoMapa(r.detalle), ahora, usuario.usuario,
+    textoMapa(r.cto1), textoMapa(r.coordenadaCto1), textoMapa(r.cto2), textoMapa(r.coordenadaCto2),
+    textoMapa(r.cto3), textoMapa(r.coordenadaCto3), textoMapa(r.cto), textoMapa(r.puerto)
   ];
 }
 
@@ -8382,7 +8393,7 @@ function importarMapaOperativo(data) {
   lock.waitLock(30000);
   try {
     const ultimaFila = hoja.getLastRow();
-    const filasExistentes = ultimaFila > 1 ? hoja.getRange(2,1,ultimaFila-1,28).getValues() : [];
+    const filasExistentes = ultimaFila > 1 ? hoja.getRange(2,1,ultimaFila-1,COLUMNAS_MAPA_OPERATIVO).getValues() : [];
     const resultado = [];
     const metas = [];
     const indices = crearIndicesCoincidenciaMapa();
@@ -8439,10 +8450,10 @@ function importarMapaOperativo(data) {
       }
     });
 
-    if (resultado.length) hoja.getRange(2,1,resultado.length,28).setValues(resultado);
+    if (resultado.length) hoja.getRange(2,1,resultado.length,COLUMNAS_MAPA_OPERATIVO).setValues(resultado);
     const filasAnteriores = Math.max(ultimaFila - 1, 0);
     if (filasAnteriores > resultado.length) {
-      hoja.getRange(resultado.length + 2, 1, filasAnteriores - resultado.length, 28).clearContent();
+      hoja.getRange(resultado.length + 2, 1, filasAnteriores - resultado.length, COLUMNAS_MAPA_OPERATIVO).clearContent();
     }
     if (resultado.length) hoja.getRange(2,27,resultado.length,1).setNumberFormat("dd/mm/yyyy hh:mm");
     registrarUltimaActualizacionMapaOperativo(ahora);
@@ -8472,7 +8483,9 @@ function filaMapaOperativoAObjeto(f) {
     productoOrigen:textoMapa(f[6]), cuadrilla:normalizarCuadrilla(f[7]), estado:textoMapa(f[8]), direccion:textoMapa(f[9]), direccionAdicional:textoMapa(f[10]), fechaUltimoEstado:textoMapa(f[11]),
     productoServicio:textoMapa(f[12]), region:textoMapa(f[13]), codigoCliente:textoMapa(f[14]), numeroDocumento:textoMapa(f[15]), telefonoMovil:textoMapa(f[16]), telefonoFijo:textoMapa(f[17]),
     fechaFinVisita:textoMapa(f[18]), fechaInicioVisita:textoMapa(f[19]), motivoCancelacion:textoMapa(f[20]), motivoFinalizacion:textoMapa(f[21]), motivoAnulacion:textoMapa(f[22]),
-    latitud:numeroMapa(f[23]), longitud:numeroMapa(f[24]), detalle:textoMapa(f[25])
+    latitud:numeroMapa(f[23]), longitud:numeroMapa(f[24]), detalle:textoMapa(f[25]),
+    cto1:textoMapa(f[28]), coordenadaCto1:textoMapa(f[29]), cto2:textoMapa(f[30]), coordenadaCto2:textoMapa(f[31]),
+    cto3:textoMapa(f[32]), coordenadaCto3:textoMapa(f[33]), cto:textoMapa(f[34]), puerto:textoMapa(f[35])
   };
 }
 
@@ -8601,7 +8614,7 @@ function listarMapaOperativo(data) {
     };
   }
 
-  const datos = hoja.getRange(2,1,ultimaFila-1,26).getValues();
+  const datos = hoja.getRange(2,1,ultimaFila-1,COLUMNAS_MAPA_OPERATIVO).getValues();
   const permitidas = usuario.perfil === "SUPERVISOR" ? cuadrillasSupervisorMapa(usuario.usuario) : null;
   const lista = [];
   datos.forEach(f => {
@@ -11537,7 +11550,7 @@ function consultarPlantillaOrden(data) {
   const hoja = asegurarHojaMapaOperativo();
   if (hoja.getLastRow() <= 1) throw new Error("Mapa Operativo todavía no tiene órdenes registradas");
 
-  const filas = hoja.getRange(2,1,hoja.getLastRow()-1,28).getValues();
+  const filas = hoja.getRange(2,1,hoja.getLastRow()-1,COLUMNAS_MAPA_OPERATIVO).getValues();
   const perfil = normalizarTexto(usuario.perfil);
   const cuadrillaTecnico = normalizarCuadrilla(usuario.cuadrilla);
   const cuadrillasSupervisor = perfil === "SUPERVISOR" ? cuadrillasSupervisorMapa(usuario.usuario) : {};

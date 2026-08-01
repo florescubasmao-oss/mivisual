@@ -1,0 +1,29 @@
+MI VISUAL V302 - CTO EN MAPA OPERATIVO Y CONSULTA DE PLANTILLA
+
+CAMBIOS
+- La importación lee la celda inmediatamente posterior a Georeferencia, aunque no tenga encabezado.
+- Extrae CTO1, CTO2, CTO3, sus coordenadas, CTO y PUERTO.
+- Agrega al final de MAPA_ORDENES ocho columnas nuevas; no mueve ni renombra las 28 existentes.
+- En Mapa Operativo > Detalle aparece Ver CTO del cliente.
+- Instalación e Instalación posible fraude muestran CTO disponibles, coordenadas y enlace al mapa.
+- Los demás trabajos muestran CTO y puerto.
+- Consulta de Plantilla incluye Ver CTO y coordenadas debajo del resultado.
+- Los campos vacíos no se muestran.
+
+ARCHIVOS A REEMPLAZAR EN GITHUB
+- index.html
+- css/estilos.css
+- js/mapa_operativo.js
+- js/plantilla_orden.js
+
+APPS SCRIPT
+- Code.gs sí cambió.
+- Reemplazar Code.gs y crear una nueva versión de la misma implementación.
+- Mantener la misma URL /exec.
+- En GitHub reemplazar también apps_script/Code.gs.
+
+DESPUÉS DE PUBLICAR
+- Cerrar sesión e ingresar nuevamente.
+- Volver a importar una vez el Excel operativo para completar CTO en las órdenes existentes.
+- Las coincidencias se actualizan con la lógica vigente; no se cambia la clave de duplicados.
+- No editar manualmente la hoja MAPA_ORDENES: las nuevas columnas se agregan automáticamente.

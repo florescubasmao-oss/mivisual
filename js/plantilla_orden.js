@@ -17,6 +17,41 @@ function poUsuario(){
   return localStorage.getItem("usuario") || localStorage.getItem("correo") || "";
 }
 
+function poCoordenadaCto(valor){
+  const numeros=String(valor==null?"":valor).match(/-?\d+(?:\.\d+)?/g)||[];
+  if(numeros.length<2)return null;
+  const latitud=Number(numeros[0]),longitud=Number(numeros[1]);
+  return Number.isFinite(latitud)&&Number.isFinite(longitud)?{latitud,longitud}:null;
+}
+
+function poDatosCto(orden){
+  const items=[];
+  [1,2,3].forEach(numero=>{
+    const rotulo=String(orden[`cto${numero}`]||"").trim();
+    const coordenada=poCoordenadaCto(orden[`coordenadaCto${numero}`]);
+    if(rotulo||coordenada)items.push({titulo:`CTO ${numero}`,rotulo:rotulo||"Sin rótulo",coordenada});
+  });
+  const cto=String(orden.cto||"").trim(),puerto=String(orden.puerto||"").trim();
+  if(cto||puerto)items.push({titulo:"CTO",rotulo:cto||"Sin rótulo",puerto,coordenada:null});
+  return items;
+}
+
+function poPanelCtoHtml(orden){
+  const items=poDatosCto(orden);
+  if(!items.length)return "";
+  const contenido=items.map(item=>{
+    const coordenada=item.coordenada;
+    const valor=coordenada?`${coordenada.latitud},${coordenada.longitud}`:"";
+    return `<div class="po-cto-item">
+      <b>${poEsc(item.titulo)}</b>
+      <span>${poEsc(item.rotulo)}</span>
+      ${item.puerto?`<small>Puerto ${poEsc(item.puerto)}</small>`:""}
+      ${coordenada?`<small>${poEsc(valor)}</small><a href="https://www.google.com/maps?q=${encodeURIComponent(valor)}" target="_blank" rel="noopener noreferrer">Ver CTO en mapa</a>`:""}
+    </div>`;
+  }).join("");
+  return `<section id="poCtoPanel" class="po-cto-panel" hidden><h3>CTO del cliente</h3><div class="po-cto-grid">${contenido}</div></section>`;
+}
+
 async function poApi(payload){
   const parametros = new URLSearchParams();
   Object.entries(payload || {}).forEach(([clave, valor]) => {
@@ -111,6 +146,7 @@ function renderPlantillaOrden(orden, plantilla){
   const latitud = Number(orden.latitud);
   const longitud = Number(orden.longitud);
   const tieneUbicacion = Number.isFinite(latitud) && Number.isFinite(longitud);
+  const tieneCto = poDatosCto(orden).length > 0;
   resultado.innerHTML = `
     <section class="po-result-card">
       <div class="po-result-top">
@@ -126,7 +162,9 @@ function renderPlantillaOrden(orden, plantilla){
         <button type="button" onclick="copiarSeleccionPlantilla()">Copiar selección</button>
         <button type="button" onclick="nuevaBusquedaPlantilla()">Nueva búsqueda</button>
         <button type="button" ${tieneUbicacion ? "" : "disabled"} onclick="verUbicacionPlantilla(${latitud},${longitud})">Ver ubicación</button>
+        ${tieneCto?'<button id="poBtnCto" type="button" onclick="alternarCtoPlantilla()">Ver CTO y coordenadas</button>':''}
       </div>
+      ${poPanelCtoHtml(orden)}
     </section>`;
 }
 
@@ -181,9 +219,18 @@ function verUbicacionPlantilla(latitud,longitud){
   window.open(`https://www.google.com/maps?q=${encodeURIComponent(latitud)},${encodeURIComponent(longitud)}`,"_blank","noopener");
 }
 
+function alternarCtoPlantilla(){
+  const panel=document.getElementById("poCtoPanel");
+  const boton=document.getElementById("poBtnCto");
+  if(!panel)return;
+  panel.hidden=!panel.hidden;
+  if(boton)boton.textContent=panel.hidden?"Ver CTO y coordenadas":"Ocultar CTO y coordenadas";
+}
+
 window.mostrarPlantillaOrden=mostrarPlantillaOrden;
 window.consultarPlantillaOrden=consultarPlantillaOrden;
 window.copiarPlantillaCompleta=copiarPlantillaCompleta;
 window.copiarSeleccionPlantilla=copiarSeleccionPlantilla;
 window.nuevaBusquedaPlantilla=nuevaBusquedaPlantilla;
 window.verUbicacionPlantilla=verUbicacionPlantilla;
+window.alternarCtoPlantilla=alternarCtoPlantilla;
