@@ -1,4 +1,4 @@
-// MI VISUAL - Módulo Validación Técnica V309 · Confirmación real y meses
+// MI VISUAL - Módulo Validación Técnica V314 · Historial mensual para Técnico
 
 const API_VALIDACION_TECNICA = "https://script.google.com/macros/s/AKfycbzcbjCLweJNgZXDerdzmMN7Lwotc1G8NWdzoPkaLNGDivAgpYxDkq78xZwPRioSB4XY/exec";
 
@@ -679,9 +679,10 @@ function renderHistorialValidacionLocal(){
 
     const resumen = renderResumenValidaciones(todas);
     const consolidado = esJefaturaValidacion(u.perfil) ? renderConsolidadoOrigenVtrGar(filtradas) : "";
-    const contenido = esGestion
-        ? renderHistorialAgrupadoValidacion(lista)
-        : (lista.length ? renderListaValidaciones(lista, false) : `<div class="vt-sub">No hay registros para mostrar.</div>`);
+    // Todos los perfiles, incluido Técnico, consultan el historial por mes.
+    // La diferencia de gestión se conserva únicamente para excluir los pendientes
+    // de las vistas que ya los muestran en el bloque superior.
+    const contenido = renderHistorialAgrupadoValidacion(lista);
 
     histEl.innerHTML = resumen + consolidado + contenido;
 }

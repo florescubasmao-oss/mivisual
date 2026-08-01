@@ -1,0 +1,22 @@
+MI VISUAL V314 - VALIDACIÓN TÉCNICA DEL TÉCNICO POR MESES
+
+CAMBIO REALIZADO
+- El historial del perfil Técnico ahora se agrupa por meses.
+- El mes más reciente aparece primero y abierto.
+- Los meses anteriores quedan cerrados como histórico.
+- Dentro de cada mes se conservan los grupos RECABLEADO, VTR, GAR y OTRO.
+- Se mantienen la búsqueda por código y los filtros existentes.
+- Supervisor, Jefatura y Gerencia conservan su funcionamiento actual.
+
+ARCHIVO A REEMPLAZAR EN GITHUB
+- js/validacion_tecnica_v173.js
+
+NO CAMBIA
+- Code.gs
+- La estructura de VALIDACION_TECNICA.
+- Las reglas de aprobación automática, validación, observación o rechazo.
+
+INSTALACIÓN
+1. Reemplazar js/validacion_tecnica_v173.js en GitHub.
+2. Realizar commit y push.
+3. Cerrar MI VISUAL y volver a ingresar.
