@@ -1,0 +1,36 @@
+MI VISUAL V319 - VALIDACION AUTOMATICA DE RECABLEADO EN 15 MINUTOS
+Fecha: 01/08/2026
+
+CAMBIO REALIZADO
+- Solo las solicitudes de tipo RECABLEADO pueden aprobarse automaticamente.
+- El tiempo minimo de espera cambia de 12 a 15 minutos completos.
+- Si el Supervisor no aprueba, observa o rechaza dentro de ese tiempo, el sistema registra APROBADO AUTOMATICAMENTE.
+- GAR, VTR y OTRO no tienen aprobacion automatica.
+- Las solicitudes de RECABLEADO que ya estaban pendientes con el limite anterior quedan protegidas para no vencer antes de 15 minutos.
+- La revision programada cambia de cada 5 minutos a cada 1 minuto.
+
+ARCHIVO QUE CAMBIA
+- Code.gs
+
+NO CAMBIA
+- Ningun archivo de GitHub.
+- Permisos.
+- Validaciones manuales.
+- Calculos, historicos ni registros existentes.
+
+PASOS DE ACTUALIZACION
+1. Reemplazar Code.gs en Apps Script.
+2. Guardar el proyecto.
+3. En el selector de funciones de Apps Script, elegir crearTriggerValidacionTecnica.
+4. Pulsar Ejecutar una sola vez. Esto reemplaza el control anterior de 5 minutos por el nuevo control de 1 minuto.
+5. Crear una nueva version de la implementacion web y actualizar la implementacion vigente.
+6. Probar con un RECABLEADO nuevo.
+
+PRUEBA ESPERADA
+- Antes de cumplir 15 minutos: PENDIENTE.
+- Si el Supervisor responde antes de los 15 minutos: se conserva su decision manual.
+- Al cumplir los 15 minutos sin respuesta: APROBADO AUTOMATICAMENTE.
+- GAR, VTR y OTRO: permanecen pendientes hasta validacion manual.
+
+NOTA
+No ejecutar crearTriggerValidacionTecnica mas de una vez. La funcion elimina el control anterior antes de crear el nuevo, por lo que no genera duplicados.

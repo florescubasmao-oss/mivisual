@@ -2533,6 +2533,16 @@ function autorizarDriveActividadCampo() {
    VALIDACIÓN TÉCNICA
 ========================= */
 
+// Únicamente RECABLEADO puede pasar a aprobación automática.
+// La espera se controla desde una sola constante para evitar diferencias
+// entre la hora guardada, la revisión de vencidos y los mensajes al usuario.
+const MINUTOS_VALIDACION_AUTOMATICA_RECABLEADO = 15;
+const INTERVALO_TRIGGER_VALIDACION_TECNICA_MINUTOS = 1;
+
+function permiteValidacionAutomaticaTecnica(tipoValidacion) {
+  return normalizarTexto(tipoValidacion) === "RECABLEADO";
+}
+
 function encabezadoValidacionTecnica() {
   return [[
     "ID",
@@ -2710,16 +2720,28 @@ function convertirFechaHoraValidacion(fechaValor, horaValor) {
 }
 
 function obtenerHoraLimiteValidacion(row) {
-  const horaLimite = row[21];
-  if (horaLimite instanceof Date && !isNaN(horaLimite.getTime())) return horaLimite;
-
-  const parsedLimite = convertirFechaHoraValidacion(row[1], horaLimite);
-  if (parsedLimite) return parsedLimite;
-
   const registro = convertirFechaHoraValidacion(row[1], row[2]);
-  if (!registro) return null;
+  const limiteMinimo = registro
+    ? new Date(registro.getTime() + MINUTOS_VALIDACION_AUTOMATICA_RECABLEADO * 60 * 1000)
+    : null;
 
-  return new Date(registro.getTime() + 12 * 60 * 1000);
+  const horaLimite = row[21];
+  let limiteGuardado = null;
+  if (horaLimite instanceof Date && !isNaN(horaLimite.getTime())) {
+    limiteGuardado = horaLimite;
+  } else {
+    limiteGuardado = convertirFechaHoraValidacion(row[1], horaLimite);
+  }
+
+  // También protege solicitudes que aún estaban pendientes y fueron creadas
+  // con la regla anterior de 12 minutos: nunca vencerán antes de 15 minutos.
+  if (limiteGuardado && limiteMinimo) {
+    return limiteGuardado.getTime() >= limiteMinimo.getTime() ? limiteGuardado : limiteMinimo;
+  }
+  if (limiteGuardado) return limiteGuardado;
+  if (limiteMinimo) return limiteMinimo;
+
+  return null;
 }
 
 function procesarValidacionesTecnicasVencidas() {
@@ -2733,7 +2755,7 @@ function procesarValidacionesTecnicasVencidas() {
     const tipo = normalizarTexto(fila[6]);
     const estado = normalizarTexto(fila[13]);
 
-    if (tipo !== "RECABLEADO") continue;
+    if (!permiteValidacionAutomaticaTecnica(tipo)) continue;
     if (estado !== "PENDIENTE") continue;
 
     const limite = obtenerHoraLimiteValidacion(fila);
@@ -2747,7 +2769,11 @@ function procesarValidacionesTecnicasVencidas() {
       hoja.getRange(filaHoja, 17).setValue("AUTOMÁTICO");
       hoja.getRange(filaHoja, 18).setValue(ahora);
       hoja.getRange(filaHoja, 19).setValue(ahora);
-      hoja.getRange(filaHoja, 20).setValue("Aprobación automática por no recibir respuesta dentro de los 12 minutos establecidos.");
+      hoja.getRange(filaHoja, 20).setValue(
+        "Aprobación automática por no recibir respuesta del Supervisor dentro de los " +
+        MINUTOS_VALIDACION_AUTOMATICA_RECABLEADO +
+        " minutos establecidos."
+      );
       hoja.getRange(filaHoja, 18).setNumberFormat("dd/mm/yyyy");
       hoja.getRange(filaHoja, 19).setNumberFormat("hh:mm:ss");
       actualizados++;
@@ -2798,8 +2824,8 @@ function registrarValidacionTecnica(data) {
   const ahora = new Date();
   const fecha = Utilities.formatDate(ahora, "America/Lima", "dd/MM/yyyy");
   const hora = Utilities.formatDate(ahora, "America/Lima", "HH:mm:ss");
-  const horaLimite = tipoValidacion === "RECABLEADO"
-    ? new Date(ahora.getTime() + 12 * 60 * 1000)
+  const horaLimite = permiteValidacionAutomaticaTecnica(tipoValidacion)
+    ? new Date(ahora.getTime() + MINUTOS_VALIDACION_AUTOMATICA_RECABLEADO * 60 * 1000)
     : "";
 
   const sede = datosCuadrilla.sede || usuarioRegistro.sede;
@@ -2845,7 +2871,7 @@ function registrarValidacionTecnica(data) {
     const fila = hoja.getLastRow() + 1;
     hoja.getRange(fila, 1, 1, valores.length).setValues([valores]);
 
-    if (tipoValidacion === "RECABLEADO") {
+    if (permiteValidacionAutomaticaTecnica(tipoValidacion)) {
       hoja.getRange(fila, 22).setNumberFormat("dd/mm/yyyy hh:mm:ss");
     }
 
@@ -2878,7 +2904,7 @@ function registrarValidacionTecnica(data) {
       resultadoFinal: "",
       origenOrden,
       linkTelegram,
-      horaLimite: tipoValidacion === "RECABLEADO" ? Utilities.formatDate(horaLimite, Session.getScriptTimeZone(), "dd/MM/yyyy HH:mm:ss") : ""
+      horaLimite: permiteValidacionAutomaticaTecnica(tipoValidacion) ? Utilities.formatDate(horaLimite, Session.getScriptTimeZone(), "dd/MM/yyyy HH:mm:ss") : ""
     };
   } finally {
     bloqueo.releaseLock();
@@ -2888,6 +2914,8 @@ function registrarValidacionTecnica(data) {
 function filaValidacionTecnicaAObjeto(fila) {
   let estadoVisibleTecnico = fila[13];
   let resultadoVisibleTecnico = fila[14];
+  const esRecableadoPendiente = permiteValidacionAutomaticaTecnica(fila[6]) && normalizarTexto(fila[13]) === "PENDIENTE";
+  const horaLimiteVisible = esRecableadoPendiente ? obtenerHoraLimiteValidacion(fila) : fila[21];
 
   if (normalizarTexto(fila[13]) === "SIN RESPUESTA" && normalizarTexto(fila[14]) === "APROBADO AUTOMATICAMENTE") {
     estadoVisibleTecnico = "APROBADO";
@@ -2916,7 +2944,7 @@ function filaValidacionTecnicaAObjeto(fila) {
     horaValidacion: fila[18],
     motivoValidacion: fila[19],
     linkTelegram: fila[20],
-    horaLimite: fila[21],
+    horaLimite: horaLimiteVisible,
     origenOrden: (normalizarTexto(fila[6]) === "GAR" || normalizarTexto(fila[6]) === "VTR")
       ? (normalizarTexto(fila[22]) || "SIN REGISTRO")
       : "",
@@ -3043,14 +3071,14 @@ function crearTriggerValidacionTecnica() {
 
   ScriptApp.newTrigger("procesarValidacionesTecnicasVencidas")
     .timeBased()
-    .everyMinutes(5)
+    .everyMinutes(INTERVALO_TRIGGER_VALIDACION_TECNICA_MINUTOS)
     .create();
 
   return {
     ok: true,
     modulo: "VALIDACION_TECNICA",
     accion: "CREAR_TRIGGER",
-    mensaje: "Trigger creado para revisar recableados pendientes cada 5 minutos"
+    mensaje: "Trigger creado para revisar recableados pendientes cada minuto"
   };
 }
 
