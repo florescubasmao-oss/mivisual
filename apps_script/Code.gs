@@ -1046,7 +1046,26 @@ function asegurarHojaObservaciones() {
 }
 
 function generarIdObservacion() {
-  return "OBS-" + Utilities.formatDate(new Date(), Session.getScriptTimeZone(), "yyyyMMddHHmmss");
+  return "OBS-" + Utilities.formatDate(new Date(), Session.getScriptTimeZone(), "yyyyMMddHHmmss") + "-" + Utilities.getUuid().slice(0, 8).toUpperCase();
+}
+
+function normalizarIdSolicitudObservacion_(valor) {
+  const id = (valor || "").toString().toUpperCase().replace(/[^A-Z0-9_-]/g, "").slice(0, 80);
+  return /^OBS-[A-Z0-9_-]+$/.test(id) ? id : "";
+}
+
+function buscarObservacionPorId_(hoja, id) {
+  const ultimaFila = hoja.getLastRow();
+  if (!id || ultimaFila < 2) return null;
+  const celda = hoja.getRange(2, 1, ultimaFila - 1, 1)
+    .createTextFinder(id)
+    .matchEntireCell(true)
+    .findNext();
+  if (!celda) return null;
+  return {
+    fila: celda.getRow(),
+    datos: hoja.getRange(celda.getRow(), 1, 1, 20).getValues()[0]
+  };
 }
 
 function limpiarNombreArchivo(txt) {
@@ -1179,42 +1198,85 @@ function registrarObservacion(data) {
   if (!["SEGURIDAD", "IMPLEMENTACION", "IMPLEMENTACIÓN", "GESTION TECNICA", "GESTIÓN TÉCNICA"].includes(tipo)) throw new Error("Tipo de observación no válido");
   if (!["DERIVADO", "EN PROCESO", "PENALIZADO", "APELADO", "SUBSANADO", "ANULADO"].includes(estado)) throw new Error("Estado no válido");
 
-  const ahora = new Date();
-  const plazo = new Date(ahora.getTime() + (24 * 60 * 60 * 1000));
-  const id = generarIdObservacion();
+  const id = normalizarIdSolicitudObservacion_(data.idSolicitud) || generarIdObservacion();
+  const lock = LockService.getScriptLock();
+  lock.waitLock(15000);
 
-  hoja.appendRow([
-    id,
-    ahora,
-    obtenerPeriodoActual(ahora),
-    usuarioRegistro.usuario,
-    usuarioRegistro.perfil,
-    datosCuadrilla.sede,
-    datosCuadrilla.plataforma,
-    datosCuadrilla.usuarioSupervisor,
-    cuadrilla,
-    fuente,
-    data.codigo || "",
-    tipo,
-    data.descripcion || "",
-    estado,
-    Number(data.monto) || 0,
-    "",
-    "",
-    "",
-    "",
-    plazo
-  ]);
+  try {
+    const existente = buscarObservacionPorId_(hoja, id);
+    if (existente) {
+      if (normalizarUsuario(existente.datos[3]) !== usuarioRegistro.usuario) {
+        throw new Error("El identificador de la solicitud ya está en uso");
+      }
+      return { ok:true, modulo:"OBSERVACIONES", accion:"REGISTRAR", id, yaExistia:true };
+    }
 
-  const fila = hoja.getLastRow();
-  hoja.getRange(fila, 2).setNumberFormat("dd/mm/yyyy hh:mm");
-  hoja.getRange(fila, 15).setNumberFormat('"S/ "0.00');
-  hoja.getRange(fila, 20).setNumberFormat("dd/mm/yyyy hh:mm");
+    const ahora = new Date();
+    const plazo = new Date(ahora.getTime() + (24 * 60 * 60 * 1000));
+    hoja.appendRow([
+      id,
+      ahora,
+      obtenerPeriodoActual(ahora),
+      usuarioRegistro.usuario,
+      usuarioRegistro.perfil,
+      datosCuadrilla.sede,
+      datosCuadrilla.plataforma,
+      datosCuadrilla.usuarioSupervisor,
+      cuadrilla,
+      fuente,
+      data.codigo || "",
+      tipo,
+      data.descripcion || "",
+      estado,
+      Number(data.monto) || 0,
+      "",
+      "",
+      "",
+      "",
+      plazo
+    ]);
 
-  actualizarResumenObservaciones();
-  actualizarRanking();
+    const fila = hoja.getLastRow();
+    hoja.getRange(fila, 2).setNumberFormat("dd/mm/yyyy hh:mm");
+    hoja.getRange(fila, 15).setNumberFormat('"S/ "0.00');
+    hoja.getRange(fila, 20).setNumberFormat("dd/mm/yyyy hh:mm");
+    SpreadsheetApp.flush();
+  } finally {
+    lock.releaseLock();
+  }
 
-  return { ok: true, modulo: "OBSERVACIONES", accion: "REGISTRAR", id };
+  // El resumen y el ranking se solicitan después desde la web. Así un cálculo
+  // pesado no impide confirmar que la observación ya fue registrada.
+  return { ok:true, modulo:"OBSERVACIONES", accion:"REGISTRAR", id, actualizacionPendiente:true };
+}
+
+function actualizarIndicadoresObservacionesSeguro_() {
+  const advertencias = [];
+  let resumenActualizado = false;
+  let rankingActualizado = false;
+
+  try {
+    actualizarResumenObservaciones();
+    resumenActualizado = true;
+  } catch (errorResumen) {
+    advertencias.push("Resumen: " + errorResumen.toString());
+  }
+
+  try {
+    actualizarRanking(undefined, undefined, true);
+    rankingActualizado = true;
+  } catch (errorRanking) {
+    advertencias.push("Ranking: " + errorRanking.toString());
+  }
+
+  return {
+    ok:true,
+    modulo:"OBSERVACIONES",
+    accion:"ACTUALIZAR_INDICADORES",
+    resumenActualizado,
+    rankingActualizado,
+    advertencias
+  };
 }
 
 function listarObservaciones(data) {
@@ -1760,14 +1822,14 @@ function obtenerCorteRankingAutomatico() {
 }
 
 
-function actualizarRanking(periodoManual, actualizadoAlManual) {
+function actualizarRanking(periodoManual, actualizadoAlManual, omitirResumenObservaciones) {
   const hojaRanking = obtenerHoja(HOJA_RANKING);
   const corteAutomatico = obtenerCorteRankingAutomatico();
   const periodoRanking = periodoManual || corteAutomatico.periodo || "";
   const actualizadoAlRanking = actualizadoAlManual || corteAutomatico.actualizadoAl || "";
   const corteRanking = convertirFechaRanking(actualizadoAlRanking);
 
-  actualizarResumenObservaciones();
+  if (!omitirResumenObservaciones) actualizarResumenObservaciones();
 
   const mapaUsuarios = obtenerMapaUsuarios();
   const mapaProduccion = obtenerProduccionPorCuadrilla(corteRanking);
@@ -12166,6 +12228,12 @@ function doPost(e) {
     if (data.accion === "registrarObservacion") {
       return ContentService
         .createTextOutput(JSON.stringify(registrarObservacion(data)))
+        .setMimeType(ContentService.MimeType.JSON);
+    }
+
+    if (data.accion === "actualizarIndicadoresObservaciones") {
+      return ContentService
+        .createTextOutput(JSON.stringify(actualizarIndicadoresObservacionesSeguro_()))
         .setMimeType(ContentService.MimeType.JSON);
     }
 

@@ -24,23 +24,95 @@ async function apiObservaciones(payload){
     try{
         const res = await fetch(API_OBSERVACIONES, {
             method: "POST",
+            headers: {"Content-Type":"text/plain;charset=utf-8"},
             body: JSON.stringify(payload),
+            cache: "no-store",
             signal: controlador ? controlador.signal : undefined
         });
         const txt = await res.text();
-        if(!res.ok) throw new Error("La API de Observaciones no está disponible temporalmente.");
+        if(!res.ok){
+            const errorHttp = new Error("La API de Observaciones no está disponible temporalmente.");
+            errorHttp.confirmacionIncierta = true;
+            throw errorHttp;
+        }
         try { return JSON.parse(txt); } catch(e){
+            const errorJson = new Error(/<!doctype|<html|google drive|accounts\.google/i.test(txt)
+                ? "La conexión recibió una página externa en lugar de los datos."
+                : "La API devolvió una respuesta inválida.");
+            errorJson.confirmacionIncierta = true;
             if(/<!doctype|<html|google drive|accounts\.google/i.test(txt)){
-                throw new Error("La conexión recibió una página externa en lugar de los datos. Intente actualizar nuevamente.");
+                throw errorJson;
             }
-            throw new Error("La API devolvió una respuesta inválida. Intente actualizar nuevamente.");
+            throw errorJson;
         }
     }catch(error){
-        if(error && error.name === "AbortError") throw new Error("La operación tardó demasiado. Verifique la conexión e inténtelo nuevamente.");
+        if(error && error.name === "AbortError"){
+            const errorTiempo = new Error("La operación tardó demasiado y no se recibió la confirmación.");
+            errorTiempo.confirmacionIncierta = true;
+            throw errorTiempo;
+        }
+        if(error instanceof TypeError) error.confirmacionIncierta = true;
         throw error;
     }finally{
         if(temporizador) clearTimeout(temporizador);
     }
+}
+
+function crearIdSolicitudObservacion(){
+    const fecha = new Date();
+    const marca = fecha.getFullYear().toString() +
+        String(fecha.getMonth()+1).padStart(2,"0") +
+        String(fecha.getDate()).padStart(2,"0") +
+        String(fecha.getHours()).padStart(2,"0") +
+        String(fecha.getMinutes()).padStart(2,"0") +
+        String(fecha.getSeconds()).padStart(2,"0");
+    const aleatorio = (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function")
+        ? crypto.randomUUID().replace(/-/g,"").slice(0,12)
+        : Math.random().toString(36).slice(2,14);
+    return `OBS-${marca}-${aleatorio}`.toUpperCase();
+}
+
+function esperarObservaciones(ms){
+    return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+async function confirmarObservacionPorId(idSolicitud, usuario){
+    try{
+        const consulta = await apiObservaciones({accion:"listarObservaciones", usuario});
+        return !!(consulta && consulta.ok && Array.isArray(consulta.observaciones) &&
+            consulta.observaciones.some(item => String(item.id || "") === String(idSolicitud || "")));
+    }catch(error){
+        return false;
+    }
+}
+
+async function registrarObservacionSeguro(payload){
+    try{
+        return await apiObservaciones(payload);
+    }catch(primerError){
+        if(!primerError || !primerError.confirmacionIncierta) throw primerError;
+
+        await esperarObservaciones(1200);
+        if(await confirmarObservacionPorId(payload.idSolicitud, payload.usuario)){
+            return {ok:true, id:payload.idSolicitud, confirmadoPorConsulta:true};
+        }
+
+        // El backend V318 reconoce el mismo ID y evita duplicar si el primer envío sí llegó.
+        try{
+            return await apiObservaciones(payload);
+        }catch(segundoError){
+            await esperarObservaciones(800);
+            if(await confirmarObservacionPorId(payload.idSolicitud, payload.usuario)){
+                return {ok:true, id:payload.idSolicitud, confirmadoPorConsulta:true};
+            }
+            throw new Error("No se pudo confirmar el guardado. Actualice la lista antes de volver a intentarlo.");
+        }
+    }
+}
+
+function actualizarIndicadoresObservacionesEnSegundoPlano(usuario){
+    apiObservaciones({accion:"actualizarIndicadoresObservaciones", usuario})
+        .catch(error => console.warn("La observación quedó guardada; los indicadores se actualizarán después.", error));
 }
 
 function mostrarCargandoObs(texto){
@@ -602,19 +674,27 @@ async function guardarObservacion(btn){
     mostrarCargandoObs("Guardando observación...");
 
     try{
-        const data = await apiObservaciones({
+        const cuadrilla = document.getElementById("obsCuadrilla").value;
+        const descripcion = document.getElementById("obsDescripcion").value.trim();
+        if(!cuadrilla) throw new Error("Seleccione una cuadrilla.");
+        if(!descripcion) throw new Error("Ingrese la descripción de la observación.");
+
+        const payload = {
             accion: "registrarObservacion",
+            idSolicitud: crearIdSolicitudObservacion(),
             usuario: u.usuario,
-            cuadrilla: document.getElementById("obsCuadrilla").value,
+            cuadrilla,
             fuente: document.getElementById("obsFuente").value,
             codigo: document.getElementById("obsCodigo").value,
             tipoObservacion: document.getElementById("obsTipo").value,
             estado: document.getElementById("obsEstado").value,
             monto: document.getElementById("obsMonto").value,
-            descripcion: document.getElementById("obsDescripcion").value
-        });
+            descripcion
+        };
+        const data = await registrarObservacionSeguro(payload);
         if(!data.ok) throw new Error(data.error || "Error al guardar");
         msg.innerHTML = "✅ Observación registrada correctamente.";
+        actualizarIndicadoresObservacionesEnSegundoPlano(u.usuario);
         setTimeout(mostrarObservaciones, 800);
     }catch(err){
         msg.innerHTML = `❌ ${obsEsc(err.message)}`;

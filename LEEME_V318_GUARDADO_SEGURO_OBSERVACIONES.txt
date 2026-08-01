@@ -1,0 +1,33 @@
+MI VISUAL V318 - GUARDADO SEGURO DE OBSERVACIONES
+
+Base utilizada: V317.
+
+CORRECCIONES
+- Cada observación recibe un ID único desde el primer envío.
+- Apps Script comprueba el ID antes de insertar y evita duplicados.
+- Si Google devuelve HTML o se pierde la confirmación, la web verifica si el registro ya existe.
+- Se permite un único reintento seguro usando el mismo ID.
+- El guardado ya no espera el recálculo completo de Resumen y Ranking.
+- Resumen y Ranking se actualizan después del guardado, sin bloquear la confirmación.
+- Se mantiene la separación mensual, permisos, estados, montos y cálculos existentes.
+
+ARCHIVOS PARA APPS SCRIPT
+- Code.gs
+  La copia apps_script/Code.gs es idéntica y se incluye solo como respaldo.
+
+ARCHIVOS PARA GITHUB
+- index.html
+- js/observaciones.js
+
+ORDEN OBLIGATORIO DE ACTUALIZACIÓN
+1. Reemplazar Code.gs en Apps Script.
+2. Crear una nueva versión y actualizar la implementación web conservando el acceso vigente.
+3. Reemplazar index.html y js/observaciones.js en GitHub.
+4. Hacer commit y push.
+5. Esperar la publicación, cerrar MI VISUAL y volver a ingresar.
+6. En computadora usar Ctrl + F5 una vez.
+
+IMPORTANTE
+Antes de volver a registrar la observación mostrada en el error, revisar la lista por código,
+cuadrilla y descripción, porque el intento anterior podría haber guardado la fila aunque no
+haya mostrado la confirmación.
