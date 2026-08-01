@@ -2,6 +2,12 @@
 
 const API_OBSERVACIONES = "https://script.google.com/macros/s/AKfycbzcbjCLweJNgZXDerdzmMN7Lwotc1G8NWdzoPkaLNGDivAgpYxDkq78xZwPRioSB4XY/exec";
 
+function obsEsc(valor){
+    return (valor === undefined || valor === null ? "" : String(valor))
+        .replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;")
+        .replace(/"/g,"&quot;").replace(/'/g,"&#039;");
+}
+
 function usuarioActualObs(){
     return {
         usuario: localStorage.getItem("usuario") || "",
@@ -13,12 +19,28 @@ function usuarioActualObs(){
 }
 
 async function apiObservaciones(payload){
-    const res = await fetch(API_OBSERVACIONES, {
-        method: "POST",
-        body: JSON.stringify(payload)
-    });
-    const txt = await res.text();
-    try { return JSON.parse(txt); } catch(e){ throw new Error(txt); }
+    const controlador = typeof AbortController === "function" ? new AbortController() : null;
+    const temporizador = controlador ? setTimeout(() => controlador.abort(), 45000) : null;
+    try{
+        const res = await fetch(API_OBSERVACIONES, {
+            method: "POST",
+            body: JSON.stringify(payload),
+            signal: controlador ? controlador.signal : undefined
+        });
+        const txt = await res.text();
+        if(!res.ok) throw new Error("La API de Observaciones no está disponible temporalmente.");
+        try { return JSON.parse(txt); } catch(e){
+            if(/<!doctype|<html|google drive|accounts\.google/i.test(txt)){
+                throw new Error("La conexión recibió una página externa en lugar de los datos. Intente actualizar nuevamente.");
+            }
+            throw new Error("La API devolvió una respuesta inválida. Intente actualizar nuevamente.");
+        }
+    }catch(error){
+        if(error && error.name === "AbortError") throw new Error("La operación tardó demasiado. Verifique la conexión e inténtelo nuevamente.");
+        throw error;
+    }finally{
+        if(temporizador) clearTimeout(temporizador);
+    }
 }
 
 function mostrarCargandoObs(texto){
@@ -400,7 +422,7 @@ async function cargarObservaciones(){
         obsPrepararSelectorPeriodos(observacionesCache);
         aplicarFiltrosObservaciones();
     }catch(err){
-        cont.innerHTML = `<div class="obs-error">❌ ${err.message}</div>`;
+        cont.innerHTML = `<div class="obs-error">❌ ${obsEsc(err.message)}</div>`;
     }
 }
 
@@ -595,7 +617,7 @@ async function guardarObservacion(btn){
         msg.innerHTML = "✅ Observación registrada correctamente.";
         setTimeout(mostrarObservaciones, 800);
     }catch(err){
-        msg.innerHTML = `❌ ${err.message}`;
+        msg.innerHTML = `❌ ${obsEsc(err.message)}`;
     }finally{
         ocultarCargandoObs();
         liberarBotonObs(btn);
@@ -664,7 +686,7 @@ async function guardarDescargoObservacion(id, btn){
         msg.innerHTML = "✅ Descargo enviado correctamente.";
         setTimeout(mostrarObservaciones, 800);
     }catch(err){
-        msg.innerHTML = `❌ ${err.message}`;
+        msg.innerHTML = `❌ ${obsEsc(err.message)}`;
     }finally{
         ocultarCargandoObs();
         liberarBotonObs(btn);
@@ -710,7 +732,7 @@ async function guardarCambioEstadoObservacion(id, btn){
         msg.innerHTML = "✅ Estado actualizado.";
         setTimeout(mostrarObservaciones, 800);
     }catch(err){
-        msg.innerHTML = `❌ ${err.message}`;
+        msg.innerHTML = `❌ ${obsEsc(err.message)}`;
     }finally{
         ocultarCargandoObs();
         liberarBotonObs(btn);

@@ -168,6 +168,73 @@ let MV316_RANKING_PERFIL = "";
 let MV316_RANKING_CUADRILLA = "";
 let MV316_RANKING_SEDE = "";
 
+const MV317_RANKING_CACHE_KEY = "mv317_ranking_cache";
+const MV317_RANKING_CACHE_VIGENCIA_MS = 2 * 60 * 1000;
+
+function mv317LeerCacheRanking(){
+    try{
+        const cache = JSON.parse(sessionStorage.getItem(MV317_RANKING_CACHE_KEY) || "null");
+        if(!cache || !Array.isArray(cache.lista) || !cache.lista.length) return null;
+        return cache;
+    }catch(e){
+        return null;
+    }
+}
+
+function mv317GuardarCacheRanking(lista){
+    try{
+        sessionStorage.setItem(MV317_RANKING_CACHE_KEY, JSON.stringify({
+            guardadoEn: Date.now(),
+            lista: Array.isArray(lista) ? lista : []
+        }));
+    }catch(e){
+        // Si el navegador no permite almacenamiento, el Ranking sigue funcionando sin caché.
+    }
+}
+
+function mv317EsRespuestaExternaRanking(texto){
+    const inicio = (texto || "").trim().slice(0, 500).toLowerCase();
+    return inicio.includes("<!doctype") ||
+        inicio.includes("<html") ||
+        inicio.includes("google drive") ||
+        inicio.includes("accounts.google");
+}
+
+async function mv317DescargarRanking(url){
+    const controlador = typeof AbortController === "function" ? new AbortController() : null;
+    const temporizador = controlador ? setTimeout(() => controlador.abort(), 18000) : null;
+
+    try{
+        const separador = url.includes("?") ? "&" : "?";
+        const respuesta = await fetch(url + separador + "_=" + Date.now(), {
+            cache:"no-store",
+            signal: controlador ? controlador.signal : undefined
+        });
+        const texto = await respuesta.text();
+        if(!respuesta.ok || !texto.trim() || mv317EsRespuestaExternaRanking(texto)){
+            throw new Error("La fuente del Ranking no respondió con datos válidos.");
+        }
+
+        const filas = parseCSVRanking(texto);
+        const encabezados = (filas[0] || []).map(normalizarTextoRanking);
+        if(!encabezados.includes("CUADRILLA") || !encabezados.includes("PUNTAJE FINAL")){
+            throw new Error("La fuente del Ranking devolvió un formato inesperado.");
+        }
+
+        return filas
+            .slice(1)
+            .map(filaRanking)
+            .filter(x => x.cuadrilla);
+    }catch(error){
+        if(error && error.name === "AbortError"){
+            throw new Error("La consulta del Ranking tardó demasiado. Intente actualizar nuevamente.");
+        }
+        throw error;
+    }finally{
+        if(temporizador) clearTimeout(temporizador);
+    }
+}
+
 function mv316ClavePeriodoActualRanking(){
     const hoy = new Date();
     return `${hoy.getFullYear()}-${String(hoy.getMonth() + 1).padStart(2, "0")}`;
@@ -601,35 +668,41 @@ async function mostrarRanking(){
 
     const url = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRpVkCmSvopgPByWsEX6nkuAT6mf3yD2_Cywpl9pFSZEqYpxmprDePPeV0KNgT14YpEP6gkVlvOAtZy/pub?gid=1269910675&single=true&output=csv";
 
-    mostrarPantalla(`
-        <div style="padding:20px;max-width:900px;margin:auto;">
-            <h2>🏆 RANKING</h2>
-            Cargando ranking...
-        </div>
-    `);
+    MV316_RANKING_PERFIL = perfil;
+    MV316_RANKING_CUADRILLA = cuadrillaUsuario;
+    MV316_RANKING_SEDE = sedeUsuario;
+    MV239_RANKING_JEFATURA_SEDE = "TODAS";
+
+    const cache = mv317LeerCacheRanking();
+    if(cache){
+        MV316_RANKING_LISTA_COMPLETA = cache.lista.slice();
+        MV316_RANKING_PERIODO = mv316ClavePeriodoActualRanking();
+        mv316RenderRankingSeleccionado();
+        if(Date.now() - Number(cache.guardadoEn || 0) < MV317_RANKING_CACHE_VIGENCIA_MS) return;
+    }else{
+        mostrarPantalla(`
+            <div style="padding:20px;max-width:900px;margin:auto;">
+                <h2>🏆 RANKING</h2>
+                Cargando ranking...
+            </div>
+        `);
+    }
 
     try{
-        const separador = url.includes("?") ? "&" : "?";
-        const respuesta = await fetch(url + separador + "_=" + Date.now(), {cache:"no-store"});
-        if(!respuesta.ok) throw new Error("No se pudo leer el ranking");
-        const texto = await respuesta.text();
-        const filas = parseCSVRanking(texto);
-
-        const lista = filas
-            .slice(1)
-            .map(filaRanking)
-            .filter(x => x.cuadrilla);
+        const lista = await mv317DescargarRanking(url);
 
         MV316_RANKING_LISTA_COMPLETA = lista.slice();
-        MV316_RANKING_PERFIL = perfil;
-        MV316_RANKING_CUADRILLA = cuadrillaUsuario;
-        MV316_RANKING_SEDE = sedeUsuario;
-        MV316_RANKING_PERIODO = mv316ClavePeriodoActualRanking();
-        MV239_RANKING_JEFATURA_SEDE = "TODAS";
+        mv317GuardarCacheRanking(lista);
+        MV316_RANKING_PERIODO = MV316_RANKING_PERIODO || mv316ClavePeriodoActualRanking();
         mv316RenderRankingSeleccionado();
 
     }catch(err){
         console.error(err);
-        mostrarPantalla(`<div style="padding:20px;"><h2>🏆 RANKING</h2>❌ Error al cargar ranking.<br><br><button class="button_1" onclick="volverInicio()">⬅️ Volver al menú</button></div>`);
+        if(!cache){
+            const mensaje = typeof safeValidacion === "function"
+                ? safeValidacion(err.message)
+                : "Revise la conexión e inténtelo nuevamente.";
+            mostrarPantalla(`<div style="padding:20px;"><h2>🏆 RANKING</h2>❌ No se pudo cargar el Ranking en este momento.<br><small>${mensaje}</small><br><br><button class="button_1" onclick="mostrarRanking()">🔄 Reintentar</button> <button class="button_1" onclick="volverInicio()">⬅️ Volver al menú</button></div>`);
+        }
     }
 }

@@ -55,12 +55,28 @@ function actAplicarPeriodo(cargar=true){
 function actMarcarPeriodoPersonalizado(){const estado=document.getElementById("actEstadoPeriodo");if(estado)estado.textContent="RANGO PERSONALIZADO";}
 
 async function apiActividadCampo(payload){
-    const res = await fetch(API_ACTIVIDAD_CAMPO, {
-        method: "POST",
-        body: JSON.stringify(payload)
-    });
-    const txt = await res.text();
-    try { return JSON.parse(txt); } catch(e){ throw new Error(txt); }
+    const controlador = typeof AbortController === "function" ? new AbortController() : null;
+    const temporizador = controlador ? setTimeout(() => controlador.abort(), 45000) : null;
+    try{
+        const res = await fetch(API_ACTIVIDAD_CAMPO, {
+            method: "POST",
+            body: JSON.stringify(payload),
+            signal: controlador ? controlador.signal : undefined
+        });
+        const txt = await res.text();
+        if(!res.ok) throw new Error("La API de Actividad en Campo no está disponible temporalmente.");
+        try { return JSON.parse(txt); } catch(e){
+            if(/<!doctype|<html|google drive|accounts\.google/i.test(txt)){
+                throw new Error("La conexión recibió una página externa en lugar de los datos. Intente actualizar nuevamente.");
+            }
+            throw new Error("La API devolvió una respuesta inválida. Intente actualizar nuevamente.");
+        }
+    }catch(error){
+        if(error && error.name === "AbortError") throw new Error("La operación tardó demasiado. Verifique la conexión e inténtelo nuevamente.");
+        throw error;
+    }finally{
+        if(temporizador) clearTimeout(temporizador);
+    }
 }
 
 function mostrarCargandoActividad(texto){
@@ -787,7 +803,7 @@ async function cargarCuadrillasActividadCampo(){
     }catch(err){
         select.innerHTML = `<option value="">Error cargando cuadrillas</option>`;
         const msg = document.getElementById("actMsgGuardar");
-        if(msg) msg.innerHTML = `❌ ${err.message}`;
+        if(msg) msg.innerHTML = `❌ ${actEsc(err.message)}`;
     }
 }
 

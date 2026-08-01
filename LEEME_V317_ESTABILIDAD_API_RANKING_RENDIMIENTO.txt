@@ -1,0 +1,47 @@
+MI VISUAL V317 - ESTABILIDAD API, RANKING Y RENDIMIENTO
+
+CAMBIOS APLICADOS
+
+1. RANKING
+- index.html carga el archivo correcto que contiene el selector mensual V316.
+- El selector aparece en Técnico, Supervisor, Jefatura y Gerencia aunque agosto aún no tenga datos.
+- Julio 2026 permanece disponible como histórico.
+- Se valida que la fuente sea CSV real y no una página HTML externa.
+- Se conserva temporalmente la última lectura correcta durante la sesión para reabrir Ranking con menor espera.
+
+2. VALIDACIÓN TÉCNICA
+- Si Google devuelve HTML en vez de JSON, ya no se inserta esa página dentro de MI VISUAL.
+- Se muestra un mensaje corto y seguro con opción de actualizar.
+- Las lecturas tienen tiempo máximo y un reintento automático.
+- Los registros POST no se reintentan para evitar duplicados.
+- Las consultas de notificaciones pasan de 30 a 60 segundos y se pausan cuando la pestaña está oculta.
+
+2.1 PROTECCIÓN JSON ADICIONAL
+- Actividad en Campo, Observaciones, PEXT, Gestión de Actas y Análisis Económico detectan respuestas HTML externas.
+- Nunca se muestra el contenido de una página externa dentro de MI VISUAL.
+- Las operaciones de escritura no se reintentan automáticamente para evitar registros duplicados.
+
+3. RENDIMIENTO
+- JSZip y PptxGenJS ya no se cargan al abrir la aplicación.
+- Esas librerías se cargan únicamente al generar el informe mensual PowerPoint.
+- Se reducen aproximadamente 548 KB de JavaScript en la carga inicial.
+
+ARCHIVOS MODIFICADOS
+- index.html
+- ranking.js
+- js/validacion_tecnica_v173.js
+- js/analisis_economico.js
+- js/actividad_campo.js
+- js/observaciones.js
+- js/trabajos_conjunta.js
+- js/actas.js
+
+APPS SCRIPT
+- Code.gs NO CAMBIA.
+- El Código pegado adjunto y las dos copias de Code.gs del proyecto contienen la misma lógica.
+
+DATOS Y REGLAS NO MODIFICADOS
+- No se cambian fórmulas del Ranking.
+- No se cambian permisos.
+- No se cambian aprobaciones ni validación automática de 12 minutos.
+- No se cambian hojas, columnas ni registros existentes.

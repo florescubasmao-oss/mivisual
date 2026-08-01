@@ -127,13 +127,31 @@ function estadoGeneralActas(a){
 }
 
 async function apiActas(payload){
-    const res = await fetch(API_ACTAS, {
-        method: "POST",
-        body: JSON.stringify(payload)
-    });
-    const data = await res.json();
-    if(!data.ok) throw new Error(data.error || "Error en Gestión de Actas");
-    return data;
+    const controlador = typeof AbortController === "function" ? new AbortController() : null;
+    const temporizador = controlador ? setTimeout(() => controlador.abort(), 60000) : null;
+    try{
+        const res = await fetch(API_ACTAS, {
+            method: "POST",
+            body: JSON.stringify(payload),
+            signal: controlador ? controlador.signal : undefined
+        });
+        const texto = await res.text();
+        if(!res.ok) throw new Error("La API de Gestión de Actas no está disponible temporalmente.");
+        let data;
+        try{ data = JSON.parse(texto); }catch(e){
+            if(/<!doctype|<html|google drive|accounts\.google/i.test(texto)){
+                throw new Error("La conexión recibió una página externa en lugar de los datos. Intente actualizar nuevamente.");
+            }
+            throw new Error("La API devolvió una respuesta inválida. Intente actualizar nuevamente.");
+        }
+        if(!data.ok) throw new Error(data.error || "Error en Gestión de Actas");
+        return data;
+    }catch(error){
+        if(error && error.name === "AbortError") throw new Error("La operación tardó demasiado. Verifique la conexión e inténtelo nuevamente.");
+        throw error;
+    }finally{
+        if(temporizador) clearTimeout(temporizador);
+    }
 }
 
 function estiloActas(){
@@ -461,7 +479,7 @@ async function cargarActas(opciones){
         }
         aplicarFiltrosActas(opciones);
     }catch(err){
-        lista.innerHTML = `<div class="actas-msg err">❌ ${err.message}</div>`;
+        lista.innerHTML = `<div class="actas-msg err">❌ ${limpiarHtmlActas(err.message)}</div>`;
     }
 }
 function obtenerEstadoVistaActas(){
@@ -741,7 +759,7 @@ async function cargarResumenActas(){
         </div>
         ${(esPerfilConsultaActasPorSedes(u.perfil) || esJefaturaAlmacenActas(u.perfil)) ? resumenTablasActas(data) : ""}`;
     }catch(err){
-        cont.innerHTML = `<div class="actas-msg err">No se pudo cargar resumen: ${err.message}</div>`;
+        cont.innerHTML = `<div class="actas-msg err">No se pudo cargar resumen: ${limpiarHtmlActas(err.message)}</div>`;
     }
 }
 
@@ -972,7 +990,7 @@ async function guardarActaFaltante(btn){
         await apiActas({accion:"registrarActaFaltante",usuario:u.usuario,cuadrilla:document.getElementById("faltanteCuadrilla").value,fechaGestion:document.getElementById("faltanteFecha").value,tipoEjecucion:document.getElementById("faltanteTipoEjecucion").value,tipoPartida:document.getElementById("faltanteTipoPartida").value,codigoOrden:document.getElementById("faltanteCodigoOrden").value,codigoPedido:document.getElementById("faltanteCodigoPedido").value,numeroActa:document.getElementById("faltanteNumeroActa").value,motivoActaFaltante:document.getElementById("faltanteMotivo").value});
         if(msg) msg.innerHTML=`<div class="actas-msg ok">✅ Acta faltante registrada. El técnico ya puede visualizarla.</div>`;
         setTimeout(mostrarGestionActas,900);
-    }catch(err){if(msg)msg.innerHTML=`<div class="actas-msg err">❌ ${err.message}</div>`;}
+    }catch(err){if(msg)msg.innerHTML=`<div class="actas-msg err">❌ ${limpiarHtmlActas(err.message)}</div>`;}
     finally{if(btn){btn.disabled=false;btn.textContent="Registrar faltante";}}
 }
 
@@ -1038,7 +1056,7 @@ async function guardarActa(btn){
         if(msg) msg.innerHTML = `<div class="actas-msg ok">✅ Acta registrada correctamente.<br>Archivo: ${limpiarHtmlActas(data.nombreArchivo)}<br>Estado: PENDIENTE<br>Versión: ${data.version || 1}${nota}</div>`;
         setTimeout(mostrarGestionActas, 1200);
     }catch(err){
-        if(msg) msg.innerHTML = `<div class="actas-msg err">❌ ${err.message}</div>`;
+        if(msg) msg.innerHTML = `<div class="actas-msg err">❌ ${limpiarHtmlActas(err.message)}</div>`;
     }finally{
         if(btn){btn.disabled = false; btn.innerHTML = "Guardar Acta";}
     }

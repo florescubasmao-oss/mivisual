@@ -35,17 +35,43 @@ async function apiValidacionTecnica(payload){
         url += "?" + parametros.toString();
     }
 
-    const res = await fetch(url, opciones);
-    const txt = await res.text();
-    try {
-        return JSON.parse(txt);
-    } catch(e){
-        const mensaje = (txt || "").trim();
-        if(mensaje === "MI VISUAL API OK"){
-            throw new Error("La API no reconoció la acción de Validación Técnica. Actualice la implementación de Apps Script.");
+    const intentos = esLectura ? 2 : 1;
+    let ultimoError = null;
+
+    for(let intento = 0; intento < intentos; intento++){
+        const controlador = typeof AbortController === "function" ? new AbortController() : null;
+        const temporizador = controlador ? setTimeout(() => controlador.abort(), 20000) : null;
+        try{
+            const res = await fetch(url, {...opciones, signal: controlador ? controlador.signal : undefined});
+            const txt = await res.text();
+            if(!res.ok) throw new Error("La API no está disponible temporalmente.");
+
+            try{
+                return JSON.parse(txt);
+            }catch(e){
+                const mensaje = (txt || "").trim();
+                if(mensaje === "MI VISUAL API OK"){
+                    throw new Error("La API no reconoció la acción de Validación Técnica. Actualice la implementación de Apps Script.");
+                }
+                if(/<!doctype|<html|google drive|accounts\.google/i.test(mensaje)){
+                    throw new Error("La conexión recibió una página externa en lugar de los datos. Pulse Actualizar para volver a intentar.");
+                }
+                const textoSeguro = mensaje.replace(/<[^>]*>/g, " ").replace(/\s+/g, " ").trim().slice(0, 180);
+                throw new Error(textoSeguro || "Respuesta inválida de la API.");
+            }
+        }catch(error){
+            ultimoError = error && error.name === "AbortError"
+                ? new Error("La consulta tardó demasiado. Pulse Actualizar para volver a intentar.")
+                : error;
+            if(intento + 1 < intentos){
+                await new Promise(resolve => setTimeout(resolve, 500));
+            }
+        }finally{
+            if(temporizador) clearTimeout(temporizador);
         }
-        throw new Error(mensaje || "Respuesta inválida de la API");
     }
+
+    throw ultimoError || new Error("No se pudo conectar con la API.");
 }
 
 function estiloValidacionTecnica(){
@@ -564,7 +590,7 @@ async function cargarValidacionesTecnicas(){
         renderHistorialValidacionLocal();
     }catch(e){
         const histEl = document.getElementById("vtHistorial");
-        if(histEl) histEl.innerHTML = `<div class="vt-sub">❌ ${e.message}</div>`;
+        if(histEl) histEl.innerHTML = `<div class="vt-sub">❌ ${safeValidacion(e.message)}</div>`;
     }finally{
         ocultarCargandoValidacion();
     }
@@ -1380,7 +1406,7 @@ async function generarInformeValidacionTecnicaExcel(btn){
     if(window.__mvNotificacionesVTIniciadas) return;
     window.__mvNotificacionesVTIniciadas = true;
 
-    const INTERVALO_MS = 30000;
+    const INTERVALO_MS = 60000;
     let consultaEnCurso = false;
     let ultimoUsuario = "";
 
@@ -1647,6 +1673,7 @@ async function generarInformeValidacionTecnicaExcel(btn){
     });
 
     setInterval(function(){
+        if(document.hidden) return;
         instalarGanchoMenuVT();
         consultarNotificacionesVT();
     }, INTERVALO_MS);

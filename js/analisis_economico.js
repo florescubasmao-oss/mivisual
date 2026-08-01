@@ -456,7 +456,7 @@ function mostrarProduccionValorizada(){
 async function consultarAnalisisEconomico(){
   const periodo=document.getElementById("aePeriodo")?.value||aePeriodoActual(),resultado=document.getElementById("aeResultado"),boton=document.getElementById("aeConsultar");
   resultado.innerHTML='<div class="ae-cargando">Calculando valorización mensual...</div>';if(boton){boton.disabled=true;boton.textContent="Consultando..."}
-  try{const r=await fetch(API_ANALISIS_ECONOMICO,{method:"POST",headers:{"Content-Type":"text/plain;charset=utf-8"},body:JSON.stringify({accion:"obtenerAnalisisEconomico",usuario:localStorage.getItem("usuario"),periodo})});const data=await r.json();if(!data.ok)throw new Error(data.error||"No se pudo obtener el análisis económico");renderAnalisisEconomico(data)}catch(err){resultado.innerHTML=`<div class="ae-error"><b>No se pudo cargar el análisis económico.</b><br>${String(err.message||err)}</div>`}finally{if(boton){boton.disabled=false;boton.textContent="Consultar"}}
+  try{const r=await fetch(API_ANALISIS_ECONOMICO,{method:"POST",headers:{"Content-Type":"text/plain;charset=utf-8"},body:JSON.stringify({accion:"obtenerAnalisisEconomico",usuario:localStorage.getItem("usuario"),periodo})});const texto=await r.text();let data;try{data=JSON.parse(texto)}catch(e){throw new Error(/<!doctype|<html|google drive|accounts\.google/i.test(texto)?"La conexión recibió una página externa en lugar de los datos.":"La API devolvió una respuesta inválida.")}if(!data.ok)throw new Error(data.error||"No se pudo obtener el análisis económico");renderAnalisisEconomico(data)}catch(err){resultado.innerHTML=`<div class="ae-error"><b>No se pudo cargar el análisis económico.</b><br>${aeEscape(String(err.message||err))}</div>`}finally{if(boton){boton.disabled=false;boton.textContent="Consultar"}}
 }
 
 function aeTarjeta(titulo,valor,subtexto,clase=""){return`<article class="ae-kpi ${clase}"><span>${titulo}</span><strong>${valor}</strong><small>${subtexto||""}</small></article>`}
@@ -1404,8 +1404,41 @@ function im298DescargarPowerPoint(contenido,nombre){
     enlace.remove();
   },1500);
 }
+let IM317_PROMESA_LIBRERIAS_INFORME=null;
+function im317CargarScriptInforme(id,ruta){
+  if(document.getElementById(id)){
+    return new Promise((resolve,reject)=>{
+      const existente=document.getElementById(id);
+      if(existente.dataset.cargado==="1")return resolve();
+      existente.addEventListener("load",resolve,{once:true});
+      existente.addEventListener("error",()=>reject(new Error("No se pudo cargar una librería del informe.")),{once:true});
+    });
+  }
+  return new Promise((resolve,reject)=>{
+    const script=document.createElement("script");
+    script.id=id;
+    script.src=ruta;
+    script.async=true;
+    script.addEventListener("load",()=>{script.dataset.cargado="1";resolve()},{once:true});
+    script.addEventListener("error",()=>reject(new Error("No se pudo cargar una librería del informe.")),{once:true});
+    document.head.appendChild(script);
+  });
+}
+async function im317AsegurarLibreriasInforme(){
+  if(typeof window.JSZip==="function"&&typeof window.PptxGenJS==="function")return;
+  if(!IM317_PROMESA_LIBRERIAS_INFORME){
+    IM317_PROMESA_LIBRERIAS_INFORME=Promise.all([
+      im317CargarScriptInforme("mv317JsZip","./js/vendor/jszip.min.js?v=3.10.1"),
+      im317CargarScriptInforme("mv317PptxGen","./js/vendor/pptxgen.bundle.js?v=4.0.1")
+    ]).catch(error=>{IM317_PROMESA_LIBRERIAS_INFORME=null;throw error});
+  }
+  await IM317_PROMESA_LIBRERIAS_INFORME;
+  if(typeof window.JSZip!=="function"||typeof window.PptxGenJS!=="function"){
+    throw new Error("No se pudo iniciar el generador de PowerPoint. Actualice la aplicación e inténtelo nuevamente.");
+  }
+}
 async function im296GenerarPowerPoint(datos){
-  if(typeof window.PptxGenJS!=="function")throw new Error("No se pudo iniciar el generador de PowerPoint. Actualice la aplicación e inténtelo nuevamente.");
+  await im317AsegurarLibreriasInforme();
   const pptx=new window.PptxGenJS();
   pptx.layout="LAYOUT_WIDE";
   pptx.author="MI VISUAL · Visual Connections SAC";

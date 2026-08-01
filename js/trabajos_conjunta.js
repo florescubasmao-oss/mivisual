@@ -15,7 +15,25 @@ function tcUsuario(){return {usuario:localStorage.getItem("usuario")||"",perfil:
 function tcJefatura(p){return ["JEFATURA","ADMIN","ADMINISTRADOR"].includes((p||"").toUpperCase());}
 
 
-async function tcApi(payload){const r=await fetch(API_TRABAJOS_CONJUNTA,{method:"POST",body:JSON.stringify(payload)});const t=await r.text();let d;try{d=JSON.parse(t)}catch(e){throw new Error(t)}if(!d.ok)throw new Error(d.error||"Error en PEXT");return d;}
+async function tcApi(payload){
+  const controlador=typeof AbortController==="function"?new AbortController():null;
+  const temporizador=controlador?setTimeout(()=>controlador.abort(),60000):null;
+  try{
+    const r=await fetch(API_TRABAJOS_CONJUNTA,{method:"POST",body:JSON.stringify(payload),signal:controlador?controlador.signal:undefined});
+    const t=await r.text();
+    if(!r.ok)throw new Error("La API de PEXT no está disponible temporalmente.");
+    let d;
+    try{d=JSON.parse(t)}catch(e){
+      if(/<!doctype|<html|google drive|accounts\.google/i.test(t))throw new Error("La conexión recibió una página externa en lugar de los datos. Intente actualizar nuevamente.");
+      throw new Error("La API devolvió una respuesta inválida. Intente actualizar nuevamente.");
+    }
+    if(!d.ok)throw new Error(d.error||"Error en PEXT");
+    return d;
+  }catch(error){
+    if(error&&error.name==="AbortError")throw new Error("La operación tardó demasiado. Verifique la conexión e inténtelo nuevamente.");
+    throw error;
+  }finally{if(temporizador)clearTimeout(temporizador)}
+}
 function tcEsc(v){return (v??"").toString().replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));}
 function tcFmtFecha(v){if(!v)return "-";if(v instanceof Date)return v.toLocaleDateString("es-PE");const s=v.toString();return /^\d{4}-\d{2}-\d{2}$/.test(s)?s.split("-").reverse().join("/"):s;}
 function tcFmtHoraPE(v){
