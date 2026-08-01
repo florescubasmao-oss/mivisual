@@ -1,0 +1,27 @@
+MI VISUAL V307 - CONFIRMACION DE IMPORTACION EN MAPA OPERATIVO
+
+PROBLEMA CORREGIDO
+- En ocasiones, despues de registrar el Excel, la pantalla mostraba
+  "MI VISUAL API OK" y no dejaba visible la confirmacion.
+- La importacion podia haber terminado bien, pero la consulta posterior
+  para actualizar los filtros reemplazaba el mensaje de exito.
+
+CAMBIOS
+- Catalogos y consulta del mapa ahora usan lectura segura GET/JSON.
+- La confirmacion del registro queda separada de la actualizacion de filtros.
+- Una falla posterior de filtros ya no reemplaza el mensaje de exito.
+- El boton muestra "Registro confirmado" con nuevos, actualizados, omitidos
+  y el resumen del catalogo CTO.
+
+NO SE MODIFICA
+- La lectura del Excel.
+- Las reglas de duplicados.
+- MAPA_ORDENES ni CATALOGO_CTO.
+- Los marcadores, permisos o filtros.
+
+ARCHIVOS A REEMPLAZAR
+1. Apps Script: Code.gs y crear nueva version de la misma implementacion.
+2. GitHub: index.html, js/mapa_operativo.js, Code.gs y apps_script/Code.gs.
+
+BASE: V306
+NUEVA VERSION: V307

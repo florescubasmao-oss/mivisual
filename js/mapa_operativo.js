@@ -12,7 +12,10 @@ const MO_TOTAL_ESTILOS_CUADRILLA=MO_TOTAL_COLORES_CUADRILLA*MO_TOTAL_PATRONES_CU
 
 async function moApi(payload){
   const r=await fetch(API_MAPA_OPERATIVO,{method:'POST',body:JSON.stringify(payload)});
-  const t=await r.text(); let d; try{d=JSON.parse(t)}catch(e){throw new Error(t||'Respuesta no válida')}
+  const t=await r.text(); let d; try{d=JSON.parse(t)}catch(e){
+    if(moNorm(t)==='MI VISUAL API OK')throw new Error('No se recibió la confirmación del registro. Espere unos segundos y revise la última actualización antes de volver a intentarlo.');
+    throw new Error(t||'Respuesta no válida');
+  }
   if(!d.ok) throw new Error(d.error||'Error en Mapa Operativo'); return d;
 }
 async function moApiLectura(payload){
@@ -24,7 +27,7 @@ async function moApiLectura(payload){
     if(moNorm(t)==='MI VISUAL API OK')throw new Error('Actualice Code.gs y cree una nueva versión de Apps Script.');
     throw new Error(t||'Respuesta no válida');
   }
-  if(!d.ok)throw new Error(d.error||'Error al consultar el catálogo CTO');
+  if(!d.ok)throw new Error(d.error||'Error al consultar Mapa Operativo');
   return d;
 }
 function moNorm(v){return (v??'').toString().trim()}
@@ -170,7 +173,7 @@ function moMostrarImportacion(){document.getElementById('moVistaFiltros').style.
 function moVolverFiltros(){document.getElementById('moVistaImportacion').style.display='none';document.getElementById('moVistaFiltros').style.display='block';document.getElementById('moMapa').style.display='block';setTimeout(()=>moMapa&&moMapa.invalidateSize(),50)}
 function moLimpiarFiltros(){['moFiltroSede','moFiltroFecha','moFiltroGrupo','moFiltroEstado','moFiltroCuadrilla','moBuscarCodigo'].forEach(id=>{const e=document.getElementById(id);if(e)e.value=''});const cto=document.getElementById('moMostrarCtosCercanas');if(cto)cto.checked=false;moOcultarCatalogoCto();moRegistros=[];moRenderMarcadores([]);document.getElementById('moContador').textContent='Seleccione por lo menos un filtro y presione Ver mapa.'}
 async function moCargarCatalogos(){
-  const d=await moApi({accion:'catalogosMapaOperativo',usuario:moUsuario()});
+  const d=await moApiLectura({accion:'catalogosMapaOperativo',usuario:moUsuario()});
   const llenar=(id,lista,todos)=>{const e=document.getElementById(id);if(e)e.innerHTML=`<option value="">${todos}</option>`+(lista||[]).map(x=>`<option>${moEscape(x)}</option>`).join('')};
   llenar('moFiltroSede',d.sedes,'Todas');llenar('moFiltroGrupo',d.gruposTrabajo,'Todos');llenar('moFiltroEstado',d.estados,'Todos');llenar('moFiltroCuadrilla',d.cuadrillas,'Todas');
   moConstruirEstilosCuadrillas(d.cuadrillas||[]);
@@ -180,7 +183,7 @@ async function moConsultarMapa(){
   const filtros={sede:moNorm(document.getElementById('moFiltroSede')?.value),fecha:moNorm(document.getElementById('moFiltroFecha')?.value),grupoTrabajo:moNorm(document.getElementById('moFiltroGrupo')?.value),estado:moNorm(document.getElementById('moFiltroEstado')?.value),cuadrilla:moNorm(document.getElementById('moFiltroCuadrilla')?.value),codigo:moNorm(document.getElementById('moBuscarCodigo')?.value)};
   if(!Object.values(filtros).some(Boolean)){document.getElementById('moContador').textContent='Debe seleccionar al menos un filtro para evitar cargar toda la base.';return}
   document.getElementById('moContador').textContent='Consultando órdenes...';
-  const d=await moApi(Object.assign({accion:'listarMapaOperativo',usuario:moUsuario()},filtros));moRegistros=d.ordenes||[];moPintarUltimaActualizacion(d.ultimaActualizacionTexto);moRenderMarcadores(moRegistros);if(document.getElementById('moMostrarCtosCercanas')?.checked)await moCargarCtosCercanas();
+  const d=await moApiLectura(Object.assign({accion:'listarMapaOperativo',usuario:moUsuario()},filtros));moRegistros=d.ordenes||[];moPintarUltimaActualizacion(d.ultimaActualizacionTexto);moRenderMarcadores(moRegistros);if(document.getElementById('moMostrarCtosCercanas')?.checked)await moCargarCtosCercanas();
 }
 function moInicializarMapa(){
   if(moMapa){moMapa.remove();moMapa=null}
@@ -277,7 +280,17 @@ async function moLeerArchivo(){
 }
 async function moRegistrarImportacion(){
   if(!moImportacion.length)return;const btn=document.getElementById('moBtnImportar'),msg=document.getElementById('moImportMsg');btn.disabled=true;msg.className='mo-msg';msg.textContent='Registrando información...';
-  try{const d=await moApi({accion:'importarMapaOperativo',usuario:moUsuario(),registros:moImportacion});const c=d.catalogoCto||{};msg.className='mo-msg mo-ok';msg.textContent=`Registro terminado: ${d.nuevos} nuevos, ${d.actualizados} actualizados, ${d.repetidosCarga||0} repetidos consolidados y ${d.omitidos||0} omitidos.${d.consolidadosExistentes?` Se depuraron ${d.consolidadosExistentes} duplicados anteriores.`:''} Catálogo CTO: ${c.nuevos||0} nuevos, ${c.actualizados||0} actualizados, ${c.total||0} únicos.`;moPintarUltimaActualizacion(d.ultimaActualizacionTexto);moImportacion=[];await moCargarCatalogos()}catch(e){msg.className='mo-msg mo-error';msg.textContent=e.message;btn.disabled=false}
+  try{
+    const d=await moApi({accion:'importarMapaOperativo',usuario:moUsuario(),registros:moImportacion});
+    const c=d.catalogoCto||{};
+    const confirmacion=`Registro confirmado: ${d.nuevos} nuevos, ${d.actualizados} actualizados, ${d.repetidosCarga||0} repetidos consolidados y ${d.omitidos||0} omitidos.${d.consolidadosExistentes?` Se depuraron ${d.consolidadosExistentes} duplicados anteriores.`:''} Catálogo CTO: ${c.nuevos||0} nuevos, ${c.actualizados||0} actualizados, ${c.total||0} únicos.`;
+    msg.className='mo-msg mo-ok';msg.textContent=confirmacion;
+    moPintarUltimaActualizacion(d.ultimaActualizacionTexto);moImportacion=[];
+    try{await moCargarCatalogos()}catch(errorCatalogos){
+      msg.className='mo-msg mo-ok';
+      msg.textContent=confirmacion+' Los filtros se actualizarán al volver al mapa.';
+    }
+  }catch(e){msg.className='mo-msg mo-error';msg.textContent=e.message;btn.disabled=false}
 }
 function moMotivo(x){return x.motivoCancelacion||x.motivoFinalizacion||x.motivoAnulacion||''}
 function moEsInstalacionCto(tipoTrabajo){return ['INSTALACION','INSTALACIONPOSIBLEFRAUDE'].includes(moNormCab(tipoTrabajo))}

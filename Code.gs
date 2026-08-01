@@ -66,6 +66,31 @@ function doGet(e) {
     }
   }
 
+  // V307: las consultas del Mapa Operativo son de solo lectura.
+  // Se atienden por GET para evitar que una redirección de Apps Script
+  // responda con el saludo general después de registrar una importación.
+  if (parametros.accion === "catalogosMapaOperativo") {
+    try {
+      return respuestaJson(catalogosMapaOperativo(parametros));
+    } catch (error) {
+      return respuestaJson({
+        ok: false,
+        error: error && error.message ? error.message : String(error)
+      });
+    }
+  }
+
+  if (parametros.accion === "listarMapaOperativo") {
+    try {
+      return respuestaJson(listarMapaOperativo(parametros));
+    } catch (error) {
+      return respuestaJson({
+        ok: false,
+        error: error && error.message ? error.message : String(error)
+      });
+    }
+  }
+
   // V306: catálogo acumulativo de CTO. Es una consulta de solo lectura y
   // únicamente se ejecuta cuando el usuario activa "Mostrar CTO cercanas".
   if (parametros.accion === "listarCtosCercanasMapaOperativo") {
