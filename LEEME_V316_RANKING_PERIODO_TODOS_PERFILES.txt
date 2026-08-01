@@ -1,0 +1,24 @@
+MI VISUAL V316 - RANKING CON PERIODO EN TODOS LOS PERFILES
+
+ARCHIVOS A REEMPLAZAR EN GITHUB
+- index.html
+- js/ranking.js
+
+CAMBIOS
+- El selector de periodo aparece siempre en Ranking.
+- Aplica a Tecnico, Supervisor, Jefatura y Gerencia.
+- El mes actual se abre automaticamente como EN CURSO.
+- Los meses anteriores aparecen como HISTORICO.
+- Si el mes actual aun no tiene datos, el selector permanece visible para consultar julio u otro periodo.
+- Cada periodo conserva el orden del primer puesto al ultimo.
+- Se evita reutilizar una copia anterior del ranking guardada por el navegador.
+
+NO CAMBIA
+- Code.gs
+- Calculos, puntajes ni posiciones.
+- Permisos de acceso.
+
+INSTALACION
+1. Reemplazar index.html y js/ranking.js en GitHub.
+2. Realizar commit y push.
+3. Cerrar MI VISUAL y volver a ingresar.
