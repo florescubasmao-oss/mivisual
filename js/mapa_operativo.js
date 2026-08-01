@@ -245,6 +245,7 @@ async function moLeerArchivo(){
         cuadrilla:moNorm(moValor(r,map,'Cuadrilla')),estado:moNorm(moValor(r,map,'Estado')),direccion:dir,direccionAdicional:dir2,
         fechaUltimoEstado:moFmtFechaHoraValor(moValor(r,map,'FechaUltimoEstado','Fecha Ultimo Estado')),productoServicio:moNorm(moValor(r,map,'IdenServi')),
         region:moNorm(moValor(r,map,'Region')),codigoCliente:moNorm(moValor(r,map,'CodiSeguiClien')),
+        codigoSeguimiento:moNorm(moValor(r,map,'CodiSegui')),
         numeroDocumento:moNorm(moValor(r,map,'Número Documento','Numero Documento')),telefonoMovil:moNorm(moValor(r,map,'TeleMovilNume')),
         telefonoFijo:moNorm(moValor(r,map,'TeleFijoNume')),fechaInicioVisita:moFmtFechaHoraValor(moValor(r,map,'FechaIniVisi')),
         fechaFinVisita:moFmtFechaHoraValor(moValor(r,map,'FechaFinVisi')),motivoCancelacion:moNorm(moValor(r,map,'Motivo Cancelación','Motivo Cancelacion')),

@@ -1,0 +1,24 @@
+MI VISUAL V304 - TICKET, CTO Y PUERTO EN CONSULTA DE PLANTILLA
+
+CAMBIOS
+- La importacion de Mapa Operativo toma CodiSegui de la columna Q del Excel.
+- Se agrega CODIGO_SEGUIMIENTO al final de MAPA_ORDENES, sin mover las 36 columnas existentes.
+- Consulta de Plantilla muestra arriba y copia estas lineas:
+  Ticket / Codigo de seguimiento
+  CTO
+  Puerto
+- En instalaciones con varias CTO, sus rotulos se muestran separados por "/".
+- Los tres rotulos aparecen aunque el dato de origen este vacio.
+- No cambia permisos, filtros, deduplicacion, marcadores CTO ni otros modulos.
+
+ARCHIVOS
+- Code.gs
+- apps_script/Code.gs
+- js/mapa_operativo.js
+- index.html
+
+INSTALACION
+1. Reemplazar Code.gs en Apps Script y crear una nueva version de la misma implementacion.
+2. Reemplazar en GitHub los cuatro archivos incluidos.
+3. Realizar commit y push.
+4. Volver a importar una vez el Excel para completar CODIGO_SEGUIMIENTO en las ordenes existentes. No se duplicaran.

@@ -8132,10 +8132,10 @@ function agregarComentarioReclamo(data){
 const HOJA_MAPA_OPERATIVO = "MAPA_ORDENES";
 const PROPIEDAD_MAPA_ULTIMA_ACTUALIZACION = "MAPA_OPERATIVO_ULTIMA_ACTUALIZACION";
 const ZONA_HORARIA_MAPA_OPERATIVO = "America/Lima";
-const COLUMNAS_MAPA_OPERATIVO = 36;
+const COLUMNAS_MAPA_OPERATIVO = 37;
 const ENCABEZADOS_CTO_MAPA_OPERATIVO = [
   "CTO_1","COORDENADA_CTO_1","CTO_2","COORDENADA_CTO_2",
-  "CTO_3","COORDENADA_CTO_3","CTO","PUERTO"
+  "CTO_3","COORDENADA_CTO_3","CTO","PUERTO","CODIGO_SEGUIMIENTO"
 ];
 
 function registrarUltimaActualizacionMapaOperativo(fecha) {
@@ -8190,7 +8190,7 @@ function encabezadoMapaOperativo() {
     "FECHA_FIN_VISITA","FECHA_INICIO_VISITA","MOTIVO_CANCELACION","MOTIVO_FINALIZACION","MOTIVO_ANULACION",
     "LATITUD","LONGITUD","DETALLE","FECHA_IMPORTACION","USUARIO_IMPORTACION",
     "CTO_1","COORDENADA_CTO_1","CTO_2","COORDENADA_CTO_2",
-    "CTO_3","COORDENADA_CTO_3","CTO","PUERTO"
+    "CTO_3","COORDENADA_CTO_3","CTO","PUERTO","CODIGO_SEGUIMIENTO"
   ]];
 }
 
@@ -8377,7 +8377,8 @@ function filaImportacionMapa(r, ahora, usuario) {
     textoMapa(r.fechaFinVisita), textoMapa(r.fechaInicioVisita), textoMapa(r.motivoCancelacion), textoMapa(r.motivoFinalizacion), textoMapa(r.motivoAnulacion),
     numeroMapa(r.latitud), numeroMapa(r.longitud), textoMapa(r.detalle), ahora, usuario.usuario,
     textoMapa(r.cto1), textoMapa(r.coordenadaCto1), textoMapa(r.cto2), textoMapa(r.coordenadaCto2),
-    textoMapa(r.cto3), textoMapa(r.coordenadaCto3), textoMapa(r.cto), textoMapa(r.puerto)
+    textoMapa(r.cto3), textoMapa(r.coordenadaCto3), textoMapa(r.cto), textoMapa(r.puerto),
+    textoMapa(r.codigoSeguimiento)
   ];
 }
 
@@ -8485,7 +8486,8 @@ function filaMapaOperativoAObjeto(f) {
     fechaFinVisita:textoMapa(f[18]), fechaInicioVisita:textoMapa(f[19]), motivoCancelacion:textoMapa(f[20]), motivoFinalizacion:textoMapa(f[21]), motivoAnulacion:textoMapa(f[22]),
     latitud:numeroMapa(f[23]), longitud:numeroMapa(f[24]), detalle:textoMapa(f[25]),
     cto1:textoMapa(f[28]), coordenadaCto1:textoMapa(f[29]), cto2:textoMapa(f[30]), coordenadaCto2:textoMapa(f[31]),
-    cto3:textoMapa(f[32]), coordenadaCto3:textoMapa(f[33]), cto:textoMapa(f[34]), puerto:textoMapa(f[35])
+    cto3:textoMapa(f[32]), coordenadaCto3:textoMapa(f[33]), cto:textoMapa(f[34]), puerto:textoMapa(f[35]),
+    codigoSeguimiento:textoMapa(f[36])
   };
 }
 
@@ -11502,6 +11504,18 @@ function valorPlantillaOrden_(etiqueta, valor) {
   return texto ? etiqueta + ": " + texto : "";
 }
 
+function ctoTextoPlantillaOrden_(item) {
+  const vistos = {};
+  return [item.cto, item.cto1, item.cto2, item.cto3].map(function(valor){
+    return textoMapa(valor);
+  }).filter(function(valor){
+    const clave = normalizarTexto(valor);
+    if (!clave || vistos[clave]) return false;
+    vistos[clave] = true;
+    return true;
+  }).join(" / ");
+}
+
 function construirTextoPlantillaOrden_(item) {
   const lineas = [];
   const fechaHora = [item.fechaSolicitud, item.horaSolicitud].filter(function(x){ return x; }).join(" ");
@@ -11514,6 +11528,9 @@ function construirTextoPlantillaOrden_(item) {
   if (producto) lineas.push(producto);
 
   if (item.codigoCliente) lineas.push("Seguimiento Cliente: " + item.codigoCliente);
+  lineas.push("Ticket / Código de seguimiento: " + textoMapa(item.codigoSeguimiento));
+  lineas.push("CTO: " + ctoTextoPlantillaOrden_(item));
+  lineas.push("Puerto: " + textoMapa(item.puerto));
   lineas.push("");
 
   [
