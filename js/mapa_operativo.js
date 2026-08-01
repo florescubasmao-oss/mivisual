@@ -1,6 +1,7 @@
 const API_MAPA_OPERATIVO = (window.MI_VISUAL_API_URL || "https://script.google.com/macros/s/AKfycbzcbjCLweJNgZXDerdzmMN7Lwotc1G8NWdzoPkaLNGDivAgpYxDkq78xZwPRioSB4XY/exec");
 let moMapa=null, moCapa=null, moCapaCto=null, moRegistros=[], moImportacion=[], moMarcadores={}, moArchivoSeleccionado=null;
 let moOrdenCtoVisible='';
+let moModoCtoEstado=null;
 let moEstilosCuadrilla={};
 const MO_ETIQUETAS_CUADRILLA_KEY='miVisualMapaEtiquetasCuadrillaV254';
 const MO_ESTILOS_CUADRILLA_KEY='miVisualMapaEstilosCuadrillaV254';
@@ -175,6 +176,8 @@ function moInicializarMapa(){
   moCapa=L.layerGroup().addTo(moMapa);
   moCapaCto=L.layerGroup().addTo(moMapa);
   moOrdenCtoVisible='';
+  moModoCtoEstado=null;
+  moCrearControlModoCto();
   moMapa.on('zoomend',moAplicarModoZoomEtiquetas);
   moAplicarModoZoomEtiquetas();
 }
@@ -267,7 +270,7 @@ function moHtmlCoordenadaCto(coordenada,ordenId){
   const [lat,lng]=moCoord(coordenada);
   if(!Number.isFinite(lat)||!Number.isFinite(lng))return '';
   const valor=`${lat},${lng}`;
-  return `<span class="mo-cto-coord">${moEscape(valor)}</span><button type="button" class="mo-cto-link mo-cto-map-action" data-orden="${moEscape(ordenId)}" onclick="moMostrarCtosOrdenPorBoton(this)">Ver en mapa</button>`;
+  return `<span class="mo-cto-coord">${moEscape(valor)}</span><button type="button" class="mo-cto-link mo-cto-map-action" data-orden="${moEscape(ordenId)}" onclick="moMostrarCtosOrdenPorBoton(this)">Ver CTO</button>`;
 }
 function moCtosConCoordenadas(x){
   if(!x||!moEsInstalacionCto(x.tipoTrabajo))return [];
@@ -285,20 +288,69 @@ function moIconoCto(cto){
     iconAnchor:[14,42]
   });
 }
+function moIconoClienteCto(orden){
+  const codigo=moNorm(orden&&orden.codigoCliente)||moNorm(orden&&orden.ordenId)||'Ubicación';
+  return L.divIcon({
+    className:'mo-cliente-cto-marker-wrap',
+    html:`<span class="mo-cliente-cto-marker-stack"><span class="mo-cliente-cto-map-marker"></span><span class="mo-cliente-cto-map-label"><b>CLIENTE</b>${moEscape(codigo)}</span></span>`,
+    iconSize:[235,45],
+    iconAnchor:[14,42]
+  });
+}
+function moCrearControlModoCto(){
+  if(!moMapa||!window.L)return;
+  const control=L.control({position:'topright'});
+  control.onAdd=()=>{
+    const div=L.DomUtil.create('div','mo-cto-mode-control');
+    div.id='moModoCtoBar';
+    div.style.display='none';
+    div.innerHTML='<span><b>Vista CTO</b><small id="moModoCtoTexto">Cliente y CTO visibles</small></span><button type="button" onclick="moSalirModoCto()">← Volver al mapa</button>';
+    L.DomEvent.disableClickPropagation(div);
+    L.DomEvent.disableScrollPropagation(div);
+    return div;
+  };
+  control.addTo(moMapa);
+}
+function moMostrarControlModoCto(orden,cantidad){
+  const barra=document.getElementById('moModoCtoBar');
+  const texto=document.getElementById('moModoCtoTexto');
+  if(texto)texto.textContent=`Cliente ${moNorm(orden&&orden.ordenId)||''} · ${cantidad} CTO`;
+  if(barra)barra.style.display='flex';
+}
+function moOcultarControlModoCto(){
+  const barra=document.getElementById('moModoCtoBar');
+  if(barra)barra.style.display='none';
+}
 function moActualizarBotonesCto(ordenId,visible){
   const clave=moNorm(ordenId);
   document.querySelectorAll('.mo-cto-map-action').forEach(b=>{
     if(moNorm(b.dataset.orden)!==clave)return;
-    b.textContent=visible?'Ocultar CTO':'Ver en mapa';
+    b.textContent=visible?'Vista CTO':'Ver CTO';
     b.classList.toggle('is-active',!!visible);
   });
 }
 function moOcultarCtos(){
   const anterior=moOrdenCtoVisible;
   if(moCapaCto)moCapaCto.clearLayers();
+  const estado=moModoCtoEstado;
+  if(estado){
+    if(estado.marcadorCliente){
+      if(estado.iconoCliente)estado.marcadorCliente.setIcon(estado.iconoCliente);
+      if(typeof estado.marcadorCliente.setZIndexOffset==='function')estado.marcadorCliente.setZIndexOffset(estado.zIndexCliente||0);
+      if(estado.popupCliente)estado.marcadorCliente.bindPopup(estado.popupCliente);
+    }
+    (estado.capasOcultas||[]).forEach(capa=>{
+      if(moCapa&&(!moCapa.hasLayer||!moCapa.hasLayer(capa)))moCapa.addLayer(capa);
+    });
+    if(moMapa&&estado.centro&&Number.isFinite(estado.zoom))moMapa.setView(estado.centro,estado.zoom,{animate:false});
+  }
+  moModoCtoEstado=null;
   moOrdenCtoVisible='';
+  moOcultarControlModoCto();
   if(anterior)moActualizarBotonesCto(anterior,false);
+  setTimeout(moAplicarModoZoomEtiquetas,0);
 }
+function moSalirModoCto(){moOcultarCtos()}
 function moMostrarCtosOrdenPorBoton(boton){
   const ordenId=moNorm(boton&&boton.dataset&&boton.dataset.orden);
   if(!ordenId||!moMapa||!moCapaCto)return;
@@ -307,6 +359,31 @@ function moMostrarCtosOrdenPorBoton(boton){
   const orden=moRegistros.find(x=>moNorm(x.ordenId)===ordenId);
   const ctos=moCtosConCoordenadas(orden);
   if(!ctos.length)return;
+  const centroActual=moMapa.getCenter();
+  const estado={
+    centro:[centroActual.lat,centroActual.lng],
+    zoom:moMapa.getZoom(),
+    capasOcultas:[],
+    marcadorCliente:null,
+    iconoCliente:null,
+    zIndexCliente:0,
+    popupCliente:null
+  };
+  const capas=[];
+  if(moCapa&&typeof moCapa.eachLayer==='function')moCapa.eachLayer(capa=>capas.push(capa));
+  estado.marcadorCliente=capas.find(capa=>capa&&capa._moRegistro===orden)||capas.find(capa=>moNorm(capa&&capa._moOrdenId)===ordenId)||null;
+  estado.capasOcultas=capas.filter(capa=>capa!==estado.marcadorCliente);
+  if(moMapa&&typeof moMapa.closePopup==='function')moMapa.closePopup();
+  estado.capasOcultas.forEach(capa=>moCapa.removeLayer(capa));
+  if(estado.marcadorCliente){
+    estado.iconoCliente=estado.marcadorCliente.options&&estado.marcadorCliente.options.icon;
+    estado.zIndexCliente=Number(estado.marcadorCliente.options&&estado.marcadorCliente.options.zIndexOffset)||0;
+    estado.popupCliente=typeof estado.marcadorCliente.getPopup==='function'?estado.marcadorCliente.getPopup():null;
+    if(typeof estado.marcadorCliente.unbindPopup==='function')estado.marcadorCliente.unbindPopup();
+    estado.marcadorCliente.setIcon(moIconoClienteCto(orden));
+    if(typeof estado.marcadorCliente.setZIndexOffset==='function')estado.marcadorCliente.setZIndexOffset(1000);
+  }
+  moModoCtoEstado=estado;
   const puntos=[];
   ctos.forEach(cto=>{
     L.marker([cto.lat,cto.lng],{icon:moIconoCto(cto),riseOnHover:true,zIndexOffset:900})
@@ -317,6 +394,7 @@ function moMostrarCtosOrdenPorBoton(boton){
   if(Number.isFinite(latCliente)&&Number.isFinite(lngCliente))puntos.push([latCliente,lngCliente]);
   moOrdenCtoVisible=ordenId;
   moActualizarBotonesCto(ordenId,true);
+  moMostrarControlModoCto(orden,ctos.length);
   moMapa.fitBounds(puntos,{padding:[38,38],maxZoom:18});
 }
 function moAlternarDetalleCto(detalle){
@@ -360,5 +438,5 @@ function moLeyendaCuadrillas(lista){
   const chips=nombres.map(nombre=>{const e=moEstiloCuadrilla(nombre);return `<span class="mo-cuadrilla-chip mo-patron-${e.patron}" style="--mo-cuadrilla-color:${e.color}" title="${moEscape(nombre)}">${moEscape(moCodigoCortoCuadrilla(nombre))}</span>`}).join('');
   return `<details class="mo-leyenda-cuadrillas"><summary>Cuadrillas visibles (${nombres.length})</summary><div>${chips}</div></details>`;
 }
-function moRenderMarcadores(lista){if(!moMapa||!moCapa)return;moOcultarCtos();moCapa.clearLayers();moMarcadores={};const bounds=[];let validos=0;moConstruirEstilosCuadrillas((lista||[]).map(x=>x.cuadrilla));lista.forEach(x=>{const lat=Number(x.latitud),lng=Number(x.longitud);if(!Number.isFinite(lat)||!Number.isFinite(lng))return;const ordenId=moNorm(x.ordenId);const m=L.marker([lat,lng],{icon:moIconoEstado(x.estado,x.cuadrilla),riseOnHover:true}).bindPopup(moPopup(x),{autoClose:true,closeOnClick:true,maxWidth:310});m.on('click',()=>{if(moOrdenCtoVisible&&moOrdenCtoVisible!==ordenId)moOcultarCtos();moMapa.panTo([lat,lng]);});m.on('popupclose',()=>{if(moOrdenCtoVisible===ordenId)moOcultarCtos();});m.addTo(moCapa);moMarcadores[ordenId]=m;bounds.push([lat,lng]);validos++});if(bounds.length)moMapa.fitBounds(bounds,{padding:[25,25],maxZoom:16});setTimeout(moAplicarModoZoomEtiquetas,0);document.getElementById('moContador').innerHTML=`${validos} puntos visibles de ${lista.length} órdenes filtradas.<div class="mo-leyenda"><span><i style="--c:#16a34a"></i>Finalizada</span><span><i style="--c:#dc2626"></i>Cancelada</span><span><i style="--c:#eab308"></i>Reprogramada</span><span><i style="--c:#f97316"></i>Regestión</span><span><i style="--c:#64748b"></i>Anulada</span><span><i style="--c:#2563eb"></i>Pendiente/Agendada</span><span><i style="--c:#7c3aed"></i>En proceso</span></div>${moLeyendaCuadrillas(lista)}`}
+function moRenderMarcadores(lista){if(!moMapa||!moCapa)return;moOcultarCtos();moCapa.clearLayers();moMarcadores={};const bounds=[];let validos=0;moConstruirEstilosCuadrillas((lista||[]).map(x=>x.cuadrilla));lista.forEach(x=>{const lat=Number(x.latitud),lng=Number(x.longitud);if(!Number.isFinite(lat)||!Number.isFinite(lng))return;const ordenId=moNorm(x.ordenId);const m=L.marker([lat,lng],{icon:moIconoEstado(x.estado,x.cuadrilla),riseOnHover:true}).bindPopup(moPopup(x),{autoClose:true,closeOnClick:true,maxWidth:310});m._moOrdenId=ordenId;m._moRegistro=x;m.on('click',()=>{if(moOrdenCtoVisible&&moOrdenCtoVisible!==ordenId)moOcultarCtos();moMapa.panTo([lat,lng]);});m.on('popupclose',()=>{if(moOrdenCtoVisible===ordenId)moOcultarCtos();});m.addTo(moCapa);moMarcadores[ordenId]=m;bounds.push([lat,lng]);validos++});if(bounds.length)moMapa.fitBounds(bounds,{padding:[25,25],maxZoom:16});setTimeout(moAplicarModoZoomEtiquetas,0);document.getElementById('moContador').innerHTML=`${validos} puntos visibles de ${lista.length} órdenes filtradas.<div class="mo-leyenda"><span><i style="--c:#16a34a"></i>Finalizada</span><span><i style="--c:#dc2626"></i>Cancelada</span><span><i style="--c:#eab308"></i>Reprogramada</span><span><i style="--c:#f97316"></i>Regestión</span><span><i style="--c:#64748b"></i>Anulada</span><span><i style="--c:#2563eb"></i>Pendiente/Agendada</span><span><i style="--c:#7c3aed"></i>En proceso</span></div>${moLeyendaCuadrillas(lista)}`}
 function moBuscarCodigo(){moConsultarMapa()}

@@ -1071,10 +1071,24 @@ body{background:linear-gradient(180deg,var(--mv4-bg),var(--mv4-bg2));font-family
 /* V303 - CTO visibles en el mapa únicamente bajo solicitud */
 .mo-cto-marker-wrap{background:transparent!important;border:0!important}
 .mo-cto-marker-stack{display:flex;align-items:center;gap:4px;position:relative;white-space:nowrap;filter:drop-shadow(0 2px 3px rgba(15,23,42,.32))}
-.mo-cto-map-marker{display:block;position:relative;flex:0 0 auto;width:20px;height:20px;background:#0f766e;border:3px solid #fff;border-radius:50% 50% 50% 0;transform:rotate(-45deg)}
-.mo-cto-map-marker:after{content:"";position:absolute;width:6px;height:6px;background:#fff;border-radius:50%;left:7px;top:7px}
-.mo-cto-map-label{display:inline-flex;align-items:center;gap:5px;max-width:195px;padding:4px 7px;border:2px solid #0f766e;border-radius:7px;background:rgba(255,255,255,.96);color:#0f172a;font-size:11px;font-weight:900;line-height:1.1;overflow:hidden;text-overflow:ellipsis}
-.mo-cto-map-label b{flex:0 0 auto;color:#0f766e;font-size:10px}
+.mo-cto-map-marker{display:block;position:relative;flex:0 0 auto;width:28px;height:23px;background:#f59e0b;border:3px solid #fff;border-radius:6px;box-shadow:0 2px 7px rgba(120,53,15,.42)}
+.mo-cto-map-marker:before{content:"CTO";position:absolute;inset:2px 2px auto;color:#fff;font-size:8px;font-weight:1000;line-height:1;text-align:center;letter-spacing:.3px}
+.mo-cto-map-marker:after{content:"";position:absolute;width:3px;height:3px;background:#fff;border-radius:50%;left:7px;bottom:3px;box-shadow:6px 0 0 #fff,12px 0 0 #fff}
+.mo-cto-map-label{display:inline-flex;align-items:center;gap:5px;max-width:195px;padding:4px 7px;border:2px solid #d97706;border-radius:7px;background:rgba(255,255,255,.97);color:#0f172a;font-size:11px;font-weight:900;line-height:1.1;overflow:hidden;text-overflow:ellipsis}
+.mo-cto-map-label b{flex:0 0 auto;color:#b45309;font-size:10px}
+
+/* V305 - Vista limpia: solo cliente y CTO, con retorno al mapa anterior */
+.mo-cliente-cto-marker-wrap{background:transparent!important;border:0!important}
+.mo-cliente-cto-marker-stack{display:flex;align-items:center;gap:5px;position:relative;white-space:nowrap;filter:drop-shadow(0 2px 3px rgba(15,23,42,.32))}
+.mo-cliente-cto-map-marker{display:block;position:relative;flex:0 0 auto;width:23px;height:23px;background:#2563eb;border:3px solid #fff;border-radius:50% 50% 50% 0;transform:rotate(-45deg);box-shadow:0 2px 7px rgba(30,64,175,.42)}
+.mo-cliente-cto-map-marker:after{content:"";position:absolute;width:7px;height:7px;background:#fff;border-radius:50%;left:8px;top:8px}
+.mo-cliente-cto-map-label{display:inline-flex;align-items:center;gap:5px;max-width:195px;padding:4px 7px;border:2px solid #2563eb;border-radius:7px;background:rgba(255,255,255,.97);color:#0f172a;font-size:11px;font-weight:900;line-height:1.1;overflow:hidden;text-overflow:ellipsis}
+.mo-cliente-cto-map-label b{flex:0 0 auto;color:#1d4ed8;font-size:10px}
+.mo-cto-mode-control{display:flex;align-items:center;gap:9px;max-width:min(330px,calc(100vw - 72px));margin:10px;padding:8px 9px;border:2px solid #0f766e;border-radius:11px;background:rgba(255,255,255,.97);box-shadow:0 5px 16px rgba(15,23,42,.24);color:#0f172a}
+.mo-cto-mode-control>span{display:grid;gap:1px;min-width:0;line-height:1.05}.mo-cto-mode-control b{color:#0f766e;font-size:12px}.mo-cto-mode-control small{color:#475569;font-size:10px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.mo-cto-mode-control button{flex:0 0 auto;border:0;border-radius:8px;background:#0f766e;color:#fff;padding:8px 10px;font-size:11px;font-weight:900;cursor:pointer;box-shadow:0 2px 5px rgba(15,118,110,.28)}
+.mo-cto-mode-control button:hover{background:#115e59}.mo-cto-mode-control button:active{transform:translateY(1px)}
+@media(max-width:520px){.mo-cto-mode-control{align-items:stretch;flex-direction:column;gap:6px;max-width:205px}.mo-cto-mode-control button{width:100%}}
 
 /* =====================================================
    V213 - Menú categorizado exclusivo para Jefatura

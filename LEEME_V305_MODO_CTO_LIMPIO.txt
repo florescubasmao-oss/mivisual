@@ -1,0 +1,18 @@
+MI VISUAL V305 - MODO CTO LIMPIO
+
+CAMBIO REALIZADO
+- Al presionar Ver CTO, el mapa muestra únicamente el cliente seleccionado y sus CTO con coordenadas.
+- El detalle emergente y las demás órdenes se ocultan temporalmente para no bloquear la visualización.
+- El cliente usa un marcador azul identificado como CLIENTE.
+- Las CTO usan un icono naranja tipo caja, diferente al marcador del cliente.
+- El botón Volver al mapa restaura las órdenes, la posición y el nivel de zoom anteriores.
+
+ARCHIVOS PARA REEMPLAZAR EN GITHUB
+- index.html
+- css/estilos.css
+- js/mapa_operativo.js
+
+IMPORTANTE
+- Code.gs no cambia.
+- No requiere nueva implementación de Apps Script.
+- No requiere volver a importar el Excel.
