@@ -1,0 +1,52 @@
+MI VISUAL V306 - CATÁLOGO CTO Y VISUALIZACIÓN OPCIONAL
+========================================================
+
+CAMBIO PRINCIPAL
+- La importación de Mapa Operativo crea y alimenta automáticamente la hoja CATALOGO_CTO.
+- Cada código CTO conserva una sola fila.
+- Si el mismo CTO vuelve a cargarse, se actualizan sus datos sin duplicarlo.
+- Una coordenada vacía nunca borra una coordenada válida existente.
+- Si llega una coordenada nueva, reemplaza la anterior y actualiza la fecha del registro.
+
+HOJA CATALOGO_CTO
+- CODIGO_CTO
+- LATITUD
+- LONGITUD
+- COORDENADA
+- SEDE
+- PRIMERA_DETECCION
+- ULTIMA_ACTUALIZACION
+- ORDEN_REFERENCIA
+- CODIGO_CLIENTE
+- TIPO_TRABAJO
+- PUERTO_REFERENCIA
+- USUARIO_ACTUALIZACION
+- VECES_DETECTADA
+
+MAPA OPERATIVO
+- Supervisor, Jefatura y Gerencia disponen de la opción Mostrar CTO cercanas.
+- La opción está desactivada al abrir el módulo.
+- Al activarla, muestra únicamente las CTO del catálogo que están dentro del área visible.
+- Las CTO del catálogo usan marcador morado y muestran el código al costado.
+- Al desactivarla, todas las CTO del catálogo desaparecen.
+- La vista limpia Cliente + CTO de V305 se mantiene sin cambios.
+
+INSTALACIÓN
+1. Actualizar Code.gs en Apps Script.
+2. Crear una nueva versión de la misma implementación.
+3. Reemplazar en GitHub todos los archivos incluidos en este paquete.
+4. Realizar commit y push.
+5. Volver a importar una vez el Excel vigente para alimentar el catálogo con los datos anteriores.
+
+ARCHIVOS MODIFICADOS
+- Code.gs
+- apps_script/Code.gs
+- index.html
+- css/estilos.css
+- js/mapa_operativo.js
+
+NO SE MODIFICA
+- La estructura de MAPA_ORDENES.
+- La regla de duplicados de órdenes.
+- Consulta de Plantilla.
+- Otros módulos.

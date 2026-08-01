@@ -66,6 +66,19 @@ function doGet(e) {
     }
   }
 
+  // V306: catálogo acumulativo de CTO. Es una consulta de solo lectura y
+  // únicamente se ejecuta cuando el usuario activa "Mostrar CTO cercanas".
+  if (parametros.accion === "listarCtosCercanasMapaOperativo") {
+    try {
+      return respuestaJson(listarCtosCercanasMapaOperativo(parametros));
+    } catch (error) {
+      return respuestaJson({
+        ok: false,
+        error: error && error.message ? error.message : String(error)
+      });
+    }
+  }
+
   return ContentService
     .createTextOutput("MI VISUAL API OK")
     .setMimeType(ContentService.MimeType.TEXT);
@@ -8130,9 +8143,11 @@ function agregarComentarioReclamo(data){
    Importación y visualización de órdenes georreferenciadas
 ========================= */
 const HOJA_MAPA_OPERATIVO = "MAPA_ORDENES";
+const HOJA_CATALOGO_CTO_MAPA_OPERATIVO = "CATALOGO_CTO";
 const PROPIEDAD_MAPA_ULTIMA_ACTUALIZACION = "MAPA_OPERATIVO_ULTIMA_ACTUALIZACION";
 const ZONA_HORARIA_MAPA_OPERATIVO = "America/Lima";
 const COLUMNAS_MAPA_OPERATIVO = 37;
+const COLUMNAS_CATALOGO_CTO_MAPA_OPERATIVO = 13;
 const ENCABEZADOS_CTO_MAPA_OPERATIVO = [
   "CTO_1","COORDENADA_CTO_1","CTO_2","COORDENADA_CTO_2",
   "CTO_3","COORDENADA_CTO_3","CTO","PUERTO","CODIGO_SEGUIMIENTO"
@@ -8206,6 +8221,192 @@ function asegurarHojaMapaOperativo() {
     hoja.getRange(1,29,1,ENCABEZADOS_CTO_MAPA_OPERATIVO.length).setValues([ENCABEZADOS_CTO_MAPA_OPERATIVO]);
   }
   return hoja;
+}
+
+function encabezadoCatalogoCtoMapaOperativo_() {
+  return [[
+    "CODIGO_CTO","LATITUD","LONGITUD","COORDENADA","SEDE",
+    "PRIMERA_DETECCION","ULTIMA_ACTUALIZACION","ORDEN_REFERENCIA",
+    "CODIGO_CLIENTE","TIPO_TRABAJO","PUERTO_REFERENCIA",
+    "USUARIO_ACTUALIZACION","VECES_DETECTADA"
+  ]];
+}
+
+function asegurarHojaCatalogoCtoMapaOperativo_() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  let hoja = ss.getSheetByName(HOJA_CATALOGO_CTO_MAPA_OPERATIVO);
+  if (!hoja) hoja = ss.insertSheet(HOJA_CATALOGO_CTO_MAPA_OPERATIVO);
+  if (hoja.getMaxColumns() < COLUMNAS_CATALOGO_CTO_MAPA_OPERATIVO) {
+    hoja.insertColumnsAfter(
+      hoja.getMaxColumns(),
+      COLUMNAS_CATALOGO_CTO_MAPA_OPERATIVO - hoja.getMaxColumns()
+    );
+  }
+  if (hoja.getLastRow() === 0 || !hoja.getRange(1,1).getValue()) {
+    hoja.getRange(1,1,1,COLUMNAS_CATALOGO_CTO_MAPA_OPERATIVO)
+      .setValues(encabezadoCatalogoCtoMapaOperativo_());
+    hoja.setFrozenRows(1);
+  } else {
+    hoja.getRange(1,1,1,COLUMNAS_CATALOGO_CTO_MAPA_OPERATIVO)
+      .setValues(encabezadoCatalogoCtoMapaOperativo_());
+  }
+  return hoja;
+}
+
+function claveCodigoCtoMapaOperativo_(valor) {
+  return normalizarTexto(textoMapa(valor)).replace(/\s+/g, "");
+}
+
+function partesCoordenadaCtoMapaOperativo_(valor) {
+  const numeros = textoMapa(valor).match(/-?\d+(?:\.\d+)?/g) || [];
+  if (numeros.length < 2) return {latitud:"", longitud:"", coordenada:""};
+  const latitud = Number(numeros[0]);
+  const longitud = Number(numeros[1]);
+  if (!isFinite(latitud) || !isFinite(longitud) || Math.abs(latitud) > 90 || Math.abs(longitud) > 180) {
+    return {latitud:"", longitud:"", coordenada:""};
+  }
+  return {
+    latitud:latitud,
+    longitud:longitud,
+    coordenada:latitud + "," + longitud
+  };
+}
+
+function ctosRegistroMapaOperativo_(registro) {
+  const salida = [];
+  [1,2,3].forEach(function(numero){
+    const codigo = textoMapa(registro["cto" + numero]);
+    if (!codigo) return;
+    const coordenada = partesCoordenadaCtoMapaOperativo_(registro["coordenadaCto" + numero]);
+    salida.push({
+      codigo:codigo,
+      latitud:coordenada.latitud,
+      longitud:coordenada.longitud,
+      coordenada:coordenada.coordenada,
+      puerto:""
+    });
+  });
+
+  const codigoGeneral = textoMapa(registro.cto);
+  if (codigoGeneral) {
+    salida.push({
+      codigo:codigoGeneral,
+      latitud:"",
+      longitud:"",
+      coordenada:"",
+      puerto:textoMapa(registro.puerto)
+    });
+  }
+  return salida;
+}
+
+function alimentarCatalogoCtoMapaOperativo_(registros, ahora, usuario) {
+  const hoja = asegurarHojaCatalogoCtoMapaOperativo_();
+  const ultimaFila = hoja.getLastRow();
+  const existentes = ultimaFila > 1
+    ? hoja.getRange(2,1,ultimaFila-1,COLUMNAS_CATALOGO_CTO_MAPA_OPERATIVO).getValues()
+    : [];
+  const resultado = [];
+  const posiciones = {};
+  let consolidadosExistentes = 0;
+
+  existentes.forEach(function(fila){
+    const clave = claveCodigoCtoMapaOperativo_(fila[0]);
+    if (!clave) return;
+    const posicion = posiciones[clave];
+    if (posicion !== undefined) {
+      const actual = resultado[posicion];
+      const nuevaCoord = partesCoordenadaCtoMapaOperativo_(fila[3] || (fila[1] + "," + fila[2]));
+      if (nuevaCoord.coordenada) {
+        actual[1] = nuevaCoord.latitud;
+        actual[2] = nuevaCoord.longitud;
+        actual[3] = nuevaCoord.coordenada;
+      }
+      if (textoMapa(fila[4])) actual[4] = textoMapa(fila[4]);
+      if (fila[6]) actual[6] = fila[6];
+      if (textoMapa(fila[7])) actual[7] = textoMapa(fila[7]);
+      if (textoMapa(fila[8])) actual[8] = textoMapa(fila[8]);
+      if (textoMapa(fila[9])) actual[9] = textoMapa(fila[9]);
+      if (textoMapa(fila[10])) actual[10] = textoMapa(fila[10]);
+      if (textoMapa(fila[11])) actual[11] = textoMapa(fila[11]);
+      actual[12] = (Number(actual[12]) || 1) + (Number(fila[12]) || 1);
+      consolidadosExistentes++;
+      return;
+    }
+    const limpia = fila.slice(0,COLUMNAS_CATALOGO_CTO_MAPA_OPERATIVO);
+    while (limpia.length < COLUMNAS_CATALOGO_CTO_MAPA_OPERATIVO) limpia.push("");
+    limpia[0] = textoMapa(limpia[0]);
+    limpia[12] = Number(limpia[12]) || 1;
+    posiciones[clave] = resultado.length;
+    resultado.push(limpia);
+  });
+
+  const tocados = {};
+  let nuevos = 0;
+  let actualizados = 0;
+  let coordenadasActualizadas = 0;
+
+  (registros || []).forEach(function(registro){
+    ctosRegistroMapaOperativo_(registro).forEach(function(cto){
+      const clave = claveCodigoCtoMapaOperativo_(cto.codigo);
+      if (!clave) return;
+      const sede = sedeMapaOperativo(registro.region);
+      const posicion = posiciones[clave];
+      if (posicion === undefined) {
+        posiciones[clave] = resultado.length;
+        resultado.push([
+          cto.codigo,cto.latitud,cto.longitud,cto.coordenada,sede,
+          ahora,ahora,textoMapa(registro.ordenId || registro.ORDEN_ID),
+          textoMapa(registro.codigoCliente),textoMapa(registro.tipoTrabajo),
+          textoMapa(cto.puerto),usuario.usuario,1
+        ]);
+        nuevos++;
+        tocados[clave] = true;
+        return;
+      }
+
+      const fila = resultado[posicion];
+      const coordAnterior = textoMapa(fila[3]);
+      if (cto.coordenada) {
+        fila[1] = cto.latitud;
+        fila[2] = cto.longitud;
+        fila[3] = cto.coordenada;
+        if (coordAnterior !== cto.coordenada) coordenadasActualizadas++;
+      }
+      if (sede) fila[4] = sede;
+      if (!fila[5]) fila[5] = ahora;
+      fila[6] = ahora;
+      if (textoMapa(registro.ordenId || registro.ORDEN_ID)) fila[7] = textoMapa(registro.ordenId || registro.ORDEN_ID);
+      if (textoMapa(registro.codigoCliente)) fila[8] = textoMapa(registro.codigoCliente);
+      if (textoMapa(registro.tipoTrabajo)) fila[9] = textoMapa(registro.tipoTrabajo);
+      if (textoMapa(cto.puerto)) fila[10] = textoMapa(cto.puerto);
+      fila[11] = usuario.usuario;
+      fila[12] = (Number(fila[12]) || 0) + 1;
+      if (!tocados[clave]) actualizados++;
+      tocados[clave] = true;
+    });
+  });
+
+  if (resultado.length) {
+    hoja.getRange(2,1,resultado.length,COLUMNAS_CATALOGO_CTO_MAPA_OPERATIVO).setValues(resultado);
+    hoja.getRange(2,6,resultado.length,2).setNumberFormat("dd/mm/yyyy hh:mm");
+  }
+  const filasAnteriores = Math.max(ultimaFila - 1, 0);
+  if (filasAnteriores > resultado.length) {
+    hoja.getRange(
+      resultado.length + 2,
+      1,
+      filasAnteriores - resultado.length,
+      COLUMNAS_CATALOGO_CTO_MAPA_OPERATIVO
+    ).clearContent();
+  }
+  return {
+    nuevos:nuevos,
+    actualizados:actualizados,
+    coordenadasActualizadas:coordenadasActualizadas,
+    consolidadosExistentes:consolidadosExistentes,
+    total:resultado.length
+  };
 }
 
 function asegurarPermisosMapaOperativo() {
@@ -8457,6 +8658,7 @@ function importarMapaOperativo(data) {
       hoja.getRange(resultado.length + 2, 1, filasAnteriores - resultado.length, COLUMNAS_MAPA_OPERATIVO).clearContent();
     }
     if (resultado.length) hoja.getRange(2,27,resultado.length,1).setNumberFormat("dd/mm/yyyy hh:mm");
+    const catalogoCto = alimentarCatalogoCtoMapaOperativo_(registros, ahora, usuario);
     registrarUltimaActualizacionMapaOperativo(ahora);
     const ultimaActualizacionMapa = obtenerUltimaActualizacionMapaOperativo(hoja);
 
@@ -8470,6 +8672,7 @@ function importarMapaOperativo(data) {
       repetidosCarga:repetidosCarga,
       consolidadosExistentes:consolidadosExistentes,
       totalGuardado:resultado.length,
+      catalogoCto:catalogoCto,
       ultimaActualizacion:ultimaActualizacionMapa.ultimaActualizacion,
       ultimaActualizacionTexto:ultimaActualizacionMapa.ultimaActualizacionTexto
     };
@@ -8645,6 +8848,86 @@ function listarMapaOperativo(data) {
     ordenes:lista,
     ultimaActualizacion:ultimaActualizacionMapa.ultimaActualizacion,
     ultimaActualizacionTexto:ultimaActualizacionMapa.ultimaActualizacionTexto
+  };
+}
+
+function listarCtosCercanasMapaOperativo(data) {
+  const usuario = obtenerUsuarioApp(data.usuario);
+  validarAccesoMapaOperativo(usuario, "VER");
+
+  let sur = numeroMapa(data.sur);
+  let norte = numeroMapa(data.norte);
+  let oeste = numeroMapa(data.oeste);
+  let este = numeroMapa(data.este);
+  if ([sur,norte,oeste,este].some(function(x){ return x === ""; })) {
+    throw new Error("No se recibió el área visible del mapa");
+  }
+  sur = Number(sur); norte = Number(norte); oeste = Number(oeste); este = Number(este);
+  if (sur > norte) { const tmpLat = sur; sur = norte; norte = tmpLat; }
+  if (oeste > este) { const tmpLng = oeste; oeste = este; este = tmpLng; }
+
+  const sedeFiltro = normalizarTexto(data.sede || "");
+  const limite = Math.min(Math.max(Number(data.limite) || 600, 1), 1000);
+  const hoja = asegurarHojaCatalogoCtoMapaOperativo_();
+  const ultimaFila = hoja.getLastRow();
+  if (ultimaFila <= 1) {
+    return {
+      ok:true,
+      modulo:"MAPA_OPERATIVO",
+      accion:"LISTAR_CTO_CERCANAS",
+      ctos:[],
+      totalCoincidencias:0,
+      mostradas:0,
+      truncado:false
+    };
+  }
+
+  const datos = hoja.getRange(
+    2,1,ultimaFila-1,COLUMNAS_CATALOGO_CTO_MAPA_OPERATIVO
+  ).getValues();
+  const coincidencias = [];
+  datos.forEach(function(fila){
+    const codigo = textoMapa(fila[0]);
+    const latitud = numeroMapa(fila[1]);
+    const longitud = numeroMapa(fila[2]);
+    if (!codigo || latitud === "" || longitud === "") return;
+    const lat = Number(latitud);
+    const lng = Number(longitud);
+    if (lat < sur || lat > norte || lng < oeste || lng > este) return;
+    const sede = sedeMapaOperativo(fila[4]);
+    if (sedeFiltro && sede !== sedeFiltro) return;
+    const fechaOrden = fila[6] instanceof Date && !isNaN(fila[6].getTime()) ? fila[6].getTime() : 0;
+    coincidencias.push({
+      codigo:codigo,
+      latitud:lat,
+      longitud:lng,
+      coordenada:lat + "," + lng,
+      sede:sede,
+      ultimaActualizacion:textoMapa(fila[6]),
+      ordenReferencia:textoMapa(fila[7]),
+      codigoCliente:textoMapa(fila[8]),
+      tipoTrabajo:textoMapa(fila[9]),
+      puerto:textoMapa(fila[10]),
+      vecesDetectada:Number(fila[12]) || 1,
+      _fechaOrden:fechaOrden
+    });
+  });
+  coincidencias.sort(function(a,b){
+    return b._fechaOrden - a._fechaOrden || a.codigo.localeCompare(b.codigo);
+  });
+  const totalCoincidencias = coincidencias.length;
+  const ctos = coincidencias.slice(0,limite).map(function(item){
+    delete item._fechaOrden;
+    return item;
+  });
+  return {
+    ok:true,
+    modulo:"MAPA_OPERATIVO",
+    accion:"LISTAR_CTO_CERCANAS",
+    ctos:ctos,
+    totalCoincidencias:totalCoincidencias,
+    mostradas:ctos.length,
+    truncado:totalCoincidencias > ctos.length
   };
 }
 
@@ -11621,6 +11904,7 @@ function doPost(e) {
     if (data.accion === "importarMapaOperativo") return respuestaJson(importarMapaOperativo(data));
     if (data.accion === "listarMapaOperativo") return respuestaJson(listarMapaOperativo(data));
     if (data.accion === "catalogosMapaOperativo") return respuestaJson(catalogosMapaOperativo(data));
+    if (data.accion === "listarCtosCercanasMapaOperativo") return respuestaJson(listarCtosCercanasMapaOperativo(data));
 
     if (data.accion === "asegurarHojasConsultasReclamos") return respuestaJson((asegurarHojasConsultasReclamos(), {ok:true,modulo:"MESA_AYUDA",accion:"ASEGURAR_HOJAS"}));
     if (data.accion === "registrarConsultaReclamo") return respuestaJson(registrarConsultaReclamo(data));

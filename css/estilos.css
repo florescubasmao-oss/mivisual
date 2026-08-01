@@ -1090,6 +1090,21 @@ body{background:linear-gradient(180deg,var(--mv4-bg),var(--mv4-bg2));font-family
 .mo-cto-mode-control button:hover{background:#115e59}.mo-cto-mode-control button:active{transform:translateY(1px)}
 @media(max-width:520px){.mo-cto-mode-control{align-items:stretch;flex-direction:column;gap:6px;max-width:205px}.mo-cto-mode-control button{width:100%}}
 
+/* V306 - Catálogo acumulativo y visualización opcional de CTO cercanas */
+.mo-controles-visibilidad{display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+.mo-cto-cercanas-opcion{padding-left:13px;border-left:1px solid #cbd5e1}
+.mo-cto-cercanas-opcion em{padding:3px 7px;border-radius:999px;background:#ede9fe;color:#6d28d9;font-size:9px;font-style:normal;font-weight:900}
+.mo-cto-cercanas-opcion em.is-error{background:#fee2e2;color:#b91c1c}
+.mo-catalogo-cto-marker-wrap{background:transparent!important;border:0!important}
+.mo-catalogo-cto-marker-stack{display:flex;align-items:center;gap:4px;position:relative;white-space:nowrap;filter:drop-shadow(0 2px 3px rgba(46,16,101,.32))}
+.mo-catalogo-cto-marker{display:block;position:relative;flex:0 0 auto;width:28px;height:24px;background:#7c3aed;border:3px solid #fff;border-radius:4px 4px 9px 9px;box-shadow:0 2px 7px rgba(76,29,149,.45)}
+.mo-catalogo-cto-marker:before{content:"CTO";position:absolute;inset:2px 1px auto;color:#fff;font-size:8px;font-weight:1000;line-height:1;text-align:center;letter-spacing:.3px}
+.mo-catalogo-cto-marker:after{content:"";position:absolute;left:9px;bottom:-8px;border:5px solid transparent;border-top-color:#7c3aed}
+.mo-catalogo-cto-label{display:inline-flex;align-items:center;gap:5px;max-width:195px;padding:4px 7px;border:2px solid #7c3aed;border-radius:7px;background:rgba(255,255,255,.97);color:#0f172a;font-size:11px;font-weight:900;line-height:1.1;overflow:hidden;text-overflow:ellipsis}
+.mo-catalogo-cto-label b{flex:0 0 auto;color:#6d28d9;font-size:10px}
+.mo-popup-catalogo-cto .mo-main-row:first-child{border-bottom:2px solid #ddd6fe}
+@media(max-width:720px){.mo-controles-visibilidad{align-items:flex-start;flex-direction:column;gap:8px}.mo-cto-cercanas-opcion{padding-left:0;border-left:0}.mo-identificacion-control label{white-space:normal}}
+
 /* =====================================================
    V213 - Menú categorizado exclusivo para Jefatura
    ===================================================== */

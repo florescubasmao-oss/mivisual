@@ -1,7 +1,8 @@
 const API_MAPA_OPERATIVO = (window.MI_VISUAL_API_URL || "https://script.google.com/macros/s/AKfycbzcbjCLweJNgZXDerdzmMN7Lwotc1G8NWdzoPkaLNGDivAgpYxDkq78xZwPRioSB4XY/exec");
-let moMapa=null, moCapa=null, moCapaCto=null, moRegistros=[], moImportacion=[], moMarcadores={}, moArchivoSeleccionado=null;
+let moMapa=null, moCapa=null, moCapaCto=null, moCapaCatalogoCto=null, moRegistros=[], moImportacion=[], moMarcadores={}, moArchivoSeleccionado=null;
 let moOrdenCtoVisible='';
 let moModoCtoEstado=null;
+let moCatalogoCtoVisible=false;
 let moEstilosCuadrilla={};
 const MO_ETIQUETAS_CUADRILLA_KEY='miVisualMapaEtiquetasCuadrillaV254';
 const MO_ESTILOS_CUADRILLA_KEY='miVisualMapaEstilosCuadrillaV254';
@@ -13,6 +14,18 @@ async function moApi(payload){
   const r=await fetch(API_MAPA_OPERATIVO,{method:'POST',body:JSON.stringify(payload)});
   const t=await r.text(); let d; try{d=JSON.parse(t)}catch(e){throw new Error(t||'Respuesta no válida')}
   if(!d.ok) throw new Error(d.error||'Error en Mapa Operativo'); return d;
+}
+async function moApiLectura(payload){
+  const url=new URL(API_MAPA_OPERATIVO);
+  Object.keys(payload||{}).forEach(k=>url.searchParams.set(k,moNorm(payload[k])));
+  const r=await fetch(url.toString(),{method:'GET',cache:'no-store'});
+  const t=await r.text();let d;
+  try{d=JSON.parse(t)}catch(e){
+    if(moNorm(t)==='MI VISUAL API OK')throw new Error('Actualice Code.gs y cree una nueva versión de Apps Script.');
+    throw new Error(t||'Respuesta no válida');
+  }
+  if(!d.ok)throw new Error(d.error||'Error al consultar el catálogo CTO');
+  return d;
 }
 function moNorm(v){return (v??'').toString().trim()}
 function moNormCab(v){return moNorm(v).toUpperCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^A-Z0-9]/g,'')}
@@ -114,7 +127,7 @@ async function mostrarMapaOperativo(){
       <button class="mo-btn" onclick="moConsultarMapa()">Ver mapa</button>
       <button class="mo-btn mo-btn-sec" onclick="moLimpiarFiltros()">Limpiar</button>
     </div>
-    <div class="mo-identificacion-control"><label><input id="moMostrarCuadrillas" type="checkbox" ${moEtiquetasCuadrillaActivas()?'checked':''} onchange="moActualizarEtiquetasCuadrilla()"><span>Mostrar identificación de cuadrillas</span></label><small>El color y la trama de la etiqueta identifican la cuadrilla; el color del marcador mantiene el estado de la orden.</small></div>
+    <div class="mo-identificacion-control"><div class="mo-controles-visibilidad"><label><input id="moMostrarCuadrillas" type="checkbox" ${moEtiquetasCuadrillaActivas()?'checked':''} onchange="moActualizarEtiquetasCuadrilla()"><span>Mostrar identificación de cuadrillas</span></label><label class="mo-cto-cercanas-opcion"><input id="moMostrarCtosCercanas" type="checkbox" onchange="moAlternarCtosCercanas(this)"><span>Mostrar CTO cercanas</span><em id="moCtoCercanasEstado">Ocultas</em></label></div><small>Las CTO del catálogo permanecen ocultas y solo aparecen dentro del área visible al activar la opción.</small></div>
     <div id="moContador" class="mo-counter">Seleccione por lo menos un filtro y presione Ver mapa.</div>
   </div>
   <div id="moVistaImportacion" class="mo-panel" style="display:none">
@@ -155,7 +168,7 @@ function moPrepararCargaArchivoMapa(){
 }
 function moMostrarImportacion(){document.getElementById('moVistaFiltros').style.display='none';document.getElementById('moMapa').style.display='none';document.getElementById('moVistaImportacion').style.display='block'}
 function moVolverFiltros(){document.getElementById('moVistaImportacion').style.display='none';document.getElementById('moVistaFiltros').style.display='block';document.getElementById('moMapa').style.display='block';setTimeout(()=>moMapa&&moMapa.invalidateSize(),50)}
-function moLimpiarFiltros(){['moFiltroSede','moFiltroFecha','moFiltroGrupo','moFiltroEstado','moFiltroCuadrilla','moBuscarCodigo'].forEach(id=>{const e=document.getElementById(id);if(e)e.value=''});moRegistros=[];moRenderMarcadores([]);document.getElementById('moContador').textContent='Seleccione por lo menos un filtro y presione Ver mapa.'}
+function moLimpiarFiltros(){['moFiltroSede','moFiltroFecha','moFiltroGrupo','moFiltroEstado','moFiltroCuadrilla','moBuscarCodigo'].forEach(id=>{const e=document.getElementById(id);if(e)e.value=''});const cto=document.getElementById('moMostrarCtosCercanas');if(cto)cto.checked=false;moOcultarCatalogoCto();moRegistros=[];moRenderMarcadores([]);document.getElementById('moContador').textContent='Seleccione por lo menos un filtro y presione Ver mapa.'}
 async function moCargarCatalogos(){
   const d=await moApi({accion:'catalogosMapaOperativo',usuario:moUsuario()});
   const llenar=(id,lista,todos)=>{const e=document.getElementById(id);if(e)e.innerHTML=`<option value="">${todos}</option>`+(lista||[]).map(x=>`<option>${moEscape(x)}</option>`).join('')};
@@ -167,7 +180,7 @@ async function moConsultarMapa(){
   const filtros={sede:moNorm(document.getElementById('moFiltroSede')?.value),fecha:moNorm(document.getElementById('moFiltroFecha')?.value),grupoTrabajo:moNorm(document.getElementById('moFiltroGrupo')?.value),estado:moNorm(document.getElementById('moFiltroEstado')?.value),cuadrilla:moNorm(document.getElementById('moFiltroCuadrilla')?.value),codigo:moNorm(document.getElementById('moBuscarCodigo')?.value)};
   if(!Object.values(filtros).some(Boolean)){document.getElementById('moContador').textContent='Debe seleccionar al menos un filtro para evitar cargar toda la base.';return}
   document.getElementById('moContador').textContent='Consultando órdenes...';
-  const d=await moApi(Object.assign({accion:'listarMapaOperativo',usuario:moUsuario()},filtros));moRegistros=d.ordenes||[];moPintarUltimaActualizacion(d.ultimaActualizacionTexto);moRenderMarcadores(moRegistros);
+  const d=await moApi(Object.assign({accion:'listarMapaOperativo',usuario:moUsuario()},filtros));moRegistros=d.ordenes||[];moPintarUltimaActualizacion(d.ultimaActualizacionTexto);moRenderMarcadores(moRegistros);if(document.getElementById('moMostrarCtosCercanas')?.checked)await moCargarCtosCercanas();
 }
 function moInicializarMapa(){
   if(moMapa){moMapa.remove();moMapa=null}
@@ -175,8 +188,10 @@ function moInicializarMapa(){
   L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,attribution:'© OpenStreetMap'}).addTo(moMapa);
   moCapa=L.layerGroup().addTo(moMapa);
   moCapaCto=L.layerGroup().addTo(moMapa);
+  moCapaCatalogoCto=L.layerGroup().addTo(moMapa);
   moOrdenCtoVisible='';
   moModoCtoEstado=null;
+  moCatalogoCtoVisible=false;
   moCrearControlModoCto();
   moMapa.on('zoomend',moAplicarModoZoomEtiquetas);
   moAplicarModoZoomEtiquetas();
@@ -262,7 +277,7 @@ async function moLeerArchivo(){
 }
 async function moRegistrarImportacion(){
   if(!moImportacion.length)return;const btn=document.getElementById('moBtnImportar'),msg=document.getElementById('moImportMsg');btn.disabled=true;msg.className='mo-msg';msg.textContent='Registrando información...';
-  try{const d=await moApi({accion:'importarMapaOperativo',usuario:moUsuario(),registros:moImportacion});msg.className='mo-msg mo-ok';msg.textContent=`Registro terminado: ${d.nuevos} nuevos, ${d.actualizados} actualizados, ${d.repetidosCarga||0} repetidos consolidados y ${d.omitidos||0} omitidos.${d.consolidadosExistentes?` Se depuraron ${d.consolidadosExistentes} duplicados anteriores.`:''}`;moPintarUltimaActualizacion(d.ultimaActualizacionTexto);moImportacion=[];await moCargarCatalogos()}catch(e){msg.className='mo-msg mo-error';msg.textContent=e.message;btn.disabled=false}
+  try{const d=await moApi({accion:'importarMapaOperativo',usuario:moUsuario(),registros:moImportacion});const c=d.catalogoCto||{};msg.className='mo-msg mo-ok';msg.textContent=`Registro terminado: ${d.nuevos} nuevos, ${d.actualizados} actualizados, ${d.repetidosCarga||0} repetidos consolidados y ${d.omitidos||0} omitidos.${d.consolidadosExistentes?` Se depuraron ${d.consolidadosExistentes} duplicados anteriores.`:''} Catálogo CTO: ${c.nuevos||0} nuevos, ${c.actualizados||0} actualizados, ${c.total||0} únicos.`;moPintarUltimaActualizacion(d.ultimaActualizacionTexto);moImportacion=[];await moCargarCatalogos()}catch(e){msg.className='mo-msg mo-error';msg.textContent=e.message;btn.disabled=false}
 }
 function moMotivo(x){return x.motivoCancelacion||x.motivoFinalizacion||x.motivoAnulacion||''}
 function moEsInstalacionCto(tipoTrabajo){return ['INSTALACION','INSTALACIONPOSIBLEFRAUDE'].includes(moNormCab(tipoTrabajo))}
@@ -287,6 +302,71 @@ function moIconoCto(cto){
     iconSize:[235,45],
     iconAnchor:[14,42]
   });
+}
+function moIconoCatalogoCto(cto){
+  return L.divIcon({
+    className:'mo-catalogo-cto-marker-wrap',
+    html:`<span class="mo-catalogo-cto-marker-stack"><span class="mo-catalogo-cto-marker"></span><span class="mo-catalogo-cto-label"><b>CTO</b>${moEscape(cto.codigo)}</span></span>`,
+    iconSize:[235,45],
+    iconAnchor:[15,42]
+  });
+}
+function moEstadoCtosCercanas(texto,error){
+  const e=document.getElementById('moCtoCercanasEstado');
+  if(!e)return;
+  e.textContent=texto||'Ocultas';
+  e.classList.toggle('is-error',!!error);
+}
+function moOcultarCatalogoCto(){
+  if(moCapaCatalogoCto)moCapaCatalogoCto.clearLayers();
+  moCatalogoCtoVisible=false;
+  moEstadoCtosCercanas('Ocultas',false);
+}
+function moPopupCatalogoCto(cto){
+  const datos=[['Código CTO',cto.codigo],['Coordenada',cto.coordenada],['Sede',cto.sede],['Última actualización',cto.ultimaActualizacion],['Orden de referencia',cto.ordenReferencia],['Puerto de referencia',cto.puerto]].filter(x=>moNorm(x[1]));
+  return `<div class="mo-popup mo-popup-catalogo-cto"><div class="mo-main-row"><b>Registro</b><span>Catálogo CTO</span></div>${datos.map(x=>`<div class="mo-main-row"><b>${moEscape(x[0])}</b><span>${moEscape(x[1])}</span></div>`).join('')}</div>`;
+}
+async function moCargarCtosCercanas(){
+  const check=document.getElementById('moMostrarCtosCercanas');
+  if(!check?.checked)return moOcultarCatalogoCto();
+  if(!moMapa||!moCapaCatalogoCto||!moRegistros.length){
+    check.checked=false;
+    moOcultarCatalogoCto();
+    moEstadoCtosCercanas('Primero consulte el mapa',true);
+    return;
+  }
+  check.disabled=true;
+  moEstadoCtosCercanas('Consultando...',false);
+  try{
+    const b=moMapa.getBounds().pad(.18);
+    const d=await moApiLectura({
+      accion:'listarCtosCercanasMapaOperativo',
+      usuario:moUsuario(),
+      sur:b.getSouth(),norte:b.getNorth(),oeste:b.getWest(),este:b.getEast(),
+      sede:moNorm(document.getElementById('moFiltroSede')?.value),
+      limite:600
+    });
+    if(!check.checked)return moOcultarCatalogoCto();
+    moCapaCatalogoCto.clearLayers();
+    (d.ctos||[]).forEach(cto=>{
+      const lat=Number(cto.latitud),lng=Number(cto.longitud);
+      if(!Number.isFinite(lat)||!Number.isFinite(lng))return;
+      L.marker([lat,lng],{icon:moIconoCatalogoCto(cto),riseOnHover:true,zIndexOffset:700})
+        .bindPopup(moPopupCatalogoCto(cto),{maxWidth:290})
+        .addTo(moCapaCatalogoCto);
+    });
+    if(moMapa&&!moMapa.hasLayer(moCapaCatalogoCto))moCapaCatalogoCto.addTo(moMapa);
+    moCatalogoCtoVisible=true;
+    moEstadoCtosCercanas(`${d.mostradas||0} visibles${d.truncado?' · límite 600':''}`,false);
+  }catch(e){
+    check.checked=false;
+    moOcultarCatalogoCto();
+    moEstadoCtosCercanas(e.message||'No se pudieron cargar',true);
+  }finally{check.disabled=false}
+}
+function moAlternarCtosCercanas(check){
+  if(!check?.checked){moOcultarCatalogoCto();return;}
+  moCargarCtosCercanas();
 }
 function moIconoClienteCto(orden){
   const codigo=moNorm(orden&&orden.codigoCliente)||moNorm(orden&&orden.ordenId)||'Ubicación';
@@ -342,6 +422,7 @@ function moOcultarCtos(){
     (estado.capasOcultas||[]).forEach(capa=>{
       if(moCapa&&(!moCapa.hasLayer||!moCapa.hasLayer(capa)))moCapa.addLayer(capa);
     });
+    if(estado.catalogoCtoVisible&&document.getElementById('moMostrarCtosCercanas')?.checked&&moCapaCatalogoCto&&moMapa&&!moMapa.hasLayer(moCapaCatalogoCto))moCapaCatalogoCto.addTo(moMapa);
     if(moMapa&&estado.centro&&Number.isFinite(estado.zoom))moMapa.setView(estado.centro,estado.zoom,{animate:false});
   }
   moModoCtoEstado=null;
@@ -367,13 +448,15 @@ function moMostrarCtosOrdenPorBoton(boton){
     marcadorCliente:null,
     iconoCliente:null,
     zIndexCliente:0,
-    popupCliente:null
+    popupCliente:null,
+    catalogoCtoVisible:moCatalogoCtoVisible
   };
   const capas=[];
   if(moCapa&&typeof moCapa.eachLayer==='function')moCapa.eachLayer(capa=>capas.push(capa));
   estado.marcadorCliente=capas.find(capa=>capa&&capa._moRegistro===orden)||capas.find(capa=>moNorm(capa&&capa._moOrdenId)===ordenId)||null;
   estado.capasOcultas=capas.filter(capa=>capa!==estado.marcadorCliente);
   if(moMapa&&typeof moMapa.closePopup==='function')moMapa.closePopup();
+  if(estado.catalogoCtoVisible&&moCapaCatalogoCto&&moMapa.hasLayer(moCapaCatalogoCto))moMapa.removeLayer(moCapaCatalogoCto);
   estado.capasOcultas.forEach(capa=>moCapa.removeLayer(capa));
   if(estado.marcadorCliente){
     estado.iconoCliente=estado.marcadorCliente.options&&estado.marcadorCliente.options.icon;
@@ -438,5 +521,5 @@ function moLeyendaCuadrillas(lista){
   const chips=nombres.map(nombre=>{const e=moEstiloCuadrilla(nombre);return `<span class="mo-cuadrilla-chip mo-patron-${e.patron}" style="--mo-cuadrilla-color:${e.color}" title="${moEscape(nombre)}">${moEscape(moCodigoCortoCuadrilla(nombre))}</span>`}).join('');
   return `<details class="mo-leyenda-cuadrillas"><summary>Cuadrillas visibles (${nombres.length})</summary><div>${chips}</div></details>`;
 }
-function moRenderMarcadores(lista){if(!moMapa||!moCapa)return;moOcultarCtos();moCapa.clearLayers();moMarcadores={};const bounds=[];let validos=0;moConstruirEstilosCuadrillas((lista||[]).map(x=>x.cuadrilla));lista.forEach(x=>{const lat=Number(x.latitud),lng=Number(x.longitud);if(!Number.isFinite(lat)||!Number.isFinite(lng))return;const ordenId=moNorm(x.ordenId);const m=L.marker([lat,lng],{icon:moIconoEstado(x.estado,x.cuadrilla),riseOnHover:true}).bindPopup(moPopup(x),{autoClose:true,closeOnClick:true,maxWidth:310});m._moOrdenId=ordenId;m._moRegistro=x;m.on('click',()=>{if(moOrdenCtoVisible&&moOrdenCtoVisible!==ordenId)moOcultarCtos();moMapa.panTo([lat,lng]);});m.on('popupclose',()=>{if(moOrdenCtoVisible===ordenId)moOcultarCtos();});m.addTo(moCapa);moMarcadores[ordenId]=m;bounds.push([lat,lng]);validos++});if(bounds.length)moMapa.fitBounds(bounds,{padding:[25,25],maxZoom:16});setTimeout(moAplicarModoZoomEtiquetas,0);document.getElementById('moContador').innerHTML=`${validos} puntos visibles de ${lista.length} órdenes filtradas.<div class="mo-leyenda"><span><i style="--c:#16a34a"></i>Finalizada</span><span><i style="--c:#dc2626"></i>Cancelada</span><span><i style="--c:#eab308"></i>Reprogramada</span><span><i style="--c:#f97316"></i>Regestión</span><span><i style="--c:#64748b"></i>Anulada</span><span><i style="--c:#2563eb"></i>Pendiente/Agendada</span><span><i style="--c:#7c3aed"></i>En proceso</span></div>${moLeyendaCuadrillas(lista)}`}
+function moRenderMarcadores(lista){if(!moMapa||!moCapa)return;moOcultarCtos();if(moCapaCatalogoCto)moCapaCatalogoCto.clearLayers();moCatalogoCtoVisible=false;moCapa.clearLayers();moMarcadores={};const bounds=[];let validos=0;moConstruirEstilosCuadrillas((lista||[]).map(x=>x.cuadrilla));lista.forEach(x=>{const lat=Number(x.latitud),lng=Number(x.longitud);if(!Number.isFinite(lat)||!Number.isFinite(lng))return;const ordenId=moNorm(x.ordenId);const m=L.marker([lat,lng],{icon:moIconoEstado(x.estado,x.cuadrilla),riseOnHover:true}).bindPopup(moPopup(x),{autoClose:true,closeOnClick:true,maxWidth:310});m._moOrdenId=ordenId;m._moRegistro=x;m.on('click',()=>{if(moOrdenCtoVisible&&moOrdenCtoVisible!==ordenId)moOcultarCtos();moMapa.panTo([lat,lng]);});m.on('popupclose',()=>{if(moOrdenCtoVisible===ordenId)moOcultarCtos();});m.addTo(moCapa);moMarcadores[ordenId]=m;bounds.push([lat,lng]);validos++});if(bounds.length)moMapa.fitBounds(bounds,{padding:[25,25],maxZoom:16});setTimeout(moAplicarModoZoomEtiquetas,0);document.getElementById('moContador').innerHTML=`${validos} puntos visibles de ${lista.length} órdenes filtradas.<div class="mo-leyenda"><span><i style="--c:#16a34a"></i>Finalizada</span><span><i style="--c:#dc2626"></i>Cancelada</span><span><i style="--c:#eab308"></i>Reprogramada</span><span><i style="--c:#f97316"></i>Regestión</span><span><i style="--c:#64748b"></i>Anulada</span><span><i style="--c:#2563eb"></i>Pendiente/Agendada</span><span><i style="--c:#7c3aed"></i>En proceso</span></div>${moLeyendaCuadrillas(lista)}`}
 function moBuscarCodigo(){moConsultarMapa()}
