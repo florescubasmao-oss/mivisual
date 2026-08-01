@@ -1,0 +1,23 @@
+MI VISUAL V301 - CONSULTA DE PLANTILLA JSON
+
+PROBLEMA CORREGIDO
+- Al buscar un código, Consulta de plantilla recibía el texto
+  "MI VISUAL API OK" en lugar de una respuesta JSON.
+
+CAMBIOS
+- consultarPlantillaOrden ahora se consulta por GET como lectura segura.
+- doGet reconoce la acción consultarPlantillaOrden y devuelve JSON.
+- Se mantiene la consulta más reciente y el alcance por perfil/cuadrilla.
+- No se modifican registros, hojas, permisos ni funciones de Mapa Operativo.
+
+ARCHIVOS A REEMPLAZAR EN GITHUB
+- index.html
+- js/plantilla_orden.js
+- Code.gs
+- apps_script/Code.gs
+
+APPS SCRIPT
+Code.gs sí cambió. Crear una nueva versión de la misma implementación.
+
+DESPUÉS DE PUBLICAR
+Cerrar sesión, volver a ingresar y realizar una nueva búsqueda.

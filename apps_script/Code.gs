@@ -52,6 +52,20 @@ function doGet(e) {
     }
   }
 
+  // V301: Consulta de plantilla es una operación de solo lectura.
+  // Se atiende por GET para conservar los parámetros después de las
+  // redirecciones del Web App y responder siempre en formato JSON.
+  if (parametros.accion === "consultarPlantillaOrden") {
+    try {
+      return respuestaJson(consultarPlantillaOrden(parametros));
+    } catch (error) {
+      return respuestaJson({
+        ok: false,
+        error: error && error.message ? error.message : String(error)
+      });
+    }
+  }
+
   return ContentService
     .createTextOutput("MI VISUAL API OK")
     .setMimeType(ContentService.MimeType.TEXT);

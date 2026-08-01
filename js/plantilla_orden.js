@@ -1,5 +1,5 @@
 /* =====================================================
-   MI VISUAL V271 - Consulta de plantilla de orden
+   MI VISUAL V301 - Consulta de plantilla de orden
    Consulta de solo lectura desde MAPA_ORDENES.
    ===================================================== */
 const API_PLANTILLA_ORDEN = (window.MI_VISUAL_API_URL || "https://script.google.com/macros/s/AKfycbzcbjCLweJNgZXDerdzmMN7Lwotc1G8NWdzoPkaLNGDivAgpYxDkq78xZwPRioSB4XY/exec");
@@ -18,11 +18,30 @@ function poUsuario(){
 }
 
 async function poApi(payload){
-  const respuesta = await fetch(API_PLANTILLA_ORDEN, {
-    method:"POST",
-    body:JSON.stringify(payload)
+  const parametros = new URLSearchParams();
+  Object.entries(payload || {}).forEach(([clave, valor]) => {
+    if(valor !== undefined && valor !== null){
+      parametros.set(clave, typeof valor === "object" ? JSON.stringify(valor) : String(valor));
+    }
   });
-  const data = await respuesta.json();
+  parametros.set("_ts", String(Date.now()));
+
+  const separador = API_PLANTILLA_ORDEN.includes("?") ? "&" : "?";
+  const respuesta = await fetch(API_PLANTILLA_ORDEN + separador + parametros.toString(), {
+    method:"GET",
+    cache:"no-store"
+  });
+  const texto = await respuesta.text();
+  let data;
+  try{
+    data = JSON.parse(texto);
+  }catch(error){
+    const mensaje = String(texto || "").trim();
+    if(mensaje === "MI VISUAL API OK"){
+      throw new Error("La API no reconoció la consulta de plantilla. Actualice la implementación de Apps Script.");
+    }
+    throw new Error(mensaje || "La API devolvió una respuesta inválida.");
+  }
   if(!data.ok) throw new Error(data.error || "No se pudo consultar la plantilla");
   return data;
 }
