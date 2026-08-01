@@ -1,0 +1,24 @@
+MI VISUAL V308 - RANKING ORDENADO
+
+CAMBIO REALIZADO
+- Supervisor: el ranking de su sede se muestra desde el puesto 1 hasta el ultimo.
+- Jefatura: el ranking regional y el filtro por sede se muestran desde el puesto 1 hasta el ultimo.
+- Gerencia: el ranking regional y el filtro por sede se muestran desde el puesto 1 hasta el ultimo.
+- El orden se aplica en la pantalla aunque la hoja publicada entregue filas desordenadas.
+
+NO SE MODIFICA
+- Calculos, puntajes ni posiciones del ranking.
+- Vista individual del Tecnico.
+- Code.gs, Apps Script ni Google Sheets.
+- Otros modulos de MI VISUAL.
+
+ARCHIVOS PARA GITHUB
+- index.html
+- js/ranking.js
+
+INSTALACION
+1. Reemplazar en GitHub los archivos incluidos conservando las mismas rutas.
+2. Realizar commit y push.
+3. Cerrar MI VISUAL y volver a ingresar.
+
+No se requiere crear una nueva implementacion de Apps Script.
