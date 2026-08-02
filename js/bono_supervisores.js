@@ -1,5 +1,5 @@
 /* =====================================================
-   V321 - BONO DE SUPERVISORES DENTRO DEL DASHBOARD
+   V322 - BONO DE SUPERVISORES DENTRO DEL DASHBOARD
    ===================================================== */
 let MV321_BONO_SUPERVISORES = {
     cargando:false,
@@ -87,13 +87,14 @@ function mv321DetalleComponente(c, bono){
     const m = c.metricas || {};
     let html = "";
     if(c.clave === "PRODUCTIVIDAD"){
-        html += mv321Linea("Cumplimiento de agenda",mv321Pct(m.agendaPct),"Meta ≥ 98% · finalizadas / total");
-        html += mv321Linea("Productividad de cuadrillas",mv321Pct(m.productividadPct),`Meta ≥ 95% · ${Number(m.puntos||0).toFixed(1)} / ${Number(m.metaPuntos||0)} pts`);
+        html += mv321Linea("Puntaje de cuadrillas",mv321Pct(m.productividadPct),`Meta: 130 puntos por cuadrilla · ${Number(m.puntos||0).toFixed(1)} / ${Number(m.metaPuntos||0)} pts`);
+        html += mv321Linea("Efectividad",mv321Pct(m.efectividadPct),`Meta ≥ 70% · ${Number(m.finalizadas||0)} finalizadas`);
         html += mv321Linea("Órdenes reprogramadas",mv321Pct(m.reprogramadasPct),`Meta ≤ 3% · ${Number(m.reprogramadas||0)} de ${Number(m.totalOrdenes||0)}`);
     }else if(c.clave === "CALIDAD"){
-        html += mv321Linea("Incidencias / retrabajos",mv321Pct(m.retrabajosPct),`Meta ≤ 2% · ${Number(m.retrabajos||0)} observaciones`);
+        html += mv321Linea("Observaciones",mv321Money(m.montoObservaciones),`Meta ≤ S/ 200 · ${Number(m.observaciones||0)} registros`);
+        html += mv321Linea("Recableado",mv321Pct(m.recableadoPct),`Meta ≤ 42% · ${Number(m.recableados||0)} de ${Number(m.rojoAsignadas||0)} órdenes VT`);
+        html += mv321Linea("VTR/GAR",mv321Pct(m.vtrGarPct),`Meta ≤ 3% · ${Number(m.incidenciasVtrGar||0)} incidencias`);
         html += mv321Linea("Auditorías aprobadas",mv321Pct(m.auditoriasPct),`Meta ≥ 95% · ${Number(m.auditoriasAprobadas||0)} de ${Number(m.auditorias||0)}`);
-        html += mv321Linea("Reincidencias VTR/GAR",mv321Pct(m.reincidenciasPct),`Meta ≤ 3% · ${Number(m.incidenciasVtrGar||0)} incidencias`);
     }else if(c.clave === "SLA"){
         html += mv321Linea("Órdenes evaluables",String(Number(m.evaluables||0)),`${Number(m.cumplen||0)} cumplen · ${Number(m.vencidas||0)} fuera de SLA`);
         html += mv321Linea("Instalaciones dentro del SLA",mv321Pct(m.instalacionesPct),`${Number(m.instalacionesTotal||0)} órdenes · meta ≥ 98%`);
@@ -162,7 +163,7 @@ function mv321RenderEstadoBase(){
 function mv321RenderSupervisor(){
     const base = mv321RenderEstadoBase();
     if(base) return base;
-    return `<div class="mv321-panel"><div class="mv321-panel-title"><div><b>🎁 BONO DEL SUPERVISOR</b><span>Cálculo mensual integrado al dashboard</span></div></div>${mv321TarjetaBono(MV321_BONO_SUPERVISORES.bonos[0],false)}</div>`;
+    return `<div class="mv321-panel"><div class="mv321-panel-title"><div><b>🎁 BONO DEL SUPERVISOR</b><span>Metas del Dashboard: 130 pts/cuadrilla · Efectividad 70% · Recableado 42% · VTR/GAR 3% · Observaciones S/200</span></div></div>${mv321TarjetaBono(MV321_BONO_SUPERVISORES.bonos[0],false)}</div>`;
 }
 
 function mv321RenderJefatura(){

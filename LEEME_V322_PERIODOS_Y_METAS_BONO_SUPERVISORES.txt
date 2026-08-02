@@ -1,0 +1,54 @@
+MI VISUAL V322 - PERIODOS Y METAS DEL BONO DE SUPERVISORES
+Fecha: 02/08/2026
+
+BASE CONSERVADA
+- Parte de MI VISUAL V321.
+- Conserva la integración del bono dentro de los dashboards.
+- Conserva la corrección V320 de fecha real de actas.
+- No cambia activadores.
+
+CORRECCIONES
+1. PERIODO acepta y unifica:
+   - 2026-08
+   - 01/08/2026
+   - fechas internas de Google Sheets
+
+2. ASIGNACION_BONO_SUPERVISORES:
+   - consolida filas repetidas del mismo período y supervisor;
+   - conserva una sola fotografía mensual válida;
+   - guarda los nuevos períodos como texto yyyy-MM;
+   - evita que vuelvan a generarse duplicados.
+
+3. EVALUACION_BONO_SUPERVISORES:
+   - aplica la misma normalización mensual;
+   - consolida duplicados conservando la evaluación más reciente;
+   - evita duplicados nuevos.
+
+METAS DEL DASHBOARD USADAS EN EL BONO
+- Producción: 130 puntos por cuadrilla.
+- Efectividad: mínimo 70%.
+- Recableado: máximo 42%.
+- VTR/GAR: máximo 3%.
+- Observaciones: monto afectado máximo S/ 200.
+
+CÁLCULO PROVISIONAL
+- Productividad: puntaje de cuadrillas, efectividad y reprogramaciones.
+- Calidad: observaciones, recableado, VTR/GAR y auditorías aprobadas.
+- SLA: mantiene las 28 partidas y los límites de 140/80 minutos.
+- Seguridad/Liderazgo: actas, checklist y evaluación de Jefatura.
+- Satisfacción: continúa pendiente de información WIN y no redistribuye S/150.
+
+ARCHIVOS A REEMPLAZAR
+1. Code.gs en Apps Script. Luego implementar una versión nueva.
+2. js/bono_supervisores.js en GitHub.
+
+NO ES NECESARIO
+- No modificar manualmente las hojas de asignaciones.
+- No crear otro activador.
+- No reemplazar index.html, estilos.css ni dashboards.js.
+
+DESPUÉS DE PUBLICAR
+1. Ingresar al Dashboard de Supervisor o Jefatura.
+2. Seleccionar agosto de 2026.
+3. La primera consulta normaliza y consolida automáticamente las filas existentes.
+4. En GitHub hacer commit/push y actualizar con Ctrl + F5.
