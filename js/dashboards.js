@@ -2363,6 +2363,7 @@ function mv198RenderSupervisor(seleccionada){
     mostrarPantalla(`<div class="mv4-page">
         <div class="mv4-top-card"><div class="mv4-top-role">👷 SUPERVISOR</div><div class="mv4-top-sede">${sede || "SEDE"}</div><div class="mv4-top-sub">Actualizado: ${actualizacion}</div></div>
         ${mv239FiltrosSupervisor(lista, filtros)}
+        ${filtros.indicador === "RESUMEN" && !seleccion && typeof mv321RenderSupervisor === "function" ? mv321RenderSupervisor() : ""}
         ${contenido}
         <button class="button_1" onclick="volverInicio()">⬅️ Volver al menú</button>
     </div>`);
@@ -2383,7 +2384,12 @@ async function mostrarDashboardSupervisor(periodoSeleccionado){
         MV198_DASH_SUPERVISOR_LISTA = (await mv4ObtenerRanking(periodoSeleccionado)).filter(x => mv4Norm(x.sede) === sede);
         MV239_DASH_SUPERVISOR_FILTROS = {indicador:"RESUMEN", cuadrilla:"TODAS"};
         mv282ReiniciarConsulta();
+        if(typeof mv321PrepararCarga === "function") mv321PrepararCarga(MV276_DASH_PERIODO);
         mv198RenderSupervisor();
+        if(typeof mv321CargarBonos === "function"){
+            await mv321CargarBonos(MV276_DASH_PERIODO);
+            mv198RenderSupervisor();
+        }
     }catch(e){ mostrarPantalla(`<div class="mv4-page"><h2>👷 Supervisor</h2><div class="mv4-error">${e.message}</div></div>`); }
 }
 
@@ -2776,7 +2782,8 @@ function mv199RenderJefatura(){
             <div class="mv4-top-sede">${tituloZona}</div>
             <div class="mv4-top-sub">${listaSede.length} cuadrillas</div>
         </div>
-        ${mv199FiltrosJefatura(listaCompleta, f)}`;
+        ${mv199FiltrosJefatura(listaCompleta, f)}
+        ${f.indicador === "RESUMEN" && !seleccion && typeof mv321RenderJefatura === "function" ? mv321RenderJefatura() : ""}`;
 
     if(f.indicador === "TRABAJOS_DIARIOS"){
         html += mv282RenderTrabajosDiarios(listaSede, f, "JEFATURA");
@@ -2817,7 +2824,12 @@ async function mostrarDashboardJefatura(periodoSeleccionado){
         MV198_DASH_JEFATURA_LISTA = mv591ListaZonaNorte(listaCompleta);
         MV199_DASH_JEFATURA_FILTROS = {sede:"TODAS", indicador:"RESUMEN", cuadrilla:"TODAS"};
         mv282ReiniciarConsulta();
+        if(typeof mv321PrepararCarga === "function") mv321PrepararCarga(MV276_DASH_PERIODO);
         mv199RenderJefatura();
+        if(typeof mv321CargarBonos === "function"){
+            await mv321CargarBonos(MV276_DASH_PERIODO);
+            mv199RenderJefatura();
+        }
     }catch(e){
         const rotuloError = mv240RotuloVistaEjecutiva();
         mostrarPantalla(`<div class="mv4-page"><h2>${rotuloError.icono} ${rotuloError.titulo}</h2><div class="mv4-error">${e.message}</div></div>`);

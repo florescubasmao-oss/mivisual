@@ -1,0 +1,70 @@
+MI VISUAL V321 - BONO DE SUPERVISORES EN EL DASHBOARD
+======================================================
+
+BASE CONSERVADA
+- Esta versión parte de V320.
+- Conserva la validación automática de RECABLEADO a los 15 minutos.
+- Conserva el flujo PENDIENTE_FECHA de Actas Escaneadas.
+- No modifica Ranking, Producción, Actas, Validación Técnica ni permisos existentes.
+
+IMPLEMENTACIÓN V321
+- Integra el bono dentro del Dashboard de Supervisor, Jefatura y Gerencia.
+- Supervisor ve únicamente su resultado y sus cuadrillas asignadas.
+- Jefatura/Gerencia ven el comparativo de supervisores.
+- Mantiene asignaciones mensuales históricas para que un cambio de supervisor no altere meses anteriores.
+
+COMPONENTES
+- Productividad operativa: máximo S/250.
+- Calidad: máximo S/250. El retrabajo se muestra como aproximación provisional mediante observaciones.
+- SLA WIN: máximo S/200.
+- Satisfacción: S/150, pendiente de la base de llamadas/encuestas de WIN y sin redistribución.
+- Seguridad y liderazgo: máximo S/150.
+
+SLA WIN
+- Usa FechaIniVisi y FechaFinVisi de MAPA_ORDENES.
+- Evalúa únicamente órdenes FINALIZADAS.
+- Cruza ORDEN_ID principalmente con CODIGO_LIQUIDACION y usa CODIGO_PEDIDO como respaldo.
+- Instalaciones, recableados y postventa: 140 minutos (2 h 20 min).
+- Demás partidas: 80 minutos (1 h 20 min).
+- La tabla contiene las 28 partidas definidas.
+- Jefatura puede cambiar los tiempos del mes en curso.
+- Cada cambio conserva su vigencia histórica; no recalcula meses anteriores con parámetros nuevos.
+
+SEGURIDAD Y LIDERAZGO
+- Actas sin observaciones: S/40.
+- Dos checklist mensuales por cuadrilla, uno por quincena: S/30.
+- Checklist sin observaciones: S/20.
+- Evaluación manual de Jefatura: S/60.
+- Son cinco preguntas con opciones 12, 6 o 0 puntos.
+- Si marca Parcialmente o No cumplió, comentario y evidencia son obligatorios.
+- Una observación de SEGURIDAD en estado PENALIZADO deja el componente en S/0.
+
+HOJAS AUTOMÁTICAS
+Al abrir el Dashboard por primera vez, Code.gs crea y utiliza:
+- PARAMETROS_SLA_WIN
+- ASIGNACION_BONO_SUPERVISORES
+- EVALUACION_BONO_SUPERVISORES
+
+ARCHIVOS QUE DEBEN ACTUALIZARSE
+APPS SCRIPT:
+- Code.gs
+
+GITHUB:
+- index.html
+- css/estilos.css
+- js/dashboards.js
+- js/bono_supervisores.js (archivo nuevo)
+
+PASOS DE INSTALACIÓN
+1. Reemplazar Code.gs en el proyecto correcto de Apps Script.
+2. Guardar e implementar una nueva versión de la aplicación web.
+3. Reemplazar/agregar los cuatro archivos indicados en GitHub.
+4. Hacer commit y push.
+5. Esperar la publicación y actualizar con Ctrl + F5.
+
+ACTIVADORES
+- No se crea ni se modifica ningún activador.
+- Mantener procesarValidacionesTecnicasVencidas cada minuto, como ya está configurado.
+
+NOTA
+El bono mostrado es PROVISIONAL mientras Satisfacción no tenga la base WIN y mientras las fuentes provisionales de Calidad no sean reemplazadas por una base formal de retrabajos/reincidencias.
