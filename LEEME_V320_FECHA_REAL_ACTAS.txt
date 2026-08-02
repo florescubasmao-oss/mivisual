@@ -1,0 +1,69 @@
+MI VISUAL V320 - FECHA REAL Y CARPETA DE ACTAS
+================================================
+
+OBJETIVO
+Evitar que la fecha de subida del PDF se use como fecha de atención.
+
+NUEVO FLUJO
+1. Si la orden existe en Mapa Operativo:
+   - Toma fecha fin de visita.
+   - Si falta, toma fecha inicio de visita.
+   - Si falta, toma fecha de solicitud.
+   - Guarda el PDF en SEDE/CUADRILLA/TIPO/FECHA/CODIGO.pdf.
+
+2. Si la orden todavía no aparece:
+   - Guarda el PDF en SEDE/CUADRILLA/TIPO/PENDIENTE_FECHA/CODIGO.pdf.
+   - No coloca la fecha de subida como fecha de atención.
+   - Revisa Mapa Operativo cada 15 minutos durante 24 horas.
+
+3. Si la orden aparece dentro de las 24 horas:
+   - Mueve el mismo PDF a la carpeta de la fecha real.
+   - Actualiza FECHA_GESTION y los datos automáticos disponibles.
+
+4. Si no aparece después de 24 horas:
+   - Supervisor, Responsable de Almacén o Jefatura de Almacén verá el botón
+     CONFIRMAR FECHA DE ATENCIÓN.
+   - Al confirmar, el PDF se mueve a la carpeta seleccionada.
+
+PROTECCIONES
+- Técnico no puede elegir la fecha manualmente.
+- Jefatura y Gerencia conservan su vista de consulta.
+- No se permite fecha futura.
+- Una acta con fecha pendiente no puede incluirse todavía en un cargo de entrega.
+- Las actas históricas existentes no se mueven ni se modifican.
+- No cambia la validación documental, entrega física, recepción masiva ni permisos actuales.
+
+ARCHIVOS A ACTUALIZAR
+APPS SCRIPT:
+- Code.gs
+
+GITHUB:
+- index.html
+- js/actas.js
+
+PASOS
+1. Copiar el nuevo Code.gs en el proyecto MI VISUAL API.
+2. Guardar e implementar una nueva versión.
+3. En GitHub reemplazar index.html y js/actas.js.
+4. Hacer commit y push.
+5. Cerrar MI VISUAL y abrir nuevamente con Ctrl + F5.
+
+ACTIVADOR
+No crear otro activador.
+Conservar como está el activador existente:
+- Función: procesarValidacionesTecnicasVencidas
+- Frecuencia: cada 1 minuto
+
+Ese activador continuará revisando Recableados y, de manera independiente,
+revisará las fechas pendientes de actas cada 15 minutos.
+
+HOJA ACTAS_ESCANEADAS
+No crear columnas manualmente. El sistema agrega automáticamente 8 columnas
+de control al final de la hoja, sin modificar las 40 columnas existentes.
+
+PRUEBA RECOMENDADA
+- Subir una acta cuya orden ya esté en Mapa: debe ir directamente a su fecha real.
+- Subir una acta aún no cargada en Mapa: debe quedar en PENDIENTE_FECHA.
+- Al actualizar Mapa, esperar hasta 15 minutos o usar Actualizar datos automáticos:
+  el PDF debe moverse a la carpeta correcta.
+

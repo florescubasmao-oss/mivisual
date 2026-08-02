@@ -19,6 +19,8 @@ const HOJA_ANALISIS_ECONOMICO = "ANALISIS_ECONOMICO";
 const HOJA_GASTOS_CUADRILLA = "GASTOS_CUADRILLA";
 const HOJA_TARIFARIO_PDG = "TARIFARIO_PDG";
 const CARPETA_ACTAS_ESCANEADAS = "1EZALuMsXo_ZRO93FjKyuDgRmvAe2C69L";
+const HORAS_ESPERA_FECHA_ACTA = 24;
+const MINUTOS_REVISION_FECHA_ACTA = 15;
 const HOJA_CHECKLIST_ALMACEN = "CHECKLIST_ALMACEN";
 const CARPETA_CHECKLIST_ALMACEN = "1nL5if5dRs3y1_OpKfzu7N9BNjiSvXVgp";
 const HOJA_CONFIG_MODULOS = "CONFIG_MODULOS";
@@ -2780,11 +2782,19 @@ function procesarValidacionesTecnicasVencidas() {
     }
   }
 
+  let revisionFechasActas = null;
+  try {
+    revisionFechasActas = procesarFechasPendientesActasSiCorresponde_();
+  } catch (errorActas) {
+    revisionFechasActas = {ok:false, error:errorActas && errorActas.message ? errorActas.message : String(errorActas)};
+  }
+
   return {
     ok: true,
     modulo: "VALIDACION_TECNICA",
     accion: "PROCESAR_VENCIDAS",
-    actualizados
+    actualizados,
+    revisionFechasActas
   };
 }
 
@@ -3122,7 +3132,9 @@ function encabezadoActasEscaneadas() {
     "MOTIVO_JEFATURA","VALIDADO_JEFATURA_POR","FECHA_VALIDACION_JEFATURA","HORA_VALIDACION_JEFATURA",
     "VERSION","ESTADO_ENTREGA_FISICA","CONFIRMADO_FISICO_POR","PERFIL_CONFIRMACION_FISICA",
     "FECHA_CONFIRMACION_FISICA","HORA_CONFIRMACION_FISICA","MOTIVO_REVERSION_FISICA",
-    "ORIGEN_REGISTRO","MOTIVO_ACTA_FALTANTE","REGISTRADO_FALTANTE_POR","FECHA_REGISTRO_FALTANTE","HORA_REGISTRO_FALTANTE"
+    "ORIGEN_REGISTRO","MOTIVO_ACTA_FALTANTE","REGISTRADO_FALTANTE_POR","FECHA_REGISTRO_FALTANTE","HORA_REGISTRO_FALTANTE",
+    "ESTADO_FECHA_CARPETA","FECHA_LIMITE_VERIFICACION","ULTIMO_INTENTO_FECHA","INTENTOS_FECHA",
+    "FECHA_CARPETA","FECHA_CONFIRMADA_POR","PERFIL_CONFIRMACION_FECHA","ORIGEN_FECHA_CARPETA"
   ]];
 }
 
@@ -3130,11 +3142,11 @@ function asegurarHojaActasEscaneadas() {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
   let hoja = ss.getSheetByName(HOJA_ACTAS_ESCANEADAS);
   if (!hoja) hoja = ss.insertSheet(HOJA_ACTAS_ESCANEADAS);
-  if (hoja.getLastRow() === 0 || !hoja.getRange(1, 1).getValue()) {
-    hoja.getRange(1, 1, 1, 40).setValues(encabezadoActasEscaneadas());
-  } else if (hoja.getLastColumn() >= 35) {
-    hoja.getRange(1, 1, 1, 40).setValues(encabezadoActasEscaneadas());
+  const encabezado = encabezadoActasEscaneadas()[0];
+  if (hoja.getMaxColumns() < encabezado.length) {
+    hoja.insertColumnsAfter(hoja.getMaxColumns(), encabezado.length - hoja.getMaxColumns());
   }
+  hoja.getRange(1, 1, 1, encabezado.length).setValues([encabezado]);
   return hoja;
 }
 
@@ -3214,7 +3226,8 @@ function guardarPdfActaDrive(data, sede, cuadrilla, tipoEjecucion, fechaGestion,
   const original = (data.archivoNombre || data.nombreArchivo || "").toString().toLowerCase();
   if (mime !== "application/pdf" && !original.endsWith(".pdf")) throw new Error("Solo se permite subir archivos PDF");
   const raiz = DriveApp.getFolderById(CARPETA_ACTAS_ESCANEADAS);
-  const carpetaFecha = obtenerOCrearCarpetaActa(obtenerOCrearCarpetaActa(obtenerOCrearCarpetaActa(obtenerOCrearCarpetaActa(raiz, sede), cuadrilla), tipoEjecucion), fechaGestion);
+  const carpetaDestino = fechaGestion || "PENDIENTE_FECHA";
+  const carpetaFecha = obtenerOCrearCarpetaActa(obtenerOCrearCarpetaActa(obtenerOCrearCarpetaActa(obtenerOCrearCarpetaActa(raiz, sede), cuadrilla), tipoEjecucion), carpetaDestino);
   const duplicados = carpetaFecha.getFilesByName(nombreArchivo);
   while (duplicados.hasNext()) duplicados.next().setTrashed(true);
   const blob = Utilities.newBlob(Utilities.base64Decode(data.archivoBase64), "application/pdf", nombreArchivo);
@@ -3224,7 +3237,7 @@ function guardarPdfActaDrive(data, sede, cuadrilla, tipoEjecucion, fechaGestion,
 }
 
 function obtenerValorActaCompat(fila, nombreCampo) {
-  const actual = {id:0,fechaRegistro:1,horaRegistro:2,sede:3,cuadrilla:4,supervisor:5,tecnico:6,fechaGestion:7,tipoEjecucion:8,tipoPartida:9,codigoOrden:10,codigoPedido:11,numeroActa:12,dni:13,cliente:14,nombreArchivo:15,linkActa:16,estado:17,resultadoAlmacen:18,motivoAlmacen:19,validadoAlmacenPor:20,fechaValidacionAlmacen:21,horaValidacionAlmacen:22,resultadoJefatura:23,motivoJefatura:24,validadoJefaturaPor:25,fechaValidacionJefatura:26,horaValidacionJefatura:27,version:28,estadoEntregaFisica:29,confirmadoFisicoPor:30,perfilConfirmacionFisica:31,fechaConfirmacionFisica:32,horaConfirmacionFisica:33,motivoReversionFisica:34,origenRegistro:35,motivoActaFaltante:36,registradoFaltantePor:37,fechaRegistroFaltante:38,horaRegistroFaltante:39};
+  const actual = {id:0,fechaRegistro:1,horaRegistro:2,sede:3,cuadrilla:4,supervisor:5,tecnico:6,fechaGestion:7,tipoEjecucion:8,tipoPartida:9,codigoOrden:10,codigoPedido:11,numeroActa:12,dni:13,cliente:14,nombreArchivo:15,linkActa:16,estado:17,resultadoAlmacen:18,motivoAlmacen:19,validadoAlmacenPor:20,fechaValidacionAlmacen:21,horaValidacionAlmacen:22,resultadoJefatura:23,motivoJefatura:24,validadoJefaturaPor:25,fechaValidacionJefatura:26,horaValidacionJefatura:27,version:28,estadoEntregaFisica:29,confirmadoFisicoPor:30,perfilConfirmacionFisica:31,fechaConfirmacionFisica:32,horaConfirmacionFisica:33,motivoReversionFisica:34,origenRegistro:35,motivoActaFaltante:36,registradoFaltantePor:37,fechaRegistroFaltante:38,horaRegistroFaltante:39,estadoFechaCarpeta:40,fechaLimiteVerificacion:41,ultimoIntentoFecha:42,intentosFecha:43,fechaCarpeta:44,fechaConfirmadaPor:45,perfilConfirmacionFecha:46,origenFechaCarpeta:47};
   const anterior28 = {id:0,fechaRegistro:1,horaRegistro:2,sede:3,cuadrilla:4,supervisor:5,tecnico:6,fechaGestion:7,tipoEjecucion:8,tipoPartida:9,codigoOrden:10,codigoPedido:11,dni:12,cliente:13,nombreArchivo:14,linkActa:15,estado:16,resultadoAlmacen:17,motivoAlmacen:18,validadoAlmacenPor:19,fechaValidacionAlmacen:20,horaValidacionAlmacen:21,resultadoJefatura:22,motivoJefatura:23,validadoJefaturaPor:24,fechaValidacionJefatura:25,horaValidacionJefatura:26,version:27};
   const antigua22 = {id:0,fechaRegistro:1,horaRegistro:2,sede:3,cuadrilla:4,supervisor:5,tecnico:6,fechaGestion:7,tipoPartida:8,codigoOrden:9,codigoPedido:10,dni:11,cliente:12,nombreArchivo:13,linkActa:14,estado:15,resultadoJefatura:16,motivoJefatura:17,validadoJefaturaPor:18,fechaValidacionJefatura:19,horaValidacionJefatura:20,version:21};
   const mapa = fila.length >= 40 ? actual : (fila.length >= 28 ? anterior28 : antigua22);
@@ -3460,7 +3473,7 @@ function resolverDatosAutomaticosActa(codigoPedido, codigoOrden, cuadrilla, sede
   return {
     sede: normalizarTexto(sede || (mapa ? sedeMapaOperativo(mapa.region) : "")),
     cuadrilla: normalizarCuadrilla(cuadrilla),
-    fechaGestion: fechaAtencionMapa || Utilities.formatDate(new Date(), Session.getScriptTimeZone(), "yyyy-MM-dd"),
+    fechaGestion: fechaAtencionMapa,
     tipoEjecucion: tipoEjecucion,
     tipoPartida: tipoPartida,
     dni: mapa ? textoIdentificadorActa(mapa.numeroDocumento) : "",
@@ -3468,6 +3481,178 @@ function resolverDatosAutomaticosActa(codigoPedido, codigoOrden, cuadrilla, sede
     encontradoMapa: !!mapa,
     encontradoProduccion: !!tipoPartida
   };
+}
+
+function completarFilaActaV320_(fila) {
+  const salida = (fila || []).slice(0, 48);
+  while (salida.length < 48) salida.push("");
+  return salida;
+}
+
+function fechaHoraRegistroActa_(item) {
+  const fecha = fechaClaveActa(item && item.fechaRegistro);
+  if (!fecha) return new Date();
+  let hora = item && item.horaRegistro ? item.horaRegistro : "00:00:00";
+  if (hora instanceof Date && !isNaN(hora.getTime())) {
+    hora = Utilities.formatDate(hora, Session.getScriptTimeZone(), "HH:mm:ss");
+  }
+  const m = hora.toString().match(/(\d{1,2}):(\d{2})(?::(\d{2}))?/);
+  const hh = m ? m[1].padStart(2, "0") : "00";
+  const mm = m ? m[2] : "00";
+  const ss = m && m[3] ? m[3] : "00";
+  const valor = new Date(fecha + "T" + hh + ":" + mm + ":" + ss + "-05:00");
+  return isNaN(valor.getTime()) ? new Date() : valor;
+}
+
+function fechaDatoActa_(valor) {
+  if (valor instanceof Date && !isNaN(valor.getTime())) return valor;
+  if (!valor) return null;
+  const fecha = new Date(valor);
+  return isNaN(fecha.getTime()) ? null : fecha;
+}
+
+function estadoFechaCarpetaActa_(item) {
+  const estado = normalizarTexto(item && item.estadoFechaCarpeta);
+  if (estado) return estado;
+  if (item && item.linkActa && item.fechaGestion) return "CONFIRMADA";
+  return "";
+}
+
+function carpetaDestinoFechaActa_(sede, cuadrilla, tipoEjecucion, fechaGestion) {
+  const raiz = DriveApp.getFolderById(CARPETA_ACTAS_ESCANEADAS);
+  return obtenerOCrearCarpetaActa(
+    obtenerOCrearCarpetaActa(
+      obtenerOCrearCarpetaActa(
+        obtenerOCrearCarpetaActa(raiz, sede),
+        cuadrilla
+      ),
+      tipoEjecucion
+    ),
+    fechaGestion
+  );
+}
+
+function moverPdfActaAFecha_(item, fechaGestion, tipoEjecucion) {
+  const idArchivo = extraerIdArchivoDrive(item.linkActa);
+  if (!idArchivo) throw new Error("No se pudo identificar el PDF del acta " + (item.codigoPedido || item.id || ""));
+  const archivo = DriveApp.getFileById(idArchivo);
+  const nombreArchivo = item.nombreArchivo || (limpiarNombreArchivo(item.codigoPedido) + ".pdf");
+  const carpeta = carpetaDestinoFechaActa_(item.sede, item.cuadrilla, tipoEjecucion || item.tipoEjecucion, fechaGestion);
+  const duplicados = carpeta.getFilesByName(nombreArchivo);
+  while (duplicados.hasNext()) {
+    const duplicado = duplicados.next();
+    if (duplicado.getId() !== idArchivo) duplicado.setTrashed(true);
+  }
+  archivo.setName(nombreArchivo);
+  archivo.moveTo(carpeta);
+  return archivo.getUrl();
+}
+
+function procesarFechasPendientesActasInterno_() {
+  const hoja = asegurarHojaActasEscaneadas();
+  const ultimaFila = hoja.getLastRow();
+  if (ultimaFila <= 1) return {revisadas:0, ubicadas:0, requierenConfirmacion:0, errores:0};
+  const datos = hoja.getRange(2, 1, ultimaFila - 1, 48).getValues();
+  const contexto = crearContextoDatosAutomaticosActas();
+  const ahora = new Date();
+  let revisadas = 0, ubicadas = 0, requierenConfirmacion = 0, errores = 0;
+
+  for (let i = 0; i < datos.length; i++) {
+    const item = filaActaAObjeto(datos[i]);
+    if (!item.linkActa || estadoFechaCarpetaActa_(item) !== "PENDIENTE_MAPA") continue;
+    revisadas++;
+    const fila = completarFilaActaV320_(datos[i]);
+    const limite = fechaDatoActa_(item.fechaLimiteVerificacion) || new Date(fechaHoraRegistroActa_(item).getTime() + HORAS_ESPERA_FECHA_ACTA * 60 * 60 * 1000);
+    const automaticos = resolverDatosAutomaticosActa(item.codigoPedido, item.codigoOrden, item.cuadrilla, item.sede, contexto);
+    fila[41] = limite;
+    fila[42] = ahora;
+    fila[43] = (Number(item.intentosFecha) || 0) + 1;
+
+    if (automaticos.encontradoMapa && automaticos.fechaGestion) {
+      try {
+        const tipoEjecucion = automaticos.tipoEjecucion || item.tipoEjecucion || inferirTipoEjecucionActaServidor(item.cuadrilla);
+        const linkMovido = moverPdfActaAFecha_(item, automaticos.fechaGestion, tipoEjecucion);
+        fila[7] = automaticos.fechaGestion;
+        fila[8] = tipoEjecucion;
+        if (!item.tipoPartida && automaticos.tipoPartida) fila[9] = automaticos.tipoPartida;
+        if (!item.dni && automaticos.dni) fila[13] = automaticos.dni;
+        if (!item.cliente && automaticos.cliente) fila[14] = automaticos.cliente;
+        fila[16] = linkMovido;
+        fila[40] = "CONFIRMADA";
+        fila[44] = automaticos.fechaGestion;
+        fila[45] = "SISTEMA";
+        fila[46] = "AUTOMATICO";
+        fila[47] = "MAPA_OPERATIVO";
+        ubicadas++;
+      } catch (errorMover) {
+        errores++;
+      }
+    } else if (ahora.getTime() >= limite.getTime()) {
+      fila[40] = "REQUIERE_CONFIRMACION";
+      fila[47] = "PENDIENTE_CONFIRMACION_MANUAL";
+      requierenConfirmacion++;
+    }
+    hoja.getRange(i + 2, 1, 1, 48).setValues([fila]);
+  }
+  SpreadsheetApp.flush();
+  return {revisadas:revisadas, ubicadas:ubicadas, requierenConfirmacion:requierenConfirmacion, errores:errores};
+}
+
+function procesarFechasPendientesActas() {
+  const lock = LockService.getScriptLock();
+  if (!lock.tryLock(20000)) return {ok:false, modulo:"ACTAS", accion:"PROCESAR_FECHAS", mensaje:"Ya existe otra revisión en curso"};
+  try {
+    const resultado = procesarFechasPendientesActasInterno_();
+    return Object.assign({ok:true, modulo:"ACTAS", accion:"PROCESAR_FECHAS"}, resultado);
+  } finally {
+    lock.releaseLock();
+  }
+}
+
+function procesarFechasPendientesActasSiCorresponde_() {
+  const propiedades = PropertiesService.getScriptProperties();
+  const clave = "ULTIMA_REVISION_FECHAS_ACTAS_V320";
+  const ahora = Date.now();
+  const anterior = Number(propiedades.getProperty(clave)) || 0;
+  if (anterior && ahora - anterior < MINUTOS_REVISION_FECHA_ACTA * 60 * 1000) {
+    return {ok:true, omitida:true, intervaloMinutos:MINUTOS_REVISION_FECHA_ACTA};
+  }
+  propiedades.setProperty(clave, String(ahora));
+  return procesarFechasPendientesActas();
+}
+
+function confirmarFechaAtencionActa(data) {
+  const usuario = obtenerUsuarioApp(data.usuario);
+  const perfil = normalizarTexto(usuario.perfil);
+  const permitido = perfil === "SUPERVISOR" || esPerfilAlmacen(perfil) || esPerfilJefaturaAlmacen(perfil);
+  if (!permitido) throw new Error("Solo Supervisor o Almacén pueden confirmar la fecha de atención");
+  const id = (data.id || "").toString().trim();
+  const fechaGestion = fechaGestionActaTexto(data.fechaGestion || data.fecha_gestion);
+  if (!id) throw new Error("ID obligatorio");
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(fechaGestion)) throw new Error("La fecha debe tener formato AAAA-MM-DD");
+  const fechaValidada = new Date(fechaGestion + "T12:00:00-05:00");
+  if (isNaN(fechaValidada.getTime()) || Utilities.formatDate(fechaValidada, "America/Lima", "yyyy-MM-dd") !== fechaGestion) throw new Error("La fecha de atención no es válida");
+  const hoy = Utilities.formatDate(new Date(), Session.getScriptTimeZone(), "yyyy-MM-dd");
+  if (fechaGestion > hoy) throw new Error("La fecha de atención no puede ser futura");
+  const encontrado = buscarActaPorId(id);
+  const item = encontrado.item;
+  if (!item.linkActa) throw new Error("El acta todavía no tiene PDF");
+  if (perfil === "SUPERVISOR" && normalizarTexto(usuario.sede) !== normalizarTexto(item.sede)) throw new Error("Supervisor solo puede confirmar actas de su sede");
+  if (esPerfilAlmacen(perfil) && normalizarTexto(usuario.sede) !== normalizarTexto(item.sede)) throw new Error("Almacén solo puede confirmar actas de su sede");
+  if (estadoFechaCarpetaActa_(item) !== "REQUIERE_CONFIRMACION") throw new Error("Esta acta todavía no requiere confirmación manual de fecha");
+
+  const fila = completarFilaActaV320_(encontrado.hoja.getRange(encontrado.fila, 1, 1, 48).getValues()[0]);
+  const tipoEjecucion = item.tipoEjecucion || inferirTipoEjecucionActaServidor(item.cuadrilla);
+  fila[7] = fechaGestion;
+  fila[16] = moverPdfActaAFecha_(item, fechaGestion, tipoEjecucion);
+  fila[40] = "CONFIRMADA";
+  fila[42] = new Date();
+  fila[44] = fechaGestion;
+  fila[45] = usuario.usuario;
+  fila[46] = usuario.perfil;
+  fila[47] = "CONFIRMACION_MANUAL";
+  encontrado.hoja.getRange(encontrado.fila, 1, 1, 48).setValues([fila]);
+  return {ok:true, modulo:"ACTAS", accion:"CONFIRMAR_FECHA_ATENCION", id:id, fechaGestion:fechaGestion, confirmadoPor:usuario.usuario, perfil:usuario.perfil};
 }
 
 function consultarDatosAutomaticosActa(data) {
@@ -3547,7 +3732,7 @@ function registrarActaEscaneada(data) {
   const anterior = existente ? (existente.objeto || filaActaAObjeto(existente.datos)) : {};
   const contextoAutomatico = crearContextoDatosAutomaticosActas();
   const automaticos = resolverDatosAutomaticosActa(codigoPedido, codigoOrden, cuadrilla, sede, contextoAutomatico);
-  const fechaGestion = anterior.fechaGestion || automaticos.fechaGestion;
+  const fechaGestion = automaticos.fechaGestion || anterior.fechaGestion || "";
   const tipoPartida = automaticos.tipoPartida || anterior.tipoPartida || "";
   const tipoEjecucion = automaticos.tipoEjecucion || anterior.tipoEjecucion || inferirTipoEjecucionActaServidor(cuadrilla);
   const dni = automaticos.dni || anterior.dni || "";
@@ -3556,6 +3741,9 @@ function registrarActaEscaneada(data) {
   const nombreArchivo = limpiarNombreArchivo(codigoPedido) + ".pdf";
   const link = guardarPdfActaDrive(data, sede, cuadrilla, tipoEjecucion, fechaGestion, nombreArchivo);
   const ahora = new Date();
+  const fechaConfirmada = !!fechaGestion;
+  const fechaLimite = fechaConfirmada ? "" : new Date(ahora.getTime() + HORAS_ESPERA_FECHA_ACTA * 60 * 60 * 1000);
+  const origenFecha = automaticos.encontradoMapa ? "MAPA_OPERATIVO" : (fechaConfirmada ? (anterior.origenFechaCarpeta || "REGISTRO_PREVIO") : "PENDIENTE_MAPA");
   const filaValores = [
     generarIdActa(codigoPedido), Utilities.formatDate(ahora, Session.getScriptTimeZone(), "dd/MM/yyyy"), Utilities.formatDate(ahora, Session.getScriptTimeZone(), "HH:mm:ss"),
     sede, cuadrilla, supervisor, usuario.usuario, fechaGestion, tipoEjecucion, tipoPartida, codigoOrden, codigoPedido, numeroActa,
@@ -3563,13 +3751,17 @@ function registrarActaEscaneada(data) {
     anterior.estadoEntregaFisica || "PENDIENTE", anterior.confirmadoFisicoPor || "", anterior.perfilConfirmacionFisica || "",
     anterior.fechaConfirmacionFisica || "", anterior.horaConfirmacionFisica || "", anterior.motivoReversionFisica || "",
     anterior.origenRegistro || "TECNICO", anterior.motivoActaFaltante || "", anterior.registradoFaltantePor || "",
-    anterior.fechaRegistroFaltante || "", anterior.horaRegistroFaltante || ""
+    anterior.fechaRegistroFaltante || "", anterior.horaRegistroFaltante || "",
+    fechaConfirmada ? "CONFIRMADA" : "PENDIENTE_MAPA", fechaLimite, ahora, fechaConfirmada ? (Number(anterior.intentosFecha) || 0) : 1,
+    fechaGestion, fechaConfirmada ? (automaticos.encontradoMapa ? "SISTEMA" : (anterior.fechaConfirmadaPor || "REGISTRO_PREVIO")) : "",
+    fechaConfirmada ? (automaticos.encontradoMapa ? "AUTOMATICO" : (anterior.perfilConfirmacionFecha || "REGISTRO_PREVIO")) : "", origenFecha
   ];
-  if (existente) hoja.getRange(existente.fila, 1, 1, 40).setValues([filaValores]); else hoja.appendRow(filaValores);
+  if (existente) hoja.getRange(existente.fila, 1, 1, 48).setValues([filaValores]); else hoja.appendRow(filaValores);
   return {
     ok:true, modulo:"ACTAS", accion:existente?"REEMPLAZAR":"REGISTRAR", id:filaValores[0], estado:"PENDIENTE",
     estadoEntregaFisica:filaValores[29], numeroActa:numeroActa, tipoEjecucion:tipoEjecucion, tipoPartida:tipoPartida,
-    dni:dni, cliente:cliente, version:version, linkActa:link, nombreArchivo:nombreArchivo, datosAutomaticos:automaticos
+    dni:dni, cliente:cliente, version:version, linkActa:link, nombreArchivo:nombreArchivo, datosAutomaticos:automaticos,
+    estadoFechaCarpeta:filaValores[40], fechaLimiteVerificacion:fechaLimite, fechaCarpeta:fechaGestion
   };
 }
 
@@ -3582,7 +3774,7 @@ function filaActaAObjeto(fila) {
   if (normalizarTexto(resultadoJefatura) === "CORRECTO" || normalizarTexto(estado) === "FINALIZADO") estadoVisibleTecnico = "FINALIZADO";
   else if (normalizarTexto(resultadoJefatura) === "OBSERVADO" || normalizarTexto(resultadoAlmacen) === "OBSERVADO") estadoVisibleTecnico = "OBSERVADO";
   return {
-    id:g("id"),fechaRegistro:g("fechaRegistro"),horaRegistro:g("horaRegistro"),sede:g("sede"),cuadrilla:g("cuadrilla"),supervisor:g("supervisor"),tecnico:g("tecnico"),fechaGestion:g("fechaGestion"),tipoEjecucion,tipoPartida,codigoOrden:g("codigoOrden"),codigoPedido:g("codigoPedido"),numeroActa:g("numeroActa"),dni:g("dni"),cliente:g("cliente"),nombreArchivo:g("nombreArchivo"),linkActa:g("linkActa"),estado,estadoVisibleTecnico,resultadoAlmacen,motivoAlmacen:g("motivoAlmacen"),validadoAlmacenPor:g("validadoAlmacenPor"),fechaValidacionAlmacen:g("fechaValidacionAlmacen"),horaValidacionAlmacen:g("horaValidacionAlmacen"),resultadoJefatura,motivoJefatura:g("motivoJefatura"),validadoJefaturaPor:g("validadoJefaturaPor"),fechaValidacionJefatura:g("fechaValidacionJefatura"),horaValidacionJefatura:g("horaValidacionJefatura"),version:g("version"),estadoEntregaFisica:g("estadoEntregaFisica")||"PENDIENTE",confirmadoFisicoPor:g("confirmadoFisicoPor"),perfilConfirmacionFisica:g("perfilConfirmacionFisica"),fechaConfirmacionFisica:g("fechaConfirmacionFisica"),horaConfirmacionFisica:g("horaConfirmacionFisica"),motivoReversionFisica:g("motivoReversionFisica"),origenRegistro:g("origenRegistro")||"TECNICO",motivoActaFaltante:g("motivoActaFaltante"),registradoFaltantePor:g("registradoFaltantePor"),fechaRegistroFaltante:g("fechaRegistroFaltante"),horaRegistroFaltante:g("horaRegistroFaltante"),esActaFaltante:normalizarTexto(g("origenRegistro"))==="ALMACEN"&&!g("linkActa"),resultadoValidacion:resultadoJefatura||resultadoAlmacen,motivoObservacion:g("motivoJefatura")||g("motivoAlmacen"),validadoPor:g("validadoJefaturaPor")||g("validadoAlmacenPor")
+    id:g("id"),fechaRegistro:g("fechaRegistro"),horaRegistro:g("horaRegistro"),sede:g("sede"),cuadrilla:g("cuadrilla"),supervisor:g("supervisor"),tecnico:g("tecnico"),fechaGestion:g("fechaGestion"),tipoEjecucion,tipoPartida,codigoOrden:g("codigoOrden"),codigoPedido:g("codigoPedido"),numeroActa:g("numeroActa"),dni:g("dni"),cliente:g("cliente"),nombreArchivo:g("nombreArchivo"),linkActa:g("linkActa"),estado,estadoVisibleTecnico,resultadoAlmacen,motivoAlmacen:g("motivoAlmacen"),validadoAlmacenPor:g("validadoAlmacenPor"),fechaValidacionAlmacen:g("fechaValidacionAlmacen"),horaValidacionAlmacen:g("horaValidacionAlmacen"),resultadoJefatura,motivoJefatura:g("motivoJefatura"),validadoJefaturaPor:g("validadoJefaturaPor"),fechaValidacionJefatura:g("fechaValidacionJefatura"),horaValidacionJefatura:g("horaValidacionJefatura"),version:g("version"),estadoEntregaFisica:g("estadoEntregaFisica")||"PENDIENTE",confirmadoFisicoPor:g("confirmadoFisicoPor"),perfilConfirmacionFisica:g("perfilConfirmacionFisica"),fechaConfirmacionFisica:g("fechaConfirmacionFisica"),horaConfirmacionFisica:g("horaConfirmacionFisica"),motivoReversionFisica:g("motivoReversionFisica"),origenRegistro:g("origenRegistro")||"TECNICO",motivoActaFaltante:g("motivoActaFaltante"),registradoFaltantePor:g("registradoFaltantePor"),fechaRegistroFaltante:g("fechaRegistroFaltante"),horaRegistroFaltante:g("horaRegistroFaltante"),estadoFechaCarpeta:estadoFechaCarpetaActa_({estadoFechaCarpeta:g("estadoFechaCarpeta"),linkActa:g("linkActa"),fechaGestion:g("fechaGestion")}),fechaLimiteVerificacion:g("fechaLimiteVerificacion"),ultimoIntentoFecha:g("ultimoIntentoFecha"),intentosFecha:g("intentosFecha"),fechaCarpeta:g("fechaCarpeta")||g("fechaGestion"),fechaConfirmadaPor:g("fechaConfirmadaPor"),perfilConfirmacionFecha:g("perfilConfirmacionFecha"),origenFechaCarpeta:g("origenFechaCarpeta"),esActaFaltante:normalizarTexto(g("origenRegistro"))==="ALMACEN"&&!g("linkActa"),resultadoValidacion:resultadoJefatura||resultadoAlmacen,motivoObservacion:g("motivoJefatura")||g("motivoAlmacen"),validadoPor:g("validadoJefaturaPor")||g("validadoAlmacenPor")
   };
 }
 
@@ -3701,7 +3893,8 @@ function registrarActaFaltante(data) {
     generarIdActa(codigoPedido),Utilities.formatDate(ahora,Session.getScriptTimeZone(),"dd/MM/yyyy"),Utilities.formatDate(ahora,Session.getScriptTimeZone(),"HH:mm:ss"),
     sede,cuadrilla,dc.usuarioSupervisor||"",dc.usuario||"",fechaGestion,tipoEjecucion,tipoPartida,codigoOrden,codigoPedido,numeroActa,
     "","","","","PENDIENTE","","","","","","","","","","",0,
-    "PENDIENTE","","","","","","ALMACEN",motivo,usuario.usuario,ahora,ahora
+    "PENDIENTE","","","","","","ALMACEN",motivo,usuario.usuario,ahora,ahora,
+    "CONFIRMADA","","",0,fechaGestion,usuario.usuario,usuario.perfil,"REGISTRO_ALMACEN"
   ];
   hoja.appendRow(fila);
   const n = hoja.getLastRow();
@@ -3712,11 +3905,12 @@ function registrarActaFaltante(data) {
 
 function resumenActasEscaneadas(data) {
   const listado=listarActasEscaneadas(data);
-  const base=()=>({escaneadas:0,finalizadas:0,observadas:0,pendientes:0,correctasAlmacen:0,observadasAlmacen:0,correctasJefatura:0,observadasJefatura:0,entregadasFisicas:0,pendientesEntregaFisica:0});
+  const base=()=>({escaneadas:0,finalizadas:0,observadas:0,pendientes:0,correctasAlmacen:0,observadasAlmacen:0,correctasJefatura:0,observadasJefatura:0,entregadasFisicas:0,pendientesEntregaFisica:0,pendientesFecha:0,requierenConfirmacionFecha:0});
   const general=base(), sedes={}, cuadrillas={};
   listado.actas.forEach(a=>{
     const sede=normalizarTexto(a.sede)||"SIN SEDE", cuad=normalizarCuadrilla(a.cuadrilla)||"SIN CUADRILLA", estado=normalizarTexto(a.estado), ra=normalizarTexto(a.resultadoAlmacen), rj=normalizarTexto(a.resultadoJefatura), ef=normalizarTexto(a.estadoEntregaFisica||"PENDIENTE"), observado=ra==="OBSERVADO"||rj==="OBSERVADO";
-    function sumar(o){o.escaneadas++;if(estado==="FINALIZADO"||rj==="CORRECTO")o.finalizadas++;if(observado)o.observadas++;if(estado==="PENDIENTE")o.pendientes++;if(ra==="CORRECTO")o.correctasAlmacen++;if(ra==="OBSERVADO")o.observadasAlmacen++;if(rj==="CORRECTO")o.correctasJefatura++;if(rj==="OBSERVADO")o.observadasJefatura++;if(ef==="ENTREGADA")o.entregadasFisicas++;else o.pendientesEntregaFisica++;}
+    const estadoFecha=normalizarTexto(a.estadoFechaCarpeta);
+    function sumar(o){o.escaneadas++;if(estado==="FINALIZADO"||rj==="CORRECTO")o.finalizadas++;if(observado)o.observadas++;if(estado==="PENDIENTE")o.pendientes++;if(ra==="CORRECTO")o.correctasAlmacen++;if(ra==="OBSERVADO")o.observadasAlmacen++;if(rj==="CORRECTO")o.correctasJefatura++;if(rj==="OBSERVADO")o.observadasJefatura++;if(ef==="ENTREGADA")o.entregadasFisicas++;else o.pendientesEntregaFisica++;if(estadoFecha==="PENDIENTE_MAPA")o.pendientesFecha++;if(estadoFecha==="REQUIERE_CONFIRMACION")o.requierenConfirmacionFecha++;}
     sumar(general);
     if(!sedes[sede]) sedes[sede]=Object.assign({sede},base());
     if(!cuadrillas[cuad]) cuadrillas[cuad]=Object.assign({sede,cuadrilla:cuad},base());
@@ -3786,7 +3980,7 @@ function fechaAtencionCargoActa_(acta, contexto) {
       if (f) return f;
     }
   } catch (e) {}
-  return fechaClaveActa(acta.fechaGestion) || fechaClaveActa(acta.fechaRegistro) || "";
+  return fechaClaveActa(acta.fechaGestion) || "";
 }
 
 function validarRecepcionMasivaActasInterno_(data, usuario) {
@@ -3846,6 +4040,11 @@ function validarRecepcionMasivaActasInterno_(data, usuario) {
       resultados.push(Object.assign(base,{estado:"NO_REGISTRADA",detalle:"El técnico todavía no ha subido el PDF",id:acta.id}));
       return;
     }
+    const estadoFecha = estadoFechaCarpetaActa_(acta);
+    if (estadoFecha === "PENDIENTE_MAPA" || estadoFecha === "REQUIERE_CONFIRMACION") {
+      resultados.push(Object.assign(base,{estado:"FECHA_PENDIENTE",detalle:estadoFecha === "PENDIENTE_MAPA" ? "El sistema todavía está buscando la fecha real de atención" : "Supervisor o Almacén debe confirmar la fecha real de atención",id:acta.id}));
+      return;
+    }
     if (normalizarTexto(acta.estadoEntregaFisica) === "ENTREGADA") {
       resultados.push(Object.assign(base,{estado:"YA_ENTREGADA",detalle:"Ya fue confirmada físicamente",id:acta.id,fechaAtencion:fechaAtencionCargoActa_(acta,contexto),codigoPedido:acta.codigoPedido||""}));
       return;
@@ -3858,13 +4057,14 @@ function validarRecepcionMasivaActasInterno_(data, usuario) {
     }));
   });
 
-  const resumen = {ingresadas:resultados.length,validas:0,noRegistradas:0,yaEntregadas:0,otraCuadrilla:0,duplicadas:0};
+  const resumen = {ingresadas:resultados.length,validas:0,noRegistradas:0,yaEntregadas:0,otraCuadrilla:0,duplicadas:0,fechasPendientes:0};
   resultados.forEach(function(r){
     if (r.estado === "VALIDA") resumen.validas++;
     else if (r.estado === "NO_REGISTRADA") resumen.noRegistradas++;
     else if (r.estado === "YA_ENTREGADA") resumen.yaEntregadas++;
     else if (r.estado === "OTRA_CUADRILLA") resumen.otraCuadrilla++;
     else if (r.estado === "DUPLICADA") resumen.duplicadas++;
+    else if (r.estado === "FECHA_PENDIENTE") resumen.fechasPendientes++;
   });
   return {ok:true,modulo:"ACTAS",accion:"VALIDAR_RECEPCION_MASIVA",sede:sede,cuadrilla:cuadrilla,plataforma:plataformaCargoActas_(cuadrilla),resultados:resultados,resumen:resumen};
 }
@@ -12148,6 +12348,19 @@ function doPost(e) {
 
     if (data.accion === "actualizarDatosAutomaticosActas") {
       return ContentService.createTextOutput(JSON.stringify(actualizarDatosAutomaticosActas(data))).setMimeType(ContentService.MimeType.JSON);
+    }
+
+    if (data.accion === "confirmarFechaAtencionActa") {
+      return ContentService.createTextOutput(JSON.stringify(confirmarFechaAtencionActa(data))).setMimeType(ContentService.MimeType.JSON);
+    }
+
+    if (data.accion === "procesarFechasPendientesActas") {
+      const usuarioFechas = obtenerUsuarioApp(data.usuario);
+      const perfilFechas = normalizarTexto(usuarioFechas.perfil);
+      if (!(perfilFechas === "SUPERVISOR" || esPerfilAlmacen(perfilFechas) || esPerfilJefaturaAlmacen(perfilFechas) || esPerfilJefatura(perfilFechas))) {
+        throw new Error("No tiene permiso para actualizar fechas pendientes de actas");
+      }
+      return ContentService.createTextOutput(JSON.stringify(procesarFechasPendientesActas())).setMimeType(ContentService.MimeType.JSON);
     }
 
     if (data.accion === "registrarActaEscaneada") {

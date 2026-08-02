@@ -237,9 +237,12 @@ function estiloActas(){
         .actas-read-states{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:7px;}
         .actas-read-state{border:1px solid rgba(148,163,184,.35);border-radius:9px;padding:6px 8px;background:rgba(255,255,255,.72);}
         .actas-read-state small{display:block;font-size:9px;font-weight:900;color:#64748b;text-transform:uppercase;margin-bottom:2px;}
-        .actas-read-action{display:flex;justify-content:flex-end;margin-top:8px;}
+        .actas-read-action{display:flex;justify-content:flex-end;gap:6px;flex-wrap:wrap;margin-top:8px;}
         .actas-read-action .actas-btn{min-width:150px;text-align:center;}
         .actas-btn.is-disabled{background:#e2e8f0;color:#64748b;box-shadow:none;cursor:not-allowed;}
+        .actas-fecha-note{margin-top:7px;padding:7px 9px;border-radius:9px;font-size:10px;font-weight:900;line-height:1.3;}
+        .actas-fecha-note.pendiente{background:#fff7ed;color:#9a3412;border:1px solid #fdba74;}
+        .actas-fecha-note.requiere{background:#fef2f2;color:#991b1b;border:1px solid #fca5a5;}
 
         @media(max-width:520px){.actas-validation-grid{grid-template-columns:1fr}.actas-unified-states{grid-template-columns:1fr 1fr}.actas-compact-actions .actas-btn{font-size:9px;padding:6px 7px;}}
         .actas-readonly{background:#f1f5f9;color:#475569;border-radius:10px;padding:8px 10px;font-size:12px;font-weight:800;margin-top:8px;}
@@ -331,7 +334,8 @@ async function actualizarDatosAutomaticosActasFrontend(btn){
     try{
         if(btn){ btn.disabled = true; btn.textContent = "Actualizando..."; }
         const data = await apiActas({accion:"actualizarDatosAutomaticosActas", usuario:u.usuario});
-        alert(`✅ Actualización terminada\n\nActas actualizadas: ${data.actasActualizadas || 0}\nCampos completados: ${data.camposActualizados || 0}\nActas aún pendientes de datos: ${data.pendientes || 0}`);
+        const fechas = await apiActas({accion:"procesarFechasPendientesActas", usuario:u.usuario});
+        alert(`✅ Actualización terminada\n\nActas actualizadas: ${data.actasActualizadas || 0}\nCampos completados: ${data.camposActualizados || 0}\nActas aún pendientes de datos: ${data.pendientes || 0}\nFechas ubicadas: ${fechas.ubicadas || 0}\nFechas que requieren confirmación: ${fechas.requierenConfirmacion || 0}`);
         await cargarActas(estadoVista);
     }catch(err){
         alert("❌ " + err.message);
@@ -514,6 +518,36 @@ function badgeActa(a){
     return `<span class="actas-badge actas-pend">PENDIENTE</span>`;
 }
 
+function estadoFechaCarpetaActa(a){
+    const estado = normalizarActas(a?.estadoFechaCarpeta || "");
+    if(estado) return estado;
+    return a?.linkActa && a?.fechaGestion ? "CONFIRMADA" : "";
+}
+
+function fechaAtencionVisibleActa(a){
+    const estado = estadoFechaCarpetaActa(a);
+    if(estado === "PENDIENTE_MAPA" || estado === "REQUIERE_CONFIRMACION") return "Pendiente de fecha";
+    return fechaVisibleActas(a?.fechaGestion || a?.fechaRegistro);
+}
+
+function avisoFechaCarpetaActa(a){
+    const estado = estadoFechaCarpetaActa(a);
+    if(estado === "PENDIENTE_MAPA") return `<div class="actas-fecha-note pendiente">🕒 Buscando fecha real en Mapa Operativo durante 24 horas.</div>`;
+    if(estado === "REQUIERE_CONFIRMACION") return `<div class="actas-fecha-note requiere">⚠ No se encontró la orden en 24 horas. Se debe confirmar la fecha real de atención.</div>`;
+    return "";
+}
+
+function puedeConfirmarFechaActa(a){
+    const perfil = normalizarActas(usuarioActualActas().perfil || "");
+    return estadoFechaCarpetaActa(a) === "REQUIERE_CONFIRMACION" && ["SUPERVISOR","ALMACEN","JEFATURA ALMACEN"].includes(perfil);
+}
+
+function botonConfirmarFechaActa(a){
+    if(!puedeConfirmarFechaActa(a)) return "";
+    const id = (a.id || "").replace(/'/g,"\\'");
+    return `<button class="actas-btn warn" onclick="confirmarFechaAtencionActaFrontend('${id}')">Confirmar fecha de atención</button>`;
+}
+
 function motivoVisibleActa(a){
     return a.motivoJefatura || a.motivoAlmacen || a.motivoObservacion || "";
 }
@@ -598,14 +632,15 @@ function cardActaSoloEstadoHtml(a){
         <div class="actas-read-main">
             <div><span>N.º de acta</span><br><b>${limpiarHtmlActas(a.numeroActa || "-")}</b></div>
             <div><span>Código</span><br><b>${limpiarHtmlActas(a.codigoPedido || "-")}</b></div>
-            <div><span>Fecha</span><br><b>${fechaVisibleActas(a.fechaGestion || a.fechaRegistro)}</b></div>
+            <div><span>Fecha atención</span><br><b>${fechaAtencionVisibleActa(a)}</b></div>
         </div>
         <div class="actas-read-cuadrilla"><span>Cuadrilla</span><b>${limpiarHtmlActas(a.cuadrilla || "-")}</b></div>
         <div class="actas-read-states">
             <div class="actas-read-state"><small>Escaneo</small>${badgeActa(a)}</div>
             <div class="actas-read-state"><small>Entrega física</small>${etiquetaEntregaFisicaActas(a.estadoEntregaFisica)}</div>
         </div>
-        <div class="actas-read-action">${botonVisualizarActaConsulta(a)}</div>
+        ${avisoFechaCarpetaActa(a)}
+        <div class="actas-read-action">${botonVisualizarActaConsulta(a)} ${botonConfirmarFechaActa(a)}</div>
     </div>`;
 }
 
@@ -628,7 +663,7 @@ function vistaConsultaActasPorSedes(actas){
 
 function filaActaLecturaHtml(a){
     return `<tr ${esActaFaltantePendiente(a) ? `style="background:#fff7ed"` : ""}>
-        <td>${fechaVisibleActas(a.fechaGestion || a.fechaRegistro)}</td>
+        <td>${fechaAtencionVisibleActa(a)}${avisoFechaCarpetaActa(a)}</td>
         <td><b>${limpiarHtmlActas(a.numeroActa || "-")}</b></td>
         <td><b>${limpiarHtmlActas(a.codigoPedido || "-")}</b><br><small>Orden: ${limpiarHtmlActas(a.codigoOrden || "-")}</small></td>
         <td>${limpiarHtmlActas(a.cuadrilla || "-")}<br><small>${limpiarHtmlActas(a.sede || "-")}</small></td>
@@ -644,7 +679,7 @@ function cardActaLecturaHtml(a){
     const motivo = motivoVisibleActa(a);
     return `<div class="actas-card ${claseEstadoMarcoActa(a)}">
         <div style="display:flex;justify-content:space-between;gap:8px;align-items:flex-start;">
-            <div>${esActaFaltantePendiente(a) ? `<span class="actas-faltante-tag">ACTA FALTANTE</span><br>` : ""}<b>ACTA N.º ${limpiarHtmlActas(a.numeroActa || "-")}</b><br><small>${fechaVisibleActas(a.fechaGestion || a.fechaRegistro)}</small></div>
+            <div>${esActaFaltantePendiente(a) ? `<span class="actas-faltante-tag">ACTA FALTANTE</span><br>` : ""}<b>ACTA N.º ${limpiarHtmlActas(a.numeroActa || "-")}</b><br><small>${fechaAtencionVisibleActa(a)}</small></div>
             <small>${limpiarHtmlActas(a.sede || "-")}</small>
         </div>
         <div class="actas-small" style="margin-top:7px;"><b>Código:</b> ${limpiarHtmlActas(a.codigoPedido || "-")} · <b>Cuadrilla:</b> ${limpiarHtmlActas(a.cuadrilla || "-")}</div>
@@ -653,6 +688,7 @@ function cardActaLecturaHtml(a){
             <div class="actas-statebox"><b>Validación de escaneo</b>${badgeActa(a)}</div>
             <div class="actas-statebox"><b>Entrega física</b>${etiquetaEntregaFisicaActas(a.estadoEntregaFisica)}</div>
         </div>
+        ${avisoFechaCarpetaActa(a)}
         ${motivo ? `<div class="actas-msg err">${limpiarHtmlActas(motivo)}</div>` : ""}
         <div style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap;">${botonesLecturaActa(a)}</div>
     </div>`;
@@ -699,7 +735,7 @@ function tarjetaActaGestionUnificada(a){
                 <div class="actas-card-title">Acta N.º ${limpiarHtmlActas(a.numeroActa || "-")}</div>
                 <div class="actas-process-meta">
                     Pedido: ${limpiarHtmlActas(a.codigoPedido || "-")} · ${limpiarHtmlActas(a.tipoEjecucion || "-")}<br>
-                    ${limpiarHtmlActas(a.cuadrilla || "-")} · ${fechaVisibleActas(a.fechaGestion || a.fechaRegistro)}
+                    ${limpiarHtmlActas(a.cuadrilla || "-")} · ${fechaAtencionVisibleActa(a)}
                 </div>
             </div>
         </div>
@@ -707,7 +743,8 @@ function tarjetaActaGestionUnificada(a){
             <div class="actas-unified-state"><b>Escaneo</b>${badgeActa(a)}</div>
             <div class="actas-unified-state"><b>Entrega física</b>${etiquetaEntregaFisicaActas(a.estadoEntregaFisica)}</div>
         </div>
-        <div class="actas-compact-actions actas-primary-actions">${botonDetalleActa(a)} ${botonPdfActa(a)}</div>
+        ${avisoFechaCarpetaActa(a)}
+        <div class="actas-compact-actions actas-primary-actions">${botonDetalleActa(a)} ${botonPdfActa(a)} ${botonConfirmarFechaActa(a)}</div>
         ${(escaneoBtns || entregaBtns) ? `<div class="actas-validation-grid">
             <div class="actas-validation-col">
                 <div class="actas-action-label">Validar escaneo</div>
@@ -756,6 +793,8 @@ async function cargarResumenActas(){
             <div class="actas-kpi"><b>${g.pendientes || 0}</b><span>Pendientes escaneo</span></div>
             <div class="actas-kpi"><b>${g.entregadasFisicas || 0}</b><span>Entregadas físicas</span></div>
             <div class="actas-kpi"><b>${g.pendientesEntregaFisica || 0}</b><span>Pendientes de entrega</span></div>
+            <div class="actas-kpi"><b>${g.pendientesFecha || 0}</b><span>Buscando fecha</span></div>
+            <div class="actas-kpi"><b>${g.requierenConfirmacionFecha || 0}</b><span>Confirmar fecha</span></div>
         </div>
         ${(esPerfilConsultaActasPorSedes(u.perfil) || esJefaturaAlmacenActas(u.perfil)) ? resumenTablasActas(data) : ""}`;
     }catch(err){
@@ -1053,7 +1092,10 @@ async function guardarActa(btn){
         if(!data.dni) pendientes.push("DNI");
         if(!data.cliente) pendientes.push("cliente");
         const nota = pendientes.length ? `<br><small>Datos pendientes de actualización automática: ${limpiarHtmlActas(pendientes.join(", "))}.</small>` : "";
-        if(msg) msg.innerHTML = `<div class="actas-msg ok">✅ Acta registrada correctamente.<br>Archivo: ${limpiarHtmlActas(data.nombreArchivo)}<br>Estado: PENDIENTE<br>Versión: ${data.version || 1}${nota}</div>`;
+        const notaFecha = normalizarActas(data.estadoFechaCarpeta) === "PENDIENTE_MAPA"
+            ? `<br><small>Fecha: PENDIENTE. El sistema buscará la fecha real en Mapa Operativo durante 24 horas.</small>`
+            : `<br><small>Fecha de atención: ${fechaVisibleActas(data.fechaCarpeta || data.datosAutomaticos?.fechaGestion || "")}</small>`;
+        if(msg) msg.innerHTML = `<div class="actas-msg ok">✅ Acta registrada correctamente.<br>Archivo: ${limpiarHtmlActas(data.nombreArchivo)}<br>Estado: PENDIENTE<br>Versión: ${data.version || 1}${notaFecha}${nota}</div>`;
         setTimeout(mostrarGestionActas, 1200);
     }catch(err){
         if(msg) msg.innerHTML = `<div class="actas-msg err">❌ ${limpiarHtmlActas(err.message)}</div>`;
@@ -1073,6 +1115,9 @@ async function verDetalleActa(id){
 
 Fecha registro: ${fechaVisibleActas(a.fechaRegistro)} ${formatearHoraPeruApp(a.horaRegistro || "", false)}
 Fecha gestión: ${fechaVisibleActas(a.fechaGestion)}
+Estado de fecha: ${a.estadoFechaCarpeta || "CONFIRMADA"}
+Fecha de carpeta: ${fechaVisibleActas(a.fechaCarpeta || a.fechaGestion)}
+Origen de fecha: ${a.origenFechaCarpeta || "REGISTRO ANTERIOR"}
 Número de acta: ${a.numeroActa || "-"}
 Código de pedido: ${a.codigoPedido || "-"}
 Código de orden: ${a.codigoOrden || "-"}
@@ -1108,6 +1153,22 @@ Fecha registro faltante: ${fechaVisibleActas(a.fechaRegistroFaltante)}
 Hora registro faltante: ${formatearHoraPeruApp(a.horaRegistroFaltante || "", false) || "-"}
 
 Versión PDF: ${a.version || 1}`);
+    }catch(err){
+        alert("❌ " + err.message);
+    }
+}
+
+async function confirmarFechaAtencionActaFrontend(id){
+    const fecha = (prompt("Ingrese la fecha real de atención en formato AAAA-MM-DD\nEjemplo: 2026-07-30") || "").trim();
+    if(!fecha) return;
+    if(!/^\d{4}-\d{2}-\d{2}$/.test(fecha)) return alert("Ingrese la fecha con formato AAAA-MM-DD.");
+    if(!confirm(`¿Confirmar ${fechaVisibleActas(fecha)} como fecha real de atención?\nEl PDF se moverá a esa carpeta.`)) return;
+    const u = usuarioActualActas();
+    try{
+        await apiActas({accion:"confirmarFechaAtencionActa", usuario:u.usuario, id:id, fechaGestion:fecha});
+        alert("✅ Fecha confirmada. El PDF fue movido a la carpeta correcta.");
+        const vista = obtenerEstadoVistaActas();
+        await cargarActas(vista);
     }catch(err){
         alert("❌ " + err.message);
     }
@@ -1163,6 +1224,7 @@ function etiquetaEstadoValidacionCargoActas(estado){
     if(e==="YA_ENTREGADA") return `<span class="actas-status-info">🔵 Ya entregada</span>`;
     if(e==="OTRA_CUADRILLA") return `<span class="actas-status-warn">🟠 Otra cuadrilla</span>`;
     if(e==="DUPLICADA") return `<span class="actas-status-warn">⚪ Duplicada en la lista</span>`;
+    if(e==="FECHA_PENDIENTE") return `<span class="actas-status-warn">🕒 Fecha de atención pendiente</span>`;
     return `<span class="actas-status-error">⚠️ No registrada / sin PDF</span>`;
 }
 
@@ -1225,6 +1287,7 @@ function renderValidacionRecepcionMasivaActas(data,cont){
             <div class="actas-masiva-kpi"><b>${r.noRegistradas||0}</b><span>NO REGISTRADAS</span></div>
             <div class="actas-masiva-kpi"><b>${r.yaEntregadas||0}</b><span>YA ENTREGADAS</span></div>
             <div class="actas-masiva-kpi"><b>${(r.otraCuadrilla||0)+(r.duplicadas||0)}</b><span>OTRAS / DUPLICADAS</span></div>
+            <div class="actas-masiva-kpi"><b>${r.fechasPendientes||0}</b><span>FECHA PENDIENTE</span></div>
         </div>
         <div style="overflow:auto"><table class="actas-table"><thead><tr><th>#</th><th>Número de acta</th><th>Resultado</th><th>Detalle</th><th>Fecha atención</th></tr></thead><tbody>${filas}</tbody></table></div>
         <div class="actas-msg info">Se recibirán únicamente <b>${r.validas||0}</b> actas válidas. Las demás permanecerán sin cambios.</div>
