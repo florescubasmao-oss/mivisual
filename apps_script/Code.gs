@@ -13013,7 +13013,7 @@ function calcularSlaSupervisor_(ctx, asignacion) {
   const asignadas = mapaCuadrillasBono_(asignacion.cuadrillas);
   const tipos = tiposPartidaPorCodigoBono_(ctx);
   const parametros = ctx.parametros.mapa || {};
-  let evaluables = 0, cumplen = 0, vencidas = 0, sinHoras = 0, sinPartida = 0, sinParametro = 0, inasistencias = 0;
+  let evaluables = 0, cumplen = 0, vencidas = 0, sinPartida = 0, sinParametro = 0, inasistencias = 0;
   const grupos = {INSTALACION:{total:0,cumplen:0},AVERIA:{total:0,cumplen:0}};
   const detalle = [];
   (ctx.mapa || []).slice(1).forEach(function(fila) {
@@ -13023,10 +13023,12 @@ function calcularSlaSupervisor_(ctx, asignacion) {
     const fechaInicio = fechaHoraBonoSupervisores_(fila[19]);
     const fechaPeriodo = fechaFin || fechaInicio || fechaHoraBonoSupervisores_(fila[2]);
     if (!fechaPeriodo || Utilities.formatDate(fechaPeriodo,"America/Lima","yyyy-MM") !== ctx.periodo) return;
+    if (normalizarTexto(fila[8]) !== "FINALIZADA") return;
+    // El SLA solo evalúa órdenes finalizadas que tengan simultáneamente
+    // hora de inicio y hora de fin válidas. Las demás se excluyen por completo.
+    if (!fechaInicio || !fechaFin || fechaFin < fechaInicio) return;
     const textoEstado = normalizarTexto([fila[8],fila[20],fila[21],fila[22],fila[25]].join(" "));
     if (textoEstado.indexOf("INASISTENCIA") >= 0) inasistencias++;
-    if (normalizarTexto(fila[8]) !== "FINALIZADA") return;
-    if (!fechaInicio || !fechaFin || fechaFin < fechaInicio) {sinHoras++;return;}
     const codigo = normalizarIdentificadorMapa(fila[0]);
     const partida = tipos[codigo] || "";
     if (!partida) {sinPartida++;return;}
@@ -13049,9 +13051,9 @@ function calcularSlaSupervisor_(ctx, asignacion) {
   return {
     clave:"SLA",nombre:"Cumplimiento de SLA WIN",maximo:200,evaluable:evaluables>0,
     cumplimiento:cumplimiento,monto:monto,estado:evaluables>0?(inasistencias>0?"OBSERVADO":"PROVISIONAL"):"SIN DATOS",
-    metricas:{evaluables:evaluables,cumplen:cumplen,vencidas:vencidas,inasistencias:inasistencias,sinHoras:sinHoras,sinPartida:sinPartida,sinParametro:sinParametro,instalacionesPct:porcentajeBonoSupervisores_(grupos.INSTALACION.cumplen,grupos.INSTALACION.total),instalacionesTotal:grupos.INSTALACION.total,averiasPct:porcentajeBonoSupervisores_(grupos.AVERIA.cumplen,grupos.AVERIA.total),averiasTotal:grupos.AVERIA.total},
+    metricas:{evaluables:evaluables,cumplen:cumplen,vencidas:vencidas,inasistencias:inasistencias,sinPartida:sinPartida,sinParametro:sinParametro,instalacionesPct:porcentajeBonoSupervisores_(grupos.INSTALACION.cumplen,grupos.INSTALACION.total),instalacionesTotal:grupos.INSTALACION.total,averiasPct:porcentajeBonoSupervisores_(grupos.AVERIA.cumplen,grupos.AVERIA.total),averiasTotal:grupos.AVERIA.total},
     detalleIncumplimientos:detalle,
-    nota:"Solo considera órdenes FINALIZADAS con inicio, fin y partida identificada. Cumple cuando el tiempo es igual o menor al parámetro WIN."
+    nota:"Solo considera órdenes FINALIZADAS con hora de inicio y hora de fin válidas, además de una partida identificada. Las órdenes sin ambas horas se excluyen por completo."
   };
 }
 
@@ -13118,7 +13120,6 @@ function calcularBonoSupervisor_(ctx, asignacion, puedeEditar) {
   const monto = redondearBonoSupervisores_(componentes.reduce(function(s,x){return s+(Number(x.monto)||0);},0),2);
   const pendientes = ["Satisfacción pendiente de información WIN"];
   if (!seguridad.evaluacion.completa) pendientes.push("Evaluación manual de liderazgo pendiente");
-  if (sla.metricas.sinHoras) pendientes.push(sla.metricas.sinHoras + " orden(es) finalizadas sin horas completas");
   if (sla.metricas.sinPartida || sla.metricas.sinParametro) pendientes.push((sla.metricas.sinPartida + sla.metricas.sinParametro) + " orden(es) sin partida o parámetro SLA");
   return {
     usuario:asignacion.usuario,nombre:asignacion.nombre,sede:asignacion.sede,periodo:ctx.periodo,

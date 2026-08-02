@@ -100,7 +100,7 @@ function mv321DetalleComponente(c, bono){
         html += mv321Linea("Instalaciones dentro del SLA",mv321Pct(m.instalacionesPct),`${Number(m.instalacionesTotal||0)} órdenes · meta ≥ 98%`);
         html += mv321Linea("Averías y demás partidas",mv321Pct(m.averiasPct),`${Number(m.averiasTotal||0)} órdenes · meta ≥ 97%`);
         html += mv321Linea("Inasistencias",String(Number(m.inasistencias||0)),"Meta: 0");
-        html += mv321Linea("Pendientes de clasificación",String(Number(m.sinPartida||0)+Number(m.sinParametro||0)),`${Number(m.sinHoras||0)} sin horas completas`);
+        html += mv321Linea("Sin partida o parámetro",String(Number(m.sinPartida||0)+Number(m.sinParametro||0)),"Solo órdenes con hora de inicio y fin");
         if((c.detalleIncumplimientos||[]).length){
             const id = `mv321_sla_${mv321Id(bono.usuario)}_${Math.random().toString(36).slice(2)}`;
             html += `<button class="mv321-link" onclick="toggleDetalle('${id}',this)">▼ Ver órdenes fuera de SLA</button><div id="${id}" class="mv321-incumplimientos" style="display:none;">${c.detalleIncumplimientos.map(x=>`<div><b>${mv321Esc(x.ordenId)}</b><span>${mv321Esc(x.cuadrilla)}</span><small>${mv321Esc(x.tipoPartida)} · ${Number(x.minutos||0)} min / ${Number(x.slaMinutos||0)} min · exceso ${Number(x.exceso||0)} min</small></div>`).join("")}</div>`;

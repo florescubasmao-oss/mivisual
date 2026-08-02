@@ -1,0 +1,49 @@
+MI VISUAL V323 - SLA SOLO CON HORAS COMPLETAS
+Fecha: 02/08/2026
+
+BASE CONSERVADA
+- Parte de MI VISUAL V322.
+- Mantiene la corrección de períodos y asignaciones duplicadas.
+- Mantiene las metas del Dashboard y todos los demás componentes del bono.
+- No cambia activadores.
+
+CORRECCIÓN SLA
+1. Solo evalúa órdenes FINALIZADAS que tengan simultáneamente:
+   - hora de inicio válida;
+   - hora de fin válida;
+   - hora de fin igual o posterior a la hora de inicio.
+
+2. Las órdenes sin ambas horas:
+   - se excluyen completamente del cálculo;
+   - no suman como cumplimiento;
+   - no suman como fuera de SLA;
+   - no aparecen como pendientes;
+   - no afectan el bono del supervisor.
+
+3. Las órdenes con ambas horas, pero sin partida o parámetro SLA:
+   - no ingresan al porcentaje;
+   - se muestran separadamente como "Sin partida o parámetro" para corregir el cruce.
+
+4. Fórmula:
+   Cumplimiento SLA = órdenes que cumplen / órdenes evaluables con ambas horas × 100.
+
+SE CONSERVA
+- SLA de 140 minutos para instalaciones, recableados y postventa.
+- SLA de 80 minutos para las demás partidas.
+- Meta de 130 puntos por cuadrilla.
+- Efectividad, Recableados, VTR/GAR y Observaciones del Dashboard.
+- Productividad, Calidad, Seguridad/Liderazgo y Satisfacción pendiente WIN.
+
+ARCHIVOS A REEMPLAZAR
+1. Code.gs en Apps Script. Luego implementar una versión nueva.
+2. js/bono_supervisores.js en GitHub.
+
+NO ES NECESARIO
+- No modificar hojas de Google Sheets.
+- No crear otro activador.
+- No reemplazar index.html, estilos.css ni dashboards.js.
+
+DESPUÉS DE PUBLICAR
+1. Hacer commit y push en GitHub.
+2. Actualizar la aplicación con Ctrl + F5.
+3. Ingresar al Dashboard y volver a consultar el período.
