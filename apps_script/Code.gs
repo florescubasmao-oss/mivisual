@@ -12241,9 +12241,9 @@ function consultarPlantillaOrden(data) {
 }
 
 /* =====================================================
-   V322 - BONO DE SUPERVISORES EN DASHBOARD
-   Cálculo provisional sobre fuentes existentes de MI VISUAL.
-   Satisfacción permanece NO EVALUADA hasta recibir la base WIN.
+   V324 - BONO DE SUPERVISORES EN DASHBOARD
+   Cálculo sobre fuentes existentes de MI VISUAL y registros
+   manuales de Satisfacción realizados por Jefatura.
    Los KPI usan las metas vigentes del Dashboard:
    130 puntos/cuadrilla, efectividad 70%, recableado 42%,
    VTR/GAR 3% y observaciones S/ 200.
@@ -12251,6 +12251,23 @@ function consultarPlantillaOrden(data) {
 const HOJA_PARAMETROS_SLA_WIN = "PARAMETROS_SLA_WIN";
 const HOJA_ASIGNACION_BONO_SUPERVISORES = "ASIGNACION_BONO_SUPERVISORES";
 const HOJA_EVALUACION_BONO_SUPERVISORES = "EVALUACION_BONO_SUPERVISORES";
+const HOJA_CONFIGURACION_BONO_SUPERVISORES = "CONFIGURACION_BONO_SUPERVISORES";
+const HOJA_SATISFACCION_BONO_SUPERVISORES = "SATISFACCION_BONO_SUPERVISORES";
+
+const PESOS_BONO_SUPERVISORES_ = {
+  PRODUCTIVIDAD:25,
+  CALIDAD:25,
+  SLA:20,
+  SATISFACCION:15,
+  SEGURIDAD:15
+};
+
+const ACTIVADORES_BONO_SUPERVISORES_ = {
+  PRODUCTIVIDAD:80,
+  CALIDAD:80,
+  SLA:75,
+  SATISFACCION:80
+};
 
 const PREGUNTAS_LIDERAZGO_BONO_ = [
   "¿Realizó seguimiento oportuno a las cuadrillas con observaciones?",
@@ -12339,18 +12356,20 @@ function puntajeMetaMenorBono_(valor, meta) {
   return n > 0 ? Math.min(100, Math.max(0, (meta / n) * 100)) : 100;
 }
 
-function pagoEscalaBonoSupervisores_(cumplimiento, maximo) {
-  const c = Number(cumplimiento) || 0;
-  if (maximo === 200) {
-    if (c >= 100) return 200;
-    if (c >= 98) return 150;
-    if (c >= 95) return 100;
-    return 0;
+function montoProrrateadoBonoSupervisores_(cumplimiento, maximo, activador) {
+  const c = Math.min(100, Math.max(0, Number(cumplimiento) || 0));
+  if (activador !== null && activador !== undefined && c <= Number(activador)) return 0;
+  return redondearBonoSupervisores_((Number(maximo) || 0) * c / 100, 2);
+}
+
+function indiceCabeceraBonoSupervisores_(cabecera, nombres) {
+  const mapa = {};
+  (cabecera || []).forEach(function(x, i) { mapa[normalizarTexto(x).replace(/\s+/g,"_")] = i; });
+  for (let i = 0; i < nombres.length; i++) {
+    const clave = normalizarTexto(nombres[i]).replace(/\s+/g,"_");
+    if (mapa[clave] !== undefined) return mapa[clave];
   }
-  if (c >= 100) return 250;
-  if (c >= 98) return 200;
-  if (c >= 95) return 150;
-  return 0;
+  return -1;
 }
 
 function datosHojaBonoSupervisores_(nombre) {
@@ -12858,6 +12877,137 @@ function guardarEvaluacionBonoSupervisor(data) {
   return {ok:true,modulo:"BONO_SUPERVISORES",accion:"GUARDAR_EVALUACION",periodo:periodo,supervisor:supervisor,total:total};
 }
 
+function asegurarHojaConfiguracionBonoSupervisores_() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  let hoja = ss.getSheetByName(HOJA_CONFIGURACION_BONO_SUPERVISORES);
+  if (!hoja) hoja = ss.insertSheet(HOJA_CONFIGURACION_BONO_SUPERVISORES);
+  const cabecera = [["PERIODO","MONTO_TOTAL","PRODUCTIVIDAD_PCT","CALIDAD_PCT","SLA_PCT","SATISFACCION_PCT","SEGURIDAD_PCT","ACTUALIZADO_POR","FECHA_ACTUALIZACION"]];
+  if (hoja.getMaxColumns() < 9) hoja.insertColumnsAfter(hoja.getMaxColumns(),9-hoja.getMaxColumns());
+  hoja.getRange(1,1,1,9).setValues(cabecera);
+  hoja.setFrozenRows(1);
+  return hoja;
+}
+
+function configuracionBonoSupervisores_(periodo) {
+  const hoja = asegurarHojaConfiguracionBonoSupervisores_();
+  const datos = hoja.getDataRange().getValues();
+  let montoTotal = 1000;
+  let encontrado = false;
+  for (let i = 1; i < datos.length; i++) {
+    if (periodoDeValorBonoSupervisores_(datos[i][0]) !== periodo) continue;
+    const monto = Number(datos[i][1]);
+    if (isFinite(monto) && monto > 0) { montoTotal = monto; encontrado = true; }
+  }
+  const componentes = {};
+  Object.keys(PESOS_BONO_SUPERVISORES_).forEach(function(clave) {
+    componentes[clave] = redondearBonoSupervisores_(montoTotal * PESOS_BONO_SUPERVISORES_[clave] / 100,2);
+  });
+  return {
+    periodo:periodo,
+    montoTotal:redondearBonoSupervisores_(montoTotal,2),
+    pesos:Object.assign({},PESOS_BONO_SUPERVISORES_),
+    componentes:componentes,
+    configurado:encontrado
+  };
+}
+
+function guardarConfiguracionBonoSupervisores(data) {
+  const usuario = obtenerUsuarioApp(data.usuario);
+  if (!esPerfilJefatura(usuario.perfil)) throw new Error("Solo Jefatura puede modificar el monto total del bono");
+  const periodo = periodoBonoSupervisores_(data.periodo);
+  if (periodo !== periodoActualBonoSupervisores_()) throw new Error("El monto solo puede modificarse para el mes en curso");
+  const montoTotal = Number(data.montoTotal);
+  if (!isFinite(montoTotal) || montoTotal <= 0 || montoTotal > 100000) throw new Error("Ingrese un monto total válido");
+  const hoja = asegurarHojaConfiguracionBonoSupervisores_();
+  const lock = LockService.getScriptLock();
+  lock.waitLock(30000);
+  try {
+    const datos = hoja.getDataRange().getValues();
+    let filaDestino = 0;
+    for (let i = 1; i < datos.length; i++) {
+      if (periodoDeValorBonoSupervisores_(datos[i][0]) === periodo) { filaDestino=i+1; break; }
+    }
+    if (!filaDestino) filaDestino = hoja.getLastRow()+1;
+    hoja.getRange(filaDestino,1).setNumberFormat("@");
+    hoja.getRange(filaDestino,1,1,9).setValues([[
+      periodo,redondearBonoSupervisores_(montoTotal,2),
+      PESOS_BONO_SUPERVISORES_.PRODUCTIVIDAD,PESOS_BONO_SUPERVISORES_.CALIDAD,
+      PESOS_BONO_SUPERVISORES_.SLA,PESOS_BONO_SUPERVISORES_.SATISFACCION,
+      PESOS_BONO_SUPERVISORES_.SEGURIDAD,usuario.usuario,new Date()
+    ]]);
+  } finally {
+    lock.releaseLock();
+  }
+  return {ok:true,modulo:"BONO_SUPERVISORES",accion:"GUARDAR_CONFIGURACION",configuracion:configuracionBonoSupervisores_(periodo)};
+}
+
+function asegurarHojaSatisfaccionBonoSupervisores_() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  let hoja = ss.getSheetByName(HOJA_SATISFACCION_BONO_SUPERVISORES);
+  if (!hoja) hoja = ss.insertSheet(HOJA_SATISFACCION_BONO_SUPERVISORES);
+  const cabecera = [["PERIODO","USUARIO_SUPERVISOR","NOMBRE_SUPERVISOR","SEDE","CLIENTES_LLAMADOS","CONFORMES","NO_CONFORMES","OBSERVACION","REGISTRADO_POR","FECHA_ACTUALIZACION"]];
+  if (hoja.getMaxColumns() < 10) hoja.insertColumnsAfter(hoja.getMaxColumns(),10-hoja.getMaxColumns());
+  hoja.getRange(1,1,1,10).setValues(cabecera);
+  hoja.setFrozenRows(1);
+  return hoja;
+}
+
+function satisfaccionesBonoSupervisores_(periodo) {
+  const hoja = asegurarHojaSatisfaccionBonoSupervisores_();
+  const datos = hoja.getDataRange().getValues();
+  const mapa = {};
+  for (let i = 1; i < datos.length; i++) {
+    const fila = datos[i];
+    if (periodoDeValorBonoSupervisores_(fila[0]) !== periodo) continue;
+    const supervisor = normalizarUsuario(fila[1]);
+    if (!supervisor) continue;
+    mapa[supervisor] = {
+      completa:true,
+      clientesLlamados:Number(fila[4]) || 0,
+      conformes:Number(fila[5]) || 0,
+      noConformes:Number(fila[6]) || 0,
+      observacion:String(fila[7] || ""),
+      registradoPor:String(fila[8] || ""),
+      fechaActualizacion:fila[9] instanceof Date ? Utilities.formatDate(fila[9],"America/Lima","dd/MM/yyyy HH:mm") : String(fila[9] || "")
+    };
+  }
+  return mapa;
+}
+
+function guardarSatisfaccionBonoSupervisor(data) {
+  const usuario = obtenerUsuarioApp(data.usuario);
+  if (!esPerfilJefatura(usuario.perfil)) throw new Error("Solo Jefatura puede registrar la satisfacción del cliente");
+  const periodo = periodoBonoSupervisores_(data.periodo);
+  const supervisor = normalizarUsuario(data.supervisor);
+  const asignacion = asignacionesBonoSupervisores_(periodo,usuario.usuario).filter(function(x){return x.usuario===supervisor;})[0];
+  if (!asignacion) throw new Error("No se encontró al supervisor en el período seleccionado");
+  const llamados = Number(data.clientesLlamados);
+  const conformes = Number(data.conformes);
+  const noConformes = Number(data.noConformes);
+  if (![llamados,conformes,noConformes].every(function(x){return isFinite(x) && x >= 0 && Math.floor(x) === x;})) {
+    throw new Error("Las cantidades deben ser números enteros iguales o mayores a cero");
+  }
+  if (llamados <= 0) throw new Error("Debe registrar al menos un cliente llamado");
+  if (conformes + noConformes > llamados) throw new Error("Conformes más no conformes no puede superar a los clientes llamados");
+  const valores = [periodo,asignacion.usuario,asignacion.nombre,asignacion.sede,llamados,conformes,noConformes,String(data.observacion || "").trim(),usuario.usuario,new Date()];
+  const hoja = asegurarHojaSatisfaccionBonoSupervisores_();
+  const lock = LockService.getScriptLock();
+  lock.waitLock(30000);
+  try {
+    const datos = hoja.getDataRange().getValues();
+    let filaDestino = 0;
+    for (let i = 1; i < datos.length; i++) {
+      if (periodoDeValorBonoSupervisores_(datos[i][0]) === periodo && normalizarUsuario(datos[i][1]) === supervisor) { filaDestino=i+1; break; }
+    }
+    if (!filaDestino) filaDestino = hoja.getLastRow()+1;
+    hoja.getRange(filaDestino,1).setNumberFormat("@");
+    hoja.getRange(filaDestino,1,1,10).setValues([valores]);
+  } finally {
+    lock.releaseLock();
+  }
+  return {ok:true,modulo:"BONO_SUPERVISORES",accion:"GUARDAR_SATISFACCION",periodo:periodo,supervisor:supervisor};
+}
+
 function contextoCalculoBonoSupervisores_(periodo) {
   const corte = fechaReferenciaBonoSupervisores_(periodo);
   let produccion = {}, efectividad = {}, recableado = {}, vtrgar = {}, resumenObservaciones = {};
@@ -12880,7 +13030,9 @@ function contextoCalculoBonoSupervisores_(periodo) {
     actas:datosHojaBonoSupervisores_(HOJA_ACTAS_ESCANEADAS),
     checklist:datosHojaBonoSupervisores_(HOJA_CHECKLIST_ALMACEN),
     parametros:parametrosSlaWinVigentes_(periodo),
-    evaluaciones:evaluacionesBonoSupervisores_(periodo)
+    evaluaciones:evaluacionesBonoSupervisores_(periodo),
+    satisfacciones:satisfaccionesBonoSupervisores_(periodo),
+    configuracion:configuracionBonoSupervisores_(periodo)
   };
 }
 
@@ -12923,19 +13075,20 @@ function calcularProductividadSupervisor_(ctx, asignacion, estados) {
   const efectividadPct = totalGestionadas > 0
     ? porcentajeBonoSupervisores_(finalizadas,totalGestionadas)
     : (cuadrillasConEfectividad ? redondearBonoSupervisores_(sumaEfectividad/cuadrillasConEfectividad,2) : null);
-  const reprogramadasPct = porcentajeBonoSupervisores_(estados.reprogramadas, estados.total);
   const evaluable = metaPuntos > 0 && (puntos > 0 || totalGestionadas > 0 || estados.total > 0);
-  const cumplimiento = evaluable ? redondearBonoSupervisores_((
-    puntajeMetaMayorBono_(productividadPct,100) +
-    puntajeMetaMayorBono_(efectividadPct,70) +
-    puntajeMetaMenorBono_(reprogramadasPct,3)
-  ) / 3, 2) : 0;
+  const puntajeProductividad = puntajeMetaMayorBono_(productividadPct,100);
+  const puntajeEfectividad = puntajeMetaMayorBono_(efectividadPct,70);
+  const cumplimiento = evaluable ? redondearBonoSupervisores_(
+    (puntajeProductividad * 0.60) + (puntajeEfectividad * 0.40), 2
+  ) : 0;
+  const maximo = ctx.configuracion.componentes.PRODUCTIVIDAD;
+  const monto = evaluable ? montoProrrateadoBonoSupervisores_(cumplimiento,maximo,ACTIVADORES_BONO_SUPERVISORES_.PRODUCTIVIDAD) : 0;
   return {
-    clave:"PRODUCTIVIDAD",nombre:"Productividad operativa",maximo:250,evaluable:evaluable,
-    cumplimiento:cumplimiento,monto:evaluable?pagoEscalaBonoSupervisores_(cumplimiento,250):0,
-    estado:evaluable?"PROVISIONAL":"SIN DATOS",
-    metricas:{efectividadPct:efectividadPct,productividadPct:productividadPct,reprogramadasPct:reprogramadasPct,puntos:redondearBonoSupervisores_(puntos,1),metaPuntos:metaPuntos,totalOrdenes:estados.total,finalizadas:finalizadas,reprogramadas:estados.reprogramadas},
-    nota:"Mantiene las metas del Dashboard: 130 puntos por cuadrilla y efectividad mínima de 70%."
+    clave:"PRODUCTIVIDAD",nombre:"Productividad operativa",maximo:maximo,evaluable:evaluable,
+    cumplimiento:cumplimiento,monto:monto,activador:ACTIVADORES_BONO_SUPERVISORES_.PRODUCTIVIDAD,
+    estado:evaluable?(cumplimiento>ACTIVADORES_BONO_SUPERVISORES_.PRODUCTIVIDAD?"BONO ACTIVO":"NO ACTIVA BONO"):"SIN DATOS",
+    metricas:{efectividadPct:efectividadPct,productividadPct:productividadPct,puntajeProductividad:puntajeProductividad,puntajeEfectividad:puntajeEfectividad,puntos:redondearBonoSupervisores_(puntos,1),metaPuntos:metaPuntos,totalOrdenes:estados.total,finalizadas:finalizadas},
+    nota:"Puntaje aporta 60% y Efectividad 40%. El componente paga de forma prorrateada únicamente cuando supera 80%."
   };
 }
 
@@ -12966,33 +13119,27 @@ function calcularCalidadSupervisor_(ctx, asignacion, estados) {
       cuadrillasVtrGar++;
     }
   });
-  let auditorias = 0, auditoriasAprobadas = 0;
-  (ctx.actividad || []).slice(1).forEach(function(fila) {
-    if (periodoDeValorBonoSupervisores_(fila[1]) !== ctx.periodo || !asignadas[normalizarCuadrilla(fila[5])]) return;
-    if (normalizarTexto(fila[6]).indexOf("AUDITORIA") < 0) return;
-    auditorias++;
-    if ((Number(fila[32]) || 0) >= 95) auditoriasAprobadas++;
-  });
   const recableadoPct = rojoAsignadas > 0
     ? porcentajeBonoSupervisores_(recableados,rojoAsignadas)
     : (cuadrillasRecableado ? redondearBonoSupervisores_(sumaRecableado/cuadrillasRecableado,2) : 0);
   const vtrGarPct = finalizadasVtrGar > 0
     ? porcentajeBonoSupervisores_(incidenciasVtrGar,finalizadasVtrGar)
     : (cuadrillasVtrGar ? redondearBonoSupervisores_(sumaVtrGar/cuadrillasVtrGar,2) : 0);
-  const auditoriasPct = porcentajeBonoSupervisores_(auditoriasAprobadas, auditorias);
-  const evaluable = asignacion.cuadrillas.length > 0 && (estados.finalizadas > 0 || rojoAsignadas > 0 || finalizadasVtrGar > 0 || auditorias > 0 || observaciones > 0);
-  const cumplimiento = evaluable ? redondearBonoSupervisores_((
-    puntajeMetaMenorBono_(montoObservaciones,200) +
-    puntajeMetaMenorBono_(recableadoPct,42) +
-    puntajeMetaMenorBono_(vtrGarPct,3) +
-    puntajeMetaMayorBono_(auditoriasPct === null ? 0 : auditoriasPct,95)
-  ) / 4,2) : 0;
+  const evaluable = asignacion.cuadrillas.length > 0 && (estados.finalizadas > 0 || rojoAsignadas > 0 || finalizadasVtrGar > 0 || observaciones > 0 || montoObservaciones > 0);
+  const puntajeObservaciones = puntajeMetaMenorBono_(montoObservaciones,200);
+  const puntajeRecableado = puntajeMetaMenorBono_(recableadoPct,42);
+  const puntajeVtrGar = puntajeMetaMenorBono_(vtrGarPct,3);
+  const cumplimiento = evaluable ? redondearBonoSupervisores_(
+    (puntajeObservaciones * 0.30) + (puntajeRecableado * 0.40) + (puntajeVtrGar * 0.30),2
+  ) : 0;
+  const maximo = ctx.configuracion.componentes.CALIDAD;
+  const monto = evaluable ? montoProrrateadoBonoSupervisores_(cumplimiento,maximo,ACTIVADORES_BONO_SUPERVISORES_.CALIDAD) : 0;
   return {
-    clave:"CALIDAD",nombre:"Calidad de instalaciones y averías",maximo:250,evaluable:evaluable,
-    cumplimiento:cumplimiento,monto:evaluable?pagoEscalaBonoSupervisores_(cumplimiento,250):0,
-    estado:evaluable?"PROVISIONAL":"SIN DATOS",
-    metricas:{observaciones:observaciones,montoObservaciones:redondearBonoSupervisores_(montoObservaciones,2),recableadoPct:recableadoPct,rojoAsignadas:rojoAsignadas,recableados:recableados,vtrGarPct:vtrGarPct,incidenciasVtrGar:incidenciasVtrGar,finalizadasVtrGar:finalizadasVtrGar,auditoriasPct:auditoriasPct,auditorias:auditorias,auditoriasAprobadas:auditoriasAprobadas},
-    nota:"Mantiene las metas del Dashboard: observaciones hasta S/200, recableado hasta 42% y VTR/GAR hasta 3%; además considera auditorías aprobadas."
+    clave:"CALIDAD",nombre:"Calidad de instalaciones y averías",maximo:maximo,evaluable:evaluable,
+    cumplimiento:cumplimiento,monto:monto,activador:ACTIVADORES_BONO_SUPERVISORES_.CALIDAD,
+    estado:evaluable?(cumplimiento>ACTIVADORES_BONO_SUPERVISORES_.CALIDAD?"BONO ACTIVO":"NO ACTIVA BONO"):"SIN DATOS",
+    metricas:{observaciones:observaciones,montoObservaciones:redondearBonoSupervisores_(montoObservaciones,2),puntajeObservaciones:puntajeObservaciones,recableadoPct:recableadoPct,puntajeRecableado:puntajeRecableado,rojoAsignadas:rojoAsignadas,recableados:recableados,vtrGarPct:vtrGarPct,puntajeVtrGar:puntajeVtrGar,incidenciasVtrGar:incidenciasVtrGar,finalizadasVtrGar:finalizadasVtrGar},
+    nota:"Observaciones aporta 30%, Recableado 40% y VTR/GAR 30%. El componente paga de forma prorrateada únicamente cuando supera 80%."
   };
 }
 
@@ -13013,7 +13160,7 @@ function calcularSlaSupervisor_(ctx, asignacion) {
   const asignadas = mapaCuadrillasBono_(asignacion.cuadrillas);
   const tipos = tiposPartidaPorCodigoBono_(ctx);
   const parametros = ctx.parametros.mapa || {};
-  let evaluables = 0, cumplen = 0, vencidas = 0, sinPartida = 0, sinParametro = 0, inasistencias = 0;
+  let evaluables = 0, cumplen = 0, vencidas = 0, sinPartida = 0, sinParametro = 0;
   const grupos = {INSTALACION:{total:0,cumplen:0},AVERIA:{total:0,cumplen:0}};
   const detalle = [];
   (ctx.mapa || []).slice(1).forEach(function(fila) {
@@ -13023,12 +13170,9 @@ function calcularSlaSupervisor_(ctx, asignacion) {
     const fechaInicio = fechaHoraBonoSupervisores_(fila[19]);
     const fechaPeriodo = fechaFin || fechaInicio || fechaHoraBonoSupervisores_(fila[2]);
     if (!fechaPeriodo || Utilities.formatDate(fechaPeriodo,"America/Lima","yyyy-MM") !== ctx.periodo) return;
-    if (normalizarTexto(fila[8]) !== "FINALIZADA") return;
-    // El SLA solo evalúa órdenes finalizadas que tengan simultáneamente
-    // hora de inicio y hora de fin válidas. Las demás se excluyen por completo.
+    // El SLA evalúa toda orden que tenga simultáneamente hora de inicio
+    // y hora de fin válidas, sin importar su estado. Las demás se excluyen.
     if (!fechaInicio || !fechaFin || fechaFin < fechaInicio) return;
-    const textoEstado = normalizarTexto([fila[8],fila[20],fila[21],fila[22],fila[25]].join(" "));
-    if (textoEstado.indexOf("INASISTENCIA") >= 0) inasistencias++;
     const codigo = normalizarIdentificadorMapa(fila[0]);
     const partida = tipos[codigo] || "";
     if (!partida) {sinPartida++;return;}
@@ -13046,66 +13190,95 @@ function calcularSlaSupervisor_(ctx, asignacion) {
     }
   });
   const cumplimiento = porcentajeBonoSupervisores_(cumplen,evaluables) || 0;
-  let monto = evaluables > 0 ? pagoEscalaBonoSupervisores_(cumplimiento,200) : 0;
-  if (inasistencias > 0) monto = 0;
+  const maximo = ctx.configuracion.componentes.SLA;
+  const monto = evaluables > 0 ? montoProrrateadoBonoSupervisores_(cumplimiento,maximo,ACTIVADORES_BONO_SUPERVISORES_.SLA) : 0;
   return {
-    clave:"SLA",nombre:"Cumplimiento de SLA WIN",maximo:200,evaluable:evaluables>0,
-    cumplimiento:cumplimiento,monto:monto,estado:evaluables>0?(inasistencias>0?"OBSERVADO":"PROVISIONAL"):"SIN DATOS",
-    metricas:{evaluables:evaluables,cumplen:cumplen,vencidas:vencidas,inasistencias:inasistencias,sinPartida:sinPartida,sinParametro:sinParametro,instalacionesPct:porcentajeBonoSupervisores_(grupos.INSTALACION.cumplen,grupos.INSTALACION.total),instalacionesTotal:grupos.INSTALACION.total,averiasPct:porcentajeBonoSupervisores_(grupos.AVERIA.cumplen,grupos.AVERIA.total),averiasTotal:grupos.AVERIA.total},
+    clave:"SLA",nombre:"Cumplimiento de SLA WIN",maximo:maximo,evaluable:evaluables>0,
+    cumplimiento:cumplimiento,monto:monto,activador:ACTIVADORES_BONO_SUPERVISORES_.SLA,
+    estado:evaluables>0?(cumplimiento>ACTIVADORES_BONO_SUPERVISORES_.SLA?"BONO ACTIVO":"NO ACTIVA BONO"):"SIN DATOS",
+    metricas:{evaluables:evaluables,cumplen:cumplen,vencidas:vencidas,sinPartida:sinPartida,sinParametro:sinParametro,instalacionesPct:porcentajeBonoSupervisores_(grupos.INSTALACION.cumplen,grupos.INSTALACION.total),instalacionesTotal:grupos.INSTALACION.total,averiasPct:porcentajeBonoSupervisores_(grupos.AVERIA.cumplen,grupos.AVERIA.total),averiasTotal:grupos.AVERIA.total},
     detalleIncumplimientos:detalle,
-    nota:"Solo considera órdenes FINALIZADAS con hora de inicio y hora de fin válidas, además de una partida identificada. Las órdenes sin ambas horas se excluyen por completo."
+    nota:"Solo considera órdenes con hora de inicio, hora de fin y partida parametrizada. La meta es superar 80% y el bono se activa por encima de 75%."
+  };
+}
+
+function calcularSatisfaccionSupervisor_(ctx, asignacion) {
+  const registro = ctx.satisfacciones[asignacion.usuario] || {completa:false,clientesLlamados:0,conformes:0,noConformes:0,observacion:"",registradoPor:"",fechaActualizacion:""};
+  const respondieron = (Number(registro.conformes) || 0) + (Number(registro.noConformes) || 0);
+  const cumplimiento = respondieron > 0 ? (porcentajeBonoSupervisores_(registro.conformes,respondieron) || 0) : 0;
+  const maximo = ctx.configuracion.componentes.SATISFACCION;
+  const monto = respondieron > 0 ? montoProrrateadoBonoSupervisores_(cumplimiento,maximo,ACTIVADORES_BONO_SUPERVISORES_.SATISFACCION) : 0;
+  return {
+    clave:"SATISFACCION",nombre:"Satisfacción del cliente",maximo:maximo,evaluable:respondieron>0,
+    cumplimiento:respondieron>0?cumplimiento:null,monto:monto,activador:ACTIVADORES_BONO_SUPERVISORES_.SATISFACCION,
+    estado:respondieron>0?(cumplimiento>ACTIVADORES_BONO_SUPERVISORES_.SATISFACCION?"BONO ACTIVO":"NO ACTIVA BONO"):(registro.clientesLlamados>0?"SIN RESPUESTAS":"PENDIENTE REGISTRO"),
+    metricas:{clientesLlamados:registro.clientesLlamados,respondieron:respondieron,conformes:registro.conformes,noConformes:registro.noConformes,noRespondieron:Math.max(0,(Number(registro.clientesLlamados)||0)-respondieron)},
+    registro:registro,
+    nota:"Jefatura registra llamadas, conformes y no conformes. Las llamadas sin respuesta se muestran, pero no afectan el porcentaje."
   };
 }
 
 function calcularSeguridadSupervisor_(ctx, asignacion) {
   const asignadas = mapaCuadrillasBono_(asignacion.cuadrillas);
-  let actasRevisadas = 0, actasSinObservacion = 0;
+  let actasRegistradas = 0, actasSinPendientes = 0;
   (ctx.actas || []).slice(1).forEach(function(fila) {
-    if (periodoDeValorBonoSupervisores_(fila[7]) !== ctx.periodo || !asignadas[normalizarCuadrilla(fila[4])]) return;
-    const control = normalizarTexto([fila[17],fila[18],fila[19],fila[23],fila[24]].join(" "));
-    const revisada = !!normalizarTexto(fila[18] || fila[23]) || control.indexOf("FINALIZ") >= 0 || control.indexOf("OBSERV") >= 0;
-    if (!revisada) return;
-    actasRevisadas++;
-    if (control.indexOf("OBSERV") < 0 && control.indexOf("RECHAZ") < 0) actasSinObservacion++;
+    if (periodoDeValorBonoSupervisores_(fila[7] || fila[1]) !== ctx.periodo || !asignadas[normalizarCuadrilla(fila[4])]) return;
+    actasRegistradas++;
+    const control = normalizarTexto([fila[17],fila[18],fila[19],fila[23],fila[24],fila[29],fila[34],fila[36],fila[40]].join(" "));
+    const pendiente = !control || control.indexOf("PENDIENTE") >= 0 || control.indexOf("FALTANTE") >= 0 || control.indexOf("POR CONFIRMAR") >= 0;
+    if (!pendiente) actasSinPendientes++;
   });
+
   const slots = {};
-  let checklistRevisados = 0, checklistSinObservacion = 0;
   (ctx.checklist || []).slice(1).forEach(function(fila) {
     const cuadrilla = normalizarCuadrilla(fila[6]);
-    const fecha = fechaHoraBonoSupervisores_(fila[7]);
+    const fecha = fechaHoraBonoSupervisores_(fila[7] || fila[1]);
     if (!fecha || Utilities.formatDate(fecha,"America/Lima","yyyy-MM") !== ctx.periodo || !asignadas[cuadrilla]) return;
     const quincena = fecha.getDate() <= 15 ? "Q1" : "Q2";
     slots[cuadrilla + "|" + quincena] = true;
-    const control = normalizarTexto([fila[8],fila[40],fila[41],fila[45],fila[46],fila[56],fila[57],fila[67],fila[68],fila[76],fila[77],fila[81],fila[82]].join(" "));
-    const revisado = control && control.indexOf("PENDIENTE") < 0;
-    if (!revisado) return;
-    checklistRevisados++;
-    if (control.indexOf("OBSERV") < 0 && control.indexOf("RECHAZ") < 0) checklistSinObservacion++;
   });
-  let faltasSeguridadPenalizadas = 0;
-  (ctx.observaciones || []).slice(1).forEach(function(fila) {
-    if (periodoDeValorBonoSupervisores_(fila[2] || fila[1]) !== ctx.periodo || !asignadas[normalizarCuadrilla(fila[8])]) return;
-    if (normalizarTexto(fila[11]).indexOf("SEGURIDAD") >= 0 && normalizarTexto(fila[13]) === "PENALIZADO") faltasSeguridadPenalizadas++;
+
+  let actividadesCampo = 0;
+  const cabeceraActividad = (ctx.actividad || [])[0] || [];
+  const iFecha = indiceCabeceraBonoSupervisores_(cabeceraActividad,["FECHA"]);
+  const iSupervisor = indiceCabeceraBonoSupervisores_(cabeceraActividad,["SUPERVISOR"]);
+  (ctx.actividad || []).slice(1).forEach(function(fila) {
+    if (iFecha < 0 || iSupervisor < 0) return;
+    if (periodoDeValorBonoSupervisores_(fila[iFecha]) !== ctx.periodo) return;
+    if (normalizarUsuario(fila[iSupervisor]) === asignacion.usuario) actividadesCampo++;
   });
-  const actasPct = porcentajeBonoSupervisores_(actasSinObservacion,actasRevisadas);
+
+  const actasPct = porcentajeBonoSupervisores_(actasSinPendientes,actasRegistradas);
   const slotsMeta = asignacion.cuadrillas.length * 2;
   const slotsCumplidos = Object.keys(slots).length;
   const checklistCumplimientoPct = porcentajeBonoSupervisores_(slotsCumplidos,slotsMeta);
-  const checklistSinObsPct = porcentajeBonoSupervisores_(checklistSinObservacion,checklistRevisados);
+  const actividadPct = Math.min(100,(porcentajeBonoSupervisores_(actividadesCampo,15) || 0));
   const evaluacion = ctx.evaluaciones[asignacion.usuario] || {completa:false,total:0,respuestas:PREGUNTAS_LIDERAZGO_BONO_.map(function(p){return {pregunta:p,puntaje:0,comentario:"",evidencia:""};}),evaluadoPor:"",fechaActualizacion:""};
-  const montoActas = actasPct === null ? 0 : 40 * actasPct / 100;
-  const montoChecklistCumplimiento = checklistCumplimientoPct === null ? 0 : 30 * Math.min(100,checklistCumplimientoPct) / 100;
-  const montoChecklistSinObs = checklistSinObsPct === null ? 0 : 20 * checklistSinObsPct / 100;
-  let monto = redondearBonoSupervisores_(montoActas + montoChecklistCumplimiento + montoChecklistSinObs + (evaluacion.total || 0),2);
-  if (faltasSeguridadPenalizadas > 0) monto = 0;
-  const cumplimiento = redondearBonoSupervisores_((monto / 150) * 100,2);
+  const evaluacionPct = Math.min(100,(Number(evaluacion.total) || 0) / 60 * 100);
+  const puntajeActas = actasPct === null ? 0 : Math.min(100,actasPct);
+  const puntajeChecklist = checklistCumplimientoPct === null ? 0 : Math.min(100,checklistCumplimientoPct);
+  const cumplimiento = redondearBonoSupervisores_((puntajeActas + puntajeChecklist + actividadPct + evaluacionPct) / 4,2);
+  const maximo = ctx.configuracion.componentes.SEGURIDAD;
+  const monto = montoProrrateadoBonoSupervisores_(cumplimiento,maximo,null);
+  const maximoIndicador = maximo / 4;
   return {
-    clave:"SEGURIDAD",nombre:"Seguridad, disciplina y liderazgo",maximo:150,evaluable:actasRevisadas>0 || checklistRevisados>0 || slotsCumplidos>0 || evaluacion.completa,
-    cumplimiento:cumplimiento,monto:monto,estado:faltasSeguridadPenalizadas>0?"NO PAGABLE":(evaluacion.completa?"PROVISIONAL":"PENDIENTE EVALUACIÓN"),
-    metricas:{actasPct:actasPct,actasRevisadas:actasRevisadas,actasSinObservacion:actasSinObservacion,checklistCumplimientoPct:checklistCumplimientoPct,slotsCumplidos:slotsCumplidos,slotsMeta:slotsMeta,checklistSinObsPct:checklistSinObsPct,checklistRevisados:checklistRevisados,checklistSinObservacion:checklistSinObservacion,faltasSeguridadPenalizadas:faltasSeguridadPenalizadas,montoActas:redondearBonoSupervisores_(montoActas,2),montoChecklistCumplimiento:redondearBonoSupervisores_(montoChecklistCumplimiento,2),montoChecklistSinObs:redondearBonoSupervisores_(montoChecklistSinObs,2),montoEvaluacion:evaluacion.total || 0},
+    clave:"SEGURIDAD",nombre:"Seguridad, disciplina y liderazgo",maximo:maximo,
+    evaluable:actasRegistradas>0 || slotsCumplidos>0 || actividadesCampo>0 || evaluacion.completa,
+    cumplimiento:cumplimiento,monto:monto,estado:evaluacion.completa?"PROVISIONAL":"PENDIENTE EVALUACIÓN",
+    metricas:{
+      actasPct:actasPct,actasRegistradas:actasRegistradas,actasSinPendientes:actasSinPendientes,
+      checklistCumplimientoPct:checklistCumplimientoPct,slotsCumplidos:slotsCumplidos,slotsMeta:slotsMeta,
+      actividadesCampo:actividadesCampo,metaActividadesCampo:15,actividadPct:actividadPct,
+      evaluacionPct:redondearBonoSupervisores_(evaluacionPct,2),puntajeEvaluacion:evaluacion.total || 0,
+      montoActas:redondearBonoSupervisores_(maximoIndicador*puntajeActas/100,2),
+      montoChecklistCumplimiento:redondearBonoSupervisores_(maximoIndicador*puntajeChecklist/100,2),
+      montoActividad:redondearBonoSupervisores_(maximoIndicador*actividadPct/100,2),
+      montoEvaluacion:redondearBonoSupervisores_(maximoIndicador*evaluacionPct/100,2),
+      maximoIndicador:redondearBonoSupervisores_(maximoIndicador,2)
+    },
     evaluacion:evaluacion,
     preguntas:PREGUNTAS_LIDERAZGO_BONO_,
-    nota:"El checklist exige un control en cada quincena por cuadrilla. Una penalización de seguridad deja este componente en S/0."
+    nota:"Actas sin pendientes, checklist por quincena, 15 actividades en campo y evaluación de Jefatura aportan 25% cada uno."
   };
 }
 
@@ -13114,17 +13287,19 @@ function calcularBonoSupervisor_(ctx, asignacion, puedeEditar) {
   const productividad = calcularProductividadSupervisor_(ctx,asignacion,estados);
   const calidad = calcularCalidadSupervisor_(ctx,asignacion,estados);
   const sla = calcularSlaSupervisor_(ctx,asignacion);
+  const satisfaccion = calcularSatisfaccionSupervisor_(ctx,asignacion);
   const seguridad = calcularSeguridadSupervisor_(ctx,asignacion);
-  const satisfaccion = {clave:"SATISFACCION",nombre:"Satisfacción del cliente",maximo:150,evaluable:false,cumplimiento:null,monto:0,estado:"PENDIENTE INFORMACIÓN WIN",metricas:{},nota:"Se activará cuando se cargue la base de llamadas y encuestas enviada por WIN."};
   const componentes = [productividad,calidad,sla,satisfaccion,seguridad];
   const monto = redondearBonoSupervisores_(componentes.reduce(function(s,x){return s+(Number(x.monto)||0);},0),2);
-  const pendientes = ["Satisfacción pendiente de información WIN"];
+  const pendientes = [];
+  if (!satisfaccion.evaluable) pendientes.push("Registro manual de satisfacción pendiente");
   if (!seguridad.evaluacion.completa) pendientes.push("Evaluación manual de liderazgo pendiente");
   if (sla.metricas.sinPartida || sla.metricas.sinParametro) pendientes.push((sla.metricas.sinPartida + sla.metricas.sinParametro) + " orden(es) sin partida o parámetro SLA");
+  const bonoMaximo = ctx.configuracion.montoTotal;
   return {
     usuario:asignacion.usuario,nombre:asignacion.nombre,sede:asignacion.sede,periodo:ctx.periodo,
     cuadrillas:asignacion.cuadrillas,totalCuadrillas:asignacion.cuadrillas.length,
-    bonoMaximo:1000,maximoEvaluado:850,montoProvisional:monto,porcentajeEvaluado:redondearBonoSupervisores_((monto/850)*100,2),
+    bonoMaximo:bonoMaximo,maximoEvaluado:bonoMaximo,montoProvisional:monto,porcentajeEvaluado:bonoMaximo>0?redondearBonoSupervisores_((monto/bonoMaximo)*100,2):0,
     estado:ctx.periodo===periodoActualBonoSupervisores_()?"EN CURSO":"HISTÓRICO PROVISIONAL",
     puedeEditar:puedeEditar,componentes:componentes,pendientes:pendientes
   };
@@ -13147,11 +13322,13 @@ function obtenerBonosSupervisores(data) {
     ok:true,modulo:"BONO_SUPERVISORES",accion:"OBTENER",periodo:periodo,
     bonos:bonos,puedeEditar:puedeEditar,
     puedeEditarSla:puedeEditar && periodo === periodoActualBonoSupervisores_(),
+    puedeEditarConfiguracion:puedeEditar && periodo === periodoActualBonoSupervisores_(),
+    configuracion:ctx.configuracion,
     parametrosSla:ctx.parametros.lista,
     parametrosSlaConfiguracion:parametrosSlaWinConfigurables_(periodo),
     criterio:"SUMA_COMPONENTES",
     metasDashboard:{puntosPorCuadrilla:130,efectividadPct:70,recableadoPct:42,vtrGarPct:3,observacionesMonto:200},
-    nota:"El monto es provisional. Usa las metas vigentes del Dashboard; Satisfacción no se redistribuye y permanece pendiente hasta contar con información WIN."
+    nota:"El monto es provisional y se prorratea con las metas vigentes del Dashboard y los activadores definidos para cada componente."
   };
 }
 
@@ -13163,6 +13340,8 @@ function doPost(e) {
     if (data.accion === "listarParametrosSlaWin") return respuestaJson(listarParametrosSlaWin(data));
     if (data.accion === "guardarParametrosSlaWin") return respuestaJson(guardarParametrosSlaWin(data));
     if (data.accion === "guardarEvaluacionBonoSupervisor") return respuestaJson(guardarEvaluacionBonoSupervisor(data));
+    if (data.accion === "guardarConfiguracionBonoSupervisores") return respuestaJson(guardarConfiguracionBonoSupervisores(data));
+    if (data.accion === "guardarSatisfaccionBonoSupervisor") return respuestaJson(guardarSatisfaccionBonoSupervisor(data));
     if (data.accion === "listarTrabajosDiariosCuadrilla") return respuestaJson(listarTrabajosDiariosCuadrilla(data));
     if (data.accion === "previsualizarBaseOperativa") return respuestaJson(previsualizarBaseOperativa(data));
     if (data.accion === "procesarBaseOperativa") return respuestaJson(procesarBaseOperativa(data));

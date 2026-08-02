@@ -1,0 +1,63 @@
+MI VISUAL V324 - BONO DE SUPERVISORES
+======================================
+
+BASE
+----
+Esta versión es incremental y parte de MI VISUAL V323.
+Mantiene la corrección del SLA con horas completas y el resto de módulos existentes.
+
+ARCHIVOS DEL PAQUETE
+--------------------
+1. Code.gs
+2. apps_script/Code.gs (copia idéntica)
+3. js/bono_supervisores.js
+
+CAMBIOS PRINCIPALES
+-------------------
+1. Monto total configurable por Jefatura para el mes en curso.
+2. Distribución fija del monto:
+   - Productividad operativa: 25%
+   - Calidad de instalaciones y averías: 25%
+   - SLA WIN: 20%
+   - Satisfacción del cliente: 15%
+   - Seguridad, disciplina y liderazgo: 15%
+3. Productividad:
+   - Puntaje: 60% (meta 130 puntos por cuadrilla).
+   - Efectividad: 40% (meta 70%).
+   - Se activa al superar 80% y paga el porcentaje prorrateado.
+4. Calidad:
+   - Observaciones: 30% (meta hasta S/200).
+   - Recableado: 40% (meta hasta 42%).
+   - VTR/GAR: 30% (meta hasta 3%).
+   - Se activa al superar 80% y paga el porcentaje prorrateado.
+5. SLA:
+   - Solo considera órdenes con hora de inicio y hora de fin válidas.
+   - El estado de la orden no modifica la evaluación.
+   - Las órdenes sin ambas horas quedan completamente excluidas.
+   - Meta superior a 80%; activa bono al superar 75%.
+6. Satisfacción:
+   - Registro manual por Jefatura: llamados, conformes y no conformes.
+   - Las llamadas sin respuesta no afectan el porcentaje.
+   - Activa bono al superar 80%.
+7. Seguridad, disciplina y liderazgo:
+   - Actas sin pendientes: 25%.
+   - Checklist por cuadrilla, uno por quincena: 25%.
+   - Mínimo 15 registros mensuales de Actividad en Campo por supervisor: 25%.
+   - Evaluación de Jefatura: 25%.
+
+HOJAS NUEVAS AUTOMÁTICAS
+------------------------
+- CONFIGURACION_BONO_SUPERVISORES
+- SATISFACCION_BONO_SUPERVISORES
+
+No deben crearse manualmente. Se generan al consultar el Dashboard.
+
+INSTALACIÓN
+-----------
+1. Reemplazar Code.gs en Apps Script.
+2. Implementar una nueva versión del Web App.
+3. Reemplazar js/bono_supervisores.js en GitHub.
+4. Hacer commit y push.
+5. Actualizar la aplicación con Ctrl + F5.
+
+No se necesita crear ni modificar activadores.
