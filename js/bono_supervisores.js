@@ -1,5 +1,5 @@
 /* =====================================================
-   V330 - BONO DE SUPERVISORES: ACTIVADORES CONFIGURABLES
+   V332 - ACTAS SIN PENDIENTES: VALIDACIÓN MANUAL SÍ/NO
    ===================================================== */
 let MV321_BONO_SUPERVISORES = {
     cargando:false,
@@ -123,11 +123,17 @@ function mv321DetalleComponente(c, bono){
         html += mv321Linea("Activador del componente",`> ${activador}%`,referenciaActivador);
         if(bono.puedeEditar) html += `<button class="mv321-accion" onclick="mv324AbrirSatisfaccion('${mv321Esc(bono.usuario)}')">📞 Registrar satisfacción</button>`;
     }else if(c.clave === "SEGURIDAD"){
-        html += mv321Linea("Actas sin pendientes · peso 25%",mv321Pct(m.actasPct),`${Number(m.actasSinPendientes||0)} de ${Number(m.actasRegistradas||0)} · ${mv321Money(m.montoActas||0)} / ${mv321Money(m.maximoIndicador||0)}`);
+        const actasEvaluadas = m.actasEvaluadas === true;
+        const respuestaActas = actasEvaluadas ? (m.actasSinPendientes ? "Sí" : "No") : "No evaluado";
+        const referenciaActas = actasEvaluadas
+            ? `${mv321Pct(m.actasPct)} · ${mv321Money(m.montoActas||0)} / ${mv321Money(m.maximoIndicador||0)}`
+            : "Registro manual pendiente";
+        html += mv321Linea("Actas sin pendientes · peso 25%",respuestaActas,referenciaActas);
         html += mv321Linea("Checklist por quincena · peso 25%",mv321Pct(m.checklistCumplimientoPct),`${Number(m.slotsCumplidos||0)} de ${Number(m.slotsMeta||0)} quincenas · ${mv321Money(m.montoChecklistCumplimiento||0)} / ${mv321Money(m.maximoIndicador||0)}`);
         html += mv321Linea("Actividad en campo · peso 25%",mv321Pct(m.actividadPct),`${Number(m.actividadesCampo||0)} de ${Number(m.metaActividadesCampo||15)} registros · ${mv321Money(m.montoActividad||0)} / ${mv321Money(m.maximoIndicador||0)}`);
         html += mv321Linea("Evaluación de Jefatura · peso 25%",`${Number(m.puntajeEvaluacion||0)} / 60 pts`,`${mv321Money(m.montoEvaluacion||0)} / ${mv321Money(m.maximoIndicador||0)}`);
         html += mv321Linea("Activador del componente",`> ${activador}%`,referenciaActivador);
+        if(bono.puedeEditar) html += `<button class="mv321-accion" onclick="mv332AbrirActas('${mv321Esc(bono.usuario)}')">📄 Validar actas</button>`;
         if(bono.puedeEditar) html += `<button class="mv321-accion" onclick="mv321AbrirEvaluacion('${mv321Esc(bono.usuario)}')">📝 Evaluar liderazgo</button>`;
     }
     if(c.nota) html += `<div class="mv321-nota">${mv321Esc(c.nota)}</div>`;
@@ -310,6 +316,42 @@ function mv321CerrarModal(){
 function mv321MostrarModal(titulo,contenido){
     mv321CerrarModal();
     document.body.insertAdjacentHTML("beforeend",`<div id="mv321Modal" class="mv321-modal"><div class="mv321-modal-card"><div class="mv321-modal-head"><h3>${titulo}</h3><button onclick="mv321CerrarModal()">✕</button></div><div class="mv321-modal-body">${contenido}</div></div></div>`);
+}
+
+function mv332AbrirActas(usuario){
+    const bono = mv321BonoPorUsuario(usuario);
+    if(!bono) return;
+    const seguridad = (bono.componentes||[]).find(x=>x.clave==="SEGURIDAD") || {};
+    const registro = seguridad.actasManual || {};
+    const respuesta = registro.evaluada === true ? String(registro.respuesta||"").toUpperCase() : "";
+    const contenido = `<div class="mv321-eval-intro"><b>${mv321Esc(bono.nombre)}</b><span>${mv321Esc(bono.sede)} · ${mv321Esc(bono.periodo)} · registro manual</span></div>
+        <div class="mv321-pregunta"><b>¿El supervisor tiene actas sin pendientes en el período?</b>
+        <label>Resultado<select id="mv332ActasRespuesta"><option value="" ${respuesta?"":"selected"}>Seleccione Sí o No</option><option value="SI" ${respuesta==="SI"?"selected":""}>Sí — cumple</option><option value="NO" ${respuesta==="NO"?"selected":""}>No — no cumple</option></select></label></div>
+        <div id="mv332ActasMensaje" class="mv321-form-msg"></div>
+        <button class="mv321-guardar" onclick="mv332GuardarActas('${mv321Esc(bono.usuario)}')">💾 Guardar validación</button>`;
+    mv321MostrarModal("Actas sin pendientes",contenido);
+}
+
+async function mv332GuardarActas(usuario){
+    const bono = mv321BonoPorUsuario(usuario);
+    const mensaje = document.getElementById("mv332ActasMensaje");
+    const campo = document.getElementById("mv332ActasRespuesta");
+    if(!bono || !mensaje || !campo) return;
+    const respuesta = campo.value;
+    if(!respuesta){
+        mensaje.className="mv321-form-msg error";
+        mensaje.textContent="Seleccione Sí o No.";
+        return;
+    }
+    mensaje.className="mv321-form-msg";
+    mensaje.textContent="Guardando validación...";
+    try{
+        await mv321Post("guardarActasSinPendientesBonoSupervisor",{periodo:bono.periodo,supervisor:bono.usuario,respuesta});
+        mensaje.className="mv321-form-msg ok";
+        mensaje.textContent="Validación de actas guardada correctamente.";
+        await mv321CargarBonos(bono.periodo);
+        setTimeout(mv325RefrescarVistaActual,500);
+    }catch(e){ mensaje.className="mv321-form-msg error";mensaje.textContent=e.message; }
 }
 
 function mv321AbrirEvaluacion(usuario){

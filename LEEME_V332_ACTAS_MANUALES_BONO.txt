@@ -1,0 +1,23 @@
+MI VISUAL V332 - ACTAS SIN PENDIENTES MANUAL
+
+CAMBIO APLICADO
+- Actas sin pendientes deja de calcularse automáticamente.
+- Jefatura registra manualmente Sí o No por supervisor y período.
+- Sí equivale al 100% del indicador Actas sin pendientes.
+- No equivale al 0% del indicador.
+- Sin respuesta se muestra como No evaluado.
+- El indicador conserva su peso de 25% dentro de Seguridad, disciplina y liderazgo.
+- No se solicitan comentarios ni evidencias.
+- La respuesta puede actualizarse sin crear duplicados.
+
+INSTALACIÓN
+1. Reemplazar Code.gs en Apps Script.
+2. Implementar una nueva versión de la aplicación web.
+3. Reemplazar js/bono_supervisores.js en GitHub.
+4. Realizar commit y push.
+5. Actualizar la aplicación con Ctrl + F5.
+
+IMPORTANTE
+- No crear hojas ni activadores manualmente.
+- La hoja ACTAS_BONO_SUPERVISORES se crea automáticamente al consultar el bono.
+- No reemplazar index.html ni js/app.js; se mantienen los ajustes de V331.

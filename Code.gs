@@ -12274,6 +12274,7 @@ const HOJA_ASIGNACION_BONO_SUPERVISORES = "ASIGNACION_BONO_SUPERVISORES";
 const HOJA_EVALUACION_BONO_SUPERVISORES = "EVALUACION_BONO_SUPERVISORES_20";
 const HOJA_CONFIGURACION_BONO_SUPERVISORES = "CONFIGURACION_BONO_SUPERVISORES";
 const HOJA_SATISFACCION_BONO_SUPERVISORES = "SATISFACCION_BONO_SUPERVISORES";
+const HOJA_ACTAS_BONO_SUPERVISORES = "ACTAS_BONO_SUPERVISORES";
 
 const PESOS_BONO_SUPERVISORES_ = {
   PRODUCTIVIDAD:25,
@@ -13134,6 +13135,85 @@ function guardarSatisfaccionBonoSupervisor(data) {
   return {ok:true,modulo:"BONO_SUPERVISORES",accion:"GUARDAR_SATISFACCION",periodo:periodo,supervisor:supervisor};
 }
 
+function asegurarHojaActasBonoSupervisores_() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  let hoja = ss.getSheetByName(HOJA_ACTAS_BONO_SUPERVISORES);
+  if (!hoja) hoja = ss.insertSheet(HOJA_ACTAS_BONO_SUPERVISORES);
+  const cabecera = [[
+    "PERIODO","USUARIO_SUPERVISOR","NOMBRE_SUPERVISOR","SEDE",
+    "ACTAS_SIN_PENDIENTES","REGISTRADO_POR","FECHA_ACTUALIZACION"
+  ]];
+  if (hoja.getMaxColumns() < 7) hoja.insertColumnsAfter(hoja.getMaxColumns(),7-hoja.getMaxColumns());
+  hoja.getRange(1,1,1,7).setValues(cabecera);
+  hoja.setFrozenRows(1);
+  return hoja;
+}
+
+function validacionesActasBonoSupervisores_(periodo) {
+  const hoja = asegurarHojaActasBonoSupervisores_();
+  const datos = hoja.getDataRange().getValues();
+  const mapa = {};
+  for (let i = 1; i < datos.length; i++) {
+    const fila = datos[i];
+    if (periodoDeValorBonoSupervisores_(fila[0]) !== periodo) continue;
+    const supervisor = normalizarUsuario(fila[1]);
+    if (!supervisor) continue;
+    const respuestaNormalizada = normalizarTexto(fila[4]);
+    const evaluada = respuestaNormalizada === "SI" || respuestaNormalizada === "SÍ" || respuestaNormalizada === "NO";
+    mapa[supervisor] = {
+      evaluada:evaluada,
+      respuesta:evaluada ? (respuestaNormalizada === "NO" ? "NO" : "SI") : "",
+      sinPendientes:evaluada && respuestaNormalizada !== "NO",
+      registradoPor:String(fila[5] || ""),
+      fechaActualizacion:fila[6] instanceof Date
+        ? Utilities.formatDate(fila[6],"America/Lima","dd/MM/yyyy HH:mm")
+        : String(fila[6] || "")
+    };
+  }
+  return mapa;
+}
+
+function guardarActasSinPendientesBonoSupervisor(data) {
+  const usuario = obtenerUsuarioApp(data.usuario);
+  if (!esPerfilJefatura(usuario.perfil)) throw new Error("Solo Jefatura puede validar las actas sin pendientes");
+  const periodo = periodoBonoSupervisores_(data.periodo);
+  const supervisor = normalizarUsuario(data.supervisor);
+  const respuestaNormalizada = normalizarTexto(data.respuesta);
+  if (!(respuestaNormalizada === "SI" || respuestaNormalizada === "SÍ" || respuestaNormalizada === "NO")) {
+    throw new Error("Seleccione Sí o No para validar las actas sin pendientes");
+  }
+  const respuesta = respuestaNormalizada === "NO" ? "NO" : "SI";
+  const asignacion = asignacionesBonoSupervisores_(periodo,usuario.usuario)
+    .filter(function(x){return x.usuario===supervisor;})[0];
+  if (!asignacion) throw new Error("No se encontró al supervisor en el período seleccionado");
+
+  const hoja = asegurarHojaActasBonoSupervisores_();
+  const lock = LockService.getScriptLock();
+  lock.waitLock(30000);
+  try {
+    const datos = hoja.getDataRange().getValues();
+    let filaDestino = 0;
+    for (let i = 1; i < datos.length; i++) {
+      if (periodoDeValorBonoSupervisores_(datos[i][0]) === periodo && normalizarUsuario(datos[i][1]) === supervisor) {
+        filaDestino=i+1;
+        break;
+      }
+    }
+    if (!filaDestino) filaDestino = hoja.getLastRow()+1;
+    hoja.getRange(filaDestino,1).setNumberFormat("@");
+    hoja.getRange(filaDestino,1,1,7).setValues([[
+      periodo,asignacion.usuario,asignacion.nombre,asignacion.sede,
+      respuesta,usuario.usuario,new Date()
+    ]]);
+  } finally {
+    lock.releaseLock();
+  }
+  return {
+    ok:true,modulo:"BONO_SUPERVISORES",accion:"GUARDAR_ACTAS_SIN_PENDIENTES",
+    periodo:periodo,supervisor:supervisor,respuesta:respuesta
+  };
+}
+
 function contextoCalculoBonoSupervisores_(periodo) {
   const corte = fechaReferenciaBonoSupervisores_(periodo);
   let produccion = {}, efectividad = {}, recableado = {}, vtrgar = {}, resumenObservaciones = {};
@@ -13153,11 +13233,11 @@ function contextoCalculoBonoSupervisores_(periodo) {
     mapa:datosHojaBonoSupervisores_(HOJA_MAPA_OPERATIVO),
     observaciones:datosHojaBonoSupervisores_(HOJA_OBSERVACIONES),
     actividad:datosHojaBonoSupervisores_(HOJA_ACTIVIDAD_CAMPO),
-    actas:datosHojaBonoSupervisores_(HOJA_ACTAS_ESCANEADAS),
     checklist:datosHojaBonoSupervisores_(HOJA_CHECKLIST_ALMACEN),
     parametros:parametrosSlaWinVigentes_(periodo),
     evaluaciones:evaluacionesBonoSupervisores_(periodo),
     satisfacciones:satisfaccionesBonoSupervisores_(periodo),
+    actasManuales:validacionesActasBonoSupervisores_(periodo),
     configuracion:configuracionBonoSupervisores_(periodo)
   };
 }
@@ -13370,14 +13450,9 @@ function calcularSatisfaccionSupervisor_(ctx, asignacion) {
 
 function calcularSeguridadSupervisor_(ctx, asignacion) {
   const asignadas = mapaCuadrillasBono_(asignacion.cuadrillas);
-  let actasRegistradas = 0, actasSinPendientes = 0;
-  (ctx.actas || []).slice(1).forEach(function(fila) {
-    if (periodoDeValorBonoSupervisores_(fila[7] || fila[1]) !== ctx.periodo || !asignadas[normalizarCuadrilla(fila[4])]) return;
-    actasRegistradas++;
-    const control = normalizarTexto([fila[17],fila[18],fila[19],fila[23],fila[24],fila[29],fila[34],fila[36],fila[40]].join(" "));
-    const pendiente = !control || control.indexOf("PENDIENTE") >= 0 || control.indexOf("FALTANTE") >= 0 || control.indexOf("POR CONFIRMAR") >= 0;
-    if (!pendiente) actasSinPendientes++;
-  });
+  const actasManual = ctx.actasManuales[asignacion.usuario] || {
+    evaluada:false,respuesta:"",sinPendientes:false,registradoPor:"",fechaActualizacion:""
+  };
 
   const slots = {};
   (ctx.checklist || []).slice(1).forEach(function(fila) {
@@ -13398,7 +13473,7 @@ function calcularSeguridadSupervisor_(ctx, asignacion) {
     if (normalizarUsuario(fila[iSupervisor]) === asignacion.usuario) actividadesCampo++;
   });
 
-  const actasPct = porcentajeBonoSupervisores_(actasSinPendientes,actasRegistradas);
+  const actasPct = actasManual.evaluada ? (actasManual.sinPendientes ? 100 : 0) : null;
   const slotsMeta = asignacion.cuadrillas.length * 2;
   const slotsCumplidos = Object.keys(slots).length;
   const checklistCumplimientoPct = porcentajeBonoSupervisores_(slotsCumplidos,slotsMeta);
@@ -13410,16 +13485,17 @@ function calcularSeguridadSupervisor_(ctx, asignacion) {
   const cumplimiento = redondearBonoSupervisores_((puntajeActas + puntajeChecklist + actividadPct + evaluacionPct) / 4,2);
   const maximo = ctx.configuracion.componentes.SEGURIDAD;
   const activador = activadorBonoSupervisores_(ctx,"SEGURIDAD");
-  const evaluable = actasRegistradas>0 || slotsCumplidos>0 || actividadesCampo>0 || evaluacion.completa;
+  const evaluable = actasManual.evaluada || slotsCumplidos>0 || actividadesCampo>0 || evaluacion.completa;
   const monto = evaluable ? montoProrrateadoBonoSupervisores_(cumplimiento,maximo,activador) : 0;
   const maximoIndicador = maximo / 4;
   return {
     clave:"SEGURIDAD",nombre:"Seguridad, disciplina y liderazgo",maximo:maximo,
     evaluable:evaluable,activador:activador,
     cumplimiento:cumplimiento,monto:monto,
-    estado:!evaluable?"SIN DATOS":(!evaluacion.completa?"PENDIENTE EVALUACIÓN":(cumplimiento>activador?"BONO ACTIVO":"NO ACTIVA BONO")),
+    estado:!evaluable?"SIN DATOS":(!actasManual.evaluada?"PENDIENTE ACTAS":(!evaluacion.completa?"PENDIENTE EVALUACIÓN":(cumplimiento>activador?"BONO ACTIVO":"NO ACTIVA BONO"))),
     metricas:{
-      actasPct:actasPct,actasRegistradas:actasRegistradas,actasSinPendientes:actasSinPendientes,
+      actasPct:actasPct,actasEvaluadas:actasManual.evaluada,
+      actasRespuesta:actasManual.respuesta,actasSinPendientes:actasManual.sinPendientes,
       checklistCumplimientoPct:checklistCumplimientoPct,slotsCumplidos:slotsCumplidos,slotsMeta:slotsMeta,
       actividadesCampo:actividadesCampo,metaActividadesCampo:15,actividadPct:actividadPct,
       evaluacionPct:redondearBonoSupervisores_(evaluacionPct,2),puntajeEvaluacion:evaluacion.total || 0,
@@ -13429,9 +13505,10 @@ function calcularSeguridadSupervisor_(ctx, asignacion) {
       montoEvaluacion:redondearBonoSupervisores_(maximoIndicador*evaluacionPct/100,2),
       maximoIndicador:redondearBonoSupervisores_(maximoIndicador,2)
     },
+    actasManual:actasManual,
     evaluacion:evaluacion,
     preguntas:PREGUNTAS_LIDERAZGO_BONO_,
-    nota:"Actas sin pendientes, checklist por quincena, 15 actividades en campo y evaluación de Jefatura aportan 25% cada uno. El componente activa al superar " + activador + "%."
+    nota:"Actas sin pendientes se valida manualmente con Sí o No. Checklist por quincena, 15 actividades en campo y evaluación de Jefatura completan el componente; cada criterio aporta 25%. El componente activa al superar " + activador + "%."
   };
 }
 
@@ -13446,6 +13523,7 @@ function calcularBonoSupervisor_(ctx, asignacion, puedeEditar) {
   const monto = redondearBonoSupervisores_(componentes.reduce(function(s,x){return s+(Number(x.monto)||0);},0),2);
   const pendientes = [];
   if (!satisfaccion.evaluable) pendientes.push("Registro manual de satisfacción pendiente");
+  if (!seguridad.actasManual.evaluada) pendientes.push("Validación manual de actas sin pendientes");
   if (!seguridad.evaluacion.completa) pendientes.push("Evaluación manual de liderazgo pendiente");
   if (sla.metricas.sinPartida || sla.metricas.sinParametro) pendientes.push((sla.metricas.sinPartida + sla.metricas.sinParametro) + " orden(es) sin partida o parámetro SLA");
   const bonoMaximo = ctx.configuracion.montoTotal;
@@ -13473,7 +13551,8 @@ function periodosDisponiblesBonoSupervisores_() {
     {hoja:HOJA_ASIGNACION_BONO_SUPERVISORES,columnas:[0]},
     {hoja:HOJA_EVALUACION_BONO_SUPERVISORES,columnas:[0]},
     {hoja:HOJA_CONFIGURACION_BONO_SUPERVISORES,columnas:[0]},
-    {hoja:HOJA_SATISFACCION_BONO_SUPERVISORES,columnas:[0]}
+    {hoja:HOJA_SATISFACCION_BONO_SUPERVISORES,columnas:[0]},
+    {hoja:HOJA_ACTAS_BONO_SUPERVISORES,columnas:[0]}
   ].forEach(function(config) {
     (datosHojaBonoSupervisores_(config.hoja) || []).slice(1).forEach(function(fila) {
       config.columnas.forEach(function(indice){ agregar(fila[indice]); });
@@ -13530,6 +13609,7 @@ function doPost(e) {
     if (data.accion === "listarParametrosSlaWin") return respuestaJson(listarParametrosSlaWin(data));
     if (data.accion === "guardarParametrosSlaWin") return respuestaJson(guardarParametrosSlaWin(data));
     if (data.accion === "guardarEvaluacionBonoSupervisor") return respuestaJson(guardarEvaluacionBonoSupervisor(data));
+    if (data.accion === "guardarActasSinPendientesBonoSupervisor") return respuestaJson(guardarActasSinPendientesBonoSupervisor(data));
     if (data.accion === "guardarConfiguracionBonoSupervisores") return respuestaJson(guardarConfiguracionBonoSupervisores(data));
     if (data.accion === "guardarSatisfaccionBonoSupervisor") return respuestaJson(guardarSatisfaccionBonoSupervisor(data));
     if (data.accion === "listarTrabajosDiariosCuadrilla") return respuestaJson(listarTrabajosDiariosCuadrilla(data));
