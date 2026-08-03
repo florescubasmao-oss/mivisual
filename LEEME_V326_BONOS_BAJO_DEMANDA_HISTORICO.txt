@@ -1,0 +1,40 @@
+MI VISUAL V326 - BONOS SUPERVISORES BAJO DEMANDA
+Fecha: 02/08/2026
+
+OBJETIVO
+- Evitar que el Bono de Supervisores aparezca automáticamente dentro del Dashboard.
+- Mantener siempre disponible su acceso mediante el botón Bonos Supervisores.
+- Permitir configurar Monto total y Parámetros SLA al consultar julio de 2026.
+
+CAMBIOS INCLUIDOS
+1. DASHBOARD
+- Supervisor, Jefatura y Gerencia ven el botón Bonos Supervisores debajo de los filtros.
+- El bono no se carga ni se muestra hasta pulsar el botón.
+- Al abrirlo conserva el período seleccionado en el Dashboard.
+- La pantalla de Bonos Supervisores muestra únicamente el bono y su selector de período.
+
+2. CONTROLES DE CONFIGURACIÓN
+- Jefatura puede modificar el monto total del bono para el período seleccionado.
+- Jefatura puede modificar los parámetros SLA desde julio de 2026.
+- Los botones permanecen visibles en julio aunque sea un período histórico.
+- Los parámetros guardados para julio no alteran la configuración de agosto.
+
+3. CONTINUIDAD
+- Mantiene la actualización manual de Mapa Operativo sin duplicados de V325.
+- Mantiene las reglas, porcentajes, metas y cálculos del bono de V325.
+- No crea hojas ni activadores nuevos.
+
+ARCHIVOS DEL ZIP
+- Code.gs
+- apps_script/Code.gs
+- index.html
+- js/dashboards.js
+- js/bono_supervisores.js
+- LEEME_V326_BONOS_BAJO_DEMANDA_HISTORICO.txt
+
+INSTALACIÓN
+1. Reemplazar Code.gs en Apps Script y desplegar una nueva versión.
+2. En GitHub reemplazar index.html, js/dashboards.js y js/bono_supervisores.js.
+3. Hacer commit y push.
+4. Actualizar la aplicación con Ctrl + F5.
+5. No modificar hojas ni activadores.

@@ -12587,7 +12587,7 @@ function listarParametrosSlaWin(data) {
     ok:true,modulo:"BONO_SUPERVISORES",accion:"LISTAR_PARAMETROS_SLA",periodo:periodo,
     parametros:resultado.lista,
     parametrosConfiguracion:parametrosSlaWinConfigurables_(periodo),
-    puedeEditar:esPerfilJefatura(perfil) && periodo === periodoActualBonoSupervisores_()
+    puedeEditar:esPerfilJefatura(perfil) && periodo >= "2026-07"
   };
 }
 
@@ -12595,7 +12595,7 @@ function guardarParametrosSlaWin(data) {
   const usuario = obtenerUsuarioApp(data.usuario);
   if (!esPerfilJefatura(usuario.perfil)) throw new Error("Solo Jefatura puede modificar los tiempos SLA WIN");
   const periodo = periodoBonoSupervisores_(data.periodo);
-  if (periodo !== periodoActualBonoSupervisores_()) throw new Error("Los parámetros SLA solo pueden modificarse desde el mes en curso");
+  if (periodo < "2026-07") throw new Error("Los parámetros SLA se administran desde julio de 2026");
   const cambios = Array.isArray(data.parametros) ? data.parametros : [];
   if (!cambios.length) throw new Error("No se recibieron parámetros para guardar");
   const catalogo = {};
@@ -12623,18 +12623,38 @@ function guardarParametrosSlaWin(data) {
     const cambio = porTipo[tipo];
     let filaVigente = 0;
     let datosVigentes = null;
+    let inicioFilaVigente = null;
+    let siguienteInicio = null;
     for (let i = 1; i < datos.length; i++) {
-      if (normalizarTexto(datos[i][1]) !== tipo || normalizarTexto(datos[i][6] || "ACTIVO") !== "ACTIVO") continue;
+      if (normalizarTexto(datos[i][1]) !== tipo) continue;
       const inicio = fechaHoraBonoSupervisores_(datos[i][4]) || new Date(1900,0,1);
+      if (inicio > inicioVigencia && (!siguienteInicio || inicio < siguienteInicio)) siguienteInicio = inicio;
+      if (normalizarTexto(datos[i][6] || "ACTIVO") !== "ACTIVO") continue;
       const fin = fechaHoraBonoSupervisores_(datos[i][5]);
-      if (inicio <= inicioVigencia && (!fin || inicioVigencia <= fin)) {filaVigente=i+1;datosVigentes=datos[i];}
+      if (inicio <= inicioVigencia && (!fin || inicioVigencia <= fin) && (!inicioFilaVigente || inicio >= inicioFilaVigente)) {
+        filaVigente=i+1;
+        datosVigentes=datos[i];
+        inicioFilaVigente=inicio;
+      }
     }
-    if (filaVigente && Number(datosVigentes[3]) === cambio.minutos && cambio.estado === "ACTIVO") return;
+    const finAntesSiguiente = siguienteInicio
+      ? new Date(siguienteInicio.getFullYear(),siguienteInicio.getMonth(),0,12,0,0)
+      : "";
+    const sinCambios = filaVigente && Number(datosVigentes[3]) === cambio.minutos && cambio.estado === "ACTIVO";
+    if (sinCambios) {
+      const finActual = fechaHoraBonoSupervisores_(datosVigentes[5]);
+      if (finAntesSiguiente && (!finActual || finActual > finAntesSiguiente)) {
+        hoja.getRange(filaVigente,6).setValue(finAntesSiguiente);
+      }
+      return;
+    }
     if (filaVigente) {
       const inicioActual = fechaHoraBonoSupervisores_(datosVigentes[4]) || new Date(1900,0,1);
       if (inicioActual.getFullYear() === inicioVigencia.getFullYear() && inicioActual.getMonth() === inicioVigencia.getMonth()) {
+        let finDestino = fechaHoraBonoSupervisores_(datosVigentes[5]) || finAntesSiguiente || "";
+        if (finAntesSiguiente && (!finDestino || finDestino > finAntesSiguiente)) finDestino = finAntesSiguiente;
         hoja.getRange(filaVigente,4).setValue(cambio.minutos);
-        hoja.getRange(filaVigente,6,1,4).setValues([[cambio.estado === "ACTIVO" ? "" : finAnterior,cambio.estado,usuario.usuario,new Date()]]);
+        hoja.getRange(filaVigente,6,1,4).setValues([[finDestino,cambio.estado,usuario.usuario,new Date()]]);
         actualizados++;
         return;
       }
@@ -12642,7 +12662,7 @@ function guardarParametrosSlaWin(data) {
     }
     if (cambio.estado === "ACTIVO") {
       const id = cambio.base.id + "-" + periodo.replace("-","") + "-" + Utilities.getUuid().slice(0,8).toUpperCase();
-      filasNuevas.push([id,cambio.base.tipoOrden,cambio.base.clasificacion,cambio.minutos,inicioVigencia,"","ACTIVO",usuario.usuario,new Date()]);
+      filasNuevas.push([id,cambio.base.tipoOrden,cambio.base.clasificacion,cambio.minutos,inicioVigencia,finAntesSiguiente,"ACTIVO",usuario.usuario,new Date()]);
     }
     actualizados++;
   });
@@ -12966,7 +12986,6 @@ function guardarConfiguracionBonoSupervisores(data) {
   const usuario = obtenerUsuarioApp(data.usuario);
   if (!esPerfilJefatura(usuario.perfil)) throw new Error("Solo Jefatura puede modificar el monto total del bono");
   const periodo = periodoBonoSupervisores_(data.periodo);
-  if (periodo !== periodoActualBonoSupervisores_()) throw new Error("El monto solo puede modificarse para el mes en curso");
   const montoTotal = Number(data.montoTotal);
   if (!isFinite(montoTotal) || montoTotal <= 0 || montoTotal > 100000) throw new Error("Ingrese un monto total válido");
   const hoja = asegurarHojaConfiguracionBonoSupervisores_();
@@ -13413,17 +13432,24 @@ function obtenerBonosSupervisores(data) {
   }
   const periodo = periodoBonoSupervisores_(data.periodo);
   const periodosDisponibles = periodosDisponiblesBonoSupervisores_();
+  const puedeEditar = esPerfilJefatura(perfil);
+  const puedeEditarSla = puedeEditar && periodo >= "2026-07";
   let asignaciones = asignacionesBonoSupervisores_(periodo,usuario.usuario);
   if (perfil === "SUPERVISOR") asignaciones = asignaciones.filter(function(x){return x.usuario===normalizarUsuario(usuario.usuario);});
-  if (!asignaciones.length) return {ok:true,modulo:"BONO_SUPERVISORES",accion:"OBTENER",periodo:periodo,periodosDisponibles:periodosDisponibles,bonos:[],puedeEditar:false,puedeEditarSla:false,puedeEditarConfiguracion:false};
+  if (!asignaciones.length) return {
+    ok:true,modulo:"BONO_SUPERVISORES",accion:"OBTENER",periodo:periodo,
+    periodosDisponibles:periodosDisponibles,bonos:[],puedeEditar:puedeEditar,
+    puedeEditarSla:puedeEditarSla,puedeEditarConfiguracion:puedeEditar,
+    configuracion:configuracionBonoSupervisores_(periodo),
+    parametrosSla:[],parametrosSlaConfiguracion:parametrosSlaWinConfigurables_(periodo)
+  };
   const ctx = contextoCalculoBonoSupervisores_(periodo);
-  const puedeEditar = esPerfilJefatura(perfil);
   const bonos = asignaciones.map(function(x){return calcularBonoSupervisor_(ctx,x,puedeEditar);});
   return {
     ok:true,modulo:"BONO_SUPERVISORES",accion:"OBTENER",periodo:periodo,
     bonos:bonos,periodosDisponibles:periodosDisponibles,puedeEditar:puedeEditar,
-    puedeEditarSla:puedeEditar && periodo === periodoActualBonoSupervisores_(),
-    puedeEditarConfiguracion:puedeEditar && periodo === periodoActualBonoSupervisores_(),
+    puedeEditarSla:puedeEditarSla,
+    puedeEditarConfiguracion:puedeEditar,
     configuracion:ctx.configuracion,
     parametrosSla:ctx.parametros.lista,
     parametrosSlaConfiguracion:parametrosSlaWinConfigurables_(periodo),

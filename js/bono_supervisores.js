@@ -1,5 +1,5 @@
 /* =====================================================
-   V325 - BONO DE SUPERVISORES: ACCESO INDEPENDIENTE
+   V326 - BONO DE SUPERVISORES: APERTURA BAJO DEMANDA
    ===================================================== */
 let MV321_BONO_SUPERVISORES = {
     cargando:false,
@@ -207,6 +207,13 @@ function mv325BotonesConfiguracion(){
     if(MV321_BONO_SUPERVISORES.puedeEditarConfiguracion) botones.push(`<button class="mv321-config" onclick="mv324AbrirConfiguracionBono()">💰 Monto total del bono</button>`);
     if(MV321_BONO_SUPERVISORES.puedeEditarSla) botones.push(`<button class="mv321-config" onclick="mv321AbrirParametrosSla()">⚙️ Parámetros SLA WIN</button>`);
     return botones.join("");
+}
+
+function mv326RenderBotonBonosDashboard(periodo){
+    const seleccionado = periodo || MV321_BONO_SUPERVISORES.periodo || mv325PeriodoActual();
+    return `<div class="mv326-acceso-bonos" style="display:flex;justify-content:flex-end;margin:14px 0;">
+        <button type="button" class="mv321-config" style="width:min(100%,280px);" onclick="mostrarBonosSupervisores('${mv321Esc(seleccionado)}')">🎁 Bonos Supervisores</button>
+    </div>`;
 }
 
 function mv325RenderPaginaBonos(){
