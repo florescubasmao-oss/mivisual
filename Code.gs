@@ -51,6 +51,18 @@ function respuestaLecturaGetMiVisual_(funcion, parametros) {
   }
 }
 
+// V337: contexto de menú compatible con el modelo actual de permisos.
+// En V336 esta ruta fue añadida al GET, pero la función no existía y
+// provocaba que todas las lecturas GET terminaran en "Failed to fetch".
+function obtenerContextoMenu(data) {
+  const respuesta = obtenerPermisosUsuario(data || {});
+  respuesta.accion = "OBTENER_CONTEXTO_MENU";
+  if (!Object.prototype.hasOwnProperty.call(respuesta, "configuracion")) {
+    respuesta.configuracion = null;
+  }
+  return respuesta;
+}
+
 function doGet(e) {
   const parametros = parametrosGetMiVisual_(e);
 
@@ -135,18 +147,18 @@ function doGet(e) {
   // V336: operaciones de solo lectura por GET. Esto evita que las
   // redirecciones del Web App conviertan un POST en el saludo de prueba.
   const lecturasGet = {
-    obtenerContextoMenu: obtenerContextoMenu,
-    obtenerPermisosUsuario: obtenerPermisosUsuario,
-    listarPermisosAdministracion: listarPermisosAdministracion,
-    listarProgramacionDescansos: listarProgramacionDescansos,
-    obtenerNotificacionesDescansos: obtenerNotificacionesDescansos,
-    resumenCoberturaDescansos: resumenCoberturaDescansos,
-    obtenerCatalogoHerramientasChecklist: obtenerCatalogoHerramientasChecklist,
-    obtenerConfiguracionChecklistAlmacen: obtenerConfiguracionChecklistAlmacen,
-    listarChecklistAlmacen: listarChecklistAlmacen,
-    listarObservaciones: listarObservaciones,
-    listarCuadrillasObservacion: listarCuadrillasObservacion,
-    listarTrabajosDiariosCuadrilla: listarTrabajosDiariosCuadrilla
+    obtenerContextoMenu: function(p){ return obtenerContextoMenu(p); },
+    obtenerPermisosUsuario: function(p){ return obtenerPermisosUsuario(p); },
+    listarPermisosAdministracion: function(p){ return listarPermisosAdministracion(p); },
+    listarProgramacionDescansos: function(p){ return listarProgramacionDescansos(p); },
+    obtenerNotificacionesDescansos: function(p){ return obtenerNotificacionesDescansos(p); },
+    resumenCoberturaDescansos: function(p){ return resumenCoberturaDescansos(p); },
+    obtenerCatalogoHerramientasChecklist: function(p){ return obtenerCatalogoHerramientasChecklist(p); },
+    obtenerConfiguracionChecklistAlmacen: function(p){ return obtenerConfiguracionChecklistAlmacen(p); },
+    listarChecklistAlmacen: function(p){ return listarChecklistAlmacen(p); },
+    listarObservaciones: function(p){ return listarObservaciones(p); },
+    listarCuadrillasObservacion: function(p){ return listarCuadrillasObservacion(p); },
+    listarTrabajosDiariosCuadrilla: function(p){ return listarTrabajosDiariosCuadrilla(p); }
   };
   if (parametros.accion && lecturasGet[parametros.accion]) {
     return respuestaLecturaGetMiVisual_(lecturasGet[parametros.accion], parametros);

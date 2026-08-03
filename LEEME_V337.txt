@@ -1,0 +1,26 @@
+MI VISUAL V337 — CORRECCIÓN FAILED TO FETCH EN LECTURAS GET
+Fecha: 03/08/2026
+
+CAUSA CORREGIDA
+La V336 añadió la acción obtenerContextoMenu dentro del mapa de lecturas GET,
+pero esa función no existía en Code.gs. Apps Script fallaba antes de ejecutar
+cualquier consulta GET, afectando Programación de Descansos, permisos,
+Checklist, Observaciones y algunas lecturas del Dashboard.
+
+CAMBIO REALIZADO
+1. Se añadió la función obtenerContextoMenu compatible con los permisos actuales.
+2. Las rutas GET ahora usan funciones envolventes para evitar que una referencia
+   faltante vuelva a bloquear todas las demás lecturas.
+3. No se modificaron hojas, datos, perfiles, permisos, reglas ni archivos web.
+
+ARCHIVO A REEMPLAZAR
+- Code.gs
+
+PUBLICACIÓN
+1. Reemplazar Code.gs en el proyecto actual de Apps Script.
+2. Guardar.
+3. Implementar > Administrar implementaciones > Editar > Nueva versión > Implementar.
+4. Mantener la misma URL /exec y acceso público vigente.
+5. Reemplazar también Code.gs en el proyecto local de Git y hacer commit/push
+   para que el respaldo quede igual al Apps Script publicado.
+6. Cerrar MI VISUAL y abrir nuevamente con Ctrl + F5.
