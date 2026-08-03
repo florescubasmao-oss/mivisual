@@ -1,0 +1,14 @@
+MI VISUAL V333 - CORRECCIÓN CONEXIÓN PROGRAMACIÓN DE DESCANSOS
+
+Problema corregido:
+- Programación de Descansos mostraba error 404 de forma intermitente.
+
+Archivos a reemplazar en GitHub:
+1. index.html
+2. js/programacion_descansos.js
+
+No reemplazar Code.gs.
+No crear hojas ni activadores.
+
+Después del commit y push, cerrar y volver a abrir MI VISUAL para cargar la
+nueva versión del módulo.

@@ -1,5 +1,5 @@
-// MI VISUAL - Programación de Descansos V289
-const API_DESCANSOS = "https://script.google.com/macros/s/AKfycbzcbjCLweJNgZXDerdzmMN7Lwotc1G8NWdzoPkaLNGDivAgpYxDkq78xZwPRioSB4XY/exec";
+// MI VISUAL - Programación de Descansos V333
+const API_DESCANSOS = (window.MI_VISUAL_API_URL || "https://script.google.com/macros/s/AKfycbzcbjCLweJNgZXDerdzmMN7Lwotc1G8NWdzoPkaLNGDivAgpYxDkq78xZwPRioSB4XY/exec");
 let PD_DATA={programacion:[],cuadrillas:[]};
 let PD_CAMBIOS={};
 let PD_MOTIVO_CAMBIO="";
@@ -13,8 +13,11 @@ function pdEsc(v){return (v??"").toString().replace(/&/g,"&amp;").replace(/</g,"
 async function pdApi(payload){
   const cuerpo=JSON.stringify(payload||{});
   async function solicitar(intento){
+    // La primera consulta usa la URL directa del despliegue. Algunos accesos
+    // móviles de Apps Script devuelven 404 cuando el POST lleva parámetros
+    // variables. El parámetro se reserva únicamente para un segundo intento.
     const separador=API_DESCANSOS.includes("?")?"&":"?";
-    const url=`${API_DESCANSOS}${separador}pd=${Date.now()}-${intento}`;
+    const url=intento===0?API_DESCANSOS:`${API_DESCANSOS}${separador}pd=${Date.now()}`;
     const r=await fetch(url,{
       method:"POST",
       headers:{"Content-Type":"text/plain;charset=UTF-8","Accept":"application/json"},
@@ -23,7 +26,10 @@ async function pdApi(payload){
       redirect:"follow"
     });
     const texto=(await r.text()).trim();
-    if(!r.ok)throw new Error(`No se pudo conectar con Programación de Descansos (${r.status}).`);
+    if(!r.ok){
+      if(intento===0)return solicitar(1);
+      throw new Error(`No se pudo conectar con Programación de Descansos (${r.status}).`);
+    }
     let d;
     try{
       d=JSON.parse(texto);
