@@ -1,0 +1,21 @@
+MI VISUAL V329 - BONOS SUPERVISORES: SELECCIÓN PREVIA DE PERÍODO
+
+ARCHIVO A REEMPLAZAR EN GITHUB
+- js/bono_supervisores.js
+
+CAMBIO REALIZADO
+- Al abrir Bonos Supervisores no se consulta ni calcula ningún período.
+- El selector inicia con el texto "Seleccione un período".
+- El encabezado no muestra agosto ni otro mes automáticamente.
+- El cálculo se ejecuta únicamente después de seleccionar un período.
+- Monto total y Parámetros SLA aparecen después de cargar el mes elegido.
+
+INSTALACIÓN
+1. Reemplazar js/bono_supervisores.js en GitHub.
+2. Realizar commit y push.
+3. Actualizar la aplicación con Ctrl + F5.
+
+NO CAMBIA
+- Code.gs.
+- Cálculos, porcentajes, metas o evaluaciones de la V328.
+- Hojas de Google Sheets ni activadores.

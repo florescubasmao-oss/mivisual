@@ -1,5 +1,5 @@
 /* =====================================================
-   V328 - BONO DE SUPERVISORES: EVALUACIÓN DE 20 PREGUNTAS
+   V329 - BONO DE SUPERVISORES: SELECCIÓN PREVIA DE PERÍODO
    ===================================================== */
 let MV321_BONO_SUPERVISORES = {
     cargando:false,
@@ -166,6 +166,7 @@ function mv321TarjetaBono(bono, compacta){
 }
 
 function mv321RenderEstadoBase(){
+    if(!MV321_BONO_SUPERVISORES.periodo) return `<section class="mv321-panel"><div class="mv321-vacio"><b>Seleccione un período</b><span>El cálculo comenzará únicamente después de elegir el mes.</span></div></section>`;
     if(MV321_BONO_SUPERVISORES.cargando) return `<section class="mv321-panel"><div class="mv321-cargando">Calculando bono de supervisores...</div></section>`;
     if(MV321_BONO_SUPERVISORES.error) return `<section class="mv321-panel"><div class="mv321-error"><b>No se pudo calcular el bono</b><span>${mv321Esc(MV321_BONO_SUPERVISORES.error)}</span></div></section>`;
     if(!MV321_BONO_SUPERVISORES.bonos.length) return `<section class="mv321-panel"><div class="mv321-vacio">No existe una asignación de supervisor para este período.</div></section>`;
@@ -196,10 +197,21 @@ function mv325EtiquetaPeriodo(periodo){
     return `${meses[Number(m[2])-1]} ${m[1]}`;
 }
 
+function mv329PeriodosSeleccionables(){
+    const periodos = new Set(MV321_BONO_SUPERVISORES.periodos || []);
+    const inicio = new Date(2026,6,1);
+    const hoy = new Date();
+    const fin = new Date(hoy.getFullYear(),hoy.getMonth(),1);
+    for(let fecha = new Date(inicio); fecha <= fin; fecha.setMonth(fecha.getMonth()+1)){
+        periodos.add(`${fecha.getFullYear()}-${String(fecha.getMonth()+1).padStart(2,"0")}`);
+    }
+    return Array.from(periodos).filter(Boolean).sort().reverse();
+}
+
 function mv325OpcionesPeriodo(){
-    const seleccion = MV321_BONO_SUPERVISORES.periodo || mv325PeriodoActual();
-    const periodos = Array.from(new Set([seleccion].concat(MV321_BONO_SUPERVISORES.periodos||[]))).sort().reverse();
-    return periodos.map(p=>`<option value="${mv321Esc(p)}" ${p===seleccion?"selected":""}>${mv321Esc(mv325EtiquetaPeriodo(p))}</option>`).join("");
+    const seleccion = MV321_BONO_SUPERVISORES.periodo || "";
+    const periodos = mv329PeriodosSeleccionables();
+    return `<option value="" ${seleccion?"":"selected"} disabled>Seleccione un período</option>${periodos.map(p=>`<option value="${mv321Esc(p)}" ${p===seleccion?"selected":""}>${mv321Esc(mv325EtiquetaPeriodo(p))}</option>`).join("")}`;
 }
 
 function mv325BotonesConfiguracion(){
@@ -211,16 +223,16 @@ function mv325BotonesConfiguracion(){
 }
 
 function mv326RenderBotonBonosDashboard(periodo){
-    const seleccionado = periodo || MV321_BONO_SUPERVISORES.periodo || mv325PeriodoActual();
     return `<div class="mv326-acceso-bonos" style="display:flex;justify-content:flex-end;margin:14px 0;">
-        <button type="button" class="mv321-config" style="width:min(100%,280px);" onclick="mostrarBonosSupervisores('${mv321Esc(seleccionado)}')">🎁 Bonos Supervisores</button>
+        <button type="button" class="mv321-config" style="width:min(100%,280px);" onclick="mostrarBonosSupervisores()">🎁 Bonos Supervisores</button>
     </div>`;
 }
 
 function mv325RenderPaginaBonos(){
     const contenido = mv325EsSupervisor() ? mv321RenderSupervisor() : mv321RenderJefatura();
+    const tituloPeriodo = MV321_BONO_SUPERVISORES.periodo ? mv325EtiquetaPeriodo(MV321_BONO_SUPERVISORES.periodo) : "SELECCIONE UN PERÍODO";
     mostrarPantalla(`<div id="mv325BonosPage" class="mv4-page">
-        <div class="mv4-top-card"><div class="mv4-top-role">🎁 BONOS SUPERVISORES</div><div class="mv4-top-sede">${mv321Esc(mv325EtiquetaPeriodo(MV321_BONO_SUPERVISORES.periodo))}</div><div class="mv4-top-sub">Cálculo mensual por supervisor y sus cuadrillas</div></div>
+        <div class="mv4-top-card"><div class="mv4-top-role">🎁 BONOS SUPERVISORES</div><div class="mv4-top-sede">${mv321Esc(tituloPeriodo)}</div><div class="mv4-top-sub">Cálculo mensual por supervisor y sus cuadrillas</div></div>
         <div class="mv199-filtros-jefatura" style="margin-bottom:14px;">
             <label>Período<select onchange="mv325CambiarPeriodo(this.value)">${mv325OpcionesPeriodo()}</select></label>
             <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:end;">${mv325BotonesConfiguracion()}</div>
@@ -230,16 +242,37 @@ function mv325RenderPaginaBonos(){
     </div>`);
 }
 
-async function mostrarBonosSupervisores(periodoSeleccionado){
-    const periodo = periodoSeleccionado || MV321_BONO_SUPERVISORES.periodo || mv325PeriodoActual();
-    mv321PrepararCarga(periodo);
-    mv325RenderPaginaBonos();
-    await mv321CargarBonos(periodo);
+function mv329PrepararSeleccionInicial(){
+    const periodos = mv329PeriodosSeleccionables();
+    MV321_BONO_SUPERVISORES = {
+        cargando:false,
+        error:"",
+        periodo:"",
+        periodos,
+        bonos:[],
+        parametrosSla:[],
+        puedeEditar:false,
+        puedeEditarSla:false,
+        puedeEditarConfiguracion:false,
+        configuracion:{montoTotal:1000,pesos:{PRODUCTIVIDAD:25,CALIDAD:25,SLA:20,SATISFACCION:15,SEGURIDAD:15}}
+    };
+}
+
+function mostrarBonosSupervisores(){
+    mv329PrepararSeleccionInicial();
     mv325RenderPaginaBonos();
 }
 
 async function mv325CambiarPeriodo(periodo){
-    await mostrarBonosSupervisores(periodo);
+    if(!periodo){
+        mv329PrepararSeleccionInicial();
+        mv325RenderPaginaBonos();
+        return;
+    }
+    mv321PrepararCarga(periodo);
+    mv325RenderPaginaBonos();
+    await mv321CargarBonos(periodo);
+    mv325RenderPaginaBonos();
 }
 
 function mv325RefrescarVistaActual(){
