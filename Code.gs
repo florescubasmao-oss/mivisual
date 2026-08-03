@@ -2820,47 +2820,83 @@ function obtenerHoraLimiteValidacion(row) {
   return null;
 }
 
-function procesarValidacionesTecnicasVencidas() {
-  const hoja = asegurarHojaValidacionTecnica();
-  const datos = hoja.getDataRange().getValues();
+function marcarFilaValidacionTecnicaVencida_(hoja, filaHoja, filaDatos, ahora) {
+  filaDatos[13] = "SIN RESPUESTA";
+  filaDatos[14] = "APROBADO AUTOMÁTICAMENTE";
+  filaDatos[15] = "SISTEMA";
+  filaDatos[16] = "AUTOMÁTICO";
+  filaDatos[17] = ahora;
+  filaDatos[18] = ahora;
+  filaDatos[19] =
+    "Aprobación automática por no recibir respuesta del Supervisor dentro de los " +
+    MINUTOS_VALIDACION_AUTOMATICA_RECABLEADO +
+    " minutos establecidos.";
+
+  hoja.getRange(filaHoja, 14, 1, 7).setValues([filaDatos.slice(13, 20)]);
+  hoja.getRange(filaHoja, 18).setNumberFormat("dd/mm/yyyy");
+  hoja.getRange(filaHoja, 19).setNumberFormat("hh:mm:ss");
+}
+
+function aplicarVencimientosValidacionTecnicaEnDatos_(hoja, datos) {
+  if (!datos || datos.length <= 1) return 0;
+
   const ahora = new Date();
-  let actualizados = 0;
+  const filasActualizadas = [];
 
   for (let i = 1; i < datos.length; i++) {
     const fila = datos[i];
     const tipo = normalizarTexto(fila[6]);
     const estado = normalizarTexto(fila[13]);
 
-    if (!permiteValidacionAutomaticaTecnica(tipo)) continue;
-    if (estado !== "PENDIENTE") continue;
+    if (!permiteValidacionAutomaticaTecnica(tipo) || estado !== "PENDIENTE") continue;
 
     const limite = obtenerHoraLimiteValidacion(fila);
-    if (!limite) continue;
+    if (!limite || ahora.getTime() < limite.getTime()) continue;
 
-    if (ahora.getTime() >= limite.getTime()) {
-      const filaHoja = i + 1;
-      hoja.getRange(filaHoja, 14).setValue("SIN RESPUESTA");
-      hoja.getRange(filaHoja, 15).setValue("APROBADO AUTOMÁTICAMENTE");
-      hoja.getRange(filaHoja, 16).setValue("SISTEMA");
-      hoja.getRange(filaHoja, 17).setValue("AUTOMÁTICO");
-      hoja.getRange(filaHoja, 18).setValue(ahora);
-      hoja.getRange(filaHoja, 19).setValue(ahora);
-      hoja.getRange(filaHoja, 20).setValue(
-        "Aprobación automática por no recibir respuesta del Supervisor dentro de los " +
-        MINUTOS_VALIDACION_AUTOMATICA_RECABLEADO +
-        " minutos establecidos."
-      );
-      hoja.getRange(filaHoja, 18).setNumberFormat("dd/mm/yyyy");
-      hoja.getRange(filaHoja, 19).setNumberFormat("hh:mm:ss");
-      actualizados++;
-    }
+    fila[13] = "SIN RESPUESTA";
+    fila[14] = "APROBADO AUTOMÁTICAMENTE";
+    fila[15] = "SISTEMA";
+    fila[16] = "AUTOMÁTICO";
+    fila[17] = ahora;
+    fila[18] = ahora;
+    fila[19] =
+      "Aprobación automática por no recibir respuesta del Supervisor dentro de los " +
+      MINUTOS_VALIDACION_AUTOMATICA_RECABLEADO +
+      " minutos establecidos.";
+
+    filasActualizadas.push({
+      filaHoja: i + 1,
+      valores: fila.slice(13, 20)
+    });
   }
+
+  // V341: una sola escritura de 7 columnas por registro vencido.
+  // Evita las siete escrituras individuales anteriores y no reescribe filas
+  // ajenas, protegiendo respuestas simultáneas de otros usuarios.
+  filasActualizadas.forEach(function(actualizacion) {
+    const rango = hoja.getRange(actualizacion.filaHoja, 14, 1, 7);
+    rango.setValues([actualizacion.valores]);
+    rango.setNumberFormats([["@", "@", "@", "@", "dd/mm/yyyy", "hh:mm:ss", "@"]]);
+  });
+
+  return filasActualizadas.length;
+}
+
+function procesarValidacionesTecnicasVencidas() {
+  const hoja = asegurarHojaValidacionTecnica();
+  const datos = hoja.getDataRange().getValues();
+  const actualizados = aplicarVencimientosValidacionTecnicaEnDatos_(hoja, datos);
 
   let revisionFechasActas = null;
   try {
+    // Se conserva para el trigger de fondo, pero ya no se ejecuta al abrir
+    // Validación Técnica ni al pulsar Actualizar.
     revisionFechasActas = procesarFechasPendientesActasSiCorresponde_();
   } catch (errorActas) {
-    revisionFechasActas = {ok:false, error:errorActas && errorActas.message ? errorActas.message : String(errorActas)};
+    revisionFechasActas = {
+      ok: false,
+      error: errorActas && errorActas.message ? errorActas.message : String(errorActas)
+    };
   }
 
   return {
@@ -3038,10 +3074,17 @@ function filaValidacionTecnicaAObjeto(fila) {
 }
 
 function listarValidacionTecnica(data) {
-  procesarValidacionesTecnicasVencidas();
+  data = data || {};
 
   const hoja = asegurarHojaValidacionTecnica();
   const datos = hoja.getDataRange().getValues();
+
+  // V341: la carga principal lee VALIDACION_TECNICA una sola vez.
+  // Ya no ejecuta el procesamiento completo de Actas ni vuelve a leer la hoja.
+  const actualizadosAutomaticamente = data.id
+    ? 0
+    : aplicarVencimientosValidacionTecnicaEnDatos_(hoja, datos);
+
   const usuario = obtenerUsuarioApp(data.usuario);
   const permisoValidacion = exigirPermisoModuloCentral(usuario, "VALIDACION TECNICA", "VER");
   const lista = [];
@@ -3070,12 +3113,12 @@ function listarValidacionTecnica(data) {
     accion: "LISTAR",
     perfil: usuario.perfil,
     registros: lista.length,
+    actualizadosAutomaticamente,
     validaciones: lista
   };
 }
 
 function validarValidacionTecnica(data) {
-  procesarValidacionesTecnicasVencidas();
 
   const id = (data.id || "").toString().trim();
   const motivo = (data.motivoValidacion || data.motivo || "").toString().trim();
@@ -3091,6 +3134,17 @@ function validarValidacionTecnica(data) {
   const tipo = normalizarTexto(datos[6]);
   const sedeCaso = normalizarTexto(datos[3]);
   const estadoActual = normalizarTexto(datos[13]);
+
+  // V341: valida únicamente el registro seleccionado. Evita recorrer toda la
+  // hoja y procesar Actas cada vez que Supervisor/Jefatura responde.
+  if (estadoActual === "PENDIENTE" && permiteValidacionAutomaticaTecnica(tipo)) {
+    const limite = obtenerHoraLimiteValidacion(datos);
+    const ahoraValidacion = new Date();
+    if (limite && ahoraValidacion.getTime() >= limite.getTime()) {
+      marcarFilaValidacionTecnicaVencida_(hoja, fila, datos, ahoraValidacion);
+      throw new Error("El plazo de validación venció y la solicitud fue aprobada automáticamente.");
+    }
+  }
 
   if (estadoActual !== "PENDIENTE") {
     throw new Error("Esta validación ya no está pendiente");

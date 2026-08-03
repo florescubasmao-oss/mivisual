@@ -1,5 +1,5 @@
-/* MI VISUAL V340 - caché segura de archivos estáticos */
-const MV339_CACHE = "mivisual-v340-actas-20260803";
+/* MI VISUAL V341 - caché segura de archivos estáticos */
+const MV339_CACHE = "mivisual-v341-validacion-20260803";
 const MV339_CORE = [
   "./",
   "./index.html",
@@ -9,7 +9,7 @@ const MV339_CORE = [
   "./js/login.js?v=V339-CACHE",
   "./js/permisos.js?v=V339-CORE",
   "./js/app.js?v=V339-LAZY",
-  "./js/modulos_loader.js?v=V340-ACTAS",
+  "./js/modulos_loader.js?v=V341-VALIDACION",
   "./img/logo.png",
   "./img/logo-192.png",
   "./img/splash.png"

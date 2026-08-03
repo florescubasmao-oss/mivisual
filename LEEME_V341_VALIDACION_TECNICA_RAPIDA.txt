@@ -1,0 +1,57 @@
+MI VISUAL V341 — VALIDACIÓN TÉCNICA RÁPIDA
+Fecha: 03/08/2026
+
+PROBLEMA CORREGIDO
+- Al abrir Validación Técnica, Apps Script procesaba primero todas las validaciones vencidas.
+- Ese proceso recorría la hoja completa y escribía varias celdas una por una.
+- Además ejecutaba una revisión del módulo de Actas.
+- Después, el listado volvía a leer toda la hoja VALIDACION_TECNICA.
+- El navegador esperaba 20 segundos, repetía la consulta y finalmente mostraba “La consulta tardó demasiado”.
+
+MEJORAS APLICADAS
+1. Validación Técnica lee la hoja una sola vez al abrir.
+2. La revisión de Actas ya no se ejecuta durante la apertura de Validación Técnica.
+3. Los vencimientos se actualizan usando una sola escritura de 7 columnas por registro.
+4. Al aprobar, rechazar u observar, se revisa únicamente el registro seleccionado.
+5. Caché breve de 60 segundos dentro de la sesión del navegador.
+6. Evita solicitudes duplicadas si el usuario pulsa varias veces.
+7. La segunda apertura responde casi inmediatamente.
+8. El botón Actualizar fuerza una consulta nueva.
+9. Ante una interrupción breve, conserva los últimos datos disponibles.
+10. Se muestra un solo aviso controlado, sin mensajes duplicados.
+
+ARCHIVOS MODIFICADOS
+- Code.gs
+- js/modulos_loader.js
+- js/validacion_tecnica_optimizacion_v341.js (nuevo)
+- index.html
+- sw.js
+
+ORDEN OBLIGATORIO
+1. Reemplazar Code.gs en Apps Script.
+2. Guardar.
+3. Implementar > Administrar implementaciones.
+4. Seleccionar la Aplicación web vigente.
+5. Editar > Nueva versión > Implementar.
+6. Mantener la misma URL /exec.
+7. Después copiar los archivos web sobre el proyecto Git actual.
+8. No borrar ni reemplazar la carpeta .git.
+9. Realizar commit y push.
+10. Abrir MI VISUAL con Ctrl + F5 una vez.
+
+PRUEBA RÁPIDA
+- Abrir Validación Técnica como Jefatura.
+- Verificar que carguen pendientes e historial.
+- Volver al menú y abrir nuevamente: debe responder mucho más rápido.
+- Pulsar Actualizar.
+- Probar aprobar/observar una solicitud pendiente.
+- Probar también con Supervisor y Técnico.
+
+NO SE MODIFICÓ
+- Hojas existentes.
+- Estructura de VALIDACION_TECNICA.
+- Perfiles ni permisos.
+- Regla de aprobación automática.
+- Tiempo establecido para respuesta.
+- Registro de GAR, VTR, Recableado u Otro.
+- Módulo de Actas ni sus reglas.

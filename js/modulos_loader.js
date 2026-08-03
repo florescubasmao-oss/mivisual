@@ -1,5 +1,5 @@
 /* =====================================================
-   MI VISUAL V340 - Carga dinámica de módulos
+   MI VISUAL V341 - Carga dinámica de módulos
    - El inicio descarga solo el núcleo de la aplicación.
    - Cada opción carga su JavaScript al abrirse.
    - Evita descargas duplicadas y conserva funciones estables.
@@ -7,7 +7,7 @@
 (function(){
   "use strict";
 
-  const VERSION = "V340-ACTAS-20260803";
+  const VERSION = "V341-VALIDACION-20260803";
   const MODULOS = {
     dashboards_core: {
       archivos: [`./js/dashboards.js?v=${VERSION}`],
@@ -43,7 +43,10 @@
       entradas: ["mostrarActividadCampo"]
     },
     validacion: {
-      archivos: [`./js/validacion_tecnica_v173.js?v=${VERSION}`],
+      archivos: [
+        `./js/validacion_tecnica_v173.js?v=${VERSION}`,
+        `./js/validacion_tecnica_optimizacion_v341.js?v=${VERSION}`
+      ],
       entradas: ["mostrarValidacionTecnica"]
     },
     actas: {
