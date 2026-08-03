@@ -1,5 +1,5 @@
-/* MI VISUAL V341 - caché segura de archivos estáticos */
-const MV339_CACHE = "mivisual-v341-validacion-20260803";
+/* MI VISUAL V342 - caché segura y corrección de coordenadas CTO */
+const MV339_CACHE = "mivisual-v342-mapa-cto-20260803";
 const MV339_CORE = [
   "./",
   "./index.html",
@@ -10,6 +10,7 @@ const MV339_CORE = [
   "./js/permisos.js?v=V339-CORE",
   "./js/app.js?v=V339-LAZY",
   "./js/modulos_loader.js?v=V341-VALIDACION",
+  "./js/mapa_cto_fix_v342.js?v=V342-MAPA-CTO",
   "./img/logo.png",
   "./img/logo-192.png",
   "./img/splash.png"

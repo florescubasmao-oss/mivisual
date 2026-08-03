@@ -123,24 +123,25 @@ Visual Connections SAC - Zona Norte
 if ("serviceWorker" in navigator) {
     window.addEventListener("load", function(){
       navigator.serviceWorker
-        .register("./sw.js?v=V341-VALIDACION")
+        .register("./sw.js?v=V342-MAPA-CTO")
         .then(function(registro){
           registro.update().catch(function(){});
-          console.log("SW V341 OK");
+          console.log("SW V342 OK");
         })
-        .catch(function(error){ console.warn("SW V341", error); });
+        .catch(function(error){ console.warn("SW V342", error); });
     });
 }
 </script>
 
 <script>window.MI_VISUAL_API_URL="https://script.google.com/macros/s/AKfycbwugGpuEMcJYFsDNS1hkcdZXJ92PUvXNv5ttpktyhZWv2fWB7ceCZNkfIFYxAs5wsgN/exec";</script>
 
-<!-- V339: núcleo mínimo. Los demás módulos se descargan solo al abrirlos. -->
+<!-- Núcleo mínimo. Los demás módulos se descargan solo al abrirlos. -->
 <script src="./js/utilidades.js?v=V339-CORE"></script>
 <script src="./js/login.js?v=V339-CACHE"></script>
 <script src="./js/permisos.js?v=V339-CORE"></script>
 <script src="./js/app.js?v=V339-LAZY"></script>
 <script src="./js/modulos_loader.js?v=V341-VALIDACION"></script>
+<script src="./js/mapa_cto_fix_v342.js?v=V342-MAPA-CTO"></script>
 
 </body>
 </html>
