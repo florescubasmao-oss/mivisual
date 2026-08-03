@@ -431,7 +431,7 @@ async function mat184ConsultarResumen(){
 }
 
 // MI VISUAL v70 - Módulo Análisis Económico
-const API_ANALISIS_ECONOMICO = "https://script.google.com/macros/s/AKfycbzcbjCLweJNgZXDerdzmMN7Lwotc1G8NWdzoPkaLNGDivAgpYxDkq78xZwPRioSB4XY/exec";
+const API_ANALISIS_ECONOMICO = "https://script.google.com/macros/s/AKfycbwugGpuEMcJYFsDNS1hkcdZXJ92PUvXNv5ttpktyhZWv2fWB7ceCZNkfIFYxAs5wsgN/exec";
 
 function aePerfilPermitido(){
   return aePerfilMateriales();

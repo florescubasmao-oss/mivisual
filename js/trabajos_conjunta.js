@@ -1,5 +1,5 @@
 // MI VISUAL - PEXT V286 - jornada definida por el responsable al validar
-const API_TRABAJOS_CONJUNTA = "https://script.google.com/macros/s/AKfycbzcbjCLweJNgZXDerdzmMN7Lwotc1G8NWdzoPkaLNGDivAgpYxDkq78xZwPRioSB4XY/exec";
+const API_TRABAJOS_CONJUNTA = "https://script.google.com/macros/s/AKfycbwugGpuEMcJYFsDNS1hkcdZXJ92PUvXNv5ttpktyhZWv2fWB7ceCZNkfIFYxAs5wsgN/exec";
 let tcRegistros = [];
 let tcCuadrillas = [];
 let TC_PERIODO_SELECCIONADO=tcPeriodoActual();

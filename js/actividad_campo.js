@@ -1,6 +1,6 @@
 // MI VISUAL - Actividad en Campo V263 · Auditorías con autocompletado y vista gerencial
 
-const API_ACTIVIDAD_CAMPO = "https://script.google.com/macros/s/AKfycbzcbjCLweJNgZXDerdzmMN7Lwotc1G8NWdzoPkaLNGDivAgpYxDkq78xZwPRioSB4XY/exec";
+const API_ACTIVIDAD_CAMPO = "https://script.google.com/macros/s/AKfycbwugGpuEMcJYFsDNS1hkcdZXJ92PUvXNv5ttpktyhZWv2fWB7ceCZNkfIFYxAs5wsgN/exec";
 
 const TIPOS_ACTIVIDAD_CAMPO = [
     "AUDITORIA EN FRIO",

@@ -490,7 +490,7 @@ async function mostrarVTRGAR(periodoSeleccionado){
     const cuadrilla = localStorage.getItem("cuadrilla") || "";
     const usuario = localStorage.getItem("usuario") || localStorage.getItem("correo") || "";
     const url = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRpVkCmSvopgPByWsEX6nkuAT6mf3yD2_Cywpl9pFSZEqYpxmprDePPeV0KNgT14YpEP6gkVlvOAtZy/pub?gid=1778246699&single=true&output=csv";
-    const api = window.MI_VISUAL_API_URL || "https://script.google.com/macros/s/AKfycbzcbjCLweJNgZXDerdzmMN7Lwotc1G8NWdzoPkaLNGDivAgpYxDkq78xZwPRioSB4XY/exec";
+    const api = window.MI_VISUAL_API_URL || "https://script.google.com/macros/s/AKfycbwugGpuEMcJYFsDNS1hkcdZXJ92PUvXNv5ttpktyhZWv2fWB7ceCZNkfIFYxAs5wsgN/exec";
 
     mostrarPantalla(`<div class="mv4-page"><h2 class="mv4-title">📡 VTR / GAR</h2><div class="mv4-loading">Cargando información...</div></div>`);
 

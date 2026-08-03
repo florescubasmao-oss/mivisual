@@ -1,7 +1,7 @@
 // MI VISUAL - Checklist Almacén V336 - lecturas GET seguras
 let CK_GUARDANDO_CHECKLIST = false;
 
-const API_CHECKLIST_ALMACEN = "https://script.google.com/macros/s/AKfycbzcbjCLweJNgZXDerdzmMN7Lwotc1G8NWdzoPkaLNGDivAgpYxDkq78xZwPRioSB4XY/exec";
+const API_CHECKLIST_ALMACEN = "https://script.google.com/macros/s/AKfycbwugGpuEMcJYFsDNS1hkcdZXJ92PUvXNv5ttpktyhZWv2fWB7ceCZNkfIFYxAs5wsgN/exec";
 
 function ckNorm(v){return (v||"").toString().toUpperCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"").replace(/\s+/g," ").trim();}
 function ckUser(){return {usuario:localStorage.getItem("usuario")||"",perfil:ckNorm(localStorage.getItem("perfil")),sede:ckNorm(localStorage.getItem("sede")),cuadrilla:localStorage.getItem("cuadrilla")||"",nombres:localStorage.getItem("nombresApellidos")||localStorage.getItem("usuario")||""};}

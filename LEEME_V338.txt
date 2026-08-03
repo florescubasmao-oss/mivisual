@@ -1,0 +1,21 @@
+MI VISUAL V338 — ACTUALIZACIÓN DE URL APPS SCRIPT
+
+Nueva URL activa:
+https://script.google.com/macros/s/AKfycbwugGpuEMcJYFsDNS1hkcdZXJ92PUvXNv5ttpktyhZWv2fWB7ceCZNkfIFYxAs5wsgN/exec
+
+CAMBIO REALIZADO
+- Se reemplazó exclusivamente la URL anterior de Apps Script por la nueva URL /exec.
+- Se actualizaron las etiquetas de caché de los módulos que consumen la API.
+- Se añadió window.MI_VISUAL_API_URL en index.html para centralizar la URL en módulos compatibles.
+- No se modifica Code.gs, hojas, permisos, perfiles ni reglas de negocio.
+
+PUBLICACIÓN
+1. Copiar el contenido de esta carpeta sobre el proyecto Git existente.
+2. No borrar ni reemplazar la carpeta .git.
+3. Revisar cambios, hacer commit y push.
+4. Esperar la publicación de GitHub Pages y abrir con Ctrl + F5.
+5. Probar Programación de Descansos, Dashboard, Mapa Operativo y Checklist Almacén.
+
+IMPORTANTE
+- No volver a implementar Apps Script para este cambio.
+- No usar la copia completa V336.

@@ -1,5 +1,5 @@
 // MI VISUAL V336 - Permisos dinámicos por perfil
-const API_PERMISOS = "https://script.google.com/macros/s/AKfycbzcbjCLweJNgZXDerdzmMN7Lwotc1G8NWdzoPkaLNGDivAgpYxDkq78xZwPRioSB4XY/exec";
+const API_PERMISOS = "https://script.google.com/macros/s/AKfycbwugGpuEMcJYFsDNS1hkcdZXJ92PUvXNv5ttpktyhZWv2fWB7ceCZNkfIFYxAs5wsgN/exec";
 let PM_PERMISOS = null;
 let PM_PERMISOS_CARGADOS = false;
 let PM_CONFIG_MENU = null;

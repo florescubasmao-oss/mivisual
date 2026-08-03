@@ -1,5 +1,5 @@
 // MI VISUAL V276 - Histórico mensual de la base operativa
-const API_BASE_OPERATIVA = (window.MI_VISUAL_API_URL || "https://script.google.com/macros/s/AKfycbzcbjCLweJNgZXDerdzmMN7Lwotc1G8NWdzoPkaLNGDivAgpYxDkq78xZwPRioSB4XY/exec");
+const API_BASE_OPERATIVA = (window.MI_VISUAL_API_URL || "https://script.google.com/macros/s/AKfycbwugGpuEMcJYFsDNS1hkcdZXJ92PUvXNv5ttpktyhZWv2fWB7ceCZNkfIFYxAs5wsgN/exec");
 let BO_REGISTROS = [];
 let BO_ARCHIVO = "";
 let BO_INCIDENCIAS = [];

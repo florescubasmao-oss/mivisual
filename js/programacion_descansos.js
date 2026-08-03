@@ -1,5 +1,5 @@
 // MI VISUAL - Programación de Descansos V336
-const API_DESCANSOS = (window.MI_VISUAL_API_URL || "https://script.google.com/macros/s/AKfycbzcbjCLweJNgZXDerdzmMN7Lwotc1G8NWdzoPkaLNGDivAgpYxDkq78xZwPRioSB4XY/exec");
+const API_DESCANSOS = (window.MI_VISUAL_API_URL || "https://script.google.com/macros/s/AKfycbwugGpuEMcJYFsDNS1hkcdZXJ92PUvXNv5ttpktyhZWv2fWB7ceCZNkfIFYxAs5wsgN/exec");
 let PD_DATA={programacion:[],cuadrillas:[]};
 let PD_CAMBIOS={};
 let PD_MOTIVO_CAMBIO="";

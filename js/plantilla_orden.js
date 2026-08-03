@@ -2,7 +2,7 @@
    MI VISUAL V301 - Consulta de plantilla de orden
    Consulta de solo lectura desde MAPA_ORDENES.
    ===================================================== */
-const API_PLANTILLA_ORDEN = (window.MI_VISUAL_API_URL || "https://script.google.com/macros/s/AKfycbzcbjCLweJNgZXDerdzmMN7Lwotc1G8NWdzoPkaLNGDivAgpYxDkq78xZwPRioSB4XY/exec");
+const API_PLANTILLA_ORDEN = (window.MI_VISUAL_API_URL || "https://script.google.com/macros/s/AKfycbwugGpuEMcJYFsDNS1hkcdZXJ92PUvXNv5ttpktyhZWv2fWB7ceCZNkfIFYxAs5wsgN/exec");
 
 function poEsc(valor){
   return String(valor == null ? "" : valor)

@@ -1,6 +1,6 @@
 // MI VISUAL - Gestión de Actas V265: recepción masiva, cargo A4, guía visual y filtros por perfil
 
-const API_ACTAS = "https://script.google.com/macros/s/AKfycbzcbjCLweJNgZXDerdzmMN7Lwotc1G8NWdzoPkaLNGDivAgpYxDkq78xZwPRioSB4XY/exec";
+const API_ACTAS = "https://script.google.com/macros/s/AKfycbwugGpuEMcJYFsDNS1hkcdZXJ92PUvXNv5ttpktyhZWv2fWB7ceCZNkfIFYxAs5wsgN/exec";
 
 function usuarioActualActas(){
     return {

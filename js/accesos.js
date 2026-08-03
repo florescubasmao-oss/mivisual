@@ -487,7 +487,7 @@ html += "</table>";
 
 document.getElementById("vistaPrevia").innerHTML = html;
 
-const url = "https://script.google.com/macros/s/AKfycbzcbjCLweJNgZXDerdzmMN7Lwotc1G8NWdzoPkaLNGDivAgpYxDkq78xZwPRioSB4XY/exec";
+const url = "https://script.google.com/macros/s/AKfycbwugGpuEMcJYFsDNS1hkcdZXJ92PUvXNv5ttpktyhZWv2fWB7ceCZNkfIFYxAs5wsgN/exec";
 
 fetch(url, {
     method: "POST",
@@ -769,7 +769,7 @@ async function procesarEfectividad(){
 
     document.getElementById("vistaPreviaEfectividad").innerHTML = html;
 
-    const url = "https://script.google.com/macros/s/AKfycbzcbjCLweJNgZXDerdzmMN7Lwotc1G8NWdzoPkaLNGDivAgpYxDkq78xZwPRioSB4XY/exec";
+    const url = "https://script.google.com/macros/s/AKfycbwugGpuEMcJYFsDNS1hkcdZXJ92PUvXNv5ttpktyhZWv2fWB7ceCZNkfIFYxAs5wsgN/exec";
 
     try{
 
@@ -1043,7 +1043,7 @@ async function procesarRecableado(){
 
     document.getElementById("vistaPreviaRecableado").innerHTML = html;
 
-    const url = "https://script.google.com/macros/s/AKfycbzcbjCLweJNgZXDerdzmMN7Lwotc1G8NWdzoPkaLNGDivAgpYxDkq78xZwPRioSB4XY/exec";
+    const url = "https://script.google.com/macros/s/AKfycbwugGpuEMcJYFsDNS1hkcdZXJ92PUvXNv5ttpktyhZWv2fWB7ceCZNkfIFYxAs5wsgN/exec";
 
     try{
 
@@ -1311,7 +1311,7 @@ async function procesarVtrGar(){
 
     document.getElementById("vistaPreviaVtrGar").innerHTML = html;
 
-    const url = "https://script.google.com/macros/s/AKfycbzcbjCLweJNgZXDerdzmMN7Lwotc1G8NWdzoPkaLNGDivAgpYxDkq78xZwPRioSB4XY/exec";
+    const url = "https://script.google.com/macros/s/AKfycbwugGpuEMcJYFsDNS1hkcdZXJ92PUvXNv5ttpktyhZWv2fWB7ceCZNkfIFYxAs5wsgN/exec";
 
     try{
 
@@ -1527,7 +1527,7 @@ function mostrarImportarUsuarios(){
     cargarCatalogosUsuariosAdministracion();
 }
 
-const API_USUARIOS_ADMIN = (window.MI_VISUAL_API_URL || "https://script.google.com/macros/s/AKfycbzcbjCLweJNgZXDerdzmMN7Lwotc1G8NWdzoPkaLNGDivAgpYxDkq78xZwPRioSB4XY/exec");
+const API_USUARIOS_ADMIN = (window.MI_VISUAL_API_URL || "https://script.google.com/macros/s/AKfycbwugGpuEMcJYFsDNS1hkcdZXJ92PUvXNv5ttpktyhZWv2fWB7ceCZNkfIFYxAs5wsgN/exec");
 
 function apiUsuariosAdmin(payload){
     return fetch(API_USUARIOS_ADMIN,{
@@ -1799,7 +1799,7 @@ async function procesarUsuarios(){
         html += `</table>`;
         document.getElementById("vistaPreviaUsuarios").innerHTML = html;
 
-        const url = "https://script.google.com/macros/s/AKfycbzcbjCLweJNgZXDerdzmMN7Lwotc1G8NWdzoPkaLNGDivAgpYxDkq78xZwPRioSB4XY/exec";
+        const url = "https://script.google.com/macros/s/AKfycbwugGpuEMcJYFsDNS1hkcdZXJ92PUvXNv5ttpktyhZWv2fWB7ceCZNkfIFYxAs5wsgN/exec";
 
         const respuesta = await fetch(url, {
             method: "POST",
@@ -2041,7 +2041,7 @@ function mostrarImportarRanking(){
 
 async function procesarRanking(){
 
-    const url = "https://script.google.com/macros/s/AKfycbzcbjCLweJNgZXDerdzmMN7Lwotc1G8NWdzoPkaLNGDivAgpYxDkq78xZwPRioSB4XY/exec";
+    const url = "https://script.google.com/macros/s/AKfycbwugGpuEMcJYFsDNS1hkcdZXJ92PUvXNv5ttpktyhZWv2fWB7ceCZNkfIFYxAs5wsgN/exec";
 
     try{
         const contenedor = document.getElementById("resultadoRankingAdmin");

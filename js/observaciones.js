@@ -1,6 +1,6 @@
 // MI VISUAL - Módulo Observaciones V336
 
-const API_OBSERVACIONES = "https://script.google.com/macros/s/AKfycbzcbjCLweJNgZXDerdzmMN7Lwotc1G8NWdzoPkaLNGDivAgpYxDkq78xZwPRioSB4XY/exec";
+const API_OBSERVACIONES = "https://script.google.com/macros/s/AKfycbwugGpuEMcJYFsDNS1hkcdZXJ92PUvXNv5ttpktyhZWv2fWB7ceCZNkfIFYxAs5wsgN/exec";
 
 function obsEsc(valor){
     return (valor === undefined || valor === null ? "" : String(valor))

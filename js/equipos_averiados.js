@@ -1,5 +1,5 @@
 // MI VISUAL V268 - Equipos Averiados: indicadores visibles y encabezado por fecha/cuadrilla.
-const API_EQUIPOS_AVERIADOS = "https://script.google.com/macros/s/AKfycbzcbjCLweJNgZXDerdzmMN7Lwotc1G8NWdzoPkaLNGDivAgpYxDkq78xZwPRioSB4XY/exec";
+const API_EQUIPOS_AVERIADOS = "https://script.google.com/macros/s/AKfycbwugGpuEMcJYFsDNS1hkcdZXJ92PUvXNv5ttpktyhZWv2fWB7ceCZNkfIFYxAs5wsgN/exec";
 
 const EA_STATE = {catalogos:null, solicitudes:[], cargos:[], resumen:{}, formularioId:""};
 
