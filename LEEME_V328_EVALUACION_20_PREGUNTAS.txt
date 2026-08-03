@@ -1,0 +1,30 @@
+MI VISUAL V328 - EVALUACIÓN DE JEFATURA CON 20 PREGUNTAS
+
+CAMBIOS INCLUIDOS
+
+- La evaluación de Seguridad, Disciplina y Liderazgo ahora contiene 20 preguntas.
+- No solicita comentarios ni evidencias.
+- Todas las preguntas son obligatorias para guardar.
+- Puntajes por respuesta:
+  * Cumplió: 3 puntos.
+  * Cumplió parcialmente: 1.5 puntos.
+  * No cumplió: 0 puntos.
+- Puntaje máximo: 60 puntos.
+- Porcentaje del indicador: puntos obtenidos / 60 x 100.
+- Se mantiene intacto el peso del indicador dentro del bono.
+- Las evaluaciones anteriores permanecen conservadas en la hoja original.
+- La nueva evaluación se registra automáticamente en EVALUACION_BONO_SUPERVISORES_20.
+
+INSTALACIÓN
+
+1. Reemplazar Code.gs en Apps Script.
+2. Implementar una nueva versión de la aplicación web.
+3. Reemplazar js/bono_supervisores.js en GitHub.
+4. Realizar commit y push.
+5. Presionar Ctrl + F5 al probar.
+
+NO SE REQUIERE
+
+- Crear hojas manualmente.
+- Modificar activadores.
+- Reemplazar otros archivos del proyecto.

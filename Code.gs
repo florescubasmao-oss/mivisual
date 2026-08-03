@@ -12271,7 +12271,7 @@ function consultarPlantillaOrden(data) {
    ===================================================== */
 const HOJA_PARAMETROS_SLA_WIN = "PARAMETROS_SLA_WIN";
 const HOJA_ASIGNACION_BONO_SUPERVISORES = "ASIGNACION_BONO_SUPERVISORES";
-const HOJA_EVALUACION_BONO_SUPERVISORES = "EVALUACION_BONO_SUPERVISORES";
+const HOJA_EVALUACION_BONO_SUPERVISORES = "EVALUACION_BONO_SUPERVISORES_20";
 const HOJA_CONFIGURACION_BONO_SUPERVISORES = "CONFIGURACION_BONO_SUPERVISORES";
 const HOJA_SATISFACCION_BONO_SUPERVISORES = "SATISFACCION_BONO_SUPERVISORES";
 
@@ -12291,12 +12291,29 @@ const ACTIVADORES_BONO_SUPERVISORES_ = {
 };
 
 const PREGUNTAS_LIDERAZGO_BONO_ = [
-  "¿Realizó seguimiento oportuno a las cuadrillas con observaciones?",
-  "¿Verificó el cierre de las acciones correctivas dentro del plazo?",
-  "¿Comunicó y escaló oportunamente los riesgos operativos o de seguridad?",
-  "¿Realizó capacitación, retroalimentación o coaching con evidencia?",
-  "¿Cumplió los compromisos, reportes y planes de mejora del mes?"
+  "¿Verificó que sus cuadrillas cumplieran con el uso correcto de EPP?",
+  "¿Realizó seguimiento a las observaciones de seguridad detectadas?",
+  "¿Corrigió oportunamente las condiciones o actos inseguros reportados?",
+  "¿Comunicó oportunamente las alertas y disposiciones de seguridad?",
+  "¿Reforzó los procedimientos de seguridad con sus cuadrillas?",
+  "¿Controló el inicio oportuno de jornada de sus cuadrillas?",
+  "¿Realizó seguimiento al cumplimiento de las rutas asignadas?",
+  "¿Atendió oportunamente las incidencias reportadas durante la jornada?",
+  "¿Verificó el cumplimiento de los procedimientos establecidos por WIN?",
+  "¿Mantuvo actualizada la información operativa bajo su responsabilidad?",
+  "¿Brindó orientación clara a sus cuadrillas durante el mes?",
+  "¿Mantuvo una comunicación respetuosa y efectiva con su equipo?",
+  "¿Tomó decisiones oportunas ante problemas operativos?",
+  "¿Promovió el trabajo coordinado entre los integrantes de sus cuadrillas?",
+  "¿Mostró disposición para apoyar y resolver consultas de su equipo?",
+  "¿Realizó seguimiento a las cuadrillas con indicadores rezagados?",
+  "¿Impulsó acciones para mejorar la productividad y efectividad?",
+  "¿Dio seguimiento al cierre de observaciones dentro de los plazos?",
+  "¿Informó oportunamente a Jefatura sobre riesgos o incumplimientos?",
+  "¿Cumplió los compromisos y acciones asignadas durante el período?"
 ];
+
+const PUNTAJES_LIDERAZGO_BONO_ = [0,1.5,3];
 
 function periodoBonoSupervisores_(valor) {
   const normalizado = periodoDeValorBonoSupervisores_(valor);
@@ -12829,7 +12846,7 @@ function asegurarHojaEvaluacionBonoSupervisores_() {
   let hoja = ss.getSheetByName(HOJA_EVALUACION_BONO_SUPERVISORES);
   if (!hoja) hoja = ss.insertSheet(HOJA_EVALUACION_BONO_SUPERVISORES);
   const cabecera = ["PERIODO","USUARIO_SUPERVISOR","NOMBRE_SUPERVISOR","SEDE"];
-  for (let i = 1; i <= 5; i++) cabecera.push("P"+i+"_PUNTAJE","P"+i+"_COMENTARIO","P"+i+"_EVIDENCIA");
+  for (let i = 1; i <= PREGUNTAS_LIDERAZGO_BONO_.length; i++) cabecera.push("P"+i+"_PUNTAJE");
   cabecera.push("TOTAL","EVALUADO_POR","FECHA_ACTUALIZACION");
   if (hoja.getMaxColumns() < cabecera.length) hoja.insertColumnsAfter(hoja.getMaxColumns(),cabecera.length-hoja.getMaxColumns());
   hoja.getRange(1,1,1,cabecera.length).setValues([cabecera]);
@@ -12853,7 +12870,8 @@ function consolidarEvaluacionesBonoSupervisores_(hoja) {
     if (String(fila[0] || "") !== periodo) normalizados++;
     fila[0] = periodo;
     fila[1] = supervisor;
-    const item = {orden:i,fila:fila,tiempo:tiempoFilaBonoSupervisores_(fila[21],i)};
+    const indiceFecha = 4 + PREGUNTAS_LIDERAZGO_BONO_.length + 2;
+    const item = {orden:i,fila:fila,tiempo:tiempoFilaBonoSupervisores_(fila[indiceFecha],i)};
     const clave = periodo + "|" + supervisor;
     if (!grupos[clave]) grupos[clave] = item;
     else {
@@ -12885,18 +12903,22 @@ function evaluacionesBonoSupervisores_(periodo) {
       if (periodoDeValorBonoSupervisores_(fila[0]) !== periodo) continue;
       const respuestas = [];
       let total = 0;
-      for (let q = 0; q < 5; q++) {
-        const base = 4 + (q * 3);
-        const puntaje = Number(fila[base]) || 0;
-        total += puntaje;
-        respuestas.push({pregunta:PREGUNTAS_LIDERAZGO_BONO_[q],puntaje:puntaje,comentario:String(fila[base+1] || ""),evidencia:String(fila[base+2] || "")});
+      let completa = true;
+      for (let q = 0; q < PREGUNTAS_LIDERAZGO_BONO_.length; q++) {
+        const base = 4 + q;
+        const valorOriginal = fila[base];
+        const puntaje = Number(valorOriginal);
+        if (valorOriginal === "" || valorOriginal === null || PUNTAJES_LIDERAZGO_BONO_.indexOf(puntaje) < 0) completa = false;
+        total += isNaN(puntaje) ? 0 : puntaje;
+        respuestas.push({pregunta:PREGUNTAS_LIDERAZGO_BONO_[q],puntaje:isNaN(puntaje) ? 0 : puntaje});
       }
+      const indiceTotal = 4 + PREGUNTAS_LIDERAZGO_BONO_.length;
       mapa[normalizarUsuario(fila[1])] = {
-        completa:true,
+        completa:completa,
         total:Math.min(60,total),
         respuestas:respuestas,
-        evaluadoPor:String(fila[20] || ""),
-        fechaActualizacion:fila[21] instanceof Date ? Utilities.formatDate(fila[21],"America/Lima","dd/MM/yyyy HH:mm") : String(fila[21] || "")
+        evaluadoPor:String(fila[indiceTotal+1] || ""),
+        fechaActualizacion:fila[indiceTotal+2] instanceof Date ? Utilities.formatDate(fila[indiceTotal+2],"America/Lima","dd/MM/yyyy HH:mm") : String(fila[indiceTotal+2] || "")
       };
     }
     return mapa;
@@ -12913,7 +12935,7 @@ function guardarEvaluacionBonoSupervisor(data) {
   const asignacion = asignacionesBonoSupervisores_(periodo, usuario.usuario).filter(function(x){return x.usuario===supervisor;})[0];
   if (!asignacion) throw new Error("No se encontró al supervisor en el período seleccionado");
   const respuestas = Array.isArray(data.respuestas) ? data.respuestas : [];
-  if (respuestas.length !== 5) throw new Error("Debe responder las cinco preguntas de liderazgo");
+  if (respuestas.length !== PREGUNTAS_LIDERAZGO_BONO_.length) throw new Error("Debe responder las 20 preguntas de liderazgo");
   const valores = [periodo,asignacion.usuario,asignacion.nombre,asignacion.sede];
   let total = 0;
   respuestas.forEach(function(r, i) {
@@ -12921,12 +12943,9 @@ function guardarEvaluacionBonoSupervisor(data) {
       throw new Error("Debe seleccionar una opción en la pregunta " + (i+1));
     }
     const puntaje = Number(r.puntaje);
-    const comentario = String(r.comentario || "").trim();
-    const evidencia = String(r.evidencia || "").trim();
-    if ([0,6,12].indexOf(puntaje) < 0) throw new Error("Puntaje no válido en la pregunta " + (i+1));
-    if (puntaje < 12 && (!comentario || !evidencia)) throw new Error("En la pregunta " + (i+1) + " debe ingresar comentario y evidencia");
+    if (PUNTAJES_LIDERAZGO_BONO_.indexOf(puntaje) < 0) throw new Error("Puntaje no válido en la pregunta " + (i+1));
     total += puntaje;
-    valores.push(puntaje,comentario,evidencia);
+    valores.push(puntaje);
   });
   valores.push(total,usuario.usuario,new Date());
   const lock = LockService.getScriptLock();
@@ -13343,7 +13362,7 @@ function calcularSeguridadSupervisor_(ctx, asignacion) {
   const slotsCumplidos = Object.keys(slots).length;
   const checklistCumplimientoPct = porcentajeBonoSupervisores_(slotsCumplidos,slotsMeta);
   const actividadPct = Math.min(100,(porcentajeBonoSupervisores_(actividadesCampo,15) || 0));
-  const evaluacion = ctx.evaluaciones[asignacion.usuario] || {completa:false,total:0,respuestas:PREGUNTAS_LIDERAZGO_BONO_.map(function(p){return {pregunta:p,puntaje:0,comentario:"",evidencia:""};}),evaluadoPor:"",fechaActualizacion:""};
+  const evaluacion = ctx.evaluaciones[asignacion.usuario] || {completa:false,total:0,respuestas:PREGUNTAS_LIDERAZGO_BONO_.map(function(p){return {pregunta:p,puntaje:0};}),evaluadoPor:"",fechaActualizacion:""};
   const evaluacionPct = Math.min(100,(Number(evaluacion.total) || 0) / 60 * 100);
   const puntajeActas = actasPct === null ? 0 : Math.min(100,actasPct);
   const puntajeChecklist = checklistCumplimientoPct === null ? 0 : Math.min(100,checklistCumplimientoPct);

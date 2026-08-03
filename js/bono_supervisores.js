@@ -1,5 +1,5 @@
 /* =====================================================
-   V327 - BONO DE SUPERVISORES: CONTROLES ÚNICOS POR PERÍODO
+   V328 - BONO DE SUPERVISORES: EVALUACIÓN DE 20 PREGUNTAS
    ===================================================== */
 let MV321_BONO_SUPERVISORES = {
     cargando:false,
@@ -283,12 +283,12 @@ function mv321AbrirEvaluacion(usuario){
     const evaluacion = seguridad.evaluacion || {};
     const respuestas = evaluacion.respuestas || [];
     const preguntas = seguridad.preguntas || [];
-    const contenido = `<div class="mv321-eval-intro"><b>${mv321Esc(bono.nombre)}</b><span>${mv321Esc(bono.sede)} · ${mv321Esc(bono.periodo)} · máximo 60 puntos</span></div>
+    const contenido = `<div class="mv321-eval-intro"><b>${mv321Esc(bono.nombre)}</b><span>${mv321Esc(bono.sede)} · ${mv321Esc(bono.periodo)} · 20 preguntas · máximo 60 puntos</span></div>
         <div id="mv321EvaluacionPreguntas">${preguntas.map((p,i)=>{
             const r = respuestas[i] || {};
-            const respondida = evaluacion.completa === true && [0,6,12].includes(Number(r.puntaje));
+            const respondida = evaluacion.completa === true && [0,1.5,3].includes(Number(r.puntaje));
             const puntaje = respondida ? Number(r.puntaje) : null;
-            return `<div class="mv321-pregunta" data-indice="${i}"><b>${i+1}. ${mv321Esc(p)}</b><label>Resultado<select class="mv321-eval-puntaje"><option value="" ${puntaje===null?"selected":""}>Seleccione una opción</option><option value="12" ${puntaje===12?"selected":""}>Cumplió — 12 puntos</option><option value="6" ${puntaje===6?"selected":""}>Parcialmente — 6 puntos</option><option value="0" ${puntaje===0?"selected":""}>No cumplió — 0 puntos</option></select></label><label>Comentario<textarea class="mv321-eval-comentario" placeholder="Obligatorio si no cumplió totalmente">${mv321Esc(r.comentario||"")}</textarea></label><label>Evidencia<input class="mv321-eval-evidencia" value="${mv321Esc(r.evidencia||"")}" placeholder="Enlace o referencia de evidencia"></label></div>`;
+            return `<div class="mv321-pregunta" data-indice="${i}"><b>${i+1}. ${mv321Esc(p)}</b><label>Resultado<select class="mv321-eval-puntaje"><option value="" ${puntaje===null?"selected":""}>Seleccione una opción</option><option value="3" ${puntaje===3?"selected":""}>Cumplió — 3 puntos</option><option value="1.5" ${puntaje===1.5?"selected":""}>Cumplió parcialmente — 1.5 puntos</option><option value="0" ${puntaje===0?"selected":""}>No cumplió — 0 puntos</option></select></label></div>`;
         }).join("")}</div>
         <div id="mv321EvalMensaje" class="mv321-form-msg"></div>
         <button class="mv321-guardar" onclick="mv321GuardarEvaluacion('${mv321Esc(bono.usuario)}')">💾 Guardar evaluación</button>`;
@@ -301,11 +301,7 @@ async function mv321GuardarEvaluacion(usuario){
     if(!bono || !mensaje) return;
     const respuestas = Array.from(document.querySelectorAll("#mv321EvaluacionPreguntas .mv321-pregunta")).map(x=>{
         const valor = x.querySelector(".mv321-eval-puntaje").value;
-        return {
-            puntaje:valor === "" ? null : Number(valor),
-            comentario:x.querySelector(".mv321-eval-comentario").value.trim(),
-            evidencia:x.querySelector(".mv321-eval-evidencia").value.trim()
-        };
+        return {puntaje:valor === "" ? null : Number(valor)};
     });
     mensaje.className="mv321-form-msg";
     mensaje.textContent="Guardando evaluación...";
