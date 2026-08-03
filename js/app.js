@@ -39,7 +39,7 @@ function cerrarSesion(){
     const cachePermisos = {};
     for (let i = 0; i < localStorage.length; i++) {
         const key = localStorage.key(i);
-        if (key && (key.startsWith('permisosModulos:') || key.startsWith('permisosModulosFecha:'))) {
+        if (key && (key.startsWith('permisosModulos:') || key.startsWith('permisosModulosFecha:') || key.startsWith('permisosModulosV292:') || key.startsWith('permisosModulosFechaV292:'))) {
             cachePermisos[key] = localStorage.getItem(key);
         }
     }
@@ -599,6 +599,12 @@ async function configurarMenu(){
     organizarMenuPorPerfilV218(mv55, perfil);
 
     if (menu) menu.style.setProperty("display", "grid", "important");
+
+    // V339: el menú queda disponible primero y los módulos más usados se
+    // precargan después, sin bloquear el ingreso del usuario.
+    if (typeof window.mv339PrepararPerfil === "function") {
+        window.mv339PrepararPerfil(perfil);
+    }
 
     if (typeof actualizarIndicadorDescansoMenu === "function" && document.getElementById("mv55Welcome")) {
         Promise.resolve(actualizarIndicadorDescansoMenu()).catch(function(error){

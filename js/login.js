@@ -24,8 +24,12 @@ async function login() {
     const url = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRpVkCmSvopgPByWsEX6nkuAT6mf3yD2_Cywpl9pFSZEqYpxmprDePPeV0KNgT14YpEP6gkVlvOAtZy/pub?gid=0&single=true&output=csv";
 
     try {
-        const respuesta = await fetch(url + "&t=" + Date.now());
-        const texto = await respuesta.text();
+        const texto = typeof mv336FetchTextoCache === "function"
+            ? await mv336FetchTextoCache(url, 30000)
+            : await fetch(url).then(function(respuesta){
+                if(!respuesta.ok) throw new Error("No se pudo leer la lista de usuarios.");
+                return respuesta.text();
+              });
         const filas = texto.split("\n");
 
         for (let i = 1; i < filas.length; i++) {

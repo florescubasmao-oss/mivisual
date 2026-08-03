@@ -398,8 +398,10 @@ async function mostrarEfectividad(periodoSeleccionado){
 
     let filas = [];
     try{
-        const respuesta = await fetch(url + "&t=" + Date.now());
-        filas = (await respuesta.text()).split("\n");
+        const texto = typeof mv336FetchTextoCache === "function"
+            ? await mv336FetchTextoCache(url, 180000)
+            : await fetch(url).then(r => r.text());
+        filas = texto.split("\n");
     }catch(e){}
 
     const registrosTodos = [];
@@ -454,8 +456,10 @@ async function mostrarRecableado(periodoSeleccionado){
     const cuadrilla = localStorage.getItem("cuadrilla");
     const url = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRpVkCmSvopgPByWsEX6nkuAT6mf3yD2_Cywpl9pFSZEqYpxmprDePPeV0KNgT14YpEP6gkVlvOAtZy/pub?gid=317412212&single=true&output=csv";
     mostrarPantalla(`<div class="mv4-page"><h2 class="mv4-title">🔧 RECABLEADO</h2><div class="mv4-loading">Cargando información...</div></div>`);
-    const respuesta = await fetch(url + "&t=" + Date.now());
-    const filas = (await respuesta.text()).split("\n");
+    const texto = typeof mv336FetchTextoCache === "function"
+        ? await mv336FetchTextoCache(url, 180000)
+        : await fetch(url).then(r => r.text());
+    const filas = texto.split("\n");
     const registrosTodos=[]; let totalRojos=0,totalRec=0;
     for(let i=1;i<filas.length;i++){
         const d=filas[i].split(",");
@@ -499,7 +503,10 @@ async function mostrarVTRGAR(periodoSeleccionado){
     let errorDetalle = false;
 
     try{
-        filas = (await fetch(url + "&t=" + Date.now()).then(r => r.text())).split("\n");
+        const texto = typeof mv336FetchTextoCache === "function"
+            ? await mv336FetchTextoCache(url, 180000)
+            : await fetch(url).then(r => r.text());
+        filas = texto.split("\n");
     }catch(e){}
 
     const registrosTodos=[];

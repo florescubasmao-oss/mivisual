@@ -318,9 +318,13 @@ function mb242CerrarResumenCuadrilla(item){
 }
 
 async function mb242FetchCSV(url){
-  const respuesta = await fetch(url + (url.includes("?") ? "&" : "?") + "t=" + Date.now(), {cache:"no-store"});
-  if(!respuesta.ok) throw new Error(`No se pudo leer la fuente de datos (${respuesta.status})`);
-  return mb242CSV(await respuesta.text());
+  const texto = typeof mv336FetchTextoCache === "function"
+    ? await mv336FetchTextoCache(url, 180000)
+    : await fetch(url).then(async respuesta => {
+        if(!respuesta.ok) throw new Error(`No se pudo leer la fuente de datos (${respuesta.status})`);
+        return respuesta.text();
+      });
+  return mb242CSV(texto);
 }
 
 async function mb283FetchPextBonos(){

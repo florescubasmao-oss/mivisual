@@ -1,0 +1,83 @@
+MI VISUAL V339 — OPTIMIZACIÓN SEGURA DEL NAVEGADOR
+Fecha: 03/08/2026
+
+OBJETIVO
+Reducir el tiempo inicial de ingreso y la espera al abrir opciones, sin modificar hojas, permisos, perfiles ni reglas operativas.
+
+CAMBIOS PRINCIPALES
+1. Carga dinámica de módulos:
+   - El inicio carga únicamente Utilidades, Login, Permisos, Menú y el cargador V339.
+   - Cada módulo descarga su archivo JavaScript solamente cuando se abre.
+   - Las solicitudes simultáneas del mismo archivo se unifican para evitar descargas duplicadas.
+
+2. Precarga inteligente después de mostrar el menú:
+   - Técnico: Producción, Indicadores y Validación Técnica.
+   - Supervisor/Jefatura: Dashboard, Validación Técnica y Descansos.
+   - Almacén: Checklist y Actas.
+   - La precarga se pausa en ahorro de datos o conexiones 2G.
+
+3. Caché segura de archivos estáticos:
+   - El Service Worker conserva JavaScript, CSS e imágenes ya utilizados.
+   - El HTML siempre intenta consultar primero la versión nueva.
+   - No se almacenan respuestas de Apps Script ni datos externos de Google Sheets en el Service Worker.
+
+4. Caché breve de lecturas publicadas:
+   - Login: 30 segundos.
+   - Efectividad, Recableado, VTR/GAR, Bonos y Ranking: 3 minutos.
+   - Accesos, Biblioteca y Capacitación: 5 minutos.
+   - El botón Actualizar de los módulos que ya lo tienen continúa disponible.
+
+5. Validación Técnica compatible con carga dinámica:
+   - Mantiene notificaciones y consulta periódica.
+   - No reemplaza el wrapper del cargador V339.
+   - Se inicia correctamente aunque el archivo sea cargado después del evento inicial de la página.
+
+RESULTADO TÉCNICO
+- JavaScript inicial anterior: aproximadamente 1.2 MB.
+- JavaScript inicial V339: aproximadamente 69 KB.
+- Reducción estimada de descarga inicial: aproximadamente 94%.
+- Los módulos grandes se cargan después de mostrar el menú o al ser seleccionados.
+
+ARCHIVOS MODIFICADOS
+- index.html
+- sw.js
+- js/app.js
+- js/login.js
+- js/indicadores.js
+- js/accesos.js
+- js/bonos.js
+- ranking.js
+- js/validacion_tecnica_v173.js
+
+ARCHIVO NUEVO
+- js/modulos_loader.js
+
+NO MODIFICADO
+- Code.gs
+- Hojas de cálculo
+- Estructura de Drive
+- Perfiles, permisos y reglas de negocio
+
+PUBLICACIÓN
+1. Descomprimir el parche.
+2. Copiar la carpeta mivisual sobre la carpeta actual del repositorio.
+3. Aceptar reemplazar los archivos.
+4. No borrar ni reemplazar la carpeta .git.
+5. Realizar commit y push.
+6. No crear una nueva implementación de Apps Script.
+7. Después de publicar, abrir MI VISUAL con Ctrl + F5 una vez.
+
+PRUEBAS REALIZADAS
+- Sintaxis validada con Node.js para todos los archivos modificados.
+- Verificación automática de carga dinámica de los 19 grupos de módulos.
+- Confirmación de que los wrappers de todas las opciones permanecen estables después de cargar módulos en diferente orden.
+- Confirmación de existencia de todos los archivos referenciados por el cargador.
+
+PRUEBA RÁPIDA DESPUÉS DEL PUSH
+- Iniciar sesión.
+- Abrir Producción.
+- Abrir Dashboard Supervisor o Jefatura.
+- Abrir Programación de Descansos.
+- Abrir Validación Técnica.
+- Abrir Administración con perfil autorizado.
+- Volver al menú y abrir nuevamente cada opción; la segunda apertura debe sentirse más rápida.

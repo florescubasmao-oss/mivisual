@@ -1651,7 +1651,10 @@ async function generarInformeValidacionTecnicaExcel(btn){
             window.configurarMenu = envuelta;
         }
 
-        if(typeof window.mostrarValidacionTecnica === "function" && !window.mostrarValidacionTecnica.__mvVtEnvuelta){
+        if(window.MV339_LAZY_LOADER){
+            // V339 conserva el wrapper estable del cargador dinámico.
+            window.mv339Antes_mostrarValidacionTecnica = marcarNotificacionesTecnicoLeidasVT;
+        }else if(typeof window.mostrarValidacionTecnica === "function" && !window.mostrarValidacionTecnica.__mvVtEnvuelta){
             const originalMostrar = window.mostrarValidacionTecnica;
             const envueltaMostrar = function(){
                 marcarNotificacionesTecnicoLeidasVT();
@@ -1664,13 +1667,19 @@ async function generarInformeValidacionTecnicaExcel(btn){
 
     window.actualizarNotificacionesValidacionTecnica = consultarNotificacionesVT;
 
-    window.addEventListener("load", function(){
+    function iniciarNotificacionesVT(){
         asegurarEstilosNotificacionVT();
         setTimeout(function(){
             instalarGanchoMenuVT();
             consultarNotificacionesVT();
-        }, 2600);
-    });
+        }, 700);
+    }
+
+    if(document.readyState === "loading"){
+        window.addEventListener("load", iniciarNotificacionesVT, {once:true});
+    }else{
+        iniciarNotificacionesVT();
+    }
 
     setInterval(function(){
         if(document.visibilityState === "hidden") return;

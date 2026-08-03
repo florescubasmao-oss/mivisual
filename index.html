@@ -5,7 +5,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-<link rel="stylesheet" href="css/estilos.css?v=V321-BONO-SUPERVISORES">
+<link rel="stylesheet" href="css/estilos.css?v=V339-LAZY">
 
 <title>MI VISUAL</title>
 
@@ -121,38 +121,26 @@ Visual Connections SAC - Zona Norte
 
 <script>
 if ("serviceWorker" in navigator) {
-    navigator.serviceWorker
-      .register("./sw.js")
-      .then(()=>console.log("SW OK"))
-      .catch(err=>console.log(err));
+    window.addEventListener("load", function(){
+      navigator.serviceWorker
+        .register("./sw.js?v=V339-LAZY")
+        .then(function(registro){
+          registro.update().catch(function(){});
+          console.log("SW V339 OK");
+        })
+        .catch(function(error){ console.warn("SW V339", error); });
+    });
 }
 </script>
 
 <script>window.MI_VISUAL_API_URL="https://script.google.com/macros/s/AKfycbwugGpuEMcJYFsDNS1hkcdZXJ92PUvXNv5ttpktyhZWv2fWB7ceCZNkfIFYxAs5wsgN/exec";</script>
-<script src="./js/utilidades.js?v=V336-TRANSPORTE-CACHE"></script>
-<script src="./js/login.js?v=95-checklist-almacen"></script>
-<script src="./js/dashboards.js?v=V338-API-NUEVA"></script>
-<script src="./js/bono_supervisores.js?v=V334-CALCULO-OPTIMIZADO"></script>
-<script src="./js/bonos.js?v=V338-API-NUEVA"></script>
-<script src="./js/indicadores.js?v=V338-API-NUEVA"></script>
-<script src="./ranking.js?v=V317-RANKING-PERIODO-ESTABLE"></script>
-<script src="./js/observaciones.js?v=V338-API-NUEVA"></script>
-<script src="./js/accesos.js?v=V338-API-NUEVA"></script>
-<script src="./js/actividad_campo.js?v=V338-API-NUEVA"></script>
-<script src="./js/validacion_tecnica_v173.js?v=V338-API-NUEVA"></script>
-<script src="./js/actas.js?v=V338-API-NUEVA"></script>
-<script src="./js/equipos_averiados.js?v=V338-API-NUEVA"></script>
-<script src="./js/analisis_economico.js?v=V338-API-NUEVA"></script>
-<script src="./js/checklist_almacen.js?v=V338-API-NUEVA"></script>
-<script src="./js/programacion_descansos.js?v=V338-API-NUEVA"></script>
-<script src="./js/trabajos_conjunta.js?v=V338-API-NUEVA"></script>
-<script src="./js/permisos.js?v=V338-API-NUEVA"></script>
-<script src="./js/consultas_reclamos.js?v=V338-API-NUEVA"></script>
-<script src="./js/mapa_operativo.js?v=V338-API-NUEVA"></script>
-<script src="./js/plantilla_orden.js?v=V338-API-NUEVA"></script>
-<script src="./js/app.js?v=V331-SIN-BONO-SUPERVISORES-MENU"></script>
-<script src="./js/base_operativa.js?v=V338-API-NUEVA"></script>
-<script src="./js/admin_checklist.js?v=V236-GESTION-VTR-GAR"></script>
+
+<!-- V339: núcleo mínimo. Los demás módulos se descargan solo al abrirlos. -->
+<script src="./js/utilidades.js?v=V339-CORE"></script>
+<script src="./js/login.js?v=V339-CACHE"></script>
+<script src="./js/permisos.js?v=V339-CORE"></script>
+<script src="./js/app.js?v=V339-LAZY"></script>
+<script src="./js/modulos_loader.js?v=V339-LAZY"></script>
 
 </body>
 </html>

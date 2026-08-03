@@ -202,8 +202,9 @@ async function mostrarAccesos(){
   const usuarioApp = localStorage.getItem("usuario");
 
   const url = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRpVkCmSvopgPByWsEX6nkuAT6mf3yD2_Cywpl9pFSZEqYpxmprDePPeV0KNgT14YpEP6gkVlvOAtZy/pub?gid=177192408&single=true&output=csv";
-  const respuesta = await fetch(url + "&v=" + Date.now());
-  const texto = await respuesta.text();
+  const texto = typeof mv336FetchTextoCache === "function"
+    ? await mv336FetchTextoCache(url, 300000)
+    : await fetch(url).then(r=>r.text());
   const filas = texto.split("\n");
   const recursos = [];
 
@@ -230,8 +231,9 @@ async function mostrarAccesos(){
 
 async function mostrarBiblioteca(){
   const url = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRpVkCmSvopgPByWsEX6nkuAT6mf3yD2_Cywpl9pFSZEqYpxmprDePPeV0KNgT14YpEP6gkVlvOAtZy/pub?gid=1577462287&single=true&output=csv";
-  const respuesta = await fetch(url + "&v=" + Date.now());
-  const texto = await respuesta.text();
+  const texto = typeof mv336FetchTextoCache === "function"
+    ? await mv336FetchTextoCache(url, 300000)
+    : await fetch(url).then(r=>r.text());
   const filas = texto.split("\n");
   const recursos = [];
 
@@ -253,8 +255,9 @@ async function mostrarBiblioteca(){
 
 async function mostrarCapacitacion(){
   const url = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRpVkCmSvopgPByWsEX6nkuAT6mf3yD2_Cywpl9pFSZEqYpxmprDePPeV0KNgT14YpEP6gkVlvOAtZy/pub?gid=459416480&single=true&output=csv";
-  const respuesta = await fetch(url + "&v=" + Date.now());
-  const texto = await respuesta.text();
+  const texto = typeof mv336FetchTextoCache === "function"
+    ? await mv336FetchTextoCache(url, 300000)
+    : await fetch(url).then(r=>r.text());
   const filas = texto.split("\n");
   const recursos = [];
 

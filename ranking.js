@@ -205,13 +205,14 @@ async function mv317DescargarRanking(url){
     const temporizador = controlador ? setTimeout(() => controlador.abort(), 18000) : null;
 
     try{
-        const separador = url.includes("?") ? "&" : "?";
-        const respuesta = await fetch(url + separador + "_=" + Date.now(), {
-            cache:"no-store",
-            signal: controlador ? controlador.signal : undefined
-        });
-        const texto = await respuesta.text();
-        if(!respuesta.ok || !texto.trim() || mv317EsRespuestaExternaRanking(texto)){
+        const texto = typeof mv336FetchTextoCache === "function"
+            ? await mv336FetchTextoCache(url, MV317_RANKING_CACHE_VIGENCIA_MS)
+            : await fetch(url, {signal: controlador ? controlador.signal : undefined}).then(async respuesta => {
+                const contenido = await respuesta.text();
+                if(!respuesta.ok) throw new Error("La fuente del Ranking no respondió con datos válidos.");
+                return contenido;
+              });
+        if(!texto.trim() || mv317EsRespuestaExternaRanking(texto)){
             throw new Error("La fuente del Ranking no respondió con datos válidos.");
         }
 
