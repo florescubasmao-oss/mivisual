@@ -1,5 +1,5 @@
 /* =====================================================
-   V332 - ACTAS SIN PENDIENTES: VALIDACIÓN MANUAL SÍ/NO
+   V334 - CÁLCULO OPTIMIZADO Y ACTUALIZACIÓN MANUAL
    ===================================================== */
 let MV321_BONO_SUPERVISORES = {
     cargando:false,
@@ -11,6 +11,8 @@ let MV321_BONO_SUPERVISORES = {
     puedeEditar:false,
     puedeEditarSla:false,
     puedeEditarConfiguracion:false,
+    desdeCache:false,
+    calculadoEn:"",
     configuracion:{montoTotal:1000,pesos:{PRODUCTIVIDAD:25,CALIDAD:25,SLA:20,SATISFACCION:15,SEGURIDAD:15},activadores:{PRODUCTIVIDAD:80,CALIDAD:80,SLA:75,SATISFACCION:80,SEGURIDAD:0}}
 };
 
@@ -41,7 +43,7 @@ async function mv321Post(accion, extra){
     });
     const texto = await res.text();
     const limpio = texto.trim();
-    if(!limpio || /^\s*</.test(limpio)) throw new Error("La API no devolvió una respuesta válida. Revisa la nueva implementación de Apps Script.");
+    if(!limpio || /^\s*</.test(limpio)) throw new Error("La consulta tardó demasiado o Apps Script no respondió correctamente. Pulsa Reintentar.");
     let data;
     try{ data = JSON.parse(limpio); }
     catch(e){ throw new Error("La respuesta de Apps Script no es JSON válido."); }
@@ -50,13 +52,13 @@ async function mv321Post(accion, extra){
 }
 
 function mv321PrepararCarga(periodo){
-    MV321_BONO_SUPERVISORES = {cargando:true,error:"",periodo:periodo || "",periodos:periodo?[periodo]:[],bonos:[],parametrosSla:[],puedeEditar:false,puedeEditarSla:false,puedeEditarConfiguracion:false,configuracion:{montoTotal:1000,pesos:{PRODUCTIVIDAD:25,CALIDAD:25,SLA:20,SATISFACCION:15,SEGURIDAD:15},activadores:{PRODUCTIVIDAD:80,CALIDAD:80,SLA:75,SATISFACCION:80,SEGURIDAD:0}}};
+    MV321_BONO_SUPERVISORES = {cargando:true,error:"",periodo:periodo || "",periodos:periodo?[periodo]:[],bonos:[],parametrosSla:[],puedeEditar:false,puedeEditarSla:false,puedeEditarConfiguracion:false,desdeCache:false,calculadoEn:"",configuracion:{montoTotal:1000,pesos:{PRODUCTIVIDAD:25,CALIDAD:25,SLA:20,SATISFACCION:15,SEGURIDAD:15},activadores:{PRODUCTIVIDAD:80,CALIDAD:80,SLA:75,SATISFACCION:80,SEGURIDAD:0}}};
 }
 
-async function mv321CargarBonos(periodo){
+async function mv321CargarBonos(periodo, forzarActualizacion){
     mv321PrepararCarga(periodo);
     try{
-        const data = await mv321Post("obtenerBonosSupervisores",{periodo});
+        const data = await mv321Post("obtenerBonosSupervisores",{periodo,forzarActualizacion:!!forzarActualizacion});
         MV321_BONO_SUPERVISORES = {
             cargando:false,
             error:"",
@@ -67,10 +69,12 @@ async function mv321CargarBonos(periodo){
             puedeEditar:!!data.puedeEditar,
             puedeEditarSla:!!data.puedeEditarSla,
             puedeEditarConfiguracion:!!data.puedeEditarConfiguracion,
+            desdeCache:!!data.desdeCache,
+            calculadoEn:data.calculadoEn || "",
             configuracion:data.configuracion || {montoTotal:1000,pesos:{PRODUCTIVIDAD:25,CALIDAD:25,SLA:20,SATISFACCION:15,SEGURIDAD:15},activadores:{PRODUCTIVIDAD:80,CALIDAD:80,SLA:75,SATISFACCION:80,SEGURIDAD:0}}
         };
     }catch(e){
-        MV321_BONO_SUPERVISORES = {cargando:false,error:e.message || "No se pudo calcular el bono.",periodo:periodo || "",periodos:periodo?[periodo]:[],bonos:[],parametrosSla:[],puedeEditar:false,puedeEditarSla:false,puedeEditarConfiguracion:false,configuracion:{montoTotal:1000,pesos:{PRODUCTIVIDAD:25,CALIDAD:25,SLA:20,SATISFACCION:15,SEGURIDAD:15},activadores:{PRODUCTIVIDAD:80,CALIDAD:80,SLA:75,SATISFACCION:80,SEGURIDAD:0}}};
+        MV321_BONO_SUPERVISORES = {cargando:false,error:e.message || "No se pudo calcular el bono.",periodo:periodo || "",periodos:periodo?[periodo]:[],bonos:[],parametrosSla:[],puedeEditar:false,puedeEditarSla:false,puedeEditarConfiguracion:false,desdeCache:false,calculadoEn:"",configuracion:{montoTotal:1000,pesos:{PRODUCTIVIDAD:25,CALIDAD:25,SLA:20,SATISFACCION:15,SEGURIDAD:15},activadores:{PRODUCTIVIDAD:80,CALIDAD:80,SLA:75,SATISFACCION:80,SEGURIDAD:0}}};
     }
 }
 
@@ -176,8 +180,8 @@ function mv321TarjetaBono(bono, compacta){
 
 function mv321RenderEstadoBase(){
     if(!MV321_BONO_SUPERVISORES.periodo) return `<section class="mv321-panel"><div class="mv321-vacio"><b>Seleccione un período</b><span>El cálculo comenzará únicamente después de elegir el mes.</span></div></section>`;
-    if(MV321_BONO_SUPERVISORES.cargando) return `<section class="mv321-panel"><div class="mv321-cargando">Calculando bono de supervisores...</div></section>`;
-    if(MV321_BONO_SUPERVISORES.error) return `<section class="mv321-panel"><div class="mv321-error"><b>No se pudo calcular el bono</b><span>${mv321Esc(MV321_BONO_SUPERVISORES.error)}</span></div></section>`;
+    if(MV321_BONO_SUPERVISORES.cargando) return `<section class="mv321-panel"><div class="mv321-cargando">Leyendo y calculando la información del período...</div></section>`;
+    if(MV321_BONO_SUPERVISORES.error) return `<section class="mv321-panel"><div class="mv321-error"><b>No se pudo calcular el bono</b><span>${mv321Esc(MV321_BONO_SUPERVISORES.error)}</span><button class="mv321-accion" onclick="mv334ActualizarCalculo()">↻ Reintentar</button></div></section>`;
     if(!MV321_BONO_SUPERVISORES.bonos.length) return `<section class="mv321-panel"><div class="mv321-vacio">No existe una asignación de supervisor para este período.</div></section>`;
     return "";
 }
@@ -226,9 +230,16 @@ function mv325OpcionesPeriodo(){
 function mv325BotonesConfiguracion(){
     const botones = [];
     const montoPeriodo = Number((MV321_BONO_SUPERVISORES.configuracion||{}).montoTotal||1000);
+    if(MV321_BONO_SUPERVISORES.periodo) botones.push(`<button class="mv321-config" onclick="mv334ActualizarCalculo()" ${MV321_BONO_SUPERVISORES.cargando?"disabled":""}>↻ Actualizar cálculo</button>`);
     if(MV321_BONO_SUPERVISORES.puedeEditarConfiguracion) botones.push(`<button class="mv321-config" onclick="mv324AbrirConfiguracionBono()">⚙️ Monto y activadores: ${mv321Money(montoPeriodo)}</button>`);
     if(MV321_BONO_SUPERVISORES.puedeEditarSla) botones.push(`<button class="mv321-config" onclick="mv321AbrirParametrosSla()">⚙️ Parámetros SLA WIN</button>`);
     return botones.join("");
+}
+
+function mv334EstadoActualizacion(){
+    if(!MV321_BONO_SUPERVISORES.periodo || MV321_BONO_SUPERVISORES.cargando || !MV321_BONO_SUPERVISORES.calculadoEn) return "";
+    const origen = MV321_BONO_SUPERVISORES.desdeCache ? "Respuesta rápida guardada" : "Datos leídos nuevamente";
+    return `<small style="display:block;margin-top:7px;opacity:.8;">${mv321Esc(origen)} · ${mv321Esc(MV321_BONO_SUPERVISORES.calculadoEn)}</small>`;
 }
 
 function mv326RenderBotonBonosDashboard(periodo){
@@ -245,6 +256,7 @@ function mv325RenderPaginaBonos(){
         <div class="mv199-filtros-jefatura" style="margin-bottom:14px;">
             <label>Período<select onchange="mv325CambiarPeriodo(this.value)">${mv325OpcionesPeriodo()}</select></label>
             <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:end;">${mv325BotonesConfiguracion()}</div>
+            ${mv334EstadoActualizacion()}
         </div>
         ${contenido}
         <button class="button_1" onclick="volverInicio()">⬅️ Volver al menú</button>
@@ -263,6 +275,8 @@ function mv329PrepararSeleccionInicial(){
         puedeEditar:false,
         puedeEditarSla:false,
         puedeEditarConfiguracion:false,
+        desdeCache:false,
+        calculadoEn:"",
         configuracion:{montoTotal:1000,pesos:{PRODUCTIVIDAD:25,CALIDAD:25,SLA:20,SATISFACCION:15,SEGURIDAD:15},activadores:{PRODUCTIVIDAD:80,CALIDAD:80,SLA:75,SATISFACCION:80,SEGURIDAD:0}}
     };
 }
@@ -281,6 +295,15 @@ async function mv325CambiarPeriodo(periodo){
     mv321PrepararCarga(periodo);
     mv325RenderPaginaBonos();
     await mv321CargarBonos(periodo);
+    mv325RenderPaginaBonos();
+}
+
+async function mv334ActualizarCalculo(){
+    const periodo = MV321_BONO_SUPERVISORES.periodo;
+    if(!periodo || MV321_BONO_SUPERVISORES.cargando) return;
+    mv321PrepararCarga(periodo);
+    mv325RenderPaginaBonos();
+    await mv321CargarBonos(periodo,true);
     mv325RenderPaginaBonos();
 }
 

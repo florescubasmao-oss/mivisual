@@ -248,6 +248,7 @@ function procesarProduccion(registros) {
     hoja.getRange(hoja.getLastRow() + 1, 1, insertar.length, 7).setValues(insertar);
   }
 
+  invalidarCacheBonosSupervisores_();
   return {
     ok: true,
     modulo: "PRODUCCION",
@@ -329,6 +330,7 @@ function procesarEfectividad(registros, periodoManual, actualizadoAlManual) {
   hoja.getRange(2, 4, salidaHistorica.length - 1, 1).setNumberFormat("dd/mm/yyyy");
   hoja.getRange(2, 10, salidaHistorica.length - 1, 1).setNumberFormat("0.00%");
 
+  invalidarCacheBonosSupervisores_();
   return {
     ok: true,
     modulo: "EFECTIVIDAD",
@@ -443,6 +445,7 @@ function procesarRecableado(registros, periodoManual, actualizadoAlManual) {
   hoja.getRange(2, 4, salidaHistorica.length - 1, 1).setNumberFormat("dd/mm/yyyy");
   hoja.getRange(2, 7, salidaHistorica.length - 1, 1).setNumberFormat("0.00%");
 
+  invalidarCacheBonosSupervisores_();
   return {
     ok: true,
     modulo: "RECABLEADO",
@@ -547,6 +550,7 @@ function procesarVtrGar(registros, periodoManual, actualizadoAlManual) {
   hoja.getRange(2, 4, salidaHistorica.length - 1, 1).setNumberFormat("dd/mm/yyyy");
   hoja.getRange(2, 9, salidaHistorica.length - 1, 1).setNumberFormat("0.00%");
 
+  invalidarCacheBonosSupervisores_();
   return {
     ok: true,
     modulo: "VTR/GAR",
@@ -1249,6 +1253,7 @@ function registrarObservacion(data) {
 
   // El resumen y el ranking se solicitan después desde la web. Así un cálculo
   // pesado no impide confirmar que la observación ya fue registrada.
+  invalidarCacheBonosSupervisores_();
   return { ok:true, modulo:"OBSERVACIONES", accion:"REGISTRAR", id, actualizacionPendiente:true };
 }
 
@@ -1405,6 +1410,7 @@ function actualizarEstadoObservacion(data) {
   actualizarResumenObservaciones();
   actualizarRanking();
 
+  invalidarCacheBonosSupervisores_();
   return { ok: true, modulo: "OBSERVACIONES", accion: "CAMBIAR_ESTADO", id: data.id, estado: nuevoEstado };
 }
 
@@ -2352,6 +2358,7 @@ function registrarActividadCampo(data) {
     "DESC_FOTO_3": data.descFoto3 || "", "DESC_FOTO_4": data.descFoto4 || ""
   };
   hoja.appendRow(valoresFilaActividadCampo(hoja, valores));
+  invalidarCacheBonosSupervisores_();
   return { ok:true, modulo:"ACTIVIDAD_CAMPO", accion:"REGISTRAR", id:id, carpeta:evidencias.carpeta, checklistId:checklistRegistrado ? checklistRegistrado.id : "", puntajeTotal:auditoria ? puntajes.total : "", clasificacion:auditoria ? puntajes.clasificacion : "" };
 }
 
@@ -9021,6 +9028,7 @@ function importarMapaOperativo(data) {
     registrarUltimaActualizacionMapaOperativo(ahora);
     const ultimaActualizacionMapa = obtenerUltimaActualizacionMapaOperativo(hoja);
 
+    invalidarCacheBonosSupervisores_();
     return {
       ok:true,
       modulo:"MAPA_OPERATIVO",
@@ -11072,6 +11080,7 @@ function procesarBaseOperativa(data) {
     const ranking = actualizarRanking(matrices.periodo, matrices.actualizadoAl);
     registrarHistorialCargaBaseOperativa(usuario, data.archivo, preparado, matrices, "OK");
 
+    invalidarCacheBonosSupervisores_();
     return {
       ok: true,
       modulo: "BASE_OPERATIVA",
@@ -12276,6 +12285,15 @@ const HOJA_CONFIGURACION_BONO_SUPERVISORES = "CONFIGURACION_BONO_SUPERVISORES";
 const HOJA_SATISFACCION_BONO_SUPERVISORES = "SATISFACCION_BONO_SUPERVISORES";
 const HOJA_ACTAS_BONO_SUPERVISORES = "ACTAS_BONO_SUPERVISORES";
 
+// V334: cada hoja se abre una sola vez durante el cálculo. El objeto vive
+// únicamente durante la ejecución actual de Apps Script y se reinicia antes
+// de atender una nueva consulta de bonos.
+let MV334_DATOS_BONO_SESION_ = {};
+
+const MV334_CACHE_BONO_VERSION_ = "MV334_BONO_VERSION";
+const MV334_CACHE_BONO_TTL_SEGUNDOS_ = 300;
+const MV334_CACHE_BONO_CHUNK_ = 24000;
+
 const PESOS_BONO_SUPERVISORES_ = {
   PRODUCTIVIDAD:25,
   CALIDAD:25,
@@ -12424,12 +12442,78 @@ function indiceCabeceraBonoSupervisores_(cabecera, nombres) {
 }
 
 function datosHojaBonoSupervisores_(nombre) {
+  if (Object.prototype.hasOwnProperty.call(MV334_DATOS_BONO_SESION_, nombre)) {
+    return MV334_DATOS_BONO_SESION_[nombre];
+  }
   try {
     const hoja = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(nombre);
-    return hoja && hoja.getLastRow() > 0 ? hoja.getDataRange().getValues() : [];
+    const datos = hoja && hoja.getLastRow() > 0 ? hoja.getDataRange().getValues() : [];
+    MV334_DATOS_BONO_SESION_[nombre] = datos;
+    return datos;
   } catch (e) {
+    MV334_DATOS_BONO_SESION_[nombre] = [];
     return [];
   }
+}
+
+function reiniciarDatosBonoSesion_() {
+  MV334_DATOS_BONO_SESION_ = {};
+}
+
+function versionCacheBonosSupervisores_() {
+  const cache = CacheService.getScriptCache();
+  return cache.get(MV334_CACHE_BONO_VERSION_) || "1";
+}
+
+function invalidarCacheBonosSupervisores_() {
+  try {
+    CacheService.getScriptCache().put(MV334_CACHE_BONO_VERSION_, String(Date.now()), 21600);
+  } catch (e) {}
+}
+
+function claveCacheBonosSupervisores_(periodo, perfil, usuario) {
+  return [
+    "MV334_BONO",
+    versionCacheBonosSupervisores_(),
+    periodoBonoSupervisores_(periodo),
+    normalizarTexto(perfil),
+    normalizarUsuario(usuario)
+  ].join("|");
+}
+
+function leerCacheBonosSupervisores_(clave) {
+  try {
+    const cache = CacheService.getScriptCache();
+    const manifiesto = JSON.parse(cache.get(clave + "|M") || "null");
+    if (!manifiesto || !manifiesto.id || !manifiesto.partes) return null;
+    let texto = "";
+    for (let i = 0; i < manifiesto.partes; i++) {
+      const parte = cache.get(clave + "|" + manifiesto.id + "|" + i);
+      if (parte === null) return null;
+      texto += parte;
+    }
+    return JSON.parse(texto);
+  } catch (e) {
+    return null;
+  }
+}
+
+function guardarCacheBonosSupervisores_(clave, respuesta) {
+  try {
+    const cache = CacheService.getScriptCache();
+    const texto = JSON.stringify(respuesta);
+    const id = Utilities.getUuid().slice(0, 12);
+    const partes = Math.max(1, Math.ceil(texto.length / MV334_CACHE_BONO_CHUNK_));
+    const lote = {};
+    for (let i = 0; i < partes; i++) {
+      lote[clave + "|" + id + "|" + i] = texto.slice(
+        i * MV334_CACHE_BONO_CHUNK_,
+        (i + 1) * MV334_CACHE_BONO_CHUNK_
+      );
+    }
+    cache.putAll(lote, MV334_CACHE_BONO_TTL_SEGUNDOS_);
+    cache.put(clave + "|M", JSON.stringify({id:id, partes:partes}), MV334_CACHE_BONO_TTL_SEGUNDOS_);
+  } catch (e) {}
 }
 
 function catalogoSlaWinPredeterminado_() {
@@ -12544,9 +12628,18 @@ function asegurarHojaParametrosSlaWin_() {
   }
 }
 
+function datosParametrosSlaWinLectura_() {
+  const datos = datosHojaBonoSupervisores_(HOJA_PARAMETROS_SLA_WIN);
+  if (datos.length > 1) return datos;
+  const salida = [["ID","TIPO_ORDEN","CLASIFICACION","SLA_MINUTOS","VIGENCIA_DESDE","VIGENCIA_HASTA","ESTADO","ACTUALIZADO_POR","FECHA_ACTUALIZACION"]];
+  catalogoSlaWinPredeterminado_().forEach(function(x) {
+    salida.push([x.id,x.tipoOrden,x.clasificacion,x.minutos,new Date(2026,6,1),"","ACTIVO","SISTEMA",""]);
+  });
+  return salida;
+}
+
 function parametrosSlaWinVigentes_(periodo) {
-  const hoja = asegurarHojaParametrosSlaWin_();
-  const datos = hoja.getDataRange().getValues();
+  const datos = datosParametrosSlaWinLectura_();
   const referencia = fechaReferenciaBonoSupervisores_(periodo);
   const mapa = {};
   const lista = [];
@@ -12573,8 +12666,7 @@ function parametrosSlaWinVigentes_(periodo) {
 }
 
 function parametrosSlaWinConfigurables_(periodo) {
-  const hoja = asegurarHojaParametrosSlaWin_();
-  const datos = hoja.getDataRange().getValues();
+  const datos = datosParametrosSlaWinLectura_();
   const referencia = fechaReferenciaBonoSupervisores_(periodo);
   const porTipo = {};
   for (let i = 1; i < datos.length; i++) {
@@ -12700,6 +12792,8 @@ function guardarParametrosSlaWin(data) {
   } finally {
     lock.releaseLock();
   }
+  reiniciarDatosBonoSesion_();
+  invalidarCacheBonosSupervisores_();
   return {ok:true,modulo:"BONO_SUPERVISORES",accion:"GUARDAR_PARAMETROS_SLA",periodo:periodo,actualizados:actualizados};
 }
 
@@ -12854,6 +12948,58 @@ function asignacionesBonoSupervisores_(periodo, actualizadoPor) {
   }
 }
 
+// V334: la consulta normal no vuelve a escribir asignaciones ni encabezados.
+// Si el período todavía no existe, o Jefatura pulsa "Actualizar cálculo", se
+// usa el flujo de sincronización original.
+function asignacionesBonoSupervisoresConsulta_(periodo, actualizadoPor, sincronizar) {
+  if (sincronizar) {
+    reiniciarDatosBonoSesion_();
+    const salidaSincronizada = asignacionesBonoSupervisores_(periodo, actualizadoPor);
+    reiniciarDatosBonoSesion_();
+    return salidaSincronizada;
+  }
+  const datos = datosHojaBonoSupervisores_(HOJA_ASIGNACION_BONO_SUPERVISORES);
+  const mapa = {};
+  for (let i = 1; i < datos.length; i++) {
+    const fila = datos[i];
+    if (periodoDeValorBonoSupervisores_(fila[0]) !== periodo) continue;
+    const usuario = normalizarUsuario(fila[1]);
+    if (!usuario) continue;
+    const cuadrillas = normalizarCuadrillasJsonBono_(fila[4]);
+    const item = {
+      usuario:usuario,
+      nombre:String(fila[2] || fila[1] || ""),
+      sede:normalizarTexto(fila[3]),
+      cuadrillas:cuadrillas,
+      tiempo:tiempoFilaBonoSupervisores_(fila[7], i)
+    };
+    if (!mapa[usuario]) mapa[usuario] = item;
+    else {
+      const esPeriodoActual = periodo === periodoActualBonoSupervisores_();
+      const reemplazar = esPeriodoActual
+        ? item.tiempo >= mapa[usuario].tiempo
+        : item.tiempo < mapa[usuario].tiempo;
+      if (reemplazar) mapa[usuario] = item;
+    }
+  }
+  const salida = Object.keys(mapa).map(function(usuario) {
+    const item = mapa[usuario];
+    return {
+      periodo:periodo,
+      usuario:item.usuario,
+      nombre:item.nombre,
+      sede:item.sede,
+      cuadrillas:item.cuadrillas
+    };
+  }).sort(function(a,b){return a.sede.localeCompare(b.sede) || a.usuario.localeCompare(b.usuario);});
+  if (salida.length) return salida;
+
+  reiniciarDatosBonoSesion_();
+  const creadas = asignacionesBonoSupervisores_(periodo, actualizadoPor);
+  reiniciarDatosBonoSesion_();
+  return creadas;
+}
+
 function asegurarHojaEvaluacionBonoSupervisores_() {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
   let hoja = ss.getSheetByName(HOJA_EVALUACION_BONO_SUPERVISORES);
@@ -12904,40 +13050,38 @@ function consolidarEvaluacionesBonoSupervisores_(hoja) {
 }
 
 function evaluacionesBonoSupervisores_(periodo) {
-  const lock = LockService.getScriptLock();
-  lock.waitLock(30000);
-  try {
-    const hoja = asegurarHojaEvaluacionBonoSupervisores_();
-    consolidarEvaluacionesBonoSupervisores_(hoja);
-    const datos = hoja.getDataRange().getValues();
-    const mapa = {};
-    for (let i = 1; i < datos.length; i++) {
-      const fila = datos[i];
-      if (periodoDeValorBonoSupervisores_(fila[0]) !== periodo) continue;
-      const respuestas = [];
-      let total = 0;
-      let completa = true;
-      for (let q = 0; q < PREGUNTAS_LIDERAZGO_BONO_.length; q++) {
-        const base = 4 + q;
-        const valorOriginal = fila[base];
-        const puntaje = Number(valorOriginal);
-        if (valorOriginal === "" || valorOriginal === null || PUNTAJES_LIDERAZGO_BONO_.indexOf(puntaje) < 0) completa = false;
-        total += isNaN(puntaje) ? 0 : puntaje;
-        respuestas.push({pregunta:PREGUNTAS_LIDERAZGO_BONO_[q],puntaje:isNaN(puntaje) ? 0 : puntaje});
-      }
-      const indiceTotal = 4 + PREGUNTAS_LIDERAZGO_BONO_.length;
-      mapa[normalizarUsuario(fila[1])] = {
-        completa:completa,
-        total:Math.min(60,total),
-        respuestas:respuestas,
-        evaluadoPor:String(fila[indiceTotal+1] || ""),
-        fechaActualizacion:fila[indiceTotal+2] instanceof Date ? Utilities.formatDate(fila[indiceTotal+2],"America/Lima","dd/MM/yyyy HH:mm") : String(fila[indiceTotal+2] || "")
-      };
+  const datos = datosHojaBonoSupervisores_(HOJA_EVALUACION_BONO_SUPERVISORES);
+  const mapa = {};
+  const tiempos = {};
+  for (let i = 1; i < datos.length; i++) {
+    const fila = datos[i];
+    if (periodoDeValorBonoSupervisores_(fila[0]) !== periodo) continue;
+    const supervisor = normalizarUsuario(fila[1]);
+    if (!supervisor) continue;
+    const indiceTotal = 4 + PREGUNTAS_LIDERAZGO_BONO_.length;
+    const tiempo = tiempoFilaBonoSupervisores_(fila[indiceTotal+2], i);
+    if (mapa[supervisor] && tiempo < tiempos[supervisor]) continue;
+    const respuestas = [];
+    let total = 0;
+    let completa = true;
+    for (let q = 0; q < PREGUNTAS_LIDERAZGO_BONO_.length; q++) {
+      const base = 4 + q;
+      const valorOriginal = fila[base];
+      const puntaje = Number(valorOriginal);
+      if (valorOriginal === "" || valorOriginal === null || PUNTAJES_LIDERAZGO_BONO_.indexOf(puntaje) < 0) completa = false;
+      total += isNaN(puntaje) ? 0 : puntaje;
+      respuestas.push({pregunta:PREGUNTAS_LIDERAZGO_BONO_[q],puntaje:isNaN(puntaje) ? 0 : puntaje});
     }
-    return mapa;
-  } finally {
-    lock.releaseLock();
+    mapa[supervisor] = {
+      completa:completa,
+      total:Math.min(60,total),
+      respuestas:respuestas,
+      evaluadoPor:String(fila[indiceTotal+1] || ""),
+      fechaActualizacion:fila[indiceTotal+2] instanceof Date ? Utilities.formatDate(fila[indiceTotal+2],"America/Lima","dd/MM/yyyy HH:mm") : String(fila[indiceTotal+2] || "")
+    };
+    tiempos[supervisor] = tiempo;
   }
+  return mapa;
 }
 
 function guardarEvaluacionBonoSupervisor(data) {
@@ -12977,6 +13121,8 @@ function guardarEvaluacionBonoSupervisor(data) {
   } finally {
     lock.releaseLock();
   }
+  reiniciarDatosBonoSesion_();
+  invalidarCacheBonosSupervisores_();
   return {ok:true,modulo:"BONO_SUPERVISORES",accion:"GUARDAR_EVALUACION",periodo:periodo,supervisor:supervisor,total:total};
 }
 
@@ -12997,8 +13143,7 @@ function asegurarHojaConfiguracionBonoSupervisores_() {
 }
 
 function configuracionBonoSupervisores_(periodo) {
-  const hoja = asegurarHojaConfiguracionBonoSupervisores_();
-  const datos = hoja.getDataRange().getValues();
+  const datos = datosHojaBonoSupervisores_(HOJA_CONFIGURACION_BONO_SUPERVISORES);
   let montoTotal = 1000;
   let encontrado = false;
   const activadores = Object.assign({},ACTIVADORES_BONO_SUPERVISORES_);
@@ -13065,6 +13210,8 @@ function guardarConfiguracionBonoSupervisores(data) {
   } finally {
     lock.releaseLock();
   }
+  reiniciarDatosBonoSesion_();
+  invalidarCacheBonosSupervisores_();
   return {ok:true,modulo:"BONO_SUPERVISORES",accion:"GUARDAR_CONFIGURACION",configuracion:configuracionBonoSupervisores_(periodo)};
 }
 
@@ -13080,8 +13227,7 @@ function asegurarHojaSatisfaccionBonoSupervisores_() {
 }
 
 function satisfaccionesBonoSupervisores_(periodo) {
-  const hoja = asegurarHojaSatisfaccionBonoSupervisores_();
-  const datos = hoja.getDataRange().getValues();
+  const datos = datosHojaBonoSupervisores_(HOJA_SATISFACCION_BONO_SUPERVISORES);
   const mapa = {};
   for (let i = 1; i < datos.length; i++) {
     const fila = datos[i];
@@ -13132,6 +13278,8 @@ function guardarSatisfaccionBonoSupervisor(data) {
   } finally {
     lock.releaseLock();
   }
+  reiniciarDatosBonoSesion_();
+  invalidarCacheBonosSupervisores_();
   return {ok:true,modulo:"BONO_SUPERVISORES",accion:"GUARDAR_SATISFACCION",periodo:periodo,supervisor:supervisor};
 }
 
@@ -13150,8 +13298,7 @@ function asegurarHojaActasBonoSupervisores_() {
 }
 
 function validacionesActasBonoSupervisores_(periodo) {
-  const hoja = asegurarHojaActasBonoSupervisores_();
-  const datos = hoja.getDataRange().getValues();
+  const datos = datosHojaBonoSupervisores_(HOJA_ACTAS_BONO_SUPERVISORES);
   const mapa = {};
   for (let i = 1; i < datos.length; i++) {
     const fila = datos[i];
@@ -13208,33 +13355,103 @@ function guardarActasSinPendientesBonoSupervisor(data) {
   } finally {
     lock.releaseLock();
   }
+  reiniciarDatosBonoSesion_();
+  invalidarCacheBonosSupervisores_();
   return {
     ok:true,modulo:"BONO_SUPERVISORES",accion:"GUARDAR_ACTAS_SIN_PENDIENTES",
     periodo:periodo,supervisor:supervisor,respuesta:respuesta
   };
 }
 
+function catalogoProduccionBonoDesdeDatos_(datos) {
+  const mapa = {};
+  (datos || []).slice(1).forEach(function(fila) {
+    const codigo = String(fila[0] || "").trim();
+    const tipo = normalizarTexto(fila[1] || "");
+    const puntaje = numeroProduccion(fila[3]);
+    if (codigo) mapa[codigo] = puntaje;
+    if (tipo) mapa[tipo] = puntaje;
+  });
+  return mapa;
+}
+
+function produccionBonoDesdeDatos_(datos, catalogo, corte) {
+  const mapa = {};
+  (datos || []).slice(1).forEach(function(fila) {
+    if (corte && !mismoPeriodoBaseOperativa(fila[2], corte)) return;
+    const cuadrilla = normalizarCuadrilla(fila[1]);
+    if (!cuadrilla) return;
+    if (!mapa[cuadrilla]) mapa[cuadrilla] = {usuario:fila[0] || "ADMIN",produccion:0,ordenes:0};
+    const cantidad = numeroProduccion(fila[4]);
+    mapa[cuadrilla].ordenes += cantidad;
+    mapa[cuadrilla].produccion += cantidad * obtenerPuntajeProduccion(fila[3], catalogo);
+  });
+  return mapa;
+}
+
+function efectividadBonoDesdeDatos_(datos, corte) {
+  const mapa = {};
+  (datos || []).slice(1).forEach(function(fila) {
+    if (corte && !mismoPeriodoBaseOperativa(fila[3], corte)) return;
+    const cuadrilla = normalizarCuadrilla(fila[2]);
+    if (!cuadrilla) return;
+    mapa[cuadrilla] = {
+      usuario:fila[1] || "ADMIN",fecha:fila[3],finalizadas:Number(fila[4]) || 0,
+      total:Number(fila[8]) || 0,efectividad:Number(fila[9]) || 0
+    };
+  });
+  return mapa;
+}
+
+function recableadoBonoDesdeDatos_(datos, corte) {
+  const mapa = {};
+  (datos || []).slice(1).forEach(function(fila) {
+    if (corte && !mismoPeriodoBaseOperativa(fila[3], corte)) return;
+    const cuadrilla = normalizarCuadrilla(fila[2]);
+    if (!cuadrilla) return;
+    mapa[cuadrilla] = {
+      rojoAsignadas:Number(fila[4]) || 0,recableados:Number(fila[5]) || 0,
+      porcentajeRecableado:Number(fila[6]) || 0
+    };
+  });
+  return mapa;
+}
+
+function vtrGarBonoDesdeDatos_(datos, corte) {
+  const mapa = {};
+  (datos || []).slice(1).forEach(function(fila) {
+    if (corte && !mismoPeriodoBaseOperativa(fila[3], corte)) return;
+    const cuadrilla = normalizarCuadrilla(fila[2]);
+    if (!cuadrilla) return;
+    mapa[cuadrilla] = {
+      finalizadas:Number(fila[4]) || 0,gar:Number(fila[5]) || 0,vtr:Number(fila[6]) || 0,
+      totalGarVtr:Number(fila[7]) || 0,porcentajeVtrGar:Number(fila[8]) || 0
+    };
+  });
+  return mapa;
+}
+
 function contextoCalculoBonoSupervisores_(periodo) {
   const corte = fechaReferenciaBonoSupervisores_(periodo);
-  let produccion = {}, efectividad = {}, recableado = {}, vtrgar = {}, resumenObservaciones = {};
-  try { produccion = obtenerProduccionPorCuadrilla(corte); } catch (e) {}
-  try { efectividad = obtenerEfectividadPorCuadrilla(corte); } catch (e) {}
-  try { recableado = obtenerRecableadoPorCuadrilla(corte); } catch (e) {}
-  try { vtrgar = obtenerVtrGarPorCuadrilla(corte); } catch (e) {}
-  try { resumenObservaciones = obtenerResumenObservacionesPorCuadrilla(corte); } catch (e) {}
+  const datosProduccion = datosHojaBonoSupervisores_(HOJA_PRODUCCION);
+  const catalogo = catalogoProduccionBonoDesdeDatos_(datosHojaBonoSupervisores_(HOJA_CATALOGO_ORDENES));
+  let datosVtrGar = datosHojaBonoSupervisores_(HOJA_VTRGAR);
+  if (!datosVtrGar.length) datosVtrGar = datosHojaBonoSupervisores_("POR VTRGAR");
+  if (!datosVtrGar.length) datosVtrGar = datosHojaBonoSupervisores_("POR VTR GAR");
+  const parametros = parametrosSlaWinVigentes_(periodo);
   return {
     periodo:periodo,
-    produccion:produccion,
-    efectividad:efectividad,
-    recableado:recableado,
-    vtrgar:vtrgar,
-    resumenObservaciones:resumenObservaciones,
+    produccion:produccionBonoDesdeDatos_(datosProduccion,catalogo,corte),
+    efectividad:efectividadBonoDesdeDatos_(datosHojaBonoSupervisores_(HOJA_EFECTIVIDAD),corte),
+    recableado:recableadoBonoDesdeDatos_(datosHojaBonoSupervisores_(HOJA_RECABLEADO),corte),
+    vtrgar:vtrGarBonoDesdeDatos_(datosVtrGar,corte),
     base:datosHojaBonoSupervisores_(HOJA_BASE_OPERATIVA_HISTORICA),
     mapa:datosHojaBonoSupervisores_(HOJA_MAPA_OPERATIVO),
     observaciones:datosHojaBonoSupervisores_(HOJA_OBSERVACIONES),
     actividad:datosHojaBonoSupervisores_(HOJA_ACTIVIDAD_CAMPO),
     checklist:datosHojaBonoSupervisores_(HOJA_CHECKLIST_ALMACEN),
-    parametros:parametrosSlaWinVigentes_(periodo),
+    parametros:parametros,
+    parametrosConfiguracion:parametrosSlaWinConfigurables_(periodo),
     evaluaciones:evaluacionesBonoSupervisores_(periodo),
     satisfacciones:satisfaccionesBonoSupervisores_(periodo),
     actasManuales:validacionesActasBonoSupervisores_(periodo),
@@ -13537,33 +13754,17 @@ function calcularBonoSupervisor_(ctx, asignacion, puedeEditar) {
 }
 
 function periodosDisponiblesBonoSupervisores_() {
-  const periodos = {};
-  periodos[periodoActualBonoSupervisores_()] = true;
-  periodos["2026-07"] = true;
-
-  function agregar(valor) {
-    const periodo = periodoDeValorBonoSupervisores_(valor);
-    if (periodo) periodos[periodo] = true;
+  // La medición comenzó en julio de 2026. Generar la lista evita volver a
+  // recorrer siete hojas únicamente para construir el selector de meses.
+  const salida = [];
+  const actual = periodoActualBonoSupervisores_().split("-");
+  const cursor = new Date(2026,6,1,12,0,0);
+  const fin = new Date(Number(actual[0]),Number(actual[1])-1,1,12,0,0);
+  while (cursor <= fin && salida.length < 60) {
+    salida.push(Utilities.formatDate(cursor,"America/Lima","yyyy-MM"));
+    cursor.setMonth(cursor.getMonth()+1);
   }
-
-  [
-    {hoja:HOJA_BASE_OPERATIVA_HISTORICA,columnas:[1]},
-    {hoja:HOJA_ASIGNACION_BONO_SUPERVISORES,columnas:[0]},
-    {hoja:HOJA_EVALUACION_BONO_SUPERVISORES,columnas:[0]},
-    {hoja:HOJA_CONFIGURACION_BONO_SUPERVISORES,columnas:[0]},
-    {hoja:HOJA_SATISFACCION_BONO_SUPERVISORES,columnas:[0]},
-    {hoja:HOJA_ACTAS_BONO_SUPERVISORES,columnas:[0]}
-  ].forEach(function(config) {
-    (datosHojaBonoSupervisores_(config.hoja) || []).slice(1).forEach(function(fila) {
-      config.columnas.forEach(function(indice){ agregar(fila[indice]); });
-    });
-  });
-
-  (datosHojaBonoSupervisores_(HOJA_MAPA_OPERATIVO) || []).slice(1).forEach(function(fila) {
-    agregar(fila[18] || fila[19] || fila[2]);
-  });
-
-  return Object.keys(periodos).sort().reverse().slice(0,24);
+  return salida.reverse();
 }
 
 function obtenerBonosSupervisores(data) {
@@ -13573,37 +13774,58 @@ function obtenerBonosSupervisores(data) {
     throw new Error("El bono de supervisores solo está disponible en los dashboards autorizados");
   }
   const periodo = periodoBonoSupervisores_(data.periodo);
+  const forzarActualizacion = data.forzarActualizacion === true || normalizarTexto(data.forzarActualizacion) === "SI";
+  const claveCache = claveCacheBonosSupervisores_(periodo,perfil,usuario.usuario);
+  if (!forzarActualizacion) {
+    const guardado = leerCacheBonosSupervisores_(claveCache);
+    if (guardado && guardado.ok) {
+      guardado.desdeCache = true;
+      return guardado;
+    }
+  }
+
+  reiniciarDatosBonoSesion_();
   const periodosDisponibles = periodosDisponiblesBonoSupervisores_();
   const puedeEditar = esPerfilJefatura(perfil);
   const puedeEditarSla = puedeEditar && periodo >= "2026-07";
-  let asignaciones = asignacionesBonoSupervisores_(periodo,usuario.usuario);
+  let asignaciones = asignacionesBonoSupervisoresConsulta_(periodo,usuario.usuario,forzarActualizacion);
   if (perfil === "SUPERVISOR") asignaciones = asignaciones.filter(function(x){return x.usuario===normalizarUsuario(usuario.usuario);});
-  if (!asignaciones.length) return {
+  if (!asignaciones.length) {
+    const sinAsignaciones = {
     ok:true,modulo:"BONO_SUPERVISORES",accion:"OBTENER",periodo:periodo,
     periodosDisponibles:periodosDisponibles,bonos:[],puedeEditar:puedeEditar,
     puedeEditarSla:puedeEditarSla,puedeEditarConfiguracion:puedeEditar,
     configuracion:configuracionBonoSupervisores_(periodo),
-    parametrosSla:[],parametrosSlaConfiguracion:parametrosSlaWinConfigurables_(periodo)
-  };
+    parametrosSla:[],parametrosSlaConfiguracion:parametrosSlaWinConfigurables_(periodo),
+    desdeCache:false,calculadoEn:Utilities.formatDate(new Date(),"America/Lima","dd/MM/yyyy HH:mm")
+    };
+    guardarCacheBonosSupervisores_(claveCache,sinAsignaciones);
+    return sinAsignaciones;
+  }
   const ctx = contextoCalculoBonoSupervisores_(periodo);
   const bonos = asignaciones.map(function(x){return calcularBonoSupervisor_(ctx,x,puedeEditar);});
-  return {
+  const respuesta = {
     ok:true,modulo:"BONO_SUPERVISORES",accion:"OBTENER",periodo:periodo,
     bonos:bonos,periodosDisponibles:periodosDisponibles,puedeEditar:puedeEditar,
     puedeEditarSla:puedeEditarSla,
     puedeEditarConfiguracion:puedeEditar,
     configuracion:ctx.configuracion,
     parametrosSla:ctx.parametros.lista,
-    parametrosSlaConfiguracion:parametrosSlaWinConfigurables_(periodo),
+    parametrosSlaConfiguracion:ctx.parametrosConfiguracion,
     criterio:"SUMA_COMPONENTES",
     metasDashboard:{puntosPorCuadrilla:130,efectividadPct:70,recableadoPct:42,vtrGarPct:3,observacionesMonto:300},
-    nota:"El monto es provisional y se prorratea con las metas vigentes del Dashboard y los activadores definidos para cada componente."
+    nota:"El monto es provisional y se prorratea con las metas vigentes del Dashboard y los activadores definidos para cada componente.",
+    desdeCache:false,
+    calculadoEn:Utilities.formatDate(new Date(),"America/Lima","dd/MM/yyyy HH:mm")
   };
+  guardarCacheBonosSupervisores_(claveCache,respuesta);
+  return respuesta;
 }
 
 function doPost(e) {
   try {
     const data = JSON.parse(e.postData.contents);
+    reiniciarDatosBonoSesion_();
 
     if (data.accion === "obtenerBonosSupervisores") return respuestaJson(obtenerBonosSupervisores(data));
     if (data.accion === "listarParametrosSlaWin") return respuestaJson(listarParametrosSlaWin(data));
@@ -14053,7 +14275,7 @@ function asegurarHojaHerramientasDetalle(){const ss=SpreadsheetApp.getActiveSpre
 function guardarArchivoChecklistGeneral(carpeta,id,categoria,ev){if(!ev||!ev.base64)return "";const original=(ev.nombre||'archivo').toString();const ext=original.includes('.')?original.split('.').pop().toLowerCase():'jpg';const nombre=id+'_'+categoria+'.'+ext;const blob=Utilities.newBlob(Utilities.base64Decode(ev.base64),ev.mime||'application/octet-stream',nombre);const a=carpeta.createFile(blob);a.setSharing(DriveApp.Access.ANYONE_WITH_LINK,DriveApp.Permission.VIEW);return a.getUrl();}
 function buscarChecklistDuplicado(cuadrilla,fechaGestion,tipoChecklist){const h=asegurarHojaChecklistAlmacen(),n=h.getLastRow();if(n<=1)return null;const d=h.getRange(2,1,n-1,83).getValues(),c=normalizarCuadrilla(cuadrilla),f=fechaGestionActaTexto(fechaGestion),t=normalizarTexto(tipoChecklist||'MATERIALES');for(let i=0;i<d.length;i++){if(normalizarCuadrilla(d[i][6])===c&&fechaGestionActaTexto(d[i][7])===f&&normalizarTexto(d[i][55]||'MATERIALES')===t)return {fila:i+2,id:d[i][0],estado:d[i][8]};}return null;}
 function registrarHerramientasDetalleChecklist(data,id,sede,cuadrilla,carpeta,usuario){const herramientas=Array.isArray(data.herramientas)?data.herramientas:[];if(!herramientas.length)throw new Error('Debe registrar al menos una herramienta');const h=asegurarHojaHerramientasDetalle(),ahora=new Date(),filas=[];let observadas=0;herramientas.forEach((x,i)=>{const nombre=(x.herramienta||'').toString().trim(),cantidad=Number(x.cantidad),estado=normalizarTexto(x.estado||'BUENO'),motivo=(x.motivo||'').toString().trim();if(!nombre)return;if(!isFinite(cantidad)||cantidad<=0)throw new Error('Cantidad obligatoria y mayor a cero en '+nombre);if(!['BUENO','REGULAR','MALO'].includes(estado))throw new Error('Estado no válido en '+nombre);if((estado==='REGULAR'||estado==='MALO')&&!motivo)throw new Error('Motivo obligatorio en '+nombre);if(estado==='MALO'&&(!x.foto||!x.foto.base64))throw new Error('Foto obligatoria en '+nombre);const foto=x.foto?guardarArchivoChecklistGeneral(carpeta,id,'HERRAMIENTA_'+(i+1),x.foto):'';if(estado!=='BUENO')observadas++;filas.push(['HD-'+id+'-'+String(i+1).padStart(2,'0'),id,ahora,sede,cuadrilla,nombre,x.codigoSerie||'',estado,motivo,foto,usuario.usuario,usuario.perfil,cantidad]);});if(filas.length)h.getRange(h.getLastRow()+1,1,filas.length,13).setValues(filas);return {resultado:observadas?'OBSERVADO':'CONFORME',observacion:observadas+' herramienta(s) con estado Regular o Malo'};}
-function registrarChecklistAlmacen(data){if(!checklistAlmacenActivo())throw new Error('El Checklist Almacén no está habilitado');const hoja=asegurarHojaChecklistAlmacen(),usuario=obtenerUsuarioApp(data.usuario),esCampo=usuario.perfil==='SUPERVISOR'&&normalizarTexto(data.origenRegistro)==='ACTIVIDAD_CAMPO';if(!(usuario.perfil==='TECNICO'||esCampo))throw new Error('Solo Técnico o Supervisor desde Actividad en Campo pueden registrar checklist');const cuadrilla=normalizarCuadrilla(esCampo?data.cuadrilla:usuario.cuadrilla);if(!cuadrilla)throw new Error('Debe seleccionar una cuadrilla');const dc=obtenerDatosCuadrillaApp(cuadrilla),sede=normalizarTexto(dc.sede||usuario.sede);if(esCampo&&normalizarTexto(usuario.sede)!==sede)throw new Error('Supervisor solo puede registrar checklist de su sede');const fechaGestion=fechaGestionActaTexto(data.fechaGestion||data.fecha_gestion),tipo=normalizarTexto(data.tipoChecklist||'MATERIALES');if(!['MATERIALES','HERRAMIENTAS','UNIDAD VEHICULAR','DOCUMENTACION','EPP'].includes(tipo))throw new Error('Tipo de checklist no válido');const lock=LockService.getScriptLock();lock.waitLock(30000);try{if(buscarChecklistDuplicado(cuadrilla,fechaGestion,tipo))throw new Error('Ya existe un checklist de '+tipo+' para esta cuadrilla y fecha');const id=idChecklistAlmacen(),raiz=DriveApp.getFolderById(CARPETA_CHECKLIST_ALMACEN),carpeta=obtenerOCrearCarpetaChecklist(obtenerOCrearCarpetaChecklist(obtenerOCrearCarpetaChecklist(obtenerOCrearCarpetaChecklist(raiz,tipo),sede),cuadrilla),fechaGestion);let ontZte={series:'',links:''},ontHuawei={series:'',links:''},meshZte={series:'',links:''},meshHuawei={series:'',links:''},winbox={series:'',links:''},fonowin={series:'',links:''};let extra=Array(28).fill('');if(tipo==='MATERIALES'){ontZte=guardarEquiposChecklist(carpeta,'ONT_ZTE',id,obtenerEquiposChecklistEntrada(data,'ontZte'),10);ontHuawei=guardarEquiposChecklist(carpeta,'ONT_HUAWEI',id,obtenerEquiposChecklistEntrada(data,'ontHuawei'),10);meshZte=guardarEquiposChecklist(carpeta,'MESH_ZTE',id,obtenerEquiposChecklistEntrada(data,'meshZte'),10);meshHuawei=guardarEquiposChecklist(carpeta,'MESH_HUAWEI',id,obtenerEquiposChecklistEntrada(data,'meshHuawei'),10);winbox=guardarEquiposChecklist(carpeta,'WINBOX',id,obtenerEquiposChecklistEntrada(data,'winbox'),5);fonowin=guardarEquiposChecklist(carpeta,'FONOWIN',id,obtenerEquiposChecklistEntrada(data,'fonowin'),5);}else if(tipo==='HERRAMIENTAS'){const r=registrarHerramientasDetalleChecklist(data,id,sede,cuadrilla,carpeta,usuario);extra[0]=r.resultado;extra[1]=r.observacion;}else if(tipo==='UNIDAD VEHICULAR'){const req=[['fotoUnidadFrente',3],['fotoUnidadPosterior',4],['fotoUnidadLadoIzquierdo',5],['fotoUnidadLadoDerecho',6],['fotoExtintor',7],['fotoBotiquin',8],['fotoRejaSeparadora',9],['fotoParrilla1',10],['fotoParrilla2',11]];req.forEach(x=>{if(!data[x[0]]||!data[x[0]].base64)throw new Error('Falta evidencia obligatoria de unidad');extra[x[1]]=guardarArchivoChecklistGeneral(carpeta,id,x[0],data[x[0]]);});extra[12]='CONFORME';extra[13]=data.observacionUnidad||'';}else if(tipo==='DOCUMENTACION'){if(!data.licenciaFechaVencimiento||!data.soatFechaVencimiento||!data.revisionTecnicaFechaVencimiento)throw new Error('Complete las fechas de vencimiento');extra[14]=data.licenciaFechaVencimiento;extra[15]=guardarArchivoChecklistGeneral(carpeta,id,'LICENCIA_FRENTE',data.licenciaFotoFrente);extra[16]=guardarArchivoChecklistGeneral(carpeta,id,'LICENCIA_REVERSO',data.licenciaFotoReverso);extra[17]=data.soatFechaVencimiento;extra[18]=guardarArchivoChecklistGeneral(carpeta,id,'SOAT',data.soatArchivo);extra[19]=data.revisionTecnicaFechaVencimiento;extra[20]=guardarArchivoChecklistGeneral(carpeta,id,'REVISION_TECNICA',data.revisionTecnicaArchivo);if(!extra[15]||!extra[16]||!extra[18]||!extra[20])throw new Error('Faltan archivos de documentación');extra[21]='CONFORME';extra[22]=data.observacionDocumentacion||'';}else{extra[23]=guardarArchivoChecklistGeneral(carpeta,id,'PERSONAL_COMPLETO',data.fotoPersonalCompleto);extra[24]=guardarArchivoChecklistGeneral(carpeta,id,'BOTAS',data.fotoBotas);extra[25]=guardarArchivoChecklistGeneral(carpeta,id,'FOTOCHECK',data.fotoFotocheck);if(!extra[23]||!extra[24]||!extra[25])throw new Error('Faltan evidencias de EPP');extra[26]='CONFORME';extra[27]=data.observacionEpp||'';}const ahora=new Date(),nombres=(data.nombresApellidos||(esCampo?obtenerNombresTecnicosChecklist(cuadrilla):usuario.nombresApellidos)||dc.usuario||usuario.usuario).toString().trim(),estado='PENDIENTE DE VALIDACION POR AREA DE ALMACEN';const fila=[id,Utilities.formatDate(ahora,Session.getScriptTimeZone(),'dd/MM/yyyy'),Utilities.formatDate(ahora,Session.getScriptTimeZone(),'HH:mm:ss'),esCampo?(dc.usuario||cuadrilla):usuario.usuario,nombres,sede,cuadrilla,fechaGestion,estado,ontZte.series,ontZte.links,ontHuawei.series,ontHuawei.links,meshZte.series,meshZte.links,meshHuawei.series,meshHuawei.links,winbox.series,winbox.links,fonowin.series,fonowin.links,numeroChecklist(data.cableDrop),numeroChecklist(data.pre50),numeroChecklist(data.pre100),numeroChecklist(data.pre150),numeroChecklist(data.pre200),numeroChecklist(data.anclajeP),numeroChecklist(data.cintaBandIt),numeroChecklist(data.hebilla),numeroChecklist(data.acoplador),numeroChecklist(data.roseta),numeroChecklist(data.conectoresOpticos),numeroChecklist(data.templadores),numeroChecklist(data.splitter),numeroChecklist(data.clevis),numeroChecklist(data.utpCat5),numeroChecklist(data.utpCat6),numeroChecklist(data.patchApcApc),numeroChecklist(data.patchUpcApc),numeroChecklist(data.rj45),'','','','','','','','','','',1,esCampo?'ACTIVIDAD_CAMPO':'TECNICO',usuario.usuario,usuario.perfil,(data.comentarioFinal||'').toString().trim(),tipo].concat(extra);hoja.appendRow(fila);return {ok:true,modulo:'CHECKLIST_ALMACEN',accion:'REGISTRAR',id,tipoChecklist:tipo,estadoGeneral:estado,sede,cuadrilla,origenRegistro:esCampo?'ACTIVIDAD_CAMPO':'TECNICO',registradoPor:usuario.usuario,comentarioFinal:data.comentarioFinal||''};}finally{lock.releaseLock();}}
+function registrarChecklistAlmacen(data){if(!checklistAlmacenActivo())throw new Error('El Checklist Almacén no está habilitado');const hoja=asegurarHojaChecklistAlmacen(),usuario=obtenerUsuarioApp(data.usuario),esCampo=usuario.perfil==='SUPERVISOR'&&normalizarTexto(data.origenRegistro)==='ACTIVIDAD_CAMPO';if(!(usuario.perfil==='TECNICO'||esCampo))throw new Error('Solo Técnico o Supervisor desde Actividad en Campo pueden registrar checklist');const cuadrilla=normalizarCuadrilla(esCampo?data.cuadrilla:usuario.cuadrilla);if(!cuadrilla)throw new Error('Debe seleccionar una cuadrilla');const dc=obtenerDatosCuadrillaApp(cuadrilla),sede=normalizarTexto(dc.sede||usuario.sede);if(esCampo&&normalizarTexto(usuario.sede)!==sede)throw new Error('Supervisor solo puede registrar checklist de su sede');const fechaGestion=fechaGestionActaTexto(data.fechaGestion||data.fecha_gestion),tipo=normalizarTexto(data.tipoChecklist||'MATERIALES');if(!['MATERIALES','HERRAMIENTAS','UNIDAD VEHICULAR','DOCUMENTACION','EPP'].includes(tipo))throw new Error('Tipo de checklist no válido');const lock=LockService.getScriptLock();lock.waitLock(30000);try{if(buscarChecklistDuplicado(cuadrilla,fechaGestion,tipo))throw new Error('Ya existe un checklist de '+tipo+' para esta cuadrilla y fecha');const id=idChecklistAlmacen(),raiz=DriveApp.getFolderById(CARPETA_CHECKLIST_ALMACEN),carpeta=obtenerOCrearCarpetaChecklist(obtenerOCrearCarpetaChecklist(obtenerOCrearCarpetaChecklist(obtenerOCrearCarpetaChecklist(raiz,tipo),sede),cuadrilla),fechaGestion);let ontZte={series:'',links:''},ontHuawei={series:'',links:''},meshZte={series:'',links:''},meshHuawei={series:'',links:''},winbox={series:'',links:''},fonowin={series:'',links:''};let extra=Array(28).fill('');if(tipo==='MATERIALES'){ontZte=guardarEquiposChecklist(carpeta,'ONT_ZTE',id,obtenerEquiposChecklistEntrada(data,'ontZte'),10);ontHuawei=guardarEquiposChecklist(carpeta,'ONT_HUAWEI',id,obtenerEquiposChecklistEntrada(data,'ontHuawei'),10);meshZte=guardarEquiposChecklist(carpeta,'MESH_ZTE',id,obtenerEquiposChecklistEntrada(data,'meshZte'),10);meshHuawei=guardarEquiposChecklist(carpeta,'MESH_HUAWEI',id,obtenerEquiposChecklistEntrada(data,'meshHuawei'),10);winbox=guardarEquiposChecklist(carpeta,'WINBOX',id,obtenerEquiposChecklistEntrada(data,'winbox'),5);fonowin=guardarEquiposChecklist(carpeta,'FONOWIN',id,obtenerEquiposChecklistEntrada(data,'fonowin'),5);}else if(tipo==='HERRAMIENTAS'){const r=registrarHerramientasDetalleChecklist(data,id,sede,cuadrilla,carpeta,usuario);extra[0]=r.resultado;extra[1]=r.observacion;}else if(tipo==='UNIDAD VEHICULAR'){const req=[['fotoUnidadFrente',3],['fotoUnidadPosterior',4],['fotoUnidadLadoIzquierdo',5],['fotoUnidadLadoDerecho',6],['fotoExtintor',7],['fotoBotiquin',8],['fotoRejaSeparadora',9],['fotoParrilla1',10],['fotoParrilla2',11]];req.forEach(x=>{if(!data[x[0]]||!data[x[0]].base64)throw new Error('Falta evidencia obligatoria de unidad');extra[x[1]]=guardarArchivoChecklistGeneral(carpeta,id,x[0],data[x[0]]);});extra[12]='CONFORME';extra[13]=data.observacionUnidad||'';}else if(tipo==='DOCUMENTACION'){if(!data.licenciaFechaVencimiento||!data.soatFechaVencimiento||!data.revisionTecnicaFechaVencimiento)throw new Error('Complete las fechas de vencimiento');extra[14]=data.licenciaFechaVencimiento;extra[15]=guardarArchivoChecklistGeneral(carpeta,id,'LICENCIA_FRENTE',data.licenciaFotoFrente);extra[16]=guardarArchivoChecklistGeneral(carpeta,id,'LICENCIA_REVERSO',data.licenciaFotoReverso);extra[17]=data.soatFechaVencimiento;extra[18]=guardarArchivoChecklistGeneral(carpeta,id,'SOAT',data.soatArchivo);extra[19]=data.revisionTecnicaFechaVencimiento;extra[20]=guardarArchivoChecklistGeneral(carpeta,id,'REVISION_TECNICA',data.revisionTecnicaArchivo);if(!extra[15]||!extra[16]||!extra[18]||!extra[20])throw new Error('Faltan archivos de documentación');extra[21]='CONFORME';extra[22]=data.observacionDocumentacion||'';}else{extra[23]=guardarArchivoChecklistGeneral(carpeta,id,'PERSONAL_COMPLETO',data.fotoPersonalCompleto);extra[24]=guardarArchivoChecklistGeneral(carpeta,id,'BOTAS',data.fotoBotas);extra[25]=guardarArchivoChecklistGeneral(carpeta,id,'FOTOCHECK',data.fotoFotocheck);if(!extra[23]||!extra[24]||!extra[25])throw new Error('Faltan evidencias de EPP');extra[26]='CONFORME';extra[27]=data.observacionEpp||'';}const ahora=new Date(),nombres=(data.nombresApellidos||(esCampo?obtenerNombresTecnicosChecklist(cuadrilla):usuario.nombresApellidos)||dc.usuario||usuario.usuario).toString().trim(),estado='PENDIENTE DE VALIDACION POR AREA DE ALMACEN';const fila=[id,Utilities.formatDate(ahora,Session.getScriptTimeZone(),'dd/MM/yyyy'),Utilities.formatDate(ahora,Session.getScriptTimeZone(),'HH:mm:ss'),esCampo?(dc.usuario||cuadrilla):usuario.usuario,nombres,sede,cuadrilla,fechaGestion,estado,ontZte.series,ontZte.links,ontHuawei.series,ontHuawei.links,meshZte.series,meshZte.links,meshHuawei.series,meshHuawei.links,winbox.series,winbox.links,fonowin.series,fonowin.links,numeroChecklist(data.cableDrop),numeroChecklist(data.pre50),numeroChecklist(data.pre100),numeroChecklist(data.pre150),numeroChecklist(data.pre200),numeroChecklist(data.anclajeP),numeroChecklist(data.cintaBandIt),numeroChecklist(data.hebilla),numeroChecklist(data.acoplador),numeroChecklist(data.roseta),numeroChecklist(data.conectoresOpticos),numeroChecklist(data.templadores),numeroChecklist(data.splitter),numeroChecklist(data.clevis),numeroChecklist(data.utpCat5),numeroChecklist(data.utpCat6),numeroChecklist(data.patchApcApc),numeroChecklist(data.patchUpcApc),numeroChecklist(data.rj45),'','','','','','','','','','',1,esCampo?'ACTIVIDAD_CAMPO':'TECNICO',usuario.usuario,usuario.perfil,(data.comentarioFinal||'').toString().trim(),tipo].concat(extra);hoja.appendRow(fila);invalidarCacheBonosSupervisores_();return {ok:true,modulo:'CHECKLIST_ALMACEN',accion:'REGISTRAR',id,tipoChecklist:tipo,estadoGeneral:estado,sede,cuadrilla,origenRegistro:esCampo?'ACTIVIDAD_CAMPO':'TECNICO',registradoPor:usuario.usuario,comentarioFinal:data.comentarioFinal||''};}finally{lock.releaseLock();}}
 function filaChecklistAObjeto(f){return {id:f[0],fechaRegistro:f[1],horaRegistro:f[2],usuario:f[3],nombresApellidos:f[4],sede:f[5],cuadrilla:f[6],fechaGestion:f[7],estadoGeneral:f[8],ontZte:f[9],fotosOntZte:f[10],ontHuawei:f[11],fotosOntHuawei:f[12],meshZte:f[13],fotosMeshZte:f[14],meshHuawei:f[15],fotosMeshHuawei:f[16],winbox:f[17],fotosWinbox:f[18],fonowin:f[19],fotosFonowin:f[20],cableDrop:f[21],pre50:f[22],pre100:f[23],pre150:f[24],pre200:f[25],anclajeP:f[26],cintaBandIt:f[27],hebilla:f[28],acoplador:f[29],roseta:f[30],conectoresOpticos:f[31],templadores:f[32],splitter:f[33],clevis:f[34],utpCat5:f[35],utpCat6:f[36],patchApcApc:f[37],patchUpcApc:f[38],rj45:f[39],resultadoAlmacen:f[40],motivoAlmacen:f[41],validadoAlmacenPor:f[42],fechaValidacionAlmacen:f[43],horaValidacionAlmacen:f[44],resultadoJefatura:f[45],motivoJefatura:f[46],validadoJefaturaPor:f[47],fechaValidacionJefatura:f[48],horaValidacionJefatura:f[49],version:f[50],origenRegistro:f[51]||'TECNICO',registradoPor:f[52]||f[3],perfilRegistro:f[53]||'TECNICO',comentarioFinal:f[54]||'',tipoChecklist:f[55]||'MATERIALES',resultadoHerramientas:f[56],observacionHerramientas:f[57],fotoUnidadFrente:f[58],fotoUnidadPosterior:f[59],fotoUnidadLadoIzquierdo:f[60],fotoUnidadLadoDerecho:f[61],fotoExtintor:f[62],fotoBotiquin:f[63],fotoRejaSeparadora:f[64],fotoParrilla1:f[65],fotoParrilla2:f[66],resultadoUnidad:f[67],observacionUnidad:f[68],licenciaFechaVencimiento:f[69],licenciaFotoFrente:f[70],licenciaFotoReverso:f[71],soatFechaVencimiento:f[72],soatArchivo:f[73],revisionTecnicaFechaVencimiento:f[74],revisionTecnicaArchivo:f[75],resultadoDocumentacion:f[76],observacionDocumentacion:f[77],fotoPersonalCompleto:f[78],fotoBotas:f[79],fotoFotocheck:f[80],resultadoEpp:f[81],observacionEpp:f[82]};}
 
 

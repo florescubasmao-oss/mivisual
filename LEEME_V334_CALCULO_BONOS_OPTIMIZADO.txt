@@ -1,0 +1,40 @@
+MI VISUAL V334 - CÁLCULO DE BONOS SUPERVISORES OPTIMIZADO
+
+OBJETIVO
+Reducir la demora y evitar respuestas inválidas al consultar Bonos Supervisores,
+sin cambiar fórmulas, porcentajes, metas, permisos ni datos existentes.
+
+CAMBIOS
+- Cada hoja necesaria se lee una sola vez durante el cálculo.
+- La consulta normal ya no reescribe encabezados ni asignaciones existentes.
+- El selector de períodos se genera sin recorrer todas las hojas históricas.
+- El resultado queda disponible temporalmente durante 5 minutos.
+- Las consultas siguientes del mismo período usan una respuesta rápida.
+- Nuevo botón "Actualizar cálculo" para ignorar el resultado temporal y leer
+  nuevamente todas las fuentes.
+- Muestra la fecha y hora de la última lectura.
+- Si la consulta falla, aparece el botón "Reintentar".
+- La respuesta temporal se invalida automáticamente cuando cambian:
+  Producción, Efectividad, Recableado, VTR/GAR, Base Operativa, Mapa Operativo,
+  Observaciones, Actividad en Campo, Checklist, parámetros SLA, monto,
+  activadores, satisfacción, evaluación o validación manual de actas.
+
+INSTALACIÓN
+1. Reemplazar Code.gs en Apps Script.
+2. Crear una nueva implementación del aplicativo web.
+3. En GitHub reemplazar index.html.
+4. En GitHub reemplazar js/bono_supervisores.js.
+5. Hacer Commit y Push.
+6. Cerrar MI VISUAL y volver a abrirlo.
+
+NO HACER
+- No crear hojas nuevas.
+- No crear activadores.
+- No modificar fórmulas ni parámetros existentes.
+
+PRUEBA RÁPIDA
+1. Abrir Dashboard > Bonos Supervisores.
+2. Seleccionar un período.
+3. Esperar el primer cálculo.
+4. Volver a consultar el mismo período: debe responder más rápido.
+5. Usar "Actualizar cálculo" cuando se necesite leer nuevamente las bases.
