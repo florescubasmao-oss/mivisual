@@ -1,0 +1,58 @@
+MI VISUAL V325 - BONOS SUPERVISORES Y ACTUALIZACION MAPA
+Fecha: 02/08/2026
+
+OBJETIVO
+- Mantener la carga manual de Mapa Operativo.
+- Agregar órdenes nuevas y actualizar las existentes sin duplicarlas.
+- Crear un acceso independiente Bonos Supervisores con selector de período.
+- Mantener visibles los controles del monto total y parámetros SLA en el mes actual.
+
+CAMBIOS INCLUIDOS
+1. MAPA OPERATIVO
+- ORDEN_ID es la clave principal.
+- Si la orden ya existe, se actualiza la misma fila.
+- Los campos vacíos de una carga nueva no borran datos anteriores.
+- Si la carga no trae información diferente, se conserva el registro existente.
+- Solo una orden realmente nueva genera una fila adicional.
+- Las filas duplicadas existentes con el mismo ORDEN_ID se consolidan conservando la información más completa.
+
+2. SLA WIN
+- Solo evalúa órdenes con hora de inicio y hora de fin válidas.
+- Los parámetros predeterminados quedan vigentes desde julio de 2026.
+- Si los parámetros anteriores empezaban en agosto, V325 crea automáticamente el histórico de julio sin cambiar la configuración de agosto.
+
+3. OBSERVACIONES DEL BONO
+- Solo se consideran registros con fuente WIN.
+- El indicador Observaciones conserva el peso de 30% dentro de Calidad.
+- Dentro de Observaciones: cantidad WIN pesa 10% y monto penalizado WIN pesa 90%.
+- El monto incluye únicamente observaciones WIN con estado PENALIZADO.
+- Meta monetaria: máximo S/ 300.
+- Al no existir una tolerancia distinta definida, cero observaciones WIN obtiene el cumplimiento completo del criterio de cantidad.
+
+4. ACCESO BONOS SUPERVISORES
+- Nueva tarjeta Bonos Supervisores para Supervisor, Jefatura y Gerencia con permiso de Dashboard.
+- Abre una pantalla exclusiva del bono, sin los demás indicadores del Dashboard.
+- Incluye selector de período.
+- En el período actual, Jefatura visualiza Monto total del bono y Parámetros SLA WIN en la zona superior.
+- El acceso hereda el permiso del Dashboard; no crea un módulo nuevo en PERMISOS_MODULOS.
+
+ARCHIVOS DEL ZIP
+- Code.gs
+- apps_script/Code.gs
+- index.html
+- js/app.js
+- js/bono_supervisores.js
+- LEEME_V325_BONOS_SUPERVISORES_ACCESO_Y_ACTUALIZACION.txt
+
+INSTALACION
+1. Apps Script: reemplazar Code.gs por el archivo del ZIP.
+2. Implementar una nueva versión del Web App conservando su configuración actual.
+3. GitHub: reemplazar index.html, js/app.js y js/bono_supervisores.js.
+4. Realizar commit y push.
+5. Actualizar MI VISUAL con Ctrl + F5.
+6. No crear hojas ni activadores manualmente.
+
+NO SE MODIFICA
+- Metas de 130 puntos por cuadrilla, efectividad, recableado ni VTR/GAR.
+- Producción, Ranking, Actas, Validación Técnica u otros módulos.
+- Activadores existentes.

@@ -8853,7 +8853,7 @@ function datosCoincidenciaMapa(item) {
     documento: documento,
     codigoCliente: codigoCliente,
     coordenadas: coordenadas,
-    claveOrdenFecha: fecha && orden ? "FECHA|" + fecha + "|ORDEN|" + orden : "",
+    claveOrden: orden ? "ORDEN|" + orden : "",
     clavesAlternas: [
       fecha && documento && coordenadas ? "FECHA|" + fecha + "|DOCUMENTO|" + documento + "|COORD|" + coordenadas : "",
       fecha && codigoCliente && coordenadas ? "FECHA|" + fecha + "|CLIENTE|" + codigoCliente + "|COORD|" + coordenadas : "",
@@ -8864,7 +8864,7 @@ function datosCoincidenciaMapa(item) {
 }
 
 function crearIndicesCoincidenciaMapa() {
-  return { porOrdenFecha:{}, alternos:{} };
+  return { porOrden:{}, alternos:{} };
 }
 
 function agregarIndiceAlternoMapa(indices, clave, posicion) {
@@ -8873,13 +8873,13 @@ function agregarIndiceAlternoMapa(indices, clave, posicion) {
 }
 
 function registrarIndiceCoincidenciaMapa(indices, meta, posicion) {
-  if (meta.claveOrdenFecha) indices.porOrdenFecha[meta.claveOrdenFecha] = posicion;
+  if (meta.claveOrden) indices.porOrden[meta.claveOrden] = posicion;
   meta.clavesAlternas.forEach(function(clave){ agregarIndiceAlternoMapa(indices, clave, posicion); });
 }
 
 function retirarIndiceCoincidenciaMapa(indices, meta, posicion) {
-  if (meta.claveOrdenFecha && indices.porOrdenFecha[meta.claveOrdenFecha] === posicion) {
-    delete indices.porOrdenFecha[meta.claveOrdenFecha];
+  if (meta.claveOrden && indices.porOrden[meta.claveOrden] === posicion) {
+    delete indices.porOrden[meta.claveOrden];
   }
   meta.clavesAlternas.forEach(function(clave){
     const lista = indices.alternos[clave] || [];
@@ -8894,8 +8894,10 @@ function ordenesCompatiblesMapa(metaA, metaB) {
 }
 
 function buscarCoincidenciaMapa(indices, metas, meta) {
-  if (meta.claveOrdenFecha && indices.porOrdenFecha.hasOwnProperty(meta.claveOrdenFecha)) {
-    return indices.porOrdenFecha[meta.claveOrdenFecha];
+  // ORDEN_ID es la clave principal. Una nueva carga de la misma orden
+  // actualiza la fila existente aunque cambie la fecha o se completen horas.
+  if (meta.claveOrden && indices.porOrden.hasOwnProperty(meta.claveOrden)) {
+    return indices.porOrden[meta.claveOrden];
   }
 
   for (let i = 0; i < meta.clavesAlternas.length; i++) {
@@ -8906,6 +8908,25 @@ function buscarCoincidenciaMapa(indices, metas, meta) {
     }
   }
   return -1;
+}
+
+function valorConInformacionMapa_(valor) {
+  if (valor instanceof Date) return !isNaN(valor.getTime());
+  return valor !== null && valor !== undefined && String(valor).trim() !== "";
+}
+
+function combinarFilasMapaOperativo_(anterior, nueva, ahora, usuario) {
+  const salida = (anterior || []).slice(0,COLUMNAS_MAPA_OPERATIVO);
+  while (salida.length < COLUMNAS_MAPA_OPERATIVO) salida.push("");
+  (nueva || []).forEach(function(valor, indice) {
+    if (indice >= COLUMNAS_MAPA_OPERATIVO || indice === 26 || indice === 27) return;
+    if (valorConInformacionMapa_(valor)) salida[indice] = valor;
+  });
+  // La fecha y el usuario de importación sí reflejan la última carga que
+  // aportó información, sin borrar ningún dato operativo anterior.
+  if (ahora) salida[26] = ahora;
+  if (usuario && usuario.usuario) salida[27] = usuario.usuario;
+  return salida;
 }
 
 function filaImportacionMapa(r, ahora, usuario) {
@@ -8946,9 +8967,9 @@ function importarMapaOperativo(data) {
       const posicion = buscarCoincidenciaMapa(indices, metas, meta);
       if (posicion >= 0) {
         retirarIndiceCoincidenciaMapa(indices, metas[posicion], posicion);
-        resultado[posicion] = fila;
-        metas[posicion] = meta;
-        registrarIndiceCoincidenciaMapa(indices, meta, posicion);
+        resultado[posicion] = combinarFilasMapaOperativo_(resultado[posicion],fila,null,null);
+        metas[posicion] = datosCoincidenciaMapa(filaMapaOperativoAObjeto(resultado[posicion]));
+        registrarIndiceCoincidenciaMapa(indices, metas[posicion], posicion);
         consolidadosExistentes++;
       } else {
         const nuevaPosicion = resultado.length;
@@ -8977,9 +8998,9 @@ function importarMapaOperativo(data) {
         else actualizados++;
         posicionesActualizadasEnCarga[posicion] = true;
         retirarIndiceCoincidenciaMapa(indices, metas[posicion], posicion);
-        resultado[posicion] = fila;
-        metas[posicion] = meta;
-        registrarIndiceCoincidenciaMapa(indices, meta, posicion);
+        resultado[posicion] = combinarFilasMapaOperativo_(resultado[posicion],fila,ahora,usuario);
+        metas[posicion] = datosCoincidenciaMapa(filaMapaOperativoAObjeto(resultado[posicion]));
+        registrarIndiceCoincidenciaMapa(indices, metas[posicion], posicion);
       } else {
         const nuevaPosicion = resultado.length;
         resultado.push(fila);
@@ -12246,7 +12267,7 @@ function consultarPlantillaOrden(data) {
    manuales de Satisfacción realizados por Jefatura.
    Los KPI usan las metas vigentes del Dashboard:
    130 puntos/cuadrilla, efectividad 70%, recableado 42%,
-   VTR/GAR 3% y observaciones S/ 200.
+   VTR/GAR 3% y observaciones penalizadas WIN S/ 300.
    ===================================================== */
 const HOJA_PARAMETROS_SLA_WIN = "PARAMETROS_SLA_WIN";
 const HOJA_ASIGNACION_BONO_SUPERVISORES = "ASIGNACION_BONO_SUPERVISORES";
@@ -12441,20 +12462,50 @@ function asegurarHojaParametrosSlaWin_() {
   else hoja.getRange(1,1,1,9).setValues(encabezados);
 
   const existentes = {};
+  const filasExistentes = [];
   if (hoja.getLastRow() > 1) {
     hoja.getRange(2,1,hoja.getLastRow()-1,9).getValues().forEach(function(fila) {
       existentes[normalizarTexto(fila[1])] = true;
+      filasExistentes.push(fila);
     });
   }
   const nuevas = catalogoSlaWinPredeterminado_().filter(function(x) {
     return !existentes[normalizarTexto(x.tipoOrden)];
   }).map(function(x) {
-    return [x.id,x.tipoOrden,x.clasificacion,x.minutos,new Date(2026,7,1),"","ACTIVO","SISTEMA",new Date()];
+    return [x.id,x.tipoOrden,x.clasificacion,x.minutos,new Date(2026,6,1),"","ACTIVO","SISTEMA V325",new Date()];
   });
   if (nuevas.length) {
     hoja.getRange(hoja.getLastRow()+1,1,nuevas.length,9).setValues(nuevas);
     hoja.getRange(hoja.getLastRow()-nuevas.length+1,5,nuevas.length,1).setNumberFormat("dd/mm/yyyy");
     hoja.getRange(hoja.getLastRow()-nuevas.length+1,9,nuevas.length,1).setNumberFormat("dd/mm/yyyy hh:mm");
+  }
+
+  // V325: la medición comienza en julio de 2026. Si V321/V324 creó los
+  // parámetros recién desde agosto, se agrega una vigencia histórica de julio
+  // sin modificar los tiempos o cambios configurados desde agosto.
+  const julioReferencia = new Date(2026,6,15,12,0,0);
+  const julioInicio = new Date(2026,6,1,12,0,0);
+  const julioFin = new Date(2026,6,31,12,0,0);
+  const historicosJulio = [];
+  catalogoSlaWinPredeterminado_().forEach(function(base) {
+    const tipo = normalizarTexto(base.tipoOrden);
+    const yaVigenteEnJulio = filasExistentes.concat(nuevas).some(function(fila) {
+      if (normalizarTexto(fila[1]) !== tipo || normalizarTexto(fila[6] || "ACTIVO") !== "ACTIVO") return false;
+      const inicio = fechaHoraBonoSupervisores_(fila[4]);
+      const fin = fechaHoraBonoSupervisores_(fila[5]);
+      return (!inicio || inicio <= julioReferencia) && (!fin || julioReferencia <= fin);
+    });
+    if (yaVigenteEnJulio) return;
+    historicosJulio.push([
+      base.id + "-202607-BASE",base.tipoOrden,base.clasificacion,base.minutos,
+      julioInicio,julioFin,"ACTIVO","SISTEMA V325",new Date()
+    ]);
+  });
+  if (historicosJulio.length) {
+    const filaInicio = hoja.getLastRow()+1;
+    hoja.getRange(filaInicio,1,historicosJulio.length,9).setValues(historicosJulio);
+    hoja.getRange(filaInicio,5,historicosJulio.length,2).setNumberFormat("dd/mm/yyyy");
+    hoja.getRange(filaInicio,9,historicosJulio.length,1).setNumberFormat("dd/mm/yyyy hh:mm");
   }
   hoja.setFrozenRows(1);
   return hoja;
@@ -13094,16 +13145,19 @@ function calcularProductividadSupervisor_(ctx, asignacion, estados) {
 
 function calcularCalidadSupervisor_(ctx, asignacion, estados) {
   const asignadas = mapaCuadrillasBono_(asignacion.cuadrillas);
-  let observaciones = 0, montoObservaciones = 0;
+  let observacionesWin = 0, observacionesWinPenalizadas = 0, montoPenalizadoWin = 0;
   (ctx.observaciones || []).slice(1).forEach(function(fila) {
     if (periodoDeValorBonoSupervisores_(fila[2] || fila[1]) !== ctx.periodo) return;
-    if (asignadas[normalizarCuadrilla(fila[8])]) observaciones++;
+    if (!asignadas[normalizarCuadrilla(fila[8])] || normalizarTexto(fila[9]) !== "WIN") return;
+    observacionesWin++;
+    if (normalizarTexto(fila[13]) === "PENALIZADO") {
+      observacionesWinPenalizadas++;
+      montoPenalizadoWin += Number(fila[14]) || 0;
+    }
   });
   let rojoAsignadas = 0, recableados = 0, sumaRecableado = 0, cuadrillasRecableado = 0;
   let incidenciasVtrGar = 0, finalizadasVtrGar = 0, sumaVtrGar = 0, cuadrillasVtrGar = 0;
   asignacion.cuadrillas.forEach(function(c) {
-    const o = ctx.resumenObservaciones[c] || {};
-    montoObservaciones += Number(o.montoAfectado) || 0;
     const r = ctx.recableado[c] || {};
     rojoAsignadas += Number(r.rojoAsignadas) || 0;
     recableados += Number(r.recableados) || 0;
@@ -13125,8 +13179,15 @@ function calcularCalidadSupervisor_(ctx, asignacion, estados) {
   const vtrGarPct = finalizadasVtrGar > 0
     ? porcentajeBonoSupervisores_(incidenciasVtrGar,finalizadasVtrGar)
     : (cuadrillasVtrGar ? redondearBonoSupervisores_(sumaVtrGar/cuadrillasVtrGar,2) : 0);
-  const evaluable = asignacion.cuadrillas.length > 0 && (estados.finalizadas > 0 || rojoAsignadas > 0 || finalizadasVtrGar > 0 || observaciones > 0 || montoObservaciones > 0);
-  const puntajeObservaciones = puntajeMetaMenorBono_(montoObservaciones,200);
+  const evaluable = asignacion.cuadrillas.length > 0 && (estados.finalizadas > 0 || rojoAsignadas > 0 || finalizadasVtrGar > 0 || observacionesWin > 0 || montoPenalizadoWin > 0);
+  // Dentro del indicador Observaciones: cantidad WIN pesa 10% y monto
+  // penalizado WIN pesa 90%. Sin una tolerancia adicional definida, el
+  // cumplimiento total de cantidad corresponde a cero observaciones WIN.
+  const puntajeCantidadObservaciones = observacionesWin === 0 ? 100 : 0;
+  const puntajeMontoPenalizado = puntajeMetaMenorBono_(montoPenalizadoWin,300);
+  const puntajeObservaciones = redondearBonoSupervisores_(
+    (puntajeCantidadObservaciones * 0.10) + (puntajeMontoPenalizado * 0.90),2
+  );
   const puntajeRecableado = puntajeMetaMenorBono_(recableadoPct,42);
   const puntajeVtrGar = puntajeMetaMenorBono_(vtrGarPct,3);
   const cumplimiento = evaluable ? redondearBonoSupervisores_(
@@ -13138,8 +13199,18 @@ function calcularCalidadSupervisor_(ctx, asignacion, estados) {
     clave:"CALIDAD",nombre:"Calidad de instalaciones y averías",maximo:maximo,evaluable:evaluable,
     cumplimiento:cumplimiento,monto:monto,activador:ACTIVADORES_BONO_SUPERVISORES_.CALIDAD,
     estado:evaluable?(cumplimiento>ACTIVADORES_BONO_SUPERVISORES_.CALIDAD?"BONO ACTIVO":"NO ACTIVA BONO"):"SIN DATOS",
-    metricas:{observaciones:observaciones,montoObservaciones:redondearBonoSupervisores_(montoObservaciones,2),puntajeObservaciones:puntajeObservaciones,recableadoPct:recableadoPct,puntajeRecableado:puntajeRecableado,rojoAsignadas:rojoAsignadas,recableados:recableados,vtrGarPct:vtrGarPct,puntajeVtrGar:puntajeVtrGar,incidenciasVtrGar:incidenciasVtrGar,finalizadasVtrGar:finalizadasVtrGar},
-    nota:"Observaciones aporta 30%, Recableado 40% y VTR/GAR 30%. El componente paga de forma prorrateada únicamente cuando supera 80%."
+    metricas:{
+      observaciones:observacionesWin,observacionesWin:observacionesWin,
+      observacionesWinPenalizadas:observacionesWinPenalizadas,
+      montoObservaciones:redondearBonoSupervisores_(montoPenalizadoWin,2),
+      montoPenalizadoWin:redondearBonoSupervisores_(montoPenalizadoWin,2),
+      puntajeCantidadObservaciones:puntajeCantidadObservaciones,
+      puntajeMontoPenalizado:puntajeMontoPenalizado,
+      puntajeObservaciones:puntajeObservaciones,
+      recableadoPct:recableadoPct,puntajeRecableado:puntajeRecableado,rojoAsignadas:rojoAsignadas,recableados:recableados,
+      vtrGarPct:vtrGarPct,puntajeVtrGar:puntajeVtrGar,incidenciasVtrGar:incidenciasVtrGar,finalizadasVtrGar:finalizadasVtrGar
+    },
+    nota:"Observaciones aporta 30% de Calidad: cantidad WIN 10% y monto penalizado WIN 90% (meta máxima S/ 300). Recableado aporta 40% y VTR/GAR 30%."
   };
 }
 
@@ -13305,6 +13376,35 @@ function calcularBonoSupervisor_(ctx, asignacion, puedeEditar) {
   };
 }
 
+function periodosDisponiblesBonoSupervisores_() {
+  const periodos = {};
+  periodos[periodoActualBonoSupervisores_()] = true;
+  periodos["2026-07"] = true;
+
+  function agregar(valor) {
+    const periodo = periodoDeValorBonoSupervisores_(valor);
+    if (periodo) periodos[periodo] = true;
+  }
+
+  [
+    {hoja:HOJA_BASE_OPERATIVA_HISTORICA,columnas:[1]},
+    {hoja:HOJA_ASIGNACION_BONO_SUPERVISORES,columnas:[0]},
+    {hoja:HOJA_EVALUACION_BONO_SUPERVISORES,columnas:[0]},
+    {hoja:HOJA_CONFIGURACION_BONO_SUPERVISORES,columnas:[0]},
+    {hoja:HOJA_SATISFACCION_BONO_SUPERVISORES,columnas:[0]}
+  ].forEach(function(config) {
+    (datosHojaBonoSupervisores_(config.hoja) || []).slice(1).forEach(function(fila) {
+      config.columnas.forEach(function(indice){ agregar(fila[indice]); });
+    });
+  });
+
+  (datosHojaBonoSupervisores_(HOJA_MAPA_OPERATIVO) || []).slice(1).forEach(function(fila) {
+    agregar(fila[18] || fila[19] || fila[2]);
+  });
+
+  return Object.keys(periodos).sort().reverse().slice(0,24);
+}
+
 function obtenerBonosSupervisores(data) {
   const usuario = obtenerUsuarioApp(data.usuario);
   const perfil = normalizarTexto(usuario.perfil);
@@ -13312,22 +13412,23 @@ function obtenerBonosSupervisores(data) {
     throw new Error("El bono de supervisores solo está disponible en los dashboards autorizados");
   }
   const periodo = periodoBonoSupervisores_(data.periodo);
+  const periodosDisponibles = periodosDisponiblesBonoSupervisores_();
   let asignaciones = asignacionesBonoSupervisores_(periodo,usuario.usuario);
   if (perfil === "SUPERVISOR") asignaciones = asignaciones.filter(function(x){return x.usuario===normalizarUsuario(usuario.usuario);});
-  if (!asignaciones.length) return {ok:true,modulo:"BONO_SUPERVISORES",accion:"OBTENER",periodo:periodo,bonos:[],puedeEditar:false,puedeEditarSla:false};
+  if (!asignaciones.length) return {ok:true,modulo:"BONO_SUPERVISORES",accion:"OBTENER",periodo:periodo,periodosDisponibles:periodosDisponibles,bonos:[],puedeEditar:false,puedeEditarSla:false,puedeEditarConfiguracion:false};
   const ctx = contextoCalculoBonoSupervisores_(periodo);
   const puedeEditar = esPerfilJefatura(perfil);
   const bonos = asignaciones.map(function(x){return calcularBonoSupervisor_(ctx,x,puedeEditar);});
   return {
     ok:true,modulo:"BONO_SUPERVISORES",accion:"OBTENER",periodo:periodo,
-    bonos:bonos,puedeEditar:puedeEditar,
+    bonos:bonos,periodosDisponibles:periodosDisponibles,puedeEditar:puedeEditar,
     puedeEditarSla:puedeEditar && periodo === periodoActualBonoSupervisores_(),
     puedeEditarConfiguracion:puedeEditar && periodo === periodoActualBonoSupervisores_(),
     configuracion:ctx.configuracion,
     parametrosSla:ctx.parametros.lista,
     parametrosSlaConfiguracion:parametrosSlaWinConfigurables_(periodo),
     criterio:"SUMA_COMPONENTES",
-    metasDashboard:{puntosPorCuadrilla:130,efectividadPct:70,recableadoPct:42,vtrGarPct:3,observacionesMonto:200},
+    metasDashboard:{puntosPorCuadrilla:130,efectividadPct:70,recableadoPct:42,vtrGarPct:3,observacionesMonto:300},
     nota:"El monto es provisional y se prorratea con las metas vigentes del Dashboard y los activadores definidos para cada componente."
   };
 }

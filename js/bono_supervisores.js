@@ -1,10 +1,11 @@
 /* =====================================================
-   V324 - BONO DE SUPERVISORES DENTRO DEL DASHBOARD
+   V325 - BONO DE SUPERVISORES: ACCESO INDEPENDIENTE
    ===================================================== */
 let MV321_BONO_SUPERVISORES = {
     cargando:false,
     error:"",
     periodo:"",
+    periodos:[],
     bonos:[],
     parametrosSla:[],
     puedeEditar:false,
@@ -49,7 +50,7 @@ async function mv321Post(accion, extra){
 }
 
 function mv321PrepararCarga(periodo){
-    MV321_BONO_SUPERVISORES = {cargando:true,error:"",periodo:periodo || "",bonos:[],parametrosSla:[],puedeEditar:false,puedeEditarSla:false,puedeEditarConfiguracion:false,configuracion:{montoTotal:1000,pesos:{PRODUCTIVIDAD:25,CALIDAD:25,SLA:20,SATISFACCION:15,SEGURIDAD:15}}};
+    MV321_BONO_SUPERVISORES = {cargando:true,error:"",periodo:periodo || "",periodos:periodo?[periodo]:[],bonos:[],parametrosSla:[],puedeEditar:false,puedeEditarSla:false,puedeEditarConfiguracion:false,configuracion:{montoTotal:1000,pesos:{PRODUCTIVIDAD:25,CALIDAD:25,SLA:20,SATISFACCION:15,SEGURIDAD:15}}};
 }
 
 async function mv321CargarBonos(periodo){
@@ -60,6 +61,7 @@ async function mv321CargarBonos(periodo){
             cargando:false,
             error:"",
             periodo:data.periodo || periodo || "",
+            periodos:Array.isArray(data.periodosDisponibles) ? data.periodosDisponibles : [data.periodo || periodo].filter(Boolean),
             bonos:Array.isArray(data.bonos) ? data.bonos : [],
             parametrosSla:Array.isArray(data.parametrosSlaConfiguracion) ? data.parametrosSlaConfiguracion : (Array.isArray(data.parametrosSla) ? data.parametrosSla : []),
             puedeEditar:!!data.puedeEditar,
@@ -68,7 +70,7 @@ async function mv321CargarBonos(periodo){
             configuracion:data.configuracion || {montoTotal:1000,pesos:{PRODUCTIVIDAD:25,CALIDAD:25,SLA:20,SATISFACCION:15,SEGURIDAD:15}}
         };
     }catch(e){
-        MV321_BONO_SUPERVISORES = {cargando:false,error:e.message || "No se pudo calcular el bono.",periodo:periodo || "",bonos:[],parametrosSla:[],puedeEditar:false,puedeEditarSla:false,puedeEditarConfiguracion:false,configuracion:{montoTotal:1000,pesos:{PRODUCTIVIDAD:25,CALIDAD:25,SLA:20,SATISFACCION:15,SEGURIDAD:15}}};
+        MV321_BONO_SUPERVISORES = {cargando:false,error:e.message || "No se pudo calcular el bono.",periodo:periodo || "",periodos:periodo?[periodo]:[],bonos:[],parametrosSla:[],puedeEditar:false,puedeEditarSla:false,puedeEditarConfiguracion:false,configuracion:{montoTotal:1000,pesos:{PRODUCTIVIDAD:25,CALIDAD:25,SLA:20,SATISFACCION:15,SEGURIDAD:15}}};
     }
 }
 
@@ -95,7 +97,9 @@ function mv321DetalleComponente(c, bono){
         html += mv321Linea("Efectividad · peso 40%",mv321Pct(m.efectividadPct),`Meta ≥ 70% · ${Number(m.finalizadas||0)} finalizadas`);
         html += mv321Linea("Activador del componente","> 80%",c.cumplimiento>80?"Bono activo y prorrateado":"No suma al bono");
     }else if(c.clave === "CALIDAD"){
-        html += mv321Linea("Observaciones · peso 30%",mv321Money(m.montoObservaciones),`Meta ≤ S/ 200 · ${Number(m.observaciones||0)} registros`);
+        html += mv321Linea("Observaciones WIN · peso 30%",mv321Pct(m.puntajeObservaciones),`${Number(m.observacionesWin||0)} registros WIN`);
+        html += mv321Linea("Cantidad WIN · 10% del indicador",String(Number(m.observacionesWin||0)),Number(m.observacionesWin||0)===0?"Cumplimiento total":"Registros WIN detectados");
+        html += mv321Linea("Penalizadas WIN · 90% del indicador",mv321Money(m.montoPenalizadoWin),`Meta ≤ S/ 300 · ${Number(m.observacionesWinPenalizadas||0)} penalizadas`);
         html += mv321Linea("Recableado · peso 40%",mv321Pct(m.recableadoPct),`Meta ≤ 42% · ${Number(m.recableados||0)} de ${Number(m.rojoAsignadas||0)} órdenes VT`);
         html += mv321Linea("VTR/GAR · peso 30%",mv321Pct(m.vtrGarPct),`Meta ≤ 3% · ${Number(m.incidenciasVtrGar||0)} incidencias`);
         html += mv321Linea("Activador del componente","> 80%",c.cumplimiento>80?"Bono activo y prorrateado":"No suma al bono");
@@ -171,7 +175,70 @@ function mv321RenderEstadoBase(){
 function mv321RenderSupervisor(){
     const base = mv321RenderEstadoBase();
     if(base) return base;
-    return `<div class="mv321-panel"><div class="mv321-panel-title"><div><b>🎁 BONO DEL SUPERVISOR</b><span>Metas del Dashboard: 130 pts/cuadrilla · Efectividad 70% · Recableado 42% · VTR/GAR 3% · Observaciones S/200</span></div></div>${mv321TarjetaBono(MV321_BONO_SUPERVISORES.bonos[0],false)}</div>`;
+    return `<div class="mv321-panel"><div class="mv321-panel-title"><div><b>🎁 BONO DEL SUPERVISOR</b><span>Metas: 130 pts/cuadrilla · Efectividad 70% · Recableado 42% · VTR/GAR 3% · Penalizadas WIN S/300</span></div></div>${mv321TarjetaBono(MV321_BONO_SUPERVISORES.bonos[0],false)}</div>`;
+}
+
+function mv325PerfilActual(){
+    return (localStorage.getItem("perfil") || "").toUpperCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"").trim();
+}
+
+function mv325EsSupervisor(){ return mv325PerfilActual() === "SUPERVISOR"; }
+
+function mv325PeriodoActual(){
+    const fecha = new Date();
+    return `${fecha.getFullYear()}-${String(fecha.getMonth()+1).padStart(2,"0")}`;
+}
+
+function mv325EtiquetaPeriodo(periodo){
+    const m = String(periodo||"").match(/^(\d{4})-(\d{2})$/);
+    if(!m) return periodo || "Período";
+    const meses = ["ENERO","FEBRERO","MARZO","ABRIL","MAYO","JUNIO","JULIO","AGOSTO","SEPTIEMBRE","OCTUBRE","NOVIEMBRE","DICIEMBRE"];
+    return `${meses[Number(m[2])-1]} ${m[1]}`;
+}
+
+function mv325OpcionesPeriodo(){
+    const seleccion = MV321_BONO_SUPERVISORES.periodo || mv325PeriodoActual();
+    const periodos = Array.from(new Set([seleccion].concat(MV321_BONO_SUPERVISORES.periodos||[]))).sort().reverse();
+    return periodos.map(p=>`<option value="${mv321Esc(p)}" ${p===seleccion?"selected":""}>${mv321Esc(mv325EtiquetaPeriodo(p))}</option>`).join("");
+}
+
+function mv325BotonesConfiguracion(){
+    const botones = [];
+    if(MV321_BONO_SUPERVISORES.puedeEditarConfiguracion) botones.push(`<button class="mv321-config" onclick="mv324AbrirConfiguracionBono()">💰 Monto total del bono</button>`);
+    if(MV321_BONO_SUPERVISORES.puedeEditarSla) botones.push(`<button class="mv321-config" onclick="mv321AbrirParametrosSla()">⚙️ Parámetros SLA WIN</button>`);
+    return botones.join("");
+}
+
+function mv325RenderPaginaBonos(){
+    const contenido = mv325EsSupervisor() ? mv321RenderSupervisor() : mv321RenderJefatura();
+    mostrarPantalla(`<div id="mv325BonosPage" class="mv4-page">
+        <div class="mv4-top-card"><div class="mv4-top-role">🎁 BONOS SUPERVISORES</div><div class="mv4-top-sede">${mv321Esc(mv325EtiquetaPeriodo(MV321_BONO_SUPERVISORES.periodo))}</div><div class="mv4-top-sub">Cálculo mensual por supervisor y sus cuadrillas</div></div>
+        <div class="mv199-filtros-jefatura" style="margin-bottom:14px;">
+            <label>Período<select onchange="mv325CambiarPeriodo(this.value)">${mv325OpcionesPeriodo()}</select></label>
+            <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:end;">${mv325BotonesConfiguracion()}</div>
+        </div>
+        ${contenido}
+        <button class="button_1" onclick="volverInicio()">⬅️ Volver al menú</button>
+    </div>`);
+}
+
+async function mostrarBonosSupervisores(periodoSeleccionado){
+    const periodo = periodoSeleccionado || MV321_BONO_SUPERVISORES.periodo || mv325PeriodoActual();
+    mv321PrepararCarga(periodo);
+    mv325RenderPaginaBonos();
+    await mv321CargarBonos(periodo);
+    mv325RenderPaginaBonos();
+}
+
+async function mv325CambiarPeriodo(periodo){
+    await mostrarBonosSupervisores(periodo);
+}
+
+function mv325RefrescarVistaActual(){
+    mv321CerrarModal();
+    if(document.getElementById("mv325BonosPage")) mv325RenderPaginaBonos();
+    else if(mv325EsSupervisor() && typeof mv198RenderSupervisor === "function") mv198RenderSupervisor();
+    else if(typeof mv199RenderJefatura === "function") mv199RenderJefatura();
 }
 
 function mv321RenderJefatura(){
@@ -242,7 +309,7 @@ async function mv321GuardarEvaluacion(usuario){
         mensaje.className="mv321-form-msg ok";
         mensaje.textContent="Evaluación guardada correctamente.";
         await mv321CargarBonos(bono.periodo);
-        setTimeout(()=>{mv321CerrarModal();mv199RenderJefatura();},500);
+        setTimeout(mv325RefrescarVistaActual,500);
     }catch(e){ mensaje.className="mv321-form-msg error";mensaje.textContent=e.message; }
 }
 
@@ -276,7 +343,7 @@ async function mv324GuardarSatisfaccion(usuario){
         mensaje.className="mv321-form-msg ok";
         mensaje.textContent="Satisfacción guardada correctamente.";
         await mv321CargarBonos(bono.periodo);
-        setTimeout(()=>{mv321CerrarModal();mv199RenderJefatura();},500);
+        setTimeout(mv325RefrescarVistaActual,500);
     }catch(e){ mensaje.className="mv321-form-msg error";mensaje.textContent=e.message; }
 }
 
@@ -304,7 +371,7 @@ async function mv324GuardarConfiguracionBono(){
         mensaje.className="mv321-form-msg ok";
         mensaje.textContent="Monto total actualizado correctamente.";
         await mv321CargarBonos(MV321_BONO_SUPERVISORES.periodo);
-        setTimeout(()=>{mv321CerrarModal();mv199RenderJefatura();},500);
+        setTimeout(mv325RefrescarVistaActual,500);
     }catch(e){ mensaje.className="mv321-form-msg error";mensaje.textContent=e.message; }
 }
 
@@ -330,6 +397,6 @@ async function mv321GuardarParametrosSla(){
         mensaje.className="mv321-form-msg ok";
         mensaje.textContent="Parámetros SLA actualizados.";
         await mv321CargarBonos(MV321_BONO_SUPERVISORES.periodo);
-        setTimeout(()=>{mv321CerrarModal();mv199RenderJefatura();},500);
+        setTimeout(mv325RefrescarVistaActual,500);
     }catch(e){ mensaje.className="mv321-form-msg error";mensaje.textContent=e.message; }
 }
