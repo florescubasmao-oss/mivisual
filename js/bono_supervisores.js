@@ -1,5 +1,5 @@
 /* =====================================================
-   V326 - BONO DE SUPERVISORES: APERTURA BAJO DEMANDA
+   V327 - BONO DE SUPERVISORES: CONTROLES ÚNICOS POR PERÍODO
    ===================================================== */
 let MV321_BONO_SUPERVISORES = {
     cargando:false,
@@ -204,7 +204,8 @@ function mv325OpcionesPeriodo(){
 
 function mv325BotonesConfiguracion(){
     const botones = [];
-    if(MV321_BONO_SUPERVISORES.puedeEditarConfiguracion) botones.push(`<button class="mv321-config" onclick="mv324AbrirConfiguracionBono()">💰 Monto total del bono</button>`);
+    const montoPeriodo = Number((MV321_BONO_SUPERVISORES.configuracion||{}).montoTotal||1000);
+    if(MV321_BONO_SUPERVISORES.puedeEditarConfiguracion) botones.push(`<button class="mv321-config" onclick="mv324AbrirConfiguracionBono()">💰 Monto total: ${mv321Money(montoPeriodo)}</button>`);
     if(MV321_BONO_SUPERVISORES.puedeEditarSla) botones.push(`<button class="mv321-config" onclick="mv321AbrirParametrosSla()">⚙️ Parámetros SLA WIN</button>`);
     return botones.join("");
 }
@@ -254,11 +255,8 @@ function mv321RenderJefatura(){
     const bonos = MV321_BONO_SUPERVISORES.bonos || [];
     const total = bonos.reduce((s,x)=>s+(Number(x.montoProvisional)||0),0);
     const maxEvaluado = bonos.reduce((s,x)=>s+(Number(x.bonoMaximo)||0),0);
-    const botones = [];
-    if(MV321_BONO_SUPERVISORES.puedeEditarConfiguracion) botones.push(`<button class="mv321-config" onclick="mv324AbrirConfiguracionBono()">💰 Monto total</button>`);
-    if(MV321_BONO_SUPERVISORES.puedeEditarSla) botones.push(`<button class="mv321-config" onclick="mv321AbrirParametrosSla()">⚙️ Parámetros SLA WIN</button>`);
     return `<div class="mv321-panel">
-        <div class="mv321-panel-title"><div><b>🎁 BONO DE SUPERVISORES</b><span>Comparativo por sede y supervisor · Bono individual ${mv321Money((MV321_BONO_SUPERVISORES.configuracion||{}).montoTotal||1000)}</span></div><div style="display:flex;gap:8px;flex-wrap:wrap;">${botones.join("")}</div></div>
+        <div class="mv321-panel-title"><div><b>🎁 BONO DE SUPERVISORES</b><span>Comparativo por sede y supervisor · Bono individual ${mv321Money((MV321_BONO_SUPERVISORES.configuracion||{}).montoTotal||1000)}</span></div></div>
         <div class="mv321-resumen-jefatura"><div><span>Total provisional</span><b>${mv321Money(total)}</b></div><div><span>Supervisores</span><b>${bonos.length}</b></div><div><span>Avance del bono</span><b>${maxEvaluado?((total/maxEvaluado)*100).toFixed(1):"0.0"}%</b></div></div>
         ${bonos.map(x=>mv321TarjetaBono(x,true)).join("")}
     </div>`;

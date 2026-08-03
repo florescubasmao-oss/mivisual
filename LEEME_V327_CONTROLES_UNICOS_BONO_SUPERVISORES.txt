@@ -1,0 +1,33 @@
+MI VISUAL V327 - CONTROLES ÚNICOS DEL BONO DE SUPERVISORES
+
+CAMBIO REALIZADO
+
+1. "Monto total" y "Parámetros SLA WIN" aparecen una sola vez,
+   junto al selector de período.
+2. Se eliminaron los botones duplicados del encabezado inferior
+   "BONO DE SUPERVISORES".
+3. El botón de monto muestra el valor correspondiente al período
+   seleccionado, por ejemplo: "Monto total: S/ 500.00".
+4. Al cambiar de julio a agosto, o viceversa, se cargan el monto y
+   los parámetros SLA propios de ese mes.
+5. Guardar un monto o parámetros actualiza únicamente el período
+   que se encuentra seleccionado.
+
+ARCHIVO QUE CAMBIA
+
+- js/bono_supervisores.js
+
+INSTALACIÓN
+
+1. En GitHub, reemplazar únicamente js/bono_supervisores.js.
+2. Realizar commit y push.
+3. Actualizar MI VISUAL con Ctrl + F5.
+
+NO CAMBIA
+
+- Code.gs.
+- index.html.
+- dashboards.js.
+- Hojas de Google Sheets.
+- Activadores de Apps Script.
+- Fórmulas, metas ni cálculos de bonos de V326.
