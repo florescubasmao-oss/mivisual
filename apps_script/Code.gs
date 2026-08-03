@@ -12283,11 +12283,14 @@ const PESOS_BONO_SUPERVISORES_ = {
   SEGURIDAD:15
 };
 
+// Valores predeterminados. La configuración mensual puede reemplazarlos
+// desde la pantalla de Bonos Supervisores sin modificar el código.
 const ACTIVADORES_BONO_SUPERVISORES_ = {
   PRODUCTIVIDAD:80,
   CALIDAD:80,
   SLA:75,
-  SATISFACCION:80
+  SATISFACCION:80,
+  SEGURIDAD:0
 };
 
 const PREGUNTAS_LIDERAZGO_BONO_ = [
@@ -12398,6 +12401,15 @@ function montoProrrateadoBonoSupervisores_(cumplimiento, maximo, activador) {
   const c = Math.min(100, Math.max(0, Number(cumplimiento) || 0));
   if (activador !== null && activador !== undefined && c <= Number(activador)) return 0;
   return redondearBonoSupervisores_((Number(maximo) || 0) * c / 100, 2);
+}
+
+function activadorBonoSupervisores_(ctx, clave) {
+  const configurados = ctx && ctx.configuracion && ctx.configuracion.activadores
+    ? ctx.configuracion.activadores
+    : {};
+  const valor = Number(configurados[clave]);
+  if (isFinite(valor) && valor >= 0 && valor <= 100) return valor;
+  return Number(ACTIVADORES_BONO_SUPERVISORES_[clave]) || 0;
 }
 
 function indiceCabeceraBonoSupervisores_(cabecera, nombres) {
@@ -12971,9 +12983,14 @@ function asegurarHojaConfiguracionBonoSupervisores_() {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
   let hoja = ss.getSheetByName(HOJA_CONFIGURACION_BONO_SUPERVISORES);
   if (!hoja) hoja = ss.insertSheet(HOJA_CONFIGURACION_BONO_SUPERVISORES);
-  const cabecera = [["PERIODO","MONTO_TOTAL","PRODUCTIVIDAD_PCT","CALIDAD_PCT","SLA_PCT","SATISFACCION_PCT","SEGURIDAD_PCT","ACTUALIZADO_POR","FECHA_ACTUALIZACION"]];
-  if (hoja.getMaxColumns() < 9) hoja.insertColumnsAfter(hoja.getMaxColumns(),9-hoja.getMaxColumns());
-  hoja.getRange(1,1,1,9).setValues(cabecera);
+  const cabecera = [[
+    "PERIODO","MONTO_TOTAL","PRODUCTIVIDAD_PCT","CALIDAD_PCT","SLA_PCT",
+    "SATISFACCION_PCT","SEGURIDAD_PCT","ACTUALIZADO_POR","FECHA_ACTUALIZACION",
+    "ACTIVADOR_PRODUCTIVIDAD","ACTIVADOR_CALIDAD","ACTIVADOR_SLA",
+    "ACTIVADOR_SATISFACCION","ACTIVADOR_SEGURIDAD"
+  ]];
+  if (hoja.getMaxColumns() < 14) hoja.insertColumnsAfter(hoja.getMaxColumns(),14-hoja.getMaxColumns());
+  hoja.getRange(1,1,1,14).setValues(cabecera);
   hoja.setFrozenRows(1);
   return hoja;
 }
@@ -12983,10 +13000,15 @@ function configuracionBonoSupervisores_(periodo) {
   const datos = hoja.getDataRange().getValues();
   let montoTotal = 1000;
   let encontrado = false;
+  const activadores = Object.assign({},ACTIVADORES_BONO_SUPERVISORES_);
   for (let i = 1; i < datos.length; i++) {
     if (periodoDeValorBonoSupervisores_(datos[i][0]) !== periodo) continue;
     const monto = Number(datos[i][1]);
     if (isFinite(monto) && monto > 0) { montoTotal = monto; encontrado = true; }
+    Object.keys(activadores).forEach(function(clave, indice) {
+      const valor = Number(datos[i][9 + indice]);
+      if (isFinite(valor) && valor >= 0 && valor <= 100) activadores[clave] = valor;
+    });
   }
   const componentes = {};
   Object.keys(PESOS_BONO_SUPERVISORES_).forEach(function(clave) {
@@ -12996,6 +13018,7 @@ function configuracionBonoSupervisores_(periodo) {
     periodo:periodo,
     montoTotal:redondearBonoSupervisores_(montoTotal,2),
     pesos:Object.assign({},PESOS_BONO_SUPERVISORES_),
+    activadores:activadores,
     componentes:componentes,
     configurado:encontrado
   };
@@ -13003,10 +13026,22 @@ function configuracionBonoSupervisores_(periodo) {
 
 function guardarConfiguracionBonoSupervisores(data) {
   const usuario = obtenerUsuarioApp(data.usuario);
-  if (!esPerfilJefatura(usuario.perfil)) throw new Error("Solo Jefatura puede modificar el monto total del bono");
+  if (!esPerfilJefatura(usuario.perfil)) throw new Error("Solo Jefatura puede modificar la configuración del bono");
   const periodo = periodoBonoSupervisores_(data.periodo);
   const montoTotal = Number(data.montoTotal);
   if (!isFinite(montoTotal) || montoTotal <= 0 || montoTotal > 100000) throw new Error("Ingrese un monto total válido");
+  const configuracionActual = configuracionBonoSupervisores_(periodo);
+  const entradaActivadores = data.activadores && typeof data.activadores === "object"
+    ? data.activadores
+    : configuracionActual.activadores;
+  const activadores = {};
+  Object.keys(ACTIVADORES_BONO_SUPERVISORES_).forEach(function(clave) {
+    const valor = Number(entradaActivadores[clave]);
+    if (!isFinite(valor) || valor < 0 || valor > 100) {
+      throw new Error("El activador de " + clave + " debe estar entre 0% y 100%");
+    }
+    activadores[clave] = redondearBonoSupervisores_(valor,2);
+  });
   const hoja = asegurarHojaConfiguracionBonoSupervisores_();
   const lock = LockService.getScriptLock();
   lock.waitLock(30000);
@@ -13018,11 +13053,13 @@ function guardarConfiguracionBonoSupervisores(data) {
     }
     if (!filaDestino) filaDestino = hoja.getLastRow()+1;
     hoja.getRange(filaDestino,1).setNumberFormat("@");
-    hoja.getRange(filaDestino,1,1,9).setValues([[
+    hoja.getRange(filaDestino,1,1,14).setValues([[
       periodo,redondearBonoSupervisores_(montoTotal,2),
       PESOS_BONO_SUPERVISORES_.PRODUCTIVIDAD,PESOS_BONO_SUPERVISORES_.CALIDAD,
       PESOS_BONO_SUPERVISORES_.SLA,PESOS_BONO_SUPERVISORES_.SATISFACCION,
-      PESOS_BONO_SUPERVISORES_.SEGURIDAD,usuario.usuario,new Date()
+      PESOS_BONO_SUPERVISORES_.SEGURIDAD,usuario.usuario,new Date(),
+      activadores.PRODUCTIVIDAD,activadores.CALIDAD,activadores.SLA,
+      activadores.SATISFACCION,activadores.SEGURIDAD
     ]]);
   } finally {
     lock.releaseLock();
@@ -13171,13 +13208,14 @@ function calcularProductividadSupervisor_(ctx, asignacion, estados) {
     (puntajeProductividad * 0.60) + (puntajeEfectividad * 0.40), 2
   ) : 0;
   const maximo = ctx.configuracion.componentes.PRODUCTIVIDAD;
-  const monto = evaluable ? montoProrrateadoBonoSupervisores_(cumplimiento,maximo,ACTIVADORES_BONO_SUPERVISORES_.PRODUCTIVIDAD) : 0;
+  const activador = activadorBonoSupervisores_(ctx,"PRODUCTIVIDAD");
+  const monto = evaluable ? montoProrrateadoBonoSupervisores_(cumplimiento,maximo,activador) : 0;
   return {
     clave:"PRODUCTIVIDAD",nombre:"Productividad operativa",maximo:maximo,evaluable:evaluable,
-    cumplimiento:cumplimiento,monto:monto,activador:ACTIVADORES_BONO_SUPERVISORES_.PRODUCTIVIDAD,
-    estado:evaluable?(cumplimiento>ACTIVADORES_BONO_SUPERVISORES_.PRODUCTIVIDAD?"BONO ACTIVO":"NO ACTIVA BONO"):"SIN DATOS",
+    cumplimiento:cumplimiento,monto:monto,activador:activador,
+    estado:evaluable?(cumplimiento>activador?"BONO ACTIVO":"NO ACTIVA BONO"):"SIN DATOS",
     metricas:{efectividadPct:efectividadPct,productividadPct:productividadPct,puntajeProductividad:puntajeProductividad,puntajeEfectividad:puntajeEfectividad,puntos:redondearBonoSupervisores_(puntos,1),metaPuntos:metaPuntos,totalOrdenes:estados.total,finalizadas:finalizadas},
-    nota:"Puntaje aporta 60% y Efectividad 40%. El componente paga de forma prorrateada únicamente cuando supera 80%."
+    nota:"Puntaje aporta 60% y Efectividad 40%. El componente paga de forma prorrateada únicamente cuando supera " + activador + "%."
   };
 }
 
@@ -13232,11 +13270,12 @@ function calcularCalidadSupervisor_(ctx, asignacion, estados) {
     (puntajeObservaciones * 0.30) + (puntajeRecableado * 0.40) + (puntajeVtrGar * 0.30),2
   ) : 0;
   const maximo = ctx.configuracion.componentes.CALIDAD;
-  const monto = evaluable ? montoProrrateadoBonoSupervisores_(cumplimiento,maximo,ACTIVADORES_BONO_SUPERVISORES_.CALIDAD) : 0;
+  const activador = activadorBonoSupervisores_(ctx,"CALIDAD");
+  const monto = evaluable ? montoProrrateadoBonoSupervisores_(cumplimiento,maximo,activador) : 0;
   return {
     clave:"CALIDAD",nombre:"Calidad de instalaciones y averías",maximo:maximo,evaluable:evaluable,
-    cumplimiento:cumplimiento,monto:monto,activador:ACTIVADORES_BONO_SUPERVISORES_.CALIDAD,
-    estado:evaluable?(cumplimiento>ACTIVADORES_BONO_SUPERVISORES_.CALIDAD?"BONO ACTIVO":"NO ACTIVA BONO"):"SIN DATOS",
+    cumplimiento:cumplimiento,monto:monto,activador:activador,
+    estado:evaluable?(cumplimiento>activador?"BONO ACTIVO":"NO ACTIVA BONO"):"SIN DATOS",
     metricas:{
       observaciones:observacionesWin,observacionesWin:observacionesWin,
       observacionesWinPenalizadas:observacionesWinPenalizadas,
@@ -13248,7 +13287,7 @@ function calcularCalidadSupervisor_(ctx, asignacion, estados) {
       recableadoPct:recableadoPct,puntajeRecableado:puntajeRecableado,rojoAsignadas:rojoAsignadas,recableados:recableados,
       vtrGarPct:vtrGarPct,puntajeVtrGar:puntajeVtrGar,incidenciasVtrGar:incidenciasVtrGar,finalizadasVtrGar:finalizadasVtrGar
     },
-    nota:"Observaciones aporta 30% de Calidad: cantidad WIN 10% y monto penalizado WIN 90% (meta máxima S/ 300). Recableado aporta 40% y VTR/GAR 30%."
+    nota:"Observaciones aporta 30% de Calidad: cantidad WIN 10% y monto penalizado WIN 90% (meta máxima S/ 300). Recableado aporta 40% y VTR/GAR 30%. El componente activa al superar " + activador + "%."
   };
 }
 
@@ -13300,14 +13339,15 @@ function calcularSlaSupervisor_(ctx, asignacion) {
   });
   const cumplimiento = porcentajeBonoSupervisores_(cumplen,evaluables) || 0;
   const maximo = ctx.configuracion.componentes.SLA;
-  const monto = evaluables > 0 ? montoProrrateadoBonoSupervisores_(cumplimiento,maximo,ACTIVADORES_BONO_SUPERVISORES_.SLA) : 0;
+  const activador = activadorBonoSupervisores_(ctx,"SLA");
+  const monto = evaluables > 0 ? montoProrrateadoBonoSupervisores_(cumplimiento,maximo,activador) : 0;
   return {
     clave:"SLA",nombre:"Cumplimiento de SLA WIN",maximo:maximo,evaluable:evaluables>0,
-    cumplimiento:cumplimiento,monto:monto,activador:ACTIVADORES_BONO_SUPERVISORES_.SLA,
-    estado:evaluables>0?(cumplimiento>ACTIVADORES_BONO_SUPERVISORES_.SLA?"BONO ACTIVO":"NO ACTIVA BONO"):"SIN DATOS",
+    cumplimiento:cumplimiento,monto:monto,activador:activador,
+    estado:evaluables>0?(cumplimiento>activador?"BONO ACTIVO":"NO ACTIVA BONO"):"SIN DATOS",
     metricas:{evaluables:evaluables,cumplen:cumplen,vencidas:vencidas,sinPartida:sinPartida,sinParametro:sinParametro,instalacionesPct:porcentajeBonoSupervisores_(grupos.INSTALACION.cumplen,grupos.INSTALACION.total),instalacionesTotal:grupos.INSTALACION.total,averiasPct:porcentajeBonoSupervisores_(grupos.AVERIA.cumplen,grupos.AVERIA.total),averiasTotal:grupos.AVERIA.total},
     detalleIncumplimientos:detalle,
-    nota:"Solo considera órdenes con hora de inicio, hora de fin y partida parametrizada. La meta es superar 80% y el bono se activa por encima de 75%."
+    nota:"Solo considera órdenes con hora de inicio, hora de fin y partida parametrizada. La meta es superar 80% y el bono se activa al superar " + activador + "%."
   };
 }
 
@@ -13316,14 +13356,15 @@ function calcularSatisfaccionSupervisor_(ctx, asignacion) {
   const respondieron = (Number(registro.conformes) || 0) + (Number(registro.noConformes) || 0);
   const cumplimiento = respondieron > 0 ? (porcentajeBonoSupervisores_(registro.conformes,respondieron) || 0) : 0;
   const maximo = ctx.configuracion.componentes.SATISFACCION;
-  const monto = respondieron > 0 ? montoProrrateadoBonoSupervisores_(cumplimiento,maximo,ACTIVADORES_BONO_SUPERVISORES_.SATISFACCION) : 0;
+  const activador = activadorBonoSupervisores_(ctx,"SATISFACCION");
+  const monto = respondieron > 0 ? montoProrrateadoBonoSupervisores_(cumplimiento,maximo,activador) : 0;
   return {
     clave:"SATISFACCION",nombre:"Satisfacción del cliente",maximo:maximo,evaluable:respondieron>0,
-    cumplimiento:respondieron>0?cumplimiento:null,monto:monto,activador:ACTIVADORES_BONO_SUPERVISORES_.SATISFACCION,
-    estado:respondieron>0?(cumplimiento>ACTIVADORES_BONO_SUPERVISORES_.SATISFACCION?"BONO ACTIVO":"NO ACTIVA BONO"):(registro.clientesLlamados>0?"SIN RESPUESTAS":"PENDIENTE REGISTRO"),
+    cumplimiento:respondieron>0?cumplimiento:null,monto:monto,activador:activador,
+    estado:respondieron>0?(cumplimiento>activador?"BONO ACTIVO":"NO ACTIVA BONO"):(registro.clientesLlamados>0?"SIN RESPUESTAS":"PENDIENTE REGISTRO"),
     metricas:{clientesLlamados:registro.clientesLlamados,respondieron:respondieron,conformes:registro.conformes,noConformes:registro.noConformes,noRespondieron:Math.max(0,(Number(registro.clientesLlamados)||0)-respondieron)},
     registro:registro,
-    nota:"Jefatura registra llamadas, conformes y no conformes. Las llamadas sin respuesta se muestran, pero no afectan el porcentaje."
+    nota:"Jefatura registra llamadas, conformes y no conformes. Las llamadas sin respuesta se muestran, pero no afectan el porcentaje. El componente activa al superar " + activador + "%."
   };
 }
 
@@ -13368,12 +13409,15 @@ function calcularSeguridadSupervisor_(ctx, asignacion) {
   const puntajeChecklist = checklistCumplimientoPct === null ? 0 : Math.min(100,checklistCumplimientoPct);
   const cumplimiento = redondearBonoSupervisores_((puntajeActas + puntajeChecklist + actividadPct + evaluacionPct) / 4,2);
   const maximo = ctx.configuracion.componentes.SEGURIDAD;
-  const monto = montoProrrateadoBonoSupervisores_(cumplimiento,maximo,null);
+  const activador = activadorBonoSupervisores_(ctx,"SEGURIDAD");
+  const evaluable = actasRegistradas>0 || slotsCumplidos>0 || actividadesCampo>0 || evaluacion.completa;
+  const monto = evaluable ? montoProrrateadoBonoSupervisores_(cumplimiento,maximo,activador) : 0;
   const maximoIndicador = maximo / 4;
   return {
     clave:"SEGURIDAD",nombre:"Seguridad, disciplina y liderazgo",maximo:maximo,
-    evaluable:actasRegistradas>0 || slotsCumplidos>0 || actividadesCampo>0 || evaluacion.completa,
-    cumplimiento:cumplimiento,monto:monto,estado:evaluacion.completa?"PROVISIONAL":"PENDIENTE EVALUACIÓN",
+    evaluable:evaluable,activador:activador,
+    cumplimiento:cumplimiento,monto:monto,
+    estado:!evaluable?"SIN DATOS":(!evaluacion.completa?"PENDIENTE EVALUACIÓN":(cumplimiento>activador?"BONO ACTIVO":"NO ACTIVA BONO")),
     metricas:{
       actasPct:actasPct,actasRegistradas:actasRegistradas,actasSinPendientes:actasSinPendientes,
       checklistCumplimientoPct:checklistCumplimientoPct,slotsCumplidos:slotsCumplidos,slotsMeta:slotsMeta,
@@ -13387,7 +13431,7 @@ function calcularSeguridadSupervisor_(ctx, asignacion) {
     },
     evaluacion:evaluacion,
     preguntas:PREGUNTAS_LIDERAZGO_BONO_,
-    nota:"Actas sin pendientes, checklist por quincena, 15 actividades en campo y evaluación de Jefatura aportan 25% cada uno."
+    nota:"Actas sin pendientes, checklist por quincena, 15 actividades en campo y evaluación de Jefatura aportan 25% cada uno. El componente activa al superar " + activador + "%."
   };
 }
 

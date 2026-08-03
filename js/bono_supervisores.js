@@ -1,5 +1,5 @@
 /* =====================================================
-   V329 - BONO DE SUPERVISORES: SELECCIÓN PREVIA DE PERÍODO
+   V330 - BONO DE SUPERVISORES: ACTIVADORES CONFIGURABLES
    ===================================================== */
 let MV321_BONO_SUPERVISORES = {
     cargando:false,
@@ -11,7 +11,7 @@ let MV321_BONO_SUPERVISORES = {
     puedeEditar:false,
     puedeEditarSla:false,
     puedeEditarConfiguracion:false,
-    configuracion:{montoTotal:1000,pesos:{PRODUCTIVIDAD:25,CALIDAD:25,SLA:20,SATISFACCION:15,SEGURIDAD:15}}
+    configuracion:{montoTotal:1000,pesos:{PRODUCTIVIDAD:25,CALIDAD:25,SLA:20,SATISFACCION:15,SEGURIDAD:15},activadores:{PRODUCTIVIDAD:80,CALIDAD:80,SLA:75,SATISFACCION:80,SEGURIDAD:0}}
 };
 
 function mv321Esc(valor){
@@ -50,7 +50,7 @@ async function mv321Post(accion, extra){
 }
 
 function mv321PrepararCarga(periodo){
-    MV321_BONO_SUPERVISORES = {cargando:true,error:"",periodo:periodo || "",periodos:periodo?[periodo]:[],bonos:[],parametrosSla:[],puedeEditar:false,puedeEditarSla:false,puedeEditarConfiguracion:false,configuracion:{montoTotal:1000,pesos:{PRODUCTIVIDAD:25,CALIDAD:25,SLA:20,SATISFACCION:15,SEGURIDAD:15}}};
+    MV321_BONO_SUPERVISORES = {cargando:true,error:"",periodo:periodo || "",periodos:periodo?[periodo]:[],bonos:[],parametrosSla:[],puedeEditar:false,puedeEditarSla:false,puedeEditarConfiguracion:false,configuracion:{montoTotal:1000,pesos:{PRODUCTIVIDAD:25,CALIDAD:25,SLA:20,SATISFACCION:15,SEGURIDAD:15},activadores:{PRODUCTIVIDAD:80,CALIDAD:80,SLA:75,SATISFACCION:80,SEGURIDAD:0}}};
 }
 
 async function mv321CargarBonos(periodo){
@@ -67,10 +67,10 @@ async function mv321CargarBonos(periodo){
             puedeEditar:!!data.puedeEditar,
             puedeEditarSla:!!data.puedeEditarSla,
             puedeEditarConfiguracion:!!data.puedeEditarConfiguracion,
-            configuracion:data.configuracion || {montoTotal:1000,pesos:{PRODUCTIVIDAD:25,CALIDAD:25,SLA:20,SATISFACCION:15,SEGURIDAD:15}}
+            configuracion:data.configuracion || {montoTotal:1000,pesos:{PRODUCTIVIDAD:25,CALIDAD:25,SLA:20,SATISFACCION:15,SEGURIDAD:15},activadores:{PRODUCTIVIDAD:80,CALIDAD:80,SLA:75,SATISFACCION:80,SEGURIDAD:0}}
         };
     }catch(e){
-        MV321_BONO_SUPERVISORES = {cargando:false,error:e.message || "No se pudo calcular el bono.",periodo:periodo || "",periodos:periodo?[periodo]:[],bonos:[],parametrosSla:[],puedeEditar:false,puedeEditarSla:false,puedeEditarConfiguracion:false,configuracion:{montoTotal:1000,pesos:{PRODUCTIVIDAD:25,CALIDAD:25,SLA:20,SATISFACCION:15,SEGURIDAD:15}}};
+        MV321_BONO_SUPERVISORES = {cargando:false,error:e.message || "No se pudo calcular el bono.",periodo:periodo || "",periodos:periodo?[periodo]:[],bonos:[],parametrosSla:[],puedeEditar:false,puedeEditarSla:false,puedeEditarConfiguracion:false,configuracion:{montoTotal:1000,pesos:{PRODUCTIVIDAD:25,CALIDAD:25,SLA:20,SATISFACCION:15,SEGURIDAD:15},activadores:{PRODUCTIVIDAD:80,CALIDAD:80,SLA:75,SATISFACCION:80,SEGURIDAD:0}}};
     }
 }
 
@@ -91,23 +91,25 @@ function mv321Linea(etiqueta, valor, referencia){
 
 function mv321DetalleComponente(c, bono){
     const m = c.metricas || {};
+    const activador = Number.isFinite(Number(c.activador)) ? Number(c.activador) : 0;
+    const referenciaActivador = c.evaluable && Number(c.cumplimiento||0)>activador ? "Bono activo y prorrateado" : "No suma al bono";
     let html = "";
     if(c.clave === "PRODUCTIVIDAD"){
         html += mv321Linea("Puntaje de cuadrillas · peso 60%",mv321Pct(m.productividadPct),`Meta: 130 puntos por cuadrilla · ${Number(m.puntos||0).toFixed(1)} / ${Number(m.metaPuntos||0)} pts`);
         html += mv321Linea("Efectividad · peso 40%",mv321Pct(m.efectividadPct),`Meta ≥ 70% · ${Number(m.finalizadas||0)} finalizadas`);
-        html += mv321Linea("Activador del componente","> 80%",c.cumplimiento>80?"Bono activo y prorrateado":"No suma al bono");
+        html += mv321Linea("Activador del componente",`> ${activador}%`,referenciaActivador);
     }else if(c.clave === "CALIDAD"){
         html += mv321Linea("Observaciones WIN · peso 30%",mv321Pct(m.puntajeObservaciones),`${Number(m.observacionesWin||0)} registros WIN`);
         html += mv321Linea("Cantidad WIN · 10% del indicador",String(Number(m.observacionesWin||0)),Number(m.observacionesWin||0)===0?"Cumplimiento total":"Registros WIN detectados");
         html += mv321Linea("Penalizadas WIN · 90% del indicador",mv321Money(m.montoPenalizadoWin),`Meta ≤ S/ 300 · ${Number(m.observacionesWinPenalizadas||0)} penalizadas`);
         html += mv321Linea("Recableado · peso 40%",mv321Pct(m.recableadoPct),`Meta ≤ 42% · ${Number(m.recableados||0)} de ${Number(m.rojoAsignadas||0)} órdenes VT`);
         html += mv321Linea("VTR/GAR · peso 30%",mv321Pct(m.vtrGarPct),`Meta ≤ 3% · ${Number(m.incidenciasVtrGar||0)} incidencias`);
-        html += mv321Linea("Activador del componente","> 80%",c.cumplimiento>80?"Bono activo y prorrateado":"No suma al bono");
+        html += mv321Linea("Activador del componente",`> ${activador}%`,referenciaActivador);
     }else if(c.clave === "SLA"){
         html += mv321Linea("Órdenes evaluables",String(Number(m.evaluables||0)),`${Number(m.cumplen||0)} cumplen · ${Number(m.vencidas||0)} fuera de SLA`);
         html += mv321Linea("Instalaciones dentro del SLA",mv321Pct(m.instalacionesPct),`${Number(m.instalacionesTotal||0)} órdenes · meta > 80%`);
         html += mv321Linea("Averías y demás partidas",mv321Pct(m.averiasPct),`${Number(m.averiasTotal||0)} órdenes · meta > 80%`);
-        html += mv321Linea("Activador del componente","> 75%",c.cumplimiento>75?"Bono activo y prorrateado":"No suma al bono");
+        html += mv321Linea("Activador del componente",`> ${activador}%`,referenciaActivador);
         html += mv321Linea("Sin partida o parámetro",String(Number(m.sinPartida||0)+Number(m.sinParametro||0)),"Solo órdenes con hora de inicio y fin");
         if((c.detalleIncumplimientos||[]).length){
             const id = `mv321_sla_${mv321Id(bono.usuario)}_${Math.random().toString(36).slice(2)}`;
@@ -118,13 +120,14 @@ function mv321DetalleComponente(c, bono){
         html += mv321Linea("Respondieron",String(Number(m.respondieron||0)),`${Number(m.noRespondieron||0)} sin respuesta`);
         html += mv321Linea("Clientes conformes",String(Number(m.conformes||0)),mv321Pct(c.cumplimiento));
         html += mv321Linea("Clientes no conformes",String(Number(m.noConformes||0)),"Las llamadas sin respuesta no afectan el porcentaje");
-        html += mv321Linea("Activador del componente","> 80%",c.cumplimiento>80?"Bono activo y prorrateado":"No suma al bono");
+        html += mv321Linea("Activador del componente",`> ${activador}%`,referenciaActivador);
         if(bono.puedeEditar) html += `<button class="mv321-accion" onclick="mv324AbrirSatisfaccion('${mv321Esc(bono.usuario)}')">📞 Registrar satisfacción</button>`;
     }else if(c.clave === "SEGURIDAD"){
         html += mv321Linea("Actas sin pendientes · peso 25%",mv321Pct(m.actasPct),`${Number(m.actasSinPendientes||0)} de ${Number(m.actasRegistradas||0)} · ${mv321Money(m.montoActas||0)} / ${mv321Money(m.maximoIndicador||0)}`);
         html += mv321Linea("Checklist por quincena · peso 25%",mv321Pct(m.checklistCumplimientoPct),`${Number(m.slotsCumplidos||0)} de ${Number(m.slotsMeta||0)} quincenas · ${mv321Money(m.montoChecklistCumplimiento||0)} / ${mv321Money(m.maximoIndicador||0)}`);
         html += mv321Linea("Actividad en campo · peso 25%",mv321Pct(m.actividadPct),`${Number(m.actividadesCampo||0)} de ${Number(m.metaActividadesCampo||15)} registros · ${mv321Money(m.montoActividad||0)} / ${mv321Money(m.maximoIndicador||0)}`);
         html += mv321Linea("Evaluación de Jefatura · peso 25%",`${Number(m.puntajeEvaluacion||0)} / 60 pts`,`${mv321Money(m.montoEvaluacion||0)} / ${mv321Money(m.maximoIndicador||0)}`);
+        html += mv321Linea("Activador del componente",`> ${activador}%`,referenciaActivador);
         if(bono.puedeEditar) html += `<button class="mv321-accion" onclick="mv321AbrirEvaluacion('${mv321Esc(bono.usuario)}')">📝 Evaluar liderazgo</button>`;
     }
     if(c.nota) html += `<div class="mv321-nota">${mv321Esc(c.nota)}</div>`;
@@ -217,7 +220,7 @@ function mv325OpcionesPeriodo(){
 function mv325BotonesConfiguracion(){
     const botones = [];
     const montoPeriodo = Number((MV321_BONO_SUPERVISORES.configuracion||{}).montoTotal||1000);
-    if(MV321_BONO_SUPERVISORES.puedeEditarConfiguracion) botones.push(`<button class="mv321-config" onclick="mv324AbrirConfiguracionBono()">💰 Monto total: ${mv321Money(montoPeriodo)}</button>`);
+    if(MV321_BONO_SUPERVISORES.puedeEditarConfiguracion) botones.push(`<button class="mv321-config" onclick="mv324AbrirConfiguracionBono()">⚙️ Monto y activadores: ${mv321Money(montoPeriodo)}</button>`);
     if(MV321_BONO_SUPERVISORES.puedeEditarSla) botones.push(`<button class="mv321-config" onclick="mv321AbrirParametrosSla()">⚙️ Parámetros SLA WIN</button>`);
     return botones.join("");
 }
@@ -254,7 +257,7 @@ function mv329PrepararSeleccionInicial(){
         puedeEditar:false,
         puedeEditarSla:false,
         puedeEditarConfiguracion:false,
-        configuracion:{montoTotal:1000,pesos:{PRODUCTIVIDAD:25,CALIDAD:25,SLA:20,SATISFACCION:15,SEGURIDAD:15}}
+        configuracion:{montoTotal:1000,pesos:{PRODUCTIVIDAD:25,CALIDAD:25,SLA:20,SATISFACCION:15,SEGURIDAD:15},activadores:{PRODUCTIVIDAD:80,CALIDAD:80,SLA:75,SATISFACCION:80,SEGURIDAD:0}}
     };
 }
 
@@ -352,7 +355,8 @@ function mv324AbrirSatisfaccion(usuario){
     if(!bono) return;
     const componente = (bono.componentes||[]).find(x=>x.clave==="SATISFACCION") || {};
     const registro = componente.registro || {};
-    const contenido = `<div class="mv321-eval-intro"><b>${mv321Esc(bono.nombre)}</b><span>${mv321Esc(bono.sede)} · ${mv321Esc(bono.periodo)} · activador mayor a 80%</span></div>
+    const activador = Number.isFinite(Number(componente.activador)) ? Number(componente.activador) : 80;
+    const contenido = `<div class="mv321-eval-intro"><b>${mv321Esc(bono.nombre)}</b><span>${mv321Esc(bono.sede)} · ${mv321Esc(bono.periodo)} · activador mayor a ${activador}%</span></div>
         <div class="mv321-pregunta"><label>Clientes llamados<input id="mv324SatLlamados" type="number" min="1" step="1" value="${Number(registro.clientesLlamados||0) || ""}"></label>
         <label>Clientes conformes<input id="mv324SatConformes" type="number" min="0" step="1" value="${Number(registro.conformes||0)}"></label>
         <label>Clientes no conformes<input id="mv324SatNoConformes" type="number" min="0" step="1" value="${Number(registro.noConformes||0)}"></label>
@@ -384,26 +388,60 @@ async function mv324GuardarSatisfaccion(usuario){
 function mv324AbrirConfiguracionBono(){
     const cfg = MV321_BONO_SUPERVISORES.configuracion || {};
     const pesos = cfg.pesos || {PRODUCTIVIDAD:25,CALIDAD:25,SLA:20,SATISFACCION:15,SEGURIDAD:15};
+    const activadores = Object.assign({PRODUCTIVIDAD:80,CALIDAD:80,SLA:75,SATISFACCION:80,SEGURIDAD:0},cfg.activadores||{});
     const monto = Number(cfg.montoTotal||1000);
     const fila = (nombre,peso)=>mv321Linea(`${nombre} · ${peso}%`,mv321Money(monto*peso/100),"Se recalcula automáticamente");
-    const contenido = `<div class="mv321-param-intro">El monto rige para ${mv321Esc(MV321_BONO_SUPERVISORES.periodo)}. Los porcentajes permanecen fijos y suman 100%.</div>
+    const campoActivador = (id,nombre,valor)=>`<label>${nombre}<input id="${id}" type="number" min="0" max="100" step="0.01" value="${Number(valor)}" required><small>El resultado debe superar este porcentaje.</small></label>`;
+    const contenido = `<div class="mv321-param-intro">La configuración rige solo para ${mv321Esc(MV321_BONO_SUPERVISORES.periodo)}. Los pesos permanecen fijos y suman 100%.</div>
         <div class="mv321-pregunta"><label>Monto total del bono por supervisor<input id="mv324MontoBono" type="number" min="1" max="100000" step="0.01" value="${monto}"></label></div>
         <div id="mv324DistribucionBono">${fila("Productividad",pesos.PRODUCTIVIDAD)}${fila("Calidad",pesos.CALIDAD)}${fila("SLA WIN",pesos.SLA)}${fila("Satisfacción",pesos.SATISFACCION)}${fila("Seguridad y liderazgo",pesos.SEGURIDAD)}</div>
+        <div class="mv321-param-intro" style="margin-top:14px;"><b>Porcentaje de activación por componente</b><br>Si el componente no supera el valor indicado, aporta S/ 0.</div>
+        <div id="mv330ActivadoresBono" class="mv321-pregunta">
+            ${campoActivador("mv330ActProductividad","Productividad operativa (%)",activadores.PRODUCTIVIDAD)}
+            ${campoActivador("mv330ActCalidad","Calidad (%)",activadores.CALIDAD)}
+            ${campoActivador("mv330ActSla","SLA WIN (%)",activadores.SLA)}
+            ${campoActivador("mv330ActSatisfaccion","Satisfacción del cliente (%)",activadores.SATISFACCION)}
+            ${campoActivador("mv330ActSeguridad","Seguridad y liderazgo (%)",activadores.SEGURIDAD)}
+        </div>
         <div id="mv324ConfigMensaje" class="mv321-form-msg"></div>
-        <button class="mv321-guardar" onclick="mv324GuardarConfiguracionBono()">💾 Guardar monto total</button>`;
+        <button class="mv321-guardar" onclick="mv324GuardarConfiguracionBono()">💾 Guardar configuración</button>`;
     mv321MostrarModal("Configuración del bono",contenido);
 }
 
 async function mv324GuardarConfiguracionBono(){
     const mensaje = document.getElementById("mv324ConfigMensaje");
-    const montoTotal = Number(document.getElementById("mv324MontoBono").value);
+    const montoCampo = document.getElementById("mv324MontoBono");
+    const camposActivadores = {
+        PRODUCTIVIDAD:document.getElementById("mv330ActProductividad"),
+        CALIDAD:document.getElementById("mv330ActCalidad"),
+        SLA:document.getElementById("mv330ActSla"),
+        SATISFACCION:document.getElementById("mv330ActSatisfaccion"),
+        SEGURIDAD:document.getElementById("mv330ActSeguridad")
+    };
+    const montoTotal = Number(montoCampo.value);
+    const activadores = {
+        PRODUCTIVIDAD:Number(camposActivadores.PRODUCTIVIDAD.value),
+        CALIDAD:Number(camposActivadores.CALIDAD.value),
+        SLA:Number(camposActivadores.SLA.value),
+        SATISFACCION:Number(camposActivadores.SATISFACCION.value),
+        SEGURIDAD:Number(camposActivadores.SEGURIDAD.value)
+    };
     if(!mensaje) return;
+    const activadoresInvalidos = Object.keys(camposActivadores).some(clave=>{
+        const texto = camposActivadores[clave].value.trim();
+        return texto === "" || !Number.isFinite(activadores[clave]) || activadores[clave] < 0 || activadores[clave] > 100;
+    });
+    if(!montoCampo.value.trim() || !Number.isFinite(montoTotal) || montoTotal <= 0 || activadoresInvalidos){
+        mensaje.className="mv321-form-msg error";
+        mensaje.textContent="Complete el monto y todos los activadores con valores válidos entre 0% y 100%.";
+        return;
+    }
     mensaje.className="mv321-form-msg";
-    mensaje.textContent="Guardando monto...";
+    mensaje.textContent="Guardando configuración...";
     try{
-        await mv321Post("guardarConfiguracionBonoSupervisores",{periodo:MV321_BONO_SUPERVISORES.periodo,montoTotal});
+        await mv321Post("guardarConfiguracionBonoSupervisores",{periodo:MV321_BONO_SUPERVISORES.periodo,montoTotal,activadores});
         mensaje.className="mv321-form-msg ok";
-        mensaje.textContent="Monto total actualizado correctamente.";
+        mensaje.textContent="Monto y activadores actualizados correctamente.";
         await mv321CargarBonos(MV321_BONO_SUPERVISORES.periodo);
         setTimeout(mv325RefrescarVistaActual,500);
     }catch(e){ mensaje.className="mv321-form-msg error";mensaje.textContent=e.message; }

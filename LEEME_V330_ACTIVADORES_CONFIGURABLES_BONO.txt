@@ -1,0 +1,42 @@
+MI VISUAL V330 - ACTIVADORES CONFIGURABLES DEL BONO DE SUPERVISORES
+
+CAMBIO REALIZADO
+
+- El control administrativo ahora se llama "Monto y activadores".
+- Jefatura puede definir, por cada período, el porcentaje que debe superar cada componente para aportar al bono:
+  1. Productividad operativa.
+  2. Calidad.
+  3. SLA WIN.
+  4. Satisfacción del cliente.
+  5. Seguridad, disciplina y liderazgo.
+- Si un componente no supera su activador, aporta S/ 0.
+- Si lo supera, su monto continúa prorrateándose con el porcentaje obtenido.
+- La configuración de un mes no cambia otros períodos.
+
+VALORES PREDETERMINADOS
+
+- Productividad: superar 80%.
+- Calidad: superar 80%.
+- SLA WIN: superar 75%.
+- Satisfacción: superar 80%.
+- Seguridad y liderazgo: superar 0%, para conservar el comportamiento anterior hasta que Jefatura defina otro límite.
+
+COMPATIBILIDAD
+
+- La hoja CONFIGURACION_BONO_SUPERVISORES se amplía automáticamente.
+- No se eliminan ni alteran configuraciones mensuales anteriores.
+- No se crean activadores ni hojas manualmente.
+- Mantiene la selección previa del período de la V329.
+
+INSTALACIÓN
+
+1. Reemplazar Code.gs en Apps Script y desplegar una nueva versión.
+2. Reemplazar js/bono_supervisores.js en GitHub.
+3. Hacer commit y push.
+4. Recargar la aplicación con Ctrl + F5.
+
+ARCHIVOS MODIFICADOS
+
+- Code.gs
+- apps_script/Code.gs (copia sincronizada)
+- js/bono_supervisores.js
