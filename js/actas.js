@@ -1,6 +1,29 @@
-// MI VISUAL - Gestión de Actas V265: recepción masiva, cargo A4, guía visual y filtros por perfil
+// MI VISUAL - Gestión de Actas V340: carga única, GET seguro, caché breve y error unificado
 
-const API_ACTAS = "https://script.google.com/macros/s/AKfycbwugGpuEMcJYFsDNS1hkcdZXJ92PUvXNv5ttpktyhZWv2fWB7ceCZNkfIFYxAs5wsgN/exec";
+const API_ACTAS = (window.MI_VISUAL_API_URL || "https://script.google.com/macros/s/AKfycbwugGpuEMcJYFsDNS1hkcdZXJ92PUvXNv5ttpktyhZWv2fWB7ceCZNkfIFYxAs5wsgN/exec");
+const ACTAS_CACHE_MS = 90 * 1000;
+const ACTAS_CACHE_MEMORIA = new Map();
+const ACTAS_PETICIONES_EN_CURSO = new Map();
+const ACTAS_LECTURAS_GET = new Set([
+    "cargarGestionActas",
+    "listarActasEscaneadas",
+    "resumenActasEscaneadas",
+    "listarCuadrillasActasFaltantes",
+    "consultarDatosAutomaticosActa",
+    "listarTiposPartidaActas",
+    "listarCargosActas"
+]);
+
+function claveCacheActas(payload){
+    const limpio = Object.assign({}, payload || {});
+    delete limpio.__forzar;
+    return JSON.stringify(Object.keys(limpio).sort().reduce((r,k)=>{r[k]=limpio[k];return r;},{}));
+}
+
+function limpiarCacheActas(){
+    ACTAS_CACHE_MEMORIA.clear();
+}
+
 
 function usuarioActualActas(){
     return {
@@ -127,27 +150,86 @@ function estadoGeneralActas(a){
 }
 
 async function apiActas(payload){
+    const solicitud = Object.assign({}, payload || {});
+    const forzar = !!solicitud.__forzar;
+    delete solicitud.__forzar;
+    const esLectura = ACTAS_LECTURAS_GET.has(solicitud.accion);
+    const clave = esLectura ? claveCacheActas(solicitud) : "";
+    const ahora = Date.now();
+    const cacheado = esLectura ? ACTAS_CACHE_MEMORIA.get(clave) : null;
+
+    if(esLectura && !forzar && cacheado && ahora - cacheado.fecha < ACTAS_CACHE_MS){
+        return cacheado.data;
+    }
+    if(esLectura && !forzar && ACTAS_PETICIONES_EN_CURSO.has(clave)){
+        return ACTAS_PETICIONES_EN_CURSO.get(clave);
+    }
+
+    const ejecutarLectura = async function(){
+        try{
+            let data;
+            if(typeof mv336ApiGet === "function"){
+                data = await mv336ApiGet(API_ACTAS, solicitud, {intentos:2, tiempoMs:30000});
+            }else{
+                const parametros = new URLSearchParams();
+                Object.entries(solicitud).forEach(([k,v])=>{
+                    if(v !== undefined && v !== null && v !== "") parametros.set(k, typeof v === "object" ? JSON.stringify(v) : String(v));
+                });
+                const url = API_ACTAS + (API_ACTAS.includes("?") ? "&" : "?") + parametros.toString();
+                const controlador = typeof AbortController === "function" ? new AbortController() : null;
+                const temporizador = controlador ? setTimeout(()=>controlador.abort(),30000) : null;
+                try{
+                    const res = await fetch(url,{method:"GET",cache:"no-store",redirect:"follow",headers:{"Accept":"application/json"},signal:controlador?controlador.signal:undefined});
+                    const texto = (await res.text()).trim();
+                    if(!res.ok) throw new Error(`No se pudo conectar con Gestión de Actas (${res.status}).`);
+                    if(/^MI VISUAL API OK$/i.test(texto)) throw new Error("La versión publicada de Apps Script aún no reconoce la lectura de Actas.");
+                    if(/<!doctype|<html|google drive|accounts\.google/i.test(texto)) throw new Error("Google devolvió una página externa en lugar de los datos.");
+                    try{ data=JSON.parse(texto); }catch(_){ throw new Error("Gestión de Actas devolvió una respuesta inválida."); }
+                }finally{
+                    if(temporizador) clearTimeout(temporizador);
+                }
+            }
+            if(!data || data.ok === false) throw new Error((data && data.error) || "No se pudo completar la consulta de Actas.");
+            ACTAS_CACHE_MEMORIA.set(clave,{fecha:Date.now(),data});
+            return data;
+        }catch(error){
+            // Ante una falla breve, conserva la última vista disponible en memoria.
+            if(cacheado && cacheado.data) return Object.assign({},cacheado.data,{__cacheVencida:true});
+            if(error && error.name === "AbortError") throw new Error("La consulta de Actas tardó demasiado. Pulse Actualizar vista.");
+            throw error;
+        }finally{
+            ACTAS_PETICIONES_EN_CURSO.delete(clave);
+        }
+    };
+
+    if(esLectura){
+        const promesa = ejecutarLectura();
+        ACTAS_PETICIONES_EN_CURSO.set(clave,promesa);
+        return promesa;
+    }
+
     const controlador = typeof AbortController === "function" ? new AbortController() : null;
     const temporizador = controlador ? setTimeout(() => controlador.abort(), 60000) : null;
     try{
         const res = await fetch(API_ACTAS, {
             method: "POST",
-            body: JSON.stringify(payload),
+            headers:{"Content-Type":"text/plain;charset=UTF-8","Accept":"application/json"},
+            body: JSON.stringify(solicitud),
+            cache:"no-store",
+            redirect:"follow",
             signal: controlador ? controlador.signal : undefined
         });
-        const texto = await res.text();
+        const texto = (await res.text()).trim();
         if(!res.ok) throw new Error("La API de Gestión de Actas no está disponible temporalmente.");
+        if(/^MI VISUAL API OK$/i.test(texto)) throw new Error("No se recibió la confirmación de la operación. Revise la lista antes de repetirla.");
+        if(/<!doctype|<html|google drive|accounts\.google/i.test(texto)) throw new Error("Google devolvió una página externa. Revise la lista antes de repetir la operación.");
         let data;
-        try{ data = JSON.parse(texto); }catch(e){
-            if(/<!doctype|<html|google drive|accounts\.google/i.test(texto)){
-                throw new Error("La conexión recibió una página externa en lugar de los datos. Intente actualizar nuevamente.");
-            }
-            throw new Error("La API devolvió una respuesta inválida. Intente actualizar nuevamente.");
-        }
+        try{ data = JSON.parse(texto); }catch(_){ throw new Error("La API devolvió una respuesta inválida. Revise la lista antes de repetir la operación."); }
         if(!data.ok) throw new Error(data.error || "Error en Gestión de Actas");
+        limpiarCacheActas();
         return data;
     }catch(error){
-        if(error && error.name === "AbortError") throw new Error("La operación tardó demasiado. Verifique la conexión e inténtelo nuevamente.");
+        if(error && error.name === "AbortError") throw new Error("La operación tardó demasiado. Revise la lista antes de repetirla.");
         throw error;
     }finally{
         if(temporizador) clearTimeout(temporizador);
@@ -316,7 +398,7 @@ function mostrarGestionActas(){
                 ${(esAlmacenActas(u.perfil) || esJefaturaAlmacenActas(u.perfil)) ? `<button class="actas-btn orange" onclick="mostrarFormularioActaFaltante()">⚠ Registrar acta faltante</button>` : ""}
                 ${(esAlmacenActas(u.perfil) || esJefaturaAlmacenActas(u.perfil)) ? `<button class="actas-btn ok" onclick="mostrarRecepcionMasivaActas()">📦 Recibir varias actas</button>` : ""}
                 ${(esAlmacenActas(u.perfil) || esJefaturaAlmacenActas(u.perfil)) ? `<button class="actas-btn blue" onclick="actualizarDatosAutomaticosActasFrontend(this)">🧩 Actualizar datos automáticos</button>` : ""}
-                <button class="actas-btn sec" onclick="cargarActas()">🔄 Actualizar vista</button>
+                <button class="actas-btn sec" onclick="cargarActas({forzar:true})">🔄 Actualizar vista</button>
             </div>
             <div id="actasResumen"></div>
             <div id="actasFiltros"></div>
@@ -468,22 +550,29 @@ async function cargarActas(opciones){
     const u = usuarioActualActas();
     opciones = opciones || {};
     const lista = document.getElementById("actasLista");
-    if(lista) lista.innerHTML = "Cargando actas...";
+    const resumen = document.getElementById("actasResumen");
+    if(lista) lista.innerHTML = `<div class="actas-card actas-empty">⏳ Cargando actas...</div>`;
+    if(resumen && !resumen.innerHTML.trim()) resumen.innerHTML = `<div class="actas-card actas-empty">Preparando resumen...</div>`;
     try{
-        await cargarResumenActas();
-        const data = await apiActas({accion:"listarActasEscaneadas", usuario:u.usuario});
+        // V340: listado y resumen llegan juntos; se evita leer dos veces la misma hoja.
+        const data = await apiActas({accion:"cargarGestionActas", usuario:u.usuario, __forzar:!!opciones.forzar});
         const actas = data.actas || [];
         window._actasTodas = actas;
+        pintarResumenActas(data.resumen || data);
         construirFiltrosActas(actas);
+        if(data.__cacheVencida && resumen){
+            resumen.insertAdjacentHTML("afterbegin",`<div class="actas-msg" style="background:#fffbeb;color:#92400e;border:1px solid #f59e0b;margin-bottom:8px;">Mostrando la última información disponible mientras se restablece la conexión.</div>`);
+        }
         if(actas.length === 0){
-            lista.innerHTML = `<div class="actas-card actas-empty">No hay actas registradas.</div>`;
+            if(lista) lista.innerHTML = `<div class="actas-card actas-empty">No hay actas registradas.</div>`;
             const resultado = document.getElementById("actasFiltroResultado");
             if(resultado) resultado.textContent = "0 actas visibles.";
             return;
         }
         aplicarFiltrosActas(opciones);
     }catch(err){
-        lista.innerHTML = `<div class="actas-msg err">❌ ${limpiarHtmlActas(err.message)}</div>`;
+        if(resumen) resumen.innerHTML = "";
+        if(lista) lista.innerHTML = `<div class="actas-msg err">❌ ${limpiarHtmlActas(err.message)}<br><button class="actas-btn sec" style="margin-top:10px" onclick="cargarActas({forzar:true})">Reintentar</button></div>`;
     }
 }
 function obtenerEstadoVistaActas(){
@@ -779,27 +868,33 @@ function vistaResponsableAlmacenPorProcesos(actas, sedeUsuario){
     return bloqueSedeActas(sede, propias, true);
 }
 
-async function cargarResumenActas(){
+function pintarResumenActas(data){
     const u = usuarioActualActas();
     const cont = document.getElementById("actasResumen");
     if(!cont) return;
-    try{
-        const data = await apiActas({accion:"resumenActasEscaneadas", usuario:u.usuario});
-        const g = data.general || {};
-        cont.innerHTML = `<div class="actas-kpis">
-            <div class="actas-kpi"><b>${g.escaneadas || 0}</b><span>Escaneadas</span></div>
-            <div class="actas-kpi"><b>${g.finalizadas || 0}</b><span>Finalizadas</span></div>
-            <div class="actas-kpi"><b>${g.observadas || 0}</b><span>Observadas</span></div>
-            <div class="actas-kpi"><b>${g.pendientes || 0}</b><span>Pendientes escaneo</span></div>
-            <div class="actas-kpi"><b>${g.entregadasFisicas || 0}</b><span>Entregadas físicas</span></div>
-            <div class="actas-kpi"><b>${g.pendientesEntregaFisica || 0}</b><span>Pendientes de entrega</span></div>
-            <div class="actas-kpi"><b>${g.pendientesFecha || 0}</b><span>Buscando fecha</span></div>
-            <div class="actas-kpi"><b>${g.requierenConfirmacionFecha || 0}</b><span>Confirmar fecha</span></div>
-        </div>
-        ${(esPerfilConsultaActasPorSedes(u.perfil) || esJefaturaAlmacenActas(u.perfil)) ? resumenTablasActas(data) : ""}`;
-    }catch(err){
-        cont.innerHTML = `<div class="actas-msg err">No se pudo cargar resumen: ${limpiarHtmlActas(err.message)}</div>`;
+    const g = (data && data.general) || {};
+    cont.innerHTML = `<div class="actas-kpis">
+        <div class="actas-kpi"><b>${g.escaneadas || 0}</b><span>Escaneadas</span></div>
+        <div class="actas-kpi"><b>${g.finalizadas || 0}</b><span>Finalizadas</span></div>
+        <div class="actas-kpi"><b>${g.observadas || 0}</b><span>Observadas</span></div>
+        <div class="actas-kpi"><b>${g.pendientes || 0}</b><span>Pendientes escaneo</span></div>
+        <div class="actas-kpi"><b>${g.entregadasFisicas || 0}</b><span>Entregadas físicas</span></div>
+        <div class="actas-kpi"><b>${g.pendientesEntregaFisica || 0}</b><span>Pendientes de entrega</span></div>
+        <div class="actas-kpi"><b>${g.pendientesFecha || 0}</b><span>Buscando fecha</span></div>
+        <div class="actas-kpi"><b>${g.requierenConfirmacionFecha || 0}</b><span>Confirmar fecha</span></div>
+    </div>
+    ${(esPerfilConsultaActasPorSedes(u.perfil) || esJefaturaAlmacenActas(u.perfil)) ? resumenTablasActas(data || {}) : ""}`;
+}
+
+async function cargarResumenActas(dataPrecargada){
+    const u = usuarioActualActas();
+    if(dataPrecargada){
+        pintarResumenActas(dataPrecargada);
+        return dataPrecargada;
     }
+    const data = await apiActas({accion:"resumenActasEscaneadas", usuario:u.usuario});
+    pintarResumenActas(data);
+    return data;
 }
 
 function resumenTablasActas(data){

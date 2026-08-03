@@ -1,0 +1,51 @@
+MI VISUAL V340 — GESTIÓN DE ACTAS RÁPIDA Y CONEXIÓN SEGURA
+Fecha: 03/08/2026
+
+PROBLEMA CORREGIDO
+- Gestión de Actas realizaba todas sus consultas mediante POST.
+- Al abrir el módulo solicitaba primero el resumen y luego el listado.
+- El resumen ya recorría toda la hoja, por lo que la información se procesaba dos veces.
+- Ante una falla se mostraban dos avisos rojos repetidos.
+
+MEJORAS APLICADAS
+1. Las consultas de solo lectura de Actas pasan por GET seguro con dos intentos.
+2. Resumen y listado se obtienen en una sola llamada y una sola lectura de la hoja.
+3. Caché breve de 90 segundos dentro de la sesión.
+4. Evita solicitudes duplicadas cuando una misma consulta ya está en curso.
+5. Botón Actualizar vista fuerza una lectura nueva.
+6. Después de registrar, validar o modificar un acta se limpia la caché automáticamente.
+7. Si existe información anterior y ocurre una falla breve, se mantiene la última vista disponible.
+8. Solo aparece un mensaje de error controlado con botón Reintentar.
+9. Se actualiza la versión del cargador y del Service Worker para evitar que el navegador conserve actas.js antiguo.
+
+ARCHIVOS MODIFICADOS
+- Code.gs
+- js/actas.js
+- js/modulos_loader.js
+- index.html
+- sw.js
+
+ORDEN OBLIGATORIO
+1. Reemplazar Code.gs en Apps Script.
+2. Guardar.
+3. Implementar > Administrar implementaciones > seleccionar la Aplicación web vigente > Editar.
+4. Elegir Nueva versión y pulsar Implementar. No crear una biblioteca.
+5. Confirmar que la URL /exec sea la misma vigente.
+6. Después copiar los archivos web sobre el proyecto Git actual.
+7. No borrar ni reemplazar la carpeta .git.
+8. Realizar commit y push.
+9. Abrir MI VISUAL con Ctrl + F5 una vez.
+
+PRUEBA RÁPIDA
+- Abrir Gestión de Actas como Jefatura.
+- Debe aparecer un solo estado de carga y luego el resumen/listado.
+- Volver al menú y abrir Actas nuevamente: debe responder casi inmediatamente.
+- Pulsar Actualizar vista para comprobar la lectura forzada.
+- Probar un perfil Técnico y Responsable/Jefatura de Almacén.
+
+NO SE MODIFICÓ
+- Hojas existentes.
+- Permisos o perfiles.
+- Validaciones de Actas.
+- Estructura de Drive.
+- Reglas de registro, observación, entrega física o aprobación.

@@ -1,5 +1,5 @@
 /* =====================================================
-   MI VISUAL V339 - Carga dinámica de módulos
+   MI VISUAL V340 - Carga dinámica de módulos
    - El inicio descarga solo el núcleo de la aplicación.
    - Cada opción carga su JavaScript al abrirse.
    - Evita descargas duplicadas y conserva funciones estables.
@@ -7,7 +7,7 @@
 (function(){
   "use strict";
 
-  const VERSION = "V339-LAZY-20260803";
+  const VERSION = "V340-ACTAS-20260803";
   const MODULOS = {
     dashboards_core: {
       archivos: [`./js/dashboards.js?v=${VERSION}`],

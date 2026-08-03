@@ -158,7 +158,16 @@ function doGet(e) {
     listarChecklistAlmacen: function(p){ return listarChecklistAlmacen(p); },
     listarObservaciones: function(p){ return listarObservaciones(p); },
     listarCuadrillasObservacion: function(p){ return listarCuadrillasObservacion(p); },
-    listarTrabajosDiariosCuadrilla: function(p){ return listarTrabajosDiariosCuadrilla(p); }
+    listarTrabajosDiariosCuadrilla: function(p){ return listarTrabajosDiariosCuadrilla(p); },
+    // V340: lecturas de Gestión de Actas por GET seguro.
+    // La carga inicial reúne resumen y listado en una sola lectura de la hoja.
+    cargarGestionActas: function(p){ return cargarGestionActas(p); },
+    listarActasEscaneadas: function(p){ return listarActasEscaneadas(p); },
+    resumenActasEscaneadas: function(p){ return resumenActasEscaneadas(p); },
+    listarCuadrillasActasFaltantes: function(p){ return listarCuadrillasActasFaltantes(p); },
+    consultarDatosAutomaticosActa: function(p){ return consultarDatosAutomaticosActa(p); },
+    listarTiposPartidaActas: function(p){ return obtenerTiposPartidaActas(p); },
+    listarCargosActas: function(p){ return listarCargosActas(p); }
   };
   if (parametros.accion && lecturasGet[parametros.accion]) {
     return respuestaLecturaGetMiVisual_(lecturasGet[parametros.accion], parametros);
@@ -3968,11 +3977,10 @@ function registrarActaFaltante(data) {
   return {ok:true,modulo:"ACTAS",accion:"REGISTRAR_FALTANTE",id:fila[0],codigoPedido,cuadrilla,sede};
 }
 
-function resumenActasEscaneadas(data) {
-  const listado=listarActasEscaneadas(data);
+function construirResumenActasDesdeListado_(listado) {
   const base=()=>({escaneadas:0,finalizadas:0,observadas:0,pendientes:0,correctasAlmacen:0,observadasAlmacen:0,correctasJefatura:0,observadasJefatura:0,entregadasFisicas:0,pendientesEntregaFisica:0,pendientesFecha:0,requierenConfirmacionFecha:0});
   const general=base(), sedes={}, cuadrillas={};
-  listado.actas.forEach(a=>{
+  (listado.actas || []).forEach(a=>{
     const sede=normalizarTexto(a.sede)||"SIN SEDE", cuad=normalizarCuadrilla(a.cuadrilla)||"SIN CUADRILLA", estado=normalizarTexto(a.estado), ra=normalizarTexto(a.resultadoAlmacen), rj=normalizarTexto(a.resultadoJefatura), ef=normalizarTexto(a.estadoEntregaFisica||"PENDIENTE"), observado=ra==="OBSERVADO"||rj==="OBSERVADO";
     const estadoFecha=normalizarTexto(a.estadoFechaCarpeta);
     function sumar(o){o.escaneadas++;if(estado==="FINALIZADO"||rj==="CORRECTO")o.finalizadas++;if(observado)o.observadas++;if(estado==="PENDIENTE")o.pendientes++;if(ra==="CORRECTO")o.correctasAlmacen++;if(ra==="OBSERVADO")o.observadasAlmacen++;if(rj==="CORRECTO")o.correctasJefatura++;if(rj==="OBSERVADO")o.observadasJefatura++;if(ef==="ENTREGADA")o.entregadasFisicas++;else o.pendientesEntregaFisica++;if(estadoFecha==="PENDIENTE_MAPA")o.pendientesFecha++;if(estadoFecha==="REQUIERE_CONFIRMACION")o.requierenConfirmacionFecha++;}
@@ -3981,7 +3989,34 @@ function resumenActasEscaneadas(data) {
     if(!cuadrillas[cuad]) cuadrillas[cuad]=Object.assign({sede,cuadrilla:cuad},base());
     sumar(sedes[sede]); sumar(cuadrillas[cuad]);
   });
-  return {ok:true,modulo:"ACTAS",accion:"RESUMEN",general,sedes:Object.keys(sedes).sort().map(k=>sedes[k]),cuadrillas:Object.keys(cuadrillas).sort().map(k=>cuadrillas[k])};
+  return {
+    general,
+    sedes:Object.keys(sedes).sort().map(k=>sedes[k]),
+    cuadrillas:Object.keys(cuadrillas).sort().map(k=>cuadrillas[k])
+  };
+}
+
+function resumenActasEscaneadas(data) {
+  const listado=listarActasEscaneadas(data);
+  const resumen=construirResumenActasDesdeListado_(listado);
+  return Object.assign({ok:true,modulo:"ACTAS",accion:"RESUMEN"},resumen);
+}
+
+// V340: una sola lectura para abrir Gestión de Actas.
+// Antes el navegador solicitaba primero el resumen (que ya recorría toda la hoja)
+// y después volvía a pedir el listado, duplicando trabajo y tiempo de espera.
+function cargarGestionActas(data) {
+  const listado=listarActasEscaneadas(data || {});
+  const resumen=construirResumenActasDesdeListado_(listado);
+  return {
+    ok:true,
+    modulo:"ACTAS",
+    accion:"CARGA_INICIAL",
+    perfil:listado.perfil,
+    registros:listado.registros,
+    actas:listado.actas,
+    resumen:Object.assign({ok:true,modulo:"ACTAS",accion:"RESUMEN"},resumen)
+  };
 }
 
 
@@ -14013,6 +14048,10 @@ function doPost(e) {
 
     if (data.accion === "registrarActaEscaneada") {
       return ContentService.createTextOutput(JSON.stringify(registrarActaEscaneada(data))).setMimeType(ContentService.MimeType.JSON);
+    }
+
+    if (data.accion === "cargarGestionActas") {
+      return ContentService.createTextOutput(JSON.stringify(cargarGestionActas(data))).setMimeType(ContentService.MimeType.JSON);
     }
 
     if (data.accion === "listarActasEscaneadas") {
