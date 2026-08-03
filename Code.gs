@@ -25,8 +25,34 @@ const HOJA_CHECKLIST_ALMACEN = "CHECKLIST_ALMACEN";
 const CARPETA_CHECKLIST_ALMACEN = "1nL5if5dRs3y1_OpKfzu7N9BNjiSvXVgp";
 const HOJA_CONFIG_MODULOS = "CONFIG_MODULOS";
 
+function parametrosGetMiVisual_(e) {
+  const parametros = Object.assign({}, e && e.parameter ? e.parameter : {});
+  ["periodos", "ids"].forEach(function(clave) {
+    const valor = parametros[clave];
+    if (typeof valor !== "string" || !valor) return;
+    try {
+      const convertido = JSON.parse(valor);
+      if (Array.isArray(convertido)) parametros[clave] = convertido;
+    } catch (error) {
+      parametros[clave] = valor.split(",").map(function(x){ return x.trim(); }).filter(Boolean);
+    }
+  });
+  return parametros;
+}
+
+function respuestaLecturaGetMiVisual_(funcion, parametros) {
+  try {
+    return respuestaJson(funcion(parametros));
+  } catch (error) {
+    return respuestaJson({
+      ok: false,
+      error: error && error.message ? error.message : String(error)
+    });
+  }
+}
+
 function doGet(e) {
-  const parametros = e && e.parameter ? e.parameter : {};
+  const parametros = parametrosGetMiVisual_(e);
 
   // V299: ruta de solo lectura para materiales. Evita que una redirección
   // del Web App convierta la consulta POST en el saludo general de la API.
@@ -104,6 +130,26 @@ function doGet(e) {
         error: error && error.message ? error.message : String(error)
       });
     }
+  }
+
+  // V336: operaciones de solo lectura por GET. Esto evita que las
+  // redirecciones del Web App conviertan un POST en el saludo de prueba.
+  const lecturasGet = {
+    obtenerContextoMenu: obtenerContextoMenu,
+    obtenerPermisosUsuario: obtenerPermisosUsuario,
+    listarPermisosAdministracion: listarPermisosAdministracion,
+    listarProgramacionDescansos: listarProgramacionDescansos,
+    obtenerNotificacionesDescansos: obtenerNotificacionesDescansos,
+    resumenCoberturaDescansos: resumenCoberturaDescansos,
+    obtenerCatalogoHerramientasChecklist: obtenerCatalogoHerramientasChecklist,
+    obtenerConfiguracionChecklistAlmacen: obtenerConfiguracionChecklistAlmacen,
+    listarChecklistAlmacen: listarChecklistAlmacen,
+    listarObservaciones: listarObservaciones,
+    listarCuadrillasObservacion: listarCuadrillasObservacion,
+    listarTrabajosDiariosCuadrilla: listarTrabajosDiariosCuadrilla
+  };
+  if (parametros.accion && lecturasGet[parametros.accion]) {
+    return respuestaLecturaGetMiVisual_(lecturasGet[parametros.accion], parametros);
   }
 
   return ContentService

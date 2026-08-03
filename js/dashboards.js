@@ -107,8 +107,9 @@ const sede = localStorage.getItem("sede");
 
 const url = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRpVkCmSvopgPByWsEX6nkuAT6mf3yD2_Cywpl9pFSZEqYpxmprDePPeV0KNgT14YpEP6gkVlvOAtZy/pub?gid=463676034&single=true&output=csv";
 
-const respuesta = await fetch(url);
-const texto = await respuesta.text();
+const texto = typeof mv336FetchTextoCache === "function"
+    ? await mv336FetchTextoCache(url, 180000)
+    : await (await fetch(url)).text();
 
 const filas = texto.split("\n");
 const encabezado = filas[0];
@@ -312,11 +313,10 @@ let totalTraslados = 0;
 
 let totalPuntos = 0;
 
-    const respuestaProduccion = await fetch(urlProduccion);
-    const textoProduccion = await respuestaProduccion.text();
-
-    const respuestaCatalogo = await fetch(urlCatalogo);
-    const textoCatalogo = await respuestaCatalogo.text();
+    const [textoProduccion, textoCatalogo] = await Promise.all([
+        typeof mv336FetchTextoCache === "function" ? mv336FetchTextoCache(urlProduccion, 180000) : fetch(urlProduccion).then(r=>r.text()),
+        typeof mv336FetchTextoCache === "function" ? mv336FetchTextoCache(urlCatalogo, 300000) : fetch(urlCatalogo).then(r=>r.text())
+    ]);
 
     const filasProduccion = textoProduccion.trim().split("\n");
     const filasCatalogo = textoCatalogo.trim().split("\n");
@@ -696,9 +696,9 @@ console.log("Usuario:", localStorage.getItem("usuario"));
 
 const url="https://docs.google.com/spreadsheets/d/e/2PACX-1vRpVkCmSvopgPByWsEX6nkuAT6mf3yD2_Cywpl9pFSZEqYpxmprDePPeV0KNgT14YpEP6gkVlvOAtZy/pub?gid=463676034&single=true&output=csv";
 
-const respuesta=await fetch(url);
-
-const texto=await respuesta.text();
+const texto=typeof mv336FetchTextoCache==="function"
+    ?await mv336FetchTextoCache(url,180000)
+    :await (await fetch(url)).text();
 
 const filas=texto.split("\n");
 const primeraFila = filas[1];
@@ -729,9 +729,9 @@ if (primeraFila) {
 const urlEfectividad =
 "https://docs.google.com/spreadsheets/d/e/2PACX-1vRpVkCmSvopgPByWsEX6nkuAT6mf3yD2_Cywpl9pFSZEqYpxmprDePPeV0KNgT14YpEP6gkVlvOAtZy/pub?gid=1731471693&single=true&output=csv";
 
-const respuestaEfectividad = await fetch(urlEfectividad);
-
-const textoEfectividad = await respuestaEfectividad.text();
+const textoEfectividad = typeof mv336FetchTextoCache==="function"
+    ? await mv336FetchTextoCache(urlEfectividad,180000)
+    : await (await fetch(urlEfectividad)).text();
 
 const filasEfectividad = textoEfectividad.split("\n");
 
@@ -739,9 +739,9 @@ const efectividadCuadrillas = {};
 
 const urlUsuarios = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRpVkCmSvopgPByWsEX6nkuAT6mf3yD2_Cywpl9pFSZEqYpxmprDePPeV0KNgT14YpEP6gkVlvOAtZy/pub?gid=0&single=true&output=csv";
 
-const respuestaUsuarios = await fetch(urlUsuarios);
-
-const textoUsuarios = await respuestaUsuarios.text();
+const textoUsuarios = typeof mv336FetchTextoCache==="function"
+    ? await mv336FetchTextoCache(urlUsuarios,300000)
+    : await (await fetch(urlUsuarios)).text();
 
 const filasUsuarios = textoUsuarios.split("\n");
 
@@ -803,9 +803,9 @@ for(let i=1; i<filasEfectividad.length; i++){
 const urlRecableado =
 "https://docs.google.com/spreadsheets/d/e/2PACX-1vRpVkCmSvopgPByWsEX6nkuAT6mf3yD2_Cywpl9pFSZEqYpxmprDePPeV0KNgT14YpEP6gkVlvOAtZy/pub?gid=317412212&single=true&output=csv";
 
-const respuestaRec = await fetch(urlRecableado);
-
-const textoRec = await respuestaRec.text();
+const textoRec = typeof mv336FetchTextoCache==="function"
+    ? await mv336FetchTextoCache(urlRecableado,180000)
+    : await (await fetch(urlRecableado)).text();
 
 const filasRec = textoRec.split("\n");
 
@@ -818,9 +818,9 @@ const recableadoCuadrillas = {};
 const urlVtrGar =
 "https://docs.google.com/spreadsheets/d/e/2PACX-1vRpVkCmSvopgPByWsEX6nkuAT6mf3yD2_Cywpl9pFSZEqYpxmprDePPeV0KNgT14YpEP6gkVlvOAtZy/pub?gid=1778246699&single=true&output=csv";
 
-const respuestaVtr = await fetch(urlVtrGar);
-
-const textoVtr = await respuestaVtr.text();
+const textoVtr = typeof mv336FetchTextoCache==="function"
+    ? await mv336FetchTextoCache(urlVtrGar,180000)
+    : await (await fetch(urlVtrGar)).text();
 
 const filasVtr = textoVtr.split("\n");
 
@@ -1799,8 +1799,10 @@ function mv58Key(txt){ return mv4Norm(txt).replace(/^P\s+(\d+)/, "P$1"); }
 function mv58IdSeguro(txt){ return mv58Key(txt).replace(/[^A-Z0-9]+/g, "_"); }
 function mv58Filas(texto){ return mv4CSV(texto || "").filter(r => r.some(c => (c || "").toString().trim() !== "")); }
 async function mv58GetCSV(url){
-    const r = await fetch(url + (url.includes("?") ? "&" : "?") + "t=" + Date.now());
-    return mv58Filas(await r.text());
+    const texto = typeof mv336FetchTextoCache === "function"
+        ? await mv336FetchTextoCache(url, 180000)
+        : await (await fetch(url)).text();
+    return mv58Filas(texto);
 }
 function mv58Valor(n){ return Number(n || 0).toFixed(1).replace(".0", ""); }
 function mv58KpiMini(titulo, valor){
@@ -1907,8 +1909,9 @@ async function mv58ObtenerObservacionesMap(periodo){
     const mapa = {};
     try{
         const usuario = localStorage.getItem("usuario") || "";
-        const res = await fetch(MV58_API, { method:"POST", body:JSON.stringify({accion:"listarObservaciones", usuario}) });
-        const data = await res.json();
+        const data = typeof mv336ApiGet === "function"
+            ? await mv336ApiGet(MV58_API,{accion:"listarObservaciones",usuario},{intentos:2,tiempoMs:30000})
+            : await (await fetch(MV58_API,{method:"POST",body:JSON.stringify({accion:"listarObservaciones",usuario})})).json();
         const lista = data.observaciones || [];
         const pendientes = ["DERIVADO", "EN PROCESO", "PENALIZADO", "APELADO"];
         lista.forEach(o => {
@@ -2005,14 +2008,50 @@ function mv58DetalleObs(d){
     </div>`;
 }
 
+const MV336_DASHBOARD_CACHE={};
+const MV336_DASHBOARD_EN_CURSO={};
+async function mv336RefrescarDashboard(origen){
+    Object.keys(MV336_DASHBOARD_CACHE).forEach(k=>delete MV336_DASHBOARD_CACHE[k]);
+    if(typeof MV336_CACHE_TEXTO_MEMORIA!=="undefined"&&MV336_CACHE_TEXTO_MEMORIA.clear)MV336_CACHE_TEXTO_MEMORIA.clear();
+    try{
+        for(let i=sessionStorage.length-1;i>=0;i--){
+            const clave=sessionStorage.key(i);
+            if(clave&&clave.startsWith("MV336_"))sessionStorage.removeItem(clave);
+        }
+    }catch(_){}
+    if(origen==="SUPERVISOR")return mostrarDashboardSupervisor(MV276_DASH_PERIODO);
+    return mostrarDashboardJefatura(MV276_DASH_PERIODO);
+}
 async function mv4ObtenerRanking(periodoSeleccionado){
-    const res = await fetch(URL_RANKING_MI_VISUAL + "&t=" + Date.now());
-    const texto = await res.text();
-    const listaCompleta = mv4CSV(texto).slice(1).map(mv4FilaRanking).filter(x => x.cuadrilla);
-    MV276_DASH_PERIODOS = mv276PeriodosDesdeValores(listaCompleta.map(x=>x.actualizacion));
-    MV276_DASH_PERIODO = mv276PeriodoPredeterminado(MV276_DASH_PERIODOS, periodoSeleccionado);
-    const lista = listaCompleta.filter(x=>mv276ClavePeriodo(x.actualizacion)===MV276_DASH_PERIODO);
-    return await mv58EnriquecerRanking(lista, MV276_DASH_PERIODO);
+    const claveSolicitada=periodoSeleccionado||"AUTO";
+    const cache=MV336_DASHBOARD_CACHE[claveSolicitada];
+    if(cache&&Date.now()-cache.guardadoEn<180000){
+        MV276_DASH_PERIODOS=cache.periodos;
+        MV276_DASH_PERIODO=cache.periodo;
+        return cache.lista;
+    }
+    if(MV336_DASHBOARD_EN_CURSO[claveSolicitada])return MV336_DASHBOARD_EN_CURSO[claveSolicitada];
+
+    MV336_DASHBOARD_EN_CURSO[claveSolicitada]=(async()=>{
+        const texto = typeof mv336FetchTextoCache === "function"
+            ? await mv336FetchTextoCache(URL_RANKING_MI_VISUAL, 180000)
+            : await (await fetch(URL_RANKING_MI_VISUAL)).text();
+        const listaCompleta = mv4CSV(texto).slice(1).map(mv4FilaRanking).filter(x => x.cuadrilla);
+        MV276_DASH_PERIODOS = mv276PeriodosDesdeValores(listaCompleta.map(x=>x.actualizacion));
+        MV276_DASH_PERIODO = mv276PeriodoPredeterminado(MV276_DASH_PERIODOS, periodoSeleccionado);
+        const lista = listaCompleta.filter(x=>mv276ClavePeriodo(x.actualizacion)===MV276_DASH_PERIODO);
+        const enriquecida=await mv58EnriquecerRanking(lista, MV276_DASH_PERIODO);
+        MV336_DASHBOARD_CACHE[claveSolicitada]={
+            guardadoEn:Date.now(),
+            periodos:MV276_DASH_PERIODOS,
+            periodo:MV276_DASH_PERIODO,
+            lista:enriquecida
+        };
+        return enriquecida;
+    })();
+
+    try{return await MV336_DASHBOARD_EN_CURSO[claveSolicitada];}
+    finally{delete MV336_DASHBOARD_EN_CURSO[claveSolicitada];}
 }
 function mv4Estado(tipo, valor, meta){
     const v = Number(valor) || 0;
@@ -2361,7 +2400,7 @@ function mv198RenderSupervisor(seleccionada){
     }
 
     mostrarPantalla(`<div class="mv4-page">
-        <div class="mv4-top-card"><div class="mv4-top-role">👷 SUPERVISOR</div><div class="mv4-top-sede">${sede || "SEDE"}</div><div class="mv4-top-sub">Actualizado: ${actualizacion}</div></div>
+        <div class="mv4-top-card"><div class="mv4-top-role">👷 SUPERVISOR</div><div class="mv4-top-sede">${sede || "SEDE"}</div><div class="mv4-top-sub">Actualizado: ${actualizacion}</div><button type="button" class="mv4-link-btn" onclick="mv336RefrescarDashboard('SUPERVISOR')">↻ Actualizar datos</button></div>
         ${mv239FiltrosSupervisor(lista, filtros)}
         ${typeof mv326RenderBotonBonosDashboard === "function" ? mv326RenderBotonBonosDashboard(MV276_DASH_PERIODO) : ""}
         ${contenido}
@@ -2620,17 +2659,16 @@ async function mv282ConsultarTrabajosDiarios(origen){
     MV282_TRABAJOS_DIARIOS.resultado = null;
     mv282RenderDashboard(origen);
     try{
-        const res = await fetch(MV58_API, {
-            method:"POST",
-            body:JSON.stringify({
-                accion:"listarTrabajosDiariosCuadrilla",
-                usuario:localStorage.getItem("usuario") || "",
-                periodo:MV276_DASH_PERIODO,
-                fecha,
-                cuadrilla
-            })
-        });
-        const data = await res.json();
+        const payload={
+            accion:"listarTrabajosDiariosCuadrilla",
+            usuario:localStorage.getItem("usuario") || "",
+            periodo:MV276_DASH_PERIODO,
+            fecha,
+            cuadrilla
+        };
+        const data = typeof mv336ApiGet === "function"
+            ? await mv336ApiGet(MV58_API,payload,{intentos:2,tiempoMs:30000})
+            : await (await fetch(MV58_API,{method:"POST",body:JSON.stringify(payload)})).json();
         if(!data.ok) throw new Error((data.error || "No se pudo consultar los trabajos").replace(/^Error:\s*/,""));
         MV282_TRABAJOS_DIARIOS.resultado = data;
     }catch(e){
@@ -2776,6 +2814,7 @@ function mv199RenderJefatura(){
             <div class="mv4-top-role">${rotuloVista.icono} ${rotuloVista.titulo}</div>
             <div class="mv4-top-sede">${tituloZona}</div>
             <div class="mv4-top-sub">${listaSede.length} cuadrillas</div>
+            <button type="button" class="mv4-link-btn" onclick="mv336RefrescarDashboard('JEFATURA')">↻ Actualizar datos</button>
         </div>
         ${mv199FiltrosJefatura(listaCompleta, f)}
         ${typeof mv326RenderBotonBonosDashboard === "function" ? mv326RenderBotonBonosDashboard(MV276_DASH_PERIODO) : ""}`;

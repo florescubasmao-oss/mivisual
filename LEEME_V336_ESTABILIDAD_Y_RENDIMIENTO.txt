@@ -1,0 +1,43 @@
+MI VISUAL V336 — ESTABILIDAD API Y RENDIMIENTO
+Fecha: 03/08/2026
+
+CAMBIOS INCLUIDOS
+1. Integra la corrección V335 del Mapa Operativo.
+2. Programación de Descansos: consultas de lectura por GET seguro.
+3. Checklist Almacén: consultas de lectura por GET seguro.
+4. Observaciones: consultas de lectura por GET seguro.
+5. Permisos y contexto del menú: consultas de lectura por GET seguro.
+6. Dashboard: caché breve de 3 minutos para archivos CSV y datos enriquecidos.
+7. Se eliminó el uso innecesario de parámetros que anulaban la caché del Dashboard.
+8. Validación Técnica: notificaciones cada 2 minutos y pausa cuando la aplicación está oculta.
+9. Mapa Operativo: controla respuestas HTML externas y coordenadas inválidas.
+
+ARCHIVOS MODIFICADOS
+- Code.gs
+- index.html
+- js/utilidades.js
+- js/dashboards.js
+- js/observaciones.js
+- js/validacion_tecnica_v173.js
+- js/checklist_almacen.js
+- js/programacion_descansos.js
+- js/permisos.js
+- js/mapa_operativo.js
+
+ORDEN OBLIGATORIO DE PUBLICACIÓN
+1. Copiar el nuevo Code.gs en Apps Script.
+2. Crear una NUEVA implementación del Web App manteniendo el mismo acceso.
+3. Verificar que la URL /exec continúe siendo la URL configurada en la aplicación.
+4. Recién después actualizar GitHub con los archivos web.
+5. No copiar ni reemplazar la carpeta .git.
+6. En Git usar solamente los archivos modificados o copiar el proyecto encima de la carpeta existente sin borrar .git.
+
+VALIDACIÓN RÁPIDA
+- Abrir Programación de Descansos.
+- Abrir Checklist Almacén.
+- Abrir Dashboard Supervisor/Jefatura dos veces: la segunda carga debe ser más rápida.
+- Abrir Mapa Operativo y consultar un período.
+- Confirmar que no aparezca HTML ni “Apps Script respondió en modo de prueba”.
+
+IMPORTANTE
+Las operaciones de guardado continúan por POST. Las consultas de lectura pasan por GET para evitar redirecciones de Apps Script. No se cambian hojas, permisos, perfiles ni reglas de negocio.

@@ -1,10 +1,22 @@
-// MI VISUAL V156 - Permisos dinámicos por perfil
+// MI VISUAL V336 - Permisos dinámicos por perfil
 const API_PERMISOS = "https://script.google.com/macros/s/AKfycbzcbjCLweJNgZXDerdzmMN7Lwotc1G8NWdzoPkaLNGDivAgpYxDkq78xZwPRioSB4XY/exec";
 let PM_PERMISOS = null;
 let PM_PERMISOS_CARGADOS = false;
 let PM_CONFIG_MENU = null;
 function pmNorm(v){return (v||"").toString().toUpperCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"").replace(/\s+/g," ").trim();}
-async function pmApi(payload){const r=await fetch(API_PERMISOS,{method:'POST',body:JSON.stringify(payload)});const d=await r.json();if(!d.ok)throw new Error(d.error||'Error de permisos');return d;}
+async function pmApi(payload){
+  const lecturas=new Set(['obtenerContextoMenu','obtenerPermisosUsuario','listarPermisosAdministracion']);
+  if(payload&&lecturas.has(payload.accion)&&typeof mv336ApiGet==='function'){
+    return mv336ApiGet(API_PERMISOS,payload,{intentos:2,tiempoMs:25000});
+  }
+  const r=await fetch(API_PERMISOS,{method:'POST',body:JSON.stringify(payload),cache:'no-store'});
+  const texto=(await r.text()).trim();
+  if(!r.ok)throw new Error('No se pudo conectar con permisos.');
+  if(/^MI VISUAL API OK$/i.test(texto)||(typeof mv336EsHtmlExterno==='function'&&mv336EsHtmlExterno(texto)))throw new Error('No se recibió una respuesta válida de permisos.');
+  let d;try{d=JSON.parse(texto);}catch(_){throw new Error('La API de permisos devolvió una respuesta inválida.');}
+  if(!d.ok)throw new Error(d.error||'Error de permisos');
+  return d;
+}
 const PM_CACHE_TTL_MS = 5 * 60 * 1000;
 let PM_ACTUALIZACION_EN_CURSO = false;
 

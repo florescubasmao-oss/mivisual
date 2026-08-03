@@ -253,3 +253,110 @@ if(typeof document !== "undefined"){
         activarFormatoFechaHoraPeruApp();
     }
 }
+
+/* =====================================================
+   MI VISUAL V336 - Transporte GET seguro y caché breve
+   - Lecturas Apps Script por GET para evitar redirecciones POST.
+   - Caché de textos publicados por 3 minutos.
+   - Reutiliza datos anteriores si la red falla temporalmente.
+===================================================== */
+const MV336_CACHE_TEXTO_MEMORIA = new Map();
+
+function mv336ClaveCache(texto){
+    let h = 2166136261;
+    const s = String(texto || "");
+    for(let i=0;i<s.length;i++){
+        h ^= s.charCodeAt(i);
+        h = Math.imul(h, 16777619);
+    }
+    return `MV336_${(h >>> 0).toString(16)}`;
+}
+
+function mv336EsHtmlExterno(texto){
+    return /<!doctype|<html|<body|docs-drive-logo|google drive|accounts\.google/i.test(String(texto || ""));
+}
+
+async function mv336FetchConTiempo(url, opciones, tiempoMs){
+    const controlador = typeof AbortController === "function" ? new AbortController() : null;
+    const temporizador = controlador ? setTimeout(() => controlador.abort(), tiempoMs || 25000) : null;
+    try{
+        return await fetch(url, Object.assign({}, opciones || {}, controlador ? {signal:controlador.signal} : {}));
+    }finally{
+        if(temporizador) clearTimeout(temporizador);
+    }
+}
+
+async function mv336ApiGet(apiUrl, payload, opciones){
+    const config = Object.assign({intentos:2, tiempoMs:25000}, opciones || {});
+    const parametros = new URLSearchParams();
+    Object.entries(payload || {}).forEach(([clave, valor]) => {
+        if(valor === undefined || valor === null || valor === "") return;
+        parametros.set(clave, typeof valor === "object" ? JSON.stringify(valor) : String(valor));
+    });
+    const url = apiUrl + (apiUrl.includes("?") ? "&" : "?") + parametros.toString();
+    let ultimoError = null;
+    for(let intento=0; intento<config.intentos; intento++){
+        try{
+            const res = await mv336FetchConTiempo(url, {
+                method:"GET",
+                cache:"no-store",
+                redirect:"follow",
+                headers:{"Accept":"application/json"}
+            }, config.tiempoMs);
+            const texto = (await res.text()).trim();
+            if(!res.ok) throw new Error(`No se pudo conectar con el servidor (${res.status}).`);
+            if(/^MI VISUAL API OK$/i.test(texto)) throw new Error("La versión publicada de Apps Script no reconoce esta consulta.");
+            if(mv336EsHtmlExterno(texto)) throw new Error("Google devolvió una página externa en lugar de los datos.");
+            let data;
+            try{ data = JSON.parse(texto); }
+            catch(_){ throw new Error("La API no devolvió una respuesta válida."); }
+            if(data && data.ok === false) throw new Error(data.error || "La consulta no pudo completarse.");
+            return data;
+        }catch(error){
+            ultimoError = error && error.name === "AbortError"
+                ? new Error("La consulta tardó demasiado. Intente nuevamente.")
+                : error;
+            if(intento + 1 < config.intentos) await new Promise(resolve => setTimeout(resolve, 550));
+        }
+    }
+    throw ultimoError || new Error("No se pudo completar la consulta.");
+}
+
+async function mv336FetchTextoCache(url, ttlMs, forzar){
+    const vigencia = Number(ttlMs) || 180000;
+    const clave = mv336ClaveCache(url);
+    const ahora = Date.now();
+    const memoria = MV336_CACHE_TEXTO_MEMORIA.get(clave);
+    if(!forzar && memoria && ahora - memoria.guardadoEn < vigencia) return memoria.texto;
+
+    let respaldo = memoria || null;
+    try{
+        const guardado = sessionStorage.getItem(clave);
+        if(guardado){
+            const item = JSON.parse(guardado);
+            if(item && typeof item.texto === "string"){
+                respaldo = item;
+                if(!forzar && ahora - Number(item.guardadoEn || 0) < vigencia){
+                    MV336_CACHE_TEXTO_MEMORIA.set(clave, item);
+                    return item.texto;
+                }
+            }
+        }
+    }catch(_){ }
+
+    try{
+        const res = await mv336FetchConTiempo(url, {method:"GET", cache:"default", redirect:"follow"}, 25000);
+        if(!res.ok) throw new Error(`Error ${res.status}`);
+        const texto = await res.text();
+        if(mv336EsHtmlExterno(texto)) throw new Error("Respuesta externa no válida");
+        const item = {guardadoEn:ahora, texto};
+        MV336_CACHE_TEXTO_MEMORIA.set(clave, item);
+        try{ sessionStorage.setItem(clave, JSON.stringify(item)); }catch(_){ }
+        return texto;
+    }catch(error){
+        if(respaldo && typeof respaldo.texto === "string") return respaldo.texto;
+        throw error && error.name === "AbortError"
+            ? new Error("La carga tardó demasiado. Intente nuevamente.")
+            : error;
+    }
+}

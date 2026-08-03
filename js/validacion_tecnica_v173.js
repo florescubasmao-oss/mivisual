@@ -1,4 +1,4 @@
-// MI VISUAL - Módulo Validación Técnica V314 · Historial mensual para Técnico
+// MI VISUAL - Módulo Validación Técnica V336 · Historial mensual y consultas optimizadas
 
 const API_VALIDACION_TECNICA = "https://script.google.com/macros/s/AKfycbzcbjCLweJNgZXDerdzmMN7Lwotc1G8NWdzoPkaLNGDivAgpYxDkq78xZwPRioSB4XY/exec";
 
@@ -31,7 +31,6 @@ async function apiValidacionTecnica(payload){
                 parametros.set(clave, typeof valor === "object" ? JSON.stringify(valor) : String(valor));
             }
         });
-        parametros.set("_ts", String(Date.now()));
         url += "?" + parametros.toString();
     }
 
@@ -1406,7 +1405,7 @@ async function generarInformeValidacionTecnicaExcel(btn){
     if(window.__mvNotificacionesVTIniciadas) return;
     window.__mvNotificacionesVTIniciadas = true;
 
-    const INTERVALO_MS = 60000;
+    const INTERVALO_MS = 120000;
     let consultaEnCurso = false;
     let ultimoUsuario = "";
 
@@ -1599,6 +1598,7 @@ async function generarInformeValidacionTecnicaExcel(btn){
     }
 
     async function consultarNotificacionesVT(){
+        if(document.visibilityState === "hidden") return;
         const usuario = usuarioActualValidacion();
         if(!usuario.usuario){
             actualizarBadgeMenuVT(0);
@@ -1673,8 +1673,15 @@ async function generarInformeValidacionTecnicaExcel(btn){
     });
 
     setInterval(function(){
-        if(document.hidden) return;
+        if(document.visibilityState === "hidden") return;
         instalarGanchoMenuVT();
         consultarNotificacionesVT();
     }, INTERVALO_MS);
+
+    document.addEventListener("visibilitychange",function(){
+        if(document.visibilityState === "visible"){
+            instalarGanchoMenuVT();
+            setTimeout(consultarNotificacionesVT,700);
+        }
+    });
 })();

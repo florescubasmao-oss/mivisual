@@ -1,4 +1,4 @@
-// MI VISUAL - Módulo Observaciones
+// MI VISUAL - Módulo Observaciones V336
 
 const API_OBSERVACIONES = "https://script.google.com/macros/s/AKfycbzcbjCLweJNgZXDerdzmMN7Lwotc1G8NWdzoPkaLNGDivAgpYxDkq78xZwPRioSB4XY/exec";
 
@@ -19,6 +19,11 @@ function usuarioActualObs(){
 }
 
 async function apiObservaciones(payload){
+    const lecturas=new Set(["listarObservaciones","listarCuadrillasObservacion"]);
+    if(payload&&lecturas.has(payload.accion)&&typeof mv336ApiGet==="function"){
+        return mv336ApiGet(API_OBSERVACIONES,payload,{intentos:2,tiempoMs:30000});
+    }
+
     const controlador = typeof AbortController === "function" ? new AbortController() : null;
     const temporizador = controlador ? setTimeout(() => controlador.abort(), 45000) : null;
     try{
@@ -35,16 +40,21 @@ async function apiObservaciones(payload){
             errorHttp.confirmacionIncierta = true;
             throw errorHttp;
         }
-        try { return JSON.parse(txt); } catch(e){
-            const errorJson = new Error(/<!doctype|<html|google drive|accounts\.google/i.test(txt)
-                ? "La conexión recibió una página externa en lugar de los datos."
-                : "La API devolvió una respuesta inválida.");
+        if(/^MI VISUAL API OK$/i.test((txt||"").trim()) || (typeof mv336EsHtmlExterno==="function"&&mv336EsHtmlExterno(txt))){
+            const errorExterno = new Error("No se recibió una confirmación válida. Revise la lista antes de repetir la operación.");
+            errorExterno.confirmacionIncierta = true;
+            throw errorExterno;
+        }
+        let data;
+        try {
+            data=JSON.parse(txt);
+        } catch(e){
+            const errorJson = new Error("La API devolvió una respuesta inválida.");
             errorJson.confirmacionIncierta = true;
-            if(/<!doctype|<html|google drive|accounts\.google/i.test(txt)){
-                throw errorJson;
-            }
             throw errorJson;
         }
+        if(data&&data.ok===false)throw new Error(data.error||"No se pudo completar la operación.");
+        return data;
     }catch(error){
         if(error && error.name === "AbortError"){
             const errorTiempo = new Error("La operación tardó demasiado y no se recibió la confirmación.");

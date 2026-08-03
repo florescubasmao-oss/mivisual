@@ -1,0 +1,16 @@
+MI VISUAL V335 – MAPA OPERATIVO: RESPUESTA SEGURA Y COORDENADAS VÁLIDAS
+
+Cambios incrementales realizados:
+1. El Mapa Operativo ya no muestra el código HTML completo cuando Google o Apps Script devuelve una página de error.
+2. Las consultas de solo lectura realizan un segundo intento automático antes de mostrar el aviso.
+3. Se añadió un botón Reintentar cuando el mapa no puede cargar sus catálogos.
+4. La consulta de órdenes muestra un mensaje controlado y conserva la pantalla.
+5. Las coordenadas de clientes y CTO se validan dentro de los rangos reales: latitud -90 a 90 y longitud -180 a 180.
+6. Las coordenadas inválidas quedan ignoradas en el mapa, sin afectar los demás registros.
+7. No se modificaron permisos, perfiles, hojas, estructura de datos ni otros módulos.
+
+ARCHIVOS MODIFICADOS:
+- js/mapa_operativo.js
+- index.html (actualización de caché)
+
+NO REQUIERE CAMBIO EN CODE.GS.

@@ -1,4 +1,4 @@
-// MI VISUAL - Checklist Almacén V291 - fecha y hora Perú 12 horas
+// MI VISUAL - Checklist Almacén V336 - lecturas GET seguras
 let CK_GUARDANDO_CHECKLIST = false;
 
 const API_CHECKLIST_ALMACEN = "https://script.google.com/macros/s/AKfycbzcbjCLweJNgZXDerdzmMN7Lwotc1G8NWdzoPkaLNGDivAgpYxDkq78xZwPRioSB4XY/exec";
@@ -7,33 +7,37 @@ function ckNorm(v){return (v||"").toString().toUpperCase().normalize("NFD").repl
 function ckUser(){return {usuario:localStorage.getItem("usuario")||"",perfil:ckNorm(localStorage.getItem("perfil")),sede:ckNorm(localStorage.getItem("sede")),cuadrilla:localStorage.getItem("cuadrilla")||"",nombres:localStorage.getItem("nombresApellidos")||localStorage.getItem("usuario")||""};}
 function ckEsc(v){return (v||"").toString().replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");}
 async function ckApi(payload){
+  const lecturas=new Set(["listarChecklistAlmacen","obtenerCatalogoHerramientasChecklist","obtenerConfiguracionChecklistAlmacen"]);
+  if(payload&&lecturas.has(payload.accion)&&typeof mv336ApiGet==="function"){
+    return mv336ApiGet(API_CHECKLIST_ALMACEN,payload,{intentos:2,tiempoMs:25000});
+  }
+
   const cuerpo=JSON.stringify(payload||{});
-  async function solicitar(intento){
-    const separador=API_CHECKLIST_ALMACEN.includes("?")?"&":"?";
-    const url=`${API_CHECKLIST_ALMACEN}${separador}ck=${Date.now()}-${intento}`;
-    const r=await fetch(url,{
+  const controlador=typeof AbortController==="function"?new AbortController():null;
+  const temporizador=controlador?setTimeout(()=>controlador.abort(),45000):null;
+  try{
+    const r=await fetch(API_CHECKLIST_ALMACEN,{
       method:"POST",
       headers:{"Content-Type":"text/plain;charset=UTF-8","Accept":"application/json"},
       body:cuerpo,
       cache:"no-store",
-      redirect:"follow"
+      redirect:"follow",
+      signal:controlador?controlador.signal:undefined
     });
     const texto=(await r.text()).trim();
     if(!r.ok)throw new Error(`No se pudo conectar con Checklist Almacén (${r.status}).`);
+    if(/^MI VISUAL API OK$/i.test(texto))throw new Error("No se recibió la confirmación. Revise la lista antes de repetir la operación.");
+    if(typeof mv336EsHtmlExterno==="function"&&mv336EsHtmlExterno(texto))throw new Error("Google devolvió una página externa. Revise la lista antes de repetir la operación.");
     let d;
-    try{
-      d=JSON.parse(texto);
-    }catch(e){
-      const respuestaPrueba=/^MI VISUAL API OK$/i.test(texto);
-      if(respuestaPrueba&&intento===0)return solicitar(1);
-      throw new Error(respuestaPrueba
-        ?"Apps Script respondió en modo de prueba. Actualice la página e intente nuevamente."
-        :"La API de Checklist Almacén no devolvió una respuesta válida.");
-    }
+    try{d=JSON.parse(texto);}catch(e){throw new Error("La API de Checklist Almacén no devolvió una respuesta válida.");}
     if(!d.ok)throw new Error(d.error||"Error en Checklist");
     return d;
+  }catch(error){
+    if(error&&error.name==="AbortError")throw new Error("La operación tardó demasiado. Revise la lista antes de volver a intentarlo.");
+    throw error;
+  }finally{
+    if(temporizador)clearTimeout(temporizador);
   }
-  return solicitar(0);
 }
 function ckEstado(e){const n=ckNorm(e);let c="pend";if(n==="CONFORME")c="ok";else if(n.includes("OBSERVADO"))c="obs";else if(n.includes("VISTO BUENO"))c="vb";return `<span class="ck-badge ${c}">${ckEsc(e||"PENDIENTE")}</span>`;}
 function ckStyle(){return `<style>

@@ -1,4 +1,4 @@
-// MI VISUAL - Programación de Descansos V333
+// MI VISUAL - Programación de Descansos V336
 const API_DESCANSOS = (window.MI_VISUAL_API_URL || "https://script.google.com/macros/s/AKfycbzcbjCLweJNgZXDerdzmMN7Lwotc1G8NWdzoPkaLNGDivAgpYxDkq78xZwPRioSB4XY/exec");
 let PD_DATA={programacion:[],cuadrillas:[]};
 let PD_CAMBIOS={};
@@ -11,39 +11,37 @@ function pdUser(){return {usuario:localStorage.getItem("usuario")||"",perfil:pdN
 function pdSoloLectura(){if(typeof pmPuede==="function")return !pmPuede("PROGRAMACION DESCANSOS","REGISTRAR")&&!pmPuede("PROGRAMACION DESCANSOS","EDITAR")&&!pmPuede("PROGRAMACION DESCANSOS","OBSERVAR")&&!pmPuede("PROGRAMACION DESCANSOS","APROBAR")&&!pmPuede("PROGRAMACION DESCANSOS","VALIDAR")&&!pmPuede("PROGRAMACION DESCANSOS","ADMINISTRAR");const u=pdUser();return u.perfil==="OPERACIONES LIMA";}
 function pdEsc(v){return (v??"").toString().replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");}
 async function pdApi(payload){
+  const lecturas=new Set(["listarProgramacionDescansos","obtenerNotificacionesDescansos","resumenCoberturaDescansos"]);
+  if(payload&&lecturas.has(payload.accion)&&typeof mv336ApiGet==="function"){
+    return mv336ApiGet(API_DESCANSOS,payload,{intentos:2,tiempoMs:25000});
+  }
+
   const cuerpo=JSON.stringify(payload||{});
-  async function solicitar(intento){
-    // La primera consulta usa la URL directa del despliegue. Algunos accesos
-    // móviles de Apps Script devuelven 404 cuando el POST lleva parámetros
-    // variables. El parámetro se reserva únicamente para un segundo intento.
-    const separador=API_DESCANSOS.includes("?")?"&":"?";
-    const url=intento===0?API_DESCANSOS:`${API_DESCANSOS}${separador}pd=${Date.now()}`;
-    const r=await fetch(url,{
+  const controlador=typeof AbortController==="function"?new AbortController():null;
+  const temporizador=controlador?setTimeout(()=>controlador.abort(),35000):null;
+  try{
+    const r=await fetch(API_DESCANSOS,{
       method:"POST",
       headers:{"Content-Type":"text/plain;charset=UTF-8","Accept":"application/json"},
       body:cuerpo,
       cache:"no-store",
-      redirect:"follow"
+      redirect:"follow",
+      signal:controlador?controlador.signal:undefined
     });
     const texto=(await r.text()).trim();
-    if(!r.ok){
-      if(intento===0)return solicitar(1);
-      throw new Error(`No se pudo conectar con Programación de Descansos (${r.status}).`);
-    }
+    if(!r.ok)throw new Error(`No se pudo conectar con Programación de Descansos (${r.status}).`);
+    if(/^MI VISUAL API OK$/i.test(texto))throw new Error("No se recibió la confirmación. Revise la información antes de repetir la operación.");
+    if(typeof mv336EsHtmlExterno==="function"&&mv336EsHtmlExterno(texto))throw new Error("Google devolvió una página externa. Revise la información antes de repetir la operación.");
     let d;
-    try{
-      d=JSON.parse(texto);
-    }catch(e){
-      const respuestaPrueba=/^MI VISUAL API OK$/i.test(texto);
-      if(respuestaPrueba&&intento===0)return solicitar(1);
-      throw new Error(respuestaPrueba
-        ?"Apps Script respondió en modo de prueba. Actualice la página e intente nuevamente."
-        :"La API de Programación de Descansos no devolvió una respuesta válida.");
-    }
+    try{d=JSON.parse(texto);}catch(e){throw new Error("La API de Programación de Descansos no devolvió una respuesta válida.");}
     if(!d.ok)throw new Error(d.error||"Error en Programación de Descansos");
     return d;
+  }catch(error){
+    if(error&&error.name==="AbortError")throw new Error("La operación tardó demasiado. Revise la información antes de volver a intentarlo.");
+    throw error;
+  }finally{
+    if(temporizador)clearTimeout(temporizador);
   }
-  return solicitar(0);
 }
 function pdHoy(){const d=new Date(),m=String(d.getMonth()+1).padStart(2,"0"),day=String(d.getDate()).padStart(2,"0");return `${d.getFullYear()}-${m}-${day}`;}
 function pdPeriodoActual(){return pdHoy().slice(0,7);}
