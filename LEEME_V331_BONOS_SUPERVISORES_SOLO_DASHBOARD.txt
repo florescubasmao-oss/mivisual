@@ -1,0 +1,27 @@
+MI VISUAL V331 - BONOS SUPERVISORES SOLO EN EL DASHBOARD
+Fecha: 02/08/2026
+
+OBJETIVO
+- Retirar la tarjeta "Bonos Supervisores" de la pantalla principal para todos los perfiles.
+- Mantener el botón "Bonos Supervisores" que ya existe dentro del Dashboard.
+
+CAMBIOS INCLUIDOS
+1. index.html
+- Se elimina la tarjeta independiente "Bonos Supervisores" del menú principal.
+- Se actualizan las versiones de caché de app.js y bono_supervisores.js.
+
+2. js/app.js
+- Se elimina "Bonos Supervisores" de la agrupación Gestión de Jefatura, Gerencia y Supervisor.
+- Se elimina su activación automática en el menú según el perfil.
+
+NO SE MODIFICA
+- El botón "Bonos Supervisores" ubicado dentro del Dashboard.
+- Los cálculos, metas, activadores, períodos, permisos ni formularios del bono.
+- Code.gs, hojas de Google Sheets ni activadores.
+
+INSTALACIÓN
+1. En GitHub, reemplazar index.html.
+2. En GitHub, reemplazar js/app.js.
+3. Realizar commit y push.
+4. Actualizar MI VISUAL con Ctrl + F5.
+5. No modificar Apps Script.
