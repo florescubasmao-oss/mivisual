@@ -1,5 +1,5 @@
-/* MI VISUAL V342 - caché segura y corrección de coordenadas CTO */
-const MV339_CACHE = "mivisual-v342-mapa-cto-20260803";
+/* MI VISUAL V343 - caché segura y recepción rápida de actas */
+const MV339_CACHE = "mivisual-v343-actas-recepcion-20260804";
 const MV339_CORE = [
   "./",
   "./index.html",
@@ -11,6 +11,7 @@ const MV339_CORE = [
   "./js/app.js?v=V339-LAZY",
   "./js/modulos_loader.js?v=V341-VALIDACION",
   "./js/mapa_cto_fix_v342.js?v=V342-MAPA-CTO",
+  "./js/actas_recepcion_v343.js?v=V343-ACTAS-RECEPCION",
   "./img/logo.png",
   "./img/logo-192.png",
   "./img/splash.png"

@@ -64,49 +64,27 @@
 <div class="menu" id="menuPrincipal" style="display:none;">
 
 <div id="cardProduccion" class="card card-prod" onclick="mostrarProduccionV2()"><span>📊</span><b>Producción</b></div>
-
 <div id="cardEfectividad" class="card card-efe" onclick="mostrarEfectividad()"><span>🎯</span><b>Efectividad</b></div>
-
 <div id="cardRecableado" class="card card-rec" onclick="mostrarRecableado()"><span>🔧</span><b>% Recableado</b></div>
-
 <div id="cardVTRGAR" class="card card-vtr" onclick="mostrarVTRGAR()"><span>📡</span><b>% VTR / GAR</b></div>
-
 <div id="cardRanking" class="card card-rank" onclick="mostrarRanking()"><span>🏆</span><b>Ranking</b></div>
-
 <div id="cardBonos" class="card card-bonos" onclick="mostrarBonos()"><span>🎁</span><b>Bonos</b></div>
-
 <div id="cardObservaciones" class="card card-obs" onclick="mostrarObservaciones()"><span>🚨</span><b>Observaciones</b></div>
-
 <div id="cardAccesos" class="card card-acc" onclick="mostrarAccesos()"><span>🚀</span><b>Accesos</b></div>
-
 <div id="cardBiblioteca" class="card card-bib" onclick="mostrarBiblioteca()"><span>📚</span><b>Biblioteca</b></div>
-
 <div id="cardCapacitacion" class="card card-cap" onclick="mostrarCapacitacion()"><span>🎓</span><b>Capacitación</b></div>
-
 <div id="cardDashboardSupervisor" class="card card-dash" onclick="mostrarDashboardSupervisor()"><span>👷</span><b>Dashboard Supervisor</b></div>
-
 <div id="cardDashboardJefatura" class="card card-jef" onclick="mostrarDashboardJefatura()"><span>👔</span><b>Dashboard Jefatura</b></div>
-
 <div id="cardAnalisisEconomico" class="card card-economico" onclick="mostrarAnalisisEconomico()"><span>💰</span><b>Análisis Económico</b></div>
-
 <div id="cardActividadCampo" class="card card-dash" onclick="mostrarActividadCampo()"><span>📍</span><b>Actividad en Campo</b></div>
-
 <div id="cardValidacionTecnica" class="card card-dash" onclick="mostrarValidacionTecnica()"><span>📋</span><b>Validación Técnica</b></div>
-
 <div id="cardActas" class="card card-dash" onclick="mostrarGestionActas()"><span>📄</span><b>Gestión de Actas</b></div>
-
 <div id="cardEquiposAveriados" class="card card-dash" onclick="mostrarEquiposAveriados()"><span>🔧</span><b>Equipos Averiados</b></div>
-
 <div id="cardChecklistAlmacen" class="card card-dash" onclick="mostrarChecklistAlmacen()"><span>✅</span><b>Checklist Almacén</b></div>
-
 <div id="cardProgramacionDescansos" class="card card-dash" onclick="mostrarProgramacionDescansos()"><span>📅</span><b>Programación de Descansos</b></div>
-
 <div id="cardTrabajosConjunta" class="card card-dash" onclick="mostrarTrabajosConjunta()"><span>🤝</span><b>PEXT</b></div>
-
 <div id="cardMapaOperativo" class="card card-mapa-operativo" onclick="mostrarMapaOperativo()"><span>🗺️</span><b>MAPA OPERATIVO</b></div>
-
 <div id="cardConsultasReclamos" class="card card-consultas" onclick="mostrarConsultasReclamos()"><span>💬</span><b>MESA DE AYUDA</b></div>
-
 <div id="cardAdministracion" class="card card-adm" onclick="mostrarAdministracion()"><span>⚙️</span><b>Administración</b></div>
 
 </div>
@@ -123,12 +101,12 @@ Visual Connections SAC - Zona Norte
 if ("serviceWorker" in navigator) {
     window.addEventListener("load", function(){
       navigator.serviceWorker
-        .register("./sw.js?v=V342-MAPA-CTO")
+        .register("./sw.js?v=V343-ACTAS-RECEPCION")
         .then(function(registro){
           registro.update().catch(function(){});
-          console.log("SW V342 OK");
+          console.log("SW V343 OK");
         })
-        .catch(function(error){ console.warn("SW V342", error); });
+        .catch(function(error){ console.warn("SW V343", error); });
     });
 }
 </script>
@@ -142,6 +120,7 @@ if ("serviceWorker" in navigator) {
 <script src="./js/app.js?v=V339-LAZY"></script>
 <script src="./js/modulos_loader.js?v=V341-VALIDACION"></script>
 <script src="./js/mapa_cto_fix_v342.js?v=V342-MAPA-CTO"></script>
+<script src="./js/actas_recepcion_v343.js?v=V343-ACTAS-RECEPCION"></script>
 
 </body>
 </html>
