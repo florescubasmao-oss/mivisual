@@ -1,5 +1,5 @@
-/* MI VISUAL V345 - caché segura, Mapa Supervisor y Descansos Técnico */
-const MV339_CACHE = "mivisual-v345-perfiles-20260804";
+/* MI VISUAL V346 - caché segura y formularios de Actividad en Campo */
+const MV339_CACHE = "mivisual-v346-actividad-campo-20260804";
 const MV339_CORE = [
   "./",
   "./index.html",
@@ -14,6 +14,7 @@ const MV339_CORE = [
   "./js/actas_recepcion_v343.js?v=V343-ACTAS-RECEPCION",
   "./js/actas_identidad_v344.js?v=V344-ACTAS-IDENTIDAD",
   "./js/ajustes_perfiles_v345.js?v=V345-PERFILES",
+  "./js/actividad_campo_fix_v346.js?v=V346-ACTIVIDAD-CAMPO",
   "./img/logo.png",
   "./img/logo-192.png",
   "./img/splash.png"
