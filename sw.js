@@ -1,5 +1,5 @@
-/* MI VISUAL V344 - caché segura e identidad única de actas */
-const MV339_CACHE = "mivisual-v344-actas-identidad-20260804";
+/* MI VISUAL V345 - caché segura, Mapa Supervisor y Descansos Técnico */
+const MV339_CACHE = "mivisual-v345-perfiles-20260804";
 const MV339_CORE = [
   "./",
   "./index.html",
@@ -13,6 +13,7 @@ const MV339_CORE = [
   "./js/mapa_cto_fix_v342.js?v=V342-MAPA-CTO",
   "./js/actas_recepcion_v343.js?v=V343-ACTAS-RECEPCION",
   "./js/actas_identidad_v344.js?v=V344-ACTAS-IDENTIDAD",
+  "./js/ajustes_perfiles_v345.js?v=V345-PERFILES",
   "./img/logo.png",
   "./img/logo-192.png",
   "./img/splash.png"
