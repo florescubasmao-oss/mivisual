@@ -15,7 +15,7 @@
     },
     dashboard: {
       depende: ["dashboards_core"],
-      archivos: [`./js/bono_supervisores.js?v=${VERSION}`],
+      archivos: [`./js/bono_supervisores.js?v=V347-BONO-SATISFACCION`],
       entradas: ["mostrarBonosSupervisores"]
     },
     indicadores: {

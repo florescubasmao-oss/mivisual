@@ -86,7 +86,13 @@ function mv321EstadoClase(estado){
 }
 
 function mv321ComponenteIcono(clave){
-    return {PRODUCTIVIDAD:"📈",CALIDAD:"✅",SLA:"⏱️",SATISFACCION:"📞",SEGURIDAD:"🦺"}[clave] || "📌";
+    return {
+        PRODUCTIVIDAD:"📈",
+        CALIDAD:"✅",
+        SLA:"⏱️",
+        SATISFACCION:"📞",
+        SEGURIDAD:"👥"
+    }[clave] || "📌";
 }
 
 function mv321Linea(etiqueta, valor, referencia){
@@ -96,12 +102,17 @@ function mv321Linea(etiqueta, valor, referencia){
 function mv321DetalleComponente(c, bono){
     const m = c.metricas || {};
     const activador = Number.isFinite(Number(c.activador)) ? Number(c.activador) : 0;
-    const referenciaActivador = c.evaluable && Number(c.cumplimiento||0)>activador ? "Bono activo y prorrateado" : "No suma al bono";
+    const referenciaActivador = c.evaluable && Number(c.cumplimiento||0)>activador
+        ? "Bono activo y prorrateado"
+        : "No suma al bono";
+
     let html = "";
+
     if(c.clave === "PRODUCTIVIDAD"){
         html += mv321Linea("Puntaje de cuadrillas · peso 60%",mv321Pct(m.productividadPct),`Meta: 130 puntos por cuadrilla · ${Number(m.puntos||0).toFixed(1)} / ${Number(m.metaPuntos||0)} pts`);
         html += mv321Linea("Efectividad · peso 40%",mv321Pct(m.efectividadPct),`Meta ≥ 70% · ${Number(m.finalizadas||0)} finalizadas`);
         html += mv321Linea("Activador del componente",`> ${activador}%`,referenciaActivador);
+
     }else if(c.clave === "CALIDAD"){
         html += mv321Linea("Observaciones WIN · peso 30%",mv321Pct(m.puntajeObservaciones),`${Number(m.observacionesWin||0)} registros WIN`);
         html += mv321Linea("Cantidad WIN · 10% del indicador",String(Number(m.observacionesWin||0)),Number(m.observacionesWin||0)===0?"Cumplimiento total":"Registros WIN detectados");
@@ -109,46 +120,104 @@ function mv321DetalleComponente(c, bono){
         html += mv321Linea("Recableado · peso 40%",mv321Pct(m.recableadoPct),`Meta ≤ 42% · ${Number(m.recableados||0)} de ${Number(m.rojoAsignadas||0)} órdenes VT`);
         html += mv321Linea("VTR/GAR · peso 30%",mv321Pct(m.vtrGarPct),`Meta ≤ 3% · ${Number(m.incidenciasVtrGar||0)} incidencias`);
         html += mv321Linea("Activador del componente",`> ${activador}%`,referenciaActivador);
+
     }else if(c.clave === "SLA"){
         html += mv321Linea("Órdenes evaluables",String(Number(m.evaluables||0)),`${Number(m.cumplen||0)} cumplen · ${Number(m.vencidas||0)} fuera de SLA`);
         html += mv321Linea("Instalaciones dentro del SLA",mv321Pct(m.instalacionesPct),`${Number(m.instalacionesTotal||0)} órdenes · meta > 80%`);
         html += mv321Linea("Averías y demás partidas",mv321Pct(m.averiasPct),`${Number(m.averiasTotal||0)} órdenes · meta > 80%`);
         html += mv321Linea("Activador del componente",`> ${activador}%`,referenciaActivador);
         html += mv321Linea("Sin partida o parámetro",String(Number(m.sinPartida||0)+Number(m.sinParametro||0)),"Solo órdenes con hora de inicio y fin");
+
         if((c.detalleIncumplimientos||[]).length){
             const id = `mv321_sla_${mv321Id(bono.usuario)}_${Math.random().toString(36).slice(2)}`;
-            html += `<button class="mv321-link" onclick="toggleDetalle('${id}',this)">▼ Ver órdenes fuera de SLA</button><div id="${id}" class="mv321-incumplimientos" style="display:none;">${c.detalleIncumplimientos.map(x=>`<div><b>${mv321Esc(x.ordenId)}</b><span>${mv321Esc(x.cuadrilla)}</span><small>${mv321Esc(x.tipoPartida)} · ${Number(x.minutos||0)} min / ${Number(x.slaMinutos||0)} min · exceso ${Number(x.exceso||0)} min</small></div>`).join("")}</div>`;
+            html += `<button class="mv321-link" onclick="toggleDetalle('${id}',this)">▼ Ver órdenes fuera de SLA</button>
+                <div id="${id}" class="mv321-incumplimientos" style="display:none;">
+                    ${c.detalleIncumplimientos.map(x=>`<div><b>${mv321Esc(x.ordenId)}</b><span>${mv321Esc(x.cuadrilla)}</span><small>${mv321Esc(x.tipoPartida)} · ${Number(x.minutos||0)} min / ${Number(x.slaMinutos||0)} min · exceso ${Number(x.exceso||0)} min</small></div>`).join("")}
+                </div>`;
         }
+
     }else if(c.clave === "SATISFACCION"){
-        html += mv321Linea("Clientes llamados",String(Number(m.clientesLlamados||0)),"Registro manual de Jefatura");
-        html += mv321Linea("Respondieron",String(Number(m.respondieron||0)),`${Number(m.noRespondieron||0)} sin respuesta`);
-        html += mv321Linea("Clientes conformes",String(Number(m.conformes||0)),mv321Pct(c.cumplimiento));
-        html += mv321Linea("Clientes no conformes",String(Number(m.noConformes||0)),"Las llamadas sin respuesta no afectan el porcentaje");
+        html += mv321Linea(
+            "Atención al cliente · peso 60%",
+            mv321Pct(m.atencionCombinadaPct),
+            `${Number(m.auditoriasEvaluadas||0)} auditorías · ${Number(m.muestrasAtencion||0)} muestras totales`
+        );
+
+        html += mv321Linea(
+            "Resultado de auditorías",
+            mv321Pct(m.atencionAuditoriasPct),
+            "Auditoría en Frío y Auditoría en Caliente"
+        );
+
+        html += mv321Linea(
+            "Llamadas opcionales",
+            m.llamadasIncluidas ? mv321Pct(m.llamadasPct) : "No consideradas",
+            m.llamadasIncluidas
+                ? `${Number(m.respondieron||0)} respondieron · ${Number(m.noRespondieron||0)} sin respuesta`
+                : "No registrar llamadas no afecta el porcentaje"
+        );
+
+        if(m.llamadasIncluidas){
+            html += mv321Linea(
+                "Clientes conformes / no conformes",
+                `${Number(m.conformes||0)} / ${Number(m.noConformes||0)}`,
+                `${Number(m.clientesLlamados||0)} llamadas registradas`
+            );
+        }
+
+        html += mv321Linea(
+            "Orden y limpieza · peso 40%",
+            mv321Pct(m.ordenLimpiezaPct),
+            `${Number(m.auditoriasEvaluadas||0)} auditorías evaluadas`
+        );
+
         html += mv321Linea("Activador del componente",`> ${activador}%`,referenciaActivador);
-        if(bono.puedeEditar) html += `<button class="mv321-accion" onclick="mv324AbrirSatisfaccion('${mv321Esc(bono.usuario)}')">📞 Registrar satisfacción</button>`;
+
+        if(bono.puedeEditar){
+            html += `<button class="mv321-accion" onclick="mv324AbrirSatisfaccion('${mv321Esc(bono.usuario)}')">📞 Llamadas opcionales</button>`;
+        }
+
     }else if(c.clave === "SEGURIDAD"){
         const actasEvaluadas = m.actasEvaluadas === true;
         const respuestaActas = actasEvaluadas ? (m.actasSinPendientes ? "Sí" : "No") : "No evaluado";
         const referenciaActas = actasEvaluadas
             ? `${mv321Pct(m.actasPct)} · ${mv321Money(m.montoActas||0)} / ${mv321Money(m.maximoIndicador||0)}`
             : "Registro manual pendiente";
+
         html += mv321Linea("Actas sin pendientes · peso 25%",respuestaActas,referenciaActas);
         html += mv321Linea("Checklist por quincena · peso 25%",mv321Pct(m.checklistCumplimientoPct),`${Number(m.slotsCumplidos||0)} de ${Number(m.slotsMeta||0)} quincenas · ${mv321Money(m.montoChecklistCumplimiento||0)} / ${mv321Money(m.maximoIndicador||0)}`);
         html += mv321Linea("Actividad en campo · peso 25%",mv321Pct(m.actividadPct),`${Number(m.actividadesCampo||0)} de ${Number(m.metaActividadesCampo||15)} registros · ${mv321Money(m.montoActividad||0)} / ${mv321Money(m.maximoIndicador||0)}`);
         html += mv321Linea("Evaluación de Jefatura · peso 25%",`${Number(m.puntajeEvaluacion||0)} / 60 pts`,`${mv321Money(m.montoEvaluacion||0)} / ${mv321Money(m.maximoIndicador||0)}`);
         html += mv321Linea("Activador del componente",`> ${activador}%`,referenciaActivador);
-        if(bono.puedeEditar) html += `<button class="mv321-accion" onclick="mv332AbrirActas('${mv321Esc(bono.usuario)}')">📄 Validar actas</button>`;
-        if(bono.puedeEditar) html += `<button class="mv321-accion" onclick="mv321AbrirEvaluacion('${mv321Esc(bono.usuario)}')">📝 Evaluar liderazgo</button>`;
+
+        if(bono.puedeEditar){
+            html += `<button class="mv321-accion" onclick="mv332AbrirActas('${mv321Esc(bono.usuario)}')">📄 Validar actas</button>`;
+            html += `<button class="mv321-accion" onclick="mv321AbrirEvaluacion('${mv321Esc(bono.usuario)}')">📝 Evaluar liderazgo</button>`;
+        }
     }
+
     if(c.nota) html += `<div class="mv321-nota">${mv321Esc(c.nota)}</div>`;
     return html;
 }
 
 function mv321TarjetaComponente(c, bono){
     const id = `mv321_comp_${mv321Id(bono.usuario)}_${mv321Id(c.clave)}_${Math.random().toString(36).slice(2)}`;
-    const cumplimiento = c.cumplimiento === null || c.cumplimiento === undefined ? "No evaluado" : `${Number(c.cumplimiento||0).toFixed(1)}%`;
+    const cumplimiento = c.cumplimiento === null || c.cumplimiento === undefined
+        ? "No evaluado"
+        : `${Number(c.cumplimiento||0).toFixed(1)}%`;
+
+    const pesos = (MV321_BONO_SUPERVISORES.configuracion || {}).pesos || {};
+    const pesoComponente = Number(pesos[c.clave] || 0);
+
     return `<div class="mv321-componente ${mv321EstadoClase(c.estado)}">
-        <div class="mv321-comp-head"><div><span>${mv321ComponenteIcono(c.clave)}</span><b>${mv321Esc(c.nombre)}</b></div><em>${mv321Esc(c.estado)}</em></div>
+        <div class="mv321-comp-head">
+            <div>
+                <span>${mv321ComponenteIcono(c.clave)}</span>
+                <b>${mv321Esc(c.nombre)}</b>
+                <small style="display:inline-flex;margin-left:7px;padding:3px 7px;border-radius:999px;background:#1e3a5f;color:#bfdbfe;font-size:9px;font-weight:900;white-space:nowrap;">${pesoComponente}%</small>
+            </div>
+            <em>${mv321Esc(c.estado)}</em>
+        </div>
         <div class="mv321-comp-monto">${mv321Money(c.monto)} <small>de ${mv321Money(c.maximo)}</small></div>
         <div class="mv321-comp-progreso"><span style="width:${Math.max(0,Math.min(100,Number(c.cumplimiento)||0))}%"></span></div>
         <div class="mv321-comp-cumplimiento">${cumplimiento}</div>
@@ -415,61 +484,166 @@ async function mv321GuardarEvaluacion(usuario){
     }catch(e){ mensaje.className="mv321-form-msg error";mensaje.textContent=e.message; }
 }
 
+
+function mv347CambiarUsoLlamadas(){
+    const usar = !!document.getElementById("mv347UsarLlamadas")?.checked;
+    ["mv324SatLlamados","mv324SatConformes","mv324SatNoConformes"].forEach(function(id){
+        const campo = document.getElementById(id);
+        if(!campo) return;
+        campo.disabled = !usar;
+        if(!usar) campo.value = "0";
+    });
+}
+
+
 function mv324AbrirSatisfaccion(usuario){
     const bono = mv321BonoPorUsuario(usuario);
     if(!bono) return;
+
     const componente = (bono.componentes||[]).find(x=>x.clave==="SATISFACCION") || {};
     const registro = componente.registro || {};
-    const activador = Number.isFinite(Number(componente.activador)) ? Number(componente.activador) : 80;
-    const contenido = `<div class="mv321-eval-intro"><b>${mv321Esc(bono.nombre)}</b><span>${mv321Esc(bono.sede)} · ${mv321Esc(bono.periodo)} · activador mayor a ${activador}%</span></div>
-        <div class="mv321-pregunta"><label>Clientes llamados<input id="mv324SatLlamados" type="number" min="1" step="1" value="${Number(registro.clientesLlamados||0) || ""}"></label>
-        <label>Clientes conformes<input id="mv324SatConformes" type="number" min="0" step="1" value="${Number(registro.conformes||0)}"></label>
-        <label>Clientes no conformes<input id="mv324SatNoConformes" type="number" min="0" step="1" value="${Number(registro.noConformes||0)}"></label>
-        <label>Observación<textarea id="mv324SatObservacion" placeholder="Comentario opcional de Jefatura">${mv321Esc(registro.observacion||"")}</textarea></label></div>
+    const activador = Number.isFinite(Number(componente.activador))
+        ? Number(componente.activador)
+        : 80;
+
+    const incluir = Number(registro.clientesLlamados||0) > 0;
+
+    const contenido = `
+        <div class="mv321-eval-intro">
+            <b>${mv321Esc(bono.nombre)}</b>
+            <span>${mv321Esc(bono.sede)} · ${mv321Esc(bono.periodo)} · activador mayor a ${activador}%</span>
+        </div>
+
+        <div class="mv321-param-intro">
+            <b>Medición principal automática</b><br>
+            Atención al cliente representa 60% y Orden y limpieza 40%, tomando las Auditorías en Frío y en Caliente.
+            Las llamadas son opcionales y solo complementan Atención al cliente. Si no se incluyen, no generan penalidad.
+        </div>
+
+        <div class="mv321-pregunta">
+            <label style="display:flex;align-items:center;gap:9px;">
+                <input id="mv347UsarLlamadas" type="checkbox" ${incluir ? "checked" : ""} onchange="mv347CambiarUsoLlamadas()" style="width:20px;height:20px;">
+                Incluir llamadas en este período
+            </label>
+
+            <label>Clientes llamados
+                <input id="mv324SatLlamados" type="number" min="0" step="1" value="${Number(registro.clientesLlamados||0)}">
+            </label>
+
+            <label>Clientes conformes
+                <input id="mv324SatConformes" type="number" min="0" step="1" value="${Number(registro.conformes||0)}">
+            </label>
+
+            <label>Clientes no conformes
+                <input id="mv324SatNoConformes" type="number" min="0" step="1" value="${Number(registro.noConformes||0)}">
+            </label>
+
+            <label>Observación
+                <textarea id="mv324SatObservacion" placeholder="Comentario opcional de Jefatura">${mv321Esc(registro.observacion||"")}</textarea>
+            </label>
+        </div>
+
         <div id="mv324SatMensaje" class="mv321-form-msg"></div>
-        <button class="mv321-guardar" onclick="mv324GuardarSatisfaccion('${mv321Esc(bono.usuario)}')">💾 Guardar satisfacción</button>`;
-    mv321MostrarModal("Satisfacción del cliente",contenido);
+        <button class="mv321-guardar" onclick="mv324GuardarSatisfaccion('${mv321Esc(bono.usuario)}')">💾 Guardar llamadas</button>`;
+
+    mv321MostrarModal("Llamadas opcionales de atención al cliente",contenido);
+    setTimeout(mv347CambiarUsoLlamadas,0);
 }
 
 async function mv324GuardarSatisfaccion(usuario){
     const bono = mv321BonoPorUsuario(usuario);
     const mensaje = document.getElementById("mv324SatMensaje");
     if(!bono || !mensaje) return;
-    const clientesLlamados = Number(document.getElementById("mv324SatLlamados").value);
-    const conformes = Number(document.getElementById("mv324SatConformes").value);
-    const noConformes = Number(document.getElementById("mv324SatNoConformes").value);
+
+    const usar = !!document.getElementById("mv347UsarLlamadas")?.checked;
+    const clientesLlamados = usar ? Number(document.getElementById("mv324SatLlamados").value) : 0;
+    const conformes = usar ? Number(document.getElementById("mv324SatConformes").value) : 0;
+    const noConformes = usar ? Number(document.getElementById("mv324SatNoConformes").value) : 0;
     const observacion = document.getElementById("mv324SatObservacion").value.trim();
+
     mensaje.className="mv321-form-msg";
-    mensaje.textContent="Guardando satisfacción...";
+    mensaje.textContent=usar ? "Guardando llamadas..." : "Desactivando llamadas para el período...";
+
     try{
-        await mv321Post("guardarSatisfaccionBonoSupervisor",{periodo:bono.periodo,supervisor:bono.usuario,clientesLlamados,conformes,noConformes,observacion});
+        await mv321Post("guardarSatisfaccionBonoSupervisor",{
+            periodo:bono.periodo,
+            supervisor:bono.usuario,
+            clientesLlamados,
+            conformes,
+            noConformes,
+            observacion
+        });
+
         mensaje.className="mv321-form-msg ok";
-        mensaje.textContent="Satisfacción guardada correctamente.";
+        mensaje.textContent=usar
+            ? "Llamadas guardadas correctamente."
+            : "Las llamadas no serán consideradas en este período.";
+
         await mv321CargarBonos(bono.periodo);
         setTimeout(mv325RefrescarVistaActual,500);
-    }catch(e){ mensaje.className="mv321-form-msg error";mensaje.textContent=e.message; }
+    }catch(e){
+        mensaje.className="mv321-form-msg error";
+        mensaje.textContent=e.message;
+    }
 }
 
 function mv324AbrirConfiguracionBono(){
     const cfg = MV321_BONO_SUPERVISORES.configuracion || {};
     const pesos = cfg.pesos || {PRODUCTIVIDAD:25,CALIDAD:25,SLA:20,SATISFACCION:15,SEGURIDAD:15};
-    const activadores = Object.assign({PRODUCTIVIDAD:80,CALIDAD:80,SLA:75,SATISFACCION:80,SEGURIDAD:0},cfg.activadores||{});
+    const activadores = Object.assign(
+        {PRODUCTIVIDAD:80,CALIDAD:80,SLA:75,SATISFACCION:80,SEGURIDAD:0},
+        cfg.activadores||{}
+    );
+
     const monto = Number(cfg.montoTotal||1000);
-    const fila = (nombre,peso)=>mv321Linea(`${nombre} · ${peso}%`,mv321Money(monto*peso/100),"Se recalcula automáticamente");
-    const campoActivador = (id,nombre,valor)=>`<label>${nombre}<input id="${id}" type="number" min="0" max="100" step="0.01" value="${Number(valor)}" required><small>El resultado debe superar este porcentaje.</small></label>`;
-    const contenido = `<div class="mv321-param-intro">La configuración rige solo para ${mv321Esc(MV321_BONO_SUPERVISORES.periodo)}. Los pesos permanecen fijos y suman 100%.</div>
-        <div class="mv321-pregunta"><label>Monto total del bono por supervisor<input id="mv324MontoBono" type="number" min="1" max="100000" step="0.01" value="${monto}"></label></div>
-        <div id="mv324DistribucionBono">${fila("Productividad",pesos.PRODUCTIVIDAD)}${fila("Calidad",pesos.CALIDAD)}${fila("SLA WIN",pesos.SLA)}${fila("Satisfacción",pesos.SATISFACCION)}${fila("Seguridad y liderazgo",pesos.SEGURIDAD)}</div>
-        <div class="mv321-param-intro" style="margin-top:14px;"><b>Porcentaje de activación por componente</b><br>Si el componente no supera el valor indicado, aporta S/ 0.</div>
+    const fila = (nombre,peso)=>mv321Linea(
+        `${nombre} · ${peso}%`,
+        mv321Money(monto*peso/100),
+        "Se recalcula automáticamente"
+    );
+
+    const campoActivador = (id,nombre,valor)=>`
+        <label>${nombre}
+            <input id="${id}" type="number" min="0" max="100" step="0.01" value="${Number(valor)}" required>
+            <small>El resultado debe superar este porcentaje.</small>
+        </label>`;
+
+    const contenido = `
+        <div class="mv321-param-intro">
+            La configuración rige solo para ${mv321Esc(MV321_BONO_SUPERVISORES.periodo)}.
+            Los pesos permanecen fijos y suman 100%.
+        </div>
+
+        <div class="mv321-pregunta">
+            <label>Monto total del bono por supervisor
+                <input id="mv324MontoBono" type="number" min="1" max="100000" step="0.01" value="${monto}">
+            </label>
+        </div>
+
+        <div id="mv324DistribucionBono">
+            ${fila("Productividad operativa",pesos.PRODUCTIVIDAD)}
+            ${fila("Calidad de instalaciones y averías",pesos.CALIDAD)}
+            ${fila("SLA WIN",pesos.SLA)}
+            ${fila("Satisfacción del cliente",pesos.SATISFACCION)}
+            ${fila("Liderazgo",pesos.SEGURIDAD)}
+        </div>
+
+        <div class="mv321-param-intro" style="margin-top:14px;">
+            <b>Porcentaje de activación por componente</b><br>
+            Si el componente no supera el valor indicado, aporta S/ 0.
+        </div>
+
         <div id="mv330ActivadoresBono" class="mv321-pregunta">
             ${campoActivador("mv330ActProductividad","Productividad operativa (%)",activadores.PRODUCTIVIDAD)}
-            ${campoActivador("mv330ActCalidad","Calidad (%)",activadores.CALIDAD)}
+            ${campoActivador("mv330ActCalidad","Calidad de instalaciones y averías (%)",activadores.CALIDAD)}
             ${campoActivador("mv330ActSla","SLA WIN (%)",activadores.SLA)}
             ${campoActivador("mv330ActSatisfaccion","Satisfacción del cliente (%)",activadores.SATISFACCION)}
-            ${campoActivador("mv330ActSeguridad","Seguridad y liderazgo (%)",activadores.SEGURIDAD)}
+            ${campoActivador("mv330ActSeguridad","Liderazgo (%)",activadores.SEGURIDAD)}
         </div>
+
         <div id="mv324ConfigMensaje" class="mv321-form-msg"></div>
         <button class="mv321-guardar" onclick="mv324GuardarConfiguracionBono()">💾 Guardar configuración</button>`;
+
     mv321MostrarModal("Configuración del bono",contenido);
 }
 
