@@ -1,5 +1,5 @@
-/* MI VISUAL V343 - caché segura y recepción rápida de actas */
-const MV339_CACHE = "mivisual-v343-actas-recepcion-20260804";
+/* MI VISUAL V344 - caché segura e identidad única de actas */
+const MV339_CACHE = "mivisual-v344-actas-identidad-20260804";
 const MV339_CORE = [
   "./",
   "./index.html",
@@ -12,6 +12,7 @@ const MV339_CORE = [
   "./js/modulos_loader.js?v=V341-VALIDACION",
   "./js/mapa_cto_fix_v342.js?v=V342-MAPA-CTO",
   "./js/actas_recepcion_v343.js?v=V343-ACTAS-RECEPCION",
+  "./js/actas_identidad_v344.js?v=V344-ACTAS-IDENTIDAD",
   "./img/logo.png",
   "./img/logo-192.png",
   "./img/splash.png"
