@@ -15,7 +15,7 @@
     },
     dashboard: {
       depende: ["dashboards_core"],
-      archivos: [`./js/bono_supervisores.js?v=V351-BONO-GET-SEGURO`],
+      archivos: [`./js/bono_supervisores.js?v=V352-MONTOS-AUTOMATICOS`],
       entradas: ["mostrarBonosSupervisores"]
     },
     indicadores: {

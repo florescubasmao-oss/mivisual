@@ -1,5 +1,5 @@
-/* MI VISUAL V351 - caché segura y lectura GET de Bonos Supervisores */
-const MV339_CACHE = "mivisual-v351-bono-get-seguro-20260805";
+/* MI VISUAL V352 - caché segura y montos automáticos por peso */
+const MV339_CACHE = "mivisual-v352-montos-automaticos-20260805";
 const MV339_CORE = [
   "./",
   "./index.html",
@@ -9,7 +9,7 @@ const MV339_CORE = [
   "./js/login.js?v=V339-CACHE",
   "./js/permisos.js?v=V339-CORE",
   "./js/app.js?v=V339-LAZY",
-  "./js/modulos_loader.js?v=V351-BONO-GET-SEGURO",
+  "./js/modulos_loader.js?v=V352-MONTOS-AUTOMATICOS",
   "./js/mapa_cto_fix_v342.js?v=V342-MAPA-CTO",
   "./js/actas_recepcion_v343.js?v=V343-ACTAS-RECEPCION",
   "./js/actas_identidad_v344.js?v=V344-ACTAS-IDENTIDAD",

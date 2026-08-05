@@ -308,23 +308,121 @@ function mv348DetalleEscalasComponente(c){
     </div>`;
 }
 
+const MV352_PESOS_COMPONENTES = {
+    PRODUCTIVIDAD:25,
+    CALIDAD:25,
+    SLA:20,
+    SATISFACCION:15,
+    SEGURIDAD:15
+};
+
+const MV352_PROPORCIONES_NIVELES = {
+    PRODUCTIVIDAD:[0.60,0.80,1.00],
+    CALIDAD:[0.60,0.80,1.00],
+    SLA:[0.50,0.75,1.00],
+    SATISFACCION:[2/3,1.00],
+    SEGURIDAD:[2/3,1.00]
+};
+
+function mv352GenerarEscalasAutomaticas(totalEntrada,umbralesEntrada){
+    const total = mv350RedondearMoneda(Number(totalEntrada));
+    const claves = ["PRODUCTIVIDAD","CALIDAD","SLA","SATISFACCION","SEGURIDAD"];
+    const escalas = {};
+    const maximos = {};
+    let acumulado = 0;
+
+    claves.forEach((clave,indice)=>{
+        if(indice < claves.length-1){
+            maximos[clave] = mv350RedondearMoneda(
+                total * MV352_PESOS_COMPONENTES[clave] / 100
+            );
+            acumulado += maximos[clave];
+        }else{
+            maximos[clave] = mv350RedondearMoneda(total-acumulado);
+        }
+    });
+
+    claves.forEach(clave=>{
+        const base = Array.isArray(umbralesEntrada?.[clave])
+            ? umbralesEntrada[clave]
+            : mv348EscalasPredeterminadas()[clave];
+
+        escalas[clave] = base.map((nivel,indice)=>{
+            const ultimo = indice === base.length-1;
+            return {
+                desde:Number(nivel.desde)||0,
+                monto:ultimo
+                    ? maximos[clave]
+                    : mv350RedondearMoneda(
+                        maximos[clave] * MV352_PROPORCIONES_NIVELES[clave][indice]
+                    )
+            };
+        });
+    });
+
+    return escalas;
+}
+
+function mv352ActualizarResumenes(escalas){
+    Object.keys(MV352_PESOS_COMPONENTES).forEach(clave=>{
+        const lista = escalas?.[clave] || [];
+        const maximo = lista.reduce(
+            (mayor,nivel)=>Math.max(mayor,Number(nivel.monto)||0),
+            0
+        );
+        const elemento = document.getElementById(`mv352Resumen_${clave}`);
+
+        if(elemento){
+            elemento.textContent =
+                `${MV352_PESOS_COMPONENTES[clave]}% · Máximo ${mv321Money(maximo)}`;
+        }
+    });
+}
+
 function mv348TarjetaEscalaConfiguracion(clave, lista){
+    const peso = MV352_PESOS_COMPONENTES[clave] || 0;
+    const maximo = (lista||[]).reduce(
+        (mayor,nivel)=>Math.max(mayor,Number(nivel.monto)||0),
+        0
+    );
+
     return `<div style="margin-top:12px;padding:12px;border:1px solid #274566;border-radius:14px;background:#102844;">
         <div style="display:flex;justify-content:space-between;gap:10px;align-items:center;margin-bottom:8px;">
             <b>${mv321Esc(mv348NombreComponente(clave))}</b>
-            <span style="font-size:10px;color:#9fc1e4;">${lista.length} niveles</span>
+            <span id="mv352Resumen_${clave}" style="font-size:10px;color:#bfdbfe;font-weight:900;">
+                ${peso}% · Máximo ${mv321Money(maximo)}
+            </span>
         </div>
 
         ${lista.map((nivel,indice)=>`
             <div class="mv348-fila-escala" data-clave="${clave}" data-indice="${indice}" style="display:grid;grid-template-columns:minmax(120px,1fr) minmax(120px,1fr);gap:9px;margin-top:8px;">
                 <label>Desde (%)
-                    <input class="mv348-desde" type="number" min="0" max="100" step="0.01" value="${Number(nivel.desde)}" oninput="mv350PorcentajeEscalaCambiado()">
+                    <input
+                        class="mv348-desde"
+                        type="number"
+                        min="0"
+                        max="100"
+                        step="0.01"
+                        value="${Number(nivel.desde)}"
+                        oninput="mv350PorcentajeEscalaCambiado()"
+                    >
                 </label>
 
-                <label>Monto (S/)
-                    <input class="mv348-monto" type="number" min="0" max="100000" step="0.01" value="${Number(nivel.monto)}" oninput="mv350MontoEscalaCambiado()">
+                <label>Monto automático (S/)
+                    <input
+                        class="mv348-monto"
+                        type="number"
+                        value="${Number(nivel.monto).toFixed(2)}"
+                        readonly
+                        tabindex="-1"
+                        style="background:#172a43;color:#dbeafe;font-weight:900;cursor:not-allowed;"
+                    >
                 </label>
             </div>`).join("")}
+
+        <small style="display:block;margin-top:8px;color:#9fc1e4;">
+            El monto se calcula automáticamente con el ${peso}% asignado a este indicador.
+        </small>
     </div>`;
 }
 
@@ -442,70 +540,40 @@ function mv350EscribirEscalasFormulario(escalas){
 }
 
 function mv350InicializarMontoTotal(){
-    const escalas = mv348LeerEscalasFormulario();
     const configuracion = MV321_BONO_SUPERVISORES.configuracion || {};
     const totalConfigurado = Number(configuracion.montoTotal);
     const total = Number.isFinite(totalConfigurado) && totalConfigurado > 0
         ? totalConfigurado
-        : mv350TotalEscalas(escalas);
+        : 1000;
 
     const campoTotal = document.getElementById("mv350MontoTotal");
     if(campoTotal) campoTotal.value = mv350RedondearMoneda(total).toFixed(2);
 
-    mv350GuardarBaseDistribucion(total,escalas);
+    mv350DistribuirMontoTotal();
 }
 
 function mv350DistribuirMontoTotal(){
     const campoTotal = document.getElementById("mv350MontoTotal");
     if(!campoTotal) return;
 
-    const objetivo = Number(campoTotal.value);
-    if(!Number.isFinite(objetivo) || objetivo <= 0) return;
+    const total = Number(campoTotal.value);
+    if(!Number.isFinite(total) || total <= 0) return;
 
-    if(!MV350_BASE_DISTRIBUCION_BONO){
-        mv350InicializarMontoTotal();
-    }
+    const umbrales = mv348LeerEscalasFormulario();
+    const escalas = mv352GenerarEscalasAutomaticas(total,umbrales);
 
-    const base = MV350_BASE_DISTRIBUCION_BONO;
-    const factor = objetivo / Math.max(0.01,Number(base.total)||0.01);
-    const ajustadas = mv350ClonarEscalas(base.escalas);
-
-    Object.keys(ajustadas).forEach(clave=>{
-        ajustadas[clave].forEach(nivel=>{
-            nivel.monto = mv350RedondearMoneda(Number(nivel.monto||0)*factor);
-        });
-    });
-
-    // Ajustar centavos para que la suma de máximos coincida con el total.
-    const totalAjustado = mv350TotalEscalas(ajustadas);
-    const diferencia = mv350RedondearMoneda(objetivo-totalAjustado);
-
-    if(Math.abs(diferencia) >= 0.01){
-        const claves = Object.keys(ajustadas);
-        const ultimaClave = claves[claves.length-1];
-        const lista = ajustadas[ultimaClave];
-        const ultimo = lista.length-1;
-        lista[ultimo].monto = mv350RedondearMoneda(
-            Math.max(0,Number(lista[ultimo].monto||0)+diferencia)
-        );
-    }
-
-    mv350EscribirEscalasFormulario(ajustadas);
+    mv350EscribirEscalasFormulario(escalas);
+    mv352ActualizarResumenes(escalas);
 }
 
 function mv350MontoEscalaCambiado(){
-    const escalas = mv348LeerEscalasFormulario();
-    const total = mv350TotalEscalas(escalas);
-    const campoTotal = document.getElementById("mv350MontoTotal");
-
-    if(campoTotal) campoTotal.value = total.toFixed(2);
-
-    // Después de una edición manual, esa distribución pasa a ser la nueva base.
-    mv350GuardarBaseDistribucion(total,escalas);
+    // V352: los montos son automáticos y no admiten edición manual.
 }
 
 function mv350PorcentajeEscalaCambiado(){
-    // Los porcentajes no alteran el monto máximo ni la distribución monetaria.
+    // Los porcentajes cambian el nivel de activación.
+    // Los montos continúan dependiendo únicamente del bono total y del peso fijo.
+    mv350DistribuirMontoTotal();
 }
 
 
@@ -995,26 +1063,29 @@ async function mv324GuardarSatisfaccion(usuario){
 }
 
 function mv324AbrirConfiguracionBono(){
-    const escalas = mv348EscalasConfiguradas();
     const configuracion = MV321_BONO_SUPERVISORES.configuracion || {};
-    const totalEscalas = mv350TotalEscalas(escalas);
     const totalConfigurado = Number(configuracion.montoTotal);
     const total = Number.isFinite(totalConfigurado) && totalConfigurado > 0
         ? totalConfigurado
-        : totalEscalas;
+        : 1000;
+
+    const escalasBase = mv348EscalasConfiguradas();
+    const escalas = mv352GenerarEscalasAutomaticas(total,escalasBase);
 
     const contenido = `
         <div class="mv321-param-intro">
             La configuración rige solo para ${mv321Esc(MV321_BONO_SUPERVISORES.periodo)}.
-            Los porcentajes, los montos por nivel y el bono máximo son editables.
-            Al cambiar el bono máximo, todos los montos se acondicionan automáticamente
-            conservando la misma proporción.
+            El bono máximo y los porcentajes de activación son editables.
+            Los montos se calculan automáticamente con los pesos fijos:
+            Productividad 25%, Calidad 25%, SLA 20%, Satisfacción 15% y Liderazgo 15%.
         </div>
 
         <div style="display:grid;grid-template-columns:minmax(180px,1fr) minmax(180px,260px);gap:12px;align-items:end;margin-top:12px;padding:12px;border-radius:13px;background:#0d2037;border:1px solid #274566;">
             <div>
                 <b style="display:block;font-size:18px;">Bono máximo del período</b>
-                <small style="color:#9fc1e4;">Al modificarlo se redistribuyen automáticamente los montos.</small>
+                <small style="color:#9fc1e4;">
+                    Al modificarlo se recalculan inmediatamente todos los montos.
+                </small>
             </div>
 
             <label style="font-weight:900;">Monto total (S/)
@@ -1038,13 +1109,16 @@ function mv324AbrirConfiguracionBono(){
         ${mv348TarjetaEscalaConfiguracion("SEGURIDAD",escalas.SEGURIDAD)}
 
         <div class="mv321-param-intro" style="margin-top:14px;">
-            También puede modificar manualmente cualquier monto. En ese caso,
-            el bono máximo se recalcula con la suma de los montos máximos de cada indicador.
-            Por debajo del primer porcentaje corresponde S/ 0.00.
+            Ejemplo con bono total S/ 500:
+            Productividad S/ 125, Calidad S/ 125, SLA S/ 100,
+            Satisfacción S/ 75 y Liderazgo S/ 75 como montos máximos.
+            Por debajo del primer porcentaje de cada escala corresponde S/ 0.00.
         </div>
 
         <div id="mv324ConfigMensaje" class="mv321-form-msg"></div>
-        <button class="mv321-guardar" onclick="mv324GuardarConfiguracionBono()">💾 Guardar escalas</button>`;
+        <button class="mv321-guardar" onclick="mv324GuardarConfiguracionBono()">
+            💾 Guardar configuración
+        </button>`;
 
     mv321MostrarModal("Configuración de escalas del bono",contenido);
     setTimeout(mv350InicializarMontoTotal,0);
@@ -1055,12 +1129,14 @@ async function mv324GuardarConfiguracionBono(){
     if(!mensaje) return;
 
     const montoTotal = Number(document.getElementById("mv350MontoTotal")?.value);
-    const escalas = mv348LeerEscalasFormulario();
+    const umbrales = mv348LeerEscalasFormulario();
+    const escalas = mv352GenerarEscalasAutomaticas(montoTotal,umbrales);
     const error = mv348ValidarEscalasFormulario(escalas);
 
     if(!Number.isFinite(montoTotal) || montoTotal <= 0 || montoTotal > 100000){
         mensaje.className = "mv321-form-msg error";
-        mensaje.textContent = "El bono máximo debe ser mayor a cero y no superar S/ 100,000.";
+        mensaje.textContent =
+            "El bono máximo debe ser mayor a cero y no superar S/ 100,000.";
         return;
     }
 
@@ -1071,7 +1147,7 @@ async function mv324GuardarConfiguracionBono(){
     }
 
     mensaje.className = "mv321-form-msg";
-    mensaje.textContent = "Guardando monto total y escalas...";
+    mensaje.textContent = "Guardando monto total y porcentajes...";
 
     try{
         await mv321Post("guardarConfiguracionBonoSupervisores",{
@@ -1081,7 +1157,8 @@ async function mv324GuardarConfiguracionBono(){
         });
 
         mensaje.className = "mv321-form-msg ok";
-        mensaje.textContent = "Monto total y escalas actualizados correctamente.";
+        mensaje.textContent =
+            "Configuración guardada. Los montos fueron calculados automáticamente.";
 
         await mv321CargarBonos(MV321_BONO_SUPERVISORES.periodo);
         setTimeout(mv325RefrescarVistaActual,500);
