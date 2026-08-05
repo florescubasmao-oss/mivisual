@@ -11,14 +11,14 @@
   const MODULOS = {
     dashboards_core: {
       archivos: [
-        `./js/dashboards.js?v=V356-INFORME-DATOS`,
-        `./js/informe_gerencial_v355.js?v=V356-INFORME-DATOS`
+        `./js/dashboards.js?v=V357-INFORME-OBSERVACIONES`,
+        `./js/informe_gerencial_v355.js?v=V357-INFORME-OBSERVACIONES`
       ],
       entradas: ["mostrarProduccionV2", "mostrarDashboardSupervisor", "mostrarDashboardJefatura"]
     },
     dashboard: {
       depende: ["dashboards_core"],
-      archivos: [`./js/bono_supervisores.js?v=V356-INFORME-DATOS`],
+      archivos: [`./js/bono_supervisores.js?v=V357-INFORME-OBSERVACIONES`],
       entradas: ["mostrarBonosSupervisores"]
     },
     indicadores: {
@@ -34,7 +34,10 @@
       entradas: ["mostrarBonos"]
     },
     observaciones: {
-      archivos: [`./js/observaciones.js?v=${VERSION}`],
+      archivos: [
+        `./js/observaciones.js?v=${VERSION}`,
+        `./js/observaciones_informe_v357.js?v=V357-INFORME-OBSERVACIONES`
+      ],
       entradas: ["mostrarObservaciones"]
     },
     accesos: {
