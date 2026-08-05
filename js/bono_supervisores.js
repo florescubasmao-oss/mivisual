@@ -99,6 +99,193 @@ function mv321Linea(etiqueta, valor, referencia){
     return `<div class="mv321-linea"><span>${mv321Esc(etiqueta)}</span><div><b>${mv321Esc(valor)}</b>${referencia ? `<small>${mv321Esc(referencia)}</small>` : ""}</div></div>`;
 }
 
+
+function mv348EscalasPredeterminadas(){
+    return {
+        PRODUCTIVIDAD:[
+            {desde:85,monto:150},
+            {desde:90,monto:200},
+            {desde:100,monto:250}
+        ],
+        CALIDAD:[
+            {desde:85,monto:150},
+            {desde:90,monto:200},
+            {desde:100,monto:250}
+        ],
+        SLA:[
+            {desde:95,monto:100},
+            {desde:98,monto:150},
+            {desde:100,monto:200}
+        ],
+        SATISFACCION:[
+            {desde:85,monto:100},
+            {desde:100,monto:150}
+        ],
+        SEGURIDAD:[
+            {desde:85,monto:100},
+            {desde:100,monto:150}
+        ]
+    };
+}
+
+function mv348EscalasConfiguradas(){
+    const configuracion = MV321_BONO_SUPERVISORES.configuracion || {};
+    const origen = configuracion.escalas || mv348EscalasPredeterminadas();
+    const salida = {};
+
+    Object.keys(mv348EscalasPredeterminadas()).forEach(clave=>{
+        const lista = Array.isArray(origen[clave])
+            ? origen[clave]
+            : mv348EscalasPredeterminadas()[clave];
+
+        salida[clave] = lista.map(item=>({
+            desde:Number(item.desde)||0,
+            monto:Number(item.monto)||0
+        }));
+    });
+
+    return salida;
+}
+
+function mv348NombreComponente(clave){
+    return {
+        PRODUCTIVIDAD:"Productividad operativa",
+        CALIDAD:"Calidad de instalaciones y averías",
+        SLA:"Cumplimiento de SLA WIN",
+        SATISFACCION:"Satisfacción del cliente",
+        SEGURIDAD:"Liderazgo"
+    }[clave] || clave;
+}
+
+function mv348EtiquetaRango(lista, indice){
+    const actual = lista[indice];
+    const siguiente = lista[indice + 1];
+
+    if(!siguiente) return `${Number(actual.desde).toFixed(0)}% o más`;
+
+    const hasta = Math.max(Number(actual.desde),Number(siguiente.desde) - 0.01);
+    return `${Number(actual.desde).toFixed(0)}% a ${hasta.toFixed(2).replace(".00","")}%`;
+}
+
+function mv348DetalleEscalasComponente(c){
+    const escalas = mv348EscalasConfiguradas();
+    const lista = escalas[c.clave] || [];
+    const cumplimiento = Number(c.cumplimiento);
+    const evaluado = c.cumplimiento !== null && c.cumplimiento !== undefined;
+    let nivelAlcanzado = -1;
+
+    lista.forEach((nivel,indice)=>{
+        if(evaluado && cumplimiento >= Number(nivel.desde)) nivelAlcanzado = indice;
+    });
+
+    return `<div style="margin-top:10px;padding:10px;border:1px solid #274566;border-radius:12px;background:#0d2037;">
+        <b style="display:block;margin-bottom:7px;color:#dbeafe;">Escala de pago</b>
+        ${lista.map((nivel,indice)=>{
+            const activo = indice === nivelAlcanzado;
+            return `<div style="display:flex;justify-content:space-between;gap:10px;padding:7px 8px;margin-top:5px;border-radius:9px;background:${activo?"#14532d":"#132a45"};border:1px solid ${activo?"#22c55e":"#274566"};">
+                <span>${mv321Esc(mv348EtiquetaRango(lista,indice))}</span>
+                <b>${mv321Money(nivel.monto)}${activo?" · ALCANZADO":""}</b>
+            </div>`;
+        }).join("")}
+        <small style="display:block;margin-top:7px;color:#9fc1e4;">Por debajo del primer nivel corresponde S/ 0.00.</small>
+    </div>`;
+}
+
+function mv348TarjetaEscalaConfiguracion(clave, lista){
+    return `<div style="margin-top:12px;padding:12px;border:1px solid #274566;border-radius:14px;background:#102844;">
+        <div style="display:flex;justify-content:space-between;gap:10px;align-items:center;margin-bottom:8px;">
+            <b>${mv321Esc(mv348NombreComponente(clave))}</b>
+            <span style="font-size:10px;color:#9fc1e4;">${lista.length} niveles</span>
+        </div>
+
+        ${lista.map((nivel,indice)=>`
+            <div class="mv348-fila-escala" data-clave="${clave}" data-indice="${indice}" style="display:grid;grid-template-columns:minmax(120px,1fr) minmax(120px,1fr);gap:9px;margin-top:8px;">
+                <label>Desde (%)
+                    <input class="mv348-desde" type="number" min="0" max="100" step="0.01" value="${Number(nivel.desde)}" oninput="mv348ActualizarTotalConfiguracion()">
+                </label>
+
+                <label>Monto (S/)
+                    <input class="mv348-monto" type="number" min="0" max="100000" step="0.01" value="${Number(nivel.monto)}" oninput="mv348ActualizarTotalConfiguracion()">
+                </label>
+            </div>`).join("")}
+    </div>`;
+}
+
+function mv348LeerEscalasFormulario(){
+    const escalas = {};
+
+    document.querySelectorAll(".mv348-fila-escala").forEach(fila=>{
+        const clave = fila.dataset.clave;
+        const indice = Number(fila.dataset.indice);
+
+        if(!escalas[clave]) escalas[clave] = [];
+
+        escalas[clave][indice] = {
+            desde:Number(fila.querySelector(".mv348-desde").value),
+            monto:Number(fila.querySelector(".mv348-monto").value)
+        };
+    });
+
+    return escalas;
+}
+
+function mv348ValidarEscalasFormulario(escalas){
+    const cantidades = {
+        PRODUCTIVIDAD:3,
+        CALIDAD:3,
+        SLA:3,
+        SATISFACCION:2,
+        SEGURIDAD:2
+    };
+
+    for(const clave of Object.keys(cantidades)){
+        const lista = escalas[clave];
+
+        if(!Array.isArray(lista) || lista.length !== cantidades[clave]){
+            return `${mv348NombreComponente(clave)} no tiene todos sus niveles.`;
+        }
+
+        let desdeAnterior = -1;
+        let montoAnterior = -1;
+
+        for(let i=0;i<lista.length;i++){
+            const nivel = lista[i];
+
+            if(!Number.isFinite(nivel.desde) || nivel.desde < 0 || nivel.desde > 100){
+                return `Revise el porcentaje del nivel ${i+1} de ${mv348NombreComponente(clave)}.`;
+            }
+
+            if(!Number.isFinite(nivel.monto) || nivel.monto < 0){
+                return `Revise el monto del nivel ${i+1} de ${mv348NombreComponente(clave)}.`;
+            }
+
+            if(nivel.desde <= desdeAnterior){
+                return `Los porcentajes de ${mv348NombreComponente(clave)} deben aumentar en cada nivel.`;
+            }
+
+            if(nivel.monto < montoAnterior){
+                return `Los montos de ${mv348NombreComponente(clave)} no pueden disminuir en un nivel superior.`;
+            }
+
+            desdeAnterior = nivel.desde;
+            montoAnterior = nivel.monto;
+        }
+    }
+
+    return "";
+}
+
+function mv348ActualizarTotalConfiguracion(){
+    const total = Object.values(mv348LeerEscalasFormulario()).reduce((suma,lista)=>{
+        const maximo = (lista||[]).reduce((mayor,nivel)=>Math.max(mayor,Number(nivel.monto)||0),0);
+        return suma + maximo;
+    },0);
+
+    const elemento = document.getElementById("mv348TotalMaximo");
+    if(elemento) elemento.textContent = mv321Money(total);
+}
+
+
 function mv321DetalleComponente(c, bono){
     const m = c.metricas || {};
     const activador = Number.isFinite(Number(c.activador)) ? Number(c.activador) : 0;
@@ -111,7 +298,6 @@ function mv321DetalleComponente(c, bono){
     if(c.clave === "PRODUCTIVIDAD"){
         html += mv321Linea("Puntaje de cuadrillas · peso 60%",mv321Pct(m.productividadPct),`Meta: 130 puntos por cuadrilla · ${Number(m.puntos||0).toFixed(1)} / ${Number(m.metaPuntos||0)} pts`);
         html += mv321Linea("Efectividad · peso 40%",mv321Pct(m.efectividadPct),`Meta ≥ 70% · ${Number(m.finalizadas||0)} finalizadas`);
-        html += mv321Linea("Activador del componente",`> ${activador}%`,referenciaActivador);
 
     }else if(c.clave === "CALIDAD"){
         html += mv321Linea("Observaciones WIN · peso 30%",mv321Pct(m.puntajeObservaciones),`${Number(m.observacionesWin||0)} registros WIN`);
@@ -119,20 +305,20 @@ function mv321DetalleComponente(c, bono){
         html += mv321Linea("Penalizadas WIN · 90% del indicador",mv321Money(m.montoPenalizadoWin),`Meta ≤ S/ 300 · ${Number(m.observacionesWinPenalizadas||0)} penalizadas`);
         html += mv321Linea("Recableado · peso 40%",mv321Pct(m.recableadoPct),`Meta ≤ 42% · ${Number(m.recableados||0)} de ${Number(m.rojoAsignadas||0)} órdenes VT`);
         html += mv321Linea("VTR/GAR · peso 30%",mv321Pct(m.vtrGarPct),`Meta ≤ 3% · ${Number(m.incidenciasVtrGar||0)} incidencias`);
-        html += mv321Linea("Activador del componente",`> ${activador}%`,referenciaActivador);
 
     }else if(c.clave === "SLA"){
-        html += mv321Linea("Órdenes evaluables",String(Number(m.evaluables||0)),`${Number(m.cumplen||0)} cumplen · ${Number(m.vencidas||0)} fuera de SLA`);
-        html += mv321Linea("Instalaciones dentro del SLA",mv321Pct(m.instalacionesPct),`${Number(m.instalacionesTotal||0)} órdenes · meta > 80%`);
-        html += mv321Linea("Averías y demás partidas",mv321Pct(m.averiasPct),`${Number(m.averiasTotal||0)} órdenes · meta > 80%`);
-        html += mv321Linea("Activador del componente",`> ${activador}%`,referenciaActivador);
-        html += mv321Linea("Sin partida o parámetro",String(Number(m.sinPartida||0)+Number(m.sinParametro||0)),"Solo órdenes con hora de inicio y fin");
+        html += mv321Linea("Órdenes FINALIZADAS evaluables",String(Number(m.evaluables||0)),`${Number(m.cumplen||0)} cumplen · ${Number(m.vencidas||0)} fuera de SLA`);
+        html += mv321Linea("Instalaciones dentro del SLA",mv321Pct(m.instalacionesPct),`${Number(m.instalacionesTotal||0)} órdenes · Instalación / Instalación Posible Fraude con motivo vacío o INSTALADO`);
+        html += mv321Linea("Visitas técnicas dentro del SLA",mv321Pct(m.visitasTecnicasPct ?? m.averiasPct),`${Number(m.visitasTecnicasTotal ?? m.averiasTotal ?? 0)} órdenes · demás casos FINALIZADOS`);
+        html += mv321Linea("Finalizadas detectadas",String(Number(m.finalizadasDetectadas||0)),`${Number(m.sinTiempos||0)} sin Inicio/Fin válido`);
+        html += mv321Linea("Excluidas por estado",String(Number(m.excluidasNoFinalizadas||0)),"Canceladas, reprogramadas y otros estados no participan");
+        html += mv321Linea("Sin partida o parámetro",String(Number(m.sinPartida||0)+Number(m.sinParametro||0)),"No participan hasta contar con parámetro SLA");
 
         if((c.detalleIncumplimientos||[]).length){
             const id = `mv321_sla_${mv321Id(bono.usuario)}_${Math.random().toString(36).slice(2)}`;
             html += `<button class="mv321-link" onclick="toggleDetalle('${id}',this)">▼ Ver órdenes fuera de SLA</button>
                 <div id="${id}" class="mv321-incumplimientos" style="display:none;">
-                    ${c.detalleIncumplimientos.map(x=>`<div><b>${mv321Esc(x.ordenId)}</b><span>${mv321Esc(x.cuadrilla)}</span><small>${mv321Esc(x.tipoPartida)} · ${Number(x.minutos||0)} min / ${Number(x.slaMinutos||0)} min · exceso ${Number(x.exceso||0)} min</small></div>`).join("")}
+                    ${c.detalleIncumplimientos.map(x=>`<div><b>${mv321Esc(x.ordenId)}</b><span>${mv321Esc(x.cuadrilla)}</span><small>${mv321Esc(x.grupo||"")} · ${mv321Esc(x.tipoPartida)} · ${Number(x.minutos||0)} min / ${Number(x.slaMinutos||0)} min · exceso ${Number(x.exceso||0)} min</small></div>`).join("")}
                 </div>`;
         }
 
@@ -171,8 +357,6 @@ function mv321DetalleComponente(c, bono){
             `${Number(m.auditoriasEvaluadas||0)} auditorías evaluadas`
         );
 
-        html += mv321Linea("Activador del componente",`> ${activador}%`,referenciaActivador);
-
         if(bono.puedeEditar){
             html += `<button class="mv321-accion" onclick="mv324AbrirSatisfaccion('${mv321Esc(bono.usuario)}')">📞 Llamadas opcionales</button>`;
         }
@@ -188,7 +372,6 @@ function mv321DetalleComponente(c, bono){
         html += mv321Linea("Checklist por quincena · peso 25%",mv321Pct(m.checklistCumplimientoPct),`${Number(m.slotsCumplidos||0)} de ${Number(m.slotsMeta||0)} quincenas · ${mv321Money(m.montoChecklistCumplimiento||0)} / ${mv321Money(m.maximoIndicador||0)}`);
         html += mv321Linea("Actividad en campo · peso 25%",mv321Pct(m.actividadPct),`${Number(m.actividadesCampo||0)} de ${Number(m.metaActividadesCampo||15)} registros · ${mv321Money(m.montoActividad||0)} / ${mv321Money(m.maximoIndicador||0)}`);
         html += mv321Linea("Evaluación de Jefatura · peso 25%",`${Number(m.puntajeEvaluacion||0)} / 60 pts`,`${mv321Money(m.montoEvaluacion||0)} / ${mv321Money(m.maximoIndicador||0)}`);
-        html += mv321Linea("Activador del componente",`> ${activador}%`,referenciaActivador);
 
         if(bono.puedeEditar){
             html += `<button class="mv321-accion" onclick="mv332AbrirActas('${mv321Esc(bono.usuario)}')">📄 Validar actas</button>`;
@@ -196,6 +379,7 @@ function mv321DetalleComponente(c, bono){
         }
     }
 
+    html += mv348DetalleEscalasComponente(c);
     if(c.nota) html += `<div class="mv321-nota">${mv321Esc(c.nota)}</div>`;
     return html;
 }
@@ -300,7 +484,7 @@ function mv325BotonesConfiguracion(){
     const botones = [];
     const montoPeriodo = Number((MV321_BONO_SUPERVISORES.configuracion||{}).montoTotal||1000);
     if(MV321_BONO_SUPERVISORES.periodo) botones.push(`<button class="mv321-config" onclick="mv334ActualizarCalculo()" ${MV321_BONO_SUPERVISORES.cargando?"disabled":""}>↻ Actualizar cálculo</button>`);
-    if(MV321_BONO_SUPERVISORES.puedeEditarConfiguracion) botones.push(`<button class="mv321-config" onclick="mv324AbrirConfiguracionBono()">⚙️ Monto y activadores: ${mv321Money(montoPeriodo)}</button>`);
+    if(MV321_BONO_SUPERVISORES.puedeEditarConfiguracion) botones.push(`<button class="mv321-config" onclick="mv324AbrirConfiguracionBono()">⚙️ Escalas del bono: ${mv321Money(montoPeriodo)}</button>`);
     if(MV321_BONO_SUPERVISORES.puedeEditarSla) botones.push(`<button class="mv321-config" onclick="mv321AbrirParametrosSla()">⚙️ Parámetros SLA WIN</button>`);
     return botones.join("");
 }
@@ -588,102 +772,72 @@ async function mv324GuardarSatisfaccion(usuario){
 }
 
 function mv324AbrirConfiguracionBono(){
-    const cfg = MV321_BONO_SUPERVISORES.configuracion || {};
-    const pesos = cfg.pesos || {PRODUCTIVIDAD:25,CALIDAD:25,SLA:20,SATISFACCION:15,SEGURIDAD:15};
-    const activadores = Object.assign(
-        {PRODUCTIVIDAD:80,CALIDAD:80,SLA:75,SATISFACCION:80,SEGURIDAD:0},
-        cfg.activadores||{}
-    );
-
-    const monto = Number(cfg.montoTotal||1000);
-    const fila = (nombre,peso)=>mv321Linea(
-        `${nombre} · ${peso}%`,
-        mv321Money(monto*peso/100),
-        "Se recalcula automáticamente"
-    );
-
-    const campoActivador = (id,nombre,valor)=>`
-        <label>${nombre}
-            <input id="${id}" type="number" min="0" max="100" step="0.01" value="${Number(valor)}" required>
-            <small>El resultado debe superar este porcentaje.</small>
-        </label>`;
+    const escalas = mv348EscalasConfiguradas();
+    const total = Object.keys(escalas).reduce((suma,clave)=>{
+        return suma + escalas[clave].reduce((mayor,nivel)=>Math.max(mayor,Number(nivel.monto)||0),0);
+    },0);
 
     const contenido = `
         <div class="mv321-param-intro">
             La configuración rige solo para ${mv321Esc(MV321_BONO_SUPERVISORES.periodo)}.
-            Los pesos permanecen fijos y suman 100%.
+            Los porcentajes de activación y los montos son editables.
+            El pago ya no es prorrateado: se asigna el monto fijo del nivel alcanzado.
         </div>
 
-        <div class="mv321-pregunta">
-            <label>Monto total del bono por supervisor
-                <input id="mv324MontoBono" type="number" min="1" max="100000" step="0.01" value="${monto}">
-            </label>
+        <div style="display:flex;justify-content:space-between;gap:12px;align-items:center;margin-top:12px;padding:12px;border-radius:13px;background:#0d2037;border:1px solid #274566;">
+            <b>Bono máximo del período</b>
+            <strong id="mv348TotalMaximo" style="font-size:20px;">${mv321Money(total)}</strong>
         </div>
 
-        <div id="mv324DistribucionBono">
-            ${fila("Productividad operativa",pesos.PRODUCTIVIDAD)}
-            ${fila("Calidad de instalaciones y averías",pesos.CALIDAD)}
-            ${fila("SLA WIN",pesos.SLA)}
-            ${fila("Satisfacción del cliente",pesos.SATISFACCION)}
-            ${fila("Liderazgo",pesos.SEGURIDAD)}
-        </div>
+        ${mv348TarjetaEscalaConfiguracion("PRODUCTIVIDAD",escalas.PRODUCTIVIDAD)}
+        ${mv348TarjetaEscalaConfiguracion("CALIDAD",escalas.CALIDAD)}
+        ${mv348TarjetaEscalaConfiguracion("SLA",escalas.SLA)}
+        ${mv348TarjetaEscalaConfiguracion("SATISFACCION",escalas.SATISFACCION)}
+        ${mv348TarjetaEscalaConfiguracion("SEGURIDAD",escalas.SEGURIDAD)}
 
         <div class="mv321-param-intro" style="margin-top:14px;">
-            <b>Porcentaje de activación por componente</b><br>
-            Si el componente no supera el valor indicado, aporta S/ 0.
-        </div>
-
-        <div id="mv330ActivadoresBono" class="mv321-pregunta">
-            ${campoActivador("mv330ActProductividad","Productividad operativa (%)",activadores.PRODUCTIVIDAD)}
-            ${campoActivador("mv330ActCalidad","Calidad de instalaciones y averías (%)",activadores.CALIDAD)}
-            ${campoActivador("mv330ActSla","SLA WIN (%)",activadores.SLA)}
-            ${campoActivador("mv330ActSatisfaccion","Satisfacción del cliente (%)",activadores.SATISFACCION)}
-            ${campoActivador("mv330ActSeguridad","Liderazgo (%)",activadores.SEGURIDAD)}
+            Por debajo del primer porcentaje de cada indicador corresponde S/ 0.00.
+            Los porcentajes deben aumentar y los montos no pueden disminuir en niveles superiores.
         </div>
 
         <div id="mv324ConfigMensaje" class="mv321-form-msg"></div>
-        <button class="mv321-guardar" onclick="mv324GuardarConfiguracionBono()">💾 Guardar configuración</button>`;
+        <button class="mv321-guardar" onclick="mv324GuardarConfiguracionBono()">💾 Guardar escalas</button>`;
 
-    mv321MostrarModal("Configuración del bono",contenido);
+    mv321MostrarModal("Configuración de escalas del bono",contenido);
+    setTimeout(mv348ActualizarTotalConfiguracion,0);
 }
 
 async function mv324GuardarConfiguracionBono(){
     const mensaje = document.getElementById("mv324ConfigMensaje");
-    const montoCampo = document.getElementById("mv324MontoBono");
-    const camposActivadores = {
-        PRODUCTIVIDAD:document.getElementById("mv330ActProductividad"),
-        CALIDAD:document.getElementById("mv330ActCalidad"),
-        SLA:document.getElementById("mv330ActSla"),
-        SATISFACCION:document.getElementById("mv330ActSatisfaccion"),
-        SEGURIDAD:document.getElementById("mv330ActSeguridad")
-    };
-    const montoTotal = Number(montoCampo.value);
-    const activadores = {
-        PRODUCTIVIDAD:Number(camposActivadores.PRODUCTIVIDAD.value),
-        CALIDAD:Number(camposActivadores.CALIDAD.value),
-        SLA:Number(camposActivadores.SLA.value),
-        SATISFACCION:Number(camposActivadores.SATISFACCION.value),
-        SEGURIDAD:Number(camposActivadores.SEGURIDAD.value)
-    };
     if(!mensaje) return;
-    const activadoresInvalidos = Object.keys(camposActivadores).some(clave=>{
-        const texto = camposActivadores[clave].value.trim();
-        return texto === "" || !Number.isFinite(activadores[clave]) || activadores[clave] < 0 || activadores[clave] > 100;
-    });
-    if(!montoCampo.value.trim() || !Number.isFinite(montoTotal) || montoTotal <= 0 || activadoresInvalidos){
-        mensaje.className="mv321-form-msg error";
-        mensaje.textContent="Complete el monto y todos los activadores con valores válidos entre 0% y 100%.";
+
+    const escalas = mv348LeerEscalasFormulario();
+    const error = mv348ValidarEscalasFormulario(escalas);
+
+    if(error){
+        mensaje.className = "mv321-form-msg error";
+        mensaje.textContent = error;
         return;
     }
-    mensaje.className="mv321-form-msg";
-    mensaje.textContent="Guardando configuración...";
+
+    mensaje.className = "mv321-form-msg";
+    mensaje.textContent = "Guardando escalas del bono...";
+
     try{
-        await mv321Post("guardarConfiguracionBonoSupervisores",{periodo:MV321_BONO_SUPERVISORES.periodo,montoTotal,activadores});
-        mensaje.className="mv321-form-msg ok";
-        mensaje.textContent="Monto y activadores actualizados correctamente.";
+        await mv321Post("guardarConfiguracionBonoSupervisores",{
+            periodo:MV321_BONO_SUPERVISORES.periodo,
+            escalas
+        });
+
+        mensaje.className = "mv321-form-msg ok";
+        mensaje.textContent = "Escalas actualizadas correctamente.";
+
         await mv321CargarBonos(MV321_BONO_SUPERVISORES.periodo);
         setTimeout(mv325RefrescarVistaActual,500);
-    }catch(e){ mensaje.className="mv321-form-msg error";mensaje.textContent=e.message; }
+    }catch(e){
+        mensaje.className = "mv321-form-msg error";
+        mensaje.textContent = e.message;
+    }
 }
 
 function mv321AbrirParametrosSla(){

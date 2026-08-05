@@ -1,5 +1,5 @@
-/* MI VISUAL V347 - caché segura y bono de supervisores */
-const MV339_CACHE = "mivisual-v347-bono-satisfaccion-20260804";
+/* MI VISUAL V349 - caché segura, escalas y SLA finalizadas */
+const MV339_CACHE = "mivisual-v349-bono-sla-finalizadas-20260805";
 const MV339_CORE = [
   "./",
   "./index.html",
@@ -9,7 +9,7 @@ const MV339_CORE = [
   "./js/login.js?v=V339-CACHE",
   "./js/permisos.js?v=V339-CORE",
   "./js/app.js?v=V339-LAZY",
-  "./js/modulos_loader.js?v=V347-BONO-SATISFACCION",
+  "./js/modulos_loader.js?v=V349-BONO-SLA-FINALIZADAS",
   "./js/mapa_cto_fix_v342.js?v=V342-MAPA-CTO",
   "./js/actas_recepcion_v343.js?v=V343-ACTAS-RECEPCION",
   "./js/actas_identidad_v344.js?v=V344-ACTAS-IDENTIDAD",
