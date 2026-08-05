@@ -1,5 +1,5 @@
 /* ============================================================
-   MI VISUAL V358 - Ranking detallado + Informe Excel
+   MI VISUAL V359 - Ranking detallado + Informe Excel (estado aislado)
    - Jefatura y Gerencia Lima.
    - Reutiliza el enriquecimiento analítico del Dashboard.
    - Carga datos en paralelo y conserva caché corta por período.
@@ -16,6 +16,13 @@
     "https://unpkg.com/xlsx@0.18.5/dist/xlsx.full.min.js"
   ];
   let promesaXlsx = null;
+
+  const MV359_ESTADO = {
+    lista:[],
+    sede:"TODAS",
+    periodo:"",
+    periodos:[]
+  };
 
   function norm(valor){
     return String(valor || "")
@@ -77,6 +84,156 @@
       "JULIO","AGOSTO","SEPTIEMBRE","OCTUBRE","NOVIEMBRE","DICIEMBRE"
     ];
     return `${meses[Number(m[2])-1]} ${m[1]}`;
+  }
+
+  function mv359PeriodoDesdeFecha(valor){
+    if(typeof window.mv276ClavePeriodo==="function"){
+      const clave = window.mv276ClavePeriodo(valor);
+      if(clave) return clave;
+    }
+
+    const texto = String(valor || "");
+    let m = texto.match(/^(\d{4})-(\d{2})/);
+    if(m) return `${m[1]}-${m[2]}`;
+
+    m = texto.match(/^\d{1,2}\/(\d{1,2})\/(\d{4})/);
+    if(m) return `${m[2]}-${String(Number(m[1])).padStart(2,"0")}`;
+
+    return "";
+  }
+
+  function mv359SelectorPeriodo(){
+    const periodos = Array.isArray(MV359_ESTADO.periodos)
+      ? MV359_ESTADO.periodos
+      : [];
+
+    if(!periodos.length) return "";
+
+    return `
+      <div style="
+        margin:12px 0 18px;
+        padding:13px;
+        border-radius:14px;
+        background:#142844;
+        border:1px solid rgba(255,255,255,.10);
+        color:#fff;
+      ">
+        <label style="display:block;font-size:12px;font-weight:900;margin-bottom:7px;">
+          📅 Seleccionar período
+        </label>
+        <select
+          onchange="mostrarRanking(this.value)"
+          style="
+            width:100%;
+            padding:11px;
+            border-radius:10px;
+            border:1px solid #6ea8e5;
+            background:#fff;
+            color:#0f172a;
+            font-weight:800;
+          "
+        >
+          ${periodos.map(periodo=>`
+            <option value="${esc(periodo)}" ${periodo===MV359_ESTADO.periodo ? "selected" : ""}>
+              ${esc(periodoNombre(periodo))}
+            </option>
+          `).join("")}
+        </select>
+      </div>`;
+  }
+
+  function mv359EncabezadoPeriodo(referencia){
+    const actualizado = referencia?.actualizacion || "";
+    return `
+      <div style="
+        background:linear-gradient(135deg,#0f172a,#1e3a8a);
+        border-radius:18px;
+        padding:16px;
+        margin:12px 0 8px;
+        color:white;
+        box-shadow:0 8px 20px rgba(0,0,0,.20);
+      ">
+        <div style="font-size:13px;opacity:.85;">📅 PERÍODO</div>
+        <div style="font-size:22px;font-weight:900;margin-top:4px;">
+          ${esc(periodoNombre(MV359_ESTADO.periodo))}
+        </div>
+        <div style="font-size:14px;margin-top:8px;opacity:.95;">
+          Actualizado al: <b>${esc(actualizado || "-")}</b>
+        </div>
+      </div>
+      ${mv359SelectorPeriodo()}
+    `;
+  }
+
+  function mv359Sedes(lista){
+    const oficiales = ["CHICLAYO","PIURA","TRUJILLO"];
+    const presentes = Array.from(
+      new Set((lista || []).map(x=>norm(x.sede)).filter(Boolean))
+    );
+    return oficiales
+      .filter(s=>presentes.includes(s))
+      .concat(presentes.filter(s=>!oficiales.includes(s)).sort());
+  }
+
+  function mv359FiltroSede(lista,seleccionada){
+    return `
+      <div style="
+        margin:12px 0;
+        padding:14px;
+        border-radius:16px;
+        background:#142844;
+        border:1px solid rgba(255,255,255,.10);
+        color:#fff;
+      ">
+        <label style="display:block;font-size:12px;font-weight:900;margin-bottom:7px;">
+          🏢 Filtrar por sede
+        </label>
+        <select
+          onchange="mv359CambiarSedeRanking(this.value)"
+          style="
+            width:100%;
+            padding:11px;
+            border-radius:10px;
+            border:1px solid #6ea8e5;
+            background:#fff;
+            color:#0f172a;
+            font-weight:800;
+          "
+        >
+          <option value="TODAS" ${seleccionada==="TODAS" ? "selected" : ""}>TODAS LAS SEDES</option>
+          ${mv359Sedes(lista).map(s=>`
+            <option value="${esc(s)}" ${seleccionada===s ? "selected" : ""}>${esc(s)}</option>
+          `).join("")}
+        </select>
+      </div>`;
+  }
+
+  function mv359CambiarSedeRanking(valor){
+    MV359_ESTADO.sede = norm(valor || "TODAS") || "TODAS";
+    renderEjecutivo();
+  }
+
+  function mv359VistaTecnico(item){
+    return `
+      <div style="padding:18px;max-width:760px;margin:auto;">
+        <h2 style="text-align:center;margin-bottom:6px;">🏆 MI RANKING</h2>
+        ${mv359EncabezadoPeriodo(item)}
+
+        <div style="
+          display:grid;
+          grid-template-columns:repeat(3,minmax(0,1fr));
+          gap:10px;
+          margin:14px 0;
+        ">
+          ${tarjetaPuestoRanking("REGIÓN",item.puestoRegion,medallaRanking(item.puestoRegion),"🌎")}
+          ${tarjetaPuestoRanking("SEDE",item.puestoSede,medallaRanking(item.puestoSede),"🏢")}
+          ${tarjetaPuestoRanking("PLATAFORMA",item.puestoPlataforma,medallaRanking(item.puestoPlataforma),"🛠️")}
+        </div>
+
+        ${tarjetaDetallada(item,"region")}
+
+        <button class="button_1" onclick="volverInicio()">⬅️ Volver al menú</button>
+      </div>`;
   }
 
   function fechaActualizacion(lista){
@@ -259,8 +416,8 @@
   }
 
   function renderEjecutivo(){
-    const listaCompleta = MV239_RANKING_JEFATURA_LISTA || [];
-    const sedeFiltro = MV239_RANKING_JEFATURA_SEDE || "TODAS";
+    const listaCompleta = MV359_ESTADO.lista || [];
+    const sedeFiltro = MV359_ESTADO.sede || "TODAS";
     const listaFiltrada = sedeFiltro==="TODAS"
       ? listaCompleta
       : listaCompleta.filter(x=>norm(x.sede)===sedeFiltro);
@@ -281,8 +438,8 @@
         <div style="text-align:center;font-size:12px;font-weight:800;opacity:.72;margin-bottom:8px;">
           VISTA ${esc(rotulo)}
         </div>
-        ${encabezadoPeriodoRanking(referencia)}
-        ${mv239FiltroSedeRanking(listaCompleta,sedeFiltro)}
+        ${mv359EncabezadoPeriodo(referencia)}
+        ${mv359FiltroSede(listaCompleta,sedeFiltro)}
         ${botonExcel()}
         ${listaTarjetas(ordenada,tipoPuesto)}
         <br>
@@ -293,24 +450,22 @@
 
   function datosDashboardReutilizables(periodoSolicitado){
     if(typeof window.mv356ObtenerDatosDashboardGerencial!=="function") return null;
+
     const datos = window.mv356ObtenerDatosDashboardGerencial() || {};
     if(datos.periodo!==periodoSolicitado) return null;
     if(!Array.isArray(datos.lista) || !datos.lista.length) return null;
     if(!datos.lista.some(x=>x.detProduccion || x.detEfectividad)) return null;
-    return datos.lista;
+
+    return {
+      lista:datos.lista.slice(),
+      periodo:datos.periodo || periodoSolicitado || "",
+      periodos:Array.isArray(datos.periodos) ? datos.periodos.slice() : []
+    };
   }
 
   async function obtenerLista(periodoSolicitado){
     const reutilizada = datosDashboardReutilizables(periodoSolicitado);
-    if(reutilizada){
-      return {
-        lista:reutilizada.slice(),
-        periodo:periodoSolicitado,
-        periodos:Array.isArray(MV276_DASH_PERIODOS)
-          ? MV276_DASH_PERIODOS.slice()
-          : [periodoSolicitado]
-      };
-    }
+    if(reutilizada) return reutilizada;
 
     const clave = periodoSolicitado || "AUTO";
     const cache = CACHE.get(clave);
@@ -321,12 +476,24 @@
     }
 
     const lista = await mv4ObtenerRanking(periodoSolicitado);
+    const puente = typeof window.mv356ObtenerDatosDashboardGerencial==="function"
+      ? (window.mv356ObtenerDatosDashboardGerencial() || {})
+      : {};
+
+    const periodoDetectado =
+      puente.periodo ||
+      periodoSolicitado ||
+      mv359PeriodoDesdeFecha(lista?.[0]?.actualizacion) ||
+      "";
+
+    const periodosDetectados = Array.isArray(puente.periodos) && puente.periodos.length
+      ? puente.periodos.slice()
+      : [periodoDetectado].filter(Boolean);
+
     const datos = {
       lista:Array.isArray(lista) ? lista : [],
-      periodo:MV276_DASH_PERIODO || periodoSolicitado || "",
-      periodos:Array.isArray(MV276_DASH_PERIODOS)
-        ? MV276_DASH_PERIODOS.slice()
-        : []
+      periodo:periodoDetectado,
+      periodos:periodosDetectados
     };
 
     CACHE.set(clave,{fecha:Date.now(),datos});
@@ -349,8 +516,8 @@
       const datos = await obtenerLista(periodoSeleccionado);
       const lista = datos.lista;
 
-      MV276_RANKING_PERIODOS = datos.periodos.slice();
-      MV276_RANKING_PERIODO = datos.periodo;
+      MV359_ESTADO.periodoS = datos.periodos.slice();
+      MV359_ESTADO.periodo = datos.periodo;
 
       if(!lista.length){
         mostrarPantalla(`
@@ -381,13 +548,13 @@
           return;
         }
 
-        mostrarPantalla(vistaTecnicoRanking(item));
+        mostrarPantalla(mv359VistaTecnico(item));
         return;
       }
 
       if(typeof mv239EsVistaJefaturaRanking==="function" && mv239EsVistaJefaturaRanking(perfil)){
-        MV239_RANKING_JEFATURA_LISTA = lista.slice();
-        MV239_RANKING_JEFATURA_SEDE = "TODAS";
+        MV359_ESTADO.lista = lista.slice();
+        MV359_ESTADO.sede = "TODAS";
         renderEjecutivo();
         return;
       }
@@ -407,7 +574,7 @@
       mostrarPantalla(`
         <div style="padding:18px;max-width:980px;margin:auto;">
           <h2 style="text-align:center;margin-bottom:6px;">${titulo}</h2>
-          ${encabezadoPeriodoRanking(referencia)}
+          ${mv359EncabezadoPeriodo(referencia)}
           ${listaTarjetasRanking(listaFiltrada,tipoPuesto)}
           <br>
           <button class="button_1" onclick="volverInicio()">⬅️ Volver al menú</button>
@@ -522,11 +689,11 @@
       return;
     }
 
-    const total = (MV239_RANKING_JEFATURA_LISTA || []).length;
-    const sede = MV239_RANKING_JEFATURA_SEDE || "TODAS";
+    const total = (MV359_ESTADO.lista || []).length;
+    const sede = MV359_ESTADO.sede || "TODAS";
     const filtradas = sede==="TODAS"
       ? total
-      : (MV239_RANKING_JEFATURA_LISTA || []).filter(x=>norm(x.sede)===sede).length;
+      : (MV359_ESTADO.lista || []).filter(x=>norm(x.sede)===sede).length;
 
     cerrarModal();
 
@@ -537,7 +704,7 @@
         <div class="mv358-cabecera">
           <div>
             <h2>Informe Excel del Ranking</h2>
-            <p>${esc(periodoNombre(MV276_RANKING_PERIODO))}</p>
+            <p>${esc(periodoNombre(MV359_ESTADO.periodo))}</p>
           </div>
           <button type="button" onclick="mv358CerrarInformeRanking()">×</button>
         </div>
@@ -722,7 +889,7 @@
   function construirLibro(lista,alcance){
     const XLSX = window.XLSX;
     const wb = XLSX.utils.book_new();
-    const periodo = MV276_RANKING_PERIODO;
+    const periodo = MV359_ESTADO.periodo;
     const res = resumen(lista);
     const orden = ordenarRankingPorPuesto(lista,"region");
 
@@ -903,8 +1070,8 @@
       'input[name="mv358Alcance"]:checked'
     )?.value || "zona";
 
-    const sede = MV239_RANKING_JEFATURA_SEDE || "TODAS";
-    let lista = (MV239_RANKING_JEFATURA_LISTA || []).slice();
+    const sede = MV359_ESTADO.sede || "TODAS";
+    let lista = (MV359_ESTADO.lista || []).slice();
     let alcance = "Zona Norte completa";
 
     if(alcanceSeleccionado==="filtro" && sede!=="TODAS"){
@@ -929,7 +1096,7 @@
         : "";
       window.XLSX.writeFile(
         wb,
-        `Informe_Ranking_MI_VISUAL_${MV276_RANKING_PERIODO}${sufijo}.xlsx`,
+        `Informe_Ranking_MI_VISUAL_${MV359_ESTADO.periodo}${sufijo}.xlsx`,
         {bookType:"xlsx",compression:true}
       );
       mensaje(`Informe generado correctamente con ${lista.length} cuadrillas.`);
@@ -943,10 +1110,12 @@
 
   window.mostrarRanking = mostrarRankingDetallado;
   window.mv239RenderRankingJefatura = renderEjecutivo;
+  window.mv359CambiarSedeRanking = mv359CambiarSedeRanking;
+  window.mv239CambiarSedeRanking = mv359CambiarSedeRanking;
   window.mv358AbrirInformeRanking = abrirModal;
   window.mv358CerrarInformeRanking = cerrarModal;
   window.mv358GenerarInformeRanking = generarExcel;
 
-  window.MV358_RANKING_DETALLADO_OK = true;
-  console.log("MI VISUAL V358: Ranking detallado e Informe Excel habilitados.");
+  window.MV359_RANKING_DETALLADO_OK = true;
+  console.log("MI VISUAL V359: Ranking detallado sin dependencia de variables lexicales.");
 })();

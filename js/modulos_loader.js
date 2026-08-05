@@ -11,14 +11,14 @@
   const MODULOS = {
     dashboards_core: {
       archivos: [
-        `./js/dashboards.js?v=V358-RANKING-DETALLE`,
-        `./js/informe_gerencial_v355.js?v=V358-RANKING-DETALLE`
+        `./js/dashboards.js?v=V359-RANKING-PERIODOS`,
+        `./js/informe_gerencial_v355.js?v=V359-RANKING-PERIODOS`
       ],
       entradas: ["mostrarProduccionV2", "mostrarDashboardSupervisor", "mostrarDashboardJefatura"]
     },
     dashboard: {
       depende: ["dashboards_core"],
-      archivos: [`./js/bono_supervisores.js?v=V358-RANKING-DETALLE`],
+      archivos: [`./js/bono_supervisores.js?v=V359-RANKING-PERIODOS`],
       entradas: ["mostrarBonosSupervisores"]
     },
     indicadores: {
@@ -26,10 +26,10 @@
       entradas: ["mostrarEfectividad", "mostrarRecableado", "mostrarVTRGAR"]
     },
     ranking: {
+      depende: ["dashboards_core"],
       archivos: [
-        `./ranking.js?v=V358-RANKING-DETALLE`,
-        `./js/dashboards.js?v=V358-RANKING-DETALLE`,
-        `./js/ranking_informe_v358.js?v=V358-RANKING-DETALLE`
+        `./ranking.js?v=V359-RANKING-PERIODOS`,
+        `./js/ranking_informe_v358.js?v=V359-RANKING-PERIODOS`
       ],
       entradas: ["mostrarRanking"]
     },
