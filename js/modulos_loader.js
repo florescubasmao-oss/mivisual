@@ -15,7 +15,7 @@
     },
     dashboard: {
       depende: ["dashboards_core"],
-      archivos: [`./js/bono_supervisores.js?v=V350-BONO-TOTAL-EDITABLE`],
+      archivos: [`./js/bono_supervisores.js?v=V351-BONO-GET-SEGURO`],
       entradas: ["mostrarBonosSupervisores"]
     },
     indicadores: {

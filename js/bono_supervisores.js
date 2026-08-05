@@ -51,30 +51,147 @@ async function mv321Post(accion, extra){
     return data;
 }
 
+async function mv351GetBonos(periodo, forzarActualizacion){
+    const controlador = typeof AbortController === "function"
+        ? new AbortController()
+        : null;
+
+    const temporizador = controlador
+        ? setTimeout(()=>controlador.abort(),90000)
+        : null;
+
+    try{
+        const url = new URL(MV58_API);
+        url.searchParams.set("accion","obtenerBonosSupervisores");
+        url.searchParams.set("usuario",localStorage.getItem("usuario") || "");
+        url.searchParams.set("periodo",periodo || "");
+        url.searchParams.set(
+            "forzarActualizacion",
+            forzarActualizacion ? "SI" : "NO"
+        );
+        url.searchParams.set("_mv351",Date.now().toString());
+
+        const respuesta = await fetch(url.toString(),{
+            method:"GET",
+            cache:"no-store",
+            redirect:"follow",
+            headers:{"Accept":"application/json"},
+            signal:controlador ? controlador.signal : undefined
+        });
+
+        const texto = (await respuesta.text()).trim();
+
+        if(!respuesta.ok){
+            throw new Error(`No se pudo consultar Bonos Supervisores (${respuesta.status}).`);
+        }
+
+        if(/^MI VISUAL API OK$/i.test(texto)){
+            throw new Error(
+                "Apps Script respondió con una versión anterior. Publique Code.gs V351 como nueva versión de la aplicación web."
+            );
+        }
+
+        if(!texto || /^<!doctype|^<html|<body|googleusercontent|accounts\.google/i.test(texto)){
+            throw new Error(
+                "Google devolvió una página externa en lugar del cálculo. Revise la implementación de Apps Script y vuelva a intentar."
+            );
+        }
+
+        let data;
+        try{
+            data = JSON.parse(texto);
+        }catch(error){
+            const muestra = texto.slice(0,120).replace(/\s+/g," ");
+            throw new Error(
+                `Apps Script no devolvió JSON válido${muestra ? `: ${muestra}` : "."}`
+            );
+        }
+
+        if(!data || data.ok !== true){
+            throw new Error(
+                String(data?.error || data?.mensaje || "No se pudo calcular el bono")
+                    .replace(/^Error:\s*/,"")
+            );
+        }
+
+        return data;
+    }catch(error){
+        if(error && error.name === "AbortError"){
+            throw new Error(
+                "El cálculo superó el tiempo de espera. No repita varias veces; revise la versión publicada y vuelva a intentar una sola vez."
+            );
+        }
+        throw error;
+    }finally{
+        if(temporizador) clearTimeout(temporizador);
+    }
+}
+
 function mv321PrepararCarga(periodo){
     MV321_BONO_SUPERVISORES = {cargando:true,error:"",periodo:periodo || "",periodos:periodo?[periodo]:[],bonos:[],parametrosSla:[],puedeEditar:false,puedeEditarSla:false,puedeEditarConfiguracion:false,desdeCache:false,calculadoEn:"",configuracion:{montoTotal:1000,pesos:{PRODUCTIVIDAD:25,CALIDAD:25,SLA:20,SATISFACCION:15,SEGURIDAD:15},activadores:{PRODUCTIVIDAD:80,CALIDAD:80,SLA:75,SATISFACCION:80,SEGURIDAD:0}}};
 }
 
 async function mv321CargarBonos(periodo, forzarActualizacion){
     mv321PrepararCarga(periodo);
+
     try{
-        const data = await mv321Post("obtenerBonosSupervisores",{periodo,forzarActualizacion:!!forzarActualizacion});
+        // V351: la consulta del bono se realiza por GET seguro.
+        // Las operaciones que modifican datos continúan por POST.
+        const data = await mv351GetBonos(periodo,!!forzarActualizacion);
+
         MV321_BONO_SUPERVISORES = {
             cargando:false,
             error:"",
             periodo:data.periodo || periodo || "",
-            periodos:Array.isArray(data.periodosDisponibles) ? data.periodosDisponibles : [data.periodo || periodo].filter(Boolean),
+            periodos:Array.isArray(data.periodosDisponibles)
+                ? data.periodosDisponibles
+                : [data.periodo || periodo].filter(Boolean),
             bonos:Array.isArray(data.bonos) ? data.bonos : [],
-            parametrosSla:Array.isArray(data.parametrosSlaConfiguracion) ? data.parametrosSlaConfiguracion : (Array.isArray(data.parametrosSla) ? data.parametrosSla : []),
+            parametrosSla:Array.isArray(data.parametrosSlaConfiguracion)
+                ? data.parametrosSlaConfiguracion
+                : (Array.isArray(data.parametrosSla) ? data.parametrosSla : []),
             puedeEditar:!!data.puedeEditar,
             puedeEditarSla:!!data.puedeEditarSla,
             puedeEditarConfiguracion:!!data.puedeEditarConfiguracion,
             desdeCache:!!data.desdeCache,
             calculadoEn:data.calculadoEn || "",
-            configuracion:data.configuracion || {montoTotal:1000,pesos:{PRODUCTIVIDAD:25,CALIDAD:25,SLA:20,SATISFACCION:15,SEGURIDAD:15},activadores:{PRODUCTIVIDAD:80,CALIDAD:80,SLA:75,SATISFACCION:80,SEGURIDAD:0}}
+            configuracion:data.configuracion || {
+                montoTotal:1000,
+                pesos:{
+                    PRODUCTIVIDAD:25,
+                    CALIDAD:25,
+                    SLA:20,
+                    SATISFACCION:15,
+                    SEGURIDAD:15
+                },
+                escalas:mv348EscalasPredeterminadas()
+            }
         };
     }catch(e){
-        MV321_BONO_SUPERVISORES = {cargando:false,error:e.message || "No se pudo calcular el bono.",periodo:periodo || "",periodos:periodo?[periodo]:[],bonos:[],parametrosSla:[],puedeEditar:false,puedeEditarSla:false,puedeEditarConfiguracion:false,desdeCache:false,calculadoEn:"",configuracion:{montoTotal:1000,pesos:{PRODUCTIVIDAD:25,CALIDAD:25,SLA:20,SATISFACCION:15,SEGURIDAD:15},activadores:{PRODUCTIVIDAD:80,CALIDAD:80,SLA:75,SATISFACCION:80,SEGURIDAD:0}}};
+        MV321_BONO_SUPERVISORES = {
+            cargando:false,
+            error:e.message || "No se pudo calcular el bono.",
+            periodo:periodo || "",
+            periodos:periodo ? [periodo] : [],
+            bonos:[],
+            parametrosSla:[],
+            puedeEditar:false,
+            puedeEditarSla:false,
+            puedeEditarConfiguracion:false,
+            desdeCache:false,
+            calculadoEn:"",
+            configuracion:{
+                montoTotal:1000,
+                pesos:{
+                    PRODUCTIVIDAD:25,
+                    CALIDAD:25,
+                    SLA:20,
+                    SATISFACCION:15,
+                    SEGURIDAD:15
+                },
+                escalas:mv348EscalasPredeterminadas()
+            }
+        };
     }
 }
 
