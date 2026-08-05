@@ -10,12 +10,12 @@
   const VERSION = "V341-VALIDACION-20260803";
   const MODULOS = {
     dashboards_core: {
-      archivos: [`./js/dashboards.js?v=V353-CUMPLIMIENTO-DIARIO`],
+      archivos: [`./js/dashboards.js?v=V354-API-UNIFICADA`],
       entradas: ["mostrarProduccionV2", "mostrarDashboardSupervisor", "mostrarDashboardJefatura"]
     },
     dashboard: {
       depende: ["dashboards_core"],
-      archivos: [`./js/bono_supervisores.js?v=V353-CUMPLIMIENTO-DIARIO`],
+      archivos: [`./js/bono_supervisores.js?v=V354-API-UNIFICADA`],
       entradas: ["mostrarBonosSupervisores"]
     },
     indicadores: {

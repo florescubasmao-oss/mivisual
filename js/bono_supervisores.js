@@ -87,7 +87,7 @@ async function mv351GetBonos(periodo, forzarActualizacion){
 
         if(/^MI VISUAL API OK$/i.test(texto)){
             throw new Error(
-                "Apps Script respondió con una versión anterior. Publique Code.gs V351 como nueva versión de la aplicación web."
+                "La aplicación estaba consultando una URL anterior de Apps Script. Actualice los archivos web V354 y vuelva a ingresar."
             );
         }
 
