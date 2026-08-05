@@ -107,9 +107,8 @@ const sede = localStorage.getItem("sede");
 
 const url = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRpVkCmSvopgPByWsEX6nkuAT6mf3yD2_Cywpl9pFSZEqYpxmprDePPeV0KNgT14YpEP6gkVlvOAtZy/pub?gid=463676034&single=true&output=csv";
 
-const texto = typeof mv336FetchTextoCache === "function"
-    ? await mv336FetchTextoCache(url, 180000)
-    : await (await fetch(url)).text();
+const respuesta = await fetch(url);
+const texto = await respuesta.text();
 
 const filas = texto.split("\n");
 const encabezado = filas[0];
@@ -297,6 +296,310 @@ const urlProduccion =
 const urlCatalogo =
 "https://docs.google.com/spreadsheets/d/e/2PACX-1vRpVkCmSvopgPByWsEX6nkuAT6mf3yD2_Cywpl9pFSZEqYpxmprDePPeV0KNgT14YpEP6gkVlvOAtZy/pub?gid=2013842388&single=true&output=csv";
 
+/* =========================================================
+   V353 - Cumplimiento productivo al día
+   Conserva la meta mensual de 130 puntos e incorpora:
+   días EN CAMPO × 5 puntos.
+========================================================= */
+
+const MV353_META_DIARIA_PRODUCCION = 5;
+const MV353_CUMPLIMIENTO_CACHE = new Map();
+
+function mv353Esc(valor){
+    return String(valor ?? "")
+        .replace(/&/g,"&amp;")
+        .replace(/</g,"&lt;")
+        .replace(/>/g,"&gt;")
+        .replace(/"/g,"&quot;")
+        .replace(/'/g,"&#039;");
+}
+
+function mv353KeyCuadrilla(valor){
+    return String(valor || "")
+        .replace(/\.\.\./g,"")
+        .replace(/^P\s+(\d+)/i,"P$1")
+        .replace(/\s+/g," ")
+        .trim()
+        .toUpperCase();
+}
+
+function mv353FechaVisible(iso){
+    const m = String(iso || "").match(/^(\d{4})-(\d{2})-(\d{2})$/);
+    return m ? `${m[3]}/${m[2]}/${m[1]}` : (iso || "-");
+}
+
+async function mv353ObtenerCumplimiento(periodo){
+    const clave = String(periodo || "");
+    const guardado = MV353_CUMPLIMIENTO_CACHE.get(clave);
+
+    if(guardado && Date.now()-guardado.fecha < 120000){
+        return guardado.data;
+    }
+
+    const base = window.MI_VISUAL_API_URL || (
+        typeof MV58_API !== "undefined" ? MV58_API : ""
+    );
+
+    if(!base) throw new Error("No se encontró la URL de MI VISUAL.");
+
+    const url = new URL(base);
+    url.searchParams.set("accion","obtenerCumplimientoProduccionDiaria");
+    url.searchParams.set("usuario",localStorage.getItem("usuario") || "");
+    url.searchParams.set("periodo",clave);
+    url.searchParams.set("_mv353",Date.now().toString());
+
+    const controlador = typeof AbortController === "function"
+        ? new AbortController()
+        : null;
+
+    const temporizador = controlador
+        ? setTimeout(()=>controlador.abort(),45000)
+        : null;
+
+    try{
+        const respuesta = await fetch(url.toString(),{
+            method:"GET",
+            cache:"no-store",
+            redirect:"follow",
+            headers:{"Accept":"application/json"},
+            signal:controlador ? controlador.signal : undefined
+        });
+
+        const texto = (await respuesta.text()).trim();
+
+        if(!respuesta.ok){
+            throw new Error(`No se pudo consultar la meta diaria (${respuesta.status}).`);
+        }
+
+        if(!texto || /^MI VISUAL API OK$/i.test(texto) || /^<!doctype|^<html/i.test(texto)){
+            throw new Error("Apps Script todavía no tiene publicada la versión V353.");
+        }
+
+        const data = JSON.parse(texto);
+
+        if(!data || data.ok !== true){
+            throw new Error(data?.error || "No se pudo calcular la meta diaria.");
+        }
+
+        MV353_CUMPLIMIENTO_CACHE.set(clave,{fecha:Date.now(),data});
+        return data;
+    }catch(error){
+        if(error && error.name === "AbortError"){
+            throw new Error("La consulta de la meta diaria tardó demasiado.");
+        }
+        throw error;
+    }finally{
+        if(temporizador) clearTimeout(temporizador);
+    }
+}
+
+function mv353DatoCuadrilla(data,cuadrilla){
+    const mapa = data?.cuadrillas || {};
+    return mapa[mv353KeyCuadrilla(cuadrilla)] || null;
+}
+
+async function mv353EnriquecerLista(lista,periodo){
+    try{
+        const data = await mv353ObtenerCumplimiento(periodo);
+
+        (lista || []).forEach(item=>{
+            item.mv353CumplimientoDia = mv353DatoCuadrilla(data,item.cuadrilla);
+        });
+
+        return lista;
+    }catch(error){
+        console.warn("V353: cumplimiento productivo no disponible",error);
+
+        (lista || []).forEach(item=>{
+            item.mv353CumplimientoDia = null;
+        });
+
+        return lista;
+    }
+}
+
+function mv353ResumenLista(lista){
+    let puntos = 0;
+    let meta = 0;
+    let diasCampo = 0;
+    let diasDescanso = 0;
+    let evaluadas = 0;
+    let sobreMeta = 0;
+    let bajoMeta = 0;
+    let fechaCorte = "";
+
+    (lista || []).forEach(item=>{
+        const dato = item.mv353CumplimientoDia;
+        if(!dato) return;
+
+        const puntosCuadrilla = Number(item.produccion) || 0;
+        const metaCuadrilla = Number(dato.metaAcumulada) || 0;
+
+        puntos += puntosCuadrilla;
+        meta += metaCuadrilla;
+        diasCampo += Number(dato.diasCampo) || 0;
+        diasDescanso +=
+            (Number(dato.diasDescanso)||0) +
+            (Number(dato.diasVacaciones)||0) +
+            (Number(dato.diasBolsa)||0);
+
+        fechaCorte = dato.fechaCorte || fechaCorte;
+        evaluadas++;
+
+        if(metaCuadrilla > 0 && puntosCuadrilla >= metaCuadrilla) sobreMeta++;
+        else if(metaCuadrilla > 0) bajoMeta++;
+    });
+
+    const porcentaje = meta > 0 ? puntos/meta*100 : null;
+
+    return {
+        puntos,
+        meta,
+        diasCampo,
+        diasDescanso,
+        evaluadas,
+        sobreMeta,
+        bajoMeta,
+        fechaCorte,
+        porcentaje,
+        brecha:puntos-meta
+    };
+}
+
+function mv353Color(porcentaje){
+    if(porcentaje === null || porcentaje === undefined) return "#64748b";
+    if(porcentaje >= 100) return "#16a34a";
+    if(porcentaje >= 85) return "#f59e0b";
+    return "#dc2626";
+}
+
+function mv353TextoBrecha(valor){
+    const numero = Number(valor) || 0;
+    if(Math.abs(numero) < 0.005) return "En meta";
+    return numero > 0
+        ? `+${numero.toFixed(1)} pts sobre la meta`
+        : `${numero.toFixed(1)} pts de brecha`;
+}
+
+function mv353TarjetaTecnico(dato,puntos){
+    if(!dato){
+        return `<div style="margin:12px 0;padding:14px;border-radius:16px;background:#142844;border:1px solid rgba(255,255,255,.09);color:#fff;">
+            <b>📅 Cumplimiento productivo al día</b>
+            <div style="margin-top:7px;color:#9fb7d8;font-size:12px;">
+                La medición mensual de 130 puntos se mantiene. La meta diaria no está disponible temporalmente.
+            </div>
+        </div>`;
+    }
+
+    const meta = Number(dato.metaAcumulada)||0;
+    const cumplimiento = meta > 0 ? Number(puntos||0)/meta*100 : null;
+    const barra = cumplimiento === null ? 0 : Math.max(0,Math.min(100,cumplimiento));
+    const color = mv353Color(cumplimiento);
+    const brecha = Number(puntos||0)-meta;
+
+    return `<div style="margin:12px 0;padding:15px;border-radius:18px;background:#102844;border:1px solid rgba(255,255,255,.10);color:#fff;">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px;flex-wrap:wrap;">
+            <div>
+                <div style="font-size:12px;color:#9fb7d8;font-weight:900;text-transform:uppercase;">
+                    📅 Cumplimiento productivo al día
+                </div>
+                <div style="font-size:28px;font-weight:900;margin-top:5px;">
+                    ${cumplimiento === null ? "No evaluado" : `${cumplimiento.toFixed(1)}%`}
+                </div>
+            </div>
+            <div style="text-align:right;font-size:12px;color:#c9d7ef;">
+                Corte: ${mv353FechaVisible(dato.fechaCorte)}
+            </div>
+        </div>
+
+        <div style="height:9px;background:#24415f;border-radius:999px;overflow:hidden;margin-top:10px;">
+            <span style="display:block;height:100%;width:${barra}%;background:${color};"></span>
+        </div>
+
+        <div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin-top:12px;">
+            <div style="padding:10px;border-radius:12px;background:#0d2037;">
+                <small style="color:#9fb7d8;">Puntos / meta esperada</small>
+                <b style="display:block;margin-top:4px;">${Number(puntos||0).toFixed(1)} / ${meta.toFixed(1)} pts</b>
+            </div>
+            <div style="padding:10px;border-radius:12px;background:#0d2037;">
+                <small style="color:#9fb7d8;">Programación</small>
+                <b style="display:block;margin-top:4px;">${Number(dato.diasCampo||0)} días × ${Number(dato.metaDiaria||MV353_META_DIARIA_PRODUCCION)} pts</b>
+            </div>
+        </div>
+
+        <div style="margin-top:9px;font-size:12px;font-weight:900;color:${color};">
+            ${mv353TextoBrecha(brecha)}
+        </div>
+        <div style="margin-top:5px;font-size:10px;color:#9fb7d8;">
+            Descanso: ${Number(dato.diasDescanso||0)} · Vacaciones: ${Number(dato.diasVacaciones||0)} · Campo Bolsa: ${Number(dato.diasBolsa||0)}
+        </div>
+    </div>`;
+}
+
+function mv353DetalleLista(lista){
+    const ordenada = (lista || []).slice().sort((a,b)=>{
+        const da = a.mv353CumplimientoDia;
+        const db = b.mv353CumplimientoDia;
+        const pa = da && Number(da.metaAcumulada)>0
+            ? (Number(a.produccion)||0)/Number(da.metaAcumulada)
+            : -1;
+        const pb = db && Number(db.metaAcumulada)>0
+            ? (Number(b.produccion)||0)/Number(db.metaAcumulada)
+            : -1;
+        return pb-pa;
+    });
+
+    return ordenada.map(item=>{
+        const dato = item.mv353CumplimientoDia;
+        if(!dato) return "";
+
+        const puntos = Number(item.produccion)||0;
+        const meta = Number(dato.metaAcumulada)||0;
+        const porcentaje = meta > 0 ? puntos/meta*100 : null;
+        const color = mv353Color(porcentaje);
+
+        return `<div style="display:grid;grid-template-columns:minmax(150px,1fr) auto;gap:10px;align-items:center;padding:10px;border-bottom:1px solid rgba(255,255,255,.08);">
+            <div>
+                <b>${mv353Esc(item.cuadrilla)}</b>
+                <small style="display:block;color:#9fb7d8;margin-top:3px;">
+                    ${Number(dato.diasCampo||0)} días en campo × ${Number(dato.metaDiaria||5)} pts
+                </small>
+            </div>
+            <div style="text-align:right;">
+                <b style="color:${color};">${porcentaje === null ? "N/E" : `${porcentaje.toFixed(1)}%`}</b>
+                <small style="display:block;color:#9fb7d8;">${puntos.toFixed(1)} / ${meta.toFixed(1)} pts</small>
+            </div>
+        </div>`;
+    }).join("");
+}
+
+function mv353TarjetaConsolidada(lista,titulo){
+    const r = mv353ResumenLista(lista);
+    const id = `mv353_${Math.random().toString(36).slice(2)}`;
+    const porcentaje = r.porcentaje;
+    const barra = porcentaje === null ? 0 : Math.max(0,Math.min(100,porcentaje));
+    const color = mv353Color(porcentaje);
+
+    return `<div class="mv4-kpi-card" style="grid-column:1/-1;">
+        <div class="mv4-kpi-head">
+            <div><span>📅</span> <b>${mv353Esc(titulo || "Cumplimiento productivo al día")}</b></div>
+            <div class="mv4-kpi-status">${porcentaje !== null && porcentaje >= 100 ? "🟢" : (porcentaje !== null && porcentaje >= 85 ? "🟡" : "🔴")}</div>
+        </div>
+        <div class="mv4-kpi-value">${porcentaje === null ? "No evaluado" : `${porcentaje.toFixed(1)}%`}</div>
+        <div class="mv4-kpi-meta">${r.puntos.toFixed(1)} / ${r.meta.toFixed(1)} pts esperados · ${r.diasCampo} días en campo × ${MV353_META_DIARIA_PRODUCCION} pts</div>
+        <div style="height:8px;background:#24415f;border-radius:999px;overflow:hidden;margin-top:9px;">
+            <span style="display:block;height:100%;width:${barra}%;background:${color};"></span>
+        </div>
+        <div style="font-size:11px;color:#9fb7d8;margin-top:7px;">
+            Corte ${mv353FechaVisible(r.fechaCorte)} · ${r.sobreMeta} sobre la meta · ${r.bajoMeta} bajo la meta · ${mv353TextoBrecha(r.brecha)}
+        </div>
+        <button class="mv4-link-btn" onclick="toggleDetalle('${id}',this)">▼ Ver cumplimiento por cuadrilla</button>
+        <div id="${id}" class="mv4-kpi-detail" style="display:none;">
+            ${mv353DetalleLista(lista)}
+        </div>
+    </div>`;
+}
+
 async function mostrarProduccionV2(periodoSeleccionado){
 
     document.getElementById("menuPrincipal").style.display = "none";
@@ -313,9 +616,14 @@ let totalTraslados = 0;
 
 let totalPuntos = 0;
 
-    const [textoProduccion, textoCatalogo] = await Promise.all([
-        typeof mv336FetchTextoCache === "function" ? mv336FetchTextoCache(urlProduccion, 180000) : fetch(urlProduccion).then(r=>r.text()),
-        typeof mv336FetchTextoCache === "function" ? mv336FetchTextoCache(urlCatalogo, 300000) : fetch(urlCatalogo).then(r=>r.text())
+    const [respuestaProduccion,respuestaCatalogo] = await Promise.all([
+        fetch(urlProduccion),
+        fetch(urlCatalogo)
+    ]);
+
+    const [textoProduccion,textoCatalogo] = await Promise.all([
+        respuestaProduccion.text(),
+        respuestaCatalogo.text()
     ]);
 
     const filasProduccion = textoProduccion.trim().split("\n");
@@ -441,6 +749,14 @@ console.log({
 
 });
 
+let cumplimientoDia = null;
+try{
+    const cumplimientoData = await mv353ObtenerCumplimiento(periodo);
+    cumplimientoDia = mv353DatoCuadrilla(cumplimientoData,cuadrilla);
+}catch(error){
+    console.warn("V353: no se pudo cargar la meta diaria del técnico",error);
+}
+
 const dashboard = {
     resumen:{
         totalProduccion,
@@ -453,7 +769,8 @@ const dashboard = {
     },
     detalle: registros,
     periodos,
-    periodo
+    periodo,
+    cumplimientoDia
 };
 
 renderDashboardProduccion(dashboard);
@@ -696,9 +1013,9 @@ console.log("Usuario:", localStorage.getItem("usuario"));
 
 const url="https://docs.google.com/spreadsheets/d/e/2PACX-1vRpVkCmSvopgPByWsEX6nkuAT6mf3yD2_Cywpl9pFSZEqYpxmprDePPeV0KNgT14YpEP6gkVlvOAtZy/pub?gid=463676034&single=true&output=csv";
 
-const texto=typeof mv336FetchTextoCache==="function"
-    ?await mv336FetchTextoCache(url,180000)
-    :await (await fetch(url)).text();
+const respuesta=await fetch(url);
+
+const texto=await respuesta.text();
 
 const filas=texto.split("\n");
 const primeraFila = filas[1];
@@ -729,9 +1046,9 @@ if (primeraFila) {
 const urlEfectividad =
 "https://docs.google.com/spreadsheets/d/e/2PACX-1vRpVkCmSvopgPByWsEX6nkuAT6mf3yD2_Cywpl9pFSZEqYpxmprDePPeV0KNgT14YpEP6gkVlvOAtZy/pub?gid=1731471693&single=true&output=csv";
 
-const textoEfectividad = typeof mv336FetchTextoCache==="function"
-    ? await mv336FetchTextoCache(urlEfectividad,180000)
-    : await (await fetch(urlEfectividad)).text();
+const respuestaEfectividad = await fetch(urlEfectividad);
+
+const textoEfectividad = await respuestaEfectividad.text();
 
 const filasEfectividad = textoEfectividad.split("\n");
 
@@ -739,9 +1056,9 @@ const efectividadCuadrillas = {};
 
 const urlUsuarios = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRpVkCmSvopgPByWsEX6nkuAT6mf3yD2_Cywpl9pFSZEqYpxmprDePPeV0KNgT14YpEP6gkVlvOAtZy/pub?gid=0&single=true&output=csv";
 
-const textoUsuarios = typeof mv336FetchTextoCache==="function"
-    ? await mv336FetchTextoCache(urlUsuarios,300000)
-    : await (await fetch(urlUsuarios)).text();
+const respuestaUsuarios = await fetch(urlUsuarios);
+
+const textoUsuarios = await respuestaUsuarios.text();
 
 const filasUsuarios = textoUsuarios.split("\n");
 
@@ -803,9 +1120,9 @@ for(let i=1; i<filasEfectividad.length; i++){
 const urlRecableado =
 "https://docs.google.com/spreadsheets/d/e/2PACX-1vRpVkCmSvopgPByWsEX6nkuAT6mf3yD2_Cywpl9pFSZEqYpxmprDePPeV0KNgT14YpEP6gkVlvOAtZy/pub?gid=317412212&single=true&output=csv";
 
-const textoRec = typeof mv336FetchTextoCache==="function"
-    ? await mv336FetchTextoCache(urlRecableado,180000)
-    : await (await fetch(urlRecableado)).text();
+const respuestaRec = await fetch(urlRecableado);
+
+const textoRec = await respuestaRec.text();
 
 const filasRec = textoRec.split("\n");
 
@@ -818,9 +1135,9 @@ const recableadoCuadrillas = {};
 const urlVtrGar =
 "https://docs.google.com/spreadsheets/d/e/2PACX-1vRpVkCmSvopgPByWsEX6nkuAT6mf3yD2_Cywpl9pFSZEqYpxmprDePPeV0KNgT14YpEP6gkVlvOAtZy/pub?gid=1778246699&single=true&output=csv";
 
-const textoVtr = typeof mv336FetchTextoCache==="function"
-    ? await mv336FetchTextoCache(urlVtrGar,180000)
-    : await (await fetch(urlVtrGar)).text();
+const respuestaVtr = await fetch(urlVtrGar);
+
+const textoVtr = await respuestaVtr.text();
 
 const filasVtr = textoVtr.split("\n");
 
@@ -1793,16 +2110,14 @@ const MV58_URL_CATALOGO = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRpVk
 const MV58_URL_EFECTIVIDAD = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRpVkCmSvopgPByWsEX6nkuAT6mf3yD2_Cywpl9pFSZEqYpxmprDePPeV0KNgT14YpEP6gkVlvOAtZy/pub?gid=1731471693&single=true&output=csv";
 const MV58_URL_RECABLEADO = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRpVkCmSvopgPByWsEX6nkuAT6mf3yD2_Cywpl9pFSZEqYpxmprDePPeV0KNgT14YpEP6gkVlvOAtZy/pub?gid=317412212&single=true&output=csv";
 const MV58_URL_VTRGAR = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRpVkCmSvopgPByWsEX6nkuAT6mf3yD2_Cywpl9pFSZEqYpxmprDePPeV0KNgT14YpEP6gkVlvOAtZy/pub?gid=1778246699&single=true&output=csv";
-const MV58_API = "https://script.google.com/macros/s/AKfycbwugGpuEMcJYFsDNS1hkcdZXJ92PUvXNv5ttpktyhZWv2fWB7ceCZNkfIFYxAs5wsgN/exec";
+const MV58_API = "https://script.google.com/macros/s/AKfycbzcbjCLweJNgZXDerdzmMN7Lwotc1G8NWdzoPkaLNGDivAgpYxDkq78xZwPRioSB4XY/exec";
 
 function mv58Key(txt){ return mv4Norm(txt).replace(/^P\s+(\d+)/, "P$1"); }
 function mv58IdSeguro(txt){ return mv58Key(txt).replace(/[^A-Z0-9]+/g, "_"); }
 function mv58Filas(texto){ return mv4CSV(texto || "").filter(r => r.some(c => (c || "").toString().trim() !== "")); }
 async function mv58GetCSV(url){
-    const texto = typeof mv336FetchTextoCache === "function"
-        ? await mv336FetchTextoCache(url, 180000)
-        : await (await fetch(url)).text();
-    return mv58Filas(texto);
+    const r = await fetch(url + (url.includes("?") ? "&" : "?") + "t=" + Date.now());
+    return mv58Filas(await r.text());
 }
 function mv58Valor(n){ return Number(n || 0).toFixed(1).replace(".0", ""); }
 function mv58KpiMini(titulo, valor){
@@ -1909,9 +2224,8 @@ async function mv58ObtenerObservacionesMap(periodo){
     const mapa = {};
     try{
         const usuario = localStorage.getItem("usuario") || "";
-        const data = typeof mv336ApiGet === "function"
-            ? await mv336ApiGet(MV58_API,{accion:"listarObservaciones",usuario},{intentos:2,tiempoMs:30000})
-            : await (await fetch(MV58_API,{method:"POST",body:JSON.stringify({accion:"listarObservaciones",usuario})})).json();
+        const res = await fetch(MV58_API, { method:"POST", body:JSON.stringify({accion:"listarObservaciones", usuario}) });
+        const data = await res.json();
         const lista = data.observaciones || [];
         const pendientes = ["DERIVADO", "EN PROCESO", "PENALIZADO", "APELADO"];
         lista.forEach(o => {
@@ -2008,50 +2322,34 @@ function mv58DetalleObs(d){
     </div>`;
 }
 
-const MV336_DASHBOARD_CACHE={};
-const MV336_DASHBOARD_EN_CURSO={};
-async function mv336RefrescarDashboard(origen){
-    Object.keys(MV336_DASHBOARD_CACHE).forEach(k=>delete MV336_DASHBOARD_CACHE[k]);
-    if(typeof MV336_CACHE_TEXTO_MEMORIA!=="undefined"&&MV336_CACHE_TEXTO_MEMORIA.clear)MV336_CACHE_TEXTO_MEMORIA.clear();
-    try{
-        for(let i=sessionStorage.length-1;i>=0;i--){
-            const clave=sessionStorage.key(i);
-            if(clave&&clave.startsWith("MV336_"))sessionStorage.removeItem(clave);
-        }
-    }catch(_){}
-    if(origen==="SUPERVISOR")return mostrarDashboardSupervisor(MV276_DASH_PERIODO);
-    return mostrarDashboardJefatura(MV276_DASH_PERIODO);
-}
 async function mv4ObtenerRanking(periodoSeleccionado){
-    const claveSolicitada=periodoSeleccionado||"AUTO";
-    const cache=MV336_DASHBOARD_CACHE[claveSolicitada];
-    if(cache&&Date.now()-cache.guardadoEn<180000){
-        MV276_DASH_PERIODOS=cache.periodos;
-        MV276_DASH_PERIODO=cache.periodo;
-        return cache.lista;
-    }
-    if(MV336_DASHBOARD_EN_CURSO[claveSolicitada])return MV336_DASHBOARD_EN_CURSO[claveSolicitada];
+    const res = await fetch(URL_RANKING_MI_VISUAL + "&t=" + Date.now());
+    const texto = await res.text();
+    const listaCompleta = mv4CSV(texto).slice(1).map(mv4FilaRanking).filter(x => x.cuadrilla);
 
-    MV336_DASHBOARD_EN_CURSO[claveSolicitada]=(async()=>{
-        const texto = typeof mv336FetchTextoCache === "function"
-            ? await mv336FetchTextoCache(URL_RANKING_MI_VISUAL, 180000)
-            : await (await fetch(URL_RANKING_MI_VISUAL)).text();
-        const listaCompleta = mv4CSV(texto).slice(1).map(mv4FilaRanking).filter(x => x.cuadrilla);
-        MV276_DASH_PERIODOS = mv276PeriodosDesdeValores(listaCompleta.map(x=>x.actualizacion));
-        MV276_DASH_PERIODO = mv276PeriodoPredeterminado(MV276_DASH_PERIODOS, periodoSeleccionado);
-        const lista = listaCompleta.filter(x=>mv276ClavePeriodo(x.actualizacion)===MV276_DASH_PERIODO);
-        const enriquecida=await mv58EnriquecerRanking(lista, MV276_DASH_PERIODO);
-        MV336_DASHBOARD_CACHE[claveSolicitada]={
-            guardadoEn:Date.now(),
-            periodos:MV276_DASH_PERIODOS,
-            periodo:MV276_DASH_PERIODO,
-            lista:enriquecida
-        };
-        return enriquecida;
-    })();
+    MV276_DASH_PERIODOS = mv276PeriodosDesdeValores(
+        listaCompleta.map(x=>x.actualizacion)
+    );
 
-    try{return await MV336_DASHBOARD_EN_CURSO[claveSolicitada];}
-    finally{delete MV336_DASHBOARD_EN_CURSO[claveSolicitada];}
+    MV276_DASH_PERIODO = mv276PeriodoPredeterminado(
+        MV276_DASH_PERIODOS,
+        periodoSeleccionado
+    );
+
+    const lista = listaCompleta.filter(
+        x=>mv276ClavePeriodo(x.actualizacion)===MV276_DASH_PERIODO
+    );
+
+    const enriquecida = await mv58EnriquecerRanking(
+        lista,
+        MV276_DASH_PERIODO
+    );
+
+    // Una sola consulta adicional, compartida por Supervisor y Jefatura.
+    return await mv353EnriquecerLista(
+        enriquecida,
+        MV276_DASH_PERIODO
+    );
 }
 function mv4Estado(tipo, valor, meta){
     const v = Number(valor) || 0;
@@ -2127,6 +2425,7 @@ function mv4DashboardKpis(lista){
             <div class="mv4-progress"><span style="width:${r.cumplimiento}%"></span></div>
             <div class="mv4-general-sub">${r.ok} de 5 metas cumplidas</div>
         </div>
+        ${mv353TarjetaConsolidada(lista,"Cumplimiento productivo al día")}
         ${mv4KpiCard({icono:"📈",titulo:"Producción",valor:`${r.produccion.toFixed(1)} / ${r.metaProduccion} pts`,meta:`${META_PRODUCCION_CUADRILLA} pts x ${r.cuadrillas} cuadrillas`,estado:mv4Estado("mayor", r.produccion, r.metaProduccion),detalle:mv4DetalleKpi(lista,"produccion")})}
         ${mv4KpiCard({icono:"🎯",titulo:"Efectividad",valor:mv4Per(r.efectividad),meta:`≥ ${META_EFECTIVIDAD}%`,estado:mv4Estado("mayor", r.efectividad, META_EFECTIVIDAD),detalle:mv4DetalleKpi(lista,"efectividad")})}
         ${mv4KpiCard({icono:"🔧",titulo:"Recableado",valor:mv4Per(r.recableado),meta:`≤ ${META_RECABLEADO}%`,estado:mv4Estado("menor", r.recableado, META_RECABLEADO),detalle:mv4DetalleKpi(lista,"recableado")})}
@@ -2204,6 +2503,8 @@ function renderDashboardProduccion(data){
             <div class="mv4-progress mv59-prod-progress"><span style="width:${avance}%"></span></div>
             <div class="mv59-prod-percent">${avance}% de avance</div>
         </div>
+
+        ${mv353TarjetaTecnico(data.cumplimientoDia,totalPuntos)}
 
         <div class="mv59-prod-summary">
             ${mv59LineaResumen("🏠", "Instalaciones", grupos.instalaciones.ordenes, grupos.instalaciones.puntos)}
@@ -2303,6 +2604,18 @@ function mv198ResumenCuadrilla(x){
             <div class="mv4-general-title">📊 RESUMEN DE LA CUADRILLA</div>
             <div class="mv198-resumen-grid">
                 ${mv591MiniResumenCard("📈","Producción",`${Number(x.produccion||0).toFixed(1)} pts`,`${prodPct}% de meta`,mv4Estado("mayor",x.produccion,META_PRODUCCION_CUADRILLA))}
+                ${(()=>{
+                    const d=x.mv353CumplimientoDia;
+                    const meta=d?Number(d.metaAcumulada)||0:0;
+                    const pct=meta>0?(Number(x.produccion||0)/meta*100):null;
+                    return mv591MiniResumenCard(
+                        "📅",
+                        "Cumplimiento al día",
+                        pct===null?"No evaluado":`${pct.toFixed(1)}%`,
+                        d?`${Number(x.produccion||0).toFixed(1)} / ${meta.toFixed(1)} pts · ${Number(d.diasCampo||0)} días`:"Sin programación",
+                        pct!==null&&pct>=100?"🟢":(pct!==null&&pct>=85?"🟡":"🔴")
+                    );
+                })()}
                 ${mv591MiniResumenCard("🎯","Efectividad",mv4Per(x.efectividad),`Meta ≥ ${META_EFECTIVIDAD}%`,mv4Estado("mayor",x.efectividad,META_EFECTIVIDAD))}
                 ${mv591MiniResumenCard("🔧","Recableado",mv4Per(x.recableado),`Meta ≤ ${META_RECABLEADO}%`,mv4Estado("menor",x.recableado,META_RECABLEADO))}
                 ${mv591MiniResumenCard("📡","VTR/GAR",mv4Per(x.vtrgar),`Meta ≤ ${META_VTRGAR}%`,mv4Estado("menor",x.vtrgar,META_VTRGAR))}
@@ -2400,7 +2713,7 @@ function mv198RenderSupervisor(seleccionada){
     }
 
     mostrarPantalla(`<div class="mv4-page">
-        <div class="mv4-top-card"><div class="mv4-top-role">👷 SUPERVISOR</div><div class="mv4-top-sede">${sede || "SEDE"}</div><div class="mv4-top-sub">Actualizado: ${actualizacion}</div><button type="button" class="mv4-link-btn" onclick="mv336RefrescarDashboard('SUPERVISOR')">↻ Actualizar datos</button></div>
+        <div class="mv4-top-card"><div class="mv4-top-role">👷 SUPERVISOR</div><div class="mv4-top-sede">${sede || "SEDE"}</div><div class="mv4-top-sub">Actualizado: ${actualizacion}</div></div>
         ${mv239FiltrosSupervisor(lista, filtros)}
         ${typeof mv326RenderBotonBonosDashboard === "function" ? mv326RenderBotonBonosDashboard(MV276_DASH_PERIODO) : ""}
         ${contenido}
@@ -2465,6 +2778,16 @@ function mv591ResumenEjecutivoZona(lista){
         <div class="mv4-general-title">📊 RESUMEN EJECUTIVO ZONA NORTE</div>
         <div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin-top:12px;">
             ${mv591MiniResumenCard("📈", "Producción", `${r.produccion.toFixed(1)} pts`, `${prodPct}% de meta`, mv4Estado("mayor", r.produccion, r.metaProduccion))}
+            ${(()=>{
+                const d=mv353ResumenLista(lista);
+                return mv591MiniResumenCard(
+                    "📅",
+                    "Cumplimiento al día",
+                    d.porcentaje===null?"No evaluado":`${d.porcentaje.toFixed(1)}%`,
+                    `${d.puntos.toFixed(1)} / ${d.meta.toFixed(1)} pts`,
+                    d.porcentaje!==null&&d.porcentaje>=100?"🟢":(d.porcentaje!==null&&d.porcentaje>=85?"🟡":"🔴")
+                );
+            })()}
             ${mv591MiniResumenCard("🎯", "Efectividad", mv4Per(r.efectividad), `Meta ≥ ${META_EFECTIVIDAD}%`, mv4Estado("mayor", r.efectividad, META_EFECTIVIDAD))}
             ${mv591MiniResumenCard("🔧", "Recableado", mv4Per(r.recableado), `Meta ≤ ${META_RECABLEADO}%`, mv4Estado("menor", r.recableado, META_RECABLEADO))}
             ${mv591MiniResumenCard("📡", "VTR/GAR", mv4Per(r.vtrgar), `Meta ≤ ${META_VTRGAR}%`, mv4Estado("menor", r.vtrgar, META_VTRGAR))}
@@ -2482,6 +2805,10 @@ function mv4SedeCard(sede, lista){
         <div class="mv4-kpi-head"><div><b>🏢 ${sede}</b></div><div class="mv4-kpi-status">${r.cumplimiento >= 80 ? "🟢" : (r.cumplimiento >= 60 ? "🟡" : "🔴")}</div></div>
         <div class="mv4-sede-grid">
             <span>Prod: <b>${r.produccion.toFixed(1)} / ${r.metaProduccion}</b></span>
+            ${(()=>{
+                const d=mv353ResumenLista(lista);
+                return `<span>Al día: <b>${d.porcentaje===null?"N/E":`${d.porcentaje.toFixed(1)}%`}</b></span>`;
+            })()}
             <span>Efect: <b>${mv4Per(r.efectividad)}</b></span>
             <span>Rec: <b>${mv4Per(r.recableado)}</b></span>
             <span>VTR/GAR: <b>${mv4Per(r.vtrgar)}</b></span>
@@ -2659,16 +2986,17 @@ async function mv282ConsultarTrabajosDiarios(origen){
     MV282_TRABAJOS_DIARIOS.resultado = null;
     mv282RenderDashboard(origen);
     try{
-        const payload={
-            accion:"listarTrabajosDiariosCuadrilla",
-            usuario:localStorage.getItem("usuario") || "",
-            periodo:MV276_DASH_PERIODO,
-            fecha,
-            cuadrilla
-        };
-        const data = typeof mv336ApiGet === "function"
-            ? await mv336ApiGet(MV58_API,payload,{intentos:2,tiempoMs:30000})
-            : await (await fetch(MV58_API,{method:"POST",body:JSON.stringify(payload)})).json();
+        const res = await fetch(MV58_API, {
+            method:"POST",
+            body:JSON.stringify({
+                accion:"listarTrabajosDiariosCuadrilla",
+                usuario:localStorage.getItem("usuario") || "",
+                periodo:MV276_DASH_PERIODO,
+                fecha,
+                cuadrilla
+            })
+        });
+        const data = await res.json();
         if(!data.ok) throw new Error((data.error || "No se pudo consultar los trabajos").replace(/^Error:\s*/,""));
         MV282_TRABAJOS_DIARIOS.resultado = data;
     }catch(e){
@@ -2814,7 +3142,6 @@ function mv199RenderJefatura(){
             <div class="mv4-top-role">${rotuloVista.icono} ${rotuloVista.titulo}</div>
             <div class="mv4-top-sede">${tituloZona}</div>
             <div class="mv4-top-sub">${listaSede.length} cuadrillas</div>
-            <button type="button" class="mv4-link-btn" onclick="mv336RefrescarDashboard('JEFATURA')">↻ Actualizar datos</button>
         </div>
         ${mv199FiltrosJefatura(listaCompleta, f)}
         ${typeof mv326RenderBotonBonosDashboard === "function" ? mv326RenderBotonBonosDashboard(MV276_DASH_PERIODO) : ""}`;
