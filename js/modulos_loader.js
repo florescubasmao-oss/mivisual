@@ -10,12 +10,15 @@
   const VERSION = "V341-VALIDACION-20260803";
   const MODULOS = {
     dashboards_core: {
-      archivos: [`./js/dashboards.js?v=V354-API-UNIFICADA`],
+      archivos: [
+        `./js/dashboards.js?v=V355-INFORME-GERENCIAL`,
+        `./js/informe_gerencial_v355.js?v=V355-INFORME-GERENCIAL`
+      ],
       entradas: ["mostrarProduccionV2", "mostrarDashboardSupervisor", "mostrarDashboardJefatura"]
     },
     dashboard: {
       depende: ["dashboards_core"],
-      archivos: [`./js/bono_supervisores.js?v=V354-API-UNIFICADA`],
+      archivos: [`./js/bono_supervisores.js?v=V355-INFORME-GERENCIAL`],
       entradas: ["mostrarBonosSupervisores"]
     },
     indicadores: {

@@ -3144,7 +3144,8 @@ function mv199RenderJefatura(){
             <div class="mv4-top-sub">${listaSede.length} cuadrillas</div>
         </div>
         ${mv199FiltrosJefatura(listaCompleta, f)}
-        ${typeof mv326RenderBotonBonosDashboard === "function" ? mv326RenderBotonBonosDashboard(MV276_DASH_PERIODO) : ""}`;
+        ${typeof mv326RenderBotonBonosDashboard === "function" ? mv326RenderBotonBonosDashboard(MV276_DASH_PERIODO) : ""}
+        ${typeof mv355RenderBotonInformeGerencial === "function" ? mv355RenderBotonInformeGerencial() : ""}`;
 
     if(f.indicador === "TRABAJOS_DIARIOS"){
         html += mv282RenderTrabajosDiarios(listaSede, f, "JEFATURA");
