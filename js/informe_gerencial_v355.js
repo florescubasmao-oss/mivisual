@@ -120,14 +120,30 @@
     );
   }
 
+  function datosDashboardActual(){
+    if(typeof window.mv356ObtenerDatosDashboardGerencial === "function"){
+      const datos = window.mv356ObtenerDatosDashboardGerencial() || {};
+      return {
+        lista:Array.isArray(datos.lista) ? datos.lista : [],
+        periodo:datos.periodo || ""
+      };
+    }
+
+    // Respaldo para una sesión con archivos mezclados durante la actualización.
+    return {
+      lista:Array.isArray(window.MV198_DASH_JEFATURA_LISTA)
+        ? window.MV198_DASH_JEFATURA_LISTA
+        : [],
+      periodo:window.MV276_DASH_PERIODO || ""
+    };
+  }
+
   function listaActual(){
-    return Array.isArray(window.MV198_DASH_JEFATURA_LISTA)
-      ? window.MV198_DASH_JEFATURA_LISTA.filter(x=>x && x.cuadrilla)
-      : [];
+    return datosDashboardActual().lista.filter(x=>x && x.cuadrilla);
   }
 
   function periodoActual(){
-    return window.MV276_DASH_PERIODO || "";
+    return datosDashboardActual().periodo || "";
   }
 
   function fechaCorteLista(lista){
@@ -616,7 +632,7 @@
 
     const lista = listaActual();
     if(!lista.length){
-      alert("Primero cargue el Dashboard de Jefatura o Gerencia.");
+      alert("El Dashboard todavía no terminó de preparar sus datos. Espere unos segundos y vuelva a pulsar Informe gerencial.");
       return;
     }
 
@@ -714,7 +730,28 @@
 
   function botonInforme(){
     if(!puedeUsarInforme()) return "";
-    return `<button type="button" class="mv355-boton-dashboard" onclick="mv355AbrirInformeGerencial()">Informe gerencial PDF / Excel</button>`;
+
+    return `<button
+      type="button"
+      class="mv355-boton-dashboard"
+      onclick="mv355AbrirInformeGerencial()"
+      style="
+        display:inline-flex;
+        align-items:center;
+        justify-content:center;
+        gap:8px;
+        border:0;
+        border-radius:13px;
+        padding:12px 17px;
+        margin:12px 0 4px;
+        background:linear-gradient(135deg,#7c3aed,#4f46e5);
+        color:#ffffff;
+        font-weight:900;
+        font-size:14px;
+        cursor:pointer;
+        box-shadow:0 8px 20px rgba(0,0,0,.24);
+      "
+    >📄 Informe gerencial PDF / Excel</button>`;
   }
 
   function datosFilaCuadrilla(item){

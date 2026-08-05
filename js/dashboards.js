@@ -2557,6 +2557,21 @@ let MV198_DASH_JEFATURA_LISTA = [];
 let MV276_DASH_PERIODOS = [];
 let MV276_DASH_PERIODO = "";
 
+// V356: puente de solo lectura para el Informe Gerencial.
+// Las variables anteriores fueron declaradas con "let" y por eso no existen
+// como propiedades de window, aunque el Dashboard ya esté visible.
+window.mv356ObtenerDatosDashboardGerencial = function(){
+    return {
+        lista:Array.isArray(MV198_DASH_JEFATURA_LISTA)
+            ? MV198_DASH_JEFATURA_LISTA
+            : [],
+        periodo:MV276_DASH_PERIODO || "",
+        periodos:Array.isArray(MV276_DASH_PERIODOS)
+            ? MV276_DASH_PERIODOS
+            : []
+    };
+};
+
 function mv198Escapar(valor){
     return (valor ?? "").toString()
         .replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;")
