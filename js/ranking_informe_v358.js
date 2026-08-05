@@ -1,5 +1,5 @@
 /* ============================================================
-   MI VISUAL V359 - Ranking detallado + Informe Excel (estado aislado)
+   MI VISUAL V360 - Ranking detallado + selector mensual
    - Jefatura y Gerencia Lima.
    - Reutiliza el enriquecimiento analítico del Dashboard.
    - Carga datos en paralelo y conserva caché corta por período.
@@ -102,6 +102,85 @@
     return "";
   }
 
+  function mv360CorteVisible(valor){
+    if(!valor) return "";
+    const texto = String(valor).trim();
+
+    let m = texto.match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
+    if(m) return texto;
+
+    m = texto.match(/^(\d{4})-(\d{2})-(\d{2})/);
+    if(m) return `${m[3]}/${m[2]}/${m[1]}`;
+
+    return texto;
+  }
+
+  function mv360NormalizarPeriodos(valores,periodoActual,lista){
+    const mapa = new Map();
+
+    function agregar(clave,etiqueta,corte){
+      const periodo = String(clave || "").trim();
+      if(!/^\d{4}-\d{2}$/.test(periodo)) return;
+
+      const anterior = mapa.get(periodo) || {
+        clave:periodo,
+        etiqueta:periodoNombre(periodo),
+        corte:""
+      };
+
+      if(etiqueta) anterior.etiqueta = String(etiqueta);
+      if(corte) anterior.corte = mv360CorteVisible(corte);
+
+      mapa.set(periodo,anterior);
+    }
+
+    (Array.isArray(valores) ? valores : []).forEach(item=>{
+      if(typeof item==="string"){
+        agregar(item,periodoNombre(item),"");
+        return;
+      }
+
+      if(item && typeof item==="object"){
+        const clave = item.clave || item.periodo || item.value || "";
+        agregar(
+          clave,
+          item.etiqueta || item.label || periodoNombre(clave),
+          item.corte || item.actualizacion || ""
+        );
+      }
+    });
+
+    (Array.isArray(lista) ? lista : []).forEach(item=>{
+      const clave = mv359PeriodoDesdeFecha(item?.actualizacion);
+      if(clave) agregar(clave,periodoNombre(clave),item?.actualizacion || "");
+    });
+
+    if(periodoActual){
+      agregar(periodoActual,periodoNombre(periodoActual),"");
+    }
+
+    return Array.from(mapa.values())
+      .sort((a,b)=>b.clave.localeCompare(a.clave));
+  }
+
+  function mv360PeriodoEnCurso(clave){
+    const partes = new Intl.DateTimeFormat("en-CA",{
+      timeZone:"America/Lima",
+      year:"numeric",
+      month:"2-digit"
+    }).formatToParts(new Date());
+
+    const actual = `${partes.find(x=>x.type==="year")?.value}-${partes.find(x=>x.type==="month")?.value}`;
+    return clave===actual;
+  }
+
+  function mv360EtiquetaPeriodo(item){
+    const clave = item?.clave || "";
+    const estado = mv360PeriodoEnCurso(clave) ? "EN CURSO" : "HISTÓRICO";
+    const corte = item?.corte ? ` · al ${item.corte}` : "";
+    return `${item?.etiqueta || periodoNombre(clave)} — ${estado}${corte}`;
+  }
+
   function mv359SelectorPeriodo(){
     const periodos = Array.isArray(MV359_ESTADO.periodos)
       ? MV359_ESTADO.periodos
@@ -112,8 +191,8 @@
     return `
       <div style="
         margin:12px 0 18px;
-        padding:13px;
-        border-radius:14px;
+        padding:14px;
+        border-radius:16px;
         background:#142844;
         border:1px solid rgba(255,255,255,.10);
         color:#fff;
@@ -122,20 +201,24 @@
           📅 Seleccionar período
         </label>
         <select
+          id="mv360PeriodoRanking"
           onchange="mostrarRanking(this.value)"
           style="
             width:100%;
-            padding:11px;
-            border-radius:10px;
+            padding:12px;
+            border-radius:11px;
             border:1px solid #6ea8e5;
             background:#fff;
             color:#0f172a;
-            font-weight:800;
+            font-weight:900;
           "
         >
-          ${periodos.map(periodo=>`
-            <option value="${esc(periodo)}" ${periodo===MV359_ESTADO.periodo ? "selected" : ""}>
-              ${esc(periodoNombre(periodo))}
+          ${periodos.map(item=>`
+            <option
+              value="${esc(item.clave)}"
+              ${item.clave===MV359_ESTADO.periodo ? "selected" : ""}
+            >
+              ${esc(mv360EtiquetaPeriodo(item))}
             </option>
           `).join("")}
         </select>
@@ -516,8 +599,17 @@
       const datos = await obtenerLista(periodoSeleccionado);
       const lista = datos.lista;
 
-      MV359_ESTADO.periodoS = datos.periodos.slice();
-      MV359_ESTADO.periodo = datos.periodo;
+      MV359_ESTADO.periodo =
+        datos.periodo ||
+        periodoSeleccionado ||
+        mv359PeriodoDesdeFecha(lista?.[0]?.actualizacion) ||
+        "";
+
+      MV359_ESTADO.periodos = mv360NormalizarPeriodos(
+        datos.periodos,
+        MV359_ESTADO.periodo,
+        lista
+      );
 
       if(!lista.length){
         mostrarPantalla(`
@@ -1116,6 +1208,6 @@
   window.mv358CerrarInformeRanking = cerrarModal;
   window.mv358GenerarInformeRanking = generarExcel;
 
-  window.MV359_RANKING_DETALLADO_OK = true;
-  console.log("MI VISUAL V359: Ranking detallado sin dependencia de variables lexicales.");
+  window.MV360_RANKING_DETALLADO_OK = true;
+  console.log("MI VISUAL V360: selector de períodos del Ranking habilitado.");
 })();
