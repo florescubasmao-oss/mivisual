@@ -101,12 +101,12 @@ Visual Connections SAC - Zona Norte
 if ("serviceWorker" in navigator) {
     window.addEventListener("load", function(){
       navigator.serviceWorker
-        .register("./sw.js?v=V360-SELECTOR-PERIODO-RANKING")
+        .register("./sw.js?v=V361-RESUMEN-CONSOLIDADO")
         .then(function(registro){
           registro.update().catch(function(){});
-          console.log("SW V360 OK");
+          console.log("SW V361 OK");
         })
-        .catch(function(error){ console.warn("SW V360", error); });
+        .catch(function(error){ console.warn("SW V361", error); });
     });
 }
 </script>
@@ -118,7 +118,7 @@ if ("serviceWorker" in navigator) {
 <script src="./js/login.js?v=V339-CACHE"></script>
 <script src="./js/permisos.js?v=V339-CORE"></script>
 <script src="./js/app.js?v=V339-LAZY"></script>
-<script src="./js/modulos_loader.js?v=V360-SELECTOR-PERIODO-RANKING"></script>
+<script src="./js/modulos_loader.js?v=V361-RESUMEN-CONSOLIDADO"></script>
 <script src="./js/mapa_cto_fix_v342.js?v=V342-MAPA-CTO"></script>
 <script src="./js/actas_recepcion_v343.js?v=V343-ACTAS-RECEPCION"></script>
 <script src="./js/actas_identidad_v344.js?v=V344-ACTAS-IDENTIDAD"></script>
