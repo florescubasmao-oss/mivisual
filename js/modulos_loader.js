@@ -11,15 +11,15 @@
   const MODULOS = {
     dashboards_core: {
       archivos: [
-        `./js/dashboards.js?v=V361-RESUMEN-CONSOLIDADO`,
-        `./js/resumen_dashboard_v361.js?v=V361-RESUMEN-CONSOLIDADO`,
-        `./js/informe_gerencial_lazy_v361.js?v=V361-RESUMEN-CONSOLIDADO`
+        `./js/dashboards.js?v=V362-CERTIFICACION-WIN`,
+        `./js/resumen_dashboard_v361.js?v=V362-CERTIFICACION-WIN`,
+        `./js/informe_gerencial_lazy_v361.js?v=V362-CERTIFICACION-WIN`
       ],
       entradas: ["mostrarProduccionV2", "mostrarDashboardSupervisor", "mostrarDashboardJefatura"]
     },
     dashboard: {
       depende: ["dashboards_core"],
-      archivos: [`./js/bono_supervisores.js?v=V361-RESUMEN-CONSOLIDADO`],
+      archivos: [`./js/bono_supervisores.js?v=V362-CERTIFICACION-WIN`],
       entradas: ["mostrarBonosSupervisores"]
     },
     indicadores: {
@@ -29,8 +29,8 @@
     ranking: {
       depende: ["dashboards_core"],
       archivos: [
-        `./ranking.js?v=V361-RESUMEN-CONSOLIDADO`,
-        `./js/ranking_informe_v358.js?v=V361-RESUMEN-CONSOLIDADO`
+        `./ranking.js?v=V362-CERTIFICACION-WIN`,
+        `./js/ranking_informe_v358.js?v=V362-CERTIFICACION-WIN`
       ],
       entradas: ["mostrarRanking"]
     },
@@ -46,7 +46,10 @@
       entradas: ["mostrarObservaciones"]
     },
     accesos: {
-      archivos: [`./js/accesos.js?v=${VERSION}`],
+      archivos: [
+        `./js/accesos.js?v=${VERSION}`,
+        `./js/accesos_certificacion_v362.js?v=V362-CERTIFICACION-WIN`
+      ],
       entradas: ["mostrarAccesos", "mostrarBiblioteca", "mostrarCapacitacion"]
     },
     actividad: {

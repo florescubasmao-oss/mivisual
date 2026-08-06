@@ -1,5 +1,5 @@
-/* MI VISUAL V361 - caché segura y resumen consolidado */
-const MV339_CACHE = "mivisual-v361-resumen-consolidado-20260805";
+/* MI VISUAL V362 - caché segura y Certificación WIN */
+const MV339_CACHE = "mivisual-v362-certificacion-win-20260806";
 const MV339_CORE = [
   "./",
   "./index.html",
@@ -9,8 +9,8 @@ const MV339_CORE = [
   "./js/login.js?v=V339-CACHE",
   "./js/permisos.js?v=V339-CORE",
   "./js/app.js?v=V339-LAZY",
-  "./js/modulos_loader.js?v=V361-RESUMEN-CONSOLIDADO",
-  "./js/resumen_dashboard_v361.js?v=V361-RESUMEN-CONSOLIDADO",
+  "./js/modulos_loader.js?v=V362-CERTIFICACION-WIN",
+  "./js/resumen_dashboard_v361.js?v=V362-CERTIFICACION-WIN",
   "./js/mapa_cto_fix_v342.js?v=V342-MAPA-CTO",
   "./js/actas_recepcion_v343.js?v=V343-ACTAS-RECEPCION",
   "./js/actas_identidad_v344.js?v=V344-ACTAS-IDENTIDAD",
