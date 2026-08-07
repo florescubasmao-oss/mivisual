@@ -1,3 +1,10 @@
+/* ==========================================================
+   MI VISUAL - Code.gs COMPLETO V375
+   Fuente unificada + Gerencia General + diagnóstico de despliegue.
+   Base: código vigente entregado por el usuario el 07/08/2026.
+========================================================== */
+
+const MI_VISUAL_BACKEND_VERSION_ = "V375-FUENTE-UNIFICADA-20260807";
 const HOJA_PRODUCCION = "PRODUCCION_APP";
 const HOJA_CATALOGO_ORDENES = "CATALOGO_ORDENES";
 const HOJA_EFECTIVIDAD = "EFECTIVIDAD";
@@ -7,6 +14,16 @@ const HOJA_USUARIOS = "USUARIOS";
 const HOJA_RANKING = "RANKING";
 const HOJA_OBSERVACIONES = "OBSERVACIONES";
 const HOJA_RESUMEN_OBSERVACIONES = "RESUMEN_OBSERVACIONES";
+const HOJA_RESUMEN_DASHBOARD_RANKING_V361 = "RESUMEN_DASHBOARD_RANKING";
+const HOJA_RESUMEN_BONO_SUPERVISORES_V361 = "RESUMEN_BONO_SUPERVISORES";
+const MV361_VERSION_RESUMEN_ = "MV369_RESUMEN_OPERATIVO_RAPIDO_VERSION";
+const MV365_ESQUEMA_RESUMEN_ = "V367_RESUMEN_LIMPIO_SLA";
+const MV367_DEPURACION_DASHBOARD_KEY_ = "MV367_DEPURACION_DASHBOARD_OK";
+const MV367_DEPURACION_SLA_KEY_ = "MV367_DEPURACION_SLA_OK";
+const HOJA_SLA_ORDENES_RESUMEN_V363 = "SLA_ORDENES_RESUMEN";
+const HOJA_SLA_EXCEPCIONES_V363 = "SLA_EXCEPCIONES";
+const HOJA_CONFIGURACION_RANKING_V363 = "CONFIGURACION_RANKING";
+const MV363_PESOS_RANKING_DEFAULT_ = {PRODUCCION:30,EFECTIVIDAD:20,SLA:15,OBSERVACIONES:15,RECABLEADO:10,VTRGAR:10};
 const CARPETA_EVIDENCIAS_OBSERVACIONES = "1W23rJjyUgmYGTlG2NzrpvasIWbwKBV6h";
 const HOJA_ACTIVIDAD_CAMPO = "ACTIVIDAD_CAMPO";
 const CARPETA_ACTIVIDAD_CAMPO = "1tu6DWyOkM0b-W1nI_MIXGuTmlZypjsBV";
@@ -65,6 +82,21 @@ function obtenerContextoMenu(data) {
 
 function doGet(e) {
   const parametros = parametrosGetMiVisual_(e);
+
+  // V375: diagnóstico seguro para confirmar qué versión del backend está
+  // publicada realmente en la URL /exec que usa MI VISUAL.
+  if (parametros.accion === "versionMiVisual") {
+    return respuestaJson({
+      ok: true,
+      modulo: "SISTEMA",
+      accion: "VERSION",
+      version: MI_VISUAL_BACKEND_VERSION_,
+      gerenciaGeneral: true,
+      analisisEconomicoDinamico: true,
+      mapaOperativoDinamico: true,
+      fecha: Utilities.formatDate(new Date(), "America/Lima", "dd/MM/yyyy HH:mm:ss")
+    });
+  }
 
   // V299: ruta de solo lectura para materiales. Evita que una redirección
   // del Web App convierta la consulta POST en el saludo general de la API.
@@ -167,7 +199,18 @@ function doGet(e) {
     listarCuadrillasActasFaltantes: function(p){ return listarCuadrillasActasFaltantes(p); },
     consultarDatosAutomaticosActa: function(p){ return consultarDatosAutomaticosActa(p); },
     listarTiposPartidaActas: function(p){ return obtenerTiposPartidaActas(p); },
-    listarCargosActas: function(p){ return listarCargosActas(p); }
+    listarCargosActas: function(p){ return listarCargosActas(p); },
+    // V351: Bonos Supervisores es una consulta de solo lectura.
+    // GET evita que una redirección de Apps Script convierta la respuesta en
+    // el saludo "MI VISUAL API OK" y mantiene el resultado en JSON.
+    obtenerBonosSupervisores: function(p){ return obtenerBonosSupervisores(p); },
+    // V353: meta acumulada según los días realmente programados en campo.
+    obtenerCumplimientoProduccionDiaria: function(p){ return obtenerCumplimientoProduccionDiaria(p); },
+    // V361: lectura consolidada para Dashboard, Ranking e informes.
+    obtenerResumenDashboardRanking: function(p){ return obtenerResumenDashboardRankingV361(p); },
+    // V363: Tiempo de Gestión - SLA y configuración del Ranking.
+    obtenerSlaGestion: function(p){ return obtenerSlaGestionV363(p); },
+    obtenerConfiguracionRanking: function(p){ return obtenerConfiguracionRankingV363(p); }
   };
   if (parametros.accion && lecturasGet[parametros.accion]) {
     return respuestaLecturaGetMiVisual_(lecturasGet[parametros.accion], parametros);
@@ -316,6 +359,8 @@ function procesarProduccion(registros) {
   }
 
   invalidarCacheBonosSupervisores_();
+  invalidarCumplimientoProduccionDiaria_();
+  invalidarResumenDashboardRankingV361_();
   return {
     ok: true,
     modulo: "PRODUCCION",
@@ -398,6 +443,7 @@ function procesarEfectividad(registros, periodoManual, actualizadoAlManual) {
   hoja.getRange(2, 10, salidaHistorica.length - 1, 1).setNumberFormat("0.00%");
 
   invalidarCacheBonosSupervisores_();
+  invalidarResumenDashboardRankingV361_();
   return {
     ok: true,
     modulo: "EFECTIVIDAD",
@@ -513,6 +559,7 @@ function procesarRecableado(registros, periodoManual, actualizadoAlManual) {
   hoja.getRange(2, 7, salidaHistorica.length - 1, 1).setNumberFormat("0.00%");
 
   invalidarCacheBonosSupervisores_();
+  invalidarResumenDashboardRankingV361_();
   return {
     ok: true,
     modulo: "RECABLEADO",
@@ -618,6 +665,7 @@ function procesarVtrGar(registros, periodoManual, actualizadoAlManual) {
   hoja.getRange(2, 9, salidaHistorica.length - 1, 1).setNumberFormat("0.00%");
 
   invalidarCacheBonosSupervisores_();
+  invalidarResumenDashboardRankingV361_();
   return {
     ok: true,
     modulo: "VTR/GAR",
@@ -1186,6 +1234,11 @@ function esPerfilGerenciaLima(perfil) {
   return normalizarTexto(perfil) === "GERENCIA LIMA";
 }
 
+function esPerfilGerenciaGeneral(perfil) {
+  const p = normalizarTexto(perfil);
+  return p === "GERENCIA GENERAL" || p === "GERENCIAL GENERAL";
+}
+
 function esPerfilJefaturaOperaciones(perfil) {
   const p = normalizarTexto(perfil);
   return p === "JEFATURA OPERACIONES" || p === "JEFATURA DE OPERACIONES" || p === "OPERACIONES";
@@ -1321,6 +1374,7 @@ function registrarObservacion(data) {
   // El resumen y el ranking se solicitan después desde la web. Así un cálculo
   // pesado no impide confirmar que la observación ya fue registrada.
   invalidarCacheBonosSupervisores_();
+  invalidarResumenDashboardRankingV361_();
   return { ok:true, modulo:"OBSERVACIONES", accion:"REGISTRAR", id, actualizacionPendiente:true };
 }
 
@@ -1478,6 +1532,7 @@ function actualizarEstadoObservacion(data) {
   actualizarRanking();
 
   invalidarCacheBonosSupervisores_();
+  invalidarResumenDashboardRankingV361_();
   return { ok: true, modulo: "OBSERVACIONES", accion: "CAMBIAR_ESTADO", id: data.id, estado: nuevoEstado };
 }
 
@@ -1903,151 +1958,74 @@ function actualizarRanking(periodoManual, actualizadoAlManual, omitirResumenObse
   const periodoRanking = periodoManual || corteAutomatico.periodo || "";
   const actualizadoAlRanking = actualizadoAlManual || corteAutomatico.actualizadoAl || "";
   const corteRanking = convertirFechaRanking(actualizadoAlRanking);
-
+  const periodoClave = corteRanking ? clavePeriodoBaseOperativa(corteRanking) : periodoSlaV363_(periodoManual);
   if (!omitirResumenObservaciones) actualizarResumenObservaciones();
 
+  const config = configuracionRankingV363_(periodoClave);
+  const pesos = config.pesos;
   const mapaUsuarios = obtenerMapaUsuarios();
   const mapaProduccion = obtenerProduccionPorCuadrilla(corteRanking);
   const mapaEfectividad = obtenerEfectividadPorCuadrilla(corteRanking);
   const mapaRecableado = obtenerRecableadoPorCuadrilla(corteRanking);
   const mapaVtrGar = obtenerVtrGarPorCuadrilla(corteRanking);
   const mapaObservaciones = obtenerResumenObservacionesPorCuadrilla(corteRanking);
-
+  const slaInfo = asegurarSlaOrdenesResumenV363_(periodoClave,false);
+  const mapaSla = slaInfo.mapaCuadrillas || {};
   const cuadrillas = {};
-
-  Object.keys(mapaUsuarios).forEach(c => cuadrillas[c] = true);
-  Object.keys(mapaProduccion).forEach(c => cuadrillas[c] = true);
-  Object.keys(mapaEfectividad).forEach(c => cuadrillas[c] = true);
-  Object.keys(mapaRecableado).forEach(c => cuadrillas[c] = true);
-  Object.keys(mapaVtrGar).forEach(c => cuadrillas[c] = true);
-  Object.keys(mapaObservaciones).forEach(c => cuadrillas[c] = true);
-
+  [mapaUsuarios,mapaProduccion,mapaEfectividad,mapaRecableado,mapaVtrGar,mapaObservaciones,mapaSla].forEach(function(mapa){Object.keys(mapa || {}).forEach(function(c){cuadrillas[c]=true;});});
   const lista = [];
-
-  Object.keys(cuadrillas).forEach(cuadrilla => {
-    const u = mapaUsuarios[cuadrilla] || {};
-    const p = mapaProduccion[cuadrilla] || {};
-    const e = mapaEfectividad[cuadrilla] || {};
-    const r = mapaRecableado[cuadrilla] || {};
-    const v = mapaVtrGar[cuadrilla] || {};
-    const o = mapaObservaciones[cuadrilla] || {};
-
+  Object.keys(cuadrillas).forEach(function(cuadrilla) {
+    const u=mapaUsuarios[cuadrilla]||{},p=mapaProduccion[cuadrilla]||{},e=mapaEfectividad[cuadrilla]||{},r=mapaRecableado[cuadrilla]||{},v=mapaVtrGar[cuadrilla]||{},o=mapaObservaciones[cuadrilla]||{};
+    const s=mapaSla[cuadrilla] || finalizarResumenSlaCuadrillaV363_(nuevoResumenSlaCuadrillaV363_(cuadrilla));
     lista.push({
-      cuadrilla,
-      usuario: u.usuario || p.usuario || e.usuario || "ADMIN",
-      sede: u.sede || "",
-      plataforma: u.plataforma || "",
-      actualizacion: actualizadoAlRanking || e.fecha || "",
-      produccion: Number(p.produccion) || 0,
-      efectividad: Number(e.efectividad) || 0,
-      recableado: Number(r.porcentajeRecableado) || 0,
-      vtrgar: Number(v.porcentajeVtrGar) || 0,
-      observaciones: Number(o.observaciones) || 0,
-      montoTotalObservaciones: Number(o.montoTotal) || 0,
-      montoAfectadoObservaciones: Number(o.montoAfectado) || 0
+      cuadrilla:cuadrilla,usuario:u.usuario||p.usuario||e.usuario||"ADMIN",sede:u.sede||"",plataforma:u.plataforma||"",
+      actualizacion:actualizadoAlRanking||e.fecha||"",produccion:Number(p.produccion)||0,efectividad:Number(e.efectividad)||0,
+      recableado:Number(r.porcentajeRecableado)||0,vtrgar:Number(v.porcentajeVtrGar)||0,
+      observaciones:Number(o.observaciones)||0,montoTotalObservaciones:Number(o.montoTotal)||0,montoAfectadoObservaciones:Number(o.montoAfectado)||0,
+      slaBruto:Number(s.slaBruto)||0,slaAjustado:Number(s.slaAjustado)||0,slaEvaluables:Number(s.evaluables)||0,
+      slaFuera:Number(s.fueraAjustado)||0,slaExcepcionesAprobadas:Number(s.excepcionesAprobadas)||0
     });
   });
-
-  if (lista.length === 0) {
-    throw new Error("No hay información para generar ranking");
-  }
-
-  const maxProduccion = Math.max(...lista.map(x => x.produccion));
-  const maxRecableado = Math.max(...lista.map(x => x.recableado));
-  const maxVtrGar = Math.max(...lista.map(x => x.vtrgar));
-  const maxObservaciones = Math.max(...lista.map(x => x.montoAfectadoObservaciones));
-
-  lista.forEach(item => {
-    const scoreProduccion = puntajePositivo(item.produccion, maxProduccion);
-    const scoreEfectividad = item.efectividad * 100;
-    const scoreRecableado = puntajeNegativo(item.recableado, maxRecableado);
-    const scoreVtrGar = puntajeNegativo(item.vtrgar, maxVtrGar);
-    const scoreObservaciones = puntajeNegativo(item.montoAfectadoObservaciones, maxObservaciones);
-
-    item.puntajeFinal =
-      (scoreProduccion * 0.35) +
-      (scoreEfectividad * 0.30) +
-      (scoreVtrGar * 0.125) +
-      (scoreRecableado * 0.125) +
-      (scoreObservaciones * 0.10);
+  if (!lista.length) throw new Error("No hay información para generar ranking");
+  const maxProduccion=Math.max.apply(null,lista.map(function(x){return x.produccion;}));
+  const maxRecableado=Math.max.apply(null,lista.map(function(x){return x.recableado;}));
+  const maxVtrGar=Math.max.apply(null,lista.map(function(x){return x.vtrgar;}));
+  const maxObservaciones=Math.max.apply(null,lista.map(function(x){return x.montoAfectadoObservaciones;}));
+  lista.forEach(function(item) {
+    const scoreProduccion=puntajePositivo(item.produccion,maxProduccion);
+    const scoreEfectividad=porcentajeDatoDashboardBono_(item.efectividad);
+    const scoreRecableado=puntajeNegativo(item.recableado,maxRecableado);
+    const scoreVtrGar=puntajeNegativo(item.vtrgar,maxVtrGar);
+    const scoreObservaciones=puntajeNegativo(item.montoAfectadoObservaciones,maxObservaciones);
+    const scoreSla=item.slaAjustado;
+    item.aporteProduccion=scoreProduccion*pesos.PRODUCCION/100;
+    item.aporteEfectividad=scoreEfectividad*pesos.EFECTIVIDAD/100;
+    item.aporteSla=scoreSla*pesos.SLA/100;
+    item.aporteObservaciones=scoreObservaciones*pesos.OBSERVACIONES/100;
+    item.aporteRecableado=scoreRecableado*pesos.RECABLEADO/100;
+    item.aporteVtrGar=scoreVtrGar*pesos.VTRGAR/100;
+    item.puntajeFinal=redondearBonoSupervisores_(item.aporteProduccion+item.aporteEfectividad+item.aporteSla+item.aporteObservaciones+item.aporteRecableado+item.aporteVtrGar,4);
   });
-
-  asignarPuestos(lista, "puntajeFinal", "puestoRegion", null);
-  asignarPuestos(lista, "puntajeFinal", "puestoSede", "sede");
-  asignarPuestos(lista, "puntajeFinal", "puestoPlataforma", "plataforma");
-
-  lista.sort((a, b) => a.puestoRegion - b.puestoRegion);
-
-  const salida = [[
-    "ID",
-    "Cuadrilla",
-    "ACTUALIZACION",
-    "Usuario",
-    "Sede",
-    "Plataforma",
-    "Producción",
-    "Efectividad",
-    "% Recableado",
-    "% VTR/GAR",
-    "Observaciones",
-    "Monto Total Obs",
-    "Monto Afectado Obs",
-    "Puntaje Final",
-    "Puesto SEDE",
-    "Mi Puesto REGION",
-    "Mi Puesto por plataforma",
-    "Medalla Región",
-    "Medalla Sede",
-    "Medalla Plataforma"
-  ]];
-
-  lista.forEach((item, i) => {
-    salida.push([
-      (corteRanking ? clavePeriodoBaseOperativa(corteRanking) : periodoRanking) + "|" + (i + 1),
-      item.cuadrilla,
-      item.actualizacion,
-      item.usuario,
-      item.sede,
-      item.plataforma,
-      item.produccion,
-      item.efectividad,
-      item.recableado,
-      item.vtrgar,
-      item.observaciones,
-      item.montoTotalObservaciones,
-      item.montoAfectadoObservaciones,
-      item.puntajeFinal,
-      item.puestoSede,
-      item.puestoRegion,
-      item.puestoPlataforma,
-      obtenerMedalla(item.puestoRegion),
-      obtenerMedalla(item.puestoSede),
-      obtenerMedalla(item.puestoPlataforma)
-    ]);
-  });
-
-  const salidaHistorica = corteRanking
-    ? combinarMatrizPeriodoBaseOperativa(hojaRanking, salida, 2, corteRanking)
-    : salida;
-  reemplazarHojaBaseOperativa(hojaRanking, salidaHistorica);
-
-  if (salidaHistorica.length > 1) {
-    const filasHistoricas = salidaHistorica.length - 1;
-    hojaRanking.getRange(2, 8, filasHistoricas, 1).setNumberFormat("0.00%");
-    hojaRanking.getRange(2, 9, filasHistoricas, 1).setNumberFormat("0.00%");
-    hojaRanking.getRange(2, 10, filasHistoricas, 1).setNumberFormat("0.00%");
-    hojaRanking.getRange(2, 12, filasHistoricas, 2).setNumberFormat('"S/ "0.00');
-    hojaRanking.getRange(2, 14, filasHistoricas, 1).setNumberFormat("0.00");
+  asignarPuestos(lista,"puntajeFinal","puestoRegion",null);
+  asignarPuestos(lista,"puntajeFinal","puestoSede","sede");
+  asignarPuestos(lista,"puntajeFinal","puestoPlataforma","plataforma");
+  lista.sort(function(a,b){return a.puestoRegion-b.puestoRegion;});
+  const salida=[["ID","Cuadrilla","ACTUALIZACION","Usuario","Sede","Plataforma","Producción","Efectividad","% Recableado","% VTR/GAR","Observaciones","Monto Total Obs","Monto Afectado Obs","Puntaje Final","Puesto SEDE","Mi Puesto REGION","Mi Puesto por plataforma","Medalla Región","Medalla Sede","Medalla Plataforma","SLA Bruto","SLA Ajustado","SLA Evaluables","SLA Fuera","SLA Excepciones Aprobadas","Aporte SLA","Pesos Ranking JSON"]];
+  lista.forEach(function(item,i){salida.push([
+    periodoClave+"|"+(i+1),item.cuadrilla,item.actualizacion,item.usuario,item.sede,item.plataforma,item.produccion,item.efectividad,item.recableado,item.vtrgar,item.observaciones,item.montoTotalObservaciones,item.montoAfectadoObservaciones,item.puntajeFinal,item.puestoSede,item.puestoRegion,item.puestoPlataforma,obtenerMedalla(item.puestoRegion),obtenerMedalla(item.puestoSede),obtenerMedalla(item.puestoPlataforma),item.slaBruto,item.slaAjustado,item.slaEvaluables,item.slaFuera,item.slaExcepcionesAprobadas,item.aporteSla,JSON.stringify(pesos)
+  ]);});
+  const salidaHistorica=corteRanking?combinarMatrizPeriodoBaseOperativa(hojaRanking,salida,2,corteRanking):salida;
+  reemplazarHojaBaseOperativa(hojaRanking,salidaHistorica);
+  if (salidaHistorica.length>1) {
+    const filas=salidaHistorica.length-1;
+    hojaRanking.getRange(2,8,filas,3).setNumberFormat("0.00%");
+    hojaRanking.getRange(2,12,filas,2).setNumberFormat('"S/ "0.00');
+    hojaRanking.getRange(2,14,filas,1).setNumberFormat("0.00");
+    hojaRanking.getRange(2,21,filas,2).setNumberFormat("0.00");
+    hojaRanking.getRange(2,26,filas,1).setNumberFormat("0.00");
   }
-
-  return {
-    ok: true,
-    modulo: "RANKING",
-    registros: lista.length,
-    periodo: periodoRanking,
-    actualizadoAl: actualizadoAlRanking,
-    primeroRegion: lista[0] ? lista[0].cuadrilla : ""
-  };
+  invalidarResumenDashboardRankingV361_();
+  return {ok:true,modulo:"RANKING",registros:lista.length,periodo:periodoRanking,periodoClave:periodoClave,actualizadoAl:actualizadoAlRanking,primeroRegion:lista[0]?lista[0].cuadrilla:"",configuracion:config};
 }
 
 
@@ -3299,10 +3277,21 @@ function fechaGestionActaTexto(valor) {
   return t;
 }
 
-function generarIdActa(codigoPedido) {
-  const pedido = limpiarNombreArchivo(codigoPedido);
-  if (!pedido) throw new Error("El código de pedido es obligatorio");
-  return "ACTA-" + pedido;
+function generarIdActa(codigoOrden, numeroActa) {
+  const orden = limpiarNombreArchivo(codigoOrden);
+  const acta = normalizarNumeroActaCargo_(numeroActa || "").clave;
+  if (!orden) throw new Error("El código de orden es obligatorio");
+  return "ACTA-" + orden + (acta ? "-" + acta : "");
+}
+
+function nombreArchivoActaUnico_(codigoPedido, codigoOrden, numeroActa) {
+  const partes = [
+    limpiarNombreArchivo(codigoPedido),
+    limpiarNombreArchivo(codigoOrden),
+    limpiarNombreArchivo(numeroActa)
+  ].filter(Boolean);
+  if (!partes.length) throw new Error("No se pudo generar el nombre del archivo del acta");
+  return partes.join("_") + ".pdf";
 }
 
 function obtenerTiposPartidaActas(data) {
@@ -3324,14 +3313,70 @@ function obtenerTiposPartidaActas(data) {
 }
 
 function buscarFilaActaPorPedido(codigoPedido) {
+  // Se conserva únicamente para consultas históricas. Desde V344 el Código
+  // de Pedido identifica al cliente y puede repetirse en varias atenciones.
   const hoja = asegurarHojaActasEscaneadas();
-  const datos = hoja.getDataRange().getValues();
-  const pedido = limpiarNombreArchivo(codigoPedido);
-  for (let i = 1; i < datos.length; i++) {
-    const obj = filaActaAObjeto(datos[i]);
-    if (limpiarNombreArchivo(obj.codigoPedido) === pedido) return {hoja, fila:i+1, datos:datos[i], objeto:obj};
+  const ultimaFila = hoja.getLastRow();
+  const pedido = claveIdentificadorActa(codigoPedido);
+  if (!pedido || ultimaFila <= 1) return null;
+  const valores = hoja.getRange(2, 12, ultimaFila - 1, 1).getDisplayValues();
+  for (let i = 0; i < valores.length; i++) {
+    if (claveIdentificadorActa(valores[i][0]) !== pedido) continue;
+    const datos = hoja.getRange(i + 2, 1, 1, 48).getValues()[0];
+    return {hoja:hoja, fila:i + 2, datos:datos, objeto:filaActaAObjeto(datos)};
   }
   return null;
+}
+
+function buscarFilaActaPorCampoUnicoV344_(columna, valor, normalizador) {
+  const hoja = asegurarHojaActasEscaneadas();
+  const ultimaFila = hoja.getLastRow();
+  const clave = normalizador(valor);
+  if (!clave || ultimaFila <= 1) return null;
+  const valores = hoja.getRange(2, columna, ultimaFila - 1, 1).getDisplayValues();
+  for (let i = 0; i < valores.length; i++) {
+    if (normalizador(valores[i][0]) !== clave) continue;
+    const datos = hoja.getRange(i + 2, 1, 1, 48).getValues()[0];
+    return {hoja:hoja, fila:i + 2, datos:datos, objeto:filaActaAObjeto(datos)};
+  }
+  return null;
+}
+
+function buscarFilaActaPorOrden(codigoOrden) {
+  return buscarFilaActaPorCampoUnicoV344_(11, codigoOrden, function(valor) {
+    return claveIdentificadorActa(valor);
+  });
+}
+
+function buscarFilaActaPorNumero(numeroActa) {
+  return buscarFilaActaPorCampoUnicoV344_(13, numeroActa, function(valor) {
+    return normalizarNumeroActaCargo_(valor).clave;
+  });
+}
+
+function resolverRegistroExistenteActaV344_(codigoOrden, numeroActa) {
+  const porOrden = buscarFilaActaPorOrden(codigoOrden);
+  const porNumero = numeroActa ? buscarFilaActaPorNumero(numeroActa) : null;
+
+  if (porOrden && porNumero && porOrden.fila !== porNumero.fila) {
+    throw new Error("El Código de Orden y el Número de Acta pertenecen a registros diferentes. Verifique los datos.");
+  }
+
+  return porOrden || porNumero || null;
+}
+
+function validarIdentidadActaV344_(codigoOrden, numeroActa, filaPermitida) {
+  const porOrden = buscarFilaActaPorOrden(codigoOrden);
+  if (porOrden && porOrden.fila !== filaPermitida) {
+    throw new Error("El Código de Orden ya está registrado en otra acta. No se permiten códigos de orden duplicados.");
+  }
+
+  if (numeroActa) {
+    const porNumero = buscarFilaActaPorNumero(numeroActa);
+    if (porNumero && porNumero.fila !== filaPermitida) {
+      throw new Error("El Número de Acta ya está registrado. No se permiten números de acta duplicados.");
+    }
+  }
 }
 
 function extraerIdArchivoDrive(url) {
@@ -3356,8 +3401,8 @@ function guardarPdfActaDrive(data, sede, cuadrilla, tipoEjecucion, fechaGestion,
   const raiz = DriveApp.getFolderById(CARPETA_ACTAS_ESCANEADAS);
   const carpetaDestino = fechaGestion || "PENDIENTE_FECHA";
   const carpetaFecha = obtenerOCrearCarpetaActa(obtenerOCrearCarpetaActa(obtenerOCrearCarpetaActa(obtenerOCrearCarpetaActa(raiz, sede), cuadrilla), tipoEjecucion), carpetaDestino);
-  const duplicados = carpetaFecha.getFilesByName(nombreArchivo);
-  while (duplicados.hasNext()) duplicados.next().setTrashed(true);
+  // V344: no se elimina el PDF anterior antes de guardar el nuevo.
+  // El archivo anterior se envía a papelera solo después de confirmar la fila.
   const blob = Utilities.newBlob(Utilities.base64Decode(data.archivoBase64), "application/pdf", nombreArchivo);
   const archivo = carpetaFecha.createFile(blob);
   archivo.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
@@ -3836,61 +3881,132 @@ function registrarActaEscaneada(data) {
   const hoja = asegurarHojaActasEscaneadas();
   const usuario = obtenerUsuarioApp(data.usuario);
   if (usuario.perfil !== "TECNICO") throw new Error("Solo el técnico puede registrar actas");
+
   const cuadrilla = normalizarCuadrilla(usuario.cuadrilla);
   if (!cuadrilla) throw new Error("El técnico no tiene cuadrilla asignada");
+
   const dc = obtenerDatosCuadrillaApp(cuadrilla);
   const sede = dc.sede || usuario.sede;
   const supervisor = dc.usuarioSupervisor || usuario.usuarioSupervisor || "";
-  const codigoOrden = (data.codigoOrden || data.codigo_orden || "").toString().trim();
-  const codigoPedido = (data.codigoPedido || data.codigo_pedido || "").toString().trim();
-  const numeroActa = (data.numeroActa || data.numero_acta || "").toString().trim();
+  const codigoOrden = textoIdentificadorActa(data.codigoOrden || data.codigo_orden || "");
+  const codigoPedido = textoIdentificadorActa(data.codigoPedido || data.codigo_pedido || "");
+  const numeroActa = textoIdentificadorActa(data.numeroActa || data.numero_acta || "");
+
   if (!codigoOrden) throw new Error("Debe ingresar el código de orden");
   if (!codigoPedido) throw new Error("Debe ingresar el código de pedido");
   if (!numeroActa) throw new Error("Debe ingresar el número de acta");
 
-  const existente = buscarFilaActaPorPedido(codigoPedido);
-  if (existente) {
-    const obj = existente.objeto || filaActaAObjeto(existente.datos);
-    const esFaltantePendiente = normalizarTexto(obj.origenRegistro) === "ALMACEN" && !obj.linkActa;
-    if (normalizarTexto(obj.estado) === "FINALIZADO" || normalizarTexto(obj.resultadoJefatura) === "CORRECTO") throw new Error("Esta acta ya está FINALIZADA. No se puede volver a subir.");
-    if (!esFaltantePendiente && !(normalizarTexto(obj.resultadoAlmacen) === "OBSERVADO" || normalizarTexto(obj.resultadoJefatura) === "OBSERVADO")) throw new Error("Ya existe una acta pendiente para este Código de Pedido. Solo se puede completar si fue registrada como faltante o reemplazar cuando esté OBSERVADA.");
-    if (obj.linkActa) enviarArchivoAnteriorActaPapelera(obj.linkActa);
+  // V344: Código de Pedido puede repetirse porque identifica al cliente.
+  // Código de Orden y Número de Acta son las identificaciones únicas.
+  const bloqueo = LockService.getScriptLock();
+  if (!bloqueo.tryLock(30000)) {
+    throw new Error("Otra acta está siendo registrada. Espere unos segundos e intente nuevamente.");
   }
 
-  const anterior = existente ? (existente.objeto || filaActaAObjeto(existente.datos)) : {};
-  const contextoAutomatico = crearContextoDatosAutomaticosActas();
-  const automaticos = resolverDatosAutomaticosActa(codigoPedido, codigoOrden, cuadrilla, sede, contextoAutomatico);
-  const fechaGestion = automaticos.fechaGestion || anterior.fechaGestion || "";
-  const tipoPartida = automaticos.tipoPartida || anterior.tipoPartida || "";
-  const tipoEjecucion = automaticos.tipoEjecucion || anterior.tipoEjecucion || inferirTipoEjecucionActaServidor(cuadrilla);
-  const dni = automaticos.dni || anterior.dni || "";
-  const cliente = automaticos.cliente || anterior.cliente || "";
-  const version = (Number(anterior.version) || 0) + 1;
-  const nombreArchivo = limpiarNombreArchivo(codigoPedido) + ".pdf";
-  const link = guardarPdfActaDrive(data, sede, cuadrilla, tipoEjecucion, fechaGestion, nombreArchivo);
-  const ahora = new Date();
-  const fechaConfirmada = !!fechaGestion;
-  const fechaLimite = fechaConfirmada ? "" : new Date(ahora.getTime() + HORAS_ESPERA_FECHA_ACTA * 60 * 60 * 1000);
-  const origenFecha = automaticos.encontradoMapa ? "MAPA_OPERATIVO" : (fechaConfirmada ? (anterior.origenFechaCarpeta || "REGISTRO_PREVIO") : "PENDIENTE_MAPA");
-  const filaValores = [
-    generarIdActa(codigoPedido), Utilities.formatDate(ahora, Session.getScriptTimeZone(), "dd/MM/yyyy"), Utilities.formatDate(ahora, Session.getScriptTimeZone(), "HH:mm:ss"),
-    sede, cuadrilla, supervisor, usuario.usuario, fechaGestion, tipoEjecucion, tipoPartida, codigoOrden, codigoPedido, numeroActa,
-    dni, cliente, nombreArchivo, link, "PENDIENTE", "", "", "", "", "", "", "", "", "", "", version,
-    anterior.estadoEntregaFisica || "PENDIENTE", anterior.confirmadoFisicoPor || "", anterior.perfilConfirmacionFisica || "",
-    anterior.fechaConfirmacionFisica || "", anterior.horaConfirmacionFisica || "", anterior.motivoReversionFisica || "",
-    anterior.origenRegistro || "TECNICO", anterior.motivoActaFaltante || "", anterior.registradoFaltantePor || "",
-    anterior.fechaRegistroFaltante || "", anterior.horaRegistroFaltante || "",
-    fechaConfirmada ? "CONFIRMADA" : "PENDIENTE_MAPA", fechaLimite, ahora, fechaConfirmada ? (Number(anterior.intentosFecha) || 0) : 1,
-    fechaGestion, fechaConfirmada ? (automaticos.encontradoMapa ? "SISTEMA" : (anterior.fechaConfirmadaPor || "REGISTRO_PREVIO")) : "",
-    fechaConfirmada ? (automaticos.encontradoMapa ? "AUTOMATICO" : (anterior.perfilConfirmacionFecha || "REGISTRO_PREVIO")) : "", origenFecha
-  ];
-  if (existente) hoja.getRange(existente.fila, 1, 1, 48).setValues([filaValores]); else hoja.appendRow(filaValores);
-  return {
-    ok:true, modulo:"ACTAS", accion:existente?"REEMPLAZAR":"REGISTRAR", id:filaValores[0], estado:"PENDIENTE",
-    estadoEntregaFisica:filaValores[29], numeroActa:numeroActa, tipoEjecucion:tipoEjecucion, tipoPartida:tipoPartida,
-    dni:dni, cliente:cliente, version:version, linkActa:link, nombreArchivo:nombreArchivo, datosAutomaticos:automaticos,
-    estadoFechaCarpeta:filaValores[40], fechaLimiteVerificacion:fechaLimite, fechaCarpeta:fechaGestion
-  };
+  let linkNuevo = "";
+  let registroGuardado = false;
+  try {
+    const existente = resolverRegistroExistenteActaV344_(codigoOrden, numeroActa);
+    validarIdentidadActaV344_(codigoOrden, numeroActa, existente ? existente.fila : 0);
+
+    let anterior = {};
+    if (existente) {
+      const obj = existente.objeto || filaActaAObjeto(existente.datos);
+      if (normalizarCuadrilla(obj.cuadrilla) !== cuadrilla) {
+        throw new Error("El Código de Orden o el Número de Acta ya pertenece a otra cuadrilla.");
+      }
+
+      const esFaltantePendiente = normalizarTexto(obj.origenRegistro) === "ALMACEN" && !obj.linkActa;
+      const estaObservada = normalizarTexto(obj.resultadoAlmacen) === "OBSERVADO" || normalizarTexto(obj.resultadoJefatura) === "OBSERVADO";
+
+      if (normalizarTexto(obj.estado) === "FINALIZADO" || normalizarTexto(obj.resultadoJefatura) === "CORRECTO") {
+        throw new Error("Esta acta ya está FINALIZADA. No se puede volver a subir.");
+      }
+      if (!esFaltantePendiente && !estaObservada) {
+        throw new Error("Este Código de Orden o Número de Acta ya tiene un registro pendiente. Solo puede completarse si fue registrado como faltante o reemplazarse cuando esté OBSERVADO.");
+      }
+      anterior = obj;
+    }
+
+    const contextoAutomatico = crearContextoDatosAutomaticosActas();
+    const automaticos = resolverDatosAutomaticosActa(codigoPedido, codigoOrden, cuadrilla, sede, contextoAutomatico);
+    const fechaGestion = automaticos.fechaGestion || anterior.fechaGestion || "";
+    const tipoPartida = automaticos.tipoPartida || anterior.tipoPartida || "";
+    const tipoEjecucion = automaticos.tipoEjecucion || anterior.tipoEjecucion || inferirTipoEjecucionActaServidor(cuadrilla);
+    const dni = automaticos.dni || anterior.dni || "";
+    const cliente = automaticos.cliente || anterior.cliente || "";
+    const version = (Number(anterior.version) || 0) + 1;
+    const nombreArchivo = nombreArchivoActaUnico_(codigoPedido, codigoOrden, numeroActa);
+
+    linkNuevo = guardarPdfActaDrive(data, sede, cuadrilla, tipoEjecucion, fechaGestion, nombreArchivo);
+
+    const ahora = new Date();
+    const fechaConfirmada = !!fechaGestion;
+    const fechaLimite = fechaConfirmada ? "" : new Date(ahora.getTime() + HORAS_ESPERA_FECHA_ACTA * 60 * 60 * 1000);
+    const origenFecha = automaticos.encontradoMapa
+      ? "MAPA_OPERATIVO"
+      : (fechaConfirmada ? (anterior.origenFechaCarpeta || "REGISTRO_PREVIO") : "PENDIENTE_MAPA");
+    const id = anterior.id || generarIdActa(codigoOrden, numeroActa);
+
+    const filaValores = [
+      id, Utilities.formatDate(ahora, Session.getScriptTimeZone(), "dd/MM/yyyy"), Utilities.formatDate(ahora, Session.getScriptTimeZone(), "HH:mm:ss"),
+      sede, cuadrilla, supervisor, usuario.usuario, fechaGestion, tipoEjecucion, tipoPartida, codigoOrden, codigoPedido, numeroActa,
+      dni, cliente, nombreArchivo, linkNuevo, "PENDIENTE", "", "", "", "", "", "", "", "", "", "", version,
+      anterior.estadoEntregaFisica || "PENDIENTE", anterior.confirmadoFisicoPor || "", anterior.perfilConfirmacionFisica || "",
+      anterior.fechaConfirmacionFisica || "", anterior.horaConfirmacionFisica || "", anterior.motivoReversionFisica || "",
+      anterior.origenRegistro || "TECNICO", anterior.motivoActaFaltante || "", anterior.registradoFaltantePor || "",
+      anterior.fechaRegistroFaltante || "", anterior.horaRegistroFaltante || "",
+      fechaConfirmada ? "CONFIRMADA" : "PENDIENTE_MAPA", fechaLimite, ahora, fechaConfirmada ? (Number(anterior.intentosFecha) || 0) : 1,
+      fechaGestion, fechaConfirmada ? (automaticos.encontradoMapa ? "SISTEMA" : (anterior.fechaConfirmadaPor || "REGISTRO_PREVIO")) : "",
+      fechaConfirmada ? (automaticos.encontradoMapa ? "AUTOMATICO" : (anterior.perfilConfirmacionFecha || "REGISTRO_PREVIO")) : "", origenFecha
+    ];
+
+    // Segunda comprobación inmediatamente antes de escribir para impedir
+    // duplicados aun cuando dos usuarios registren al mismo tiempo.
+    validarIdentidadActaV344_(codigoOrden, numeroActa, existente ? existente.fila : 0);
+
+    if (existente) {
+      hoja.getRange(existente.fila, 1, 1, 48).setValues([filaValores]);
+    } else {
+      hoja.getRange(hoja.getLastRow() + 1, 1, 1, 48).setValues([filaValores]);
+    }
+    registroGuardado = true;
+    SpreadsheetApp.flush();
+
+    if (anterior.linkActa && anterior.linkActa !== linkNuevo) {
+      enviarArchivoAnteriorActaPapelera(anterior.linkActa);
+    }
+
+    return {
+      ok:true,
+      modulo:"ACTAS",
+      accion:existente ? "REEMPLAZAR" : "REGISTRAR",
+      id:id,
+      estado:"PENDIENTE",
+      estadoEntregaFisica:filaValores[29],
+      codigoOrden:codigoOrden,
+      codigoPedido:codigoPedido,
+      numeroActa:numeroActa,
+      tipoEjecucion:tipoEjecucion,
+      tipoPartida:tipoPartida,
+      dni:dni,
+      cliente:cliente,
+      version:version,
+      linkActa:linkNuevo,
+      nombreArchivo:nombreArchivo,
+      datosAutomaticos:automaticos,
+      estadoFechaCarpeta:filaValores[40],
+      fechaLimiteVerificacion:fechaLimite,
+      fechaCarpeta:fechaGestion
+    };
+  } catch (error) {
+    if (linkNuevo && !registroGuardado) {
+      try { enviarArchivoAnteriorActaPapelera(linkNuevo); } catch (e) {}
+    }
+    throw error;
+  } finally {
+    bloqueo.releaseLock();
+  }
 }
 
 function filaActaAObjeto(fila) {
@@ -3997,38 +4113,70 @@ function registrarActaFaltante(data) {
   if (!(esPerfilAlmacen(usuario.perfil) || esPerfilJefaturaAlmacen(usuario.perfil))) {
     throw new Error("Solo Almacén o Jefatura Almacén pueden registrar actas faltantes");
   }
+
   const cuadrilla = normalizarCuadrilla(data.cuadrilla);
   if (!cuadrilla) throw new Error("Debe seleccionar una cuadrilla");
+
   const dc = obtenerDatosCuadrillaApp(cuadrilla);
   const sede = normalizarTexto(dc.sede || "");
   if (esPerfilAlmacen(usuario.perfil) && sede !== normalizarTexto(usuario.sede)) {
     throw new Error("Almacén solo puede registrar faltantes de su sede");
   }
+
   const fechaGestion = fechaGestionActaTexto(data.fechaGestion || data.fecha_gestion);
   const tipoPartida = normalizarTexto(data.tipoPartida || data.tipo_partida);
   if (!tipoPartida) throw new Error("Debe seleccionar el tipo de partida");
+
   const tipoEjecucion = normalizarTipoEjecucionActa(data.tipoEjecucion || data.tipo_ejecucion, tipoPartida);
-  const codigoOrden = (data.codigoOrden || data.codigo_orden || "").toString().trim();
-  const codigoPedido = (data.codigoPedido || data.codigo_pedido || "").toString().trim();
-  const numeroActa = (data.numeroActa || data.numero_acta || "").toString().trim();
+  const codigoOrden = textoIdentificadorActa(data.codigoOrden || data.codigo_orden || "");
+  const codigoPedido = textoIdentificadorActa(data.codigoPedido || data.codigo_pedido || "");
+  const numeroActa = textoIdentificadorActa(data.numeroActa || data.numero_acta || "");
   const motivo = (data.motivoActaFaltante || data.motivo || "").toString().trim();
+
   if (!codigoOrden) throw new Error("Debe ingresar el código de orden");
   if (!codigoPedido) throw new Error("Debe ingresar el código de pedido");
   if (!motivo) throw new Error("Debe ingresar el motivo del acta faltante");
-  if (buscarFilaActaPorPedido(codigoPedido)) throw new Error("Ya existe un registro para este Código de Pedido");
-  const ahora = new Date();
-  const fila = [
-    generarIdActa(codigoPedido),Utilities.formatDate(ahora,Session.getScriptTimeZone(),"dd/MM/yyyy"),Utilities.formatDate(ahora,Session.getScriptTimeZone(),"HH:mm:ss"),
-    sede,cuadrilla,dc.usuarioSupervisor||"",dc.usuario||"",fechaGestion,tipoEjecucion,tipoPartida,codigoOrden,codigoPedido,numeroActa,
-    "","","","","PENDIENTE","","","","","","","","","","",0,
-    "PENDIENTE","","","","","","ALMACEN",motivo,usuario.usuario,ahora,ahora,
-    "CONFIRMADA","","",0,fechaGestion,usuario.usuario,usuario.perfil,"REGISTRO_ALMACEN"
-  ];
-  hoja.appendRow(fila);
-  const n = hoja.getLastRow();
-  hoja.getRange(n,39).setNumberFormat("dd/mm/yyyy");
-  hoja.getRange(n,40).setNumberFormat("hh:mm:ss");
-  return {ok:true,modulo:"ACTAS",accion:"REGISTRAR_FALTANTE",id:fila[0],codigoPedido,cuadrilla,sede};
+
+  const bloqueo = LockService.getScriptLock();
+  if (!bloqueo.tryLock(15000)) {
+    throw new Error("Otra acta está siendo registrada. Espere unos segundos e intente nuevamente.");
+  }
+
+  try {
+    // El Código de Pedido puede repetirse. Solo se bloquean el Código de
+    // Orden y, cuando se conoce, el Número de Acta.
+    validarIdentidadActaV344_(codigoOrden, numeroActa, 0);
+
+    const ahora = new Date();
+    const id = generarIdActa(codigoOrden, numeroActa);
+    const fila = [
+      id, Utilities.formatDate(ahora,Session.getScriptTimeZone(),"dd/MM/yyyy"), Utilities.formatDate(ahora,Session.getScriptTimeZone(),"HH:mm:ss"),
+      sede, cuadrilla, dc.usuarioSupervisor || "", dc.usuario || "", fechaGestion, tipoEjecucion, tipoPartida, codigoOrden, codigoPedido, numeroActa,
+      "", "", "", "", "PENDIENTE", "", "", "", "", "", "", "", "", "", "", 0,
+      "PENDIENTE", "", "", "", "", "", "ALMACEN", motivo, usuario.usuario, ahora, ahora,
+      "CONFIRMADA", "", "", 0, fechaGestion, usuario.usuario, usuario.perfil, "REGISTRO_ALMACEN"
+    ];
+
+    hoja.getRange(hoja.getLastRow() + 1, 1, 1, 48).setValues([fila]);
+    const n = hoja.getLastRow();
+    hoja.getRange(n,39).setNumberFormat("dd/mm/yyyy");
+    hoja.getRange(n,40).setNumberFormat("hh:mm:ss");
+    SpreadsheetApp.flush();
+
+    return {
+      ok:true,
+      modulo:"ACTAS",
+      accion:"REGISTRAR_FALTANTE",
+      id:id,
+      codigoOrden:codigoOrden,
+      codigoPedido:codigoPedido,
+      numeroActa:numeroActa,
+      cuadrilla:cuadrilla,
+      sede:sede
+    };
+  } finally {
+    bloqueo.releaseLock();
+  }
 }
 
 function construirResumenActasDesdeListado_(listado) {
@@ -4137,90 +4285,206 @@ function fechaAtencionCargoActa_(acta, contexto) {
   return fechaClaveActa(acta.fechaGestion) || "";
 }
 
+// V343: construye un índice liviano para recepción de actas.
+// Lee únicamente las columnas necesarias y evita cargar Mapa Operativo.
+function leerIndiceRecepcionActasV343_() {
+  const hoja = asegurarHojaActasEscaneadas();
+  const ultimaFila = hoja.getLastRow();
+  if (ultimaFila <= 1) return { hoja: hoja, indice: {}, filas: 0 };
+
+  const cantidad = ultimaFila - 1;
+
+  // A:Q contiene identificación, número de acta, fecha y enlace del PDF.
+  const base = hoja.getRange(2, 1, cantidad, 17).getValues();
+  // AD contiene el estado de entrega física.
+  const entregas = hoja.getRange(2, 30, cantidad, 1).getValues();
+  // AO contiene el estado de confirmación de fecha.
+  const estadosFecha = hoja.getRange(2, 41, cantidad, 1).getValues();
+
+  const indice = {};
+
+  for (let i = 0; i < cantidad; i++) {
+    const numero = normalizarNumeroActaCargo_(base[i][12]);
+    if (!numero.clave) continue;
+
+    const item = {
+      fila: i + 2,
+      id: base[i][0] || "",
+      sede: base[i][3] || "",
+      cuadrilla: normalizarCuadrilla(base[i][4] || ""),
+      tecnico: base[i][6] || "",
+      fechaGestion: base[i][7] || "",
+      codigoOrden: base[i][10] || "",
+      codigoPedido: base[i][11] || "",
+      numeroActa: base[i][12] || "",
+      linkActa: base[i][16] || "",
+      estadoEntregaFisica: entregas[i][0] || "PENDIENTE",
+      estadoFechaCarpeta: estadosFecha[i][0] || ""
+    };
+
+    if (!indice[numero.clave]) indice[numero.clave] = [];
+    indice[numero.clave].push(item);
+  }
+
+  return { hoja: hoja, indice: indice, filas: cantidad };
+}
+
 function validarRecepcionMasivaActasInterno_(data, usuario) {
+  const inicio = Date.now();
+
   if (!(esPerfilAlmacen(usuario.perfil) || esPerfilJefaturaAlmacen(usuario.perfil))) {
     throw new Error("Solo Responsable de Almacén o Jefatura de Almacén pueden recibir varias actas");
   }
+
   const cuadrilla = normalizarCuadrilla(data.cuadrilla || "");
   if (!cuadrilla) throw new Error("Debe seleccionar una cuadrilla");
+
   const dc = obtenerDatosCuadrillaApp(cuadrilla);
   const sede = normalizarTexto(dc.sede || "");
   if (!sede) throw new Error("No se pudo determinar la sede de la cuadrilla");
+
   if (esPerfilAlmacen(usuario.perfil) && sede !== normalizarTexto(usuario.sede)) {
     throw new Error("Responsable de Almacén solo puede recibir actas de su sede");
   }
 
   const numeros = separarNumerosActaCargo_(data.numerosActa || data.numeros || "");
-  const hoja = asegurarHojaActasEscaneadas();
-  const datos = hoja.getDataRange().getValues();
-  const indice = {};
-  for (let i = 1; i < datos.length; i++) {
-    const acta = filaActaAObjeto(datos[i]);
-    const num = normalizarNumeroActaCargo_(acta.numeroActa);
-    if (!num.clave) continue;
-    if (!indice[num.clave]) indice[num.clave] = [];
-    indice[num.clave].push({ acta: acta, fila: i + 1 });
-  }
-
-  const contexto = crearContextoDatosAutomaticosActas();
+  const baseRecepcion = leerIndiceRecepcionActasV343_();
+  const indice = baseRecepcion.indice;
   const vistos = {};
   const resultados = [];
-  numeros.forEach(function(numeroIngresado, pos){
-    const n = normalizarNumeroActaCargo_(numeroIngresado);
-    const base = { posicion:pos+1, numeroIngresado:numeroIngresado, numeroActa:n.original || numeroIngresado, clave:n.clave };
-    if (!n.clave) {
-      resultados.push(Object.assign(base,{estado:"NO_REGISTRADA",detalle:"Número vacío o no válido"}));
+
+  numeros.forEach(function(numeroIngresado, posicion) {
+    const numero = normalizarNumeroActaCargo_(numeroIngresado);
+    const base = {
+      posicion: posicion + 1,
+      numeroIngresado: numeroIngresado,
+      numeroActa: numero.original || numeroIngresado,
+      clave: numero.clave
+    };
+
+    if (!numero.clave) {
+      resultados.push(Object.assign(base, {
+        estado: "NO_REGISTRADA",
+        detalle: "Número vacío o no válido"
+      }));
       return;
     }
-    if (vistos[n.clave]) {
-      resultados.push(Object.assign(base,{estado:"DUPLICADA",detalle:"Número repetido dentro de la lista"}));
+
+    if (vistos[numero.clave]) {
+      resultados.push(Object.assign(base, {
+        estado: "DUPLICADA",
+        detalle: "Número repetido dentro de la lista"
+      }));
       return;
     }
-    vistos[n.clave] = true;
-    const candidatas = indice[n.clave] || [];
+    vistos[numero.clave] = true;
+
+    const candidatas = indice[numero.clave] || [];
     if (!candidatas.length) {
-      resultados.push(Object.assign(base,{estado:"NO_REGISTRADA",detalle:"No existe un acta escaneada con este número"}));
+      resultados.push(Object.assign(base, {
+        estado: "NO_REGISTRADA",
+        detalle: "No existe un acta escaneada con este número"
+      }));
       return;
     }
-    const propias = candidatas.filter(function(x){ return normalizarCuadrilla(x.acta.cuadrilla) === cuadrilla; });
+
+    const propias = candidatas.filter(function(item) {
+      return normalizarCuadrilla(item.cuadrilla) === cuadrilla;
+    });
+
     if (!propias.length) {
-      const otras = Array.from(new Set(candidatas.map(function(x){ return x.acta.cuadrilla; }).filter(Boolean)));
-      resultados.push(Object.assign(base,{estado:"OTRA_CUADRILLA",detalle:"Registrada para: "+(otras.join(", ")||"otra cuadrilla")}));
+      const otras = Array.from(new Set(candidatas.map(function(item) {
+        return item.cuadrilla;
+      }).filter(Boolean)));
+
+      resultados.push(Object.assign(base, {
+        estado: "OTRA_CUADRILLA",
+        detalle: "Registrada para: " + (otras.join(", ") || "otra cuadrilla")
+      }));
       return;
     }
-    const seleccion = propias[propias.length - 1];
-    const acta = seleccion.acta;
+
+    const acta = propias[propias.length - 1];
+
     if (!acta.linkActa) {
-      resultados.push(Object.assign(base,{estado:"NO_REGISTRADA",detalle:"El técnico todavía no ha subido el PDF",id:acta.id}));
+      resultados.push(Object.assign(base, {
+        estado: "NO_REGISTRADA",
+        detalle: "El técnico todavía no ha subido el PDF",
+        id: acta.id
+      }));
       return;
     }
-    const estadoFecha = estadoFechaCarpetaActa_(acta);
+
+    let estadoFecha = normalizarTexto(acta.estadoFechaCarpeta || "");
+    if (!estadoFecha && acta.linkActa && acta.fechaGestion) estadoFecha = "CONFIRMADA";
+
     if (estadoFecha === "PENDIENTE_MAPA" || estadoFecha === "REQUIERE_CONFIRMACION") {
-      resultados.push(Object.assign(base,{estado:"FECHA_PENDIENTE",detalle:estadoFecha === "PENDIENTE_MAPA" ? "El sistema todavía está buscando la fecha real de atención" : "Supervisor o Almacén debe confirmar la fecha real de atención",id:acta.id}));
+      resultados.push(Object.assign(base, {
+        estado: "FECHA_PENDIENTE",
+        detalle: estadoFecha === "PENDIENTE_MAPA"
+          ? "El sistema todavía está buscando la fecha real de atención"
+          : "Supervisor o Almacén debe confirmar la fecha real de atención",
+        id: acta.id
+      }));
       return;
     }
+
     if (normalizarTexto(acta.estadoEntregaFisica) === "ENTREGADA") {
-      resultados.push(Object.assign(base,{estado:"YA_ENTREGADA",detalle:"Ya fue confirmada físicamente",id:acta.id,fechaAtencion:fechaAtencionCargoActa_(acta,contexto),codigoPedido:acta.codigoPedido||""}));
+      resultados.push(Object.assign(base, {
+        estado: "YA_ENTREGADA",
+        detalle: "Ya fue confirmada físicamente",
+        id: acta.id,
+        fechaAtencion: fechaClaveActa(acta.fechaGestion),
+        codigoPedido: acta.codigoPedido || ""
+      }));
       return;
     }
-    resultados.push(Object.assign(base,{
-      estado:"VALIDA",detalle:"Lista para recibir",id:acta.id,fila:seleccion.fila,
-      numeroActa:acta.numeroActa||numeroIngresado,fechaAtencion:fechaAtencionCargoActa_(acta,contexto),
-      codigoPedido:acta.codigoPedido||"",codigoOrden:acta.codigoOrden||"",tecnico:acta.tecnico||dc.usuario||"",
-      cuadrilla:acta.cuadrilla||cuadrilla,sede:acta.sede||sede
+
+    resultados.push(Object.assign(base, {
+      estado: "VALIDA",
+      detalle: "PDF encontrado. Lista para recibir",
+      id: acta.id,
+      fila: acta.fila,
+      numeroActa: acta.numeroActa || numeroIngresado,
+      fechaAtencion: fechaClaveActa(acta.fechaGestion),
+      codigoPedido: acta.codigoPedido || "",
+      codigoOrden: acta.codigoOrden || "",
+      tecnico: acta.tecnico || dc.usuario || "",
+      cuadrilla: acta.cuadrilla || cuadrilla,
+      sede: acta.sede || sede
     }));
   });
 
-  const resumen = {ingresadas:resultados.length,validas:0,noRegistradas:0,yaEntregadas:0,otraCuadrilla:0,duplicadas:0,fechasPendientes:0};
-  resultados.forEach(function(r){
-    if (r.estado === "VALIDA") resumen.validas++;
-    else if (r.estado === "NO_REGISTRADA") resumen.noRegistradas++;
-    else if (r.estado === "YA_ENTREGADA") resumen.yaEntregadas++;
-    else if (r.estado === "OTRA_CUADRILLA") resumen.otraCuadrilla++;
-    else if (r.estado === "DUPLICADA") resumen.duplicadas++;
-    else if (r.estado === "FECHA_PENDIENTE") resumen.fechasPendientes++;
+  const resumen = {
+    ingresadas: resultados.length,
+    validas: 0,
+    noRegistradas: 0,
+    yaEntregadas: 0,
+    otraCuadrilla: 0,
+    duplicadas: 0,
+    fechasPendientes: 0
+  };
+
+  resultados.forEach(function(resultado) {
+    if (resultado.estado === "VALIDA") resumen.validas++;
+    else if (resultado.estado === "NO_REGISTRADA") resumen.noRegistradas++;
+    else if (resultado.estado === "YA_ENTREGADA") resumen.yaEntregadas++;
+    else if (resultado.estado === "OTRA_CUADRILLA") resumen.otraCuadrilla++;
+    else if (resultado.estado === "DUPLICADA") resumen.duplicadas++;
+    else if (resultado.estado === "FECHA_PENDIENTE") resumen.fechasPendientes++;
   });
-  return {ok:true,modulo:"ACTAS",accion:"VALIDAR_RECEPCION_MASIVA",sede:sede,cuadrilla:cuadrilla,plataforma:plataformaCargoActas_(cuadrilla),resultados:resultados,resumen:resumen};
+
+  return {
+    ok: true,
+    modulo: "ACTAS",
+    accion: "VALIDAR_RECEPCION_MASIVA",
+    sede: sede,
+    cuadrilla: cuadrilla,
+    plataforma: plataformaCargoActas_(cuadrilla),
+    resultados: resultados,
+    resumen: resumen,
+    duracionMs: Date.now() - inicio
+  };
 }
 
 function validarRecepcionMasivaActas(data) {
@@ -4272,62 +4536,124 @@ function htmlCargoActas_(datos) {
     +'</body></html>';
 }
 
+// V343: el PDF se guarda en Drive y se devuelve únicamente su enlace.
+// Se evita enviar el archivo completo como Base64 dentro de la respuesta.
 function generarArchivoCargoActas_(datos) {
   const html = htmlCargoActas_(datos);
   const nombre = datos.idCargo + ".pdf";
   const pdfBlob = HtmlService.createHtmlOutput(html).getAs(MimeType.PDF).setName(nombre);
   const archivo = carpetaCargosActas_().createFile(pdfBlob);
   archivo.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
+
   return {
-    archivo:archivo,
-    nombre:nombre,
-    link:archivo.getUrl(),
-    descarga:"https://drive.google.com/uc?export=download&id="+archivo.getId(),
-    base64:Utilities.base64Encode(pdfBlob.getBytes())
+    archivo: archivo,
+    nombre: nombre,
+    link: archivo.getUrl(),
+    descarga: "https://drive.google.com/uc?export=download&id=" + archivo.getId(),
+    base64: ""
   };
 }
 
 function confirmarRecepcionMasivaActas(data) {
+  const inicioOperacion = Date.now();
   const usuario = obtenerUsuarioApp(data.usuario);
   const lock = LockService.getScriptLock();
-  lock.waitLock(30000);
-  try {
-    const validacion = validarRecepcionMasivaActasInterno_(data, usuario);
-    const validas = validacion.resultados.filter(function(x){ return x.estado === "VALIDA"; });
-    if (!validas.length) throw new Error("No hay actas válidas para confirmar");
-    const ahora = new Date();
-    const fechaIso = Utilities.formatDate(ahora,"America/Lima","yyyy-MM-dd");
-    const fechaVisible = Utilities.formatDate(ahora,"America/Lima","dd/MM/yyyy");
-    const horaVisible = Utilities.formatDate(ahora,"America/Lima","HH:mm");
-    const idCargo = "CA-" + Utilities.formatDate(ahora,"America/Lima","yyyyMMdd-HHmmss") + "-" + Math.floor(100+Math.random()*900);
-    const datosCargo = {
-      idCargo:idCargo,sede:validacion.sede,cuadrilla:validacion.cuadrilla,plataforma:validacion.plataforma,
-      fechaVisible:fechaVisible,horaVisible:horaVisible,usuarioRecibe:usuario.usuario,detalle:validas
-    };
-    const pdf = generarArchivoCargoActas_(datosCargo);
 
-    const hojaActas = asegurarHojaActasEscaneadas();
-    validas.forEach(function(x){
-      hojaActas.getRange(x.fila,30,1,6).setValues([["ENTREGADA",usuario.usuario,usuario.perfil,ahora,ahora,""]]);
-      hojaActas.getRange(x.fila,33).setNumberFormat("dd/mm/yyyy");
-      hojaActas.getRange(x.fila,34).setNumberFormat("hh:mm:ss");
+  if (!lock.tryLock(12000)) {
+    throw new Error("Otra recepción está siendo procesada. Espere unos segundos y vuelva a consultar la lista.");
+  }
+
+  try {
+    // Revalida una sola vez bajo bloqueo para evitar entregas duplicadas.
+    const validacion = validarRecepcionMasivaActasInterno_(data, usuario);
+    const validas = validacion.resultados.filter(function(item) {
+      return item.estado === "VALIDA";
     });
 
+    if (!validas.length) throw new Error("No hay actas válidas para confirmar");
+
+    const ahora = new Date();
+    const fechaIso = Utilities.formatDate(ahora, "America/Lima", "yyyy-MM-dd");
+    const fechaVisible = Utilities.formatDate(ahora, "America/Lima", "dd/MM/yyyy");
+    const horaVisible = Utilities.formatDate(ahora, "America/Lima", "HH:mm");
+    const idCargo = "CA-" +
+      Utilities.formatDate(ahora, "America/Lima", "yyyyMMdd-HHmmss") +
+      "-" + Math.floor(100 + Math.random() * 900);
+
+    const datosCargo = {
+      idCargo: idCargo,
+      sede: validacion.sede,
+      cuadrilla: validacion.cuadrilla,
+      plataforma: validacion.plataforma,
+      fechaVisible: fechaVisible,
+      horaVisible: horaVisible,
+      usuarioRecibe: usuario.usuario,
+      detalle: validas
+    };
+
+    const pdf = generarArchivoCargoActas_(datosCargo);
+    const hojaActas = asegurarHojaActasEscaneadas();
+    const filas = validas
+      .map(function(item) { return Number(item.fila); })
+      .filter(function(fila) { return fila > 1; });
+
+    // Actualiza todas las actas mediante listas de rangos.
+    hojaActas.getRangeList(filas.map(function(fila) { return "AD" + fila; }))
+      .setValue("ENTREGADA");
+    hojaActas.getRangeList(filas.map(function(fila) { return "AE" + fila; }))
+      .setValue(usuario.usuario);
+    hojaActas.getRangeList(filas.map(function(fila) { return "AF" + fila; }))
+      .setValue(usuario.perfil);
+    hojaActas.getRangeList(filas.map(function(fila) { return "AG" + fila; }))
+      .setValue(ahora)
+      .setNumberFormat("dd/mm/yyyy");
+    hojaActas.getRangeList(filas.map(function(fila) { return "AH" + fila; }))
+      .setValue(ahora)
+      .setNumberFormat("hh:mm:ss");
+    hojaActas.getRangeList(filas.map(function(fila) { return "AI" + fila; }))
+      .setValue("");
+
     const hojaCargos = asegurarHojaCargosActas_();
-    hojaCargos.appendRow([
-      idCargo,ahora,ahora,validacion.sede,validacion.cuadrilla,validacion.plataforma,"WIN",
-      usuario.usuario,usuario.perfil,validas.length,validas.map(function(x){return x.numeroActa;}).join(", "),
-      JSON.stringify(validas),pdf.link,pdf.nombre,"GENERADO"
-    ]);
-    const nf = hojaCargos.getLastRow();
-    hojaCargos.getRange(nf,2).setNumberFormat("dd/mm/yyyy");
-    hojaCargos.getRange(nf,3).setNumberFormat("hh:mm:ss");
+    const filaCargo = hojaCargos.getLastRow() + 1;
+
+    hojaCargos.getRange(filaCargo, 1, 1, 15).setValues([[
+      idCargo,
+      ahora,
+      ahora,
+      validacion.sede,
+      validacion.cuadrilla,
+      validacion.plataforma,
+      "WIN",
+      usuario.usuario,
+      usuario.perfil,
+      validas.length,
+      validas.map(function(item) { return item.numeroActa; }).join(", "),
+      JSON.stringify(validas),
+      pdf.link,
+      pdf.nombre,
+      "GENERADO"
+    ]]);
+
+    hojaCargos.getRange(filaCargo, 2).setNumberFormat("dd/mm/yyyy");
+    hojaCargos.getRange(filaCargo, 3).setNumberFormat("hh:mm:ss");
+
     SpreadsheetApp.flush();
+
     return {
-      ok:true,modulo:"ACTAS",accion:"CONFIRMAR_RECEPCION_MASIVA",idCargo:idCargo,
-      totalActas:validas.length,fechaEntrega:fechaIso,fechaVisible:fechaVisible,horaVisible:horaVisible,
-      linkPdf:pdf.link,descargaPdf:pdf.descarga,nombrePdf:pdf.nombre,pdfBase64:pdf.base64,
-      resultados:validacion.resultados,resumen:validacion.resumen
+      ok: true,
+      modulo: "ACTAS",
+      accion: "CONFIRMAR_RECEPCION_MASIVA",
+      idCargo: idCargo,
+      totalActas: validas.length,
+      fechaEntrega: fechaIso,
+      fechaVisible: fechaVisible,
+      horaVisible: horaVisible,
+      linkPdf: pdf.link,
+      descargaPdf: pdf.descarga,
+      nombrePdf: pdf.nombre,
+      resultados: validacion.resultados,
+      resumen: validacion.resumen,
+      duracionMs: Date.now() - inicioOperacion
     };
   } finally {
     lock.releaseLock();
@@ -4721,14 +5047,50 @@ function autorizarDriveChecklistAlmacen() {
 
 /* =========================
    ANÁLISIS ECONÓMICO
-   Solo Jefatura / Admin
+   Permisos dinámicos: Jefatura / Gerencia General / Admin
 ========================= */
 
 const META_DIARIA_CUADRILLA = 500;
 const DIAS_META_MENSUAL = 26;
 
 function esPerfilAnalisisEconomico(perfil) {
-  return esPerfilJefatura(perfil);
+  return esPerfilJefatura(perfil) || esPerfilGerenciaGeneral(perfil);
+}
+
+function esPerfilEconomicoRestringido_(perfil) {
+  const p = normalizarTexto(perfil);
+  return p === "GERENCIA LIMA" || p === "JEFATURA ALMACEN";
+}
+
+function exigirAccesoAnalisisEconomicoCompleto_(usuario, accion) {
+  if (esPerfilEconomicoRestringido_(usuario && usuario.perfil)) {
+    throw new Error("Este perfil no tiene acceso a Producción valorizada ni Utilidad");
+  }
+
+  try {
+    return exigirPermisoModuloCentral(
+      usuario,
+      "ANALISIS ECONOMICO",
+      accion || "VER"
+    );
+  } catch (error) {
+    // Compatibilidad con Jefatura/Admin mientras se completa la migración
+    // de todos los perfiles antiguos al motor dinámico.
+    if (
+      esPerfilAnalisisEconomico(usuario && usuario.perfil) &&
+      ["VER","DESCARGAR"].includes(normalizarTexto(accion || "VER"))
+    ) {
+      return {
+        habilitado:true,
+        ver:true,
+        descargar:true,
+        registrar:false,
+        alcanceDatos:"ZONA NORTE",
+        legado:true
+      };
+    }
+    throw error;
+  }
 }
 
 function convertirFechaAnalisisEconomico(valor) {
@@ -5171,10 +5533,7 @@ function actualizarHojaAnalisisEconomico(periodo, detalle) {
 
 function obtenerAnalisisEconomico(data) {
   const usuario = obtenerUsuarioApp(data.usuario);
-
-  if (!esPerfilAnalisisEconomico(usuario.perfil)) {
-    throw new Error("El módulo Análisis Económico es exclusivo para Jefatura");
-  }
+  exigirAccesoAnalisisEconomicoCompleto_(usuario, "VER");
 
   const periodo = resolverPeriodoAnalisisEconomico(data);
   const hojaProduccion = obtenerHoja(HOJA_PRODUCCION);
@@ -5386,6 +5745,349 @@ function obtenerAnalisisEconomico(data) {
   };
 }
 
+
+/* =========================================================
+   V353 - CUMPLIMIENTO PRODUCTIVO SEGÚN DÍAS EN CAMPO
+   - Conserva la meta mensual de 130 puntos.
+   - Añade una meta dinámica de 5 puntos por día EN CAMPO.
+   - DESCANSO, VACACIONES y EN CAMPO BOLSA aportan 0 días.
+   - Una sola lectura de PRODUCCION_APP, USUARIOS y DESCANSOS.
+========================================================= */
+
+const META_DIARIA_PRODUCCION_V353_ = 5;
+const CACHE_VERSION_CUMPLIMIENTO_PROD_V353_ = "MV353_CUMPLIMIENTO_PROD_VERSION";
+
+function invalidarCumplimientoProduccionDiaria_() {
+  try {
+    CacheService.getScriptCache().put(
+      CACHE_VERSION_CUMPLIMIENTO_PROD_V353_,
+      String(Date.now()),
+      21600
+    );
+  } catch (error) {
+    // La caché nunca debe bloquear una escritura.
+  }
+}
+
+function versionCumplimientoProduccionDiaria_() {
+  try {
+    const cache = CacheService.getScriptCache();
+    let version = cache.get(CACHE_VERSION_CUMPLIMIENTO_PROD_V353_);
+
+    if (!version) {
+      version = String(Date.now());
+      cache.put(CACHE_VERSION_CUMPLIMIENTO_PROD_V353_,version,21600);
+    }
+
+    return version;
+  } catch (error) {
+    return "SIN_CACHE";
+  }
+}
+
+function periodoValidoCumplimientoProduccion_(valor) {
+  const texto = String(valor || "").trim();
+  return /^\d{4}-\d{2}$/.test(texto)
+    ? texto
+    : Utilities.formatDate(new Date(),"America/Lima","yyyy-MM");
+}
+
+function fechaIsoCumplimientoProduccion_(valor) {
+  if (valor instanceof Date && !isNaN(valor.getTime())) {
+    return Utilities.formatDate(valor,"America/Lima","yyyy-MM-dd");
+  }
+
+  const texto = String(valor || "").trim();
+  if (!texto) return "";
+
+  let m = texto.match(/^(\d{4})-(\d{1,2})-(\d{1,2})/);
+  if (m) {
+    return [
+      m[1],
+      String(Number(m[2])).padStart(2,"0"),
+      String(Number(m[3])).padStart(2,"0")
+    ].join("-");
+  }
+
+  m = texto.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})/);
+  if (m) {
+    return [
+      m[3],
+      String(Number(m[2])).padStart(2,"0"),
+      String(Number(m[1])).padStart(2,"0")
+    ].join("-");
+  }
+
+  return "";
+}
+
+function fechaDateCumplimientoProduccion_(iso) {
+  const m = String(iso || "").match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (!m) return null;
+  return new Date(Number(m[1]),Number(m[2])-1,Number(m[3]),12,0,0,0);
+}
+
+function fechaFinPeriodoCumplimientoProduccion_(periodo) {
+  const partes = periodo.split("-").map(Number);
+  return new Date(partes[0],partes[1],0,12,0,0,0);
+}
+
+function fechaCorteCumplimientoProduccion_(periodo) {
+  const hoja = obtenerHoja(HOJA_PRODUCCION);
+  const ultimaFila = hoja.getLastRow();
+  let maxima = null;
+
+  if (ultimaFila > 1) {
+    // Solo se lee la columna de fecha de Producción.
+    const fechas = hoja.getRange(2,3,ultimaFila-1,1).getValues();
+
+    fechas.forEach(function(fila) {
+      const iso = fechaIsoCumplimientoProduccion_(fila[0]);
+      if (!iso || iso.substring(0,7) !== periodo) return;
+
+      const fecha = fechaDateCumplimientoProduccion_(iso);
+      if (fecha && (!maxima || fecha > maxima)) maxima = fecha;
+    });
+  }
+
+  const hoy = new Date();
+  const periodoActual = Utilities.formatDate(hoy,"America/Lima","yyyy-MM");
+  const finPeriodo = fechaFinPeriodoCumplimientoProduccion_(periodo);
+
+  if (!maxima) {
+    maxima = periodo === periodoActual
+      ? new Date(hoy.getFullYear(),hoy.getMonth(),hoy.getDate(),12,0,0,0)
+      : finPeriodo;
+  }
+
+  if (maxima > finPeriodo) maxima = finPeriodo;
+
+  if (periodo === periodoActual) {
+    const hoyLima = new Date(hoy.getFullYear(),hoy.getMonth(),hoy.getDate(),12,0,0,0);
+    if (maxima > hoyLima) maxima = hoyLima;
+  }
+
+  return Utilities.formatDate(maxima,"America/Lima","yyyy-MM-dd");
+}
+
+function cuadrillasActivasCumplimientoProduccion_() {
+  const mapaUsuarios = obtenerMapaUsuarios();
+  const salida = {};
+
+  Object.keys(mapaUsuarios).forEach(function(cuadrillaOriginal) {
+    const item = mapaUsuarios[cuadrillaOriginal] || {};
+    const cuadrilla = normalizarCuadrilla(cuadrillaOriginal);
+
+    if (!cuadrilla) return;
+    if (normalizarTexto(item.perfil) !== "TECNICO") return;
+    if (normalizarTexto(item.estado || "ACTIVO") !== "ACTIVO") return;
+    if (!/^P\d+\b/i.test(cuadrilla)) return;
+
+    salida[cuadrilla] = {
+      cuadrilla:cuadrilla,
+      sede:normalizarTexto(item.sede),
+      plataforma:normalizarTexto(item.plataforma),
+      supervisor:normalizarUsuario(item.usuarioSupervisor || "")
+    };
+  });
+
+  return salida;
+}
+
+function estadosAprobadosCumplimientoProduccion_(periodo) {
+  const hoja = asegurarHojaProgramacionDescansos();
+  const ultimaFila = hoja.getLastRow();
+  const salida = {};
+
+  if (ultimaFila <= 1) return salida;
+
+  // Una sola lectura de la programación completa.
+  const datos = hoja.getRange(2,1,ultimaFila-1,38).getValues();
+
+  datos.forEach(function(fila,indice) {
+    const fecha = fechaISODescansos(fila[2]);
+    if (!fecha || fecha.substring(0,7) !== periodo) return;
+
+    const cuadrilla = normalizarCuadrilla(fila[5]);
+    if (!cuadrilla || cuadrilla.indexOf("PERSONAL|") === 0) return;
+
+    const estadoValidacion = normalizarTexto(fila[29] || fila[10]).replace(/_/g," ");
+    const resultadoJefatura = normalizarTexto(fila[21] || "");
+
+    const aprobado =
+      ["APROBADO","APLICADO"].includes(estadoValidacion) ||
+      resultadoJefatura === "APROBADO";
+
+    if (!aprobado) return;
+
+    const version = Number(fila[28]) || 0;
+    const clave = cuadrilla + "|" + fecha;
+    const anterior = salida[clave];
+
+    if (
+      anterior &&
+      (
+        anterior.version > version ||
+        (anterior.version === version && anterior.indice > indice)
+      )
+    ) {
+      return;
+    }
+
+    salida[clave] = {
+      version:version,
+      indice:indice,
+      estado:normalizarEstadoDiaDescansos(fila[36] || fila[9] || "EN CAMPO")
+    };
+  });
+
+  return salida;
+}
+
+function construirCumplimientoProduccionDiariaBase_(periodo) {
+  const fechaCorte = fechaCorteCumplimientoProduccion_(periodo);
+  const corte = fechaDateCumplimientoProduccion_(fechaCorte);
+  const inicio = fechaDateCumplimientoProduccion_(periodo + "-01");
+  const cuadrillas = cuadrillasActivasCumplimientoProduccion_();
+  const estados = estadosAprobadosCumplimientoProduccion_(periodo);
+  const salida = {};
+
+  Object.keys(cuadrillas).forEach(function(claveCuadrilla) {
+    const item = cuadrillas[claveCuadrilla];
+    let diasCampo = 0;
+    let diasDescanso = 0;
+    let diasVacaciones = 0;
+    let diasBolsa = 0;
+    let diasSinProgramacion = 0;
+
+    if (inicio && corte && corte >= inicio) {
+      for (
+        let fecha = new Date(inicio.getTime());
+        fecha <= corte;
+        fecha.setDate(fecha.getDate()+1)
+      ) {
+        const fechaIso = Utilities.formatDate(fecha,"America/Lima","yyyy-MM-dd");
+        const registro = estados[item.cuadrilla + "|" + fechaIso];
+        const estado = normalizarEstadoDiaDescansos(
+          registro ? registro.estado : "EN CAMPO"
+        );
+
+        if (!registro) diasSinProgramacion++;
+
+        if (estado === "DESCANSO") {
+          diasDescanso++;
+        } else if (estado === "VACACIONES") {
+          diasVacaciones++;
+        } else if (estado === "EN CAMPO BOLSA") {
+          diasBolsa++;
+        } else {
+          diasCampo++;
+        }
+      }
+    }
+
+    salida[item.cuadrilla] = {
+      cuadrilla:item.cuadrilla,
+      sede:item.sede,
+      plataforma:item.plataforma,
+      supervisor:item.supervisor,
+      fechaCorte:fechaCorte,
+      metaDiaria:META_DIARIA_PRODUCCION_V353_,
+      diasCampo:diasCampo,
+      diasDescanso:diasDescanso,
+      diasVacaciones:diasVacaciones,
+      diasBolsa:diasBolsa,
+      diasSinProgramacion:diasSinProgramacion,
+      metaAcumulada:redondearBonoSupervisores_(
+        diasCampo * META_DIARIA_PRODUCCION_V353_,
+        2
+      )
+    };
+  });
+
+  return {
+    periodo:periodo,
+    fechaCorte:fechaCorte,
+    metaDiaria:META_DIARIA_PRODUCCION_V353_,
+    cuadrillas:salida
+  };
+}
+
+function filtrarCumplimientoProduccionDiaria_(base, usuario) {
+  const perfil = normalizarTexto(usuario.perfil);
+  const cuadrillaUsuario = normalizarCuadrilla(usuario.cuadrilla);
+  const sedeUsuario = normalizarTexto(usuario.sede);
+  const filtradas = {};
+
+  Object.keys(base.cuadrillas || {}).forEach(function(clave) {
+    const item = base.cuadrillas[clave];
+
+    if (perfil === "TECNICO" && item.cuadrilla !== cuadrillaUsuario) return;
+    if (perfil === "SUPERVISOR" && item.sede !== sedeUsuario) return;
+
+    filtradas[clave] = item;
+  });
+
+  return {
+    ok:true,
+    modulo:"PRODUCCION",
+    accion:"CUMPLIMIENTO_DIARIO",
+    periodo:base.periodo,
+    fechaCorte:base.fechaCorte,
+    metaDiaria:base.metaDiaria,
+    cuadrillas:filtradas,
+    optimizado:true
+  };
+}
+
+function obtenerCumplimientoProduccionDiaria(data) {
+  const usuario = obtenerUsuarioApp(data.usuario);
+  const perfil = normalizarTexto(usuario.perfil);
+
+  if (
+    ![
+      "TECNICO","SUPERVISOR","JEFATURA","JEFATURA GENERAL",
+      "GERENCIA LIMA","ADMIN","ADMINISTRADOR","JEFATURA OPERACIONES",
+      "JEFATURA DE OPERACIONES","OPERACIONES"
+    ].includes(perfil)
+  ) {
+    throw new Error("No tienes permiso para consultar el cumplimiento productivo");
+  }
+
+  const periodo = periodoValidoCumplimientoProduccion_(data.periodo);
+  const version = versionCumplimientoProduccionDiaria_();
+  const claveCache = [
+    "MV353_CUMPLIMIENTO_PRODUCTIVO",
+    periodo,
+    versionCacheDescansos(),
+    version
+  ].join("|");
+
+  let base = null;
+
+  try {
+    const cache = CacheService.getScriptCache();
+    const guardado = cache.get(claveCache);
+    if (guardado) base = JSON.parse(guardado);
+  } catch (error) {
+    base = null;
+  }
+
+  if (!base) {
+    base = construirCumplimientoProduccionDiariaBase_(periodo);
+
+    try {
+      const texto = JSON.stringify(base);
+      if (texto.length < 90000) {
+        CacheService.getScriptCache().put(claveCache,texto,300);
+      }
+    } catch (error) {
+      // Continúa sin caché.
+    }
+  }
+
+  return filtrarCumplimientoProduccionDiaria_(base,usuario);
+}
 
 /* =========================
    PROGRAMACIÓN DE DESCANSOS
@@ -5608,6 +6310,11 @@ function limpiarCacheDescansos() {
   } catch (e) {
     // La caché es una optimización; una falla no debe bloquear el módulo.
   }
+
+  // V353: un descanso aprobado cambia la meta productiva diaria.
+  invalidarCumplimientoProduccionDiaria_();
+  // V361: también cambia el cumplimiento mostrado en Dashboard y Ranking.
+  invalidarResumenDashboardRankingV361_();
 }
 
 function versionCacheDescansos() {
@@ -6725,6 +7432,8 @@ function esPerfilConsultaMaterialesPermitido(perfil) {
   const p = normalizarTexto(perfil);
   return p === "JEFATURA" ||
          p === "JEFATURA GENERAL" ||
+         p === "GERENCIA GENERAL" ||
+         p === "GERENCIAL GENERAL" ||
          p === "GERENCIA LIMA" ||
          p === "JEFATURA ALMACEN" ||
          p === "ADMIN" ||
@@ -6738,6 +7447,31 @@ function esPerfilImportarMaterialesPermitido(perfil) {
          p === "JEFATURA ALMACEN" ||
          p === "ADMIN" ||
          p === "ADMINISTRADOR";
+}
+
+function puedeConsultarMaterialesUsuarioV374_(usuario) {
+  if (esPerfilConsultaMaterialesPermitido(usuario && usuario.perfil)) return true;
+  try {
+    const permiso = obtenerPermisoModuloCentral(usuario, "ANALISIS ECONOMICO");
+    return !!(permiso && permiso.habilitado && permiso.ver);
+  } catch (error) {
+    return false;
+  }
+}
+
+function puedeImportarMaterialesUsuarioV374_(usuario) {
+  if (esPerfilImportarMaterialesPermitido(usuario && usuario.perfil)) return true;
+  try {
+    const permiso = obtenerPermisoModuloCentral(usuario, "ANALISIS ECONOMICO");
+    return !!(
+      permiso &&
+      permiso.habilitado &&
+      permiso.registrar &&
+      !esPerfilEconomicoRestringido_(usuario && usuario.perfil)
+    );
+  } catch (error) {
+    return false;
+  }
 }
 
 function ultimaActualizacionMaterialesV261(hojaConsumo) {
@@ -7034,7 +7768,7 @@ function loteMaterialesV184(texto, fecha, usuario) {
 
 function procesarImportacionMaterialesV184(data) {
   const usuario = obtenerUsuarioApp(data.usuario);
-  if (!esPerfilImportarMaterialesPermitido(usuario.perfil)) {
+  if (!puedeImportarMaterialesUsuarioV374_(usuario)) {
     throw new Error("No tienes permiso para importar consumo de materiales");
   }
 
@@ -7257,7 +7991,7 @@ function obtenerFinalizadasEfectividadMateriales(periodo) {
 
 function obtenerResumenMaterialesV184(data) {
   const usuario = obtenerUsuarioApp(data.usuario);
-  if (!esPerfilConsultaMaterialesPermitido(usuario.perfil)) {
+  if (!puedeConsultarMaterialesUsuarioV374_(usuario)) {
     throw new Error("No tienes permiso para ver consumo de materiales");
   }
 
@@ -7513,8 +8247,42 @@ function resolverTarifaPdg_(tarifario,codigo,nombre) {
 function exigirAccesoUtilidadCuadrilla_(data, accion) {
   asegurarPermisoUtilidadCuadrilla_();
   const usuario = obtenerUsuarioApp(data.usuario);
-  const permiso = exigirPermisoModuloCentral(usuario, MODULO_UTILIDAD_CUADRILLA, accion || "VER");
-  return { usuario, permiso };
+  const accionNorm = normalizarTexto(accion || "VER");
+
+  try {
+    const permiso = exigirPermisoModuloCentral(
+      usuario,
+      MODULO_UTILIDAD_CUADRILLA,
+      accionNorm
+    );
+    return { usuario, permiso };
+  } catch (errorUtilidad) {
+    // Gerencia Lima y Jefatura Almacén conservan el acceso parcial histórico:
+    // materiales sí, producción valorizada/utilidad no.
+    if (esPerfilEconomicoRestringido_(usuario.perfil)) {
+      throw errorUtilidad;
+    }
+
+    try {
+      const permisoAnalisis = exigirPermisoModuloCentral(
+        usuario,
+        "ANALISIS ECONOMICO",
+        accionNorm
+      );
+      return {
+        usuario,
+        permiso:{
+          ver:!!permisoAnalisis.ver,
+          registrar:!!permisoAnalisis.registrar,
+          descargar:!!permisoAnalisis.descargar,
+          alcanceDatos:permisoAnalisis.alcanceDatos,
+          heredadoDe:"ANALISIS ECONOMICO"
+        }
+      };
+    } catch (errorAnalisis) {
+      throw errorUtilidad;
+    }
+  }
 }
 
 function numeroMonedaUtilidad_(valor) {
@@ -8919,13 +9687,65 @@ function asegurarPermisosMapaOperativo() {
 
 function esPerfilMapaOperativo(perfil) {
   const p = normalizarTexto(perfil);
-  return p === "SUPERVISOR" || esPerfilJefatura(p) || esPerfilGerenciaLima(p) || esPerfilJefaturaOperaciones(p);
+  return p === "SUPERVISOR" ||
+         esPerfilJefatura(p) ||
+         esPerfilGerenciaLima(p) ||
+         esPerfilGerenciaGeneral(p) ||
+         esPerfilJefaturaOperaciones(p);
 }
 
 function validarAccesoMapaOperativo(usuario, accion) {
-  if (!esPerfilMapaOperativo(usuario.perfil)) throw new Error("No tienes permiso para visualizar el Mapa Operativo");
-  if (accion === "IMPORTAR" && !(esPerfilJefatura(usuario.perfil) || esPerfilJefaturaOperaciones(usuario.perfil))) throw new Error("Solo Jefatura o Jefatura Operaciones pueden importar información al Mapa Operativo");
-  return true;
+  const accionNorm = normalizarTexto(accion || "VER");
+  const perfil = normalizarTexto(usuario && usuario.perfil);
+
+  // V345: Supervisor conserva su capacidad operativa histórica de importación.
+  if (accionNorm === "IMPORTAR" && perfil === "SUPERVISOR") {
+    return {
+      habilitado:true,
+      ver:true,
+      registrar:true,
+      alcanceDatos:"SUPERVISOR / CUADRILLAS",
+      legadoSupervisor:true
+    };
+  }
+
+  try {
+    return exigirPermisoModuloCentral(
+      usuario,
+      "MAPA OPERATIVO",
+      accionNorm === "IMPORTAR" ? "REGISTRAR" : "VER"
+    );
+  } catch (error) {
+    // Compatibilidad con perfiles existentes anteriores al motor central.
+    if (accionNorm !== "IMPORTAR" && esPerfilMapaOperativo(perfil)) {
+      return {
+        habilitado:true,
+        ver:true,
+        registrar:false,
+        alcanceDatos:"TODOS",
+        legado:true
+      };
+    }
+
+    if (
+      accionNorm === "IMPORTAR" &&
+      (esPerfilJefatura(perfil) || esPerfilJefaturaOperaciones(perfil))
+    ) {
+      return {
+        habilitado:true,
+        ver:true,
+        registrar:true,
+        alcanceDatos:"TODOS",
+        legado:true
+      };
+    }
+
+    throw new Error(
+      accionNorm === "IMPORTAR"
+        ? "No tienes permiso para ingresar información al Mapa Operativo"
+        : "No tienes permiso para visualizar el Mapa Operativo"
+    );
+  }
 }
 
 function cuadrillasSupervisorMapa(usuarioSupervisor) {
@@ -9176,6 +9996,7 @@ function importarMapaOperativo(data) {
     const ultimaActualizacionMapa = obtenerUltimaActualizacionMapaOperativo(hoja);
 
     invalidarCacheBonosSupervisores_();
+  invalidarResumenDashboardRankingV361_();
     return {
       ok:true,
       modulo:"MAPA_OPERATIVO",
@@ -11170,6 +11991,303 @@ function previsualizarBaseOperativa(data) {
   };
 }
 
+
+/* =========================================================
+   V369 - ACTUALIZACIÓN OPERATIVA RÁPIDA
+   La carga de Producción/Efectividad/Recableado/VTR-GAR no
+   vuelve a reconstruir SLA antes de responder al usuario.
+   Conserva el SLA ya calculado y actualiza inmediatamente
+   los indicadores que sí dependen de la Base Operativa.
+========================================================= */
+
+function leerResumenPeriodoCualquieraV369_(periodo) {
+  const hoja = asegurarHojaResumenDashboardRankingV361_();
+  if (hoja.getLastRow() <= 1) return [];
+
+  const filas = hoja.getRange(2,1,hoja.getLastRow()-1,9).getValues();
+  const lista = [];
+
+  filas.forEach(function(fila) {
+    if (periodoTecnicoV367_(fila[0]) !== periodo) return;
+    try {
+      const item = JSON.parse(String(fila[8] || "{}"));
+      if (item && item.cuadrilla) lista.push(item);
+    } catch (error) {}
+  });
+
+  return lista;
+}
+
+function construirResumenDashboardRankingRapidoBaseV369_(periodo,version) {
+  reiniciarDatosBonoSesion_();
+
+  const previoLista = leerResumenPeriodoCualquieraV369_(periodo);
+
+  // Si todavía no existe un resumen del período, se usa la construcción
+  // completa una sola vez. Las cargas diarias siguientes usan la ruta rápida.
+  if (!previoLista.length) {
+    return construirResumenDashboardRankingV361_(periodo,version);
+  }
+
+  const previo = {};
+  previoLista.forEach(function(item) {
+    previo[normalizarCuadrilla(item.cuadrilla)] = item;
+  });
+
+  const usuarios = obtenerMapaUsuarios();
+  const datosProduccion = datosHojaBonoSupervisores_(HOJA_PRODUCCION);
+  const catalogo = catalogoDetalleResumenDashboardRankingV361_(
+    datosHojaBonoSupervisores_(HOJA_CATALOGO_ORDENES)
+  );
+  const produccionInfo = produccionDetalleResumenDashboardRankingV361_(
+    datosProduccion,
+    catalogo,
+    periodo
+  );
+  const efectividadInfo = efectividadDetalleResumenDashboardRankingV361_(
+    datosHojaBonoSupervisores_(HOJA_EFECTIVIDAD),
+    periodo
+  );
+  const recableado = recableadoDetalleResumenDashboardRankingV361_(
+    datosHojaBonoSupervisores_(HOJA_RECABLEADO),
+    periodo
+  );
+
+  let datosVtr = datosHojaBonoSupervisores_(HOJA_VTRGAR);
+  if (!datosVtr.length) datosVtr = datosHojaBonoSupervisores_("POR VTRGAR");
+  if (!datosVtr.length) datosVtr = datosHojaBonoSupervisores_("POR VTR GAR");
+
+  const vtrgar = vtrGarDetalleResumenDashboardRankingV361_(datosVtr,periodo);
+  const ranking = rankingResumenDashboardRankingV361_(
+    datosHojaBonoSupervisores_(HOJA_RANKING),
+    periodo
+  );
+  const diario = construirCumplimientoProduccionDiariaBase_(periodo).cuadrillas || {};
+
+  const cuadrillas = {};
+  [
+    usuarios,
+    produccionInfo.mapa,
+    efectividadInfo.mapa,
+    recableado,
+    vtrgar,
+    ranking,
+    diario,
+    previo
+  ].forEach(function(mapa) {
+    Object.keys(mapa || {}).forEach(function(c) {
+      cuadrillas[normalizarCuadrilla(c)] = true;
+    });
+  });
+
+  let fechaMaxima = produccionInfo.fechaMaxima;
+  if (
+    efectividadInfo.fechaMaxima &&
+    (!fechaMaxima || efectividadInfo.fechaMaxima > fechaMaxima)
+  ) {
+    fechaMaxima = efectividadInfo.fechaMaxima;
+  }
+
+  const actualizadoGeneral =
+    fechaVisibleResumenDashboardRankingV361_(fechaMaxima) ||
+    fechaVisibleResumenDashboardRankingV361_(
+      fechaReferenciaBonoSupervisores_(periodo)
+    );
+
+  const lista = [];
+
+  Object.keys(cuadrillas).sort().forEach(function(cuadrilla) {
+    const anterior = previo[cuadrilla] || {};
+    const u = usuarios[cuadrilla] || {};
+    const p = produccionInfo.mapa[cuadrilla] || {
+      produccion:0,
+      ordenes:0,
+      detalle:{
+        totalOrdenes:0,
+        totalPuntos:0,
+        grupos:{},
+        tipos:{},
+        fechas:{}
+      }
+    };
+    const e = efectividadInfo.mapa[cuadrilla] || {
+      finalizadas:0,
+      canceladas:0,
+      regestion:0,
+      reprogramadas:0,
+      total:0,
+      efectividad:0
+    };
+    const r = recableado[cuadrilla] || {
+      los:0,
+      rojoAsignadas:0,
+      recableados:0,
+      porcentaje:0,
+      porcentajeRecableado:0
+    };
+    const v = vtrgar[cuadrilla] || {
+      finalizadas:0,
+      gar:0,
+      vtr:0,
+      total:0,
+      totalGarVtr:0,
+      porcentaje:0,
+      porcentajeVtrGar:0
+    };
+    const rk = ranking[cuadrilla] || {};
+    const d = diario[cuadrilla] || {
+      fechaCorte:actualizadoGeneral,
+      metaDiaria:5,
+      diasCampo:0,
+      diasDescanso:0,
+      diasVacaciones:0,
+      diasBolsa:0,
+      diasSinProgramacion:0,
+      metaAcumulada:0
+    };
+
+    // SLA y Observaciones no cambian por esta carga. Se conservan para
+    // responder rápido. SLA se recalcula luego en segundo plano.
+    const detSla = anterior.detSla ||
+      finalizarResumenSlaCuadrillaV363_(
+        nuevoResumenSlaCuadrillaV363_(cuadrilla)
+      );
+    const detObs = anterior.detObservaciones || {
+      total:0,
+      pendientes:0,
+      montoTotal:0,
+      montoPendiente:0,
+      estados:{}
+    };
+    const obsWin = anterior.mv361ObservacionesWin || {
+      total:0,
+      penalizadas:0,
+      montoPenalizado:0
+    };
+
+    const actualizacion =
+      rk.actualizacion ||
+      actualizadoGeneral ||
+      anterior.actualizacion ||
+      "";
+
+    lista.push({
+      id:periodo+"|"+cuadrilla,
+      periodo:periodo,
+      actualizacion:actualizacion,
+      cuadrilla:cuadrilla,
+      usuario:u.usuario || p.usuario || e.usuario || rk.usuario || anterior.usuario || "ADMIN",
+      sede:u.sede || rk.sede || anterior.sede || "",
+      plataforma:u.plataforma || rk.plataforma || anterior.plataforma || "",
+      supervisor:u.usuarioSupervisor || anterior.supervisor || "",
+
+      produccion:redondearBonoSupervisores_(p.produccion,1),
+      efectividad:redondearBonoSupervisores_(e.efectividad,2),
+      recableado:redondearBonoSupervisores_(r.porcentaje,2),
+      vtrgar:redondearBonoSupervisores_(v.porcentaje,2),
+
+      observaciones:Number(anterior.observaciones || detObs.total || 0),
+      montoTotalObs:redondearBonoSupervisores_(
+        anterior.montoTotalObs || detObs.montoTotal || 0,
+        2
+      ),
+      montoAfectadoObs:redondearBonoSupervisores_(
+        anterior.montoAfectadoObs || detObs.montoPendiente || 0,
+        2
+      ),
+
+      slaBruto:redondearBonoSupervisores_(
+        anterior.slaBruto || detSla.slaBruto || 0,
+        2
+      ),
+      slaAjustado:redondearBonoSupervisores_(
+        anterior.slaAjustado || detSla.slaAjustado || 0,
+        2
+      ),
+      sla:redondearBonoSupervisores_(
+        anterior.slaAjustado || detSla.slaAjustado || 0,
+        2
+      ),
+      detSla:detSla,
+
+      puntaje:Number(rk.puntaje)||Number(anterior.puntaje)||0,
+      puestoSede:Number(rk.puestoSede)||Number(anterior.puestoSede)||0,
+      puestoRegion:Number(rk.puestoRegion)||Number(anterior.puestoRegion)||0,
+      puestoPlataforma:Number(rk.puestoPlataforma)||Number(anterior.puestoPlataforma)||0,
+
+      detProduccion:p.detalle,
+      detEfectividad:{
+        finalizadas:e.finalizadas,
+        canceladas:e.canceladas,
+        regestion:e.regestion,
+        reprogramadas:e.reprogramadas,
+        total:e.total,
+        efectividad:e.efectividad
+      },
+      detRecableado:{
+        los:r.los,
+        recableados:r.recableados,
+        porcentaje:r.porcentaje
+      },
+      detVtrGar:{
+        finalizadas:v.finalizadas,
+        gar:v.gar,
+        vtr:v.vtr,
+        total:v.total,
+        porcentaje:v.porcentaje
+      },
+      detObservaciones:detObs,
+      mv353CumplimientoDia:d,
+      mv361ObservacionesWin:obsWin,
+      mv369SlaPendienteSincronizacion:true
+    });
+  });
+
+  aplicarRankingResumenV365_(lista,periodo);
+
+  const hoja = asegurarHojaResumenDashboardRankingV361_();
+  const existentes = hoja.getLastRow() > 1
+    ? hoja.getRange(2,1,hoja.getLastRow()-1,9).getValues()
+    : [];
+
+  const conservar = existentes.filter(function(fila) {
+    return periodoTecnicoV367_(fila[0]) !== periodo;
+  });
+
+  const nuevas = lista.map(function(item) {
+    return [
+      periodo,
+      version,
+      item.actualizacion,
+      item.cuadrilla,
+      item.sede,
+      item.plataforma,
+      item.supervisor,
+      item.usuario,
+      jsonSeguroResumenDashboardRankingV361_(item)
+    ];
+  });
+
+  const salida = [[
+    "PERIODO",
+    "VERSION_FUENTE",
+    "ACTUALIZADO_AL",
+    "CUADRILLA",
+    "SEDE",
+    "PLATAFORMA",
+    "SUPERVISOR",
+    "USUARIO",
+    "RESUMEN_JSON"
+  ]].concat(conservar,nuevas);
+
+  hoja.clearContents();
+  hoja.getRange(1,1,hoja.getMaxRows(),2).setNumberFormat("@");
+  hoja.getRange(1,1,salida.length,9).setValues(salida);
+  hoja.setFrozenRows(1);
+
+  return lista;
+}
+
 function procesarBaseOperativa(data) {
   const usuario = validarAdministracionBaseOperativa(data.usuario);
   const lock = LockService.getScriptLock();
@@ -11228,10 +12346,32 @@ function procesarBaseOperativa(data) {
     registrarHistorialCargaBaseOperativa(usuario, data.archivo, preparado, matrices, "OK");
 
     invalidarCacheBonosSupervisores_();
+    invalidarResumenDashboardRankingV361_();
+
+    let resumenActualizado = false;
+    let resumenCuadrillas = 0;
+    let resumenError = "";
+
+    try {
+      const periodoResumen = matrices.periodoClave || clavePeriodoBaseOperativa(historica.corte);
+      const versionResumen = versionResumenDashboardRankingV361_();
+      const listaResumen = construirResumenDashboardRankingRapidoBaseV369_(
+        periodoResumen,
+        versionResumen
+      );
+      resumenCuadrillas = Array.isArray(listaResumen) ? listaResumen.length : 0;
+      resumenActualizado = resumenCuadrillas > 0;
+    } catch (errorResumen) {
+      resumenError = errorResumen && errorResumen.message
+        ? errorResumen.message
+        : String(errorResumen || "No se pudo reconstruir el resumen");
+    }
+
     return {
       ok: true,
       modulo: "BASE_OPERATIVA",
       periodo: matrices.periodo,
+      periodoClave: matrices.periodoClave,
       actualizadoAl: matrices.actualizadoAl,
       produccion: matrices.produccion.length - 1,
       efectividad: matrices.efectividad.length - 1,
@@ -11252,7 +12392,12 @@ function procesarBaseOperativa(data) {
       ranking: !!(ranking && ranking.ok),
       conciliacion: conciliacion,
       reemplazoTotal: false,
-      historicoMensual: true
+      historicoMensual: true,
+      resumenActualizado: resumenActualizado,
+      resumenCuadrillas: resumenCuadrillas,
+      resumenError: resumenError,
+      resumenModo:"RAPIDO_OPERATIVO_V369",
+      slaSincronizacionPendiente:true
     };
   } catch (e) {
     if (snapshots.length) {
@@ -11278,6 +12423,41 @@ function procesarBaseOperativa(data) {
     lock.releaseLock();
   }
 }
+
+
+function depurarResumenesTecnicosV367(data) {
+  const usuario = obtenerUsuarioApp(data && data.usuario);
+  if (!esPerfilJefatura(usuario.perfil)) {
+    throw new Error("Solo Jefatura puede depurar los resúmenes técnicos");
+  }
+
+  const hojaDashboard = asegurarHojaResumenDashboardRankingV361_();
+  const hojaSla = asegurarHojaSlaOrdenesV363_();
+
+  const dashboard = depurarResumenDashboardV367_(hojaDashboard);
+  const sla = depurarSlaOrdenesV367_(hojaSla);
+
+  PropertiesService.getScriptProperties().setProperty(
+    MV367_DEPURACION_DASHBOARD_KEY_,
+    MV365_ESQUEMA_RESUMEN_
+  );
+  PropertiesService.getScriptProperties().setProperty(
+    MV367_DEPURACION_SLA_KEY_,
+    MV365_ESQUEMA_RESUMEN_
+  );
+
+  invalidarResumenDashboardRankingV361_();
+  invalidarCacheBonosSupervisores_();
+
+  return {
+    ok:true,
+    modulo:"RESUMEN_TECNICO",
+    accion:"DEPURAR",
+    filasDashboard:dashboard,
+    filasSla:sla
+  };
+}
+
 
 function leerBaseVtrGarDetectada() {
   return obtenerGestionVtrGarExistente().lista;
@@ -12417,6 +13597,1616 @@ function consultarPlantillaOrden(data) {
   };
 }
 
+/* =========================================================
+   V363 - TIEMPO DE GESTIÓN - SLA
+   - Una fila por Código de orden.
+   - SLA bruto y SLA ajustado por excepciones aprobadas.
+   - Configuración editable de pesos del Ranking por período.
+   - Hojas técnicas automáticas para lectura rápida.
+========================================================= */
+
+function encabezadosSlaOrdenesV363_() {
+  return [
+    "ID","PERIODO","VERSION_FUENTE","CODIGO","CODIGO_PEDIDO","SEDE","CUADRILLA","SUPERVISOR",
+    "TIPO_GENERAL","TIPO_TRABAJO","MOTIVO_FINALIZACION","PARTIDA","INICIO","FIN",
+    "MINUTOS_GESTION","SLA_MINUTOS","EVALUABLE","CUMPLE_BRUTO","EXCEPCION_ESTADO",
+    "CUMPLE_AJUSTADO","EXCESO_MINUTOS","RESULTADO","FECHA_IMPORTACION","ACTUALIZADO_AL"
+  ];
+}
+
+
+function periodoTecnicoV367_(valor) {
+  if (valor instanceof Date && !isNaN(valor.getTime())) {
+    return Utilities.formatDate(valor,"America/Lima","yyyy-MM");
+  }
+
+  const texto = String(valor || "").trim();
+  if (/^\d{4}-\d{2}$/.test(texto)) return texto;
+
+  try {
+    const periodo = periodoDeValorBonoSupervisores_(valor);
+    if (/^\d{4}-\d{2}$/.test(periodo)) return periodo;
+  } catch (error) {}
+
+  const fecha = fechaHoraBonoSupervisores_(valor);
+  return fecha
+    ? Utilities.formatDate(fecha,"America/Lima","yyyy-MM")
+    : "";
+}
+
+
+function rangoPeriodoTecnicoV367_(hoja,columna,periodo) {
+  if (!hoja || hoja.getLastRow() <= 1) return null;
+
+  const valores = hoja.getRange(2,columna,hoja.getLastRow()-1,1).getValues();
+  let inicio = -1;
+  let fin = -1;
+
+  for (let i = 0; i < valores.length; i++) {
+    if (periodoTecnicoV367_(valores[i][0]) !== periodo) continue;
+    if (inicio < 0) inicio = i;
+    fin = i;
+  }
+
+  if (inicio < 0) return null;
+
+  // Después de la depuración las filas de cada período son contiguas.
+  // Si una edición manual rompe ese orden, se usa el rango completo como respaldo.
+  for (let i = inicio; i <= fin; i++) {
+    if (periodoTecnicoV367_(valores[i][0]) !== periodo) {
+      return {fila:2,cantidad:valores.length,filtrar:true};
+    }
+  }
+
+  return {
+    fila:inicio+2,
+    cantidad:fin-inicio+1,
+    filtrar:false
+  };
+}
+
+function recenciaTecnicaV367_(fila, indices) {
+  const posiciones = indices || [];
+
+  for (let i = 0; i < posiciones.length; i++) {
+    const fecha = fechaHoraBonoSupervisores_(fila[posiciones[i]]);
+    if (fecha) return fecha.getTime();
+  }
+
+  const version = String(fila[1] || fila[2] || "");
+  const coincidencia = version.match(/(\d{10,})$/);
+  return coincidencia ? Number(coincidencia[1]) || 0 : 0;
+}
+
+function depurarResumenDashboardV367_(hoja) {
+  if (!hoja || hoja.getLastRow() <= 1) return 0;
+
+  const datos = hoja.getRange(2,1,hoja.getLastRow()-1,9).getValues();
+  const mapa = {};
+
+  datos.forEach(function(fila) {
+    const periodo = periodoTecnicoV367_(fila[0]);
+    const cuadrilla = normalizarCuadrilla(fila[3]);
+    if (!periodo || !cuadrilla) return;
+
+    const clave = periodo + "|" + cuadrilla;
+    const recencia = recenciaTecnicaV367_(fila,[2]);
+
+    if (!mapa[clave] || recencia >= mapa[clave].recencia) {
+      const copia = fila.slice(0,9);
+      copia[0] = periodo;
+      copia[1] = String(copia[1] || "");
+      mapa[clave] = {fila:copia,recencia:recencia};
+    }
+  });
+
+  const filas = Object.keys(mapa)
+    .sort()
+    .map(function(clave){ return mapa[clave].fila; });
+
+  hoja.clearContents();
+  hoja.getRange(1,1,1,9).setValues([[
+    "PERIODO","VERSION_FUENTE","ACTUALIZADO_AL","CUADRILLA",
+    "SEDE","PLATAFORMA","SUPERVISOR","USUARIO","RESUMEN_JSON"
+  ]]);
+
+  hoja.getRange(1,1,hoja.getMaxRows(),2).setNumberFormat("@");
+
+  if (filas.length) {
+    hoja.getRange(2,1,filas.length,9).setValues(filas);
+  }
+
+  hoja.setFrozenRows(1);
+  try { hoja.hideColumns(9); } catch (error) {}
+  return filas.length;
+}
+
+function depurarSlaOrdenesV367_(hoja) {
+  if (!hoja || hoja.getLastRow() <= 1) return 0;
+
+  const datos = hoja.getRange(2,1,hoja.getLastRow()-1,24).getValues();
+  const mapa = {};
+
+  datos.forEach(function(fila) {
+    const periodo = periodoTecnicoV367_(fila[1]);
+    const codigo = normalizarIdentificadorMapa(fila[3]);
+    if (!periodo || !codigo) return;
+
+    const clave = periodo + "|" + codigo;
+    const recencia = recenciaTecnicaV367_(fila,[23,22,13,12]);
+
+    if (!mapa[clave] || recencia >= mapa[clave].recencia) {
+      const copia = fila.slice(0,24);
+      copia[1] = periodo;
+      copia[2] = String(copia[2] || "");
+      copia[3] = String(copia[3] || "");
+      copia[4] = String(copia[4] || "");
+      mapa[clave] = {fila:copia,recencia:recencia};
+    }
+  });
+
+  const encabezados = encabezadosSlaOrdenesV363_();
+  const filas = Object.keys(mapa)
+    .sort()
+    .map(function(clave){ return mapa[clave].fila; });
+
+  hoja.clearContents();
+  hoja.getRange(1,1,1,encabezados.length).setValues([encabezados]);
+  hoja.getRange(1,2,hoja.getMaxRows(),4).setNumberFormat("@");
+
+  if (filas.length) {
+    hoja.getRange(2,1,filas.length,encabezados.length).setValues(filas);
+    hoja.getRange(2,13,filas.length,2).setNumberFormat("dd/mm/yyyy hh:mm");
+    hoja.getRange(2,24,filas.length,1).setNumberFormat("dd/mm/yyyy hh:mm");
+  }
+
+  hoja.setFrozenRows(1);
+  try { hoja.hideColumns(3); } catch (error) {}
+  return filas.length;
+}
+
+function depurarHojaTecnicaUnaVezV367_(hoja,tipo) {
+  try {
+    const propiedades = PropertiesService.getScriptProperties();
+    const clave = tipo === "SLA"
+      ? MV367_DEPURACION_SLA_KEY_
+      : MV367_DEPURACION_DASHBOARD_KEY_;
+
+    if (propiedades.getProperty(clave) === MV365_ESQUEMA_RESUMEN_) return;
+
+    if (tipo === "SLA") depurarSlaOrdenesV367_(hoja);
+    else depurarResumenDashboardV367_(hoja);
+
+    propiedades.setProperty(clave,MV365_ESQUEMA_RESUMEN_);
+  } catch (error) {
+    console.warn("V367: no se pudo depurar la hoja técnica " + tipo,error);
+  }
+}
+
+function asegurarHojaSlaOrdenesV363_() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  let hoja = ss.getSheetByName(HOJA_SLA_ORDENES_RESUMEN_V363);
+  if (!hoja) hoja = ss.insertSheet(HOJA_SLA_ORDENES_RESUMEN_V363);
+  const encabezados = encabezadosSlaOrdenesV363_();
+  if (hoja.getMaxColumns() < encabezados.length) {
+    hoja.insertColumnsAfter(hoja.getMaxColumns(),encabezados.length-hoja.getMaxColumns());
+  }
+  hoja.getRange(1,1,1,encabezados.length).setValues([encabezados]);
+  hoja.getRange(1,2,hoja.getMaxRows(),4).setNumberFormat("@");
+  hoja.setFrozenRows(1);
+  try { hoja.setTabColor("#0ea5e9"); } catch (error) {}
+  try { hoja.hideColumns(3); } catch (error) {}
+  depurarHojaTecnicaUnaVezV367_(hoja,"SLA");
+  return hoja;
+}
+
+function encabezadosSlaExcepcionesV363_() {
+  return [
+    "ID","PERIODO","CODIGO","CODIGO_PEDIDO","SEDE","CUADRILLA","SUPERVISOR","TIPO_GENERAL",
+    "MINUTOS_GESTION","SLA_MINUTOS","MOTIVO","COMENTARIO","EVIDENCIA","ESTADO",
+    "SOLICITADO_POR","FECHA_SOLICITUD","EVALUADO_POR","FECHA_EVALUACION","COMENTARIO_JEFATURA"
+  ];
+}
+
+function asegurarHojaSlaExcepcionesV363_() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  let hoja = ss.getSheetByName(HOJA_SLA_EXCEPCIONES_V363);
+  if (!hoja) hoja = ss.insertSheet(HOJA_SLA_EXCEPCIONES_V363);
+  const encabezados = encabezadosSlaExcepcionesV363_();
+  if (hoja.getMaxColumns() < encabezados.length) {
+    hoja.insertColumnsAfter(hoja.getMaxColumns(),encabezados.length-hoja.getMaxColumns());
+  }
+  hoja.getRange(1,1,1,encabezados.length).setValues([encabezados]);
+  hoja.setFrozenRows(1);
+  try { hoja.setTabColor("#f59e0b"); } catch (error) {}
+  return hoja;
+}
+
+function encabezadosConfiguracionRankingV363_() {
+  return [
+    "PERIODO","PRODUCCION_PCT","EFECTIVIDAD_PCT","SLA_PCT","OBSERVACIONES_PCT",
+    "RECABLEADO_PCT","VTRGAR_PCT","TOTAL_PCT","ESTADO","ACTUALIZADO_POR","FECHA_ACTUALIZACION"
+  ];
+}
+
+function asegurarHojaConfiguracionRankingV363_() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  let hoja = ss.getSheetByName(HOJA_CONFIGURACION_RANKING_V363);
+  if (!hoja) hoja = ss.insertSheet(HOJA_CONFIGURACION_RANKING_V363);
+  const encabezados = encabezadosConfiguracionRankingV363_();
+  if (hoja.getMaxColumns() < encabezados.length) {
+    hoja.insertColumnsAfter(hoja.getMaxColumns(),encabezados.length-hoja.getMaxColumns());
+  }
+  hoja.getRange(1,1,1,encabezados.length).setValues([encabezados]);
+  hoja.setFrozenRows(1);
+  try { hoja.setTabColor("#8b5cf6"); } catch (error) {}
+
+  const datos = hoja.getLastRow() > 1
+    ? hoja.getRange(2,1,hoja.getLastRow()-1,encabezados.length).getValues()
+    : [];
+  const periodos = {};
+  datos.forEach(function(fila){ periodos[String(fila[0] || "").trim()] = true; });
+  const nuevas = [];
+  // Julio se conserva como período cerrado con los pesos que ejecutaba la base anterior.
+  if (!periodos["2026-07"]) nuevas.push(["2026-07",35,30,0,10,12.5,12.5,100,"CERRADO","SISTEMA",new Date()]);
+  if (!periodos["2026-08"]) nuevas.push(["2026-08",30,20,15,15,10,10,100,"ACTIVO","SISTEMA",new Date()]);
+  if (nuevas.length) hoja.getRange(hoja.getLastRow()+1,1,nuevas.length,encabezados.length).setValues(nuevas);
+  return hoja;
+}
+
+function periodoSlaV363_(valor) {
+  const texto = String(valor || "").trim();
+  return /^\d{4}-\d{2}$/.test(texto)
+    ? texto
+    : Utilities.formatDate(new Date(),"America/Lima","yyyy-MM");
+}
+
+function pesosRankingV363_(entrada) {
+  const origen = entrada || {};
+  const salida = {
+    PRODUCCION:Number(origen.PRODUCCION),
+    EFECTIVIDAD:Number(origen.EFECTIVIDAD),
+    SLA:Number(origen.SLA),
+    OBSERVACIONES:Number(origen.OBSERVACIONES),
+    RECABLEADO:Number(origen.RECABLEADO),
+    VTRGAR:Number(origen.VTRGAR)
+  };
+  Object.keys(salida).forEach(function(clave) {
+    if (!isFinite(salida[clave]) || salida[clave] < 0 || salida[clave] > 100) {
+      throw new Error("El peso de " + clave + " debe estar entre 0% y 100%");
+    }
+    salida[clave] = redondearBonoSupervisores_(salida[clave],2);
+  });
+  const total = redondearBonoSupervisores_(Object.keys(salida).reduce(function(s,clave){return s+salida[clave];},0),2);
+  if (Math.abs(total-100) > 0.001) throw new Error("La suma de los pesos del Ranking debe ser exactamente 100%. Actualmente suma " + total + "%");
+  return {pesos:salida,total:total};
+}
+
+function configuracionRankingV363_(periodoEntrada) {
+  const periodo = periodoSlaV363_(periodoEntrada);
+  const hoja = asegurarHojaConfiguracionRankingV363_();
+  const datos = hoja.getLastRow() > 1 ? hoja.getRange(2,1,hoja.getLastRow()-1,11).getValues() : [];
+  for (let i=0;i<datos.length;i++) {
+    const fila = datos[i];
+    if (String(fila[0] || "").trim() !== periodo) continue;
+    const validada = pesosRankingV363_({
+      PRODUCCION:fila[1],EFECTIVIDAD:fila[2],SLA:fila[3],OBSERVACIONES:fila[4],RECABLEADO:fila[5],VTRGAR:fila[6]
+    });
+    return {
+      periodo:periodo,pesos:validada.pesos,total:validada.total,
+      estado:normalizarTexto(fila[8] || "ACTIVO"),actualizadoPor:fila[9] || "",fechaActualizacion:fila[10] || "",
+      configurado:true
+    };
+  }
+  const defecto = pesosRankingV363_(MV363_PESOS_RANKING_DEFAULT_);
+  return {periodo:periodo,pesos:defecto.pesos,total:defecto.total,estado:"ACTIVO",actualizadoPor:"SISTEMA",fechaActualizacion:"",configurado:false};
+}
+
+function obtenerConfiguracionRankingV363(data) {
+  const usuario = obtenerUsuarioApp(data.usuario);
+  const perfil = normalizarTexto(usuario.perfil);
+  if (!["TECNICO","SUPERVISOR","JEFATURA","JEFATURA GENERAL","JEFATURA LIMA","JEFATURA OPERACIONES","JEFATURA DE OPERACIONES","OPERACIONES","GERENCIA","GERENCIA GENERAL","GERENCIA LIMA","ADMIN","ADMINISTRADOR"].includes(perfil)) {
+    throw new Error("No tienes permiso para consultar la configuración del Ranking");
+  }
+  return {
+    ok:true,modulo:"RANKING",accion:"OBTENER_CONFIGURACION",
+    configuracion:configuracionRankingV363_(data.periodo),
+    puedeEditar:esPerfilJefatura(perfil)
+  };
+}
+
+function guardarConfiguracionRankingV363(data) {
+  const usuario = obtenerUsuarioApp(data.usuario);
+  if (!esPerfilJefatura(usuario.perfil)) throw new Error("Solo Jefatura puede modificar los pesos del Ranking");
+  const periodo = periodoSlaV363_(data.periodo);
+  const validada = pesosRankingV363_(data.pesos || {});
+  const estado = normalizarTexto(data.estado || "ACTIVO");
+  if (!["ACTIVO","CERRADO"].includes(estado)) throw new Error("Estado de configuración no válido");
+  if (periodo === "2026-07" && estado !== "CERRADO") throw new Error("Julio 2026 está cerrado. Solo puede modificarse mediante una corrección expresa del cierre.");
+
+  const hoja = asegurarHojaConfiguracionRankingV363_();
+  const datos = hoja.getLastRow() > 1 ? hoja.getRange(2,1,hoja.getLastRow()-1,11).getValues() : [];
+  let filaDestino = 0;
+  for (let i=0;i<datos.length;i++) if (String(datos[i][0] || "").trim() === periodo) { filaDestino=i+2; break; }
+  if (!filaDestino) filaDestino = hoja.getLastRow()+1;
+  hoja.getRange(filaDestino,1,1,11).setValues([[
+    periodo,validada.pesos.PRODUCCION,validada.pesos.EFECTIVIDAD,validada.pesos.SLA,
+    validada.pesos.OBSERVACIONES,validada.pesos.RECABLEADO,validada.pesos.VTRGAR,
+    validada.total,estado,usuario.usuario,new Date()
+  ]]);
+  invalidarResumenDashboardRankingV361_();
+  return {ok:true,modulo:"RANKING",accion:"GUARDAR_CONFIGURACION",configuracion:configuracionRankingV363_(periodo)};
+}
+
+function mapaExcepcionesSlaV363_(periodo) {
+  const hoja = asegurarHojaSlaExcepcionesV363_();
+  const mapa = {};
+  if (hoja.getLastRow() <= 1) return mapa;
+  const datos = hoja.getRange(2,1,hoja.getLastRow()-1,19).getValues();
+  datos.forEach(function(fila,indice) {
+    if (String(fila[1] || "").trim() !== periodo) return;
+    const codigo = normalizarIdentificadorMapa(fila[2]);
+    if (!codigo) return;
+    mapa[codigo] = {
+      fila:indice+2,id:fila[0] || "",periodo:fila[1] || "",codigo:String(fila[2] || ""),codigoPedido:String(fila[3] || ""),
+      sede:normalizarTexto(fila[4]),cuadrilla:normalizarCuadrilla(fila[5]),supervisor:normalizarUsuario(fila[6]),
+      tipoGeneral:fila[7] || "",minutos:Number(fila[8])||0,slaMinutos:Number(fila[9])||0,
+      motivo:fila[10] || "",comentario:fila[11] || "",evidencia:fila[12] || "",
+      estado:normalizarTexto(fila[13] || "PENDIENTE"),solicitadoPor:fila[14] || "",fechaSolicitud:fila[15] || "",
+      evaluadoPor:fila[16] || "",fechaEvaluacion:fila[17] || "",comentarioJefatura:fila[18] || ""
+    };
+  });
+  return mapa;
+}
+
+function semaforoSlaV363_(porcentaje) {
+  const valor = Number(porcentaje) || 0;
+  if (valor < 60) return {codigo:"ROJO",icono:"🔴",texto:"CRÍTICO"};
+  if (valor < 80) return {codigo:"NARANJA",icono:"🟠",texto:"BAJO"};
+  if (valor < 90) return {codigo:"AMARILLO",icono:"🟡",texto:"EN SEGUIMIENTO"};
+  return {codigo:"VERDE",icono:"🟢",texto:"CONFORME"};
+}
+
+function tiposPartidaSlaV363_(datosBase,periodo) {
+  const mapa = {};
+  (datosBase || []).slice(1).forEach(function(fila) {
+    if (periodoDeValorBonoSupervisores_(fila[1]) !== periodo) return;
+    const partida = normalizarTexto(fila[13] || fila[14]);
+    const codigoLiquidacion = normalizarIdentificadorMapa(fila[11]);
+    const codigoPedido = normalizarIdentificadorMapa(fila[9]);
+    if (codigoLiquidacion && partida) mapa[codigoLiquidacion] = partida;
+    if (codigoPedido && partida && !mapa[codigoPedido]) mapa[codigoPedido] = partida;
+  });
+  return mapa;
+}
+
+function nuevoResumenSlaCuadrillaV363_(cuadrilla) {
+  return {
+    cuadrilla:cuadrilla,evaluables:0,cumplenBruto:0,cumplenAjustado:0,fueraBruto:0,fueraAjustado:0,
+    finalizadasDetectadas:0,noEvaluables:0,sinTiempos:0,sinPartida:0,sinParametro:0,
+    instalacionesTotal:0,instalacionesCumplenBruto:0,instalacionesCumplenAjustado:0,
+    visitasTecnicasTotal:0,visitasTecnicasCumplenBruto:0,visitasTecnicasCumplenAjustado:0,
+    excepcionesPendientes:0,excepcionesAprobadas:0,excepcionesRechazadas:0,detalle:[]
+  };
+}
+
+function finalizarResumenSlaCuadrillaV363_(item) {
+  item.slaBruto = porcentajeBonoSupervisores_(item.cumplenBruto,item.evaluables) || 0;
+  item.slaAjustado = porcentajeBonoSupervisores_(item.cumplenAjustado,item.evaluables) || 0;
+  item.instalacionesBruto = porcentajeBonoSupervisores_(item.instalacionesCumplenBruto,item.instalacionesTotal) || 0;
+  item.instalacionesAjustado = porcentajeBonoSupervisores_(item.instalacionesCumplenAjustado,item.instalacionesTotal) || 0;
+  item.visitasTecnicasBruto = porcentajeBonoSupervisores_(item.visitasTecnicasCumplenBruto,item.visitasTecnicasTotal) || 0;
+  item.visitasTecnicasAjustado = porcentajeBonoSupervisores_(item.visitasTecnicasCumplenAjustado,item.visitasTecnicasTotal) || 0;
+  item.cumplen = item.cumplenAjustado;
+  item.vencidas = item.fueraAjustado;
+  item.instalacionesCumplen = item.instalacionesCumplenAjustado;
+  item.visitasTecnicasCumplen = item.visitasTecnicasCumplenAjustado;
+  item.semaforo = semaforoSlaV363_(item.slaAjustado);
+  return item;
+}
+
+function resumenSlaOrdenesV363_(ordenes) {
+  const mapa = {};
+  (ordenes || []).forEach(function(o) {
+    const cuadrilla = normalizarCuadrilla(o.cuadrilla);
+    if (!cuadrilla) return;
+    if (!mapa[cuadrilla]) mapa[cuadrilla] = nuevoResumenSlaCuadrillaV363_(cuadrilla);
+    const item = mapa[cuadrilla];
+    item.finalizadasDetectadas++;
+    if (!o.evaluable) {
+      item.noEvaluables++;
+      if (o.resultado === "SIN TIEMPOS") item.sinTiempos++;
+      else if (o.resultado === "SIN PARTIDA") item.sinPartida++;
+      else if (o.resultado === "SIN PARÁMETRO") item.sinParametro++;
+      return;
+    }
+    item.evaluables++;
+    const instalacion = o.tipoGeneral === "INSTALACIÓN";
+    if (instalacion) item.instalacionesTotal++; else item.visitasTecnicasTotal++;
+    if (o.cumpleBruto) {
+      item.cumplenBruto++;
+      if (instalacion) item.instalacionesCumplenBruto++; else item.visitasTecnicasCumplenBruto++;
+    } else item.fueraBruto++;
+    if (o.cumpleAjustado) {
+      item.cumplenAjustado++;
+      if (instalacion) item.instalacionesCumplenAjustado++; else item.visitasTecnicasCumplenAjustado++;
+    } else item.fueraAjustado++;
+    if (o.excepcionEstado === "PENDIENTE") item.excepcionesPendientes++;
+    if (o.excepcionEstado === "APROBADA") item.excepcionesAprobadas++;
+    if (o.excepcionEstado === "RECHAZADA") item.excepcionesRechazadas++;
+    if ((!o.cumpleAjustado || o.excepcionEstado === "PENDIENTE") && item.detalle.length < 30) {
+      item.detalle.push({
+        codigo:o.codigo,codigoPedido:o.codigoPedido,cuadrilla:o.cuadrilla,tipoGeneral:o.tipoGeneral,
+        tipoTrabajo:o.tipoTrabajo,partida:o.partida,minutos:o.minutosGestion,slaMinutos:o.slaMinutos,
+        exceso:o.excesoMinutos,resultado:o.resultado,excepcionEstado:o.excepcionEstado
+      });
+    }
+  });
+  Object.keys(mapa).forEach(function(c){ finalizarResumenSlaCuadrillaV363_(mapa[c]); });
+  return mapa;
+}
+
+function construirSlaOrdenesResumenV363_(periodo,version) {
+  const datosBase = datosHojaBonoSupervisores_(HOJA_BASE_OPERATIVA_HISTORICA);
+  const datosMapa = datosHojaBonoSupervisores_(HOJA_MAPA_OPERATIVO);
+  const parametros = parametrosSlaWinVigentes_(periodo).mapa || {};
+  const tipos = tiposPartidaSlaV363_(datosBase,periodo);
+  const usuarios = obtenerMapaUsuarios();
+  const excepciones = mapaExcepcionesSlaV363_(periodo);
+  const cabecera = datosMapa[0] || [];
+  const iOrden = indiceCabeceraBonoSupervisores_(cabecera,["ORDEN_ID","ORDEN ID"]);
+  const iTipoTrabajo = indiceCabeceraBonoSupervisores_(cabecera,["TIPO_TRABAJO","TIPO TRABAJO"]);
+  const iCuadrilla = indiceCabeceraBonoSupervisores_(cabecera,["CUADRILLA"]);
+  const iEstado = indiceCabeceraBonoSupervisores_(cabecera,["ESTADO"]);
+  const iFechaSolicitud = indiceCabeceraBonoSupervisores_(cabecera,["FECHA_SOLICITUD","FECHA SOLICITUD"]);
+  const iFechaFin = indiceCabeceraBonoSupervisores_(cabecera,["FECHA_FIN_VISITA","FECHA FIN VISITA"]);
+  const iFechaInicio = indiceCabeceraBonoSupervisores_(cabecera,["FECHA_INICIO_VISITA","FECHA INICIO VISITA"]);
+  const iMotivo = indiceCabeceraBonoSupervisores_(cabecera,["MOTIVO_FINALIZACION","MOTIVO FINALIZACION"]);
+  const iCodigoCliente = indiceCabeceraBonoSupervisores_(cabecera,["CODIGO_CLIENTE","CODIGO CLIENTE","CODIGO_PEDIDO","CODIGO PEDIDO"]);
+  const iRegion = indiceCabeceraBonoSupervisores_(cabecera,["REGION","SEDE"]);
+  const iFechaImportacion = indiceCabeceraBonoSupervisores_(cabecera,["FECHA_IMPORTACION","FECHA IMPORTACION"]);
+  const mapaOrdenes = {};
+  const ahora = new Date();
+
+  (datosMapa || []).slice(1).forEach(function(fila) {
+    const estado = normalizarTexto(iEstado >= 0 ? fila[iEstado] : "");
+    if (estado !== "FINALIZADA") return;
+    const fechaFin = fechaHoraBonoSupervisores_(iFechaFin >= 0 ? fila[iFechaFin] : "");
+    const fechaInicio = fechaHoraBonoSupervisores_(iFechaInicio >= 0 ? fila[iFechaInicio] : "");
+    const fechaSolicitud = fechaHoraBonoSupervisores_(iFechaSolicitud >= 0 ? fila[iFechaSolicitud] : "");
+    const fechaPeriodo = fechaFin || fechaInicio || fechaSolicitud;
+    if (!fechaPeriodo || Utilities.formatDate(fechaPeriodo,"America/Lima","yyyy-MM") !== periodo) return;
+    const codigoOriginal = iOrden >= 0 ? fila[iOrden] : "";
+    const codigo = normalizarIdentificadorMapa(codigoOriginal);
+    if (!codigo) return;
+    const cuadrilla = normalizarCuadrilla(iCuadrilla >= 0 ? fila[iCuadrilla] : "");
+    if (!cuadrilla) return;
+    const tipoTrabajo = normalizarTexto(iTipoTrabajo >= 0 ? fila[iTipoTrabajo] : "");
+    const motivo = normalizarTexto(iMotivo >= 0 ? fila[iMotivo] : "");
+    const esInstalacion = (tipoTrabajo === "INSTALACION" || tipoTrabajo === "INSTALACION POSIBLE FRAUDE") && (motivo === "" || motivo === "INSTALADO");
+    const tipoGeneral = esInstalacion ? "INSTALACIÓN" : "VISITA TÉCNICA";
+    const partida = tipos[codigo] || "";
+    const parametro = partida ? parametros[partida] : null;
+    let evaluable = true;
+    let resultado = "";
+    let minutos = 0;
+    let slaMinutos = parametro ? Number(parametro.minutos)||0 : 0;
+    if (!fechaInicio || !fechaFin || fechaFin < fechaInicio) { evaluable=false; resultado="SIN TIEMPOS"; }
+    else if (!partida) { evaluable=false; resultado="SIN PARTIDA"; }
+    else if (!parametro) { evaluable=false; resultado="SIN PARÁMETRO"; }
+    if (fechaInicio && fechaFin && fechaFin >= fechaInicio) minutos = Math.round((fechaFin.getTime()-fechaInicio.getTime())/60000);
+    const cumpleBruto = evaluable ? minutos <= slaMinutos : false;
+    const excepcion = excepciones[codigo] || {};
+    const excepcionEstado = normalizarTexto(excepcion.estado || "SIN SOLICITUD");
+    const cumpleAjustado = evaluable ? (cumpleBruto || excepcionEstado === "APROBADA") : false;
+    const exceso = evaluable ? Math.max(0,minutos-slaMinutos) : 0;
+    if (evaluable) {
+      if (cumpleBruto) resultado = "DENTRO SLA";
+      else if (excepcionEstado === "APROBADA") resultado = "EXCEPCIÓN APROBADA";
+      else if (excepcionEstado === "PENDIENTE") resultado = "FUERA SLA - EXCEPCIÓN PENDIENTE";
+      else resultado = "FUERA SLA";
+    }
+    const u = usuarios[cuadrilla] || {};
+    const fechaImportacion = fechaHoraBonoSupervisores_(iFechaImportacion >= 0 ? fila[iFechaImportacion] : "");
+    const itemOrden = {
+      id:periodo+"|"+codigo,periodo:periodo,versionFuente:String(version),codigo:String(codigoOriginal || codigo),
+      codigoPedido:String(iCodigoCliente >= 0 ? fila[iCodigoCliente] || "" : ""),
+      sede:u.sede || normalizarTexto(iRegion >= 0 ? fila[iRegion] : ""),cuadrilla:cuadrilla,
+      supervisor:normalizarUsuario(u.usuarioSupervisor || ""),tipoGeneral:tipoGeneral,tipoTrabajo:tipoTrabajo,
+      motivoFinalizacion:motivo || "VACÍO",partida:partida,inicio:fechaInicio,fin:fechaFin,
+      minutosGestion:minutos,slaMinutos:slaMinutos,evaluable:evaluable,cumpleBruto:cumpleBruto,
+      excepcionEstado:excepcionEstado,cumpleAjustado:cumpleAjustado,excesoMinutos:exceso,resultado:resultado,
+      fechaImportacion:iFechaImportacion >= 0 ? fila[iFechaImportacion] : "",actualizadoAl:ahora,
+      _recencia:(fechaImportacion || fechaFin || fechaInicio || fechaSolicitud || new Date(0)).getTime()
+    };
+    const anterior = mapaOrdenes[codigo];
+    if (!anterior || itemOrden._recencia >= anterior._recencia) mapaOrdenes[codigo] = itemOrden;
+  });
+
+  // La hoja técnica conserva una sola fila por Código. Si la fuente contiene
+  // varias actualizaciones del mismo trabajo, se usa el registro más reciente.
+  const ordenes = Object.keys(mapaOrdenes).sort().map(function(codigo) {
+    const item = mapaOrdenes[codigo];
+    delete item._recencia;
+    return item;
+  });
+
+  const hoja = asegurarHojaSlaOrdenesV363_();
+  const encabezados = encabezadosSlaOrdenesV363_();
+  const existentes = hoja.getLastRow() > 1 ? hoja.getRange(2,1,hoja.getLastRow()-1,encabezados.length).getValues() : [];
+  const conservar = existentes.filter(function(fila){
+    return periodoTecnicoV367_(fila[1]) !== periodo;
+  });
+  const nuevas = ordenes.map(function(o){return [
+    o.id,o.periodo,o.versionFuente,o.codigo,o.codigoPedido,o.sede,o.cuadrilla,o.supervisor,o.tipoGeneral,o.tipoTrabajo,
+    o.motivoFinalizacion,o.partida,o.inicio || "",o.fin || "",o.minutosGestion,o.slaMinutos,o.evaluable?"SI":"NO",
+    o.cumpleBruto?"SI":"NO",o.excepcionEstado,o.cumpleAjustado?"SI":"NO",o.excesoMinutos,o.resultado,o.fechaImportacion,o.actualizadoAl
+  ];});
+  const salida = [encabezados].concat(conservar,nuevas);
+  hoja.clearContents();
+  hoja.getRange(1,2,hoja.getMaxRows(),4).setNumberFormat("@");
+  hoja.getRange(1,1,salida.length,encabezados.length).setValues(salida);
+  if (salida.length > 1) {
+    hoja.getRange(2,13,salida.length-1,2).setNumberFormat("dd/mm/yyyy hh:mm");
+    hoja.getRange(2,24,salida.length-1,1).setNumberFormat("dd/mm/yyyy hh:mm");
+  }
+  return {periodo:periodo,version:String(version),ordenes:ordenes,mapaCuadrillas:resumenSlaOrdenesV363_(ordenes)};
+}
+
+function leerSlaOrdenesResumenV363_(periodo,version) {
+  const hoja = asegurarHojaSlaOrdenesV363_();
+  const rango = rangoPeriodoTecnicoV367_(hoja,2,periodo);
+  if (!rango || rango.cantidad <= 0) return [];
+
+  const datos = hoja.getRange(rango.fila,1,rango.cantidad,24).getValues();
+  const lista = [];
+
+  datos.forEach(function(fila) {
+    if (
+      periodoTecnicoV367_(fila[1]) !== periodo ||
+      String(fila[2] || "") !== String(version)
+    ) return;
+
+    lista.push({
+      id:fila[0],periodo:periodo,versionFuente:String(fila[2] || ""),
+      codigo:String(fila[3] || ""),codigoPedido:String(fila[4] || ""),
+      sede:normalizarTexto(fila[5]),cuadrilla:normalizarCuadrilla(fila[6]),
+      supervisor:normalizarUsuario(fila[7]),tipoGeneral:fila[8],
+      tipoTrabajo:fila[9],motivoFinalizacion:fila[10],partida:fila[11],
+      inicio:fila[12],fin:fila[13],minutosGestion:Number(fila[14])||0,
+      slaMinutos:Number(fila[15])||0,
+      evaluable:normalizarTexto(fila[16])==="SI",
+      cumpleBruto:normalizarTexto(fila[17])==="SI",
+      excepcionEstado:normalizarTexto(fila[18] || "SIN SOLICITUD"),
+      cumpleAjustado:normalizarTexto(fila[19])==="SI",
+      excesoMinutos:Number(fila[20])||0,resultado:fila[21] || "",
+      fechaImportacion:fila[22] || "",actualizadoAl:fila[23] || ""
+    });
+  });
+
+  return lista;
+}
+
+function asegurarSlaOrdenesResumenV363_(periodo,forzar) {
+  const version = versionResumenDashboardRankingV361_();
+  if (!forzar) {
+    const lista = leerSlaOrdenesResumenV363_(periodo,version);
+    if (lista.length) return {periodo:periodo,version:String(version),ordenes:lista,mapaCuadrillas:resumenSlaOrdenesV363_(lista)};
+  }
+  const lock = LockService.getScriptLock();
+  lock.waitLock(30000);
+  try {
+    if (!forzar) {
+      const lista = leerSlaOrdenesResumenV363_(periodo,version);
+      if (lista.length) return {periodo:periodo,version:String(version),ordenes:lista,mapaCuadrillas:resumenSlaOrdenesV363_(lista)};
+    }
+    return construirSlaOrdenesResumenV363_(periodo,version);
+  } finally { lock.releaseLock(); }
+}
+
+function consolidarResumenesSlaV363_(mapa) {
+  const total = nuevoResumenSlaCuadrillaV363_("CONSOLIDADO");
+  Object.keys(mapa || {}).forEach(function(c) {
+    const item = mapa[c] || {};
+    ["evaluables","cumplenBruto","cumplenAjustado","fueraBruto","fueraAjustado","finalizadasDetectadas","noEvaluables","sinTiempos","sinPartida","sinParametro","instalacionesTotal","instalacionesCumplenBruto","instalacionesCumplenAjustado","visitasTecnicasTotal","visitasTecnicasCumplenBruto","visitasTecnicasCumplenAjustado","excepcionesPendientes","excepcionesAprobadas","excepcionesRechazadas"].forEach(function(k){total[k]+=Number(item[k])||0;});
+  });
+  return finalizarResumenSlaCuadrillaV363_(total);
+}
+
+function filtrarOrdenesSlaV363_(ordenes,usuario,data) {
+  const perfil = normalizarTexto(usuario.perfil);
+  const cuadrillaUsuario = normalizarCuadrilla(usuario.cuadrilla);
+  const sedeUsuario = normalizarTexto(usuario.sede);
+  const usuarioNormal = normalizarUsuario(usuario.usuario);
+  const cuadrillaFiltro = normalizarCuadrilla(data.cuadrilla || "");
+  const grupoFiltro = normalizarTexto(data.tipoGeneral || "");
+  const soloFuera = ["SI","TRUE","1"].includes(normalizarTexto(data.soloFuera));
+  return (ordenes || []).filter(function(o) {
+    if (perfil === "TECNICO" && normalizarCuadrilla(o.cuadrilla) !== cuadrillaUsuario) return false;
+    if (perfil === "SUPERVISOR") {
+      const pertenece = normalizarUsuario(o.supervisor) === usuarioNormal || (!o.supervisor && normalizarTexto(o.sede) === sedeUsuario);
+      if (!pertenece) return false;
+    }
+    if (cuadrillaFiltro && normalizarCuadrilla(o.cuadrilla) !== cuadrillaFiltro) return false;
+    if (grupoFiltro && normalizarTexto(o.tipoGeneral) !== grupoFiltro) return false;
+    if (soloFuera && (!o.evaluable || o.cumpleAjustado)) return false;
+    return true;
+  });
+}
+
+
+function filtrarModoSlaV367_(ordenes,modo) {
+  const vista = normalizarTexto(modo || "TODOS");
+
+  if (vista === "FUERA") {
+    return (ordenes || []).filter(function(o){
+      return o.evaluable && !o.cumpleAjustado;
+    });
+  }
+
+  if (vista === "EXCEPCIONES") {
+    return (ordenes || []).filter(function(o){
+      return ["PENDIENTE","APROBADA","RECHAZADA"].includes(
+        normalizarTexto(o.excepcionEstado)
+      );
+    });
+  }
+
+  if (vista === "PENDIENTES") {
+    return (ordenes || []).filter(function(o){
+      return normalizarTexto(o.excepcionEstado) === "PENDIENTE";
+    });
+  }
+
+  return ordenes || [];
+}
+
+function resumenSlaCompactoV367_(item) {
+  const copia = Object.assign({},item || {});
+  delete copia.detalle;
+  return copia;
+}
+
+function obtenerSlaGestionV363(data) {
+  const usuario = obtenerUsuarioApp(data.usuario);
+  const perfil = normalizarTexto(usuario.perfil);
+
+  if (![
+    "TECNICO","SUPERVISOR","JEFATURA","JEFATURA GENERAL",
+    "JEFATURA LIMA","JEFATURA OPERACIONES","JEFATURA DE OPERACIONES",
+    "OPERACIONES","GERENCIA","GERENCIA GENERAL","GERENCIA LIMA",
+    "ADMIN","ADMINISTRADOR"
+  ].includes(perfil)) {
+    throw new Error("No tienes permiso para consultar Tiempo de Gestión - SLA");
+  }
+
+  const periodo = periodoSlaV363_(data.periodo);
+  const info = asegurarSlaOrdenesResumenV363_(periodo,false);
+
+  // Primero se aplica solamente el alcance del usuario. El resumen siempre
+  // representa todo su ámbito y no solo la pestaña visible.
+  const alcance = filtrarOrdenesSlaV363_(
+    info.ordenes,
+    usuario,
+    Object.assign({},data,{soloFuera:"NO"})
+  );
+
+  const mapa = resumenSlaOrdenesV363_(alcance);
+  const modo = normalizarTexto(data.modo || "TODOS");
+  const detalle = filtrarModoSlaV367_(alcance,modo);
+  const limite = Math.max(20,Math.min(300,Number(data.limite)||120));
+
+  return {
+    ok:true,
+    modulo:"SLA_GESTION",
+    accion:"OBTENER",
+    periodo:periodo,
+    modo:modo,
+    periodos:periodosResumenDashboardRankingV361_(),
+    resumen:consolidarResumenesSlaV363_(mapa),
+    porCuadrilla:Object.keys(mapa).sort().map(function(k){
+      return resumenSlaCompactoV367_(mapa[k]);
+    }),
+    ordenes:detalle.slice(0,limite),
+    totalOrdenes:detalle.length,
+    totalAccesibles:alcance.length,
+    truncado:detalle.length > limite,
+    configuracionRanking:configuracionRankingV363_(periodo),
+    puedeSolicitar:perfil === "SUPERVISOR" || esPerfilJefatura(perfil),
+    puedeResolver:esPerfilJefatura(perfil),
+    puedeConfigurarRanking:esPerfilJefatura(perfil),
+    fuente:"SLA_ORDENES_RESUMEN",
+    calculadoEn:Utilities.formatDate(new Date(),"America/Lima","dd/MM/yyyy HH:mm")
+  };
+}
+
+function buscarOrdenSlaV363_(periodo,codigo) {
+  const info = asegurarSlaOrdenesResumenV363_(periodo,false);
+  const clave = normalizarIdentificadorMapa(codigo);
+  return info.ordenes.find(function(o){return normalizarIdentificadorMapa(o.codigo)===clave;}) || null;
+}
+
+function solicitarExcepcionSlaV363(data) {
+  const usuario = obtenerUsuarioApp(data.usuario);
+  const perfil = normalizarTexto(usuario.perfil);
+  if (!(perfil === "SUPERVISOR" || esPerfilJefatura(perfil))) throw new Error("Solo Supervisor o Jefatura pueden solicitar una excepción SLA");
+  const periodo = periodoSlaV363_(data.periodo);
+  const codigo = String(data.codigo || "").trim();
+  const orden = buscarOrdenSlaV363_(periodo,codigo);
+  if (!orden) throw new Error("No se encontró el Código en el resumen SLA del período");
+  if (!orden.evaluable) throw new Error("El Código no es evaluable para SLA");
+  if (orden.cumpleBruto) throw new Error("El Código ya cumple el SLA y no requiere excepción");
+  if (perfil === "SUPERVISOR") {
+    const mismoSupervisor = normalizarUsuario(orden.supervisor) === normalizarUsuario(usuario.usuario);
+    const respaldoSede = !orden.supervisor && normalizarTexto(orden.sede) === normalizarTexto(usuario.sede);
+    if (!mismoSupervisor && !respaldoSede) throw new Error("El Código no pertenece a sus cuadrillas asignadas");
+  }
+  const motivo = normalizarTexto(data.motivo || "");
+  const permitidos = ["METRAJE ELEVADO","DEMORA SOPORTE WIN","CAIDA DE SISTEMA O APLICATIVO","PROBLEMA DE RED O PLATAFORMA","ACCESO RESTRINGIDO","OTRA CAUSA"];
+  if (!permitidos.includes(motivo)) throw new Error("Seleccione un motivo válido");
+  const comentario = String(data.comentario || "").trim();
+  if (comentario.length < 8) throw new Error("Ingrese un comentario que sustente la excepción");
+  const existentes = mapaExcepcionesSlaV363_(periodo);
+  const anterior = existentes[normalizarIdentificadorMapa(codigo)];
+  if (anterior && ["PENDIENTE","APROBADA"].includes(anterior.estado)) throw new Error("El Código ya tiene una excepción " + anterior.estado.toLowerCase());
+  const hoja = asegurarHojaSlaExcepcionesV363_();
+  const ahora = new Date();
+  const id = "SLA-EX-"+Utilities.formatDate(ahora,"America/Lima","yyyyMMddHHmmss")+"-"+normalizarIdentificadorMapa(codigo).slice(-6);
+  hoja.appendRow([
+    id,periodo,orden.codigo,orden.codigoPedido,orden.sede,orden.cuadrilla,orden.supervisor,orden.tipoGeneral,
+    orden.minutosGestion,orden.slaMinutos,motivo,comentario,String(data.evidencia || "").trim(),"PENDIENTE",
+    usuario.usuario,ahora,"","",""
+  ]);
+  invalidarResumenDashboardRankingV361_();
+  invalidarCacheBonosSupervisores_();
+  return {ok:true,modulo:"SLA_GESTION",accion:"SOLICITAR_EXCEPCION",id:id,estado:"PENDIENTE"};
+}
+
+function resolverExcepcionSlaV363(data) {
+  const usuario = obtenerUsuarioApp(data.usuario);
+  if (!esPerfilJefatura(usuario.perfil)) throw new Error("Solo Jefatura puede aprobar o rechazar excepciones SLA");
+  const periodo = periodoSlaV363_(data.periodo);
+  const codigo = normalizarIdentificadorMapa(data.codigo);
+  const resultado = normalizarTexto(data.resultado || "");
+  if (!["APROBADA","RECHAZADA"].includes(resultado)) throw new Error("Resultado de evaluación no válido");
+  const mapa = mapaExcepcionesSlaV363_(periodo);
+  const item = mapa[codigo];
+  if (!item) throw new Error("No se encontró la solicitud de excepción");
+  if (item.estado !== "PENDIENTE") throw new Error("La solicitud ya fue evaluada");
+  const hoja = asegurarHojaSlaExcepcionesV363_();
+  hoja.getRange(item.fila,14,1,6).setValues([[
+    resultado,item.solicitadoPor,item.fechaSolicitud,usuario.usuario,new Date(),String(data.comentarioJefatura || "").trim()
+  ]]);
+  invalidarResumenDashboardRankingV361_();
+  invalidarCacheBonosSupervisores_();
+  return {ok:true,modulo:"SLA_GESTION",accion:"RESOLVER_EXCEPCION",codigo:item.codigo,estado:resultado};
+}
+
+function reconstruirSlaPeriodoV363(data) {
+  const usuario = obtenerUsuarioApp(data.usuario);
+  if (!esPerfilJefatura(usuario.perfil)) throw new Error("Solo Jefatura puede reconstruir el resumen SLA");
+  const periodo = periodoSlaV363_(data.periodo);
+  invalidarResumenDashboardRankingV361_();
+  invalidarCacheBonosSupervisores_();
+  const resumen = asegurarResumenDashboardRankingV361_(periodo,true);
+  const info = asegurarSlaOrdenesResumenV363_(periodo,false);
+  return {ok:true,modulo:"SLA_GESTION",accion:"RECONSTRUIR",periodo:periodo,cuadrillas:resumen.length,ordenes:info.ordenes.length};
+}
+
+/* =========================================================
+   V361 - RESUMEN CONSOLIDADO DASHBOARD / RANKING / BONOS
+   Una fila JSON por período y cuadrilla.
+   La hoja es técnica, automática y no reemplaza ninguna fuente.
+========================================================= */
+
+function invalidarResumenDashboardRankingV361_() {
+  try {
+    PropertiesService.getScriptProperties().setProperty(
+      MV361_VERSION_RESUMEN_,
+      String(Date.now())
+    );
+  } catch (error) {
+    // La invalidación es una optimización; nunca bloquea una escritura.
+  }
+}
+
+function versionResumenDashboardRankingV361_() {
+  try {
+    const propiedades = PropertiesService.getScriptProperties();
+    let version = propiedades.getProperty(MV361_VERSION_RESUMEN_);
+    if (!version) {
+      version = String(Date.now());
+      propiedades.setProperty(MV361_VERSION_RESUMEN_,version);
+    }
+    return MV365_ESQUEMA_RESUMEN_ + "|" + version;
+  } catch (error) {
+    return MV365_ESQUEMA_RESUMEN_ + "|1";
+  }
+}
+
+function asegurarHojaResumenDashboardRankingV361_() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  let hoja = ss.getSheetByName(HOJA_RESUMEN_DASHBOARD_RANKING_V361);
+  if (!hoja) hoja = ss.insertSheet(HOJA_RESUMEN_DASHBOARD_RANKING_V361);
+  if (hoja.getMaxColumns() < 9) hoja.insertColumnsAfter(hoja.getMaxColumns(),9-hoja.getMaxColumns());
+  hoja.getRange(1,1,1,9).setValues([[
+    "PERIODO","VERSION_FUENTE","ACTUALIZADO_AL","CUADRILLA",
+    "SEDE","PLATAFORMA","SUPERVISOR","USUARIO","RESUMEN_JSON"
+  ]]);
+  hoja.getRange(1,1,hoja.getMaxRows(),2).setNumberFormat("@");
+  hoja.setFrozenRows(1);
+  try { hoja.setTabColor("#2563eb"); } catch (error) {}
+  try { hoja.hideColumns(9); } catch (error) {}
+  depurarHojaTecnicaUnaVezV367_(hoja,"DASHBOARD");
+  return hoja;
+}
+
+function periodoResumenDashboardRankingV361_(valor) {
+  const texto = String(valor || "").trim();
+  return /^\d{4}-\d{2}$/.test(texto)
+    ? texto
+    : Utilities.formatDate(new Date(),"America/Lima","yyyy-MM");
+}
+
+function fechaResumenDashboardRankingV361_(valor) {
+  if (valor instanceof Date && !isNaN(valor.getTime())) return valor;
+  return convertirFechaRanking(valor);
+}
+
+function fechaVisibleResumenDashboardRankingV361_(fecha) {
+  return fecha instanceof Date && !isNaN(fecha.getTime())
+    ? Utilities.formatDate(fecha,"America/Lima","dd/MM/yyyy")
+    : "";
+}
+
+function porcentajeResumenDashboardRankingV361_(valor) {
+  return redondearBonoSupervisores_(porcentajeDatoDashboardBono_(valor),2);
+}
+
+function catalogoDetalleResumenDashboardRankingV361_(datos) {
+  const mapa = {};
+  (datos || []).slice(1).forEach(function(fila) {
+    const codigo = String(fila[0] || "").trim();
+    const tipo = String(fila[1] || codigo || "TRABAJO REGISTRADO").trim();
+    const plataforma = normalizarTexto(fila[2] || "");
+    const puntaje = numeroProduccion(fila[3]);
+    const grupo = normalizarTexto(fila[4] || "OTROS").replace(/\s+/g,"_");
+    if (!codigo) return;
+    mapa[codigo] = {tipo:tipo,plataforma:plataforma,puntaje:puntaje,grupo:grupo || "OTROS"};
+  });
+  return mapa;
+}
+
+function produccionDetalleResumenDashboardRankingV361_(datos,catalogo,periodo) {
+  const mapa = {};
+  let fechaMaxima = null;
+  (datos || []).slice(1).forEach(function(fila) {
+    if (periodoDeValorBonoSupervisores_(fila[2]) !== periodo) return;
+    const cuadrilla = normalizarCuadrilla(fila[1]);
+    if (!cuadrilla) return;
+    const codigo = String(fila[3] || "").trim();
+    const cantidad = numeroProduccion(fila[4]);
+    const cat = catalogo[codigo] || {tipo:codigo || "TRABAJO REGISTRADO",puntaje:1,grupo:"OTROS",plataforma:""};
+    const puntos = cantidad * (Number(cat.puntaje) || 0);
+    if (!mapa[cuadrilla]) mapa[cuadrilla] = {
+      usuario:fila[0] || "ADMIN",produccion:0,ordenes:0,
+      detalle:{totalOrdenes:0,totalPuntos:0,grupos:{},tipos:{},fechas:{}}
+    };
+    const item = mapa[cuadrilla];
+    item.ordenes += cantidad;
+    item.produccion += puntos;
+    item.detalle.totalOrdenes += cantidad;
+    item.detalle.totalPuntos += puntos;
+    const grupo = cat.grupo || "OTROS";
+    if (!item.detalle.grupos[grupo]) item.detalle.grupos[grupo] = {cantidad:0,puntos:0};
+    item.detalle.grupos[grupo].cantidad += cantidad;
+    item.detalle.grupos[grupo].puntos += puntos;
+    const tipo = cat.tipo || codigo || "TRABAJO REGISTRADO";
+    if (!item.detalle.tipos[tipo]) item.detalle.tipos[tipo] = {cantidad:0,puntos:0,puntaje:Number(cat.puntaje)||0};
+    item.detalle.tipos[tipo].cantidad += cantidad;
+    item.detalle.tipos[tipo].puntos += puntos;
+    const fechaTexto = String(fila[2] || "SIN FECHA");
+    if (!item.detalle.fechas[fechaTexto]) item.detalle.fechas[fechaTexto] = {cantidad:0,puntos:0};
+    item.detalle.fechas[fechaTexto].cantidad += cantidad;
+    item.detalle.fechas[fechaTexto].puntos += puntos;
+    const fecha = fechaResumenDashboardRankingV361_(fila[2]);
+    if (fecha && (!fechaMaxima || fecha > fechaMaxima)) fechaMaxima = fecha;
+  });
+  return {mapa:mapa,fechaMaxima:fechaMaxima};
+}
+
+function efectividadDetalleResumenDashboardRankingV361_(datos,periodo) {
+  const mapa = {};
+  let fechaMaxima = null;
+  (datos || []).slice(1).forEach(function(fila) {
+    if (periodoDeValorBonoSupervisores_(fila[3]) !== periodo) return;
+    const cuadrilla = normalizarCuadrilla(fila[2]);
+    if (!cuadrilla) return;
+    mapa[cuadrilla] = {
+      usuario:fila[1] || "ADMIN",fecha:fila[3],
+      finalizadas:Number(fila[4])||0,canceladas:Number(fila[5])||0,
+      regestion:Number(fila[6])||0,reprogramadas:Number(fila[7])||0,
+      total:Number(fila[8])||0,efectividad:porcentajeResumenDashboardRankingV361_(fila[9])
+    };
+    const fecha = fechaResumenDashboardRankingV361_(fila[3]);
+    if (fecha && (!fechaMaxima || fecha > fechaMaxima)) fechaMaxima = fecha;
+  });
+  return {mapa:mapa,fechaMaxima:fechaMaxima};
+}
+
+function recableadoDetalleResumenDashboardRankingV361_(datos,periodo) {
+  const mapa = {};
+  (datos || []).slice(1).forEach(function(fila) {
+    if (periodoDeValorBonoSupervisores_(fila[3]) !== periodo) return;
+    const cuadrilla = normalizarCuadrilla(fila[2]);
+    if (!cuadrilla) return;
+    mapa[cuadrilla] = {
+      los:Number(fila[4])||0,rojoAsignadas:Number(fila[4])||0,
+      recableados:Number(fila[5])||0,
+      porcentaje:porcentajeResumenDashboardRankingV361_(fila[6]),
+      porcentajeRecableado:porcentajeResumenDashboardRankingV361_(fila[6])
+    };
+  });
+  return mapa;
+}
+
+function vtrGarDetalleResumenDashboardRankingV361_(datos,periodo) {
+  const mapa = {};
+  (datos || []).slice(1).forEach(function(fila) {
+    if (periodoDeValorBonoSupervisores_(fila[3]) !== periodo) return;
+    const cuadrilla = normalizarCuadrilla(fila[2]);
+    if (!cuadrilla) return;
+    mapa[cuadrilla] = {
+      finalizadas:Number(fila[4])||0,gar:Number(fila[5])||0,vtr:Number(fila[6])||0,
+      total:Number(fila[7])||0,totalGarVtr:Number(fila[7])||0,
+      porcentaje:porcentajeResumenDashboardRankingV361_(fila[8]),
+      porcentajeVtrGar:porcentajeResumenDashboardRankingV361_(fila[8])
+    };
+  });
+  return mapa;
+}
+
+function observacionesDetalleResumenDashboardRankingV361_(datos,periodo) {
+  const mapa = {};
+  const pendientes = {"DERIVADO":true,"EN PROCESO":true,"PENALIZADO":true,"APELADO":true};
+  (datos || []).slice(1).forEach(function(fila) {
+    if (periodoDeValorBonoSupervisores_(fila[2] || fila[1]) !== periodo) return;
+    const cuadrilla = normalizarCuadrilla(fila[8]);
+    if (!cuadrilla) return;
+    if (!mapa[cuadrilla]) mapa[cuadrilla] = {
+      total:0,pendientes:0,montoTotal:0,montoPendiente:0,montoAfectado:0,estados:{},
+      winTotal:0,winPenalizadas:0,winMontoPenalizado:0
+    };
+    const item = mapa[cuadrilla];
+    const estado = normalizarTexto(fila[13] || "SIN ESTADO");
+    const fuente = normalizarTexto(fila[9]);
+    const monto = Number(fila[14]) || 0;
+    item.total++;
+    item.montoTotal += monto;
+    item.montoAfectado += monto * factorEstadoObservacion(estado);
+    item.estados[estado] = (item.estados[estado] || 0) + 1;
+    if (pendientes[estado]) {
+      item.pendientes++;
+      item.montoPendiente += monto;
+    }
+    if (fuente === "WIN") {
+      item.winTotal++;
+      if (estado === "PENALIZADO") {
+        item.winPenalizadas++;
+        item.winMontoPenalizado += monto;
+      }
+    }
+  });
+  return mapa;
+}
+
+function estadosBaseResumenDashboardRankingV361_(datos,periodo) {
+  const mapa = {};
+  (datos || []).slice(1).forEach(function(fila) {
+    if (periodoDeValorBonoSupervisores_(fila[1]) !== periodo) return;
+    const cuadrilla = normalizarCuadrilla(fila[3]);
+    if (!cuadrilla) return;
+    if (!mapa[cuadrilla]) mapa[cuadrilla] = {total:0,finalizadas:0,canceladas:0,regestiones:0,reprogramadas:0,otros:0};
+    const item = mapa[cuadrilla];
+    const estado = normalizarTexto(fila[4]);
+    item.total++;
+    if (estado === "FINALIZADA") item.finalizadas++;
+    else if (estado === "CANCELADA" || estado === "ANULADA") item.canceladas++;
+    else if (estado === "REGESTION") item.regestiones++;
+    else if (estado === "REPROGRAMADA" || estado === "REPROGRAMADO") item.reprogramadas++;
+    else item.otros++;
+  });
+  return mapa;
+}
+
+function rankingResumenDashboardRankingV361_(datos,periodo) {
+  const mapa = {};
+  (datos || []).slice(1).forEach(function(fila) {
+    if (periodoDeValorBonoSupervisores_(fila[2]) !== periodo) return;
+    const cuadrilla = normalizarCuadrilla(fila[1]);
+    if (!cuadrilla) return;
+    mapa[cuadrilla] = {
+      actualizacion:fila[2] || "",usuario:fila[3] || "",
+      sede:normalizarTexto(fila[4]),plataforma:normalizarTexto(fila[5]),
+      puntaje:Number(fila[13])||0,puestoSede:Number(fila[14])||0,
+      puestoRegion:Number(fila[15])||0,puestoPlataforma:Number(fila[16])||0,
+      slaBruto:Number(fila[20])||0,slaAjustado:Number(fila[21])||0,
+      slaEvaluables:Number(fila[22])||0,slaFuera:Number(fila[23])||0,
+      slaExcepcionesAprobadas:Number(fila[24])||0,aporteSla:Number(fila[25])||0,
+      pesosRankingJson:fila[26] || ""
+    };
+  });
+  return mapa;
+}
+
+function slaResumenDashboardRankingV361_(periodo,datosBase,datosMapa,parametros) {
+  const tipos = {};
+  (datosBase || []).slice(1).forEach(function(fila) {
+    if (periodoDeValorBonoSupervisores_(fila[1]) !== periodo) return;
+    const partida = normalizarTexto(fila[13] || fila[14]);
+    const codigoLiquidacion = normalizarIdentificadorMapa(fila[11]);
+    const codigoPedido = normalizarIdentificadorMapa(fila[9]);
+    if (codigoLiquidacion && partida) tipos[codigoLiquidacion] = partida;
+    if (codigoPedido && partida && !tipos[codigoPedido]) tipos[codigoPedido] = partida;
+  });
+  const mapa = {};
+  const cabecera = (datosMapa || [])[0] || [];
+  const iOrden = indiceCabeceraBonoSupervisores_(cabecera,["ORDEN_ID","ORDEN ID"]);
+  const iTipoTrabajo = indiceCabeceraBonoSupervisores_(cabecera,["TIPO_TRABAJO","TIPO TRABAJO"]);
+  const iCuadrilla = indiceCabeceraBonoSupervisores_(cabecera,["CUADRILLA"]);
+  const iEstado = indiceCabeceraBonoSupervisores_(cabecera,["ESTADO"]);
+  const iFechaSolicitud = indiceCabeceraBonoSupervisores_(cabecera,["FECHA_SOLICITUD","FECHA SOLICITUD"]);
+  const iFechaFin = indiceCabeceraBonoSupervisores_(cabecera,["FECHA_FIN_VISITA","FECHA FIN VISITA"]);
+  const iFechaInicio = indiceCabeceraBonoSupervisores_(cabecera,["FECHA_INICIO_VISITA","FECHA INICIO VISITA"]);
+  const iMotivo = indiceCabeceraBonoSupervisores_(cabecera,["MOTIVO_FINALIZACION","MOTIVO FINALIZACION"]);
+  function item(cuadrilla) {
+    if (!mapa[cuadrilla]) mapa[cuadrilla] = {
+      evaluables:0,cumplen:0,vencidas:0,finalizadasDetectadas:0,
+      excluidasNoFinalizadas:0,sinTiempos:0,sinPartida:0,sinParametro:0,
+      instalacionesTotal:0,instalacionesCumplen:0,
+      visitasTecnicasTotal:0,visitasTecnicasCumplen:0,detalle:[]
+    };
+    return mapa[cuadrilla];
+  }
+  (datosMapa || []).slice(1).forEach(function(fila) {
+    const cuadrilla = normalizarCuadrilla(iCuadrilla >= 0 ? fila[iCuadrilla] : "");
+    if (!cuadrilla) return;
+    const m = item(cuadrilla);
+    const estado = normalizarTexto(iEstado >= 0 ? fila[iEstado] : "");
+    if (estado !== "FINALIZADA") { m.excluidasNoFinalizadas++; return; }
+    m.finalizadasDetectadas++;
+    const fechaFin = fechaHoraBonoSupervisores_(iFechaFin >= 0 ? fila[iFechaFin] : "");
+    const fechaInicio = fechaHoraBonoSupervisores_(iFechaInicio >= 0 ? fila[iFechaInicio] : "");
+    const fechaSolicitud = fechaHoraBonoSupervisores_(iFechaSolicitud >= 0 ? fila[iFechaSolicitud] : "");
+    const fechaPeriodo = fechaFin || fechaInicio || fechaSolicitud;
+    if (!fechaPeriodo || Utilities.formatDate(fechaPeriodo,"America/Lima","yyyy-MM") !== periodo) return;
+    if (!fechaInicio || !fechaFin || fechaFin < fechaInicio) { m.sinTiempos++; return; }
+    const tipoTrabajo = normalizarTexto(iTipoTrabajo >= 0 ? fila[iTipoTrabajo] : "");
+    const motivo = normalizarTexto(iMotivo >= 0 ? fila[iMotivo] : "");
+    const esInstalacion = (tipoTrabajo === "INSTALACION" || tipoTrabajo === "INSTALACION POSIBLE FRAUDE") && (motivo === "" || motivo === "INSTALADO");
+    const ordenId = iOrden >= 0 ? fila[iOrden] : "";
+    const partida = tipos[normalizarIdentificadorMapa(ordenId)] || "";
+    if (!partida) { m.sinPartida++; return; }
+    const parametro = (parametros || {})[partida];
+    if (!parametro) { m.sinParametro++; return; }
+    const minutos = Math.round((fechaFin.getTime()-fechaInicio.getTime())/60000);
+    const cumple = minutos <= parametro.minutos;
+    m.evaluables++;
+    if (esInstalacion) m.instalacionesTotal++; else m.visitasTecnicasTotal++;
+    if (cumple) {
+      m.cumplen++;
+      if (esInstalacion) m.instalacionesCumplen++; else m.visitasTecnicasCumplen++;
+    } else {
+      m.vencidas++;
+      if (m.detalle.length < 20) m.detalle.push({
+        ordenId:String(ordenId || ""),cuadrilla:cuadrilla,
+        grupo:esInstalacion ? "INSTALACIÓN" : "VISITA TÉCNICA",
+        tipoTrabajo:tipoTrabajo,motivoFinalizacion:motivo || "VACÍO",
+        tipoPartida:parametro.tipoOrden,minutos:minutos,slaMinutos:parametro.minutos,
+        exceso:minutos-parametro.minutos,resultado:"FUERA DE SLA"
+      });
+    }
+  });
+  return mapa;
+}
+
+
+function cuadrillasEsperadasResumenV365_(periodo) {
+  const mapa = {};
+
+  function agregarDesdeHoja(nombreHoja,columnaCuadrilla,columnaFecha) {
+    try {
+      const hoja = obtenerHoja(nombreHoja);
+      if (!hoja || hoja.getLastRow() <= 1) return;
+
+      const columnas = Math.max(columnaCuadrilla,columnaFecha);
+      const filas = hoja.getRange(2,1,hoja.getLastRow()-1,columnas).getValues();
+
+      filas.forEach(function(fila) {
+        if (periodoDeValorBonoSupervisores_(fila[columnaFecha-1]) !== periodo) return;
+        const cuadrilla = normalizarCuadrilla(fila[columnaCuadrilla-1]);
+        if (cuadrilla) mapa[cuadrilla] = true;
+      });
+    } catch (error) {}
+  }
+
+  agregarDesdeHoja(HOJA_RANKING,2,3);
+  agregarDesdeHoja(HOJA_PRODUCCION,2,3);
+  agregarDesdeHoja(HOJA_EFECTIVIDAD,3,4);
+  agregarDesdeHoja(HOJA_RECABLEADO,3,4);
+  agregarDesdeHoja(HOJA_VTRGAR,3,4);
+
+  return Object.keys(mapa).sort();
+}
+
+function resumenCompletoV365_(lista,periodo) {
+  const esperadas = cuadrillasEsperadasResumenV365_(periodo);
+  if (!Array.isArray(lista) || !lista.length) return false;
+  if (esperadas.length && lista.length < esperadas.length) return false;
+
+  const presentes = {};
+  lista.forEach(function(item) {
+    const cuadrilla = normalizarCuadrilla(item && item.cuadrilla);
+    if (cuadrilla) presentes[cuadrilla] = true;
+  });
+
+  if (esperadas.some(function(cuadrilla){ return !presentes[cuadrilla]; })) return false;
+
+  // V365 exige que todos los objetos ya tengan la estructura SLA.
+  return lista.every(function(item) {
+    return item && item.cuadrilla && item.detSla && typeof item.detSla === "object";
+  });
+}
+
+function aplicarRankingResumenV365_(lista,periodo) {
+  const configuracion = configuracionRankingV363_(periodo);
+  const pesos = configuracion.pesos;
+
+  if (!Array.isArray(lista) || !lista.length) return lista || [];
+
+  const maxProduccion = Math.max.apply(null,lista.map(function(x){ return Number(x.produccion)||0; }));
+  const maxRecableado = Math.max.apply(null,lista.map(function(x){ return Number(x.recableado)||0; }));
+  const maxVtrGar = Math.max.apply(null,lista.map(function(x){ return Number(x.vtrgar)||0; }));
+  const maxObservaciones = Math.max.apply(null,lista.map(function(x){ return Number(x.montoAfectadoObs)||0; }));
+
+  lista.forEach(function(item) {
+    const scoreProduccion = puntajePositivo(Number(item.produccion)||0,maxProduccion);
+    const scoreEfectividad = porcentajeDatoDashboardBono_(item.efectividad);
+    const scoreRecableado = puntajeNegativo(Number(item.recableado)||0,maxRecableado);
+    const scoreVtrGar = puntajeNegativo(Number(item.vtrgar)||0,maxVtrGar);
+    const scoreObservaciones = puntajeNegativo(Number(item.montoAfectadoObs)||0,maxObservaciones);
+    const scoreSla = Number(item.slaAjustado)||0;
+
+    item.aporteProduccion = redondearBonoSupervisores_(scoreProduccion*pesos.PRODUCCION/100,4);
+    item.aporteEfectividad = redondearBonoSupervisores_(scoreEfectividad*pesos.EFECTIVIDAD/100,4);
+    item.aporteSla = redondearBonoSupervisores_(scoreSla*pesos.SLA/100,4);
+    item.aporteObservaciones = redondearBonoSupervisores_(scoreObservaciones*pesos.OBSERVACIONES/100,4);
+    item.aporteRecableado = redondearBonoSupervisores_(scoreRecableado*pesos.RECABLEADO/100,4);
+    item.aporteVtrGar = redondearBonoSupervisores_(scoreVtrGar*pesos.VTRGAR/100,4);
+
+    item.puntaje = redondearBonoSupervisores_(
+      item.aporteProduccion+
+      item.aporteEfectividad+
+      item.aporteSla+
+      item.aporteObservaciones+
+      item.aporteRecableado+
+      item.aporteVtrGar,
+      4
+    );
+    item.puntajeFinal = item.puntaje;
+    item.pesosRanking = pesos;
+  });
+
+  asignarPuestos(lista,"puntaje","puestoRegion",null);
+  asignarPuestos(lista,"puntaje","puestoSede","sede");
+  asignarPuestos(lista,"puntaje","puestoPlataforma","plataforma");
+
+  return lista;
+}
+
+function construirResumenDashboardRankingV361_(periodo,version) {
+  reiniciarDatosBonoSesion_();
+  const usuarios = obtenerMapaUsuarios();
+  const datosProduccion = datosHojaBonoSupervisores_(HOJA_PRODUCCION);
+  const catalogo = catalogoDetalleResumenDashboardRankingV361_(datosHojaBonoSupervisores_(HOJA_CATALOGO_ORDENES));
+  const produccionInfo = produccionDetalleResumenDashboardRankingV361_(datosProduccion,catalogo,periodo);
+  const efectividadInfo = efectividadDetalleResumenDashboardRankingV361_(datosHojaBonoSupervisores_(HOJA_EFECTIVIDAD),periodo);
+  const recableado = recableadoDetalleResumenDashboardRankingV361_(datosHojaBonoSupervisores_(HOJA_RECABLEADO),periodo);
+  let datosVtr = datosHojaBonoSupervisores_(HOJA_VTRGAR);
+  if (!datosVtr.length) datosVtr = datosHojaBonoSupervisores_("POR VTRGAR");
+  if (!datosVtr.length) datosVtr = datosHojaBonoSupervisores_("POR VTR GAR");
+  const vtrgar = vtrGarDetalleResumenDashboardRankingV361_(datosVtr,periodo);
+  const observaciones = observacionesDetalleResumenDashboardRankingV361_(datosHojaBonoSupervisores_(HOJA_OBSERVACIONES),periodo);
+  const slaInfoV363 = construirSlaOrdenesResumenV363_(periodo,version);
+  const slaV363 = slaInfoV363.mapaCuadrillas || {};
+  const ranking = rankingResumenDashboardRankingV361_(datosHojaBonoSupervisores_(HOJA_RANKING),periodo);
+  const diario = construirCumplimientoProduccionDiariaBase_(periodo).cuadrillas || {};
+
+  const cuadrillas = {};
+  [usuarios,produccionInfo.mapa,efectividadInfo.mapa,recableado,vtrgar,observaciones,slaV363,ranking,diario].forEach(function(mapa) {
+    Object.keys(mapa || {}).forEach(function(c){ cuadrillas[c] = true; });
+  });
+
+  let fechaMaxima = produccionInfo.fechaMaxima;
+  if (efectividadInfo.fechaMaxima && (!fechaMaxima || efectividadInfo.fechaMaxima > fechaMaxima)) {
+    fechaMaxima = efectividadInfo.fechaMaxima;
+  }
+  const actualizadoGeneral = fechaVisibleResumenDashboardRankingV361_(fechaMaxima) ||
+    fechaVisibleResumenDashboardRankingV361_(fechaReferenciaBonoSupervisores_(periodo));
+
+  const lista = [];
+  Object.keys(cuadrillas).sort().forEach(function(cuadrilla) {
+    const u = usuarios[cuadrilla] || {};
+    const p = produccionInfo.mapa[cuadrilla] || {produccion:0,ordenes:0,detalle:{totalOrdenes:0,totalPuntos:0,grupos:{},tipos:{},fechas:{}}};
+    const e = efectividadInfo.mapa[cuadrilla] || {finalizadas:0,canceladas:0,regestion:0,reprogramadas:0,total:0,efectividad:0};
+    const r = recableado[cuadrilla] || {los:0,rojoAsignadas:0,recableados:0,porcentaje:0,porcentajeRecableado:0};
+    const v = vtrgar[cuadrilla] || {finalizadas:0,gar:0,vtr:0,total:0,totalGarVtr:0,porcentaje:0,porcentajeVtrGar:0};
+    const o = observaciones[cuadrilla] || {total:0,pendientes:0,montoTotal:0,montoPendiente:0,montoAfectado:0,estados:{},winTotal:0,winPenalizadas:0,winMontoPenalizado:0};
+    const s = slaV363[cuadrilla] || finalizarResumenSlaCuadrillaV363_(nuevoResumenSlaCuadrillaV363_(cuadrilla));
+    const rk = ranking[cuadrilla] || {};
+    const d = diario[cuadrilla] || {fechaCorte:actualizadoGeneral,metaDiaria:5,diasCampo:0,diasDescanso:0,diasVacaciones:0,diasBolsa:0,diasSinProgramacion:0,metaAcumulada:0};
+    const actualizacion = rk.actualizacion || actualizadoGeneral;
+
+    lista.push({
+      id:periodo+"|"+cuadrilla,periodo:periodo,actualizacion:actualizacion,
+      cuadrilla:cuadrilla,usuario:u.usuario || p.usuario || e.usuario || rk.usuario || "ADMIN",
+      sede:u.sede || rk.sede || "",plataforma:u.plataforma || rk.plataforma || "",
+      supervisor:u.usuarioSupervisor || "",
+      produccion:redondearBonoSupervisores_(p.produccion,1),
+      efectividad:redondearBonoSupervisores_(e.efectividad,2),
+      recableado:redondearBonoSupervisores_(r.porcentaje,2),
+      vtrgar:redondearBonoSupervisores_(v.porcentaje,2),
+      observaciones:o.total,
+      montoTotalObs:redondearBonoSupervisores_(o.montoTotal,2),
+      montoAfectadoObs:redondearBonoSupervisores_(o.montoAfectado,2),
+      slaBruto:redondearBonoSupervisores_(s.slaBruto,2),
+      slaAjustado:redondearBonoSupervisores_(s.slaAjustado,2),
+      sla:redondearBonoSupervisores_(s.slaAjustado,2),
+      detSla:s,
+      puntaje:Number(rk.puntaje)||0,
+      puestoSede:Number(rk.puestoSede)||0,
+      puestoRegion:Number(rk.puestoRegion)||0,
+      puestoPlataforma:Number(rk.puestoPlataforma)||0,
+      detProduccion:p.detalle,
+      detEfectividad:{finalizadas:e.finalizadas,canceladas:e.canceladas,regestion:e.regestion,reprogramadas:e.reprogramadas,total:e.total,efectividad:e.efectividad},
+      detRecableado:{los:r.los,recableados:r.recableados,porcentaje:r.porcentaje},
+      detVtrGar:{finalizadas:v.finalizadas,gar:v.gar,vtr:v.vtr,total:v.total,porcentaje:v.porcentaje},
+      detObservaciones:{total:o.total,pendientes:o.pendientes,montoTotal:redondearBonoSupervisores_(o.montoTotal,2),montoPendiente:redondearBonoSupervisores_(o.montoPendiente,2),estados:o.estados},
+      mv353CumplimientoDia:d,
+      mv361ObservacionesWin:{total:o.winTotal,penalizadas:o.winPenalizadas,montoPenalizado:redondearBonoSupervisores_(o.winMontoPenalizado,2)}
+    });
+  });
+
+  aplicarRankingResumenV365_(lista,periodo);
+
+  const hoja = asegurarHojaResumenDashboardRankingV361_();
+  const existentes = hoja.getLastRow() > 1
+    ? hoja.getRange(2,1,hoja.getLastRow()-1,9).getValues()
+    : [];
+  const conservar = existentes.filter(function(fila){
+    return periodoTecnicoV367_(fila[0]) !== periodo;
+  });
+  const nuevas = lista.map(function(item){ return [
+    periodo,version,item.actualizacion,item.cuadrilla,item.sede,item.plataforma,
+    item.supervisor,item.usuario,jsonSeguroResumenDashboardRankingV361_(item)
+  ]; });
+  const salida = [[
+    "PERIODO","VERSION_FUENTE","ACTUALIZADO_AL","CUADRILLA",
+    "SEDE","PLATAFORMA","SUPERVISOR","USUARIO","RESUMEN_JSON"
+  ]].concat(conservar,nuevas);
+  hoja.clearContents();
+  hoja.getRange(1,1,hoja.getMaxRows(),2).setNumberFormat("@");
+  hoja.getRange(1,1,salida.length,9).setValues(salida);
+  hoja.setFrozenRows(1);
+  return lista;
+}
+
+function jsonSeguroResumenDashboardRankingV361_(item) {
+  let copia = item;
+  let texto = JSON.stringify(copia);
+  if (texto.length <= 45000) return texto;
+
+  copia = JSON.parse(texto);
+  if (copia.detProduccion) copia.detProduccion.fechas = {};
+  if (copia.detSla && Array.isArray(copia.detSla.detalle)) {
+    copia.detSla.detalle = copia.detSla.detalle.slice(0,10);
+  }
+  texto = JSON.stringify(copia);
+  if (texto.length <= 45000) return texto;
+
+  if (copia.detProduccion) {
+    const tipos = copia.detProduccion.tipos || {};
+    const claves = Object.keys(tipos).sort(function(a,b) {
+      return (Number(tipos[b].puntos)||0) - (Number(tipos[a].puntos)||0);
+    }).slice(0,25);
+    const reducidos = {};
+    claves.forEach(function(clave){ reducidos[clave] = tipos[clave]; });
+    copia.detProduccion.tipos = reducidos;
+  }
+
+  texto = JSON.stringify(copia);
+  if (texto.length > 49000) {
+    if (copia.detSla) copia.detSla.detalle = [];
+    if (copia.detProduccion) copia.detProduccion.tipos = {};
+    texto = JSON.stringify(copia);
+  }
+  return texto;
+}
+
+function leerResumenDashboardRankingV361_(periodo,version) {
+  const hoja = asegurarHojaResumenDashboardRankingV361_();
+  const rango = rangoPeriodoTecnicoV367_(hoja,1,periodo);
+  if (!rango || rango.cantidad <= 0) return [];
+
+  const filas = hoja.getRange(rango.fila,1,rango.cantidad,9).getValues();
+  const lista = [];
+
+  filas.forEach(function(fila) {
+    if (
+      periodoTecnicoV367_(fila[0]) !== periodo ||
+      String(fila[1] || "") !== String(version)
+    ) return;
+
+    try {
+      const item = JSON.parse(String(fila[8] || "{}"));
+      if (item && item.cuadrilla) lista.push(item);
+    } catch (error) {}
+  });
+
+  return lista;
+}
+
+function asegurarResumenDashboardRankingV361_(periodo,forzar) {
+  const version = versionResumenDashboardRankingV361_();
+  if (!forzar) {
+    const existente = leerResumenDashboardRankingV361_(periodo,version);
+    if (resumenCompletoV365_(existente,periodo)) return existente;
+  }
+
+  const lock = LockService.getScriptLock();
+  lock.waitLock(30000);
+  try {
+    if (!forzar) {
+      const existente = leerResumenDashboardRankingV361_(periodo,version);
+      if (resumenCompletoV365_(existente,periodo)) return existente;
+    }
+    return construirResumenDashboardRankingV361_(periodo,version);
+  } finally {
+    lock.releaseLock();
+  }
+}
+
+function periodosResumenDashboardRankingV361_() {
+  const mapa = {};
+  function agregar(valor) {
+    const fecha = fechaResumenDashboardRankingV361_(valor);
+    if (!fecha) return;
+    const clave = Utilities.formatDate(fecha,"America/Lima","yyyy-MM");
+    const corte = Utilities.formatDate(fecha,"America/Lima","dd/MM/yyyy");
+    if (!mapa[clave]) mapa[clave] = {clave:clave,etiqueta:"",corte:""};
+    if (!mapa[clave].corte || convertirFechaRanking(corte) > convertirFechaRanking(mapa[clave].corte)) mapa[clave].corte = corte;
+  }
+  [
+    {hoja:HOJA_RANKING,columna:3},
+    {hoja:HOJA_PRODUCCION,columna:3},
+    {hoja:HOJA_EFECTIVIDAD,columna:4}
+  ].forEach(function(fuente) {
+    try {
+      const hoja = obtenerHoja(fuente.hoja);
+      if (hoja.getLastRow() <= 1) return;
+      hoja.getRange(2,fuente.columna,hoja.getLastRow()-1,1).getValues().forEach(function(f){ agregar(f[0]); });
+    } catch (error) {}
+  });
+  const actual = Utilities.formatDate(new Date(),"America/Lima","yyyy-MM");
+  if (!mapa[actual]) mapa[actual] = {clave:actual,etiqueta:"",corte:""};
+  const meses = ["ENERO","FEBRERO","MARZO","ABRIL","MAYO","JUNIO","JULIO","AGOSTO","SEPTIEMBRE","OCTUBRE","NOVIEMBRE","DICIEMBRE"];
+  Object.keys(mapa).forEach(function(clave) {
+    const p = clave.split("-");
+    mapa[clave].etiqueta = (meses[Number(p[1])-1] || "") + " " + p[0];
+  });
+  return Object.keys(mapa).sort().reverse().map(function(k){return mapa[k];});
+}
+
+function filtrarResumenDashboardRankingV361_(lista,usuario) {
+  const perfil = normalizarTexto(usuario.perfil);
+  const sedeUsuario = normalizarTexto(usuario.sede);
+  const cuadrillaUsuario = normalizarCuadrilla(usuario.cuadrilla);
+  const usuarioNormalizado = normalizarUsuario(usuario.usuario);
+  return (lista || []).filter(function(item) {
+    if (perfil === "TECNICO") return normalizarCuadrilla(item.cuadrilla) === cuadrillaUsuario;
+    if (perfil === "SUPERVISOR") {
+      return normalizarTexto(item.sede) === sedeUsuario || normalizarUsuario(item.supervisor) === usuarioNormalizado;
+    }
+    return true;
+  });
+}
+
+function obtenerResumenDashboardRankingV361(data) {
+  const usuario = obtenerUsuarioApp(data.usuario);
+  const perfil = normalizarTexto(usuario.perfil);
+  if (!["TECNICO","SUPERVISOR","JEFATURA","JEFATURA GENERAL","GERENCIA LIMA","ADMIN","ADMINISTRADOR","JEFATURA OPERACIONES","JEFATURA DE OPERACIONES","OPERACIONES"].includes(perfil)) {
+    throw new Error("No tienes permiso para consultar el resumen operativo");
+  }
+  const periodo = periodoResumenDashboardRankingV361_(data.periodo);
+  const forzar = ["SI","TRUE","1"].includes(normalizarTexto(data.forzarActualizacion));
+  const version = versionResumenDashboardRankingV361_();
+  const clave = ["MV361_RESUMEN",version,periodo,perfil,normalizarUsuario(usuario.usuario)].join("|");
+  if (!forzar) {
+    const guardado = leerCacheBonosSupervisores_(clave);
+    if (guardado && guardado.ok) { guardado.desdeCache = true; return guardado; }
+  }
+  const listaCompleta = asegurarResumenDashboardRankingV361_(periodo,forzar);
+  const listaUsuario = filtrarResumenDashboardRankingV361_(listaCompleta,usuario);
+  const sedesGeneral = {};
+  listaCompleta.forEach(function(item) {
+    const sede = normalizarTexto(item.sede);
+    if (sede) sedesGeneral[sede] = true;
+  });
+  const esperadas = cuadrillasEsperadasResumenV365_(periodo);
+
+  const respuesta = {
+    ok:true,modulo:"RESUMEN_DASHBOARD_RANKING",accion:"OBTENER",
+    periodo:periodo,periodos:periodosResumenDashboardRankingV361_(),
+    configuracionRanking:configuracionRankingV363_(periodo),
+    lista:listaUsuario,
+    totalGeneral:listaCompleta.length,
+    cuadrillasEsperadas:esperadas.length,
+    sedesGeneral:Object.keys(sedesGeneral).sort(),
+    alcance:perfil === "SUPERVISOR" ? "SEDE" : (perfil === "TECNICO" ? "CUADRILLA" : "ZONA_NORTE"),
+    version:version,desdeCache:false,
+    fuente:"HOJA_RESUMEN_DASHBOARD_RANKING",
+    calculadoEn:Utilities.formatDate(new Date(),"America/Lima","dd/MM/yyyy HH:mm")
+  };
+  guardarCacheBonosSupervisores_(clave,respuesta);
+  return respuesta;
+}
+
+
+function asegurarHojaResumenBonoSupervisoresV361_() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  let hoja = ss.getSheetByName(HOJA_RESUMEN_BONO_SUPERVISORES_V361);
+  if (!hoja) hoja = ss.insertSheet(HOJA_RESUMEN_BONO_SUPERVISORES_V361);
+  if (hoja.getMaxColumns() < 5) hoja.insertColumnsAfter(hoja.getMaxColumns(),5-hoja.getMaxColumns());
+  hoja.getRange(1,1,1,5).setValues([[
+    "PERIODO","VERSION_FUENTE","CUADRILLA","ACTUALIZADO_AL","BONO_JSON"
+  ]]);
+  hoja.setFrozenRows(1);
+  try { hoja.setTabColor("#16a34a"); } catch (error) {}
+  try { hoja.hideColumns(5); } catch (error) {}
+  return hoja;
+}
+
+function construirResumenBonoSupervisoresV361_(periodo,version) {
+  reiniciarDatosBonoSesion_();
+  const datosBase = datosHojaBonoSupervisores_(HOJA_BASE_OPERATIVA_HISTORICA);
+  const estados = estadosBaseResumenDashboardRankingV361_(datosBase,periodo);
+  const listaPrincipal = asegurarResumenDashboardRankingV361_(periodo,false);
+  const slaInfoV363 = asegurarSlaOrdenesResumenV363_(periodo,false);
+  const sla = slaInfoV363.mapaCuadrillas || {};
+  const cuadrillas = {};
+  listaPrincipal.forEach(function(item){ cuadrillas[normalizarCuadrilla(item.cuadrilla)] = true; });
+  Object.keys(estados).forEach(function(c){cuadrillas[c]=true;});
+  Object.keys(sla).forEach(function(c){cuadrillas[c]=true;});
+
+  const lista = Object.keys(cuadrillas).sort().map(function(cuadrilla){
+    return {
+      cuadrilla:cuadrilla,
+      estados:estados[cuadrilla] || {total:0,finalizadas:0,canceladas:0,regestiones:0,reprogramadas:0,otros:0},
+      sla:sla[cuadrilla] || finalizarResumenSlaCuadrillaV363_(nuevoResumenSlaCuadrillaV363_(cuadrilla))
+    };
+  });
+
+  const hoja = asegurarHojaResumenBonoSupervisoresV361_();
+  const existentes = hoja.getLastRow() > 1
+    ? hoja.getRange(2,1,hoja.getLastRow()-1,5).getValues()
+    : [];
+  const conservar = existentes.filter(function(fila){return String(fila[0]||"")!==periodo;});
+  const ahora = Utilities.formatDate(new Date(),"America/Lima","dd/MM/yyyy HH:mm");
+  const nuevas = lista.map(function(item){
+    let texto = JSON.stringify(item);
+    if (texto.length > 45000) {
+      item.sla.detalle = (item.sla.detalle || []).slice(0,10);
+      texto = JSON.stringify(item);
+    }
+    return [periodo,version,item.cuadrilla,ahora,texto];
+  });
+  const salida = [["PERIODO","VERSION_FUENTE","CUADRILLA","ACTUALIZADO_AL","BONO_JSON"]]
+    .concat(conservar,nuevas);
+  hoja.clearContents();
+  hoja.getRange(1,1,salida.length,5).setValues(salida);
+  return lista;
+}
+
+function leerResumenBonoSupervisoresV361_(periodo,version) {
+  const hoja = asegurarHojaResumenBonoSupervisoresV361_();
+  if (hoja.getLastRow() <= 1) return [];
+  const filas = hoja.getRange(2,1,hoja.getLastRow()-1,5).getValues();
+  const lista = [];
+  filas.forEach(function(fila){
+    if (String(fila[0]||"")!==periodo || String(fila[1]||"")!==String(version)) return;
+    try {
+      const item = JSON.parse(String(fila[4]||"{}"));
+      if (item && item.cuadrilla) lista.push(item);
+    } catch (error) {}
+  });
+  return lista;
+}
+
+function asegurarResumenBonoSupervisoresV361_(periodo,forzar) {
+  const version = versionResumenDashboardRankingV361_();
+  if (!forzar) {
+    const lista = leerResumenBonoSupervisoresV361_(periodo,version);
+    if (lista.length) return lista;
+  }
+  const lock = LockService.getScriptLock();
+  lock.waitLock(30000);
+  try {
+    if (!forzar) {
+      const lista = leerResumenBonoSupervisoresV361_(periodo,version);
+      if (lista.length) return lista;
+    }
+    return construirResumenBonoSupervisoresV361_(periodo,version);
+  } finally {
+    lock.releaseLock();
+  }
+}
+
+function mapasBonoDesdeResumenDashboardRankingV361_(periodo) {
+  const lista = asegurarResumenDashboardRankingV361_(periodo,false);
+  const bonoLista = asegurarResumenBonoSupervisoresV361_(periodo,false);
+  const bonoMapa = {};
+  bonoLista.forEach(function(item){bonoMapa[normalizarCuadrilla(item.cuadrilla)] = item;});
+
+  const salida = {
+    produccion:{},efectividad:{},recableado:{},vtrgar:{},
+    estados:{},observacionesWin:{},sla:{}
+  };
+
+  lista.forEach(function(item) {
+    const c = normalizarCuadrilla(item.cuadrilla);
+    if (!c) return;
+    salida.produccion[c] = {
+      usuario:item.usuario || "ADMIN",
+      produccion:Number(item.produccion)||0,
+      ordenes:Number(item.detProduccion && item.detProduccion.totalOrdenes)||0
+    };
+    const e = item.detEfectividad || {};
+    salida.efectividad[c] = {
+      usuario:item.usuario || "ADMIN",fecha:item.actualizacion,
+      finalizadas:Number(e.finalizadas)||0,total:Number(e.total)||0,
+      efectividad:Number(item.efectividad)||0
+    };
+    const r = item.detRecableado || {};
+    salida.recableado[c] = {
+      rojoAsignadas:Number(r.los)||0,recableados:Number(r.recableados)||0,
+      porcentajeRecableado:Number(item.recableado)||0
+    };
+    const v = item.detVtrGar || {};
+    salida.vtrgar[c] = {
+      finalizadas:Number(v.finalizadas)||0,gar:Number(v.gar)||0,
+      vtr:Number(v.vtr)||0,totalGarVtr:Number(v.total)||0,
+      porcentajeVtrGar:Number(item.vtrgar)||0
+    };
+    salida.observacionesWin[c] = item.mv361ObservacionesWin || {
+      total:0,penalizadas:0,montoPenalizado:0
+    };
+    const bono = bonoMapa[c] || {};
+    salida.estados[c] = bono.estados || {
+      total:0,finalizadas:0,canceladas:0,regestiones:0,reprogramadas:0,otros:0
+    };
+    const slaBase = bono.sla || {
+      evaluables:0,cumplen:0,vencidas:0,finalizadasDetectadas:0,
+      excluidasNoFinalizadas:0,sinTiempos:0,sinPartida:0,sinParametro:0,
+      instalacionesTotal:0,instalacionesCumplen:0,
+      visitasTecnicasTotal:0,visitasTecnicasCumplen:0,detalle:[]
+    };
+    salida.sla[c] = Object.assign({},slaBase,{
+      sede:normalizarTexto(item.sede || "")
+    });
+  });
+  return salida;
+}
+
 /* =====================================================
    V324 - BONO DE SUPERVISORES EN DASHBOARD
    Cálculo sobre fuentes existentes de MI VISUAL y registros
@@ -12437,7 +15227,7 @@ const HOJA_ACTAS_BONO_SUPERVISORES = "ACTAS_BONO_SUPERVISORES";
 // de atender una nueva consulta de bonos.
 let MV334_DATOS_BONO_SESION_ = {};
 
-const MV334_CACHE_BONO_VERSION_ = "MV334_BONO_VERSION";
+const MV334_CACHE_BONO_VERSION_ = "MV353_CUMPLIMIENTO_PRODUCTIVO_VERSION";
 const MV334_CACHE_BONO_TTL_SEGUNDOS_ = 300;
 const MV334_CACHE_BONO_CHUNK_ = 24000;
 
@@ -12452,12 +15242,57 @@ const PESOS_BONO_SUPERVISORES_ = {
 // Valores predeterminados. La configuración mensual puede reemplazarlos
 // desde la pantalla de Bonos Supervisores sin modificar el código.
 const ACTIVADORES_BONO_SUPERVISORES_ = {
-  PRODUCTIVIDAD:80,
-  CALIDAD:80,
-  SLA:75,
-  SATISFACCION:80,
-  SEGURIDAD:0
+  PRODUCTIVIDAD:85,
+  CALIDAD:85,
+  SLA:95,
+  SATISFACCION:85,
+  SEGURIDAD:85
 };
+
+const ESCALAS_BONO_SUPERVISORES_ = {
+  PRODUCTIVIDAD:[
+    {desde:85,monto:150},
+    {desde:90,monto:200},
+    {desde:100,monto:250}
+  ],
+  CALIDAD:[
+    {desde:85,monto:150},
+    {desde:90,monto:200},
+    {desde:100,monto:250}
+  ],
+  SLA:[
+    {desde:95,monto:100},
+    {desde:98,monto:150},
+    {desde:100,monto:200}
+  ],
+  SATISFACCION:[
+    {desde:85,monto:100},
+    {desde:100,monto:150}
+  ],
+  SEGURIDAD:[
+    {desde:85,monto:100},
+    {desde:100,monto:150}
+  ]
+};
+
+const PESOS_FIJOS_BONO_SUPERVISORES_ = {
+  PRODUCTIVIDAD:25,
+  CALIDAD:25,
+  SLA:20,
+  SATISFACCION:15,
+  SEGURIDAD:15
+};
+
+// Proporción de cada nivel respecto al máximo del componente.
+// Ejemplo Productividad: 60%, 80% y 100% de su 25% asignado.
+const PROPORCIONES_NIVELES_BONO_SUPERVISORES_ = {
+  PRODUCTIVIDAD:[0.60,0.80,1.00],
+  CALIDAD:[0.60,0.80,1.00],
+  SLA:[0.50,0.75,1.00],
+  SATISFACCION:[2/3,1.00],
+  SEGURIDAD:[2/3,1.00]
+};
+
 
 const PREGUNTAS_LIDERAZGO_BONO_ = [
   "¿Verificó que sus cuadrillas cumplieran con el uso correcto de EPP?",
@@ -12563,19 +15398,120 @@ function puntajeMetaMenorBono_(valor, meta) {
   return n > 0 ? Math.min(100, Math.max(0, (meta / n) * 100)) : 100;
 }
 
-function montoProrrateadoBonoSupervisores_(cumplimiento, maximo, activador) {
-  const c = Math.min(100, Math.max(0, Number(cumplimiento) || 0));
-  if (activador !== null && activador !== undefined && c <= Number(activador)) return 0;
-  return redondearBonoSupervisores_((Number(maximo) || 0) * c / 100, 2);
+function clonarEscalasBonoSupervisores_(origen) {
+  const salida = {};
+  Object.keys(ESCALAS_BONO_SUPERVISORES_).forEach(function(clave) {
+    const lista = origen && Array.isArray(origen[clave])
+      ? origen[clave]
+      : ESCALAS_BONO_SUPERVISORES_[clave];
+
+    salida[clave] = lista.map(function(item) {
+      return {
+        desde:redondearBonoSupervisores_(Number(item.desde),2),
+        monto:redondearBonoSupervisores_(Number(item.monto),2)
+      };
+    });
+  });
+  return salida;
+}
+
+function validarEscalasBonoSupervisores_(entrada) {
+  if (!entrada || typeof entrada !== "object") {
+    throw new Error("No se recibió una configuración válida de escalas");
+  }
+
+  const cantidades = {
+    PRODUCTIVIDAD:3,
+    CALIDAD:3,
+    SLA:3,
+    SATISFACCION:2,
+    SEGURIDAD:2
+  };
+
+  const salida = {};
+
+  Object.keys(cantidades).forEach(function(clave) {
+    const lista = entrada[clave];
+
+    if (!Array.isArray(lista) || lista.length !== cantidades[clave]) {
+      throw new Error(clave + " debe conservar " + cantidades[clave] + " niveles de bono");
+    }
+
+    let anteriorDesde = -1;
+    let anteriorMonto = -1;
+
+    salida[clave] = lista.map(function(item, indice) {
+      const desde = Number(item && item.desde);
+      const monto = Number(item && item.monto);
+
+      if (!isFinite(desde) || desde < 0 || desde > 100) {
+        throw new Error("El porcentaje del nivel " + (indice + 1) + " de " + clave + " debe estar entre 0% y 100%");
+      }
+
+      if (!isFinite(monto) || monto < 0 || monto > 100000) {
+        throw new Error("El monto del nivel " + (indice + 1) + " de " + clave + " no es válido");
+      }
+
+      if (desde <= anteriorDesde) {
+        throw new Error("Los porcentajes de " + clave + " deben estar ordenados de menor a mayor");
+      }
+
+      if (monto < anteriorMonto) {
+        throw new Error("Los montos de " + clave + " no pueden disminuir en un nivel superior");
+      }
+
+      anteriorDesde = desde;
+      anteriorMonto = monto;
+
+      return {
+        desde:redondearBonoSupervisores_(desde,2),
+        monto:redondearBonoSupervisores_(monto,2)
+      };
+    });
+  });
+
+  return salida;
+}
+
+function escalaBonoSupervisores_(ctx, clave) {
+  const configuradas = ctx && ctx.configuracion && ctx.configuracion.escalas
+    ? ctx.configuracion.escalas
+    : ESCALAS_BONO_SUPERVISORES_;
+
+  const lista = Array.isArray(configuradas[clave])
+    ? configuradas[clave]
+    : ESCALAS_BONO_SUPERVISORES_[clave];
+
+  return lista.map(function(item) {
+    return {
+      desde:Number(item.desde) || 0,
+      monto:Number(item.monto) || 0
+    };
+  }).sort(function(a,b){return a.desde-b.desde;});
+}
+
+function montoEscalaBonoSupervisores_(ctx, clave, cumplimiento) {
+  const valor = Math.max(0,Number(cumplimiento) || 0);
+  const escala = escalaBonoSupervisores_(ctx,clave);
+  let monto = 0;
+
+  escala.forEach(function(nivel) {
+    if (valor >= nivel.desde) monto = nivel.monto;
+  });
+
+  return redondearBonoSupervisores_(monto,2);
+}
+
+function maximoEscalaBonoSupervisores_(escalas, clave) {
+  const lista = escalas && Array.isArray(escalas[clave]) ? escalas[clave] : [];
+  return lista.reduce(function(maximo,item) {
+    return Math.max(maximo,Number(item.monto) || 0);
+  },0);
 }
 
 function activadorBonoSupervisores_(ctx, clave) {
-  const configurados = ctx && ctx.configuracion && ctx.configuracion.activadores
-    ? ctx.configuracion.activadores
-    : {};
-  const valor = Number(configurados[clave]);
-  if (isFinite(valor) && valor >= 0 && valor <= 100) return valor;
-  return Number(ACTIVADORES_BONO_SUPERVISORES_[clave]) || 0;
+  const escala = escalaBonoSupervisores_(ctx,clave);
+  return escala.length ? Number(escala[0].desde) || 0 : 0;
 }
 
 function indiceCabeceraBonoSupervisores_(cabecera, nombres) {
@@ -12941,6 +15877,7 @@ function guardarParametrosSlaWin(data) {
   }
   reiniciarDatosBonoSesion_();
   invalidarCacheBonosSupervisores_();
+  invalidarResumenDashboardRankingV361_();
   return {ok:true,modulo:"BONO_SUPERVISORES",accion:"GUARDAR_PARAMETROS_SLA",periodo:periodo,actualizados:actualizados};
 }
 
@@ -13277,89 +16214,276 @@ function asegurarHojaConfiguracionBonoSupervisores_() {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
   let hoja = ss.getSheetByName(HOJA_CONFIGURACION_BONO_SUPERVISORES);
   if (!hoja) hoja = ss.insertSheet(HOJA_CONFIGURACION_BONO_SUPERVISORES);
+
   const cabecera = [[
     "PERIODO","MONTO_TOTAL","PRODUCTIVIDAD_PCT","CALIDAD_PCT","SLA_PCT",
     "SATISFACCION_PCT","SEGURIDAD_PCT","ACTUALIZADO_POR","FECHA_ACTUALIZACION",
     "ACTIVADOR_PRODUCTIVIDAD","ACTIVADOR_CALIDAD","ACTIVADOR_SLA",
-    "ACTIVADOR_SATISFACCION","ACTIVADOR_SEGURIDAD"
+    "ACTIVADOR_SATISFACCION","ACTIVADOR_SEGURIDAD","ESCALAS_JSON"
   ]];
-  if (hoja.getMaxColumns() < 14) hoja.insertColumnsAfter(hoja.getMaxColumns(),14-hoja.getMaxColumns());
-  hoja.getRange(1,1,1,14).setValues(cabecera);
+
+  if (hoja.getMaxColumns() < 15) {
+    hoja.insertColumnsAfter(hoja.getMaxColumns(),15-hoja.getMaxColumns());
+  }
+
+  hoja.getRange(1,1,1,15).setValues(cabecera);
   hoja.setFrozenRows(1);
   return hoja;
+}
+
+function totalMaximoEscalasBonoSupervisores_(escalas) {
+  return redondearBonoSupervisores_(
+    Object.keys(ESCALAS_BONO_SUPERVISORES_).reduce(function(suma,clave) {
+      return suma + maximoEscalaBonoSupervisores_(escalas,clave);
+    },0),
+    2
+  );
+}
+
+function umbralesEscalasBonoSupervisores_(entrada) {
+  const cantidades = {
+    PRODUCTIVIDAD:3,
+    CALIDAD:3,
+    SLA:3,
+    SATISFACCION:2,
+    SEGURIDAD:2
+  };
+
+  const salida = {};
+
+  Object.keys(cantidades).forEach(function(clave) {
+    const predeterminada = ESCALAS_BONO_SUPERVISORES_[clave];
+    const lista = entrada && Array.isArray(entrada[clave])
+      ? entrada[clave]
+      : predeterminada;
+
+    if (lista.length !== cantidades[clave]) {
+      throw new Error(clave + " debe conservar " + cantidades[clave] + " niveles");
+    }
+
+    let anterior = -1;
+
+    salida[clave] = lista.map(function(item,indice) {
+      const desde = Number(item && item.desde);
+
+      if (!isFinite(desde) || desde < 0 || desde > 100) {
+        throw new Error(
+          "El porcentaje del nivel " + (indice+1) + " de " + clave +
+          " debe estar entre 0% y 100%"
+        );
+      }
+
+      if (desde <= anterior) {
+        throw new Error(
+          "Los porcentajes de " + clave + " deben aumentar en cada nivel"
+        );
+      }
+
+      anterior = desde;
+      return {desde:redondearBonoSupervisores_(desde,2),monto:0};
+    });
+  });
+
+  return salida;
+}
+
+function generarEscalasAutomaticasBonoSupervisores_(montoTotalEntrada, entradaUmbrales) {
+  const montoTotal = redondearBonoSupervisores_(Number(montoTotalEntrada),2);
+
+  if (!isFinite(montoTotal) || montoTotal <= 0 || montoTotal > 100000) {
+    throw new Error("El bono máximo debe ser mayor a cero y no superar S/ 100,000");
+  }
+
+  const umbrales = umbralesEscalasBonoSupervisores_(entradaUmbrales);
+  const claves = ["PRODUCTIVIDAD","CALIDAD","SLA","SATISFACCION","SEGURIDAD"];
+  const maximos = {};
+  let acumulado = 0;
+
+  claves.forEach(function(clave,indice) {
+    if (indice < claves.length-1) {
+      maximos[clave] = redondearBonoSupervisores_(
+        montoTotal * PESOS_FIJOS_BONO_SUPERVISORES_[clave] / 100,
+        2
+      );
+      acumulado += maximos[clave];
+    } else {
+      // Liderazgo absorbe cualquier diferencia de centavos.
+      maximos[clave] = redondearBonoSupervisores_(montoTotal-acumulado,2);
+    }
+  });
+
+  const escalas = {};
+
+  claves.forEach(function(clave) {
+    const proporciones = PROPORCIONES_NIVELES_BONO_SUPERVISORES_[clave];
+
+    escalas[clave] = umbrales[clave].map(function(nivel,indice) {
+      const esUltimo = indice === umbrales[clave].length-1;
+      return {
+        desde:nivel.desde,
+        monto:esUltimo
+          ? maximos[clave]
+          : redondearBonoSupervisores_(
+              maximos[clave] * proporciones[indice],
+              2
+            )
+      };
+    });
+  });
+
+  return validarEscalasBonoSupervisores_(escalas);
+}
+
+function ajustarEscalasMontoTotalBonoSupervisores_(escalasEntrada, montoObjetivo) {
+  // V352: los montos no dependen de valores manuales anteriores.
+  // Se generan siempre con los pesos fijos 25/25/20/15/15.
+  return generarEscalasAutomaticasBonoSupervisores_(
+    montoObjetivo,
+    escalasEntrada
+  );
 }
 
 function configuracionBonoSupervisores_(periodo) {
   const datos = datosHojaBonoSupervisores_(HOJA_CONFIGURACION_BONO_SUPERVISORES);
   let montoTotal = 1000;
+  let umbrales = clonarEscalasBonoSupervisores_(ESCALAS_BONO_SUPERVISORES_);
   let encontrado = false;
-  const activadores = Object.assign({},ACTIVADORES_BONO_SUPERVISORES_);
+
   for (let i = 1; i < datos.length; i++) {
     if (periodoDeValorBonoSupervisores_(datos[i][0]) !== periodo) continue;
-    const monto = Number(datos[i][1]);
-    if (isFinite(monto) && monto > 0) { montoTotal = monto; encontrado = true; }
-    Object.keys(activadores).forEach(function(clave, indice) {
-      const valor = Number(datos[i][9 + indice]);
-      if (isFinite(valor) && valor >= 0 && valor <= 100) activadores[clave] = valor;
-    });
+
+    encontrado = true;
+
+    const montoGuardado = Number(datos[i][1]);
+    const textoEscalas = String(datos[i][14] || "").trim();
+
+    if (isFinite(montoGuardado) && montoGuardado > 0) {
+      montoTotal = redondearBonoSupervisores_(montoGuardado,2);
+    }
+
+    if (textoEscalas) {
+      try {
+        umbrales = JSON.parse(textoEscalas);
+      } catch (error) {
+        umbrales = clonarEscalasBonoSupervisores_(ESCALAS_BONO_SUPERVISORES_);
+      }
+    }
+
+    break;
   }
+
+  const escalas = generarEscalasAutomaticasBonoSupervisores_(
+    montoTotal,
+    umbrales
+  );
+
   const componentes = {};
-  Object.keys(PESOS_BONO_SUPERVISORES_).forEach(function(clave) {
-    componentes[clave] = redondearBonoSupervisores_(montoTotal * PESOS_BONO_SUPERVISORES_[clave] / 100,2);
+  Object.keys(PESOS_FIJOS_BONO_SUPERVISORES_).forEach(function(clave) {
+    componentes[clave] = redondearBonoSupervisores_(
+      maximoEscalaBonoSupervisores_(escalas,clave),
+      2
+    );
   });
+
+  const activadores = {};
+  Object.keys(escalas).forEach(function(clave) {
+    activadores[clave] = Number(escalas[clave][0].desde) || 0;
+  });
+
   return {
     periodo:periodo,
     montoTotal:redondearBonoSupervisores_(montoTotal,2),
-    pesos:Object.assign({},PESOS_BONO_SUPERVISORES_),
+    pesos:Object.assign({},PESOS_FIJOS_BONO_SUPERVISORES_),
     activadores:activadores,
     componentes:componentes,
-    configurado:encontrado
+    escalas:escalas,
+    configurado:encontrado,
+    modalidad:"ESCALAS_FIJAS_MONTOS_AUTOMATICOS"
   };
 }
 
 function guardarConfiguracionBonoSupervisores(data) {
   const usuario = obtenerUsuarioApp(data.usuario);
-  if (!esPerfilJefatura(usuario.perfil)) throw new Error("Solo Jefatura puede modificar la configuración del bono");
+
+  if (!esPerfilJefatura(usuario.perfil)) {
+    throw new Error("Solo Jefatura puede modificar la configuración del bono");
+  }
+
   const periodo = periodoBonoSupervisores_(data.periodo);
-  const montoTotal = Number(data.montoTotal);
-  if (!isFinite(montoTotal) || montoTotal <= 0 || montoTotal > 100000) throw new Error("Ingrese un monto total válido");
-  const configuracionActual = configuracionBonoSupervisores_(periodo);
-  const entradaActivadores = data.activadores && typeof data.activadores === "object"
-    ? data.activadores
-    : configuracionActual.activadores;
-  const activadores = {};
-  Object.keys(ACTIVADORES_BONO_SUPERVISORES_).forEach(function(clave) {
-    const valor = Number(entradaActivadores[clave]);
-    if (!isFinite(valor) || valor < 0 || valor > 100) {
-      throw new Error("El activador de " + clave + " debe estar entre 0% y 100%");
-    }
-    activadores[clave] = redondearBonoSupervisores_(valor,2);
+  const montoTotal = redondearBonoSupervisores_(Number(data.montoTotal),2);
+
+  if (!isFinite(montoTotal) || montoTotal <= 0 || montoTotal > 100000) {
+    throw new Error("El bono máximo debe ser mayor a cero y no superar S/ 100,000");
+  }
+
+  // V352: únicamente se toman los porcentajes de activación.
+  // Todos los montos son generados automáticamente por el servidor.
+  const escalas = generarEscalasAutomaticasBonoSupervisores_(
+    montoTotal,
+    data.escalas
+  );
+
+  const componentes = {};
+  Object.keys(PESOS_FIJOS_BONO_SUPERVISORES_).forEach(function(clave) {
+    componentes[clave] = redondearBonoSupervisores_(
+      maximoEscalaBonoSupervisores_(escalas,clave),
+      2
+    );
   });
+
+  const activadores = {};
+  Object.keys(escalas).forEach(function(clave) {
+    activadores[clave] = escalas[clave][0].desde;
+  });
+
   const hoja = asegurarHojaConfiguracionBonoSupervisores_();
   const lock = LockService.getScriptLock();
   lock.waitLock(30000);
+
   try {
     const datos = hoja.getDataRange().getValues();
     let filaDestino = 0;
+
     for (let i = 1; i < datos.length; i++) {
-      if (periodoDeValorBonoSupervisores_(datos[i][0]) === periodo) { filaDestino=i+1; break; }
+      if (periodoDeValorBonoSupervisores_(datos[i][0]) === periodo) {
+        filaDestino = i + 1;
+        break;
+      }
     }
-    if (!filaDestino) filaDestino = hoja.getLastRow()+1;
+
+    if (!filaDestino) filaDestino = hoja.getLastRow() + 1;
+
     hoja.getRange(filaDestino,1).setNumberFormat("@");
-    hoja.getRange(filaDestino,1,1,14).setValues([[
-      periodo,redondearBonoSupervisores_(montoTotal,2),
-      PESOS_BONO_SUPERVISORES_.PRODUCTIVIDAD,PESOS_BONO_SUPERVISORES_.CALIDAD,
-      PESOS_BONO_SUPERVISORES_.SLA,PESOS_BONO_SUPERVISORES_.SATISFACCION,
-      PESOS_BONO_SUPERVISORES_.SEGURIDAD,usuario.usuario,new Date(),
-      activadores.PRODUCTIVIDAD,activadores.CALIDAD,activadores.SLA,
-      activadores.SATISFACCION,activadores.SEGURIDAD
+    hoja.getRange(filaDestino,1,1,15).setValues([[
+      periodo,
+      montoTotal,
+      PESOS_FIJOS_BONO_SUPERVISORES_.PRODUCTIVIDAD,
+      PESOS_FIJOS_BONO_SUPERVISORES_.CALIDAD,
+      PESOS_FIJOS_BONO_SUPERVISORES_.SLA,
+      PESOS_FIJOS_BONO_SUPERVISORES_.SATISFACCION,
+      PESOS_FIJOS_BONO_SUPERVISORES_.SEGURIDAD,
+      usuario.usuario,
+      new Date(),
+      activadores.PRODUCTIVIDAD,
+      activadores.CALIDAD,
+      activadores.SLA,
+      activadores.SATISFACCION,
+      activadores.SEGURIDAD,
+      JSON.stringify(escalas)
     ]]);
   } finally {
     lock.releaseLock();
   }
+
   reiniciarDatosBonoSesion_();
   invalidarCacheBonosSupervisores_();
-  return {ok:true,modulo:"BONO_SUPERVISORES",accion:"GUARDAR_CONFIGURACION",configuracion:configuracionBonoSupervisores_(periodo)};
+
+  return {
+    ok:true,
+    modulo:"BONO_SUPERVISORES",
+    accion:"GUARDAR_CONFIGURACION",
+    configuracion:configuracionBonoSupervisores_(periodo)
+  };
 }
 
 function asegurarHojaSatisfaccionBonoSupervisores_() {
@@ -13396,38 +16520,79 @@ function satisfaccionesBonoSupervisores_(periodo) {
 
 function guardarSatisfaccionBonoSupervisor(data) {
   const usuario = obtenerUsuarioApp(data.usuario);
-  if (!esPerfilJefatura(usuario.perfil)) throw new Error("Solo Jefatura puede registrar la satisfacción del cliente");
+  if (!esPerfilJefatura(usuario.perfil)) {
+    throw new Error("Solo Jefatura puede registrar las llamadas opcionales de atención al cliente");
+  }
+
   const periodo = periodoBonoSupervisores_(data.periodo);
   const supervisor = normalizarUsuario(data.supervisor);
-  const asignacion = asignacionesBonoSupervisores_(periodo,usuario.usuario).filter(function(x){return x.usuario===supervisor;})[0];
+  const asignacion = asignacionesBonoSupervisores_(periodo,usuario.usuario)
+    .filter(function(x){return x.usuario===supervisor;})[0];
+
   if (!asignacion) throw new Error("No se encontró al supervisor en el período seleccionado");
+
   const llamados = Number(data.clientesLlamados);
   const conformes = Number(data.conformes);
   const noConformes = Number(data.noConformes);
-  if (![llamados,conformes,noConformes].every(function(x){return isFinite(x) && x >= 0 && Math.floor(x) === x;})) {
+
+  if (![llamados,conformes,noConformes].every(function(x){
+    return isFinite(x) && x >= 0 && Math.floor(x) === x;
+  })) {
     throw new Error("Las cantidades deben ser números enteros iguales o mayores a cero");
   }
-  if (llamados <= 0) throw new Error("Debe registrar al menos un cliente llamado");
-  if (conformes + noConformes > llamados) throw new Error("Conformes más no conformes no puede superar a los clientes llamados");
-  const valores = [periodo,asignacion.usuario,asignacion.nombre,asignacion.sede,llamados,conformes,noConformes,String(data.observacion || "").trim(),usuario.usuario,new Date()];
+
+  // V347: las llamadas son opcionales. Guardar 0,0,0 desactiva su uso
+  // durante el período y deja la medición basada únicamente en auditorías.
+  if (llamados === 0 && (conformes > 0 || noConformes > 0)) {
+    throw new Error("Para no considerar llamadas, registre todos los valores en cero");
+  }
+
+  if (conformes + noConformes > llamados) {
+    throw new Error("Conformes más no conformes no puede superar a los clientes llamados");
+  }
+
+  const valores = [
+    periodo,asignacion.usuario,asignacion.nombre,asignacion.sede,
+    llamados,conformes,noConformes,String(data.observacion || "").trim(),
+    usuario.usuario,new Date()
+  ];
+
   const hoja = asegurarHojaSatisfaccionBonoSupervisores_();
   const lock = LockService.getScriptLock();
   lock.waitLock(30000);
+
   try {
     const datos = hoja.getDataRange().getValues();
     let filaDestino = 0;
+
     for (let i = 1; i < datos.length; i++) {
-      if (periodoDeValorBonoSupervisores_(datos[i][0]) === periodo && normalizarUsuario(datos[i][1]) === supervisor) { filaDestino=i+1; break; }
+      if (
+        periodoDeValorBonoSupervisores_(datos[i][0]) === periodo &&
+        normalizarUsuario(datos[i][1]) === supervisor
+      ) {
+        filaDestino=i+1;
+        break;
+      }
     }
+
     if (!filaDestino) filaDestino = hoja.getLastRow()+1;
     hoja.getRange(filaDestino,1).setNumberFormat("@");
     hoja.getRange(filaDestino,1,1,10).setValues([valores]);
   } finally {
     lock.releaseLock();
   }
+
   reiniciarDatosBonoSesion_();
   invalidarCacheBonosSupervisores_();
-  return {ok:true,modulo:"BONO_SUPERVISORES",accion:"GUARDAR_SATISFACCION",periodo:periodo,supervisor:supervisor};
+
+  return {
+    ok:true,
+    modulo:"BONO_SUPERVISORES",
+    accion:"GUARDAR_SATISFACCION",
+    periodo:periodo,
+    supervisor:supervisor,
+    llamadasIncluidas:llamados > 0
+  };
 }
 
 function asegurarHojaActasBonoSupervisores_() {
@@ -13578,7 +16743,7 @@ function vtrGarBonoDesdeDatos_(datos, corte) {
   return mapa;
 }
 
-function contextoCalculoBonoSupervisores_(periodo) {
+function contextoCalculoBonoSupervisoresLegacyV361_(periodo) {
   const corte = fechaReferenciaBonoSupervisores_(periodo);
   const datosProduccion = datosHojaBonoSupervisores_(HOJA_PRODUCCION);
   const catalogo = catalogoProduccionBonoDesdeDatos_(datosHojaBonoSupervisores_(HOJA_CATALOGO_ORDENES));
@@ -13606,6 +16771,36 @@ function contextoCalculoBonoSupervisores_(periodo) {
   };
 }
 
+function contextoCalculoBonoSupervisores_(periodo) {
+  try {
+    const resumen = mapasBonoDesdeResumenDashboardRankingV361_(periodo);
+    const parametros = parametrosSlaWinVigentes_(periodo);
+    return {
+      periodo:periodo,
+      produccion:resumen.produccion,
+      efectividad:resumen.efectividad,
+      recableado:resumen.recableado,
+      vtrgar:resumen.vtrgar,
+      base:[],mapa:[],observaciones:[],
+      estadosResumen:resumen.estados,
+      observacionesWinResumen:resumen.observacionesWin,
+      slaResumen:resumen.sla,
+      actividad:datosHojaBonoSupervisores_(HOJA_ACTIVIDAD_CAMPO),
+      checklist:datosHojaBonoSupervisores_(HOJA_CHECKLIST_ALMACEN),
+      parametros:parametros,
+      parametrosConfiguracion:parametrosSlaWinConfigurables_(periodo),
+      evaluaciones:evaluacionesBonoSupervisores_(periodo),
+      satisfacciones:satisfaccionesBonoSupervisores_(periodo),
+      actasManuales:validacionesActasBonoSupervisores_(periodo),
+      configuracion:configuracionBonoSupervisores_(periodo),
+      fuenteResumenV361:true
+    };
+  } catch (error) {
+    console.warn("V361 resumen no disponible para Bonos; se usa cálculo anterior",error);
+    return contextoCalculoBonoSupervisoresLegacyV361_(periodo);
+  }
+}
+
 function mapaCuadrillasBono_(cuadrillas) {
   const mapa = {};
   (cuadrillas || []).forEach(function(x){mapa[normalizarCuadrilla(x)]=true;});
@@ -13613,6 +16808,15 @@ function mapaCuadrillasBono_(cuadrillas) {
 }
 
 function estadosOperativosBono_(ctx, cuadrillas) {
+  if (ctx.estadosResumen) {
+    const total = {total:0,finalizadas:0,canceladas:0,regestiones:0,reprogramadas:0,otros:0};
+    (cuadrillas || []).forEach(function(cuadrilla) {
+      const item = ctx.estadosResumen[normalizarCuadrilla(cuadrilla)] || {};
+      Object.keys(total).forEach(function(clave){ total[clave] += Number(item[clave]) || 0; });
+    });
+    return total;
+  }
+
   const asignadas = mapaCuadrillasBono_(cuadrillas);
   const r = {total:0,finalizadas:0,canceladas:0,regestiones:0,reprogramadas:0,otros:0};
   (ctx.base || []).slice(1).forEach(function(fila) {
@@ -13653,28 +16857,37 @@ function calcularProductividadSupervisor_(ctx, asignacion, estados) {
   ) : 0;
   const maximo = ctx.configuracion.componentes.PRODUCTIVIDAD;
   const activador = activadorBonoSupervisores_(ctx,"PRODUCTIVIDAD");
-  const monto = evaluable ? montoProrrateadoBonoSupervisores_(cumplimiento,maximo,activador) : 0;
+  const monto = evaluable ? montoEscalaBonoSupervisores_(ctx,"PRODUCTIVIDAD",cumplimiento) : 0;
   return {
     clave:"PRODUCTIVIDAD",nombre:"Productividad operativa",maximo:maximo,evaluable:evaluable,
     cumplimiento:cumplimiento,monto:monto,activador:activador,
-    estado:evaluable?(cumplimiento>activador?"BONO ACTIVO":"NO ACTIVA BONO"):"SIN DATOS",
+    estado:evaluable?(monto>0?"BONO ACTIVO":"NO ACTIVA BONO"):"SIN DATOS",
     metricas:{efectividadPct:efectividadPct,productividadPct:productividadPct,puntajeProductividad:puntajeProductividad,puntajeEfectividad:puntajeEfectividad,puntos:redondearBonoSupervisores_(puntos,1),metaPuntos:metaPuntos,totalOrdenes:estados.total,finalizadas:finalizadas},
-    nota:"Puntaje aporta 60% y Efectividad 40%. El componente paga de forma prorrateada únicamente cuando supera " + activador + "%."
+    nota:"Puntaje aporta 60% y Efectividad 40%. El componente paga el monto fijo correspondiente a la escala alcanzada."
   };
 }
 
 function calcularCalidadSupervisor_(ctx, asignacion, estados) {
   const asignadas = mapaCuadrillasBono_(asignacion.cuadrillas);
   let observacionesWin = 0, observacionesWinPenalizadas = 0, montoPenalizadoWin = 0;
-  (ctx.observaciones || []).slice(1).forEach(function(fila) {
-    if (periodoDeValorBonoSupervisores_(fila[2] || fila[1]) !== ctx.periodo) return;
-    if (!asignadas[normalizarCuadrilla(fila[8])] || normalizarTexto(fila[9]) !== "WIN") return;
-    observacionesWin++;
-    if (normalizarTexto(fila[13]) === "PENALIZADO") {
-      observacionesWinPenalizadas++;
-      montoPenalizadoWin += Number(fila[14]) || 0;
-    }
-  });
+  if (ctx.observacionesWinResumen) {
+    asignacion.cuadrillas.forEach(function(cuadrilla) {
+      const item = ctx.observacionesWinResumen[normalizarCuadrilla(cuadrilla)] || {};
+      observacionesWin += Number(item.total) || 0;
+      observacionesWinPenalizadas += Number(item.penalizadas) || 0;
+      montoPenalizadoWin += Number(item.montoPenalizado) || 0;
+    });
+  } else {
+    (ctx.observaciones || []).slice(1).forEach(function(fila) {
+      if (periodoDeValorBonoSupervisores_(fila[2] || fila[1]) !== ctx.periodo) return;
+      if (!asignadas[normalizarCuadrilla(fila[8])] || normalizarTexto(fila[9]) !== "WIN") return;
+      observacionesWin++;
+      if (normalizarTexto(fila[13]) === "PENALIZADO") {
+        observacionesWinPenalizadas++;
+        montoPenalizadoWin += Number(fila[14]) || 0;
+      }
+    });
+  }
   let rojoAsignadas = 0, recableados = 0, sumaRecableado = 0, cuadrillasRecableado = 0;
   let incidenciasVtrGar = 0, finalizadasVtrGar = 0, sumaVtrGar = 0, cuadrillasVtrGar = 0;
   asignacion.cuadrillas.forEach(function(c) {
@@ -13715,11 +16928,11 @@ function calcularCalidadSupervisor_(ctx, asignacion, estados) {
   ) : 0;
   const maximo = ctx.configuracion.componentes.CALIDAD;
   const activador = activadorBonoSupervisores_(ctx,"CALIDAD");
-  const monto = evaluable ? montoProrrateadoBonoSupervisores_(cumplimiento,maximo,activador) : 0;
+  const monto = evaluable ? montoEscalaBonoSupervisores_(ctx,"CALIDAD",cumplimiento) : 0;
   return {
     clave:"CALIDAD",nombre:"Calidad de instalaciones y averías",maximo:maximo,evaluable:evaluable,
     cumplimiento:cumplimiento,monto:monto,activador:activador,
-    estado:evaluable?(cumplimiento>activador?"BONO ACTIVO":"NO ACTIVA BONO"):"SIN DATOS",
+    estado:evaluable?(monto>0?"BONO ACTIVO":"NO ACTIVA BONO"):"SIN DATOS",
     metricas:{
       observaciones:observacionesWin,observacionesWin:observacionesWin,
       observacionesWinPenalizadas:observacionesWinPenalizadas,
@@ -13731,7 +16944,7 @@ function calcularCalidadSupervisor_(ctx, asignacion, estados) {
       recableadoPct:recableadoPct,puntajeRecableado:puntajeRecableado,rojoAsignadas:rojoAsignadas,recableados:recableados,
       vtrGarPct:vtrGarPct,puntajeVtrGar:puntajeVtrGar,incidenciasVtrGar:incidenciasVtrGar,finalizadasVtrGar:finalizadasVtrGar
     },
-    nota:"Observaciones aporta 30% de Calidad: cantidad WIN 10% y monto penalizado WIN 90% (meta máxima S/ 300). Recableado aporta 40% y VTR/GAR 30%. El componente activa al superar " + activador + "%."
+    nota:"Observaciones aporta 30% de Calidad: cantidad WIN 10% y monto penalizado WIN 90% (meta máxima S/ 300). Recableado aporta 40% y VTR/GAR 30%. El componente paga el monto fijo correspondiente a la escala alcanzada."
   };
 }
 
@@ -13748,67 +16961,427 @@ function tiposPartidaPorCodigoBono_(ctx) {
   return mapa;
 }
 
-function calcularSlaSupervisor_(ctx, asignacion) {
-  const asignadas = mapaCuadrillasBono_(asignacion.cuadrillas);
-  const tipos = tiposPartidaPorCodigoBono_(ctx);
-  const parametros = ctx.parametros.mapa || {};
-  let evaluables = 0, cumplen = 0, vencidas = 0, sinPartida = 0, sinParametro = 0;
-  const grupos = {INSTALACION:{total:0,cumplen:0},AVERIA:{total:0,cumplen:0}};
+function calcularSlaSupervisorDesdeResumenV361_(ctx,asignacion) {
+  const total = nuevoResumenSlaCuadrillaV363_("SUPERVISOR");
   const detalle = [];
-  (ctx.mapa || []).slice(1).forEach(function(fila) {
-    const cuadrilla = normalizarCuadrilla(fila[7]);
-    if (!asignadas[cuadrilla]) return;
-    const fechaFin = fechaHoraBonoSupervisores_(fila[18]);
-    const fechaInicio = fechaHoraBonoSupervisores_(fila[19]);
-    const fechaPeriodo = fechaFin || fechaInicio || fechaHoraBonoSupervisores_(fila[2]);
-    if (!fechaPeriodo || Utilities.formatDate(fechaPeriodo,"America/Lima","yyyy-MM") !== ctx.periodo) return;
-    // El SLA evalúa toda orden que tenga simultáneamente hora de inicio
-    // y hora de fin válidas, sin importar su estado. Las demás se excluyen.
-    if (!fechaInicio || !fechaFin || fechaFin < fechaInicio) return;
-    const codigo = normalizarIdentificadorMapa(fila[0]);
-    const partida = tipos[codigo] || "";
-    if (!partida) {sinPartida++;return;}
-    const parametro = parametros[partida];
-    if (!parametro) {sinParametro++;return;}
-    const minutos = Math.round((fechaFin.getTime() - fechaInicio.getTime()) / 60000);
-    const cumple = minutos <= parametro.minutos;
-    const grupo = parametro.clasificacion === "INSTALACION" ? "INSTALACION" : "AVERIA";
-    evaluables++;
-    grupos[grupo].total++;
-    if (cumple) {cumplen++;grupos[grupo].cumplen++;}
-    else {
-      vencidas++;
-      if (detalle.length < 60) detalle.push({ordenId:String(fila[0] || ""),cuadrilla:cuadrilla,tipoPartida:parametro.tipoOrden,minutos:minutos,slaMinutos:parametro.minutos,exceso:minutos-parametro.minutos,resultado:"FUERA DE SLA"});
+  const sedeSupervisor = normalizarTexto(asignacion.sede || "");
+  const cuadrillasIncluidas = [];
+  const cuadrillasOmitidasOtraSede = [];
+
+  (asignacion.cuadrillas || []).forEach(function(cuadrilla) {
+    const claveCuadrilla = normalizarCuadrilla(cuadrilla);
+    const item = ctx.slaResumen[claveCuadrilla] || {};
+    const sedeItem = normalizarTexto(item.sede || "");
+
+    // V368: si el resumen conoce la sede de la cuadrilla, el bono solo
+    // consolida cuadrillas de la misma sede del Supervisor.
+    if (sedeSupervisor && sedeItem && sedeSupervisor !== sedeItem) {
+      cuadrillasOmitidasOtraSede.push(claveCuadrilla);
+      return;
     }
+
+    cuadrillasIncluidas.push(claveCuadrilla);
+
+    [
+      "evaluables","cumplenBruto","cumplenAjustado",
+      "fueraBruto","fueraAjustado","finalizadasDetectadas",
+      "noEvaluables","sinTiempos","sinPartida","sinParametro",
+      "instalacionesTotal","instalacionesCumplenBruto","instalacionesCumplenAjustado",
+      "visitasTecnicasTotal","visitasTecnicasCumplenBruto","visitasTecnicasCumplenAjustado",
+      "excepcionesPendientes","excepcionesAprobadas","excepcionesRechazadas"
+    ].forEach(function(clave){
+      total[clave] += Number(item[clave]) || 0;
+    });
+
+    (item.detalle || []).forEach(function(x){
+      if (detalle.length < 80) detalle.push(x);
+    });
   });
-  const cumplimiento = porcentajeBonoSupervisores_(cumplen,evaluables) || 0;
+
+  finalizarResumenSlaCuadrillaV363_(total);
+
+  // La medición oficial del Bono Supervisor es el SLA AJUSTADO:
+  // (Instalaciones ajustadas + VT ajustadas) / total evaluable.
+  const cumplenAjustadoCombinado =
+    Number(total.instalacionesCumplenAjustado || 0) +
+    Number(total.visitasTecnicasCumplenAjustado || 0);
+
+  const evaluablesCombinados =
+    Number(total.instalacionesTotal || 0) +
+    Number(total.visitasTecnicasTotal || 0);
+
+  const cumplimiento = evaluablesCombinados > 0
+    ? porcentajeBonoSupervisores_(cumplenAjustadoCombinado,evaluablesCombinados)
+    : Number(total.slaAjustado || 0);
+
   const maximo = ctx.configuracion.componentes.SLA;
   const activador = activadorBonoSupervisores_(ctx,"SLA");
-  const monto = evaluables > 0 ? montoProrrateadoBonoSupervisores_(cumplimiento,maximo,activador) : 0;
+  const monto = evaluablesCombinados > 0
+    ? montoEscalaBonoSupervisores_(ctx,"SLA",cumplimiento)
+    : 0;
+
   return {
-    clave:"SLA",nombre:"Cumplimiento de SLA WIN",maximo:maximo,evaluable:evaluables>0,
-    cumplimiento:cumplimiento,monto:monto,activador:activador,
-    estado:evaluables>0?(cumplimiento>activador?"BONO ACTIVO":"NO ACTIVA BONO"):"SIN DATOS",
-    metricas:{evaluables:evaluables,cumplen:cumplen,vencidas:vencidas,sinPartida:sinPartida,sinParametro:sinParametro,instalacionesPct:porcentajeBonoSupervisores_(grupos.INSTALACION.cumplen,grupos.INSTALACION.total),instalacionesTotal:grupos.INSTALACION.total,averiasPct:porcentajeBonoSupervisores_(grupos.AVERIA.cumplen,grupos.AVERIA.total),averiasTotal:grupos.AVERIA.total},
+    clave:"SLA",
+    nombre:"Tiempo de Gestión - SLA",
+    maximo:maximo,
+    evaluable:evaluablesCombinados>0,
+    cumplimiento:cumplimiento,
+    monto:monto,
+    activador:activador,
+    estado:evaluablesCombinados>0
+      ? (monto>0 ? "BONO ACTIVO" : "NO ACTIVA BONO")
+      : "SIN DATOS",
+    metricas:{
+      evaluables:evaluablesCombinados,
+      cumplen:cumplenAjustadoCombinado,
+      vencidas:Math.max(0,evaluablesCombinados-cumplenAjustadoCombinado),
+
+      cumplimientoBrutoPct:Number(total.slaBruto)||0,
+      cumplimientoAjustadoPct:cumplimiento,
+      cumplenBruto:Number(total.cumplenBruto)||0,
+      cumplenAjustado:cumplenAjustadoCombinado,
+
+      finalizadasDetectadas:Number(total.finalizadasDetectadas)||0,
+      sinTiempos:Number(total.sinTiempos)||0,
+      sinPartida:Number(total.sinPartida)||0,
+      sinParametro:Number(total.sinParametro)||0,
+
+      instalacionesPct:Number(total.instalacionesAjustado)||0,
+      instalacionesBrutoPct:Number(total.instalacionesBruto)||0,
+      instalacionesTotal:Number(total.instalacionesTotal)||0,
+      instalacionesCumplenAjustado:Number(total.instalacionesCumplenAjustado)||0,
+
+      visitasTecnicasPct:Number(total.visitasTecnicasAjustado)||0,
+      visitasTecnicasBrutoPct:Number(total.visitasTecnicasBruto)||0,
+      visitasTecnicasTotal:Number(total.visitasTecnicasTotal)||0,
+      visitasTecnicasCumplenAjustado:Number(total.visitasTecnicasCumplenAjustado)||0,
+
+      averiasPct:Number(total.visitasTecnicasAjustado)||0,
+      averiasTotal:Number(total.visitasTecnicasTotal)||0,
+
+      excepcionesPendientes:Number(total.excepcionesPendientes)||0,
+      excepcionesAprobadas:Number(total.excepcionesAprobadas)||0,
+      excepcionesRechazadas:Number(total.excepcionesRechazadas)||0,
+
+      sedeSupervisor:sedeSupervisor,
+      cuadrillasIncluidas:cuadrillasIncluidas,
+      cuadrillasOmitidasOtraSede:cuadrillasOmitidasOtraSede
+    },
     detalleIncumplimientos:detalle,
-    nota:"Solo considera órdenes con hora de inicio, hora de fin y partida parametrizada. La meta es superar 80% y el bono se activa al superar " + activador + "%."
+    nota:"El Bono Supervisor usa el SLA ajustado consolidado únicamente con las cuadrillas asignadas de su sede. Se suman Instalaciones y Visitas Técnicas por cantidad de códigos evaluables; no se promedian porcentajes de cuadrillas. Las excepciones solo impactan cuando Jefatura las aprueba."
   };
 }
 
+function calcularSlaSupervisor_(ctx, asignacion) {
+  if (ctx.slaResumen) return calcularSlaSupervisorDesdeResumenV361_(ctx,asignacion);
+  const asignadas = mapaCuadrillasBono_(asignacion.cuadrillas);
+  const tipos = tiposPartidaPorCodigoBono_(ctx);
+  const parametros = ctx.parametros.mapa || {};
+  const datosMapa = ctx.mapa || [];
+  const cabecera = datosMapa[0] || [];
+
+  // V349: la lectura usa nombres de encabezado, no letras fijas.
+  // En la hoja interna MAPA_ORDENES se guardan como:
+  // B TIPO_TRABAJO, I ESTADO, S FECHA_FIN_VISITA,
+  // T FECHA_INICIO_VISITA y V MOTIVO_FINALIZACION.
+  const iOrden = indiceCabeceraBonoSupervisores_(cabecera,["ORDEN_ID","ORDEN ID"]);
+  const iTipoTrabajo = indiceCabeceraBonoSupervisores_(cabecera,["TIPO_TRABAJO","TIPO TRABAJO"]);
+  const iCuadrilla = indiceCabeceraBonoSupervisores_(cabecera,["CUADRILLA"]);
+  const iEstado = indiceCabeceraBonoSupervisores_(cabecera,["ESTADO"]);
+  const iFechaSolicitud = indiceCabeceraBonoSupervisores_(cabecera,["FECHA_SOLICITUD","FECHA SOLICITUD"]);
+  const iFechaFin = indiceCabeceraBonoSupervisores_(cabecera,["FECHA_FIN_VISITA","FECHA FIN VISITA"]);
+  const iFechaInicio = indiceCabeceraBonoSupervisores_(cabecera,["FECHA_INICIO_VISITA","FECHA INICIO VISITA"]);
+  const iMotivoFinalizacion = indiceCabeceraBonoSupervisores_(cabecera,["MOTIVO_FINALIZACION","MOTIVO FINALIZACION"]);
+
+  let evaluables = 0;
+  let cumplen = 0;
+  let vencidas = 0;
+  let sinPartida = 0;
+  let sinParametro = 0;
+  let sinTiempos = 0;
+  let excluidasNoFinalizadas = 0;
+  let finalizadasDetectadas = 0;
+
+  const grupos = {
+    INSTALACION:{total:0,cumplen:0},
+    VISITA_TECNICA:{total:0,cumplen:0}
+  };
+
+  const detalle = [];
+
+  datosMapa.slice(1).forEach(function(fila) {
+    const cuadrilla = normalizarCuadrilla(iCuadrilla >= 0 ? fila[iCuadrilla] : "");
+    if (!asignadas[cuadrilla]) return;
+
+    const estado = normalizarTexto(iEstado >= 0 ? fila[iEstado] : "");
+    if (estado !== "FINALIZADA") {
+      excluidasNoFinalizadas++;
+      return;
+    }
+
+    finalizadasDetectadas++;
+
+    const fechaFin = fechaHoraBonoSupervisores_(iFechaFin >= 0 ? fila[iFechaFin] : "");
+    const fechaInicio = fechaHoraBonoSupervisores_(iFechaInicio >= 0 ? fila[iFechaInicio] : "");
+    const fechaSolicitud = fechaHoraBonoSupervisores_(iFechaSolicitud >= 0 ? fila[iFechaSolicitud] : "");
+    const fechaPeriodo = fechaFin || fechaInicio || fechaSolicitud;
+
+    if (!fechaPeriodo || Utilities.formatDate(fechaPeriodo,"America/Lima","yyyy-MM") !== ctx.periodo) return;
+
+    // Se mantienen Inicio y Fin como requisito de cálculo, pero ahora
+    // solamente después de confirmar que la orden está FINALIZADA.
+    if (!fechaInicio || !fechaFin || fechaFin < fechaInicio) {
+      sinTiempos++;
+      return;
+    }
+
+    const tipoTrabajo = normalizarTexto(iTipoTrabajo >= 0 ? fila[iTipoTrabajo] : "");
+    const motivoFinalizacion = normalizarTexto(iMotivoFinalizacion >= 0 ? fila[iMotivoFinalizacion] : "");
+
+    const tipoInstalacion =
+      tipoTrabajo === "INSTALACION" ||
+      tipoTrabajo === "INSTALACION POSIBLE FRAUDE";
+
+    const motivoInstalado =
+      motivoFinalizacion === "" ||
+      motivoFinalizacion === "INSTALADO";
+
+    // Regla solicitada:
+    // Instalación = Tipo de trabajo Instalación o Instalación Posible Fraude
+    // y Motivo de finalización vacío o INSTALADO.
+    // Todo otro caso FINALIZADO se clasifica como Visita Técnica.
+    const grupo = tipoInstalacion && motivoInstalado
+      ? "INSTALACION"
+      : "VISITA_TECNICA";
+
+    const ordenId = iOrden >= 0 ? fila[iOrden] : "";
+    const codigo = normalizarIdentificadorMapa(ordenId);
+    const partida = tipos[codigo] || "";
+
+    if (!partida) {
+      sinPartida++;
+      return;
+    }
+
+    const parametro = parametros[partida];
+
+    if (!parametro) {
+      sinParametro++;
+      return;
+    }
+
+    const minutos = Math.round((fechaFin.getTime() - fechaInicio.getTime()) / 60000);
+    const cumple = minutos <= parametro.minutos;
+
+    evaluables++;
+    grupos[grupo].total++;
+
+    if (cumple) {
+      cumplen++;
+      grupos[grupo].cumplen++;
+    } else {
+      vencidas++;
+
+      if (detalle.length < 60) {
+        detalle.push({
+          ordenId:String(ordenId || ""),
+          cuadrilla:cuadrilla,
+          grupo:grupo === "INSTALACION" ? "INSTALACIÓN" : "VISITA TÉCNICA",
+          tipoTrabajo:tipoTrabajo,
+          motivoFinalizacion:motivoFinalizacion || "VACÍO",
+          tipoPartida:parametro.tipoOrden,
+          minutos:minutos,
+          slaMinutos:parametro.minutos,
+          exceso:minutos-parametro.minutos,
+          resultado:"FUERA DE SLA"
+        });
+      }
+    }
+  });
+
+  const cumplimiento = porcentajeBonoSupervisores_(cumplen,evaluables) || 0;
+  const maximo = ctx.configuracion.componentes.SLA;
+  const activador = activadorBonoSupervisores_(ctx,"SLA");
+  const monto = evaluables > 0
+    ? montoEscalaBonoSupervisores_(ctx,"SLA",cumplimiento)
+    : 0;
+
+  const instalacionesPct = porcentajeBonoSupervisores_(
+    grupos.INSTALACION.cumplen,
+    grupos.INSTALACION.total
+  );
+
+  const visitasTecnicasPct = porcentajeBonoSupervisores_(
+    grupos.VISITA_TECNICA.cumplen,
+    grupos.VISITA_TECNICA.total
+  );
+
+  return {
+    clave:"SLA",
+    nombre:"Cumplimiento de SLA WIN",
+    maximo:maximo,
+    evaluable:evaluables>0,
+    cumplimiento:cumplimiento,
+    monto:monto,
+    activador:activador,
+    estado:evaluables>0
+      ? (monto>0 ? "BONO ACTIVO" : "NO ACTIVA BONO")
+      : "SIN DATOS",
+    metricas:{
+      evaluables:evaluables,
+      cumplen:cumplen,
+      vencidas:vencidas,
+      finalizadasDetectadas:finalizadasDetectadas,
+      excluidasNoFinalizadas:excluidasNoFinalizadas,
+      sinTiempos:sinTiempos,
+      sinPartida:sinPartida,
+      sinParametro:sinParametro,
+      instalacionesPct:instalacionesPct,
+      instalacionesTotal:grupos.INSTALACION.total,
+      visitasTecnicasPct:visitasTecnicasPct,
+      visitasTecnicasTotal:grupos.VISITA_TECNICA.total,
+      // Compatibilidad con vistas anteriores.
+      averiasPct:visitasTecnicasPct,
+      averiasTotal:grupos.VISITA_TECNICA.total
+    },
+    detalleIncumplimientos:detalle,
+    nota:"Solo considera órdenes FINALIZADAS con Inicio y Fin válidos. Instalación corresponde a TIPO_TRABAJO INSTALACION o INSTALACION POSIBLE FRAUDE cuando MOTIVO_FINALIZACION está vacío o indica INSTALADO. Todos los demás casos FINALIZADOS se muestran como Visita Técnica. El SLA en minutos continúa usando la partida parametrizada."
+  };
+}
+
+function metricasAuditoriasSatisfaccionSupervisor_(ctx, asignacion) {
+  const datos = ctx.actividad || [];
+  const cabecera = datos[0] || [];
+
+  const iFecha = indiceCabeceraBonoSupervisores_(cabecera,["FECHA"]);
+  const iSupervisor = indiceCabeceraBonoSupervisores_(cabecera,["SUPERVISOR"]);
+  const iTipo = indiceCabeceraBonoSupervisores_(cabecera,["TIPO_ACTIVIDAD","TIPO ACTIVIDAD"]);
+  const iCliente = indiceCabeceraBonoSupervisores_(cabecera,["PUNTAJE_CLIENTE","PUNTAJE CLIENTE"]);
+  const iOrden = indiceCabeceraBonoSupervisores_(cabecera,["PUNTAJE_ORDEN_LIMPIEZA","PUNTAJE ORDEN LIMPIEZA"]);
+  const iAuditoria = indiceCabeceraBonoSupervisores_(cabecera,["AUDITORIA_JSON","AUDITORIA JSON"]);
+
+  let auditorias = 0;
+  let sumaAtencionPct = 0;
+  let sumaOrdenPct = 0;
+
+  datos.slice(1).forEach(function(fila) {
+    if (iFecha < 0 || iSupervisor < 0 || iTipo < 0) return;
+    if (periodoDeValorBonoSupervisores_(fila[iFecha]) !== ctx.periodo) return;
+    if (normalizarUsuario(fila[iSupervisor]) !== asignacion.usuario) return;
+
+    const tipo = tipoActividadCampoCanonico(fila[iTipo]);
+    if (tipo !== "AUDITORIA EN FRIO" && tipo !== "AUDITORIA EN CALIENTE") return;
+
+    let puntajeCliente = iCliente >= 0 ? Number(fila[iCliente]) : NaN;
+    let puntajeOrden = iOrden >= 0 ? Number(fila[iOrden]) : NaN;
+
+    if ((!isFinite(puntajeCliente) || !isFinite(puntajeOrden)) && iAuditoria >= 0) {
+      const auditoria = parseJsonActividadCampo(fila[iAuditoria]) || {};
+      const puntajes = auditoria.puntajes || {};
+      if (!isFinite(puntajeCliente)) puntajeCliente = Number(puntajes.cliente);
+      if (!isFinite(puntajeOrden)) puntajeOrden = Number(puntajes.ordenLimpieza);
+    }
+
+    // Cada categoría tiene máximo 20 puntos. Solo se incorporan auditorías
+    // que tengan ambas secciones completas.
+    if (!isFinite(puntajeCliente) || !isFinite(puntajeOrden)) return;
+
+    const atencionPct = Math.min(100,Math.max(0,puntajeCliente / 20 * 100));
+    const ordenPct = Math.min(100,Math.max(0,puntajeOrden / 20 * 100));
+
+    auditorias++;
+    sumaAtencionPct += atencionPct;
+    sumaOrdenPct += ordenPct;
+  });
+
+  return {
+    auditorias:auditorias,
+    sumaAtencionPct:redondearBonoSupervisores_(sumaAtencionPct,2),
+    sumaOrdenPct:redondearBonoSupervisores_(sumaOrdenPct,2),
+    atencionAuditoriasPct:auditorias
+      ? redondearBonoSupervisores_(sumaAtencionPct / auditorias,2)
+      : null,
+    ordenLimpiezaPct:auditorias
+      ? redondearBonoSupervisores_(sumaOrdenPct / auditorias,2)
+      : null
+  };
+}
+
+
 function calcularSatisfaccionSupervisor_(ctx, asignacion) {
-  const registro = ctx.satisfacciones[asignacion.usuario] || {completa:false,clientesLlamados:0,conformes:0,noConformes:0,observacion:"",registradoPor:"",fechaActualizacion:""};
-  const respondieron = (Number(registro.conformes) || 0) + (Number(registro.noConformes) || 0);
-  const cumplimiento = respondieron > 0 ? (porcentajeBonoSupervisores_(registro.conformes,respondieron) || 0) : 0;
+  const auditorias = metricasAuditoriasSatisfaccionSupervisor_(ctx,asignacion);
+  const registro = ctx.satisfacciones[asignacion.usuario] || {
+    completa:false,
+    clientesLlamados:0,
+    conformes:0,
+    noConformes:0,
+    observacion:"",
+    registradoPor:"",
+    fechaActualizacion:""
+  };
+
+  const clientesLlamados = Number(registro.clientesLlamados) || 0;
+  const conformes = Number(registro.conformes) || 0;
+  const noConformes = Number(registro.noConformes) || 0;
+  const respondieron = conformes + noConformes;
+  const llamadasPct = respondieron > 0
+    ? (porcentajeBonoSupervisores_(conformes,respondieron) || 0)
+    : null;
+
+  // Atención al cliente toma cada auditoría como una muestra. Las llamadas
+  // respondidas son muestras adicionales opcionales: conforme=100, no conforme=0.
+  // Si no se registran llamadas, no existe penalidad ni dato pendiente.
+  const muestrasAtencion = auditorias.auditorias + respondieron;
+  const sumaAtencion = auditorias.sumaAtencionPct + (conformes * 100);
+  const atencionCombinadaPct = muestrasAtencion > 0
+    ? redondearBonoSupervisores_(sumaAtencion / muestrasAtencion,2)
+    : null;
+
+  const evaluable = auditorias.auditorias > 0 &&
+    atencionCombinadaPct !== null &&
+    auditorias.ordenLimpiezaPct !== null;
+
+  const cumplimiento = evaluable
+    ? redondearBonoSupervisores_(
+        (atencionCombinadaPct * 0.60) +
+        (auditorias.ordenLimpiezaPct * 0.40),
+        2
+      )
+    : 0;
+
   const maximo = ctx.configuracion.componentes.SATISFACCION;
   const activador = activadorBonoSupervisores_(ctx,"SATISFACCION");
-  const monto = respondieron > 0 ? montoProrrateadoBonoSupervisores_(cumplimiento,maximo,activador) : 0;
+  const monto = evaluable
+    ? montoEscalaBonoSupervisores_(ctx,"SATISFACCION",cumplimiento)
+    : 0;
+
   return {
-    clave:"SATISFACCION",nombre:"Satisfacción del cliente",maximo:maximo,evaluable:respondieron>0,
-    cumplimiento:respondieron>0?cumplimiento:null,monto:monto,activador:activador,
-    estado:respondieron>0?(cumplimiento>activador?"BONO ACTIVO":"NO ACTIVA BONO"):(registro.clientesLlamados>0?"SIN RESPUESTAS":"PENDIENTE REGISTRO"),
-    metricas:{clientesLlamados:registro.clientesLlamados,respondieron:respondieron,conformes:registro.conformes,noConformes:registro.noConformes,noRespondieron:Math.max(0,(Number(registro.clientesLlamados)||0)-respondieron)},
+    clave:"SATISFACCION",
+    nombre:"Satisfacción del cliente",
+    maximo:maximo,
+    evaluable:evaluable,
+    cumplimiento:evaluable ? cumplimiento : null,
+    monto:monto,
+    activador:activador,
+    estado:evaluable
+      ? (monto>0 ? "BONO ACTIVO" : "NO ACTIVA BONO")
+      : "PENDIENTE AUDITORÍAS",
+    metricas:{
+      auditoriasEvaluadas:auditorias.auditorias,
+      atencionAuditoriasPct:auditorias.atencionAuditoriasPct,
+      ordenLimpiezaPct:auditorias.ordenLimpiezaPct,
+      atencionCombinadaPct:atencionCombinadaPct,
+      muestrasAtencion:muestrasAtencion,
+      llamadasIncluidas:clientesLlamados > 0,
+      llamadasPct:llamadasPct,
+      clientesLlamados:clientesLlamados,
+      respondieron:respondieron,
+      conformes:conformes,
+      noConformes:noConformes,
+      noRespondieron:Math.max(0,clientesLlamados-respondieron)
+    },
     registro:registro,
-    nota:"Jefatura registra llamadas, conformes y no conformes. Las llamadas sin respuesta se muestran, pero no afectan el porcentaje. El componente activa al superar " + activador + "%."
+    nota:"Satisfacción se obtiene de Auditoría en Frío y Auditoría en Caliente: Atención al cliente aporta 60% y Orden y limpieza 40%. El monto se asigna según la escala fija alcanzada. Las llamadas opcionales no afectan si no se registran."
   };
 }
 
@@ -13831,6 +17404,7 @@ function calcularSeguridadSupervisor_(ctx, asignacion) {
   const cabeceraActividad = (ctx.actividad || [])[0] || [];
   const iFecha = indiceCabeceraBonoSupervisores_(cabeceraActividad,["FECHA"]);
   const iSupervisor = indiceCabeceraBonoSupervisores_(cabeceraActividad,["SUPERVISOR"]);
+
   (ctx.actividad || []).slice(1).forEach(function(fila) {
     if (iFecha < 0 || iSupervisor < 0) return;
     if (periodoDeValorBonoSupervisores_(fila[iFecha]) !== ctx.periodo) return;
@@ -13842,27 +17416,57 @@ function calcularSeguridadSupervisor_(ctx, asignacion) {
   const slotsCumplidos = Object.keys(slots).length;
   const checklistCumplimientoPct = porcentajeBonoSupervisores_(slotsCumplidos,slotsMeta);
   const actividadPct = Math.min(100,(porcentajeBonoSupervisores_(actividadesCampo,15) || 0));
-  const evaluacion = ctx.evaluaciones[asignacion.usuario] || {completa:false,total:0,respuestas:PREGUNTAS_LIDERAZGO_BONO_.map(function(p){return {pregunta:p,puntaje:0};}),evaluadoPor:"",fechaActualizacion:""};
+
+  const evaluacion = ctx.evaluaciones[asignacion.usuario] || {
+    completa:false,
+    total:0,
+    respuestas:PREGUNTAS_LIDERAZGO_BONO_.map(function(p){return {pregunta:p,puntaje:0};}),
+    evaluadoPor:"",
+    fechaActualizacion:""
+  };
+
   const evaluacionPct = Math.min(100,(Number(evaluacion.total) || 0) / 60 * 100);
   const puntajeActas = actasPct === null ? 0 : Math.min(100,actasPct);
   const puntajeChecklist = checklistCumplimientoPct === null ? 0 : Math.min(100,checklistCumplimientoPct);
-  const cumplimiento = redondearBonoSupervisores_((puntajeActas + puntajeChecklist + actividadPct + evaluacionPct) / 4,2);
+  const cumplimiento = redondearBonoSupervisores_(
+    (puntajeActas + puntajeChecklist + actividadPct + evaluacionPct) / 4,
+    2
+  );
+
   const maximo = ctx.configuracion.componentes.SEGURIDAD;
   const activador = activadorBonoSupervisores_(ctx,"SEGURIDAD");
   const evaluable = actasManual.evaluada || slotsCumplidos>0 || actividadesCampo>0 || evaluacion.completa;
-  const monto = evaluable ? montoProrrateadoBonoSupervisores_(cumplimiento,maximo,activador) : 0;
+  const monto = evaluable ? montoEscalaBonoSupervisores_(ctx,"SEGURIDAD",cumplimiento) : 0;
   const maximoIndicador = maximo / 4;
+
   return {
-    clave:"SEGURIDAD",nombre:"Seguridad, disciplina y liderazgo",maximo:maximo,
-    evaluable:evaluable,activador:activador,
-    cumplimiento:cumplimiento,monto:monto,
-    estado:!evaluable?"SIN DATOS":(!actasManual.evaluada?"PENDIENTE ACTAS":(!evaluacion.completa?"PENDIENTE EVALUACIÓN":(cumplimiento>activador?"BONO ACTIVO":"NO ACTIVA BONO"))),
+    clave:"SEGURIDAD",
+    nombre:"Liderazgo",
+    maximo:maximo,
+    evaluable:evaluable,
+    activador:activador,
+    cumplimiento:cumplimiento,
+    monto:monto,
+    estado:!evaluable
+      ? "SIN DATOS"
+      : (!actasManual.evaluada
+          ? "PENDIENTE ACTAS"
+          : (!evaluacion.completa
+              ? "PENDIENTE EVALUACIÓN"
+              : (monto>0 ? "BONO ACTIVO" : "NO ACTIVA BONO"))),
     metricas:{
-      actasPct:actasPct,actasEvaluadas:actasManual.evaluada,
-      actasRespuesta:actasManual.respuesta,actasSinPendientes:actasManual.sinPendientes,
-      checklistCumplimientoPct:checklistCumplimientoPct,slotsCumplidos:slotsCumplidos,slotsMeta:slotsMeta,
-      actividadesCampo:actividadesCampo,metaActividadesCampo:15,actividadPct:actividadPct,
-      evaluacionPct:redondearBonoSupervisores_(evaluacionPct,2),puntajeEvaluacion:evaluacion.total || 0,
+      actasPct:actasPct,
+      actasEvaluadas:actasManual.evaluada,
+      actasRespuesta:actasManual.respuesta,
+      actasSinPendientes:actasManual.sinPendientes,
+      checklistCumplimientoPct:checklistCumplimientoPct,
+      slotsCumplidos:slotsCumplidos,
+      slotsMeta:slotsMeta,
+      actividadesCampo:actividadesCampo,
+      metaActividadesCampo:15,
+      actividadPct:actividadPct,
+      evaluacionPct:redondearBonoSupervisores_(evaluacionPct,2),
+      puntajeEvaluacion:evaluacion.total || 0,
       montoActas:redondearBonoSupervisores_(maximoIndicador*puntajeActas/100,2),
       montoChecklistCumplimiento:redondearBonoSupervisores_(maximoIndicador*puntajeChecklist/100,2),
       montoActividad:redondearBonoSupervisores_(maximoIndicador*actividadPct/100,2),
@@ -13872,7 +17476,7 @@ function calcularSeguridadSupervisor_(ctx, asignacion) {
     actasManual:actasManual,
     evaluacion:evaluacion,
     preguntas:PREGUNTAS_LIDERAZGO_BONO_,
-    nota:"Actas sin pendientes se valida manualmente con Sí o No. Checklist por quincena, 15 actividades en campo y evaluación de Jefatura completan el componente; cada criterio aporta 25%. El componente activa al superar " + activador + "%."
+    nota:"Actas sin pendientes, Checklist por quincena, Actividad en campo y Evaluación de Jefatura aportan 25% cada uno al componente Liderazgo. El componente paga el monto fijo correspondiente a la escala alcanzada."
   };
 }
 
@@ -13884,19 +17488,50 @@ function calcularBonoSupervisor_(ctx, asignacion, puedeEditar) {
   const satisfaccion = calcularSatisfaccionSupervisor_(ctx,asignacion);
   const seguridad = calcularSeguridadSupervisor_(ctx,asignacion);
   const componentes = [productividad,calidad,sla,satisfaccion,seguridad];
-  const monto = redondearBonoSupervisores_(componentes.reduce(function(s,x){return s+(Number(x.monto)||0);},0),2);
+
+  const monto = redondearBonoSupervisores_(
+    componentes.reduce(function(s,x){return s+(Number(x.monto)||0);},0),
+    2
+  );
+
   const pendientes = [];
-  if (!satisfaccion.evaluable) pendientes.push("Registro manual de satisfacción pendiente");
-  if (!seguridad.actasManual.evaluada) pendientes.push("Validación manual de actas sin pendientes");
-  if (!seguridad.evaluacion.completa) pendientes.push("Evaluación manual de liderazgo pendiente");
-  if (sla.metricas.sinPartida || sla.metricas.sinParametro) pendientes.push((sla.metricas.sinPartida + sla.metricas.sinParametro) + " orden(es) sin partida o parámetro SLA");
+  if (!satisfaccion.evaluable) {
+    pendientes.push("Auditorías de Atención al cliente y Orden y limpieza pendientes");
+  }
+  if (!seguridad.actasManual.evaluada) {
+    pendientes.push("Validación manual de actas sin pendientes");
+  }
+  if (!seguridad.evaluacion.completa) {
+    pendientes.push("Evaluación manual de liderazgo pendiente");
+  }
+  if (sla.metricas.sinPartida || sla.metricas.sinParametro) {
+    pendientes.push(
+      (sla.metricas.sinPartida + sla.metricas.sinParametro) +
+      " orden(es) sin partida o parámetro SLA"
+    );
+  }
+
   const bonoMaximo = ctx.configuracion.montoTotal;
+
   return {
-    usuario:asignacion.usuario,nombre:asignacion.nombre,sede:asignacion.sede,periodo:ctx.periodo,
-    cuadrillas:asignacion.cuadrillas,totalCuadrillas:asignacion.cuadrillas.length,
-    bonoMaximo:bonoMaximo,maximoEvaluado:bonoMaximo,montoProvisional:monto,porcentajeEvaluado:bonoMaximo>0?redondearBonoSupervisores_((monto/bonoMaximo)*100,2):0,
-    estado:ctx.periodo===periodoActualBonoSupervisores_()?"EN CURSO":"HISTÓRICO PROVISIONAL",
-    puedeEditar:puedeEditar,componentes:componentes,pendientes:pendientes
+    usuario:asignacion.usuario,
+    nombre:asignacion.nombre,
+    sede:asignacion.sede,
+    periodo:ctx.periodo,
+    cuadrillas:asignacion.cuadrillas,
+    totalCuadrillas:asignacion.cuadrillas.length,
+    bonoMaximo:bonoMaximo,
+    maximoEvaluado:bonoMaximo,
+    montoProvisional:monto,
+    porcentajeEvaluado:bonoMaximo>0
+      ? redondearBonoSupervisores_((monto/bonoMaximo)*100,2)
+      : 0,
+    estado:ctx.periodo===periodoActualBonoSupervisores_()
+      ? "EN CURSO"
+      : "HISTÓRICO PROVISIONAL",
+    puedeEditar:puedeEditar,
+    componentes:componentes,
+    pendientes:pendientes
   };
 }
 
@@ -13921,7 +17556,12 @@ function obtenerBonosSupervisores(data) {
     throw new Error("El bono de supervisores solo está disponible en los dashboards autorizados");
   }
   const periodo = periodoBonoSupervisores_(data.periodo);
-  const forzarActualizacion = data.forzarActualizacion === true || normalizarTexto(data.forzarActualizacion) === "SI";
+  const textoForzar = normalizarTexto(data.forzarActualizacion);
+  const forzarActualizacion =
+    data.forzarActualizacion === true ||
+    textoForzar === "SI" ||
+    textoForzar === "TRUE" ||
+    textoForzar === "1";
   const claveCache = claveCacheBonosSupervisores_(periodo,perfil,usuario.usuario);
   if (!forzarActualizacion) {
     const guardado = leerCacheBonosSupervisores_(claveCache);
@@ -13961,7 +17601,7 @@ function obtenerBonosSupervisores(data) {
     parametrosSlaConfiguracion:ctx.parametrosConfiguracion,
     criterio:"SUMA_COMPONENTES",
     metasDashboard:{puntosPorCuadrilla:130,efectividadPct:70,recableadoPct:42,vtrGarPct:3,observacionesMonto:300},
-    nota:"El monto es provisional y se prorratea con las metas vigentes del Dashboard y los activadores definidos para cada componente.",
+    nota:"El monto se calcula con las escalas fijas configuradas para cada componente.",
     desdeCache:false,
     calculadoEn:Utilities.formatDate(new Date(),"America/Lima","dd/MM/yyyy HH:mm")
   };
@@ -13975,6 +17615,12 @@ function doPost(e) {
     reiniciarDatosBonoSesion_();
 
     if (data.accion === "obtenerBonosSupervisores") return respuestaJson(obtenerBonosSupervisores(data));
+    if (data.accion === "obtenerSlaGestion") return respuestaJson(obtenerSlaGestionV363(data));
+    if (data.accion === "solicitarExcepcionSla") return respuestaJson(solicitarExcepcionSlaV363(data));
+    if (data.accion === "resolverExcepcionSla") return respuestaJson(resolverExcepcionSlaV363(data));
+    if (data.accion === "reconstruirSlaPeriodo") return respuestaJson(reconstruirSlaPeriodoV363(data));
+    if (data.accion === "obtenerConfiguracionRanking") return respuestaJson(obtenerConfiguracionRankingV363(data));
+    if (data.accion === "guardarConfiguracionRanking") return respuestaJson(guardarConfiguracionRankingV363(data));
     if (data.accion === "listarParametrosSlaWin") return respuestaJson(listarParametrosSlaWin(data));
     if (data.accion === "guardarParametrosSlaWin") return respuestaJson(guardarParametrosSlaWin(data));
     if (data.accion === "guardarEvaluacionBonoSupervisor") return respuestaJson(guardarEvaluacionBonoSupervisor(data));
@@ -14014,7 +17660,7 @@ function doPost(e) {
     if (data.accion === "obtenerResumenMateriales") return respuestaJson(obtenerResumenMaterialesV184(data));
     if (data.accion === "asegurarHojasMateriales") {
       const u = obtenerUsuarioApp(data.usuario);
-      if (!esPerfilImportarMaterialesPermitido(u.perfil)) throw new Error("No tienes permiso");
+      if (!puedeImportarMaterialesUsuarioV374_(u)) throw new Error("No tienes permiso");
       asegurarHojasMaterialesV184();
       return respuestaJson({ok:true,hojas:[HOJA_IMPORTAR_MATERIALES,HOJA_CONSUMO_MATERIALES,HOJA_CATALOGO_PRECIOS_MATERIALES]});
     }
@@ -14546,3 +18192,6 @@ function validarChecklistAlmacen(data) {
   } else throw new Error("No tienes permiso para validar este tipo de checklist");
   return {ok:true, modulo:"CHECKLIST_ALMACEN", accion:"VALIDAR", id, resultado, tipoChecklist:tipo};
 }
+
+
+/* V368: Bono Supervisor usa SLA ajustado consolidado por cuadrillas de la sede, combinando Instalaciones y VT. */
