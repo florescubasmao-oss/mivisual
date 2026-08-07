@@ -11,12 +11,12 @@
   const MODULOS = {
     dashboards_core: {
       archivos: [
-        `./js/dashboards.js?v=V372-BONO-SUPERVISOR-UNICO`,
-        `./js/resumen_dashboard_v361.js?v=V372-BONO-SUPERVISOR-UNICO`,
-        `./js/sla_gestion_v363.js?v=V372-BONO-SUPERVISOR-UNICO`,
-        `./js/dashboard_consolidado_v365.js?v=V372-BONO-SUPERVISOR-UNICO`,
-        `./js/dashboard_sla_tools_v366.js?v=V372-BONO-SUPERVISOR-UNICO`,
-        `./js/informe_gerencial_lazy_v361.js?v=V372-BONO-SUPERVISOR-UNICO`
+        `./js/dashboards.js?v=V373-PDF-ACTAS-MOVIL`,
+        `./js/resumen_dashboard_v361.js?v=V373-PDF-ACTAS-MOVIL`,
+        `./js/sla_gestion_v363.js?v=V373-PDF-ACTAS-MOVIL`,
+        `./js/dashboard_consolidado_v365.js?v=V373-PDF-ACTAS-MOVIL`,
+        `./js/dashboard_sla_tools_v366.js?v=V373-PDF-ACTAS-MOVIL`,
+        `./js/informe_gerencial_lazy_v361.js?v=V373-PDF-ACTAS-MOVIL`
       ],
       entradas: [
         "mostrarProduccionV2",
@@ -27,12 +27,12 @@
     },
     mi_desempeno: {
       depende: ["dashboards_core", "indicadores", "ranking"],
-      archivos: [`./js/mi_desempeno_v363.js?v=V372-BONO-SUPERVISOR-UNICO`],
+      archivos: [`./js/mi_desempeno_v363.js?v=V373-PDF-ACTAS-MOVIL`],
       entradas: ["mostrarMiDesempeno"]
     },
     dashboard: {
       depende: ["dashboards_core"],
-      archivos: [`./js/bono_supervisores.js?v=V372-BONO-SUPERVISOR-UNICO`],
+      archivos: [`./js/bono_supervisores.js?v=V373-PDF-ACTAS-MOVIL`],
       entradas: ["mostrarBonosSupervisores"]
     },
     indicadores: {
@@ -42,8 +42,8 @@
     ranking: {
       depende: ["dashboards_core"],
       archivos: [
-        `./ranking.js?v=V372-BONO-SUPERVISOR-UNICO`,
-        `./js/ranking_informe_v358.js?v=V372-BONO-SUPERVISOR-UNICO`
+        `./ranking.js?v=V373-PDF-ACTAS-MOVIL`,
+        `./js/ranking_informe_v358.js?v=V373-PDF-ACTAS-MOVIL`
       ],
       entradas: ["mostrarRanking"]
     },
@@ -61,14 +61,14 @@
     accesos: {
       archivos: [
         `./js/accesos.js?v=${VERSION}`,
-        `./js/accesos_certificacion_v362.js?v=V372-BONO-SUPERVISOR-UNICO`
+        `./js/accesos_certificacion_v362.js?v=V373-PDF-ACTAS-MOVIL`
       ],
       entradas: ["mostrarAccesos", "mostrarBiblioteca", "mostrarCapacitacion"]
     },
     actividad: {
       archivos: [
-        `./js/actividad_campo.js?v=V372-BONO-SUPERVISOR-UNICO`,
-        `./js/actividad_galeria_v371.js?v=V372-BONO-SUPERVISOR-UNICO`
+        `./js/actividad_campo.js?v=V373-PDF-ACTAS-MOVIL`,
+        `./js/actividad_galeria_v371.js?v=V373-PDF-ACTAS-MOVIL`
       ],
       entradas: ["mostrarActividadCampo"]
     },
@@ -80,7 +80,10 @@
       entradas: ["mostrarValidacionTecnica"]
     },
     actas: {
-      archivos: [`./js/actas.js?v=${VERSION}`],
+      archivos: [
+        `./js/actas.js?v=V373-PDF-ACTAS-MOVIL`,
+        `./js/actas_pdf_movil_v373.js?v=V373-PDF-ACTAS-MOVIL`
+      ],
       entradas: ["mostrarGestionActas"]
     },
     equipos: {
@@ -119,7 +122,7 @@
       depende: ["dashboards_core", "accesos", "checklist"],
       archivos: [
         `./js/base_operativa.js?v=${VERSION}`,
-        `./js/base_operativa_sync_v367.js?v=V372-BONO-SUPERVISOR-UNICO`,
+        `./js/base_operativa_sync_v367.js?v=V373-PDF-ACTAS-MOVIL`,
         `./js/admin_checklist.js?v=${VERSION}`
       ],
       entradas: ["mostrarAdministracion"]
