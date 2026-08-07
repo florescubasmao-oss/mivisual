@@ -482,7 +482,7 @@ async function mat184ConsultarResumen(){
 }
 
 // MI VISUAL v70 - Módulo Análisis Económico
-const API_ANALISIS_ECONOMICO = "https://script.google.com/macros/s/AKfycbzcbjCLweJNgZXDerdzmMN7Lwotc1G8NWdzoPkaLNGDivAgpYxDkq78xZwPRioSB4XY/exec";
+const API_ANALISIS_ECONOMICO = (window.MI_VISUAL_API_URL || "https://script.google.com/macros/s/AKfycbwugGpuEMcJYFsDNS1hkcdZXJ92PUvXNv5ttpktyhZWv2fWB7ceCZNkfIFYxAs5wsgN/exec");
 
 function aePerfilPermitido(){
   return aePerfilMateriales()||aeAnalisisHabilitado();
@@ -507,7 +507,7 @@ function mostrarProduccionValorizada(){
 async function consultarAnalisisEconomico(){
   const periodo=document.getElementById("aePeriodo")?.value||aePeriodoActual(),resultado=document.getElementById("aeResultado"),boton=document.getElementById("aeConsultar");
   resultado.innerHTML='<div class="ae-cargando">Calculando valorización mensual...</div>';if(boton){boton.disabled=true;boton.textContent="Consultando..."}
-  try{const r=await fetch(API_ANALISIS_ECONOMICO,{method:"POST",headers:{"Content-Type":"text/plain;charset=utf-8"},body:JSON.stringify({accion:"obtenerAnalisisEconomico",usuario:localStorage.getItem("usuario"),periodo})});const texto=await r.text();let data;try{data=JSON.parse(texto)}catch(e){throw new Error(/<!doctype|<html|google drive|accounts\.google/i.test(texto)?"La conexión recibió una página externa en lugar de los datos.":"La API devolvió una respuesta inválida.")}if(!data.ok)throw new Error(data.error||"No se pudo obtener el análisis económico");renderAnalisisEconomico(data)}catch(err){resultado.innerHTML=`<div class="ae-error"><b>No se pudo cargar el análisis económico.</b><br>${aeEscape(String(err.message||err))}</div>`}finally{if(boton){boton.disabled=false;boton.textContent="Consultar"}}
+  try{const api=(window.MI_VISUAL_API_URL||API_ANALISIS_ECONOMICO);const r=await fetch(api,{method:"POST",cache:"no-store",headers:{"Content-Type":"text/plain;charset=utf-8"},body:JSON.stringify({accion:"obtenerAnalisisEconomico",usuario:localStorage.getItem("usuario"),periodo})});const texto=await r.text();let data;try{data=JSON.parse(texto)}catch(e){throw new Error(/<!doctype|<html|google drive|accounts\.google/i.test(texto)?"La conexión recibió una página externa en lugar de los datos.":"La API devolvió una respuesta inválida.")}if(!data.ok)throw new Error(data.error||"No se pudo obtener el análisis económico");renderAnalisisEconomico(data)}catch(err){resultado.innerHTML=`<div class="ae-error"><b>No se pudo cargar el análisis económico.</b><br>${aeEscape(String(err.message||err))}</div>`}finally{if(boton){boton.disabled=false;boton.textContent="Consultar"}}
 }
 
 function aeTarjeta(titulo,valor,subtexto,clase=""){return`<article class="ae-kpi ${clase}"><span>${titulo}</span><strong>${valor}</strong><small>${subtexto||""}</small></article>`}
@@ -703,7 +703,7 @@ let UTIL292_DATOS=null;
 let UTIL292_FILTROS={sede:"TODAS",cuadrilla:"TODAS"};
 
 async function util292Api(payload,intento=0){
-  const url=(window.MI_VISUAL_API_URL||API_ANALISIS_ECONOMICO)+(intento?`${API_ANALISIS_ECONOMICO.includes("?")?"&":"?"}v292=${Date.now()}`:"");
+  const api=(window.MI_VISUAL_API_URL||API_ANALISIS_ECONOMICO);const url=api+(intento?`${api.includes("?")?"&":"?"}v292=${Date.now()}`:"");
   const respuesta=await fetch(url,{
     method:"POST",cache:"no-store",
     headers:{"Content-Type":"text/plain;charset=utf-8"},

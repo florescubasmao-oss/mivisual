@@ -91,7 +91,7 @@
       entradas: ["mostrarEquiposAveriados"]
     },
     analisis: {
-      archivos: [`./js/analisis_economico.js?v=V374-GERENCIA-GENERAL`],
+      archivos: [`./js/analisis_economico.js?v=V376-API-CENTRALIZADA`],
       entradas: ["mostrarAnalisisEconomico"]
     },
     checklist: {
@@ -111,7 +111,7 @@
       entradas: ["mostrarConsultasReclamos"]
     },
     mapa: {
-      archivos: [`./js/mapa_operativo.js?v=V374-GERENCIA-GENERAL`],
+      archivos: [`./js/mapa_operativo.js?v=V376-API-CENTRALIZADA`],
       entradas: ["mostrarMapaOperativo"]
     },
     plantilla: {
