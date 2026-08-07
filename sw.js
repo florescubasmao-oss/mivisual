@@ -1,5 +1,5 @@
 /* MI VISUAL V369 - caché segura y actualización operativa rápida */
-const MV339_CACHE = "mivisual-v380-facturas-combustible-20260807";
+const MV339_CACHE = "mivisual-v381-facturas-menu-perfiles-20260807";
 const MV339_CORE = [
   "./",
   "./index.html",

@@ -115,7 +115,7 @@
       entradas: ["mostrarMapaOperativo"]
     },
     facturas: {
-      archivos: [`./js/facturas_v380.js?v=V380-FACTURAS-COMBUSTIBLE`],
+      archivos: [`./js/facturas_v380.js?v=V381-FACTURAS-MENU-PERFILES`],
       entradas: ["mostrarFacturas"]
     },
     plantilla: {
