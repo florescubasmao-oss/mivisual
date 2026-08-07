@@ -50,7 +50,7 @@
       const texto = (await respuesta.text()).trim();
       if(!respuesta.ok) throw new Error(`No se pudo consultar el resumen (${respuesta.status}).`);
       if(!texto || /^MI VISUAL API OK$/i.test(texto) || /^<!doctype|^<html/i.test(texto)){
-        throw new Error("Apps Script todavía no tiene publicada la V361.");
+        throw new Error("Apps Script todavía no tiene publicada la V363.");
       }
       const data = JSON.parse(texto);
       if(!data?.ok) throw new Error(data?.error || "No se pudo obtener el resumen operativo.");
@@ -89,5 +89,5 @@
   window.mv4ObtenerRanking = obtenerConsolidado;
   try{ mv4ObtenerRanking = obtenerConsolidado; }catch(_){ }
   window.MV361_RESUMEN_CONSOLIDADO_OK = true;
-  console.log("MI VISUAL V361: resumen consolidado habilitado.");
+  console.log("MI VISUAL V363: resumen consolidado con SLA habilitado.");
 })();

@@ -11,15 +11,21 @@
   const MODULOS = {
     dashboards_core: {
       archivos: [
-        `./js/dashboards.js?v=V362-CERTIFICACION-WIN`,
-        `./js/resumen_dashboard_v361.js?v=V362-CERTIFICACION-WIN`,
-        `./js/informe_gerencial_lazy_v361.js?v=V362-CERTIFICACION-WIN`
+        `./js/dashboards.js?v=V363-TIEMPO-GESTION-SLA`,
+        `./js/resumen_dashboard_v361.js?v=V363-TIEMPO-GESTION-SLA`,
+        `./js/sla_gestion_v363.js?v=V363-TIEMPO-GESTION-SLA`,
+        `./js/informe_gerencial_lazy_v361.js?v=V363-TIEMPO-GESTION-SLA`
       ],
       entradas: ["mostrarProduccionV2", "mostrarDashboardSupervisor", "mostrarDashboardJefatura"]
     },
+    mi_desempeno: {
+      depende: ["dashboards_core", "indicadores", "ranking"],
+      archivos: [`./js/mi_desempeno_v363.js?v=V363-TIEMPO-GESTION-SLA`],
+      entradas: ["mostrarMiDesempeno"]
+    },
     dashboard: {
       depende: ["dashboards_core"],
-      archivos: [`./js/bono_supervisores.js?v=V362-CERTIFICACION-WIN`],
+      archivos: [`./js/bono_supervisores.js?v=V363-TIEMPO-GESTION-SLA`],
       entradas: ["mostrarBonosSupervisores"]
     },
     indicadores: {
@@ -29,8 +35,8 @@
     ranking: {
       depende: ["dashboards_core"],
       archivos: [
-        `./ranking.js?v=V362-CERTIFICACION-WIN`,
-        `./js/ranking_informe_v358.js?v=V362-CERTIFICACION-WIN`
+        `./ranking.js?v=V363-TIEMPO-GESTION-SLA`,
+        `./js/ranking_informe_v358.js?v=V363-TIEMPO-GESTION-SLA`
       ],
       entradas: ["mostrarRanking"]
     },
@@ -48,7 +54,7 @@
     accesos: {
       archivos: [
         `./js/accesos.js?v=${VERSION}`,
-        `./js/accesos_certificacion_v362.js?v=V362-CERTIFICACION-WIN`
+        `./js/accesos_certificacion_v362.js?v=V363-TIEMPO-GESTION-SLA`
       ],
       entradas: ["mostrarAccesos", "mostrarBiblioteca", "mostrarCapacitacion"]
     },
@@ -111,6 +117,8 @@
 
   const FUNCION_MODULO = {
     mostrarProduccionV2: "dashboards_core",
+    mostrarMiDesempeno: "mi_desempeno",
+    mostrarTiempoGestionSla: "dashboards_core",
     mostrarDashboardSupervisor: "dashboard",
     mostrarDashboardJefatura: "dashboard",
     mostrarBonosSupervisores: "dashboard",

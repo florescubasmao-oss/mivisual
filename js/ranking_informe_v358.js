@@ -1,5 +1,5 @@
 /* ============================================================
-   MI VISUAL V360 - Ranking detallado + selector mensual
+   MI VISUAL V363 - Ranking detallado + SLA
    - Jefatura y Gerencia Lima.
    - Reutiliza el enriquecimiento analítico del Dashboard.
    - Carga datos en paralelo y conserva caché corta por período.
@@ -363,6 +363,14 @@
     };
   }
 
+  function detalleSla(r){
+    const d = r.detSla || {};
+    return {
+      linea1:`Ajustado ${n(r.slaAjustado).toFixed(1)}% · Bruto ${n(r.slaBruto).toFixed(1)}%`,
+      linea2:`${n(d.cumplenAjustado)} dentro / ${n(d.evaluables)} evaluables · Excepciones ${n(d.excepcionesAprobadas)}`
+    };
+  }
+
   function detalleObservaciones(r){
     const d = r.detObservaciones || {};
     const e = d.estados || {};
@@ -415,6 +423,7 @@
     const ef = detalleEfectividad(r);
     const rec = detalleRecableado(r);
     const vg = detalleVtrGar(r);
+    const sla = detalleSla(r);
     const obs = detalleObservaciones(r);
     const monto = detalleMonto(r);
 
@@ -464,6 +473,7 @@
           ${indicador("Efectividad",pct(r.efectividad),colorSemaforoRanking("efectividad",r.efectividad),ef)}
           ${indicador("% Recableado",pct(r.recableado),colorSemaforoRanking("recableado",r.recableado),rec)}
           ${indicador("% VTR/GAR",pct(r.vtrgar),colorSemaforoRanking("vtrgar",r.vtrgar),vg)}
+          ${indicador("Tiempo de Gestión - SLA",`${num(r.slaAjustado).toFixed(1)}%`,(window.mv363SemaforoSla?mv363SemaforoSla(r.slaAjustado).icono:""),sla)}
           ${indicador("Observaciones",num(r.observaciones).toFixed(0),"",obs)}
           ${indicador("Monto afectado",money(r.montoAfectadoObs),"",monto)}
         </div>
@@ -887,6 +897,9 @@
     const total = lista.length;
     const suma = campo=>lista.reduce((s,x)=>s+num(x[campo]),0);
     const promedio = campo=>total ? lista.reduce((s,x)=>s+pctNumero(x[campo]),0)/total : 0;
+    const slaEvaluables=lista.reduce((s,x)=>s+num(x.detSla?.evaluables),0);
+    const slaCumplenBruto=lista.reduce((s,x)=>s+num(x.detSla?.cumplenBruto),0);
+    const slaCumplenAjustado=lista.reduce((s,x)=>s+num(x.detSla?.cumplenAjustado),0);
     return {
       total,
       produccion:suma("produccion"),
@@ -894,6 +907,11 @@
       efectividad:promedio("efectividad"),
       recableado:promedio("recableado"),
       vtrgar:promedio("vtrgar"),
+      slaEvaluables,
+      slaCumplenBruto,
+      slaCumplenAjustado,
+      slaAjustado:slaEvaluables ? slaCumplenAjustado/slaEvaluables*100 : 0,
+      slaBruto:slaEvaluables ? slaCumplenBruto/slaEvaluables*100 : 0,
       observaciones:suma("observaciones"),
       montoTotal:suma("montoTotalObs"),
       montoAfectado:suma("montoAfectadoObs")
@@ -965,6 +983,7 @@
       red(vg.vtr,0),
       red(vg.total,0),
       red(pctNumero(r.vtrgar),2),
+      red(r.slaBruto,2),red(r.slaAjustado,2),red(r.detSla?.evaluables,0),red(r.detSla?.fueraAjustado,0),red(r.detSla?.excepcionesAprobadas,0),red(r.aporteSla,2),
       red(o.total ?? r.observaciones,0),
       red(o.pendientes,0),
       red(o.estados?.DERIVADO,0),
@@ -1010,6 +1029,10 @@
       ["Efectividad promedio",red(res.efectividad,2)],
       ["Recableado promedio",red(res.recableado,2)],
       ["VTR/GAR promedio",red(res.vtrgar,2)],
+      ["SLA ajustado",red(res.slaAjustado,2)],
+      ["SLA bruto",red(res.slaBruto,2)],
+      ["SLA códigos evaluables",res.slaEvaluables],
+      ["SLA cumplen ajustado",res.slaCumplenAjustado],
       ["Observaciones",res.observaciones],
       ["Monto total observaciones",red(res.montoTotal,2)],
       ["Monto afectado",red(res.montoAfectado,2)],
@@ -1065,6 +1088,7 @@
       "EFECTIVIDAD TOTAL","FINALIZADAS","CANCELADAS","REPROGRAMADAS","REGESTIÓN","EFECTIVIDAD %",
       "ÓRDENES VT (LOS)","RECABLEADOS","RECABLEADO %",
       "FINALIZADAS VTR/GAR","GAR","VTR","INCIDENCIAS","VTR/GAR %",
+      "SLA BRUTO %","SLA AJUSTADO %","SLA EVALUABLES","SLA FUERA","EXCEPCIONES APROBADAS","APORTE SLA",
       "OBSERVACIONES","PENDIENTES","DERIVADAS","EN PROCESO","PENALIZADAS","APELADAS","SUBSANADAS",
       "MONTO TOTAL OBS","MONTO AFECTADO","ESTADO GENERAL"
     ]];
@@ -1208,6 +1232,6 @@
   window.mv358CerrarInformeRanking = cerrarModal;
   window.mv358GenerarInformeRanking = generarExcel;
 
-  window.MV360_RANKING_DETALLADO_OK = true;
-  console.log("MI VISUAL V360: selector de períodos del Ranking habilitado.");
+  window.MV363_RANKING_SLA_OK = true;
+  console.log("MI VISUAL V363: SLA incorporado al Ranking.");
 })();

@@ -1,5 +1,5 @@
-/* MI VISUAL V362 - caché segura y Certificación WIN */
-const MV339_CACHE = "mivisual-v362-certificacion-win-20260806";
+/* MI VISUAL V363 - caché segura, Tiempo de Gestión SLA y Mi Desempeño */
+const MV339_CACHE = "mivisual-v363-tiempo-gestion-sla-20260806";
 const MV339_CORE = [
   "./",
   "./index.html",
@@ -9,8 +9,9 @@ const MV339_CORE = [
   "./js/login.js?v=V339-CACHE",
   "./js/permisos.js?v=V339-CORE",
   "./js/app.js?v=V339-LAZY",
-  "./js/modulos_loader.js?v=V362-CERTIFICACION-WIN",
-  "./js/resumen_dashboard_v361.js?v=V362-CERTIFICACION-WIN",
+  "./js/modulos_loader.js?v=V363-TIEMPO-GESTION-SLA",
+  "./js/menu_desempeno_v363.js?v=V363-TIEMPO-GESTION-SLA",
+  "./js/resumen_dashboard_v361.js?v=V363-TIEMPO-GESTION-SLA",
   "./js/mapa_cto_fix_v342.js?v=V342-MAPA-CTO",
   "./js/actas_recepcion_v343.js?v=V343-ACTAS-RECEPCION",
   "./js/actas_identidad_v344.js?v=V344-ACTAS-IDENTIDAD",
