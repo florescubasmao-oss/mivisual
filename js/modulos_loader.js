@@ -11,12 +11,12 @@
   const MODULOS = {
     dashboards_core: {
       archivos: [
-        `./js/dashboards.js?v=V373-PDF-ACTAS-MOVIL`,
-        `./js/resumen_dashboard_v361.js?v=V373-PDF-ACTAS-MOVIL`,
-        `./js/sla_gestion_v363.js?v=V373-PDF-ACTAS-MOVIL`,
-        `./js/dashboard_consolidado_v365.js?v=V373-PDF-ACTAS-MOVIL`,
-        `./js/dashboard_sla_tools_v366.js?v=V373-PDF-ACTAS-MOVIL`,
-        `./js/informe_gerencial_lazy_v361.js?v=V373-PDF-ACTAS-MOVIL`
+        `./js/dashboards.js?v=V378-GERENCIA-GENERAL-DASHBOARD`,
+        `./js/resumen_dashboard_v361.js?v=V378-GERENCIA-GENERAL-DASHBOARD`,
+        `./js/sla_gestion_v363.js?v=V378-GERENCIA-GENERAL-DASHBOARD`,
+        `./js/dashboard_consolidado_v365.js?v=V378-GERENCIA-GENERAL-DASHBOARD`,
+        `./js/dashboard_sla_tools_v366.js?v=V378-GERENCIA-GENERAL-DASHBOARD`,
+        `./js/informe_gerencial_lazy_v361.js?v=V378-GERENCIA-GENERAL-DASHBOARD`
       ],
       entradas: [
         "mostrarProduccionV2",

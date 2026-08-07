@@ -1,5 +1,5 @@
 /* ============================================================
-   MI VISUAL V367 - Resumen rápido y sincronizado para Dashboard y Mi Desempeño
+   MI VISUAL V378 - Resumen rápido y sincronizado para Dashboard y Mi Desempeño
    - Memoria de sesión: 2 minutos.
    - Último resumen local: 15 minutos.
    - Actualización silenciosa en segundo plano.
@@ -193,6 +193,8 @@
     const ejecutivo = [
       "JEFATURA",
       "JEFATURA GENERAL",
+      "GERENCIA GENERAL",
+      "GERENCIAL GENERAL",
       "GERENCIA LIMA",
       "ADMIN",
       "ADMINISTRADOR"
