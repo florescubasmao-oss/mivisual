@@ -91,7 +91,7 @@
       entradas: ["mostrarEquiposAveriados"]
     },
     analisis: {
-      archivos: [`./js/analisis_economico.js?v=${VERSION}`],
+      archivos: [`./js/analisis_economico.js?v=V374-GERENCIA-GENERAL`],
       entradas: ["mostrarAnalisisEconomico"]
     },
     checklist: {
@@ -111,7 +111,7 @@
       entradas: ["mostrarConsultasReclamos"]
     },
     mapa: {
-      archivos: [`./js/mapa_operativo.js?v=${VERSION}`],
+      archivos: [`./js/mapa_operativo.js?v=V374-GERENCIA-GENERAL`],
       entradas: ["mostrarMapaOperativo"]
     },
     plantilla: {

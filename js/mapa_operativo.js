@@ -1,4 +1,4 @@
-const API_MAPA_OPERATIVO = (window.MI_VISUAL_API_URL || "https://script.google.com/macros/s/AKfycbwugGpuEMcJYFsDNS1hkcdZXJ92PUvXNv5ttpktyhZWv2fWB7ceCZNkfIFYxAs5wsgN/exec");
+const API_MAPA_OPERATIVO = (window.MI_VISUAL_API_URL || "https://script.google.com/macros/s/AKfycbzcbjCLweJNgZXDerdzmMN7Lwotc1G8NWdzoPkaLNGDivAgpYxDkq78xZwPRioSB4XY/exec");
 let moMapa=null, moCapa=null, moCapaCto=null, moCapaCatalogoCto=null, moRegistros=[], moImportacion=[], moMarcadores={}, moArchivoSeleccionado=null;
 let moOrdenCtoVisible='';
 let moModoCtoEstado=null;
@@ -10,59 +10,37 @@ const MO_TOTAL_COLORES_CUADRILLA=72;
 const MO_TOTAL_PATRONES_CUADRILLA=7;
 const MO_TOTAL_ESTILOS_CUADRILLA=MO_TOTAL_COLORES_CUADRILLA*MO_TOTAL_PATRONES_CUADRILLA;
 
-function moEsRespuestaHtml(texto){
-  const t=moNorm(texto).toLowerCase();
-  return t.startsWith('<!doctype html')||t.startsWith('<html')||t.includes('<body')||t.includes('docs-drive-logo')||t.includes('no se pudo abrir el archivo');
-}
-function moMensajeRespuestaApi(texto,esLectura){
-  const t=moNorm(texto);
-  if(t==='MI VISUAL API OK'){
-    return esLectura
-      ?'La versión publicada de Apps Script no respondió con los datos del Mapa Operativo.'
-      :'No se recibió la confirmación del registro. Revise la última actualización antes de volver a importar.';
-  }
-  if(moEsRespuestaHtml(t)){
-    return esLectura
-      ?'Google no devolvió los datos del Mapa Operativo. Presione Reintentar; si continúa, revise la versión publicada de Apps Script.'
-      :'Google no devolvió la confirmación del registro. No repita la carga todavía; revise la última actualización del mapa.';
-  }
-  return t&&t.length<=260?t:'Respuesta no válida del servidor del Mapa Operativo.';
-}
-function moEsperar(ms){return new Promise(resolve=>setTimeout(resolve,ms))}
 async function moApi(payload){
   const r=await fetch(API_MAPA_OPERATIVO,{method:'POST',body:JSON.stringify(payload)});
-  const t=await r.text();let d;
-  try{d=JSON.parse(t)}catch(e){throw new Error(moMensajeRespuestaApi(t,false))}
-  if(!r.ok)throw new Error(d.error||`Error ${r.status} al registrar información del mapa`);
-  if(!d.ok)throw new Error(d.error||'Error en Mapa Operativo');
-  return d;
+  const t=await r.text(); let d; try{d=JSON.parse(t)}catch(e){
+    if(moNorm(t)==='MI VISUAL API OK')throw new Error('No se recibió la confirmación del registro. Espere unos segundos y revise la última actualización antes de volver a intentarlo.');
+    throw new Error(t||'Respuesta no válida');
+  }
+  if(!d.ok) throw new Error(d.error||'Error en Mapa Operativo'); return d;
 }
 async function moApiLectura(payload){
-  let ultimoError=null;
-  for(let intento=1;intento<=2;intento++){
-    try{
-      const url=new URL(API_MAPA_OPERATIVO);
-      Object.keys(payload||{}).forEach(k=>url.searchParams.set(k,moNorm(payload[k])));
-      url.searchParams.set('_mo',Date.now().toString());
-      const r=await fetch(url.toString(),{method:'GET',cache:'no-store'});
-      const t=await r.text();let d;
-      try{d=JSON.parse(t)}catch(e){throw new Error(moMensajeRespuestaApi(t,true))}
-      if(!r.ok)throw new Error(d.error||`Error ${r.status} al consultar el mapa`);
-      if(!d.ok)throw new Error(d.error||'Error al consultar Mapa Operativo');
-      return d;
-    }catch(e){
-      ultimoError=e;
-      if(intento<2)await moEsperar(700);
-    }
+  const url=new URL(API_MAPA_OPERATIVO);
+  Object.keys(payload||{}).forEach(k=>url.searchParams.set(k,moNorm(payload[k])));
+  const r=await fetch(url.toString(),{method:'GET',cache:'no-store'});
+  const t=await r.text();let d;
+  try{d=JSON.parse(t)}catch(e){
+    if(moNorm(t)==='MI VISUAL API OK')throw new Error('Actualice Code.gs y cree una nueva versión de Apps Script.');
+    throw new Error(t||'Respuesta no válida');
   }
-  throw ultimoError||new Error('No se pudo consultar el Mapa Operativo.');
+  if(!d.ok)throw new Error(d.error||'Error al consultar Mapa Operativo');
+  return d;
 }
 function moNorm(v){return (v??'').toString().trim()}
 function moNormCab(v){return moNorm(v).toUpperCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^A-Z0-9]/g,'')}
 function moEscape(v){return moNorm(v).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]))}
 function moUsuario(){return localStorage.getItem('usuario')||''}
 function moPerfil(){return moNormCab(localStorage.getItem('perfil'))}
-function moPuedeImportar(){return ['JEFATURA','ADMIN','ADMINISTRADOR','JEFATURAOPERACIONES','JEFATURADEOPERACIONES','OPERACIONES'].includes(moPerfil())}
+function moPuedeImportar(){
+  if(typeof pmPuede==="function"&&typeof PM_PERMISOS_CARGADOS!=="undefined"&&PM_PERMISOS_CARGADOS){
+    if(pmPuede("MAPA OPERATIVO","REGISTRAR"))return true;
+  }
+  return ['SUPERVISOR','JEFATURA','ADMIN','ADMINISTRADOR','JEFATURAOPERACIONES','JEFATURADEOPERACIONES','OPERACIONES'].includes(moPerfil());
+}
 function moPeriodoActual(){const d=new Date();return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`}
 function moPeriodoValido(valor){const t=moNorm(valor);return /^\d{4}-(0[1-9]|1[0-2])$/.test(t)?t:''}
 function moEtiquetaPeriodo(valor){
@@ -195,10 +173,7 @@ async function mostrarMapaOperativo(){
   </div>
   <div id="moMapa" class="mo-map"><div class="mo-empty">Aplique filtros para visualizar únicamente las órdenes necesarias.</div></div></div>`;
   moPrepararCargaArchivoMapa();
-  try{await moDependencias();moInicializarMapa();await moCargarCatalogos()}catch(e){
-    const mapa=document.getElementById('moMapa');
-    if(mapa)mapa.innerHTML=`<div class="mo-empty mo-error"><b>No se pudo cargar el Mapa Operativo.</b><span>${moEscape(e&&e.message?e.message:'Error de comunicación con el servidor.')}</span><button type="button" class="mo-btn" onclick="mostrarMapaOperativo()">Reintentar</button></div>`;
-  }
+  try{await moDependencias();moInicializarMapa();await moCargarCatalogos()}catch(e){document.getElementById('moMapa').innerHTML=`<div class="mo-empty mo-error">${moEscape(e.message)}</div>`}
 }
 function moArchivoMapaValido(file){
   if(!file)return false;
@@ -234,17 +209,12 @@ async function moCargarCatalogos(){
   moPintarUltimaActualizacion(d.ultimaActualizacionTexto);
 }
 async function moConsultarMapa(){
-  const contador=document.getElementById('moContador');
   const filtros={periodo:moPeriodoValido(document.getElementById('moFiltroPeriodo')?.value),sede:moNorm(document.getElementById('moFiltroSede')?.value),fecha:moNorm(document.getElementById('moFiltroFecha')?.value),grupoTrabajo:moNorm(document.getElementById('moFiltroGrupo')?.value),estado:moNorm(document.getElementById('moFiltroEstado')?.value),cuadrilla:moNorm(document.getElementById('moFiltroCuadrilla')?.value),codigo:moNorm(document.getElementById('moBuscarCodigo')?.value)};
-  if(!filtros.periodo){contador.textContent='Debe seleccionar el período que desea consultar.';return}
-  if(filtros.fecha&&!filtros.fecha.startsWith(filtros.periodo+'-')){contador.textContent='La fecha debe pertenecer al período seleccionado.';return}
-  if(!Object.values(filtros).some(Boolean)){contador.textContent='Debe seleccionar al menos un filtro para evitar cargar toda la base.';return}
-  contador.textContent='Consultando órdenes...';
-  try{
-    const d=await moApiLectura(Object.assign({accion:'listarMapaOperativo',usuario:moUsuario()},filtros));
-    moRegistros=d.ordenes||[];moPintarUltimaActualizacion(d.ultimaActualizacionTexto);moRenderMarcadores(moRegistros);
-    if(document.getElementById('moMostrarCtosCercanas')?.checked)await moCargarCtosCercanas();
-  }catch(e){contador.textContent=e&&e.message?e.message:'No se pudieron consultar las órdenes.'}
+  if(!filtros.periodo){document.getElementById('moContador').textContent='Debe seleccionar el período que desea consultar.';return}
+  if(filtros.fecha&&!filtros.fecha.startsWith(filtros.periodo+'-')){document.getElementById('moContador').textContent='La fecha debe pertenecer al período seleccionado.';return}
+  if(!Object.values(filtros).some(Boolean)){document.getElementById('moContador').textContent='Debe seleccionar al menos un filtro para evitar cargar toda la base.';return}
+  document.getElementById('moContador').textContent='Consultando órdenes...';
+  const d=await moApiLectura(Object.assign({accion:'listarMapaOperativo',usuario:moUsuario()},filtros));moRegistros=d.ordenes||[];moPintarUltimaActualizacion(d.ultimaActualizacionTexto);moRenderMarcadores(moRegistros);if(document.getElementById('moMostrarCtosCercanas')?.checked)await moCargarCtosCercanas();
 }
 function moInicializarMapa(){
   if(moMapa){moMapa.remove();moMapa=null}
@@ -268,12 +238,13 @@ function moFechaExcel(v){
 function moFmtFecha(d){return d?`${String(d.getDate()).padStart(2,'0')}/${String(d.getMonth()+1).padStart(2,'0')}/${d.getFullYear()}`:''}
 function moFmtHora(d){return d?`${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`:''}
 function moFmtFechaHoraValor(v){const d=moFechaExcel(v);if(!d)return moNorm(v);const f=moFmtFecha(d),h=moFmtHora(d);return h&&h!=='00:00'?`${f} ${h}`:f}
-function moCoordenadaValida(lat,lng){return Number.isFinite(lat)&&Number.isFinite(lng)&&lat>=-90&&lat<=90&&lng>=-180&&lng<=180}
-function moCoord(v){const t=moNorm(v).replace(/[()]/g,'').replace(/;/g,',');const m=t.match(/(-?\d+(?:\.\d+)?)\s*,\s*(-?\d+(?:\.\d+)?)/);if(!m)return [null,null];const lat=Number(m[1]),lng=Number(m[2]);return moCoordenadaValida(lat,lng)?[lat,lng]:[null,null]}
+function moCoord(v){const t=moNorm(v).replace(/[()]/g,'').replace(/;/g,',');const m=t.match(/(-?\d+(?:\.\d+)?)\s*,\s*(-?\d+(?:\.\d+)?)/);return m?[Number(m[1]),Number(m[2])]:[null,null]}
 function moValor(row,map,...names){for(const n of names){const i=map[moNormCab(n)];if(i!==undefined&&row[i]!==undefined&&row[i]!==null)return row[i]}return ''}
 function moCoordCto(v){
-  const [lat,lng]=moCoord(v);
-  return moCoordenadaValida(lat,lng)?`${lat},${lng}`:'';
+  const numeros=moNorm(v).match(/-?\d+(?:\.\d+)?/g)||[];
+  if(numeros.length<2)return '';
+  const lat=Number(numeros[0]),lng=Number(numeros[1]);
+  return Number.isFinite(lat)&&Number.isFinite(lng)?`${lat},${lng}`:'';
 }
 function moExtraerDatosCto(texto){
   const campos={};
@@ -423,7 +394,7 @@ async function moCargarCtosCercanas(){
     moCapaCatalogoCto.clearLayers();
     (d.ctos||[]).forEach(cto=>{
       const lat=Number(cto.latitud),lng=Number(cto.longitud);
-      if(!moCoordenadaValida(lat,lng))return;
+      if(!Number.isFinite(lat)||!Number.isFinite(lng))return;
       L.marker([lat,lng],{icon:moIconoCatalogoCto(cto),riseOnHover:true,zIndexOffset:700})
         .bindPopup(moPopupCatalogoCto(cto),{maxWidth:290})
         .addTo(moCapaCatalogoCto);
@@ -547,7 +518,7 @@ function moMostrarCtosOrdenPorBoton(boton){
     puntos.push([cto.lat,cto.lng]);
   });
   const latCliente=Number(orden.latitud),lngCliente=Number(orden.longitud);
-  if(moCoordenadaValida(latCliente,lngCliente))puntos.push([latCliente,lngCliente]);
+  if(Number.isFinite(latCliente)&&Number.isFinite(lngCliente))puntos.push([latCliente,lngCliente]);
   moOrdenCtoVisible=ordenId;
   moActualizarBotonesCto(ordenId,true);
   moMostrarControlModoCto(orden,ctos.length);
@@ -594,5 +565,5 @@ function moLeyendaCuadrillas(lista){
   const chips=nombres.map(nombre=>{const e=moEstiloCuadrilla(nombre);return `<span class="mo-cuadrilla-chip mo-patron-${e.patron}" style="--mo-cuadrilla-color:${e.color}" title="${moEscape(nombre)}">${moEscape(moCodigoCortoCuadrilla(nombre))}</span>`}).join('');
   return `<details class="mo-leyenda-cuadrillas"><summary>Cuadrillas visibles (${nombres.length})</summary><div>${chips}</div></details>`;
 }
-function moRenderMarcadores(lista){if(!moMapa||!moCapa)return;moOcultarCtos();if(moCapaCatalogoCto)moCapaCatalogoCto.clearLayers();moCatalogoCtoVisible=false;moCapa.clearLayers();moMarcadores={};const bounds=[];let validos=0;moConstruirEstilosCuadrillas((lista||[]).map(x=>x.cuadrilla));lista.forEach(x=>{const lat=Number(x.latitud),lng=Number(x.longitud);if(!moCoordenadaValida(lat,lng))return;const ordenId=moNorm(x.ordenId);const m=L.marker([lat,lng],{icon:moIconoEstado(x.estado,x.cuadrilla),riseOnHover:true}).bindPopup(moPopup(x),{autoClose:true,closeOnClick:true,maxWidth:310});m._moOrdenId=ordenId;m._moRegistro=x;m.on('click',()=>{if(moOrdenCtoVisible&&moOrdenCtoVisible!==ordenId)moOcultarCtos();moMapa.panTo([lat,lng]);});m.on('popupclose',()=>{if(moOrdenCtoVisible===ordenId)moOcultarCtos();});m.addTo(moCapa);moMarcadores[ordenId]=m;bounds.push([lat,lng]);validos++});if(bounds.length)moMapa.fitBounds(bounds,{padding:[25,25],maxZoom:16});setTimeout(moAplicarModoZoomEtiquetas,0);document.getElementById('moContador').innerHTML=`${validos} puntos visibles de ${lista.length} órdenes filtradas.<div class="mo-leyenda"><span><i style="--c:#16a34a"></i>Finalizada</span><span><i style="--c:#dc2626"></i>Cancelada</span><span><i style="--c:#eab308"></i>Reprogramada</span><span><i style="--c:#f97316"></i>Regestión</span><span><i style="--c:#64748b"></i>Anulada</span><span><i style="--c:#2563eb"></i>Pendiente/Agendada</span><span><i style="--c:#7c3aed"></i>En proceso</span></div>${moLeyendaCuadrillas(lista)}`}
+function moRenderMarcadores(lista){if(!moMapa||!moCapa)return;moOcultarCtos();if(moCapaCatalogoCto)moCapaCatalogoCto.clearLayers();moCatalogoCtoVisible=false;moCapa.clearLayers();moMarcadores={};const bounds=[];let validos=0;moConstruirEstilosCuadrillas((lista||[]).map(x=>x.cuadrilla));lista.forEach(x=>{const lat=Number(x.latitud),lng=Number(x.longitud);if(!Number.isFinite(lat)||!Number.isFinite(lng))return;const ordenId=moNorm(x.ordenId);const m=L.marker([lat,lng],{icon:moIconoEstado(x.estado,x.cuadrilla),riseOnHover:true}).bindPopup(moPopup(x),{autoClose:true,closeOnClick:true,maxWidth:310});m._moOrdenId=ordenId;m._moRegistro=x;m.on('click',()=>{if(moOrdenCtoVisible&&moOrdenCtoVisible!==ordenId)moOcultarCtos();moMapa.panTo([lat,lng]);});m.on('popupclose',()=>{if(moOrdenCtoVisible===ordenId)moOcultarCtos();});m.addTo(moCapa);moMarcadores[ordenId]=m;bounds.push([lat,lng]);validos++});if(bounds.length)moMapa.fitBounds(bounds,{padding:[25,25],maxZoom:16});setTimeout(moAplicarModoZoomEtiquetas,0);document.getElementById('moContador').innerHTML=`${validos} puntos visibles de ${lista.length} órdenes filtradas.<div class="mo-leyenda"><span><i style="--c:#16a34a"></i>Finalizada</span><span><i style="--c:#dc2626"></i>Cancelada</span><span><i style="--c:#eab308"></i>Reprogramada</span><span><i style="--c:#f97316"></i>Regestión</span><span><i style="--c:#64748b"></i>Anulada</span><span><i style="--c:#2563eb"></i>Pendiente/Agendada</span><span><i style="--c:#7c3aed"></i>En proceso</span></div>${moLeyendaCuadrillas(lista)}`}
 function moBuscarCodigo(){moConsultarMapa()}

@@ -39,17 +39,68 @@ function aeEscape(v){return String(v==null?"":v).replace(/[&<>"']/g,c=>({"&":"&a
 function aePerfilActual(){return (localStorage.getItem("perfil")||"").toUpperCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"").trim()}
 function aeEsJefaturaAlmacen(){return aePerfilActual()==="JEFATURA ALMACEN"}
 function aeEsGerenciaLima(){return aePerfilActual()==="GERENCIA LIMA"}
-function aePerfilMateriales(){return ["JEFATURA","JEFATURA GENERAL","GERENCIA LIMA","JEFATURA ALMACEN","ADMIN","ADMINISTRADOR"].includes(aePerfilActual())}
-function aePerfilImportarMateriales(){return ["JEFATURA","JEFATURA GENERAL","JEFATURA ALMACEN","ADMIN","ADMINISTRADOR"].includes(aePerfilActual())}
-function aePerfilProduccionValorizada(){return ["JEFATURA","JEFATURA GENERAL","ADMIN","ADMINISTRADOR"].includes(aePerfilActual())}
+function aeEsGerenciaGeneral(){return ["GERENCIA GENERAL","GERENCIAL GENERAL"].includes(aePerfilActual())}
+function aePermisoAnalisis(){return typeof pmPermiso==="function"?pmPermiso("ANALISIS ECONOMICO"):null}
+function aePuedeAnalisis(accion){
+  if(typeof pmPuede!=="function")return false;
+  return pmPuede("ANALISIS ECONOMICO",accion||"VER");
+}
+function aeAnalisisHabilitado(){
+  const permiso=aePermisoAnalisis();
+  return !!permiso&&
+    typeof pmPuedeVer==="function"&&
+    pmPuedeVer("ANALISIS ECONOMICO");
+}
+function aePerfilMateriales(){
+  return aeAnalisisHabilitado()||
+    ["JEFATURA","JEFATURA GENERAL","GERENCIA GENERAL","GERENCIAL GENERAL","GERENCIA LIMA","JEFATURA ALMACEN","ADMIN","ADMINISTRADOR"].includes(aePerfilActual());
+}
+function aePerfilImportarMateriales(){
+  if(aeEsGerenciaLima()||aeEsJefaturaAlmacen()) {
+    return ["JEFATURA ALMACEN"].includes(aePerfilActual());
+  }
+  if(aeAnalisisHabilitado())return aePuedeAnalisis("REGISTRAR");
+  return ["JEFATURA","JEFATURA GENERAL","JEFATURA ALMACEN","ADMIN","ADMINISTRADOR"].includes(aePerfilActual());
+}
+function aePerfilProduccionValorizada(){
+  if(aeEsGerenciaLima()||aeEsJefaturaAlmacen())return false;
+  if(aeAnalisisHabilitado())return true;
+  return ["JEFATURA","JEFATURA GENERAL","GERENCIA GENERAL","GERENCIAL GENERAL","ADMIN","ADMINISTRADOR"].includes(aePerfilActual());
+}
 function aePeriodoMesesMateriales(){return aeOpcionesPeriodo()}
 function aePermisoUtilidadCuadrilla(){return typeof pmPermiso==="function"?pmPermiso("UTILIDAD CUADRILLA"):null}
 function aePuedeUtilidadCuadrilla(){
   const permiso=aePermisoUtilidadCuadrilla();
-  return !!permiso&&typeof pmPuede==="function"&&pmPuede("UTILIDAD CUADRILLA","VER")&&pmNorm(permiso.alcanceDatos||"SIN ACCESO")!=="SIN ACCESO";
+  if(
+    permiso&&
+    typeof pmPuede==="function"&&
+    pmPuede("UTILIDAD CUADRILLA","VER")&&
+    pmNorm(permiso.alcanceDatos||"SIN ACCESO")!=="SIN ACCESO"
+  )return true;
+
+  if(aeEsGerenciaLima()||aeEsJefaturaAlmacen())return false;
+  return aeAnalisisHabilitado();
 }
-function aePuedeCargarUtilidad(){return aePuedeUtilidadCuadrilla()&&typeof pmPuede==="function"&&pmPuede("UTILIDAD CUADRILLA","REGISTRAR")}
-function aePuedeDescargarUtilidad(){return aePuedeUtilidadCuadrilla()&&typeof pmPuede==="function"&&pmPuede("UTILIDAD CUADRILLA","DESCARGAR")}
+function aePuedeCargarUtilidad(){
+  if(
+    aePermisoUtilidadCuadrilla()&&
+    typeof pmPuede==="function"&&
+    pmPuede("UTILIDAD CUADRILLA","REGISTRAR")
+  )return true;
+
+  if(aeEsGerenciaLima()||aeEsJefaturaAlmacen())return false;
+  return aeAnalisisHabilitado()&&aePuedeAnalisis("REGISTRAR");
+}
+function aePuedeDescargarUtilidad(){
+  if(
+    aePermisoUtilidadCuadrilla()&&
+    typeof pmPuede==="function"&&
+    pmPuede("UTILIDAD CUADRILLA","DESCARGAR")
+  )return true;
+
+  if(aeEsGerenciaLima()||aeEsJefaturaAlmacen())return false;
+  return aeAnalisisHabilitado()&&aePuedeAnalisis("DESCARGAR");
+}
 
 function mostrarAnalisisEconomico(){
   if(!aePerfilPermitido()){alert("No tienes acceso a Análisis Económico.");return}
@@ -431,10 +482,10 @@ async function mat184ConsultarResumen(){
 }
 
 // MI VISUAL v70 - Módulo Análisis Económico
-const API_ANALISIS_ECONOMICO = "https://script.google.com/macros/s/AKfycbwugGpuEMcJYFsDNS1hkcdZXJ92PUvXNv5ttpktyhZWv2fWB7ceCZNkfIFYxAs5wsgN/exec";
+const API_ANALISIS_ECONOMICO = "https://script.google.com/macros/s/AKfycbzcbjCLweJNgZXDerdzmMN7Lwotc1G8NWdzoPkaLNGDivAgpYxDkq78xZwPRioSB4XY/exec";
 
 function aePerfilPermitido(){
-  return aePerfilMateriales();
+  return aePerfilMateriales()||aeAnalisisHabilitado();
 }
 function aeMoneda(v){return new Intl.NumberFormat("es-PE",{style:"currency",currency:"PEN",minimumFractionDigits:2}).format(Number(v)||0)}
 function aeNumero(v){return new Intl.NumberFormat("es-PE",{maximumFractionDigits:2}).format(Number(v)||0)}
@@ -444,7 +495,7 @@ function aePeriodoActual(){const d=new Date();return`${d.getFullYear()}-${String
 function aeOpcionesPeriodo(){const o=[],b=new Date();for(let i=0;i<18;i++){const d=new Date(b.getFullYear(),b.getMonth()-i,1),v=`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}`,l=d.toLocaleDateString("es-PE",{month:"long",year:"numeric"}).toUpperCase();o.push(`<option value="${v}">${l}</option>`)}return o.join("")}
 
 function mostrarProduccionValorizada(){
-  if(!aePerfilProduccionValorizada()){alert("La producción valorizada es exclusiva para Jefatura general.");return}
+  if(!aePerfilProduccionValorizada()){alert("No tienes permiso para ver Producción valorizada.");return}
   if(typeof limpiarPantalla==="function")limpiarPantalla();
   const menu=document.getElementById("menuPrincipal");if(menu)menu.style.display="none";
   if(typeof setBotonNavegacion==="function")setBotonNavegacion("modulo");
