@@ -115,7 +115,7 @@
       entradas: ["mostrarMapaOperativo"]
     },
     facturas: {
-      archivos: [`./js/facturas_v380.js?v=V381-FACTURAS-MENU-PERFILES`],
+      archivos: [`./js/facturas_v380.js?v=V382-FACTURAS-ICONO-CABECERA`],
       entradas: ["mostrarFacturas"]
     },
     plantilla: {
