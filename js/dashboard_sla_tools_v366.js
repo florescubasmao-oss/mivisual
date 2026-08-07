@@ -1,5 +1,5 @@
 /* ============================================================
-   MI VISUAL V366 - Acceso directo a SLA desde Dashboard
+   MI VISUAL V367 - Acceso directo a SLA desde Dashboard
    - Supervisor: revisar tiempos y solicitar excepciones.
    - Jefatura/Admin: validar excepciones pendientes.
    - Gerencia: visualizar SLA y excepciones.
@@ -131,6 +131,51 @@
     mostrarDashboardJefatura(origen.periodo);
   }
 
+  function puedeVerBonoSupervisor(){
+    return [
+      "JEFATURA",
+      "JEFATURA GENERAL",
+      "GERENCIA LIMA",
+      "ADMIN",
+      "ADMINISTRADOR"
+    ].includes(perfil());
+  }
+
+  function abrirBonoSupervisor(){
+    if(typeof window.mostrarBonosSupervisores === "function"){
+      return window.mostrarBonosSupervisores();
+    }
+
+    alert("La opción Bono Supervisor todavía no está disponible.");
+  }
+
+  function normalizarTituloBonoSupervisor(){
+    const recorrer = document.createTreeWalker(
+      document.body,
+      NodeFilter.SHOW_TEXT
+    );
+
+    const cambios = [];
+
+    while(recorrer.nextNode()){
+      const nodo = recorrer.currentNode;
+      const texto = (nodo.nodeValue || "").trim();
+
+      if(!texto) continue;
+
+      if(/BONOS\s+SUPERVISORES/iu.test(texto)){
+        cambios.push(nodo);
+      }
+    }
+
+    cambios.forEach(nodo=>{
+      nodo.nodeValue = nodo.nodeValue.replace(
+        /BONOS\s+SUPERVISORES/giu,
+        "BONO SUPERVISOR"
+      );
+    });
+  }
+
   function inyectar(){
     const cfg = configuracion();
     if(!cfg) return;
@@ -144,7 +189,7 @@
     );
 
     if(!esDashboard) return;
-    if(document.getElementById("mv366BotonSlaDashboard")) return;
+    if(document.getElementById("mv368AccionesDashboard")) return;
 
     const filtros =
       pagina.querySelector(".mv199-filtros-jefatura") ||
@@ -154,40 +199,68 @@
     if(!filtros) return;
 
     const bloque = document.createElement("div");
-    bloque.id = "mv366BotonSlaDashboard";
-    bloque.dataset.creado = String(Date.now());
-    bloque.innerHTML = `
-      <button
-        type="button"
-        onclick="mv366AbrirSlaDesdeDashboard()"
-        style="
-          width:100%;
-          border:0;
-          border-radius:14px;
-          padding:13px 16px;
-          background:linear-gradient(135deg,#7c3aed,#2563eb);
-          color:#fff;
-          font-size:14px;
-          font-weight:950;
-          cursor:pointer;
-          box-shadow:0 8px 20px rgba(37,99,235,.24);
-        "
-      >${cfg.texto}</button>
+    bloque.id = "mv368AccionesDashboard";
 
+    const botonBono = puedeVerBonoSupervisor()
+      ? `
+        <button
+          type="button"
+          onclick="mv368AbrirBonoSupervisor()"
+          style="
+            min-width:170px;
+            max-width:220px;
+            border:0;
+            border-radius:11px;
+            padding:9px 14px;
+            background:#0f7acb;
+            color:#fff;
+            font-size:12px;
+            font-weight:950;
+            cursor:pointer;
+            box-shadow:0 5px 14px rgba(15,122,203,.20);
+          "
+        >🎁 BONO SUPERVISOR</button>
+      `
+      : "";
+
+    bloque.innerHTML = `
       <div style="
-        margin-top:5px;
-        color:#9fb7d8;
-        font-size:10px;
-        text-align:center;
-      ">${cfg.ayuda}</div>
+        display:flex;
+        gap:8px;
+        align-items:center;
+        justify-content:flex-end;
+        flex-wrap:wrap;
+      ">
+        <button
+          type="button"
+          onclick="mv366AbrirSlaDesdeDashboard()"
+          style="
+            min-width:170px;
+            max-width:230px;
+            border:0;
+            border-radius:11px;
+            padding:9px 14px;
+            background:linear-gradient(135deg,#7c3aed,#2563eb);
+            color:#fff;
+            font-size:12px;
+            font-weight:950;
+            cursor:pointer;
+            box-shadow:0 5px 14px rgba(37,99,235,.20);
+          "
+        >${cfg.texto}</button>
+
+        ${botonBono}
+      </div>
     `;
 
-    bloque.style.margin = "10px 0 12px";
+    bloque.style.margin = "9px 0 12px";
     filtros.insertAdjacentElement("afterend",bloque);
   }
-
   function programarInyeccion(){
-    requestAnimationFrame(inyectar);
+    requestAnimationFrame(()=>{
+      inyectar();
+      normalizarTituloBonoSupervisor();
+    });
   }
 
   const observer = new MutationObserver(programarInyeccion);
@@ -247,9 +320,11 @@
 
   window.mv366AbrirSlaDesdeDashboard = abrir;
   window.mv366VolverDesdeSla = volver;
+  window.mv368AbrirBonoSupervisor = abrirBonoSupervisor;
 
   window.MV366_DASHBOARD_SLA_TOOLS_OK = true;
+  window.MV368_BONO_SUPERVISOR_UI_OK = true;
   console.log(
-    "MI VISUAL V366: acceso directo a SLA desde Dashboard habilitado."
+    "MI VISUAL V368: acciones compactas SLA y Bono Supervisor habilitadas."
   );
 })();

@@ -1,5 +1,5 @@
 /* ============================================================
-   MI VISUAL V366 - Resumen rápido para Dashboard y Mi Desempeño
+   MI VISUAL V367 - Resumen rápido y sincronizado para Dashboard y Mi Desempeño
    - Memoria de sesión: 2 minutos.
    - Último resumen local: 15 minutos.
    - Actualización silenciosa en segundo plano.
@@ -13,9 +13,9 @@
 
   const CACHE = new Map();
   const PENDIENTES = new Map();
-  const PREFIJO_LOCAL = "mv366ResumenDashboard:";
+  const PREFIJO_LOCAL = "mv367ResumenDashboard:";
   const TTL_MEMORIA = 2 * 60 * 1000;
-  const TTL_LOCAL = 15 * 60 * 1000;
+  const TTL_LOCAL = 30 * 60 * 1000;
   const TTL_RESPALDO = 24 * 60 * 60 * 1000;
   const obtenerRankingAnterior = window.mv4ObtenerRanking;
 
@@ -258,7 +258,7 @@
         "forzarActualizacion",
         forzar ? "SI" : "NO"
       );
-      url.searchParams.set("_mv366",Date.now().toString());
+      url.searchParams.set("_mv367",Date.now().toString());
 
       const controlador = typeof AbortController==="function"
         ? new AbortController()
@@ -475,6 +475,6 @@
   window.MV366_RESUMEN_RAPIDO_OK = true;
 
   console.log(
-    "MI VISUAL V366: carga rápida de Dashboard y Mi Desempeño habilitada."
+    "MI VISUAL V367: carga rápida y sincronización de indicadores habilitadas."
   );
 })();

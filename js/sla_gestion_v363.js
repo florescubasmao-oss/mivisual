@@ -1,5 +1,5 @@
 /* ============================================================
-   MI VISUAL V366 - Tiempo de Gestión SLA y excepciones directas
+   MI VISUAL V367 - Tiempo de Gestión SLA ordenado y ligero
    Dashboard, Mi Desempeño, excepciones y configuración Ranking.
 ============================================================ */
 (function(){
@@ -28,9 +28,22 @@
     if(!t||/^<!doctype|^<html|^MI VISUAL API OK$/i.test(t))throw new Error("Apps Script todavía no tiene publicada la V363.");
     const d=JSON.parse(t);if(!d.ok)throw new Error(d.error||"No se pudo completar la operación.");return d;
   }
-  async function consultar(periodo,forzar=false){
-    const key=periodo||"AUTO";const c=CACHE.get(key);if(!forzar&&c&&Date.now()-c.fecha<120000)return c.data;
-    const d=await get("obtenerSlaGestion",{periodo});CACHE.set(key,{fecha:Date.now(),data:d});return d;
+  async function consultar(periodo,modo="TODOS",forzar=false){
+    const vista=norm(modo||"TODOS")||"TODOS";
+    const key=(periodo||"AUTO")+"|"+vista;
+    const c=CACHE.get(key);
+    if(!forzar&&c&&Date.now()-c.fecha<120000)return c.data;
+    const limite=vista==="TODOS"?80:160;
+    const d=await get("obtenerSlaGestion",{periodo,modo:vista,limite});
+    CACHE.set(key,{fecha:Date.now(),data:d});
+    return d;
+  }
+
+  function limpiarCachePeriodo(periodo){
+    const prefijo=(periodo||"AUTO")+"|";
+    Array.from(CACHE.keys()).forEach(k=>{
+      if(k===periodo||k.startsWith(prefijo))CACHE.delete(k);
+    });
   }
 
   function resumenSlaLista(lista){
@@ -70,131 +83,247 @@
 
   function selectorPeriodos(data,actual,modo){return `<select onchange="mostrarTiempoGestionSla(this.value,'${esc(modo||"TODOS")}')" style="width:100%;padding:11px;border-radius:10px">${(data.periodos||[]).map(p=>`<option value="${esc(p.clave||p)}" ${(p.clave||p)===actual?"selected":""}>${esc(p.etiqueta||p)}</option>`).join("")}</select>`;}
   function tarjeta(titulo,valor,sub,icono){return `<div style="padding:13px;border-radius:14px;background:#102844;border:1px solid rgba(255,255,255,.1)"><div style="font-size:11px;color:#9fb7d8;font-weight:900">${icono} ${esc(titulo)}</div><div style="font-size:24px;font-weight:900;margin-top:6px">${valor}</div><div style="font-size:11px;color:#9fb7d8;margin-top:4px">${esc(sub||"")}</div></div>`;}
-  function filaOrden(o,puedeSolicitar,puedeResolver,periodo){const s=semaforo(o.cumpleAjustado?100:0);const fuera=o.evaluable&&!o.cumpleAjustado;return `<div style="padding:12px;border-radius:14px;background:#102844;border-left:4px solid ${o.cumpleAjustado?'#22c55e':(o.evaluable?'#ef4444':'#64748b')};margin-top:10px;color:#fff"><div style="display:flex;justify-content:space-between;gap:10px"><div><b>Código ${esc(o.codigo)}</b><div style="font-size:11px;color:#9fb7d8;margin-top:3px">${esc(o.cuadrilla)} · ${esc(o.tipoGeneral)} · ${esc(o.partida||o.resultado)}</div></div><b>${esc(o.resultado)}</b></div><div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:7px;margin-top:9px;font-size:12px"><span>Tiempo: <b>${n(o.minutosGestion)} min</b></span><span>Parámetro: <b>${n(o.slaMinutos)} min</b></span><span>Exceso: <b>${n(o.excesoMinutos)} min</b></span></div><div style="font-size:11px;color:#9fb7d8;margin-top:7px">Excepción: ${esc(o.excepcionEstado||'SIN SOLICITUD')}</div>${fuera&&puedeSolicitar&&!['PENDIENTE','APROBADA'].includes(o.excepcionEstado)?`<button class="mv4-link-btn" onclick="mv363AbrirSolicitud('${esc(periodo)}','${esc(o.codigo)}')">Solicitar excepción</button>`:""}${o.excepcionEstado==='PENDIENTE'&&puedeResolver?`<div style="display:flex;gap:8px;margin-top:8px"><button class="mv4-link-btn" onclick="mv363Resolver('${esc(periodo)}','${esc(o.codigo)}','APROBADA')">✅ Aprobar</button><button class="mv4-link-btn" onclick="mv363Resolver('${esc(periodo)}','${esc(o.codigo)}','RECHAZADA')">❌ Rechazar</button></div>`:""}</div>`;}
+  function claseEstadoExcepcion(estado){
+    const e=norm(estado);
+    if(e==="APROBADA")return{texto:"APROBADA",fondo:"#064e3b",color:"#bbf7d0"};
+    if(e==="PENDIENTE")return{texto:"PENDIENTE",fondo:"#78350f",color:"#fde68a"};
+    if(e==="RECHAZADA")return{texto:"RECHAZADA",fondo:"#7f1d1d",color:"#fecaca"};
+    return{texto:"SIN SOLICITUD",fondo:"#243650",color:"#cbd5e1"};
+  }
+
+  function filaOrden(o,puedeSolicitar,puedeResolver,periodo){
+    const fuera=o.evaluable&&!o.cumpleAjustado;
+    const excepcion=claseEstadoExcepcion(o.excepcionEstado);
+    const color=o.cumpleAjustado?"#22c55e":(o.evaluable?"#ef4444":"#64748b");
+    const acciones=[];
+
+    if(fuera&&puedeSolicitar&&!["PENDIENTE","APROBADA"].includes(norm(o.excepcionEstado))){
+      acciones.push(`<button type="button" class="mv367-sla-action principal" onclick="mv363AbrirSolicitud('${esc(periodo)}','${esc(o.codigo)}')">📝 Solicitar excepción</button>`);
+    }
+
+    if(norm(o.excepcionEstado)==="PENDIENTE"&&puedeResolver){
+      acciones.push(`<button type="button" class="mv367-sla-action aprobar" onclick="mv363Resolver('${esc(periodo)}','${esc(o.codigo)}','APROBADA')">✅ Aprobar</button>`);
+      acciones.push(`<button type="button" class="mv367-sla-action rechazar" onclick="mv363Resolver('${esc(periodo)}','${esc(o.codigo)}','RECHAZADA')">❌ Rechazar</button>`);
+    }
+
+    return `<article class="mv367-sla-order" style="--mv367-color:${color}">
+      <div class="mv367-sla-order-head">
+        <div>
+          <div class="mv367-sla-code">Código ${esc(o.codigo)}</div>
+          <div class="mv367-sla-order-sub">${esc(o.tipoGeneral)} · ${esc(o.partida||o.tipoTrabajo||o.resultado)}</div>
+        </div>
+        <div class="mv367-sla-result">${esc(o.resultado)}</div>
+      </div>
+
+      <div class="mv367-sla-metrics">
+        <div><span>Tiempo</span><b>${n(o.minutosGestion)} min</b></div>
+        <div><span>Parámetro</span><b>${n(o.slaMinutos)} min</b></div>
+        <div><span>Exceso</span><b>${n(o.excesoMinutos)} min</b></div>
+      </div>
+
+      <div class="mv367-sla-exception">
+        <span style="background:${excepcion.fondo};color:${excepcion.color}">${excepcion.texto}</span>
+      </div>
+
+      ${acciones.length?`<div class="mv367-sla-actions">${acciones.join("")}</div>`:""}
+    </article>`;
+  }
+
+  function agruparOrdenes(ordenes){
+    const sedes={};
+
+    (ordenes||[]).forEach(o=>{
+      const sede=norm(o.sede)||"SIN SEDE";
+      const cuadrilla=o.cuadrilla||"SIN CUADRILLA";
+      if(!sedes[sede])sedes[sede]={};
+      if(!sedes[sede][cuadrilla])sedes[sede][cuadrilla]=[];
+      sedes[sede][cuadrilla].push(o);
+    });
+
+    return sedes;
+  }
+
+  function renderOrdenesAgrupadas(ordenes,puedeSolicitar,puedeResolver,periodo){
+    if(!ordenes?.length){
+      return `<div class="mv367-sla-empty">
+        <div style="font-size:30px">✅</div>
+        <b>No existen códigos para este filtro.</b>
+      </div>`;
+    }
+
+    const grupos=agruparOrdenes(ordenes);
+
+    return Object.keys(grupos).sort().map(sede=>{
+      const cuadrillas=grupos[sede];
+      const totalSede=Object.values(cuadrillas).reduce((s,x)=>s+x.length,0);
+
+      return `<section class="mv367-sla-sede">
+        <div class="mv367-sla-sede-title">🏢 ${esc(sede)} <span>${totalSede} códigos</span></div>
+        ${Object.keys(cuadrillas).sort().map(cuadrilla=>{
+          const lista=cuadrillas[cuadrilla];
+          return `<details class="mv367-sla-cuadrilla" ${lista.length<=6?"open":""}>
+            <summary>
+              <span>${esc(cuadrilla)}</span>
+              <b>${lista.length}</b>
+            </summary>
+            <div class="mv367-sla-orders">
+              ${lista.map(o=>filaOrden(o,puedeSolicitar,puedeResolver,periodo)).join("")}
+            </div>
+          </details>`;
+        }).join("")}
+      </section>`;
+    }).join("");
+  }
+
+  function estilosSlaV367(){
+    return `<style>
+      .mv367-sla-page{padding:16px;max-width:1120px;margin:auto;color:#fff}
+      .mv367-sla-top{display:flex;justify-content:space-between;gap:12px;align-items:flex-start;margin-bottom:12px}
+      .mv367-sla-title{margin:0;font-size:24px}
+      .mv367-sla-sub{font-size:11px;color:#9fb7d8;margin-top:4px}
+      .mv367-sla-period{background:#102844;border:1px solid rgba(255,255,255,.1);border-radius:15px;padding:12px;margin-bottom:10px}
+      .mv367-sla-period select{width:100%;min-height:43px;border:1px solid #60a5fa;border-radius:10px;padding:0 10px;background:#fff;color:#0f172a;font-weight:900}
+      .mv367-sla-tabs{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:7px;margin:10px 0}
+      .mv367-sla-tab{border:1px solid #315577;border-radius:11px;padding:10px 6px;background:#102844;color:#dbeafe;font-size:11px;font-weight:900;cursor:pointer}
+      .mv367-sla-tab.activo{background:linear-gradient(135deg,#2563eb,#7c3aed);border-color:#93c5fd;color:#fff}
+      .mv367-sla-kpis{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:9px;margin:12px 0}
+      .mv367-sla-kpi{padding:12px;border-radius:14px;background:#102844;border:1px solid rgba(255,255,255,.1)}
+      .mv367-sla-kpi small{display:block;color:#9fb7d8;font-weight:900;font-size:10px}
+      .mv367-sla-kpi strong{display:block;font-size:23px;margin-top:5px}
+      .mv367-sla-kpi span{display:block;color:#9fb7d8;font-size:10px;margin-top:4px}
+      .mv367-sla-tools{display:flex;gap:7px;flex-wrap:wrap;margin:10px 0}
+      .mv367-sla-tool{border:1px solid #315577;border-radius:10px;padding:9px 11px;background:#172a43;color:#dbeafe;font-size:11px;font-weight:900;cursor:pointer}
+      .mv367-sla-section-head{display:flex;justify-content:space-between;gap:10px;align-items:center;margin:18px 0 8px}
+      .mv367-sla-section-head h3{margin:0;font-size:17px}
+      .mv367-sla-count{padding:5px 8px;border-radius:999px;background:#172a43;color:#cbd5e1;font-size:10px;font-weight:900}
+      .mv367-sla-sede{margin:12px 0}
+      .mv367-sla-sede-title{display:flex;justify-content:space-between;align-items:center;padding:10px 12px;border-radius:12px;background:#172a43;font-weight:950}
+      .mv367-sla-sede-title span{font-size:10px;color:#9fb7d8}
+      .mv367-sla-cuadrilla{margin:8px 0;border:1px solid #274566;border-radius:13px;overflow:hidden;background:#0d2037}
+      .mv367-sla-cuadrilla summary{display:flex;justify-content:space-between;gap:10px;padding:11px 12px;cursor:pointer;font-size:11px;font-weight:900;background:#102844}
+      .mv367-sla-cuadrilla summary b{min-width:25px;text-align:center;padding:3px 6px;border-radius:999px;background:#1d4ed8}
+      .mv367-sla-orders{padding:8px}
+      .mv367-sla-order{border-left:4px solid var(--mv367-color);border-radius:11px;background:#132845;padding:11px;margin:8px 0}
+      .mv367-sla-order-head{display:flex;justify-content:space-between;gap:10px;align-items:flex-start}
+      .mv367-sla-code{font-size:14px;font-weight:950}
+      .mv367-sla-order-sub{font-size:10px;color:#9fb7d8;margin-top:3px;line-height:1.3}
+      .mv367-sla-result{font-size:9px;font-weight:950;text-align:right;max-width:145px}
+      .mv367-sla-metrics{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px;margin-top:8px}
+      .mv367-sla-metrics div{background:#0d2037;border-radius:9px;padding:7px}
+      .mv367-sla-metrics span{display:block;color:#9fb7d8;font-size:9px}
+      .mv367-sla-metrics b{display:block;font-size:12px;margin-top:2px}
+      .mv367-sla-exception{margin-top:7px}
+      .mv367-sla-exception span{display:inline-block;padding:4px 7px;border-radius:999px;font-size:9px;font-weight:950}
+      .mv367-sla-actions{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}
+      .mv367-sla-action{border:0;border-radius:9px;padding:8px 10px;color:#fff;font-size:10px;font-weight:950;cursor:pointer}
+      .mv367-sla-action.principal{background:#2563eb}.mv367-sla-action.aprobar{background:#15803d}.mv367-sla-action.rechazar{background:#b91c1c}
+      .mv367-sla-empty{text-align:center;padding:25px;border:1px dashed #315577;border-radius:14px;color:#cbd5e1}
+      @media(max-width:700px){
+        .mv367-sla-tabs{grid-template-columns:repeat(2,minmax(0,1fr))}
+        .mv367-sla-kpis{grid-template-columns:repeat(2,minmax(0,1fr))}
+        .mv367-sla-order-head{flex-direction:column}
+        .mv367-sla-result{text-align:left;max-width:none}
+      }
+    </style>`;
+  }
 
   async function mostrar(periodo,modo){
     const filtro=norm(modo||window.MV366_SLA_MODO||"TODOS")||"TODOS";
     window.MV366_SLA_MODO=filtro;
 
     const titulos={
-      TODOS:"TIEMPO DE GESTIÓN - SLA",
-      FUERA:"CÓDIGOS FUERA DEL SLA",
-      EXCEPCIONES:"EXCEPCIONES SLA",
-      PENDIENTES:"VALIDAR EXCEPCIONES SLA"
+      TODOS:"Tiempo de Gestión - SLA",
+      FUERA:"Códigos fuera del SLA",
+      EXCEPCIONES:"Excepciones SLA",
+      PENDIENTES:"Validar excepciones SLA"
     };
     const titulo=titulos[filtro]||titulos.TODOS;
 
     mostrarPantalla(`
-      <div style="padding:20px;color:#fff">
-        <h2>⏱️ ${titulo}</h2>
-        Cargando información consolidada...
+      ${estilosSlaV367()}
+      <div class="mv367-sla-page">
+        <div class="mv367-sla-top">
+          <div>
+            <h2 class="mv367-sla-title">⏱️ ${titulo}</h2>
+            <div class="mv367-sla-sub">Cargando el resumen y solo los códigos necesarios...</div>
+          </div>
+        </div>
+        <div class="mv367-sla-empty">Preparando información consolidada...</div>
       </div>
     `);
 
     try{
-      const d=await consultar(periodo);
+      const d=await consultar(periodo,filtro,false);
       const r=d.resumen||{};
       const s=semaforo(r.slaAjustado);
-      const todas=Array.isArray(d.ordenes)?d.ordenes:[];
-
-      let ordenes=todas;
-      if(filtro==="PENDIENTES"){
-        ordenes=todas.filter(o=>norm(o.excepcionEstado)==="PENDIENTE");
-      }else if(filtro==="FUERA"){
-        ordenes=todas.filter(o=>o.evaluable&&!o.cumpleAjustado);
-      }else if(filtro==="EXCEPCIONES"){
-        ordenes=todas.filter(o=>
-          ["PENDIENTE","APROBADA","RECHAZADA"].includes(
-            norm(o.excepcionEstado)
-          )
-        );
-      }
-
+      const ordenes=Array.isArray(d.ordenes)?d.ordenes:[];
       const puedeResolver=Boolean(d.puedeResolver);
-      const botonPendientes=puedeResolver
-        ? `<button class="mv4-link-btn" onclick="mostrarTiempoGestionSla('${esc(d.periodo)}','PENDIENTES')">✅ Pendientes</button>`
-        : "";
 
-      const botonVolver=typeof window.mv366VolverDesdeSla==="function" &&
-        window.MV366_ORIGEN_SLA
+      const tabs=[
+        ["TODOS","📋 Todos"],
+        ["FUERA","🚨 Fuera del SLA"],
+        ["EXCEPCIONES","🗂️ Excepciones"]
+      ];
+      if(puedeResolver)tabs.push(["PENDIENTES","✅ Pendientes"]);
+
+      const botonVolver=typeof window.mv366VolverDesdeSla==="function"&&window.MV366_ORIGEN_SLA
         ? `<button class="button_1" onclick="mv366VolverDesdeSla()">⬅️ Volver al Dashboard</button>`
         : `<button class="button_1" onclick="volverInicio()">⬅️ Volver al menú</button>`;
 
-      mostrarPantalla(`
-        <div style="padding:18px;max-width:1050px;margin:auto;color:#fff">
-          <h2>⏱️ ${titulo}</h2>
+      const avisoTruncado=d.truncado
+        ? `<div class="mv367-sla-sub">Se muestran ${ordenes.length} de ${n(d.totalOrdenes)} códigos. Use los filtros para reducir la lista.</div>`
+        : `<div class="mv367-sla-sub">${n(d.totalOrdenes)} códigos en este filtro.</div>`;
 
-          <div style="margin:12px 0">
+      mostrarPantalla(`
+        ${estilosSlaV367()}
+        <div class="mv367-sla-page">
+          <div class="mv367-sla-top">
+            <div>
+              <h2 class="mv367-sla-title">⏱️ ${titulo}</h2>
+              <div class="mv367-sla-sub">Actualizado: ${esc(d.calculadoEn||"-")}</div>
+            </div>
+          </div>
+
+          <div class="mv367-sla-period">
             ${selectorPeriodos(d,d.periodo,filtro)}
           </div>
 
-          <div style="display:flex;gap:8px;flex-wrap:wrap;margin:10px 0 14px">
-            <button class="mv4-link-btn" onclick="mostrarTiempoGestionSla('${esc(d.periodo)}','TODOS')">📋 Todos</button>
-            <button class="mv4-link-btn" onclick="mostrarTiempoGestionSla('${esc(d.periodo)}','FUERA')">🚨 Fuera del SLA</button>
-            <button class="mv4-link-btn" onclick="mostrarTiempoGestionSla('${esc(d.periodo)}','EXCEPCIONES')">🗂️ Excepciones</button>
-            ${botonPendientes}
+          <div class="mv367-sla-tabs">
+            ${tabs.map(([valor,etiqueta])=>`
+              <button type="button" class="mv367-sla-tab ${valor===filtro?"activo":""}" onclick="mostrarTiempoGestionSla('${esc(d.periodo)}','${valor}')">
+                ${etiqueta}
+              </button>
+            `).join("")}
           </div>
 
-          <div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px">
-            ${tarjeta(
-              "SLA ajustado",
-              `${n(r.slaAjustado).toFixed(1)}% ${s.icono}`,
-              s.texto,
-              "⏱️"
-            )}
-            ${tarjeta(
-              "SLA bruto",
-              `${n(r.slaBruto).toFixed(1)}%`,
-              "Sin excepciones",
-              "📏"
-            )}
-            ${tarjeta(
-              "Instalaciones",
-              `${n(r.instalacionesAjustado).toFixed(1)}%`,
-              `${n(r.instalacionesTotal)} códigos`,
-              "🏠"
-            )}
-            ${tarjeta(
-              "Visitas técnicas",
-              `${n(r.visitasTecnicasAjustado).toFixed(1)}%`,
-              `${n(r.visitasTecnicasTotal)} códigos`,
-              "🔧"
-            )}
-            ${tarjeta(
-              "Fuera del SLA",
-              n(r.fueraAjustado),
-              `${n(r.excepcionesPendientes)} excepciones pendientes`,
-              "🚨"
-            )}
-            ${tarjeta(
-              "Excepciones aprobadas",
-              n(r.excepcionesAprobadas),
-              "Incluidas en SLA ajustado",
-              "✅"
-            )}
+          <div class="mv367-sla-kpis">
+            <div class="mv367-sla-kpi"><small>SLA ajustado</small><strong>${n(r.slaAjustado).toFixed(1)}% ${s.icono}</strong><span>${s.texto}</span></div>
+            <div class="mv367-sla-kpi"><small>SLA bruto</small><strong>${n(r.slaBruto).toFixed(1)}%</strong><span>Sin excepciones</span></div>
+            <div class="mv367-sla-kpi"><small>Instalaciones</small><strong>${n(r.instalacionesAjustado).toFixed(1)}%</strong><span>${n(r.instalacionesTotal)} códigos</span></div>
+            <div class="mv367-sla-kpi"><small>Visitas técnicas</small><strong>${n(r.visitasTecnicasAjustado).toFixed(1)}%</strong><span>${n(r.visitasTecnicasTotal)} códigos</span></div>
+            <div class="mv367-sla-kpi"><small>Fuera del SLA</small><strong>${n(r.fueraAjustado)}</strong><span>${n(r.excepcionesPendientes)} pendientes</span></div>
+            <div class="mv367-sla-kpi"><small>Excepciones aprobadas</small><strong>${n(r.excepcionesAprobadas)}</strong><span>Incluidas en el ajustado</span></div>
           </div>
 
-          ${d.puedeConfigurarRanking ? `
-            <div style="display:flex;gap:8px;flex-wrap:wrap;margin:12px 0">
-              <button class="mv4-link-btn" onclick="mv363AbrirConfigRanking('${esc(d.periodo)}')">
-                ⚙️ Configurar pesos Ranking
-              </button>
-              <button class="mv4-link-btn" onclick="mv363Reconstruir('${esc(d.periodo)}')">
-                🔄 Reconstruir resumen SLA
-              </button>
+          ${d.puedeConfigurarRanking?`
+            <div class="mv367-sla-tools">
+              <button type="button" class="mv367-sla-tool" onclick="mv363AbrirConfigRanking('${esc(d.periodo)}')">⚙️ Pesos Ranking</button>
+              <button type="button" class="mv367-sla-tool" onclick="mv363Reconstruir('${esc(d.periodo)}')">🔄 Reconstruir SLA</button>
             </div>
-          ` : ""}
+          `:""}
 
-          <h3 style="margin-top:18px">${titulo} · ${ordenes.length} códigos</h3>
+          <div class="mv367-sla-section-head">
+            <h3>${titulo}</h3>
+            <span class="mv367-sla-count">${n(d.totalOrdenes)} códigos</span>
+          </div>
+          ${avisoTruncado}
 
-          ${ordenes.map(o=>
-            filaOrden(
-              o,
-              d.puedeSolicitar,
-              d.puedeResolver,
-              d.periodo
-            )
-          ).join("") || '<div class="card">No existen códigos para este filtro.</div>'}
+          ${renderOrdenesAgrupadas(
+            ordenes,
+            d.puedeSolicitar,
+            d.puedeResolver,
+            d.periodo
+          )}
 
           <br>
           ${botonVolver}
@@ -202,11 +331,12 @@
       `);
     }catch(e){
       mostrarPantalla(`
-        <div style="padding:20px">
+        ${estilosSlaV367()}
+        <div class="mv367-sla-page">
           <h2>⏱️ ${titulo}</h2>
-          ❌ ${esc(e.message)}
-          <br><br>
-          ${typeof window.mv366VolverDesdeSla==="function" && window.MV366_ORIGEN_SLA
+          <div class="mv367-sla-empty">❌ ${esc(e.message)}</div>
+          <br>
+          ${typeof window.mv366VolverDesdeSla==="function"&&window.MV366_ORIGEN_SLA
             ? '<button class="button_1" onclick="mv366VolverDesdeSla()">⬅️ Volver al Dashboard</button>'
             : '<button class="button_1" onclick="volverInicio()">⬅️ Volver</button>'}
         </div>
@@ -217,13 +347,13 @@
   function modal(html){document.getElementById('mv363Modal')?.remove();const x=document.createElement('div');x.id='mv363Modal';x.innerHTML=`<div style="width:min(650px,94vw);max-height:90vh;overflow:auto;background:#0d2037;color:#fff;border-radius:18px;padding:18px;border:1px solid #315577">${html}</div>`;Object.assign(x.style,{position:'fixed',inset:'0',zIndex:11000,display:'flex',alignItems:'center',justifyContent:'center',background:'rgba(2,8,23,.78)',padding:'16px'});document.body.appendChild(x);}
   function cerrar(){document.getElementById('mv363Modal')?.remove();}
   function abrirSolicitud(periodo,codigo){modal(`<h3>Solicitar excepción SLA</h3><p>Código <b>${esc(codigo)}</b></p><label>Motivo<select id="mv363Motivo" style="width:100%;padding:10px;margin:5px 0 10px"><option>METRAJE ELEVADO</option><option>DEMORA SOPORTE WIN</option><option>CAIDA DE SISTEMA O APLICATIVO</option><option>PROBLEMA DE RED O PLATAFORMA</option><option>ACCESO RESTRINGIDO</option><option>OTRA CAUSA</option></select></label><label>Comentario<textarea id="mv363Comentario" style="width:100%;min-height:100px;padding:10px;margin-top:5px"></textarea></label><label>Evidencia / enlace<input id="mv363Evidencia" style="width:100%;padding:10px;margin-top:5px"></label><div style="display:flex;gap:8px;margin-top:12px"><button class="button_1" onclick="mv363EnviarSolicitud('${esc(periodo)}','${esc(codigo)}')">Enviar</button><button class="button_1" onclick="mv363CerrarModal()">Cancelar</button></div><div id="mv363Msg"></div>`);}
-  async function enviarSolicitud(periodo,codigo){const msg=document.getElementById('mv363Msg');try{if(msg)msg.textContent='Guardando...';await post('solicitarExcepcionSla',{periodo,codigo,motivo:document.getElementById('mv363Motivo').value,comentario:document.getElementById('mv363Comentario').value,evidencia:document.getElementById('mv363Evidencia').value});CACHE.delete(periodo);if(typeof window.mv366InvalidarResumenDashboard==="function")window.mv366InvalidarResumenDashboard(periodo);cerrar();await mostrar(periodo,window.MV366_SLA_MODO||"FUERA");}catch(e){if(msg)msg.textContent='❌ '+e.message;}}
-  async function resolver(periodo,codigo,resultado){const comentario=prompt(`Comentario de Jefatura para ${resultado.toLowerCase()}:`)||'';try{await post('resolverExcepcionSla',{periodo,codigo,resultado,comentarioJefatura:comentario});CACHE.delete(periodo);if(typeof window.mv366InvalidarResumenDashboard==="function")window.mv366InvalidarResumenDashboard(periodo);await mostrar(periodo,window.MV366_SLA_MODO||"PENDIENTES");}catch(e){alert(e.message);}}
+  async function enviarSolicitud(periodo,codigo){const msg=document.getElementById('mv363Msg');try{if(msg)msg.textContent='Guardando...';await post('solicitarExcepcionSla',{periodo,codigo,motivo:document.getElementById('mv363Motivo').value,comentario:document.getElementById('mv363Comentario').value,evidencia:document.getElementById('mv363Evidencia').value});limpiarCachePeriodo(periodo);if(typeof window.mv366InvalidarResumenDashboard==="function")window.mv366InvalidarResumenDashboard(periodo);cerrar();await mostrar(periodo,window.MV366_SLA_MODO||"FUERA");}catch(e){if(msg)msg.textContent='❌ '+e.message;}}
+  async function resolver(periodo,codigo,resultado){const comentario=prompt(`Comentario de Jefatura para ${resultado.toLowerCase()}:`)||'';try{await post('resolverExcepcionSla',{periodo,codigo,resultado,comentarioJefatura:comentario});limpiarCachePeriodo(periodo);if(typeof window.mv366InvalidarResumenDashboard==="function")window.mv366InvalidarResumenDashboard(periodo);await mostrar(periodo,window.MV366_SLA_MODO||"PENDIENTES");}catch(e){alert(e.message);}}
   async function reconstruir(periodo){if(!confirm('¿Reconstruir el resumen SLA del período?'))return;try{await post('reconstruirSlaPeriodo',{periodo});CACHE.clear();if(typeof window.mv366InvalidarResumenDashboard==="function")window.mv366InvalidarResumenDashboard(periodo);await mostrar(periodo,window.MV366_SLA_MODO||"TODOS");}catch(e){alert(e.message);}}
   async function abrirConfig(periodo){try{const d=await get('obtenerConfiguracionRanking',{periodo});const c=d.configuracion,p=c.pesos;modal(`<h3>Pesos del Ranking - ${esc(periodo)}</h3>${['PRODUCCION','EFECTIVIDAD','SLA','OBSERVACIONES','RECABLEADO','VTRGAR'].map(k=>`<label style="display:grid;grid-template-columns:1fr 130px;gap:10px;margin-top:9px"><span>${esc(k)}</span><input id="mv363Peso_${k}" type="number" min="0" max="100" step="0.5" value="${n(p[k])}" style="padding:9px"></label>`).join('')}<div style="margin-top:12px;color:#9fb7d8">La suma debe ser 100%. Julio 2026 permanece cerrado.</div><div style="display:flex;gap:8px;margin-top:12px"><button class="button_1" onclick="mv363GuardarConfig('${esc(periodo)}')">Guardar</button><button class="button_1" onclick="mv363CerrarModal()">Cancelar</button></div><div id="mv363Msg"></div>`);}catch(e){alert(e.message);}}
   async function guardarConfig(periodo){const pesos={};['PRODUCCION','EFECTIVIDAD','SLA','OBSERVACIONES','RECABLEADO','VTRGAR'].forEach(k=>pesos[k]=n(document.getElementById('mv363Peso_'+k).value));const msg=document.getElementById('mv363Msg');try{if(msg)msg.textContent='Guardando...';await post('guardarConfiguracionRanking',{periodo,pesos,estado:periodo==='2026-07'?'CERRADO':'ACTIVO'});cerrar();alert('Configuración guardada. Actualice el Ranking del período para aplicar los nuevos pesos.');}catch(e){if(msg)msg.textContent='❌ '+e.message;}}
 
   window.mv363ResumenSlaLista=resumenSlaLista;window.mv363DetalleSla=detalleSla;window.mv363SemaforoSla=semaforo;
   window.mostrarTiempoGestionSla=mostrar;window.mostrarExcepcionesSla=function(periodo){return mostrar(periodo,'PENDIENTES');};window.mv363AbrirSolicitud=abrirSolicitud;window.mv363EnviarSolicitud=enviarSolicitud;window.mv363Resolver=resolver;window.mv363Reconstruir=reconstruir;window.mv363AbrirConfigRanking=abrirConfig;window.mv363GuardarConfig=guardarConfig;window.mv363CerrarModal=cerrar;
-  window.MV363_SLA_GESTION_OK=true;window.MV366_SLA_DIRECTO_OK=true;console.log('MI VISUAL V366: Tiempo de Gestión SLA y excepciones directas habilitados.');
+  window.MV363_SLA_GESTION_OK=true;window.MV366_SLA_DIRECTO_OK=true;console.log('MI VISUAL V367: Tiempo de Gestión SLA ordenado y ligero habilitado.');
 })();

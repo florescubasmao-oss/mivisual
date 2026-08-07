@@ -1,5 +1,5 @@
-/* MI VISUAL V366 - caché segura, carga rápida y acceso directo SLA */
-const MV339_CACHE = "mivisual-v366-carga-rapida-sla-20260806";
+/* MI VISUAL V367 - caché segura, resúmenes limpios y SLA ordenado */
+const MV339_CACHE = "mivisual-v368-bono-supervisor-20260806";
 const MV339_CORE = [
   "./",
   "./index.html",
@@ -9,11 +9,12 @@ const MV339_CORE = [
   "./js/login.js?v=V339-CACHE",
   "./js/permisos.js?v=V339-CORE",
   "./js/app.js?v=V339-LAZY",
-  "./js/modulos_loader.js?v=V366-CARGA-RAPIDA-SLA",
-  "./js/menu_desempeno_v363.js?v=V366-CARGA-RAPIDA-SLA",
-  "./js/resumen_dashboard_v361.js?v=V366-CARGA-RAPIDA-SLA",
-  "./js/dashboard_consolidado_v365.js?v=V366-CARGA-RAPIDA-SLA",
-  "./js/dashboard_sla_tools_v366.js?v=V366-CARGA-RAPIDA-SLA",
+  "./js/modulos_loader.js?v=V368-BONO-SUPERVISOR",
+  "./js/menu_desempeno_v363.js?v=V368-BONO-SUPERVISOR",
+  "./js/resumen_dashboard_v361.js?v=V368-BONO-SUPERVISOR",
+  "./js/dashboard_consolidado_v365.js?v=V368-BONO-SUPERVISOR",
+  "./js/dashboard_sla_tools_v366.js?v=V368-BONO-SUPERVISOR",
+  "./js/base_operativa_sync_v367.js?v=V368-BONO-SUPERVISOR",
   "./js/mapa_cto_fix_v342.js?v=V342-MAPA-CTO",
   "./js/actas_recepcion_v343.js?v=V343-ACTAS-RECEPCION",
   "./js/actas_identidad_v344.js?v=V344-ACTAS-IDENTIDAD",
