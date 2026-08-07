@@ -114,6 +114,10 @@
       archivos: [`./js/mapa_operativo.js?v=V376-API-CENTRALIZADA`],
       entradas: ["mostrarMapaOperativo"]
     },
+    facturas: {
+      archivos: [`./js/facturas_v380.js?v=V380-FACTURAS-COMBUSTIBLE`],
+      entradas: ["mostrarFacturas"]
+    },
     plantilla: {
       archivos: [`./js/plantilla_orden.js?v=${VERSION}`],
       entradas: ["mostrarPlantillaOrden"]
@@ -155,6 +159,7 @@
     mostrarTrabajosConjunta: "pext",
     mostrarConsultasReclamos: "mesa",
     mostrarMapaOperativo: "mapa",
+    mostrarFacturas: "facturas",
     mostrarPlantillaOrden: "plantilla",
     mostrarAdministracion: "administracion"
   };
@@ -173,7 +178,7 @@
       actividad:"Actividad en Campo", validacion:"Validación Técnica", actas:"Gestión de Actas",
       equipos:"Equipos Averiados", analisis:"Análisis Económico", checklist:"Checklist Almacén",
       descansos:"Programación de Descansos", pext:"PEXT", mesa:"Mesa de Ayuda",
-      mapa:"Mapa Operativo", plantilla:"Plantilla de Orden", administracion:"Administración"
+      mapa:"Mapa Operativo", facturas:"Facturas", plantilla:"Plantilla de Orden", administracion:"Administración"
     };
     return nombres[id] || "módulo";
   }
