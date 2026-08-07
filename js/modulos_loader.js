@@ -48,7 +48,7 @@
       entradas: ["mostrarRanking"]
     },
     bonos: {
-      archivos: [`./js/bonos.js?v=${VERSION}`],
+      archivos: [`./js/bonos.js?v=V379-GERENCIA-GENERAL`],
       entradas: ["mostrarBonos"]
     },
     observaciones: {
@@ -107,7 +107,7 @@
       entradas: ["mostrarTrabajosConjunta"]
     },
     mesa: {
-      archivos: [`./js/consultas_reclamos.js?v=${VERSION}`],
+      archivos: [`./js/consultas_reclamos.js?v=V379-GERENCIA-GENERAL`],
       entradas: ["mostrarConsultasReclamos"]
     },
     mapa: {

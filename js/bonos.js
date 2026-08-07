@@ -619,7 +619,7 @@ function mb242CambiarPeriodoTecnico(clave){
 }
 
 function mb242PerfilEsJefatura(perfil){
-  return ["JEFATURA","JEFATURA GENERAL","GERENCIA LIMA","ADMIN","ADMINISTRADOR"].includes(perfil);
+  return ["JEFATURA","JEFATURA GENERAL","GERENCIA GENERAL","GERENCIAL GENERAL","GERENCIA LIMA","ADMIN","ADMINISTRADOR"].includes(perfil);
 }
 
 function mb242ListaAlcance(datos, perfil){
@@ -710,7 +710,7 @@ function mb242RenderGestion(){
   const datos = MB242_DATOS;
   const periodo = datos?.periodos?.[MB242_FILTROS.periodo];
   const lista = mb242ListaAlcance(datos, perfil);
-  const titulo = perfil === "SUPERVISOR" ? "Bonos · Supervisor" : (perfil === "GERENCIA LIMA" ? "Bonos · Gerencia Lima" : "Bonos · Jefatura");
+  const titulo = perfil === "SUPERVISOR" ? "Bonos · Supervisor" : (["GERENCIA GENERAL","GERENCIAL GENERAL"].includes(perfil) ? "Bonos Técnicos · Gerencia General" : (perfil === "GERENCIA LIMA" ? "Bonos · Gerencia Lima" : "Bonos · Jefatura"));
 
   const html = `<div class="mb242-pagina">
     <div class="mb242-cabecera"><div><h2>🎁 ${titulo}</h2><p>Cálculo diario y consulta semanal desde Producción y trabajos PEXT.</p></div><button class="button_1" onclick="volverInicio()">⬅ Volver</button></div>

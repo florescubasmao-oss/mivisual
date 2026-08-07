@@ -1,5 +1,5 @@
 /* MI VISUAL V369 - caché segura y actualización operativa rápida */
-const MV339_CACHE = "mivisual-v378-gerencia-general-dashboard-20260807";
+const MV339_CACHE = "mivisual-v379-gerencia-general-20260807";
 const MV339_CORE = [
   "./",
   "./index.html",
