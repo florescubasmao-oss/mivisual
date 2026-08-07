@@ -1,5 +1,5 @@
 /* ============================================================
-   MI VISUAL V364 - Ranking detallado + SLA corregido
+   MI VISUAL V365 - Ranking detallado por período + SLA
    - Jefatura y Gerencia Lima.
    - Reutiliza el enriquecimiento analítico del Dashboard.
    - Carga datos en paralelo y conserva caché corta por período.
@@ -677,7 +677,7 @@
         <div style="padding:18px;max-width:980px;margin:auto;">
           <h2 style="text-align:center;margin-bottom:6px;">${titulo}</h2>
           ${mv359EncabezadoPeriodo(referencia)}
-          ${listaTarjetasRanking(listaFiltrada,tipoPuesto)}
+          ${listaTarjetas(listaFiltrada,tipoPuesto)}
           <br>
           <button class="button_1" onclick="volverInicio()">⬅️ Volver al menú</button>
         </div>
@@ -894,27 +894,46 @@
   }
 
   function resumen(lista){
-    const total = lista.length;
-    const suma = campo=>lista.reduce((s,x)=>s+num(x[campo]),0);
-    const promedio = campo=>total ? lista.reduce((s,x)=>s+pctNumero(x[campo]),0)/total : 0;
-    const slaEvaluables=lista.reduce((s,x)=>s+num(x.detSla?.evaluables),0);
-    const slaCumplenBruto=lista.reduce((s,x)=>s+num(x.detSla?.cumplenBruto),0);
-    const slaCumplenAjustado=lista.reduce((s,x)=>s+num(x.detSla?.cumplenAjustado),0);
+    const items=Array.isArray(lista)?lista:[];
+    const total=items.length;
+    const produccion=items.reduce((s,x)=>s+num(x.produccion),0);
+    const ordenes=items.reduce((s,x)=>s+num(x.detProduccion?.totalOrdenes),0);
+
+    const efFinalizadas=items.reduce((s,x)=>s+num(x.detEfectividad?.finalizadas),0);
+    const efTotal=items.reduce((s,x)=>s+num(x.detEfectividad?.total),0);
+    const efectividad=efTotal
+      ? efFinalizadas/efTotal*100
+      : (total?items.reduce((s,x)=>s+pctNumero(x.efectividad),0)/total:0);
+
+    const recableados=items.reduce((s,x)=>s+num(x.detRecableado?.recableados),0);
+    const ordenesVt=items.reduce((s,x)=>s+num(x.detRecableado?.los ?? x.detRecableado?.rojoAsignadas),0);
+    const recableado=ordenesVt
+      ? recableados/ordenesVt*100
+      : (total?items.reduce((s,x)=>s+pctNumero(x.recableado),0)/total:0);
+
+    const incidencias=items.reduce((s,x)=>s+num(x.detVtrGar?.total ?? x.detVtrGar?.totalGarVtr),0);
+    const finalizadasVtr=items.reduce((s,x)=>s+num(x.detVtrGar?.finalizadas),0);
+    const vtrgar=finalizadasVtr
+      ? incidencias/finalizadasVtr*100
+      : (total?items.reduce((s,x)=>s+pctNumero(x.vtrgar),0)/total:0);
+
+    const observaciones=items.reduce((s,x)=>s+num(x.observaciones),0);
+    const montoTotal=items.reduce((s,x)=>s+num(x.montoTotalObs),0);
+    const montoAfectado=items.reduce((s,x)=>s+num(x.montoAfectadoObs),0);
+
+    const slaEvaluables=items.reduce((s,x)=>s+num(x.detSla?.evaluables),0);
+    const slaCumplenBruto=items.reduce((s,x)=>s+num(x.detSla?.cumplenBruto),0);
+    const slaCumplenAjustado=items.reduce((s,x)=>s+num(x.detSla?.cumplenAjustado),0);
+
     return {
-      total,
-      produccion:suma("produccion"),
-      ordenes:lista.reduce((s,x)=>s+num(x.detProduccion?.totalOrdenes),0),
-      efectividad:promedio("efectividad"),
-      recableado:promedio("recableado"),
-      vtrgar:promedio("vtrgar"),
-      slaEvaluables,
-      slaCumplenBruto,
-      slaCumplenAjustado,
-      slaAjustado:slaEvaluables ? slaCumplenAjustado/slaEvaluables*100 : 0,
-      slaBruto:slaEvaluables ? slaCumplenBruto/slaEvaluables*100 : 0,
-      observaciones:suma("observaciones"),
-      montoTotal:suma("montoTotalObs"),
-      montoAfectado:suma("montoAfectadoObs")
+      total,produccion,ordenes,
+      efectividad,efFinalizadas,efTotal,
+      recableado,recableados,ordenesVt,
+      vtrgar,incidencias,finalizadasVtr,
+      observaciones,montoTotal,montoAfectado,
+      slaEvaluables,slaCumplenBruto,slaCumplenAjustado,
+      slaAjustado:slaEvaluables?slaCumplenAjustado/slaEvaluables*100:0,
+      slaBruto:slaEvaluables?slaCumplenBruto/slaEvaluables*100:0
     };
   }
 
@@ -1232,6 +1251,6 @@
   window.mv358CerrarInformeRanking = cerrarModal;
   window.mv358GenerarInformeRanking = generarExcel;
 
-  window.MV364_RANKING_SLA_OK = true;
-  console.log("MI VISUAL V364: Ranking Técnico y SLA corregidos.");
+  window.MV365_RANKING_SLA_OK = true;
+  console.log("MI VISUAL V365: Ranking detallado por período y SLA habilitado.");
 })();

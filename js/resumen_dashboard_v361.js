@@ -1,5 +1,5 @@
 /* ============================================================
-   MI VISUAL V361 - Resumen consolidado para Dashboard y Ranking
+   MI VISUAL V365 - Resumen consolidado para Dashboard y Ranking
    - Una sola consulta JSON por período.
    - Reutiliza la hoja técnica RESUMEN_DASHBOARD_RANKING.
    - Conserva el flujo CSV anterior como respaldo automático.
@@ -37,7 +37,7 @@
     url.searchParams.set("usuario",localStorage.getItem("usuario") || "");
     if(solicitado) url.searchParams.set("periodo",solicitado);
     url.searchParams.set("forzarActualizacion",forzar ? "SI" : "NO");
-    url.searchParams.set("_mv361",Date.now().toString());
+    url.searchParams.set("_mv365",Date.now().toString());
 
     const controlador = typeof AbortController==="function" ? new AbortController() : null;
     const temporizador = controlador ? setTimeout(()=>controlador.abort(),90000) : null;
@@ -54,6 +54,20 @@
       }
       const data = JSON.parse(texto);
       if(!data?.ok) throw new Error(data?.error || "No se pudo obtener el resumen operativo.");
+
+      const perfil=(localStorage.getItem("perfil")||"")
+        .toUpperCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"").trim();
+      const ejecutivo=["JEFATURA","JEFATURA GENERAL","GERENCIA LIMA","ADMIN","ADMINISTRADOR"].includes(perfil);
+      const esperadas=Number(data.cuadrillasEsperadas||data.totalGeneral||0);
+      const recibidas=Array.isArray(data.lista)?data.lista.length:0;
+
+      if(ejecutivo && esperadas>0 && recibidas<esperadas && !forzar){
+        console.warn("V365: resumen ejecutivo incompleto; se fuerza reconstrucción",{
+          esperadas,recibidas,periodo:data.periodo
+        });
+        return await consultar(data.periodo||solicitado,true);
+      }
+
       CACHE.set(clave,{fecha:Date.now(),data});
       if(data.periodo) CACHE.set(data.periodo,{fecha:Date.now(),data});
       return data;
@@ -89,5 +103,5 @@
   window.mv4ObtenerRanking = obtenerConsolidado;
   try{ mv4ObtenerRanking = obtenerConsolidado; }catch(_){ }
   window.MV361_RESUMEN_CONSOLIDADO_OK = true;
-  console.log("MI VISUAL V363: resumen consolidado con SLA habilitado.");
+  console.log("MI VISUAL V365: resumen íntegro Zona Norte con SLA habilitado.");
 })();
