@@ -1,13 +1,17 @@
 /* ============================================================
-   MI VISUAL V367 - Sincronización posterior a Base Operativa
-   - Limpia la caché local de Dashboard, Ranking y Mi Desempeño.
-   - Precalienta el periodo recién actualizado.
-   - No modifica el lector ni las validaciones existentes.
+   MI VISUAL V369 - Sincronización rápida posterior a Base Operativa
+   OBJETIVO:
+   - Producción, Efectividad, Recableado, VTR/GAR y Ranking quedan visibles
+     sin esperar la reconstrucción completa del SLA.
+   - SLA se recalcula en segundo plano una sola vez.
+   - No es necesario volver a subir el mismo archivo.
 ============================================================ */
 (function(){
   "use strict";
 
-  if(window.MV367_BASE_OPERATIVA_SYNC_OK) return;
+  if(window.MV369_BASE_OPERATIVA_SYNC_OK) return;
+
+  const SLA_EN_CURSO = new Map();
 
   function limpiarCacheLocal(){
     try{
@@ -18,7 +22,8 @@
           key &&
           (
             key.startsWith("mv366ResumenDashboard:") ||
-            key.startsWith("mv367ResumenDashboard:")
+            key.startsWith("mv367ResumenDashboard:") ||
+            key.startsWith("mv369ResumenDashboard:")
           )
         ){
           eliminar.push(key);
@@ -29,7 +34,11 @@
   }
 
   function periodoClaveDesdeRespuesta(respuesta){
-    const valor=String(respuesta?.periodoClave||respuesta?.periodo||"").trim();
+    const valor=String(
+      respuesta?.periodoClave ||
+      respuesta?.periodo ||
+      ""
+    ).trim();
 
     if(/^\d{4}-\d{2}$/.test(valor)) return valor;
 
@@ -38,17 +47,28 @@
       MAYO:"05",JUNIO:"06",JULIO:"07",AGOSTO:"08",
       SEPTIEMBRE:"09",OCTUBRE:"10",NOVIEMBRE:"11",DICIEMBRE:"12"
     };
+
     const mes=meses[valor.toUpperCase()];
     const corte=String(respuesta?.actualizadoAl||"");
     const anio=(corte.match(/(\d{4})/)||[])[1];
 
-    return mes&&anio?`${anio}-${mes}`:"";
+    return mes&&anio ? `${anio}-${mes}` : "";
   }
 
-  function sincronizar(respuesta){
-    limpiarCacheLocal();
+  function mensajeAgregar(texto){
+    const mensaje=document.getElementById("boMensaje");
+    if(!mensaje || !texto) return;
 
-    const periodo=periodoClaveDesdeRespuesta(respuesta);
+    const actual=String(mensaje.textContent||"");
+    if(actual.includes(texto)) return;
+
+    mensaje.textContent = actual
+      ? `${actual}\n${texto}`
+      : texto;
+  }
+
+  function invalidarPeriodo(periodo){
+    limpiarCacheLocal();
 
     if(
       periodo &&
@@ -56,55 +76,129 @@
     ){
       window.mv366InvalidarResumenDashboard(periodo);
     }
+  }
 
-    setTimeout(()=>{
-      if(
-        periodo &&
-        typeof window.mv361ConsultarResumenDashboardRanking==="function"
-      ){
-        window.mv361ConsultarResumenDashboardRanking(periodo,false)
-          .catch(error=>console.warn(
-            "V367: no se pudo precalentar el resumen actualizado",
-            error
+  async function precalentar(periodo,forzar){
+    if(
+      !periodo ||
+      typeof window.mv361ConsultarResumenDashboardRanking!=="function"
+    ) return null;
+
+    try{
+      return await window.mv361ConsultarResumenDashboardRanking(
+        periodo,
+        !!forzar
+      );
+    }catch(error){
+      console.warn(
+        "V369: no se pudo precalentar el resumen",
+        error
+      );
+      return null;
+    }
+  }
+
+  function reconstruirSlaSegundoPlano(periodo,apiOriginal){
+    if(!periodo || typeof apiOriginal!=="function") return;
+    if(SLA_EN_CURSO.has(periodo)) return;
+
+    const trabajo=(async()=>{
+      try{
+        mensajeAgregar(
+          "⏱️ SLA: sincronizando en segundo plano. No vuelva a subir el archivo."
+        );
+
+        await apiOriginal({
+          accion:"reconstruirSlaPeriodo",
+          usuario:(
+            localStorage.getItem("usuario") ||
+            localStorage.getItem("correo") ||
+            ""
+          ),
+          periodo
+        });
+
+        invalidarPeriodo(periodo);
+        await precalentar(periodo,false);
+
+        mensajeAgregar(
+          "✅ SLA sincronizado con la nueva base."
+        );
+
+        try{
+          window.dispatchEvent(new CustomEvent(
+            "mv369SlaSincronizado",
+            {detail:{periodo}}
           ));
-      }
-    },250);
+        }catch(_){}
+      }catch(error){
+        console.warn(
+          "V369: la base quedó actualizada, pero SLA no pudo recalcularse en segundo plano",
+          error
+        );
 
+        mensajeAgregar(
+          "ℹ️ Producción y demás indicadores ya están actualizados. SLA se recalculará al abrirlo."
+        );
+      }
+    })().finally(()=>{
+      SLA_EN_CURSO.delete(periodo);
+    });
+
+    SLA_EN_CURSO.set(periodo,trabajo);
+  }
+
+  async function sincronizar(respuesta,apiOriginal){
+    const periodo=periodoClaveDesdeRespuesta(respuesta);
+
+    invalidarPeriodo(periodo);
+
+    mensajeAgregar(
+      `✅ Indicadores actualizados al ${respuesta?.actualizadoAl||"nuevo corte"}.`
+    );
+    mensajeAgregar(
+      "Producción, Efectividad, Recableado y VTR/GAR ya pueden consultarse. No repita la carga."
+    );
+
+    // La ruta rápida ya fue escrita por Apps Script. Se precalienta de inmediato
+    // y no se espera la reconstrucción completa del SLA.
     setTimeout(()=>{
-      const mensaje=document.getElementById("boMensaje");
-      if(!mensaje || !respuesta?.ok) return;
-
-      const estado=respuesta.resumenActualizado
-        ? `Resumen sincronizado: ${Number(respuesta.resumenCuadrillas||0)} cuadrillas.`
-        : `Las hojas fueron actualizadas. El resumen se reconstruirá al abrir el Dashboard.${respuesta.resumenError?` Detalle: ${respuesta.resumenError}`:""}`;
-
-      if(!mensaje.textContent.includes("Resumen sincronizado")){
-        mensaje.textContent += `\n${estado}`;
-      }
+      precalentar(periodo,false);
     },100);
+
+    // SLA se procesa aparte para que la carga principal no quede detenida.
+    setTimeout(()=>{
+      reconstruirSlaSegundoPlano(periodo,apiOriginal);
+    },350);
   }
 
   function aplicar(){
-    if(typeof window.boApi!=="function"&&typeof boApi!=="function"){
+    if(
+      typeof window.boApi!=="function" &&
+      typeof boApi!=="function"
+    ){
       return false;
     }
 
     const original=window.boApi||boApi;
 
-    if(original.__mv367Sync) return true;
+    if(original.__mv369Sync) return true;
 
     const ajustada=async function(payload){
       const respuesta=await original.apply(this,arguments);
 
-      if(payload?.accion==="procesarBaseOperativa"&&respuesta?.ok){
-        sincronizar(respuesta);
+      if(
+        payload?.accion==="procesarBaseOperativa" &&
+        respuesta?.ok
+      ){
+        sincronizar(respuesta,original);
       }
 
       return respuesta;
     };
 
-    ajustada.__mv367Sync=true;
-    ajustada.__mv367Original=original;
+    ajustada.__mv369Sync=true;
+    ajustada.__mv369Original=original;
 
     window.boApi=ajustada;
     try{boApi=ajustada;}catch(_){}
@@ -115,10 +209,10 @@
   let intentos=0;
   const temporizador=setInterval(()=>{
     intentos++;
-    if(aplicar()||intentos>40){
+    if(aplicar()||intentos>50){
       clearInterval(temporizador);
     }
   },100);
 
-  window.MV367_BASE_OPERATIVA_SYNC_OK=true;
+  window.MV369_BASE_OPERATIVA_SYNC_OK=true;
 })();

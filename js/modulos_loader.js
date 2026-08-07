@@ -11,12 +11,12 @@
   const MODULOS = {
     dashboards_core: {
       archivos: [
-        `./js/dashboards.js?v=V368-BONO-SUPERVISOR`,
-        `./js/resumen_dashboard_v361.js?v=V368-BONO-SUPERVISOR`,
-        `./js/sla_gestion_v363.js?v=V368-BONO-SUPERVISOR`,
-        `./js/dashboard_consolidado_v365.js?v=V368-BONO-SUPERVISOR`,
-        `./js/dashboard_sla_tools_v366.js?v=V368-BONO-SUPERVISOR`,
-        `./js/informe_gerencial_lazy_v361.js?v=V368-BONO-SUPERVISOR`
+        `./js/dashboards.js?v=V369-ACTUALIZACION-OPERATIVA-RAPIDA`,
+        `./js/resumen_dashboard_v361.js?v=V369-ACTUALIZACION-OPERATIVA-RAPIDA`,
+        `./js/sla_gestion_v363.js?v=V369-ACTUALIZACION-OPERATIVA-RAPIDA`,
+        `./js/dashboard_consolidado_v365.js?v=V369-ACTUALIZACION-OPERATIVA-RAPIDA`,
+        `./js/dashboard_sla_tools_v366.js?v=V369-ACTUALIZACION-OPERATIVA-RAPIDA`,
+        `./js/informe_gerencial_lazy_v361.js?v=V369-ACTUALIZACION-OPERATIVA-RAPIDA`
       ],
       entradas: [
         "mostrarProduccionV2",
@@ -27,12 +27,12 @@
     },
     mi_desempeno: {
       depende: ["dashboards_core", "indicadores", "ranking"],
-      archivos: [`./js/mi_desempeno_v363.js?v=V368-BONO-SUPERVISOR`],
+      archivos: [`./js/mi_desempeno_v363.js?v=V369-ACTUALIZACION-OPERATIVA-RAPIDA`],
       entradas: ["mostrarMiDesempeno"]
     },
     dashboard: {
       depende: ["dashboards_core"],
-      archivos: [`./js/bono_supervisores.js?v=V368-BONO-SUPERVISOR`],
+      archivos: [`./js/bono_supervisores.js?v=V369-ACTUALIZACION-OPERATIVA-RAPIDA`],
       entradas: ["mostrarBonosSupervisores"]
     },
     indicadores: {
@@ -42,8 +42,8 @@
     ranking: {
       depende: ["dashboards_core"],
       archivos: [
-        `./ranking.js?v=V368-BONO-SUPERVISOR`,
-        `./js/ranking_informe_v358.js?v=V368-BONO-SUPERVISOR`
+        `./ranking.js?v=V369-ACTUALIZACION-OPERATIVA-RAPIDA`,
+        `./js/ranking_informe_v358.js?v=V369-ACTUALIZACION-OPERATIVA-RAPIDA`
       ],
       entradas: ["mostrarRanking"]
     },
@@ -61,7 +61,7 @@
     accesos: {
       archivos: [
         `./js/accesos.js?v=${VERSION}`,
-        `./js/accesos_certificacion_v362.js?v=V368-BONO-SUPERVISOR`
+        `./js/accesos_certificacion_v362.js?v=V369-ACTUALIZACION-OPERATIVA-RAPIDA`
       ],
       entradas: ["mostrarAccesos", "mostrarBiblioteca", "mostrarCapacitacion"]
     },
@@ -116,7 +116,7 @@
       depende: ["dashboards_core", "accesos", "checklist"],
       archivos: [
         `./js/base_operativa.js?v=${VERSION}`,
-        `./js/base_operativa_sync_v367.js?v=V368-BONO-SUPERVISOR`,
+        `./js/base_operativa_sync_v367.js?v=V369-ACTUALIZACION-OPERATIVA-RAPIDA`,
         `./js/admin_checklist.js?v=${VERSION}`
       ],
       entradas: ["mostrarAdministracion"]

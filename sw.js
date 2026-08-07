@@ -1,5 +1,5 @@
-/* MI VISUAL V367 - caché segura, resúmenes limpios y SLA ordenado */
-const MV339_CACHE = "mivisual-v368-bono-supervisor-20260806";
+/* MI VISUAL V369 - caché segura y actualización operativa rápida */
+const MV339_CACHE = "mivisual-v369-actualizacion-operativa-rapida-20260806";
 const MV339_CORE = [
   "./",
   "./index.html",
@@ -9,12 +9,12 @@ const MV339_CORE = [
   "./js/login.js?v=V339-CACHE",
   "./js/permisos.js?v=V339-CORE",
   "./js/app.js?v=V339-LAZY",
-  "./js/modulos_loader.js?v=V368-BONO-SUPERVISOR",
-  "./js/menu_desempeno_v363.js?v=V368-BONO-SUPERVISOR",
-  "./js/resumen_dashboard_v361.js?v=V368-BONO-SUPERVISOR",
-  "./js/dashboard_consolidado_v365.js?v=V368-BONO-SUPERVISOR",
-  "./js/dashboard_sla_tools_v366.js?v=V368-BONO-SUPERVISOR",
-  "./js/base_operativa_sync_v367.js?v=V368-BONO-SUPERVISOR",
+  "./js/modulos_loader.js?v=V369-ACTUALIZACION-OPERATIVA-RAPIDA",
+  "./js/menu_desempeno_v363.js?v=V369-ACTUALIZACION-OPERATIVA-RAPIDA",
+  "./js/resumen_dashboard_v361.js?v=V369-ACTUALIZACION-OPERATIVA-RAPIDA",
+  "./js/dashboard_consolidado_v365.js?v=V369-ACTUALIZACION-OPERATIVA-RAPIDA",
+  "./js/dashboard_sla_tools_v366.js?v=V369-ACTUALIZACION-OPERATIVA-RAPIDA",
+  "./js/base_operativa_sync_v367.js?v=V369-ACTUALIZACION-OPERATIVA-RAPIDA",
   "./js/mapa_cto_fix_v342.js?v=V342-MAPA-CTO",
   "./js/actas_recepcion_v343.js?v=V343-ACTAS-RECEPCION",
   "./js/actas_identidad_v344.js?v=V344-ACTAS-IDENTIDAD",
