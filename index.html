@@ -102,12 +102,12 @@ Visual Connections SAC - Zona Norte
 if ("serviceWorker" in navigator) {
     window.addEventListener("load", function(){
       navigator.serviceWorker
-        .register("./sw.js?v=V365-CONSOLIDADO-DASHBOARD-RANKING")
+        .register("./sw.js?v=V366-CARGA-RAPIDA-SLA")
         .then(function(registro){
           registro.update().catch(function(){});
-          console.log("SW V365 OK");
+          console.log("SW V366 OK");
         })
-        .catch(function(error){ console.warn("SW V365", error); });
+        .catch(function(error){ console.warn("SW V366", error); });
     });
 }
 </script>
@@ -119,13 +119,13 @@ if ("serviceWorker" in navigator) {
 <script src="./js/login.js?v=V339-CACHE"></script>
 <script src="./js/permisos.js?v=V339-CORE"></script>
 <script src="./js/app.js?v=V339-LAZY"></script>
-<script src="./js/modulos_loader.js?v=V365-CONSOLIDADO-DASHBOARD-RANKING"></script>
+<script src="./js/modulos_loader.js?v=V366-CARGA-RAPIDA-SLA"></script>
 <script src="./js/mapa_cto_fix_v342.js?v=V342-MAPA-CTO"></script>
 <script src="./js/actas_recepcion_v343.js?v=V343-ACTAS-RECEPCION"></script>
 <script src="./js/actas_identidad_v344.js?v=V344-ACTAS-IDENTIDAD"></script>
 <script src="./js/ajustes_perfiles_v345.js?v=V345-PERFILES"></script>
 <script src="./js/actividad_campo_fix_v346.js?v=V346-ACTIVIDAD-CAMPO"></script>
 
-<script src="./js/menu_desempeno_v363.js?v=V365-CONSOLIDADO-DASHBOARD-RANKING"></script>
+<script src="./js/menu_desempeno_v363.js?v=V366-CARGA-RAPIDA-SLA"></script>
 </body>
 </html>

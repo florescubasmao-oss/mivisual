@@ -11,22 +11,28 @@
   const MODULOS = {
     dashboards_core: {
       archivos: [
-        `./js/dashboards.js?v=V365-CONSOLIDADO-DASHBOARD-RANKING`,
-        `./js/resumen_dashboard_v361.js?v=V365-CONSOLIDADO-DASHBOARD-RANKING`,
-        `./js/sla_gestion_v363.js?v=V365-CONSOLIDADO-DASHBOARD-RANKING`,
-        `./js/dashboard_consolidado_v365.js?v=V365-CONSOLIDADO-DASHBOARD-RANKING`,
-        `./js/informe_gerencial_lazy_v361.js?v=V365-CONSOLIDADO-DASHBOARD-RANKING`
+        `./js/dashboards.js?v=V366-CARGA-RAPIDA-SLA`,
+        `./js/resumen_dashboard_v361.js?v=V366-CARGA-RAPIDA-SLA`,
+        `./js/sla_gestion_v363.js?v=V366-CARGA-RAPIDA-SLA`,
+        `./js/dashboard_consolidado_v365.js?v=V366-CARGA-RAPIDA-SLA`,
+        `./js/dashboard_sla_tools_v366.js?v=V366-CARGA-RAPIDA-SLA`,
+        `./js/informe_gerencial_lazy_v361.js?v=V366-CARGA-RAPIDA-SLA`
       ],
-      entradas: ["mostrarProduccionV2", "mostrarDashboardSupervisor", "mostrarDashboardJefatura"]
+      entradas: [
+        "mostrarProduccionV2",
+        "mostrarDashboardSupervisor",
+        "mostrarDashboardJefatura",
+        "mostrarTiempoGestionSla"
+      ]
     },
     mi_desempeno: {
       depende: ["dashboards_core", "indicadores", "ranking"],
-      archivos: [`./js/mi_desempeno_v363.js?v=V365-CONSOLIDADO-DASHBOARD-RANKING`],
+      archivos: [`./js/mi_desempeno_v363.js?v=V366-CARGA-RAPIDA-SLA`],
       entradas: ["mostrarMiDesempeno"]
     },
     dashboard: {
       depende: ["dashboards_core"],
-      archivos: [`./js/bono_supervisores.js?v=V365-CONSOLIDADO-DASHBOARD-RANKING`],
+      archivos: [`./js/bono_supervisores.js?v=V366-CARGA-RAPIDA-SLA`],
       entradas: ["mostrarBonosSupervisores"]
     },
     indicadores: {
@@ -36,8 +42,8 @@
     ranking: {
       depende: ["dashboards_core"],
       archivos: [
-        `./ranking.js?v=V365-CONSOLIDADO-DASHBOARD-RANKING`,
-        `./js/ranking_informe_v358.js?v=V365-CONSOLIDADO-DASHBOARD-RANKING`
+        `./ranking.js?v=V366-CARGA-RAPIDA-SLA`,
+        `./js/ranking_informe_v358.js?v=V366-CARGA-RAPIDA-SLA`
       ],
       entradas: ["mostrarRanking"]
     },
@@ -55,7 +61,7 @@
     accesos: {
       archivos: [
         `./js/accesos.js?v=${VERSION}`,
-        `./js/accesos_certificacion_v362.js?v=V365-CONSOLIDADO-DASHBOARD-RANKING`
+        `./js/accesos_certificacion_v362.js?v=V366-CARGA-RAPIDA-SLA`
       ],
       entradas: ["mostrarAccesos", "mostrarBiblioteca", "mostrarCapacitacion"]
     },
@@ -120,8 +126,8 @@
     mostrarProduccionV2: "dashboards_core",
     mostrarMiDesempeno: "mi_desempeno",
     mostrarTiempoGestionSla: "dashboards_core",
-    mostrarDashboardSupervisor: "dashboard",
-    mostrarDashboardJefatura: "dashboard",
+    mostrarDashboardSupervisor: "dashboards_core",
+    mostrarDashboardJefatura: "dashboards_core",
     mostrarBonosSupervisores: "dashboard",
     mostrarEfectividad: "indicadores",
     mostrarRecableado: "indicadores",
@@ -155,7 +161,7 @@
 
   function nombreVisible(id){
     const nombres = {
-      dashboards_core:"Producción", dashboard:"Dashboard", indicadores:"Indicadores",
+      dashboards_core:"Datos operativos", dashboard:"Bonos Supervisores", mi_desempeno:"Mi Desempeño", indicadores:"Indicadores",
       ranking:"Ranking", bonos:"Bonos", observaciones:"Observaciones", accesos:"Recursos",
       actividad:"Actividad en Campo", validacion:"Validación Técnica", actas:"Gestión de Actas",
       equipos:"Equipos Averiados", analisis:"Análisis Económico", checklist:"Checklist Almacén",
@@ -295,34 +301,96 @@
     window[nombre] = wrapper;
   });
 
-  function programarCarga(id, demora){
+  function conexionLenta(){
     const conexion = navigator.connection || navigator.mozConnection || navigator.webkitConnection;
-    if(conexion && (conexion.saveData || /(^|-)2g$/.test(conexion.effectiveType || ""))) return;
+    return Boolean(
+      conexion &&
+      (
+        conexion.saveData ||
+        /(^|-)2g$/.test(conexion.effectiveType || "")
+      )
+    );
+  }
+
+  function programarCarga(id, demora){
+    if(conexionLenta()) return;
+
     setTimeout(function(){
-      const ejecutar = function(){ cargarModulo(id).catch(error => console.warn(`V339: precarga ${id}`, error)); };
-      if(typeof requestIdleCallback === "function") requestIdleCallback(ejecutar, {timeout:2500});
-      else ejecutar();
-    }, Math.max(0, Number(demora)||0));
+      const ejecutar = function(){
+        cargarModulo(id).catch(error =>
+          console.warn(`V366: precarga ${id}`, error)
+        );
+      };
+
+      if(typeof requestIdleCallback === "function"){
+        requestIdleCallback(ejecutar,{timeout:2500});
+      }else{
+        ejecutar();
+      }
+    },Math.max(0,Number(demora)||0));
+  }
+
+  function programarResumen(demora){
+    if(conexionLenta()) return;
+
+    setTimeout(function(){
+      const ejecutar = async function(){
+        try{
+          await cargarModulo("dashboards_core");
+
+          if(
+            typeof window.mv361ConsultarResumenDashboardRanking === "function"
+          ){
+            await window.mv361ConsultarResumenDashboardRanking(
+              "",
+              false
+            );
+          }
+        }catch(error){
+          console.warn(
+            "V366: no se pudo precalentar el resumen",
+            error
+          );
+        }
+      };
+
+      if(typeof requestIdleCallback === "function"){
+        requestIdleCallback(ejecutar,{timeout:3500});
+      }else{
+        ejecutar();
+      }
+    },Math.max(0,Number(demora)||0));
   }
 
   function prepararPerfil(perfil){
     const p = String(perfil || "").toUpperCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"").trim();
     if(p === "TECNICO"){
-      programarCarga("dashboards_core", 700);
-      programarCarga("indicadores", 1600);
-      programarCarga("validacion", 2800);
+      programarCarga("dashboards_core",350);
+      programarResumen(700);
+      programarCarga("mi_desempeno",1300);
+      programarCarga("validacion",2800);
       return;
     }
+
     if(p === "SUPERVISOR"){
-      programarCarga("dashboard", 650);
-      programarCarga("validacion", 1600);
-      programarCarga("descansos", 2600);
+      programarCarga("dashboards_core",250);
+      programarResumen(550);
+      programarCarga("validacion",1600);
+      programarCarga("descansos",2600);
       return;
     }
-    if(["JEFATURA","JEFATURA GENERAL","GERENCIA LIMA","ADMIN","ADMINISTRADOR"].includes(p)){
-      programarCarga("dashboard", 650);
-      programarCarga("validacion", 1700);
-      programarCarga("descansos", 2900);
+
+    if([
+      "JEFATURA",
+      "JEFATURA GENERAL",
+      "GERENCIA LIMA",
+      "ADMIN",
+      "ADMINISTRADOR"
+    ].includes(p)){
+      programarCarga("dashboards_core",250);
+      programarResumen(500);
+      programarCarga("validacion",1700);
+      programarCarga("descansos",2900);
       return;
     }
     if(["ALMACEN","JEFATURA ALMACEN"].includes(p)){

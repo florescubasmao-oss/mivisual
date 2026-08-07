@@ -1,5 +1,5 @@
 /* ============================================================
-   MI VISUAL V363 - Tiempo de Gestión SLA
+   MI VISUAL V366 - Tiempo de Gestión SLA y excepciones directas
    Dashboard, Mi Desempeño, excepciones y configuración Ranking.
 ============================================================ */
 (function(){
@@ -68,14 +68,25 @@
   const baseSede=window.mv4SedeCard;
   if(typeof baseSede==="function") window.mv4SedeCard=function(sede,lista){let html=baseSede(sede,lista);const d=resumenSlaLista(lista);return html.replace(/(<span>Metas:)/,`<span>SLA: <b>${d.slaAjustado.toFixed(1)}%</b></span>$1`);};
 
-  function selectorPeriodos(data,actual){return `<select onchange="mostrarTiempoGestionSla(this.value)" style="width:100%;padding:11px;border-radius:10px">${(data.periodos||[]).map(p=>`<option value="${esc(p.clave||p)}" ${(p.clave||p)===actual?"selected":""}>${esc(p.etiqueta||p)}</option>`).join("")}</select>`;}
+  function selectorPeriodos(data,actual,modo){return `<select onchange="mostrarTiempoGestionSla(this.value,'${esc(modo||"TODOS")}')" style="width:100%;padding:11px;border-radius:10px">${(data.periodos||[]).map(p=>`<option value="${esc(p.clave||p)}" ${(p.clave||p)===actual?"selected":""}>${esc(p.etiqueta||p)}</option>`).join("")}</select>`;}
   function tarjeta(titulo,valor,sub,icono){return `<div style="padding:13px;border-radius:14px;background:#102844;border:1px solid rgba(255,255,255,.1)"><div style="font-size:11px;color:#9fb7d8;font-weight:900">${icono} ${esc(titulo)}</div><div style="font-size:24px;font-weight:900;margin-top:6px">${valor}</div><div style="font-size:11px;color:#9fb7d8;margin-top:4px">${esc(sub||"")}</div></div>`;}
   function filaOrden(o,puedeSolicitar,puedeResolver,periodo){const s=semaforo(o.cumpleAjustado?100:0);const fuera=o.evaluable&&!o.cumpleAjustado;return `<div style="padding:12px;border-radius:14px;background:#102844;border-left:4px solid ${o.cumpleAjustado?'#22c55e':(o.evaluable?'#ef4444':'#64748b')};margin-top:10px;color:#fff"><div style="display:flex;justify-content:space-between;gap:10px"><div><b>Código ${esc(o.codigo)}</b><div style="font-size:11px;color:#9fb7d8;margin-top:3px">${esc(o.cuadrilla)} · ${esc(o.tipoGeneral)} · ${esc(o.partida||o.resultado)}</div></div><b>${esc(o.resultado)}</b></div><div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:7px;margin-top:9px;font-size:12px"><span>Tiempo: <b>${n(o.minutosGestion)} min</b></span><span>Parámetro: <b>${n(o.slaMinutos)} min</b></span><span>Exceso: <b>${n(o.excesoMinutos)} min</b></span></div><div style="font-size:11px;color:#9fb7d8;margin-top:7px">Excepción: ${esc(o.excepcionEstado||'SIN SOLICITUD')}</div>${fuera&&puedeSolicitar&&!['PENDIENTE','APROBADA'].includes(o.excepcionEstado)?`<button class="mv4-link-btn" onclick="mv363AbrirSolicitud('${esc(periodo)}','${esc(o.codigo)}')">Solicitar excepción</button>`:""}${o.excepcionEstado==='PENDIENTE'&&puedeResolver?`<div style="display:flex;gap:8px;margin-top:8px"><button class="mv4-link-btn" onclick="mv363Resolver('${esc(periodo)}','${esc(o.codigo)}','APROBADA')">✅ Aprobar</button><button class="mv4-link-btn" onclick="mv363Resolver('${esc(periodo)}','${esc(o.codigo)}','RECHAZADA')">❌ Rechazar</button></div>`:""}</div>`;}
 
-  async function mostrar(periodo){
+  async function mostrar(periodo,modo){
+    const filtro=norm(modo||window.MV366_SLA_MODO||"TODOS")||"TODOS";
+    window.MV366_SLA_MODO=filtro;
+
+    const titulos={
+      TODOS:"TIEMPO DE GESTIÓN - SLA",
+      FUERA:"CÓDIGOS FUERA DEL SLA",
+      EXCEPCIONES:"EXCEPCIONES SLA",
+      PENDIENTES:"VALIDAR EXCEPCIONES SLA"
+    };
+    const titulo=titulos[filtro]||titulos.TODOS;
+
     mostrarPantalla(`
       <div style="padding:20px;color:#fff">
-        <h2>⏱️ TIEMPO DE GESTIÓN - SLA</h2>
+        <h2>⏱️ ${titulo}</h2>
         Cargando información consolidada...
       </div>
     `);
@@ -84,13 +95,44 @@
       const d=await consultar(periodo);
       const r=d.resumen||{};
       const s=semaforo(r.slaAjustado);
+      const todas=Array.isArray(d.ordenes)?d.ordenes:[];
+
+      let ordenes=todas;
+      if(filtro==="PENDIENTES"){
+        ordenes=todas.filter(o=>norm(o.excepcionEstado)==="PENDIENTE");
+      }else if(filtro==="FUERA"){
+        ordenes=todas.filter(o=>o.evaluable&&!o.cumpleAjustado);
+      }else if(filtro==="EXCEPCIONES"){
+        ordenes=todas.filter(o=>
+          ["PENDIENTE","APROBADA","RECHAZADA"].includes(
+            norm(o.excepcionEstado)
+          )
+        );
+      }
+
+      const puedeResolver=Boolean(d.puedeResolver);
+      const botonPendientes=puedeResolver
+        ? `<button class="mv4-link-btn" onclick="mostrarTiempoGestionSla('${esc(d.periodo)}','PENDIENTES')">✅ Pendientes</button>`
+        : "";
+
+      const botonVolver=typeof window.mv366VolverDesdeSla==="function" &&
+        window.MV366_ORIGEN_SLA
+        ? `<button class="button_1" onclick="mv366VolverDesdeSla()">⬅️ Volver al Dashboard</button>`
+        : `<button class="button_1" onclick="volverInicio()">⬅️ Volver al menú</button>`;
 
       mostrarPantalla(`
         <div style="padding:18px;max-width:1050px;margin:auto;color:#fff">
-          <h2>⏱️ TIEMPO DE GESTIÓN - SLA</h2>
+          <h2>⏱️ ${titulo}</h2>
 
           <div style="margin:12px 0">
-            ${selectorPeriodos(d,d.periodo)}
+            ${selectorPeriodos(d,d.periodo,filtro)}
+          </div>
+
+          <div style="display:flex;gap:8px;flex-wrap:wrap;margin:10px 0 14px">
+            <button class="mv4-link-btn" onclick="mostrarTiempoGestionSla('${esc(d.periodo)}','TODOS')">📋 Todos</button>
+            <button class="mv4-link-btn" onclick="mostrarTiempoGestionSla('${esc(d.periodo)}','FUERA')">🚨 Fuera del SLA</button>
+            <button class="mv4-link-btn" onclick="mostrarTiempoGestionSla('${esc(d.periodo)}','EXCEPCIONES')">🗂️ Excepciones</button>
+            ${botonPendientes}
           </div>
 
           <div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px">
@@ -143,22 +185,30 @@
             </div>
           ` : ""}
 
-          <h3 style="margin-top:18px">Detalle por Código</h3>
-          ${(d.ordenes||[]).map(o=>
-            filaOrden(o,d.puedeSolicitar,d.puedeResolver,d.periodo)
-          ).join("") || '<div class="card">Sin códigos para el período.</div>'}
+          <h3 style="margin-top:18px">${titulo} · ${ordenes.length} códigos</h3>
+
+          ${ordenes.map(o=>
+            filaOrden(
+              o,
+              d.puedeSolicitar,
+              d.puedeResolver,
+              d.periodo
+            )
+          ).join("") || '<div class="card">No existen códigos para este filtro.</div>'}
 
           <br>
-          <button class="button_1" onclick="volverInicio()">⬅️ Volver al menú</button>
+          ${botonVolver}
         </div>
       `);
     }catch(e){
       mostrarPantalla(`
         <div style="padding:20px">
-          <h2>⏱️ TIEMPO DE GESTIÓN - SLA</h2>
+          <h2>⏱️ ${titulo}</h2>
           ❌ ${esc(e.message)}
           <br><br>
-          <button class="button_1" onclick="volverInicio()">⬅️ Volver</button>
+          ${typeof window.mv366VolverDesdeSla==="function" && window.MV366_ORIGEN_SLA
+            ? '<button class="button_1" onclick="mv366VolverDesdeSla()">⬅️ Volver al Dashboard</button>'
+            : '<button class="button_1" onclick="volverInicio()">⬅️ Volver</button>'}
         </div>
       `);
     }
@@ -167,13 +217,13 @@
   function modal(html){document.getElementById('mv363Modal')?.remove();const x=document.createElement('div');x.id='mv363Modal';x.innerHTML=`<div style="width:min(650px,94vw);max-height:90vh;overflow:auto;background:#0d2037;color:#fff;border-radius:18px;padding:18px;border:1px solid #315577">${html}</div>`;Object.assign(x.style,{position:'fixed',inset:'0',zIndex:11000,display:'flex',alignItems:'center',justifyContent:'center',background:'rgba(2,8,23,.78)',padding:'16px'});document.body.appendChild(x);}
   function cerrar(){document.getElementById('mv363Modal')?.remove();}
   function abrirSolicitud(periodo,codigo){modal(`<h3>Solicitar excepción SLA</h3><p>Código <b>${esc(codigo)}</b></p><label>Motivo<select id="mv363Motivo" style="width:100%;padding:10px;margin:5px 0 10px"><option>METRAJE ELEVADO</option><option>DEMORA SOPORTE WIN</option><option>CAIDA DE SISTEMA O APLICATIVO</option><option>PROBLEMA DE RED O PLATAFORMA</option><option>ACCESO RESTRINGIDO</option><option>OTRA CAUSA</option></select></label><label>Comentario<textarea id="mv363Comentario" style="width:100%;min-height:100px;padding:10px;margin-top:5px"></textarea></label><label>Evidencia / enlace<input id="mv363Evidencia" style="width:100%;padding:10px;margin-top:5px"></label><div style="display:flex;gap:8px;margin-top:12px"><button class="button_1" onclick="mv363EnviarSolicitud('${esc(periodo)}','${esc(codigo)}')">Enviar</button><button class="button_1" onclick="mv363CerrarModal()">Cancelar</button></div><div id="mv363Msg"></div>`);}
-  async function enviarSolicitud(periodo,codigo){const msg=document.getElementById('mv363Msg');try{if(msg)msg.textContent='Guardando...';await post('solicitarExcepcionSla',{periodo,codigo,motivo:document.getElementById('mv363Motivo').value,comentario:document.getElementById('mv363Comentario').value,evidencia:document.getElementById('mv363Evidencia').value});CACHE.delete(periodo);cerrar();await mostrar(periodo);}catch(e){if(msg)msg.textContent='❌ '+e.message;}}
-  async function resolver(periodo,codigo,resultado){const comentario=prompt(`Comentario de Jefatura para ${resultado.toLowerCase()}:`)||'';try{await post('resolverExcepcionSla',{periodo,codigo,resultado,comentarioJefatura:comentario});CACHE.delete(periodo);await mostrar(periodo);}catch(e){alert(e.message);}}
-  async function reconstruir(periodo){if(!confirm('¿Reconstruir el resumen SLA del período?'))return;try{await post('reconstruirSlaPeriodo',{periodo});CACHE.clear();await mostrar(periodo);}catch(e){alert(e.message);}}
+  async function enviarSolicitud(periodo,codigo){const msg=document.getElementById('mv363Msg');try{if(msg)msg.textContent='Guardando...';await post('solicitarExcepcionSla',{periodo,codigo,motivo:document.getElementById('mv363Motivo').value,comentario:document.getElementById('mv363Comentario').value,evidencia:document.getElementById('mv363Evidencia').value});CACHE.delete(periodo);if(typeof window.mv366InvalidarResumenDashboard==="function")window.mv366InvalidarResumenDashboard(periodo);cerrar();await mostrar(periodo,window.MV366_SLA_MODO||"FUERA");}catch(e){if(msg)msg.textContent='❌ '+e.message;}}
+  async function resolver(periodo,codigo,resultado){const comentario=prompt(`Comentario de Jefatura para ${resultado.toLowerCase()}:`)||'';try{await post('resolverExcepcionSla',{periodo,codigo,resultado,comentarioJefatura:comentario});CACHE.delete(periodo);if(typeof window.mv366InvalidarResumenDashboard==="function")window.mv366InvalidarResumenDashboard(periodo);await mostrar(periodo,window.MV366_SLA_MODO||"PENDIENTES");}catch(e){alert(e.message);}}
+  async function reconstruir(periodo){if(!confirm('¿Reconstruir el resumen SLA del período?'))return;try{await post('reconstruirSlaPeriodo',{periodo});CACHE.clear();if(typeof window.mv366InvalidarResumenDashboard==="function")window.mv366InvalidarResumenDashboard(periodo);await mostrar(periodo,window.MV366_SLA_MODO||"TODOS");}catch(e){alert(e.message);}}
   async function abrirConfig(periodo){try{const d=await get('obtenerConfiguracionRanking',{periodo});const c=d.configuracion,p=c.pesos;modal(`<h3>Pesos del Ranking - ${esc(periodo)}</h3>${['PRODUCCION','EFECTIVIDAD','SLA','OBSERVACIONES','RECABLEADO','VTRGAR'].map(k=>`<label style="display:grid;grid-template-columns:1fr 130px;gap:10px;margin-top:9px"><span>${esc(k)}</span><input id="mv363Peso_${k}" type="number" min="0" max="100" step="0.5" value="${n(p[k])}" style="padding:9px"></label>`).join('')}<div style="margin-top:12px;color:#9fb7d8">La suma debe ser 100%. Julio 2026 permanece cerrado.</div><div style="display:flex;gap:8px;margin-top:12px"><button class="button_1" onclick="mv363GuardarConfig('${esc(periodo)}')">Guardar</button><button class="button_1" onclick="mv363CerrarModal()">Cancelar</button></div><div id="mv363Msg"></div>`);}catch(e){alert(e.message);}}
   async function guardarConfig(periodo){const pesos={};['PRODUCCION','EFECTIVIDAD','SLA','OBSERVACIONES','RECABLEADO','VTRGAR'].forEach(k=>pesos[k]=n(document.getElementById('mv363Peso_'+k).value));const msg=document.getElementById('mv363Msg');try{if(msg)msg.textContent='Guardando...';await post('guardarConfiguracionRanking',{periodo,pesos,estado:periodo==='2026-07'?'CERRADO':'ACTIVO'});cerrar();alert('Configuración guardada. Actualice el Ranking del período para aplicar los nuevos pesos.');}catch(e){if(msg)msg.textContent='❌ '+e.message;}}
 
   window.mv363ResumenSlaLista=resumenSlaLista;window.mv363DetalleSla=detalleSla;window.mv363SemaforoSla=semaforo;
-  window.mostrarTiempoGestionSla=mostrar;window.mv363AbrirSolicitud=abrirSolicitud;window.mv363EnviarSolicitud=enviarSolicitud;window.mv363Resolver=resolver;window.mv363Reconstruir=reconstruir;window.mv363AbrirConfigRanking=abrirConfig;window.mv363GuardarConfig=guardarConfig;window.mv363CerrarModal=cerrar;
-  window.MV363_SLA_GESTION_OK=true;console.log('MI VISUAL V363: Tiempo de Gestión SLA habilitado.');
+  window.mostrarTiempoGestionSla=mostrar;window.mostrarExcepcionesSla=function(periodo){return mostrar(periodo,'PENDIENTES');};window.mv363AbrirSolicitud=abrirSolicitud;window.mv363EnviarSolicitud=enviarSolicitud;window.mv363Resolver=resolver;window.mv363Reconstruir=reconstruir;window.mv363AbrirConfigRanking=abrirConfig;window.mv363GuardarConfig=guardarConfig;window.mv363CerrarModal=cerrar;
+  window.MV363_SLA_GESTION_OK=true;window.MV366_SLA_DIRECTO_OK=true;console.log('MI VISUAL V366: Tiempo de Gestión SLA y excepciones directas habilitados.');
 })();
