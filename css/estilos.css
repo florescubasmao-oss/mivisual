@@ -1875,3 +1875,27 @@ body{background:linear-gradient(180deg,var(--mv4-bg),var(--mv4-bg2));font-family
 .mv321-form-msg{font-size:10px;color:#a9c0dc;margin:10px 0;min-height:14px}.mv321-form-msg.ok{color:#66e6ae}.mv321-form-msg.error{color:#ff9797}.mv321-guardar{width:100%;font-size:12px}
 .mv321-tabla-sla-wrap{overflow:auto;max-height:62vh;margin:12px 0;border:1px solid rgba(255,255,255,.08);border-radius:11px}.mv321-tabla-sla{width:100%;border-collapse:collapse;min-width:650px}.mv321-tabla-sla th{position:sticky;top:0;background:#18304f;color:#cfe4fb;text-align:left;font-size:10px;padding:9px;z-index:1}.mv321-tabla-sla td{padding:8px;border-top:1px solid rgba(255,255,255,.06);vertical-align:middle}.mv321-tabla-sla td:first-child{min-width:360px}.mv321-tabla-sla td>b{display:block;font-size:10px}.mv321-tabla-sla td small{display:block;color:#7f9dbc;font-size:8px;margin-top:2px}.mv321-tabla-sla td:nth-child(2){width:120px}.mv321-tabla-sla td:nth-child(3){width:110px}
 @media(max-width:720px){.mv321-panel{padding:10px;border-radius:14px}.mv321-panel-title{align-items:stretch;flex-direction:column}.mv321-config{width:100%}.mv321-bono-head{flex-direction:column}.mv321-bono-total{text-align:left}.mv321-componentes{grid-template-columns:1fr}.mv321-total-meta{flex-direction:column}.mv321-resumen-jefatura{grid-template-columns:1fr 1fr}.mv321-resumen-jefatura>div:first-child{grid-column:1/-1}.mv321-linea small{max-width:150px}.mv321-modal{padding:6px}.mv321-modal-card{max-height:97vh}.mv321-modal-body{max-height:calc(97vh - 58px);padding:10px}}
+
+
+/* V377 - GERENCIA GENERAL: MAPA OPERATIVO con tamaño estándar del menú */
+#menuPrincipal.mv377-gerencia-general-menu #cardMapaOperativo{
+  grid-column:auto!important;
+  width:100%!important;
+  max-width:none!important;
+  min-width:0!important;
+  justify-self:stretch!important;
+  min-height:104px!important;
+  padding:12px 8px!important;
+  border-radius:20px!important;
+  box-shadow:0 10px 22px rgba(0,0,0,.18)!important;
+}
+#menuPrincipal.mv377-gerencia-general-menu #cardMapaOperativo span{font-size:28px!important;}
+#menuPrincipal.mv377-gerencia-general-menu #cardMapaOperativo b{font-size:12px!important;line-height:1.15!important;}
+@media(max-width:620px){
+  #menuPrincipal.mv377-gerencia-general-menu #cardMapaOperativo{
+    min-height:94px!important;
+    border-radius:19px!important;
+  }
+  #menuPrincipal.mv377-gerencia-general-menu #cardMapaOperativo span{font-size:27px!important;}
+  #menuPrincipal.mv377-gerencia-general-menu #cardMapaOperativo b{font-size:12px!important;}
+}

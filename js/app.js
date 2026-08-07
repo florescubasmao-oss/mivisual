@@ -384,6 +384,10 @@ async function configurarMenu(){
         "mv224-jefatura-operaciones-menu",
         ["JEFATURA OPERACIONES", "JEFATURA DE OPERACIONES", "OPERACIONES"].includes(perfil)
     );
+    menu.classList.toggle(
+        "mv377-gerencia-general-menu",
+        ["GERENCIA GENERAL", "GERENCIAL GENERAL"].includes(perfil)
+    );
 
     if (pantalla) pantalla.innerHTML = "";
     if (resultado) resultado.innerHTML = "";

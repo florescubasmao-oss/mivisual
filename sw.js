@@ -1,5 +1,5 @@
 /* MI VISUAL V369 - caché segura y actualización operativa rápida */
-const MV339_CACHE = "mivisual-v376-api-centralizada-20260807";
+const MV339_CACHE = "mivisual-v377-mapa-gerencia-general";
 const MV339_CORE = [
   "./",
   "./index.html",
