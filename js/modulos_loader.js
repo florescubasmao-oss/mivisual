@@ -11,12 +11,12 @@
   const MODULOS = {
     dashboards_core: {
       archivos: [
-        `./js/dashboards.js?v=V369-ACTUALIZACION-OPERATIVA-RAPIDA`,
-        `./js/resumen_dashboard_v361.js?v=V369-ACTUALIZACION-OPERATIVA-RAPIDA`,
-        `./js/sla_gestion_v363.js?v=V369-ACTUALIZACION-OPERATIVA-RAPIDA`,
-        `./js/dashboard_consolidado_v365.js?v=V369-ACTUALIZACION-OPERATIVA-RAPIDA`,
-        `./js/dashboard_sla_tools_v366.js?v=V369-ACTUALIZACION-OPERATIVA-RAPIDA`,
-        `./js/informe_gerencial_lazy_v361.js?v=V369-ACTUALIZACION-OPERATIVA-RAPIDA`
+        `./js/dashboards.js?v=V370-BONO-SUPERVISOR-DASHBOARD`,
+        `./js/resumen_dashboard_v361.js?v=V370-BONO-SUPERVISOR-DASHBOARD`,
+        `./js/sla_gestion_v363.js?v=V370-BONO-SUPERVISOR-DASHBOARD`,
+        `./js/dashboard_consolidado_v365.js?v=V370-BONO-SUPERVISOR-DASHBOARD`,
+        `./js/dashboard_sla_tools_v366.js?v=V370-BONO-SUPERVISOR-DASHBOARD`,
+        `./js/informe_gerencial_lazy_v361.js?v=V370-BONO-SUPERVISOR-DASHBOARD`
       ],
       entradas: [
         "mostrarProduccionV2",
@@ -27,12 +27,12 @@
     },
     mi_desempeno: {
       depende: ["dashboards_core", "indicadores", "ranking"],
-      archivos: [`./js/mi_desempeno_v363.js?v=V369-ACTUALIZACION-OPERATIVA-RAPIDA`],
+      archivos: [`./js/mi_desempeno_v363.js?v=V370-BONO-SUPERVISOR-DASHBOARD`],
       entradas: ["mostrarMiDesempeno"]
     },
     dashboard: {
       depende: ["dashboards_core"],
-      archivos: [`./js/bono_supervisores.js?v=V369-ACTUALIZACION-OPERATIVA-RAPIDA`],
+      archivos: [`./js/bono_supervisores.js?v=V370-BONO-SUPERVISOR-DASHBOARD`],
       entradas: ["mostrarBonosSupervisores"]
     },
     indicadores: {
@@ -42,8 +42,8 @@
     ranking: {
       depende: ["dashboards_core"],
       archivos: [
-        `./ranking.js?v=V369-ACTUALIZACION-OPERATIVA-RAPIDA`,
-        `./js/ranking_informe_v358.js?v=V369-ACTUALIZACION-OPERATIVA-RAPIDA`
+        `./ranking.js?v=V370-BONO-SUPERVISOR-DASHBOARD`,
+        `./js/ranking_informe_v358.js?v=V370-BONO-SUPERVISOR-DASHBOARD`
       ],
       entradas: ["mostrarRanking"]
     },
@@ -61,7 +61,7 @@
     accesos: {
       archivos: [
         `./js/accesos.js?v=${VERSION}`,
-        `./js/accesos_certificacion_v362.js?v=V369-ACTUALIZACION-OPERATIVA-RAPIDA`
+        `./js/accesos_certificacion_v362.js?v=V370-BONO-SUPERVISOR-DASHBOARD`
       ],
       entradas: ["mostrarAccesos", "mostrarBiblioteca", "mostrarCapacitacion"]
     },
@@ -116,7 +116,7 @@
       depende: ["dashboards_core", "accesos", "checklist"],
       archivos: [
         `./js/base_operativa.js?v=${VERSION}`,
-        `./js/base_operativa_sync_v367.js?v=V369-ACTUALIZACION-OPERATIVA-RAPIDA`,
+        `./js/base_operativa_sync_v367.js?v=V370-BONO-SUPERVISOR-DASHBOARD`,
         `./js/admin_checklist.js?v=${VERSION}`
       ],
       entradas: ["mostrarAdministracion"]
@@ -162,7 +162,7 @@
 
   function nombreVisible(id){
     const nombres = {
-      dashboards_core:"Datos operativos", dashboard:"Bonos Supervisores", mi_desempeno:"Mi Desempeño", indicadores:"Indicadores",
+      dashboards_core:"Datos operativos", dashboard:"Bono Supervisor", mi_desempeno:"Mi Desempeño", indicadores:"Indicadores",
       ranking:"Ranking", bonos:"Bonos", observaciones:"Observaciones", accesos:"Recursos",
       actividad:"Actividad en Campo", validacion:"Validación Técnica", actas:"Gestión de Actas",
       equipos:"Equipos Averiados", analisis:"Análisis Económico", checklist:"Checklist Almacén",

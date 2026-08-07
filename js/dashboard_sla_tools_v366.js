@@ -133,6 +133,7 @@
 
   function puedeVerBonoSupervisor(){
     return [
+      "SUPERVISOR",
       "JEFATURA",
       "JEFATURA GENERAL",
       "GERENCIA LIMA",
@@ -206,6 +207,7 @@
         <button
           type="button"
           onclick="mv368AbrirBonoSupervisor()"
+          title="${perfil()==="SUPERVISOR" ? "Ver mi bono y avance del período" : "Ver bonos y avance por supervisor"}"
           style="
             min-width:170px;
             max-width:220px;
@@ -325,6 +327,6 @@
   window.MV366_DASHBOARD_SLA_TOOLS_OK = true;
   window.MV368_BONO_SUPERVISOR_UI_OK = true;
   console.log(
-    "MI VISUAL V368: acciones compactas SLA y Bono Supervisor habilitadas."
+    "MI VISUAL V370: Bono Supervisor habilitado también en Dashboard Supervisor."
   );
 })();
