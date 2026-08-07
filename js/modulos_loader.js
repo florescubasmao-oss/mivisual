@@ -11,12 +11,12 @@
   const MODULOS = {
     dashboards_core: {
       archivos: [
-        `./js/dashboards.js?v=V371-ACTIVIDAD-CAMARA-GALERIA`,
-        `./js/resumen_dashboard_v361.js?v=V371-ACTIVIDAD-CAMARA-GALERIA`,
-        `./js/sla_gestion_v363.js?v=V371-ACTIVIDAD-CAMARA-GALERIA`,
-        `./js/dashboard_consolidado_v365.js?v=V371-ACTIVIDAD-CAMARA-GALERIA`,
-        `./js/dashboard_sla_tools_v366.js?v=V371-ACTIVIDAD-CAMARA-GALERIA`,
-        `./js/informe_gerencial_lazy_v361.js?v=V371-ACTIVIDAD-CAMARA-GALERIA`
+        `./js/dashboards.js?v=V372-BONO-SUPERVISOR-UNICO`,
+        `./js/resumen_dashboard_v361.js?v=V372-BONO-SUPERVISOR-UNICO`,
+        `./js/sla_gestion_v363.js?v=V372-BONO-SUPERVISOR-UNICO`,
+        `./js/dashboard_consolidado_v365.js?v=V372-BONO-SUPERVISOR-UNICO`,
+        `./js/dashboard_sla_tools_v366.js?v=V372-BONO-SUPERVISOR-UNICO`,
+        `./js/informe_gerencial_lazy_v361.js?v=V372-BONO-SUPERVISOR-UNICO`
       ],
       entradas: [
         "mostrarProduccionV2",
@@ -27,12 +27,12 @@
     },
     mi_desempeno: {
       depende: ["dashboards_core", "indicadores", "ranking"],
-      archivos: [`./js/mi_desempeno_v363.js?v=V371-ACTIVIDAD-CAMARA-GALERIA`],
+      archivos: [`./js/mi_desempeno_v363.js?v=V372-BONO-SUPERVISOR-UNICO`],
       entradas: ["mostrarMiDesempeno"]
     },
     dashboard: {
       depende: ["dashboards_core"],
-      archivos: [`./js/bono_supervisores.js?v=V371-ACTIVIDAD-CAMARA-GALERIA`],
+      archivos: [`./js/bono_supervisores.js?v=V372-BONO-SUPERVISOR-UNICO`],
       entradas: ["mostrarBonosSupervisores"]
     },
     indicadores: {
@@ -42,8 +42,8 @@
     ranking: {
       depende: ["dashboards_core"],
       archivos: [
-        `./ranking.js?v=V371-ACTIVIDAD-CAMARA-GALERIA`,
-        `./js/ranking_informe_v358.js?v=V371-ACTIVIDAD-CAMARA-GALERIA`
+        `./ranking.js?v=V372-BONO-SUPERVISOR-UNICO`,
+        `./js/ranking_informe_v358.js?v=V372-BONO-SUPERVISOR-UNICO`
       ],
       entradas: ["mostrarRanking"]
     },
@@ -61,14 +61,14 @@
     accesos: {
       archivos: [
         `./js/accesos.js?v=${VERSION}`,
-        `./js/accesos_certificacion_v362.js?v=V371-ACTIVIDAD-CAMARA-GALERIA`
+        `./js/accesos_certificacion_v362.js?v=V372-BONO-SUPERVISOR-UNICO`
       ],
       entradas: ["mostrarAccesos", "mostrarBiblioteca", "mostrarCapacitacion"]
     },
     actividad: {
       archivos: [
-        `./js/actividad_campo.js?v=V371-ACTIVIDAD-CAMARA-GALERIA`,
-        `./js/actividad_galeria_v371.js?v=V371-ACTIVIDAD-CAMARA-GALERIA`
+        `./js/actividad_campo.js?v=V372-BONO-SUPERVISOR-UNICO`,
+        `./js/actividad_galeria_v371.js?v=V372-BONO-SUPERVISOR-UNICO`
       ],
       entradas: ["mostrarActividadCampo"]
     },
@@ -119,7 +119,7 @@
       depende: ["dashboards_core", "accesos", "checklist"],
       archivos: [
         `./js/base_operativa.js?v=${VERSION}`,
-        `./js/base_operativa_sync_v367.js?v=V371-ACTIVIDAD-CAMARA-GALERIA`,
+        `./js/base_operativa_sync_v367.js?v=V372-BONO-SUPERVISOR-UNICO`,
         `./js/admin_checklist.js?v=${VERSION}`
       ],
       entradas: ["mostrarAdministracion"]

@@ -177,6 +177,60 @@
     });
   }
 
+
+  function limpiarDuplicadosBonoSupervisor(){
+    const pagina = document.querySelector(".mv4-page") || document;
+    const principal = document.getElementById("mv372BonoSupervisorPrincipal");
+
+    if(!principal) return;
+
+    const candidatos = Array.from(
+      pagina.querySelectorAll('button,a,[role="button"]')
+    ).filter(el=>{
+      if(el === principal) return false;
+
+      const texto = (el.textContent || "")
+        .toUpperCase()
+        .normalize("NFD")
+        .replace(/[\u0300-\u036f]/g,"")
+        .replace(/\s+/g," ")
+        .trim();
+
+      return texto === "🎁 BONO SUPERVISOR" ||
+             texto === "BONO SUPERVISOR" ||
+             texto === "🎁 BONOS SUPERVISORES" ||
+             texto === "BONOS SUPERVISORES";
+    });
+
+    candidatos.forEach(el=>{
+      el.style.setProperty("display","none","important");
+      el.setAttribute("aria-hidden","true");
+
+      const padre = el.parentElement;
+      if(
+        padre &&
+        padre !== document.body &&
+        padre.childElementCount === 1
+      ){
+        const textoPadre = (padre.textContent || "")
+          .toUpperCase()
+          .normalize("NFD")
+          .replace(/[\u0300-\u036f]/g,"")
+          .replace(/\s+/g," ")
+          .trim();
+
+        if(
+          textoPadre === "🎁 BONO SUPERVISOR" ||
+          textoPadre === "BONO SUPERVISOR" ||
+          textoPadre === "🎁 BONOS SUPERVISORES" ||
+          textoPadre === "BONOS SUPERVISORES"
+        ){
+          padre.style.setProperty("display","none","important");
+        }
+      }
+    });
+  }
+
   function inyectar(){
     const cfg = configuracion();
     if(!cfg) return;
@@ -205,6 +259,7 @@
     const botonBono = puedeVerBonoSupervisor()
       ? `
         <button
+          id="mv372BonoSupervisorPrincipal"
           type="button"
           onclick="mv368AbrirBonoSupervisor()"
           title="${perfil()==="SUPERVISOR" ? "Ver mi bono y avance del período" : "Ver bonos y avance por supervisor"}"
@@ -257,11 +312,13 @@
 
     bloque.style.margin = "9px 0 12px";
     filtros.insertAdjacentElement("afterend",bloque);
+    requestAnimationFrame(limpiarDuplicadosBonoSupervisor);
   }
   function programarInyeccion(){
     requestAnimationFrame(()=>{
       inyectar();
       normalizarTituloBonoSupervisor();
+      limpiarDuplicadosBonoSupervisor();
     });
   }
 
@@ -327,6 +384,6 @@
   window.MV366_DASHBOARD_SLA_TOOLS_OK = true;
   window.MV368_BONO_SUPERVISOR_UI_OK = true;
   console.log(
-    "MI VISUAL V370: Bono Supervisor habilitado también en Dashboard Supervisor."
+    "MI VISUAL V372: Bono Supervisor único en Dashboard."
   );
 })();
