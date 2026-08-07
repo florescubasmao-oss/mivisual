@@ -20,7 +20,7 @@
     },
     mi_desempeno: {
       depende: ["dashboards_core", "indicadores", "ranking"],
-      archivos: [`./js/mi_desempeno_v363.js?v=V363-TIEMPO-GESTION-SLA`],
+      archivos: [`./js/mi_desempeno_v363.js?v=V364-MI-DESEMPENO-TECNICO`],
       entradas: ["mostrarMiDesempeno"]
     },
     dashboard: {
@@ -35,8 +35,8 @@
     ranking: {
       depende: ["dashboards_core"],
       archivos: [
-        `./ranking.js?v=V363-TIEMPO-GESTION-SLA`,
-        `./js/ranking_informe_v358.js?v=V363-TIEMPO-GESTION-SLA`
+        `./ranking.js?v=V364-MI-DESEMPENO-TECNICO`,
+        `./js/ranking_informe_v358.js?v=V364-MI-DESEMPENO-TECNICO`
       ],
       entradas: ["mostrarRanking"]
     },

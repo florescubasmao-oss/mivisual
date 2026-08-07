@@ -1,5 +1,5 @@
 /* ============================================================
-   MI VISUAL V363 - Ranking detallado + SLA
+   MI VISUAL V364 - Ranking detallado + SLA corregido
    - Jefatura y Gerencia Lima.
    - Reutiliza el enriquecimiento analítico del Dashboard.
    - Carga datos en paralelo y conserva caché corta por período.
@@ -366,8 +366,8 @@
   function detalleSla(r){
     const d = r.detSla || {};
     return {
-      linea1:`Ajustado ${n(r.slaAjustado).toFixed(1)}% · Bruto ${n(r.slaBruto).toFixed(1)}%`,
-      linea2:`${n(d.cumplenAjustado)} dentro / ${n(d.evaluables)} evaluables · Excepciones ${n(d.excepcionesAprobadas)}`
+      linea1:`Ajustado ${num(r.slaAjustado).toFixed(1)}% · Bruto ${num(r.slaBruto).toFixed(1)}%`,
+      linea2:`${num(d.cumplenAjustado)} dentro / ${num(d.evaluables)} evaluables · Excepciones ${num(d.excepcionesAprobadas)}`
     };
   }
 
@@ -1232,6 +1232,6 @@
   window.mv358CerrarInformeRanking = cerrarModal;
   window.mv358GenerarInformeRanking = generarExcel;
 
-  window.MV363_RANKING_SLA_OK = true;
-  console.log("MI VISUAL V363: SLA incorporado al Ranking.");
+  window.MV364_RANKING_SLA_OK = true;
+  console.log("MI VISUAL V364: Ranking Técnico y SLA corregidos.");
 })();
