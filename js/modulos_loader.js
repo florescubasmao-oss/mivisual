@@ -61,7 +61,8 @@
     accesos: {
       archivos: [
         `./js/accesos.js?v=${VERSION}`,
-        `./js/accesos_certificacion_v362.js?v=V373-PDF-ACTAS-MOVIL`
+        `./js/accesos_certificacion_v362.js?v=V383-SIMULACRO-CERTIFICACION`,
+        `./js/accesos_simulacro_v383.js?v=V383-SIMULACRO-CERTIFICACION`
       ],
       entradas: ["mostrarAccesos", "mostrarBiblioteca", "mostrarCapacitacion"]
     },

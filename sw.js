@@ -1,5 +1,5 @@
 /* MI VISUAL V369 - caché segura y actualización operativa rápida */
-const MV339_CACHE = "mivisual-v382-facturas-icono-cabecera-20260807";
+const MV339_CACHE = "mivisual-v383-simulacro-certificacion-20260808";
 const MV339_CORE = [
   "./",
   "./index.html",
