@@ -68,8 +68,9 @@
     },
     actividad: {
       archivos: [
-        `./js/actividad_campo.js?v=V373-PDF-ACTAS-MOVIL`,
-        `./js/actividad_galeria_v371.js?v=V373-PDF-ACTAS-MOVIL`
+        `./js/actividad_campo.js?v=V384-ACTIVIDAD-IMAGEN-ROBUSTA`,
+        `./js/actividad_galeria_v371.js?v=V384-ACTIVIDAD-IMAGEN-ROBUSTA`,
+        `./js/actividad_imagen_robusta_v384.js?v=V384-ACTIVIDAD-IMAGEN-ROBUSTA`
       ],
       entradas: ["mostrarActividadCampo"]
     },

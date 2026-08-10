@@ -1,5 +1,5 @@
 /* MI VISUAL V369 - caché segura y actualización operativa rápida */
-const MV339_CACHE = "mivisual-v383-simulacro-certificacion-20260808";
+const MV339_CACHE = "mivisual-v384-actividad-imagen-robusta-20260810";
 const MV339_CORE = [
   "./",
   "./index.html",
