@@ -127,8 +127,9 @@
     administracion: {
       depende: ["dashboards_core", "accesos", "checklist"],
       archivos: [
-        `./js/base_operativa.js?v=${VERSION}`,
-        `./js/base_operativa_sync_v367.js?v=V373-PDF-ACTAS-MOVIL`,
+        `./js/base_operativa.js?v=V385-BASE-OPERATIVA-SIN-BLOQUEO`,
+        `./js/base_operativa_lectura_v385.js?v=V385-BASE-OPERATIVA-SIN-BLOQUEO`,
+        `./js/base_operativa_sync_v367.js?v=V385-BASE-OPERATIVA-SIN-BLOQUEO`,
         `./js/admin_checklist.js?v=${VERSION}`
       ],
       entradas: ["mostrarAdministracion"]
