@@ -1,0 +1,17 @@
+{
+  "base": "V387 funcional",
+  "missing_functions_vs_v387": [],
+  "function_count_v387": 801,
+  "function_count_v389": 801,
+  "critical_functions_present": [
+    "registrarActaEscaneada",
+    "filaActaAObjeto",
+    "listarActasEscaneadas",
+    "cargarGestionActas",
+    "buscarActaPorId",
+    "validarActaEscaneada",
+    "actualizarEntregaFisicaActa",
+    "actualizarDatosAutomaticosActas"
+  ],
+  "syntax_ok": true
+}
