@@ -83,10 +83,11 @@
     },
     actas: {
       archivos: [
-        `./js/actas.js?v=V392-ACTAS-REINTENTO-404`,
-        `./js/actas_pdf_movil_v373.js?v=V392-ACTAS-REINTENTO-404`,
-        `./js/actas_correccion_v387.js?v=V392-ACTAS-REINTENTO-404`,
-        `./js/actas_api_resiliente_v392.js?v=V392-ACTAS-REINTENTO-404`
+        `./js/actas.js?v=V393-MAPA-PROGRESO-ACTAS-DETALLE`,
+        `./js/actas_pdf_movil_v373.js?v=V393-MAPA-PROGRESO-ACTAS-DETALLE`,
+        `./js/actas_correccion_v387.js?v=V393-MAPA-PROGRESO-ACTAS-DETALLE`,
+        `./js/actas_api_resiliente_v392.js?v=V393-MAPA-PROGRESO-ACTAS-DETALLE`,
+        `./js/actas_observaciones_v393.js?v=V393-MAPA-PROGRESO-ACTAS-DETALLE`
       ],
       entradas: ["mostrarGestionActas"]
     },
@@ -116,8 +117,9 @@
     },
     mapa: {
       archivos: [
-        `./js/mapa_operativo.js?v=V386-MAPA-SOLO-CUADRILLAS-P`,
-        `./js/mapa_partner_visual_v386.js?v=V386-MAPA-SOLO-CUADRILLAS-P`
+        `./js/mapa_operativo.js?v=V393-MAPA-PROGRESO-ACTAS-DETALLE`,
+        `./js/mapa_partner_visual_v386.js?v=V393-MAPA-PROGRESO-ACTAS-DETALLE`,
+        `./js/mapa_progreso_v393.js?v=V393-MAPA-PROGRESO-ACTAS-DETALLE`
       ],
       entradas: ["mostrarMapaOperativo"]
     },
