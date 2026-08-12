@@ -83,10 +83,10 @@
     },
     actas: {
       archivos: [
-        `./js/actas.js?v=V388-ACTAS-API-ESTABLE`,
-        `./js/actas_pdf_movil_v373.js?v=V388-ACTAS-API-ESTABLE`,
-        `./js/actas_correccion_v387.js?v=V388-ACTAS-API-ESTABLE`,
-        `./js/actas_api_resiliente_v388.js?v=V388-ACTAS-API-ESTABLE`
+        `./js/actas.js?v=V392-ACTAS-REINTENTO-404`,
+        `./js/actas_pdf_movil_v373.js?v=V392-ACTAS-REINTENTO-404`,
+        `./js/actas_correccion_v387.js?v=V392-ACTAS-REINTENTO-404`,
+        `./js/actas_api_resiliente_v392.js?v=V392-ACTAS-REINTENTO-404`
       ],
       entradas: ["mostrarGestionActas"]
     },
