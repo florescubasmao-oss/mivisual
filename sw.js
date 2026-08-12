@@ -1,5 +1,5 @@
 /* MI VISUAL V369 - caché segura y actualización operativa rápida */
-const MV339_CACHE = "mivisual-v393-mapa-progreso-actas-detalle-20260812";
+const MV339_CACHE = "mivisual-v396-control-actas-finalizadas-20260812";
 const MV339_CORE = [
   "./",
   "./index.html",
