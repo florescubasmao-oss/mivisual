@@ -83,8 +83,9 @@
     },
     actas: {
       archivos: [
-        `./js/actas.js?v=V373-PDF-ACTAS-MOVIL`,
-        `./js/actas_pdf_movil_v373.js?v=V373-PDF-ACTAS-MOVIL`
+        `./js/actas.js?v=V387-ACTAS-CORREGIR-CODIGOS`,
+        `./js/actas_pdf_movil_v373.js?v=V387-ACTAS-CORREGIR-CODIGOS`,
+        `./js/actas_correccion_v387.js?v=V387-ACTAS-CORREGIR-CODIGOS`
       ],
       entradas: ["mostrarGestionActas"]
     },
