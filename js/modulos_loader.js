@@ -113,7 +113,10 @@
       entradas: ["mostrarConsultasReclamos"]
     },
     mapa: {
-      archivos: [`./js/mapa_operativo.js?v=V376-API-CENTRALIZADA`],
+      archivos: [
+        `./js/mapa_operativo.js?v=V386-MAPA-SOLO-CUADRILLAS-P`,
+        `./js/mapa_partner_visual_v386.js?v=V386-MAPA-SOLO-CUADRILLAS-P`
+      ],
       entradas: ["mostrarMapaOperativo"]
     },
     facturas: {

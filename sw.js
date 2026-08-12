@@ -1,5 +1,5 @@
 /* MI VISUAL V369 - caché segura y actualización operativa rápida */
-const MV339_CACHE = "mivisual-v385-base-operativa-sin-bloqueo-20260811";
+const MV339_CACHE = "mivisual-v386-mapa-solo-cuadrillas-p-20260812";
 const MV339_CORE = [
   "./",
   "./index.html",
