@@ -101,7 +101,10 @@
       entradas: ["mostrarAnalisisEconomico"]
     },
     checklist: {
-      archivos: [`./js/checklist_almacen.js?v=${VERSION}`],
+      archivos: [
+        `./js/checklist_almacen.js?v=V398-CHECKLIST-CONFIRMACION-SEGURA`,
+        `./js/checklist_confirmacion_v398.js?v=V398-CHECKLIST-CONFIRMACION-SEGURA`
+      ],
       entradas: ["mostrarChecklistAlmacen"]
     },
     descansos: {
