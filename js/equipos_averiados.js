@@ -1,4 +1,4 @@
-// MI VISUAL V268 - Equipos Averiados: indicadores visibles y encabezado por fecha/cuadrilla.
+// MI VISUAL V399 - Equipos Averiados: concurrencia segura, lecturas GET y recuperación de cargos.
 const API_EQUIPOS_AVERIADOS = "https://script.google.com/macros/s/AKfycbwugGpuEMcJYFsDNS1hkcdZXJ92PUvXNv5ttpktyhZWv2fWB7ceCZNkfIFYxAs5wsgN/exec";
 
 const EA_STATE = {catalogos:null, solicitudes:[], cargos:[], resumen:{}, formularioId:""};
@@ -12,18 +12,112 @@ function eaEsJefAlmacen(p){return eaNorm(p)==="JEFATURA ALMACEN";}
 function eaEsJefGeneral(p){return ["JEFATURA","JEFATURA GENERAL","ADMIN","ADMINISTRADOR"].includes(eaNorm(p));}
 function eaPuedeGestionar(p){return eaEsAlmacen(p)||eaEsJefAlmacen(p);}
 
+const EA_LECTURAS_GET_V399 = new Set([
+  "catalogosEquiposAveriados",
+  "listarEquiposAveriados",
+  "listarCargosEquiposAveriados",
+  "verificarRecepcionEquiposAveriadosV399"
+]);
+
+function eaSolicitudIdV399(){
+  const base=(window.crypto&&typeof window.crypto.randomUUID==="function")
+    ? window.crypto.randomUUID().replace(/-/g,"").slice(0,20)
+    : `${Date.now()}${Math.random().toString(36).slice(2,12)}`;
+  return `EAREQ-${base}`.toUpperCase();
+}
+
 async function eaApi(payload){
-  const ctrl=new AbortController();
-  const timer=setTimeout(()=>ctrl.abort(),45000);
+  const solicitud=Object.assign({},payload||{});
+  const esLectura=EA_LECTURAS_GET_V399.has(solicitud.accion);
+  const ctrl=typeof AbortController==="function"?new AbortController():null;
+  const limite=esLectura?35000:105000;
+  const timer=ctrl?setTimeout(()=>ctrl.abort(),limite):null;
+
   try{
-    const r=await fetch(API_EQUIPOS_AVERIADOS,{method:"POST",body:JSON.stringify(payload),signal:ctrl.signal});
-    const d=await r.json();
+    let r;
+
+    if(esLectura){
+      const url=new URL(API_EQUIPOS_AVERIADOS);
+      Object.entries(solicitud).forEach(([k,v])=>{
+        if(v!==undefined&&v!==null&&v!=="")url.searchParams.set(k,String(v));
+      });
+      url.searchParams.set("_",Date.now());
+
+      r=await fetch(url.toString(),{
+        method:"GET",
+        headers:{"Accept":"application/json"},
+        cache:"no-store",
+        redirect:"follow",
+        signal:ctrl?ctrl.signal:undefined
+      });
+    }else{
+      r=await fetch(API_EQUIPOS_AVERIADOS,{
+        method:"POST",
+        headers:{
+          "Content-Type":"text/plain;charset=UTF-8",
+          "Accept":"application/json"
+        },
+        body:JSON.stringify(solicitud),
+        cache:"no-store",
+        redirect:"follow",
+        signal:ctrl?ctrl.signal:undefined
+      });
+    }
+
+    const texto=(await r.text()).trim();
+
+    if(!r.ok){
+      const err=new Error(`Google Apps Script respondió temporalmente con HTTP ${r.status}.`);
+      err.transitorio=[408,429,500,502,503,504].includes(r.status);
+      throw err;
+    }
+
+    if(/^MI VISUAL API OK$/i.test(texto)||/<!doctype|<html/i.test(texto)){
+      const err=new Error("No se recibió una respuesta válida de Equipos Averiados.");
+      err.transitorio=true;
+      throw err;
+    }
+
+    let d;
+    try{d=JSON.parse(texto);}
+    catch(_){
+      const err=new Error("La API de Equipos Averiados no devolvió una respuesta válida.");
+      err.transitorio=true;
+      throw err;
+    }
+
     if(!d.ok)throw new Error(d.error||"Error en Equipos Averiados");
     return d;
+
   }catch(e){
-    if(e.name==="AbortError")throw new Error("El servidor tardó demasiado. Vuelva a intentar.");
+    if(e?.name==="AbortError"){
+      const err=new Error(
+        esLectura
+          ?"La consulta está demorando. Vuelva a actualizar la pantalla."
+          :"La confirmación está demorando. MI VISUAL verificará si el cargo ya quedó registrado."
+      );
+      err.transitorio=true;
+      throw err;
+    }
+
+    if(e instanceof TypeError)e.transitorio=true;
     throw e;
-  }finally{clearTimeout(timer);}
+
+  }finally{
+    if(timer)clearTimeout(timer);
+  }
+}
+
+function eaAbrirCargoV399(cargo){
+  const url=cargo?.descargaPdf||cargo?.linkPdf||"";
+  if(!url)return;
+  const a=document.createElement("a");
+  a.href=url;
+  a.target="_blank";
+  a.rel="noopener";
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
 }
 
 function eaStyles(){return `<style id="eaStyles">
@@ -200,8 +294,70 @@ function eaAbrirRecepcion(id){
   eaModal(`<h3>📦 Recepción de equipos · ${eaEsc(id)}</h3><p class="ea-meta">Marque el resultado físico de cada equipo. Los ya recibidos quedan bloqueados.</p><div class="ea-table-wrap"><table class="ea-table"><thead><tr><th>Tipo</th><th>Serie (SN del equipo)</th><th>MAC del equipo</th><th>Resultado</th><th>Observación</th></tr></thead><tbody>${item.equipos.map(e=>{const recibido=eaNorm(e.estadoRecepcion)==="RECIBIDO";return `<tr data-serie="${eaEsc(e.serie)}"><td>${eaEsc(e.tipo)}</td><td><b>${eaEsc(e.serie)}</b></td><td>${eaEsc(e.codigoCliente)}</td><td><select class="ea-rec-estado" ${recibido?"disabled":""}><option>PENDIENTE</option><option ${eaNorm(e.estadoRecepcion)==="RECIBIDO"?"selected":""}>RECIBIDO</option><option ${eaNorm(e.estadoRecepcion)==="OBSERVADO"?"selected":""}>OBSERVADO</option><option ${eaNorm(e.estadoRecepcion)==="RECHAZADO"?"selected":""}>RECHAZADO</option></select></td><td><input class="ea-rec-obs" value="${eaEsc(e.observacionAlmacen||"")}" ${recibido?"disabled":""}></td></tr>`;}).join("")}</tbody></table></div><div class="ea-field" style="margin-top:8px"><label>OBSERVACIÓN GENERAL</label><textarea id="eaRecObsGeneral" rows="2"></textarea></div><div class="ea-actions"><button class="ea-btn green" onclick="eaConfirmarRecepcion('${eaEsc(id)}')">Confirmar recepción</button></div>`);
 }
 async function eaConfirmarRecepcion(id){
-  const equipos=[...document.querySelectorAll("#eaModal tbody tr")].map(tr=>({serie:tr.dataset.serie,estado:tr.querySelector(".ea-rec-estado").value,observacion:tr.querySelector(".ea-rec-obs").value}));
-  try{const d=await eaApi({accion:"validarRecepcionEquiposAveriados",usuario:eaUsuario().usuario,id,equipos,observacionGeneral:document.getElementById("eaRecObsGeneral").value});if(d.cargo?.pdfBase64)eaDescargarBase64(d.cargo.pdfBase64,d.cargo.nombrePdf||`${d.cargo.idCargo}.pdf`,`application/pdf`);eaCerrarModal();await mostrarEquiposAveriados();}catch(e){alert(e.message);}
+  const equipos=[...document.querySelectorAll("#eaModal tbody tr")].map(tr=>({
+    serie:tr.dataset.serie,
+    estado:tr.querySelector(".ea-rec-estado").value,
+    observacion:tr.querySelector(".ea-rec-obs").value
+  }));
+
+  const solicitudId=eaSolicitudIdV399();
+  const btn=document.querySelector("#eaModal .ea-btn.green");
+  const textoOriginal=btn?.textContent||"Confirmar recepción";
+
+  try{
+    if(btn){
+      btn.disabled=true;
+      btn.textContent="Confirmando recepción...";
+    }
+
+    const d=await eaApi({
+      accion:"validarRecepcionEquiposAveriados",
+      usuario:eaUsuario().usuario,
+      id,
+      equipos,
+      observacionGeneral:document.getElementById("eaRecObsGeneral").value,
+      solicitudId
+    });
+
+    if(d.cargo)eaAbrirCargoV399(d.cargo);
+    eaCerrarModal();
+    await mostrarEquiposAveriados();
+
+  }catch(e){
+    if(btn)btn.textContent="Verificando registro...";
+
+    try{
+      for(let intento=0;intento<5;intento++){
+        const ver=await eaApi({
+          accion:"verificarRecepcionEquiposAveriadosV399",
+          usuario:eaUsuario().usuario,
+          id,
+          solicitudId
+        });
+
+        if(ver?.confirmado){
+          if(ver.cargo)eaAbrirCargoV399(ver.cargo);
+          eaCerrarModal();
+          await mostrarEquiposAveriados();
+          return;
+        }
+
+        if(intento<4)await new Promise(r=>setTimeout(r,1800));
+      }
+    }catch(_){}
+
+    alert(
+      e.message+
+      "\n\nNo vuelva a presionar Confirmar inmediatamente. " +
+      "Actualice la pantalla para verificar el estado antes de repetir."
+    );
+
+  }finally{
+    if(btn&&document.body.contains(btn)){
+      btn.disabled=false;
+      btn.textContent=textoOriginal;
+    }
+  }
 }
 
 async function eaVolverPendiente(id){

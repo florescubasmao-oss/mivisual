@@ -77,7 +77,7 @@ async function comprobarExecV392(){
 
 async function postUnaVez(s){
   const c=typeof AbortController==="function"?new AbortController():null;
-  const timer=c?setTimeout(()=>c.abort(),75000):null;
+  const timer=c?setTimeout(()=>c.abort(),105000):null;
 
   try{
     const res=await fetch(API_ACTAS,{

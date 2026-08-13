@@ -1,0 +1,56 @@
+{
+  "version": "V399-CONCURRENCIA-CARGOS-20260813",
+  "base_backend": "V398",
+  "base_frontend": "proyecto completo usuario 13/08/2026",
+  "syntax_node_ok": true,
+  "missing_functions_vs_v398": [],
+  "actas": {
+    "maximo": 40,
+    "pdf_hasta_40": true,
+    "scriptlock_global_en_confirmacion": false,
+    "reserva_por_actas": true,
+    "idempotencia_solicitud_id": true,
+    "verificacion_post_timeout": true,
+    "polling_recuperacion": 5
+  },
+  "equipos_averiados": {
+    "scriptlock_global_en_cargo": false,
+    "reserva_por_solicitud": true,
+    "pdf_base64_respuesta": false,
+    "lecturas_get": true,
+    "busqueda_id_textfinder": true,
+    "idempotencia_solicitud_id": true,
+    "reconciliacion_operacion": true,
+    "timeout_escritura_ms": 105000,
+    "polling_recuperacion": 5
+  },
+  "checklist": {
+    "mesh_zte_max": 10,
+    "mesh_huawei_max": 10,
+    "sin_regresion_v398": true
+  },
+  "estructura": {
+    "hojas_nuevas": 0,
+    "columnas_nuevas": {
+      "CARGOS_ACTAS": [
+        "SOLICITUD_ID_CLIENTE"
+      ],
+      "EQUIPOS_AVERIADOS": [
+        "ULTIMA_SOLICITUD_ID_RECEPCION"
+      ],
+      "CARGOS_EQUIPOS_AVERIADOS": [
+        "SOLICITUD_ID_CLIENTE",
+        "OPERACION_JSON"
+      ]
+    }
+  },
+  "archivos_modificados": [
+    "sw.js",
+    "index.html",
+    "apps_script/Code.gs",
+    "js/modulos_loader.js",
+    "js/actas_recepcion_v343.js",
+    "js/actas_api_resiliente_v392.js",
+    "js/equipos_averiados.js"
+  ]
+}

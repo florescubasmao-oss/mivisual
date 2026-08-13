@@ -7,8 +7,15 @@
 (function(){
   "use strict";
 
-  const MAX_ACTAS_V343 = 20;
+  const MAX_ACTAS_V343 = 40;
   const FILAS_INICIALES_V343 = 6;
+
+  function solicitudIdV399(prefijo){
+    const base=(window.crypto&&typeof window.crypto.randomUUID==="function")
+      ? window.crypto.randomUUID().replace(/-/g,"").slice(0,20)
+      : `${Date.now()}${Math.random().toString(36).slice(2,12)}`;
+    return `${prefijo||"CAREQ"}-${base}`.toUpperCase();
+  }
   let temporizadorValidacionV343 = null;
   let secuenciaValidacionV343 = 0;
 
@@ -320,7 +327,7 @@
             <button class="actas-btn ok" id="ra343Confirmar" type="button" disabled onclick="confirmarRecepcionMasivaActasFrontend(this)">Confirmar recepción</button>
             <button class="actas-btn sec" type="button" onclick="mostrarGestionActas()">Cancelar</button>
           </div>
-          <div class="ra343-help">Puede pegar varios números separados por líneas o comas. Se distribuirán automáticamente hasta un máximo de 20.</div>
+          <div class="ra343-help">Puede pegar varios números separados por líneas o comas. Se distribuirán automáticamente hasta un máximo de 40.</div>
           <div id="ra343Resumen" class="ra343-summary"></div>
           <div id="ra343Mensaje"></div>
         </div>
@@ -373,16 +380,37 @@
     try{
       if(btn){btn.disabled=true;btn.textContent="Confirmando y generando cargo...";}
       if(mensaje) mensaje.innerHTML=`<div class="actas-msg info">⏳ Confirmando ${numeros.length} acta(s). No cierre esta pantalla.</div>`;
+      const solicitudId=solicitudIdV399("CAREQ");
+      btn && (btn.dataset.solicitudId=solicitudId);
       const data=await window.apiActas({
         accion:"confirmarRecepcionMasivaActas",
         usuario:u.usuario,
         cuadrilla,
-        numerosActa:numeros.join("\n")
+        numerosActa:numeros.join("\n"),
+        solicitudId
       });
       window.limpiarCacheActas?.();
       mostrarCargoV343(data,false);
     }catch(error){
       if(mensaje) mensaje.innerHTML=`<div class="actas-msg info">Verificando si el cargo llegó a generarse...</div>`;
+      try{
+        const solicitudId=btn?.dataset?.solicitudId||"";
+        if(solicitudId){
+          for(let intento=0;intento<5;intento++){
+            const verificacion=await window.apiActas({
+              accion:"verificarCargoActasV399",
+              usuario:u.usuario,
+              solicitudId,
+              __forzar:true
+            });
+            if(verificacion?.confirmado && verificacion?.cargo){
+              mostrarCargoV343(verificacion.cargo,true);
+              return;
+            }
+            if(intento<4)await new Promise(r=>setTimeout(r,1800));
+          }
+        }
+      }catch(_){}
       try{
         const historial=await window.apiActas({accion:"listarCargosActas",usuario:u.usuario,__forzar:true});
         const encontrado=(historial.cargos||[]).find(c=>
@@ -406,6 +434,11 @@
 
   function aplicarV343(){
     if(typeof window.apiActas!=="function"||typeof window.estiloActas!=="function"||typeof window.usuarioActualActas!=="function") return false;
+    try{
+      if(typeof ACTAS_LECTURAS_GET!=="undefined" && ACTAS_LECTURAS_GET instanceof Set){
+        ACTAS_LECTURAS_GET.add("verificarCargoActasV399");
+      }
+    }catch(_){}
     window.mostrarRecepcionMasivaActas=mostrarRecepcionV343;
     window.actualizarCuadrillasRecepcionActas=actualizarCuadrillasV343;
     window.validarRecepcionMasivaActasFrontend=function(){return validarAhoraV343();};
@@ -418,7 +451,7 @@
     window.ra343Tecla=teclaV343;
     window.ra343Pegar=pegarV343;
     window.MV343_RECEPCION_ACTAS_OK=true;
-    console.log("MI VISUAL V343: recepción rápida de actas habilitada.");
+    console.log("MI VISUAL V399: recepción concurrente de hasta 40 actas habilitada.");
     return true;
   }
 

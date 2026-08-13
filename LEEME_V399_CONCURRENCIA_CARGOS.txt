@@ -1,0 +1,75 @@
+MI VISUAL V399 — CONCURRENCIA Y CARGOS RESILIENTES
+Fecha: 13/08/2026
+
+BASE
+====
+Frontend: proyecto completo entregado por el usuario el 13/08/2026.
+Backend: Code.gs V398 entregado por el usuario el 13/08/2026.
+
+CAMBIOS PRINCIPALES
+===================
+
+1) CARGO DE ACTAS
+- Se elimina el ScriptLock global prolongado del proceso.
+- Se reservan únicamente las actas seleccionadas.
+- Dos usuarios pueden recibir grupos diferentes simultáneamente.
+- Se agrega SOLICITUD_ID_CLIENTE para idempotencia y recuperación.
+- Si el navegador pierde la respuesta, MI VISUAL verifica el ID antes de repetir.
+- El cargo puede reconciliarse si quedó en PENDIENTE_APLICAR.
+
+2) ACTAS: MÁXIMO 40
+- Frontend y backend: máximo 40.
+- El PDF conserva 2 columnas hasta 20 y usa 4 columnas compactas de 21 a 40.
+- No se omiten los números 21 al 40.
+
+3) EQUIPOS AVERIADOS
+- Se elimina el ScriptLock global durante PDF/Drive.
+- Reserva específica por solicitud.
+- El PDF ya no se devuelve como Base64; se usa enlace Drive.
+- Escrituras: hasta 105 s antes de cortar.
+- Si la respuesta se pierde, se verifica la operación por SOLICITUD_ID_CLIENTE.
+- Si un cargo quedó creado pero no aplicado, se reconcilia automáticamente.
+- Catálogo, solicitudes y cargos se leen por GET.
+- Búsqueda por ID usa TextFinder.
+- Ya no se reescriben todos los encabezados en cada lectura.
+
+4) CHECKLIST MESH
+- Ya estaba correcto en el proyecto entregado:
+  Mesh ZTE = máximo 10
+  Mesh Huawei = máximo 10
+- V399 conserva esa regla.
+
+CAMBIOS AUTOMÁTICOS EN LAS HOJAS
+================================
+No se crea una hoja nueva. ScriptProperties es más rápido para reservas temporales.
+
+Se agregan al final:
+- CARGOS_ACTAS: SOLICITUD_ID_CLIENTE
+- EQUIPOS_AVERIADOS: ULTIMA_SOLICITUD_ID_RECEPCION
+- CARGOS_EQUIPOS_AVERIADOS: SOLICITUD_ID_CLIENTE, OPERACION_JSON
+
+No se borran ni desplazan datos anteriores.
+
+INSTALACIÓN
+===========
+APPS SCRIPT
+1. Reemplazar todo Code.gs por:
+   Code.gs_V399_CONCURRENCIA_CARGOS_COMPLETO.txt
+2. Guardar.
+3. Administrar implementaciones > editar actual.
+4. Nueva versión > Implementar.
+5. Mantener la misma URL /exec.
+
+GITHUB
+1. Subir/reemplazar el proyecto V399 completo.
+2. Conservar .git si se trabaja desde el repositorio local.
+3. Commit y push.
+4. Ctrl+F5.
+
+PRUEBA CONCURRENTE
+==================
+- Usuario A: recibir un grupo de actas.
+- Usuario B al mismo tiempo: recibir otro grupo.
+- No debe aparecer el bloqueo global anterior.
+- Probar 40 actas y confirmar que el PDF muestre las 40.
+- Generar cargo de Equipos Averiados y confirmar que aparezca sin salir/entrar.
