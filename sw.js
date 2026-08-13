@@ -1,5 +1,5 @@
 /* MI VISUAL V399 - caché segura para concurrencia y cargos */
-const MV339_CACHE = "mivisual-v399-concurrencia-cargos-20260813";
+const MV339_CACHE = "mivisual-v403-actas-motivos-observacion-20260813";
 const MV339_CORE = [
   "./",
   "./index.html",

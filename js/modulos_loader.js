@@ -7,7 +7,7 @@
 (function(){
   "use strict";
 
-  const VERSION = "V399-CONCURRENCIA-CARGOS-20260813";
+  const VERSION = "V403-ACTAS-MOTIVOS-OBSERVACION-20260813";
   const MODULOS = {
     dashboards_core: {
       archivos: [
@@ -83,17 +83,19 @@
     },
     actas: {
       archivos: [
-        `./js/actas.js?v=V399-CONCURRENCIA-CARGOS`,
-        `./js/actas_pdf_movil_v373.js?v=V399-CONCURRENCIA-CARGOS`,
-        `./js/actas_correccion_v387.js?v=V399-CONCURRENCIA-CARGOS`,
-        `./js/actas_api_resiliente_v392.js?v=V399-CONCURRENCIA-CARGOS`,
-        `./js/actas_observaciones_v393.js?v=V399-CONCURRENCIA-CARGOS`,
-        `./js/actas_control_finalizadas_v396.js?v=V399-CONCURRENCIA-CARGOS`
+        `./js/actas.js?v=V403-ACTAS-MOTIVOS-OBSERVACION`,
+        `./js/actas_pdf_movil_v373.js?v=V403-ACTAS-MOTIVOS-OBSERVACION`,
+        `./js/actas_correccion_v387.js?v=V403-ACTAS-MOTIVOS-OBSERVACION`,
+        `./js/actas_api_resiliente_v392.js?v=V403-ACTAS-MOTIVOS-OBSERVACION`,
+        `./js/actas_observaciones_v393.js?v=V403-ACTAS-MOTIVOS-OBSERVACION`,
+        `./js/actas_control_finalizadas_v396.js?v=V403-ACTAS-MOTIVOS-OBSERVACION`,
+        `./js/actas_mantenimiento_v402.js?v=V403-ACTAS-MOTIVOS-OBSERVACION`,
+        `./js/actas_motivos_observacion_v403.js?v=V403-ACTAS-MOTIVOS-OBSERVACION`
       ],
       entradas: ["mostrarGestionActas"]
     },
     equipos: {
-      archivos: [`./js/equipos_averiados.js?v=V399-CONCURRENCIA-CARGOS`],
+      archivos: [`./js/equipos_averiados.js?v=V403-ACTAS-MOTIVOS-OBSERVACION`],
       entradas: ["mostrarEquiposAveriados"]
     },
     analisis: {
@@ -121,10 +123,10 @@
     },
     mapa: {
       archivos: [
-        `./js/mapa_operativo.js?v=V399-CONCURRENCIA-CARGOS`,
-        `./js/mapa_partner_visual_v386.js?v=V399-CONCURRENCIA-CARGOS`,
-        `./js/mapa_progreso_v393.js?v=V399-CONCURRENCIA-CARGOS`,
-        `./js/mapa_rapido_v395.js?v=V399-CONCURRENCIA-CARGOS`
+        `./js/mapa_operativo.js?v=V403-ACTAS-MOTIVOS-OBSERVACION`,
+        `./js/mapa_partner_visual_v386.js?v=V403-ACTAS-MOTIVOS-OBSERVACION`,
+        `./js/mapa_progreso_v393.js?v=V403-ACTAS-MOTIVOS-OBSERVACION`,
+        `./js/mapa_rapido_v395.js?v=V403-ACTAS-MOTIVOS-OBSERVACION`
       ],
       entradas: ["mostrarMapaOperativo"]
     },
