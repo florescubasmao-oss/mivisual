@@ -215,7 +215,7 @@ function renderPlantillaOrden(orden, plantilla){
 
   const cliente = [
     poFilaHtml("Cliente",orden.cliente,"po-wide"),
-    poFilaHtml("Documento",orden.numeroDocumento),
+    poFilaHtml("Documento de identidad / DNI",orden.numeroDocumento),
     poFilaHtml("Teléfono móvil",orden.telefonoMovil),
     poFilaHtml("Teléfono fijo",orden.telefonoFijo),
     poFilaHtml("Dirección",orden.direccion,"po-wide"),

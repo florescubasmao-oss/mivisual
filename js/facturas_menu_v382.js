@@ -10,6 +10,16 @@
   "use strict";
   if(window.MV382_FACTURAS_CABECERA_OK) return;
 
+  function asegurarCssFacturas(){
+    if(document.getElementById("mv407FacturasCss")) return;
+    const link=document.createElement("link");
+    link.id="mv407FacturasCss";
+    link.rel="stylesheet";
+    link.href="./css/facturas_v382.css?v=V407-FACTURAS-USUARIOS";
+    document.head.appendChild(link);
+  }
+  asegurarCssFacturas();
+
   const API=()=>window.MI_VISUAL_API_URL||
     "https://script.google.com/macros/s/AKfycbwugGpuEMcJYFsDNS1hkcdZXJ92PUvXNv5ttpktyhZWv2fWB7ceCZNkfIFYxAs5wsgN/exec";
 
@@ -96,11 +106,11 @@
     return card;
   }
 
-  async function tecnicoTieneUnidad(){
+  async function usuarioHabilitadoFacturas(){
     const u=usuario();
     if(!u) return false;
 
-    const key="MV382_FACT_MENU|"+u;
+    const key="MV407_FACT_MENU|"+u;
     try{
       const c=JSON.parse(sessionStorage.getItem(key)||"null");
       if(c && Date.now()-c.t<180000) return !!c.v;
@@ -161,14 +171,12 @@
       return;
     }
 
-    let visible=true;
-    if(esTecnico()){
-      try{
-        visible=await tecnicoTieneUnidad();
-      }catch(error){
-        console.warn("V382 Facturas: no se pudo validar unidad del Técnico",error);
-        visible=false;
-      }
+    let visible=false;
+    try{
+      visible=await usuarioHabilitadoFacturas();
+    }catch(error){
+      console.warn("V407 Facturas: no se pudo validar habilitación del usuario",error);
+      visible=false;
     }
 
     if(btn){

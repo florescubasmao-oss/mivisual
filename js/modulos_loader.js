@@ -1,5 +1,5 @@
 /* =====================================================
-   MI VISUAL V406 - Carga dinámica de módulos
+   MI VISUAL V407 - Carga dinámica de módulos
    - El inicio descarga solo el núcleo de la aplicación.
    - Cada opción carga su JavaScript al abrirse.
    - Evita descargas duplicadas y conserva funciones estables.
@@ -98,11 +98,15 @@
       entradas: ["mostrarConsultasReclamos"]
     },
     mapa: {
-      archivos: [`./js/mapa_operativo.js?v=${VERSION}`],
+      archivos: [`./js/mapa_operativo.js?v=${VERSION}`,
+        `./js/mapa_partner_visual_v386.js?v=V407-RESTAURA-MAPA`,
+        `./js/mapa_progreso_v393.js?v=V407-RESTAURA-MAPA`,
+        `./js/mapa_rapido_v395.js?v=V407-RESTAURA-MAPA`
+      ],
       entradas: ["mostrarMapaOperativo"]
     },
     plantilla: {
-      archivos: [`./js/plantilla_orden.js?v=V406-BOTONES-ORDENADOS`],
+      archivos: [`./js/plantilla_orden.js?v=V407-DOCUMENTO-VISIBLE`],
       entradas: ["mostrarPlantillaOrden"]
     },
     facturas: {
@@ -110,7 +114,7 @@
       entradas: ["mostrarFacturas"]
     },
     facturas_ui: {
-      archivos: [`./js/facturas_menu_v382.js?v=V406-RESTAURA-FACTURAS`],
+      archivos: [`./js/facturas_menu_v382.js?v=V407-FACTURAS-USUARIOS`],
       entradas: []
     },
     administracion: {
