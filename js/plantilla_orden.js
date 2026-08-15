@@ -137,11 +137,11 @@ function mostrarPlantillaOrden(){
       <div class="po-head">
         <div>
           <h2>Consulta de plantilla</h2>
-          <p>Busque por Código de cliente, DNI, Código de orden o Código de pedido. Se mostrará la orden más reciente permitida para su perfil.</p>
+          <p>Ingrese cualquiera de estos datos para realizar la consulta: Código de cliente · DNI · Código de orden · Código de pedido. Se mostrará la orden más reciente permitida para su perfil.</p>
         </div>
       </div>
       <div class="po-search-card">
-        <label for="poConsulta">Código de cliente / DNI / Código de orden / Código de pedido</label>
+        <label for="poConsulta">Ingrese cualquiera de estos datos</label>
         <div class="po-search-row">
           <input id="poConsulta" inputmode="numeric" autocomplete="off" placeholder="Ej.: 3102588 / 70716854 / 3358455" onkeydown="if(event.key==='Enter'){consultarPlantillaOrden();}">
           <button type="button" onclick="consultarPlantillaOrden()">Buscar</button>
@@ -169,7 +169,7 @@ async function consultarPlantillaOrden(){
   const resultado = document.getElementById("poResultado");
   const consulta = String(input?.value || "").replace(/\s+/g,"").trim();
   if(!consulta){
-    if(estado) estado.textContent = "Ingrese Código de cliente, DNI, Código de orden o Código de pedido.";
+    if(estado) estado.textContent = "Ingrese cualquiera de los datos indicados para consultar.";
     if(input) input.focus();
     return;
   }

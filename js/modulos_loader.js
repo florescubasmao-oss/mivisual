@@ -27,9 +27,9 @@
     },
     ranking: {
       archivos: [
-        `./ranking.js?v=V358-RANKING-DETALLE`,
+        `./js/ranking.js?v=V405-RANKING-PERIODOS-FIX`,
         `./js/dashboards.js?v=V359-TRABAJOS-CUMPLIMIENTO`,
-        `./js/ranking_informe_v358.js?v=V359-TRABAJOS-CUMPLIMIENTO`
+        `./js/ranking_informe_v358.js?v=V405-RANKING-PERIODOS-FIX`
       ],
       entradas: ["mostrarRanking"]
     },
@@ -92,7 +92,7 @@
       entradas: ["mostrarMapaOperativo"]
     },
     plantilla: {
-      archivos: [`./js/plantilla_orden.js?v=V404-PLANTILLA-CTO`],
+      archivos: [`./js/plantilla_orden.js?v=V405-PLANTILLA-TEXTO`],
       entradas: ["mostrarPlantillaOrden"]
     },
     administracion: {

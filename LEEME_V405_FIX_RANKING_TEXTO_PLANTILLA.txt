@@ -1,0 +1,16 @@
+MI VISUAL V405 - FIX RANKING + TEXTO CONSULTA DE PLANTILLA
+
+Cambios puntuales sobre V404:
+1. Ranking: se corrige el cargador dinámico para usar js/ranking.js (versión vigente), en lugar del ranking.js antiguo ubicado en la raíz.
+   Esto corrige el error: MV276_RANKING_PERIODOS is not defined.
+2. Se fuerza renovación de caché del cargador mediante V405.
+3. Consulta de plantilla: el encabezado indica "Ingrese cualquiera de estos datos para realizar la consulta" y enumera Código de cliente, DNI, Código de orden y Código de pedido.
+4. No se modifican cálculos, permisos, hojas de Google Sheets ni lógica de Apps Script.
+
+Archivos modificados frente a V404:
+- index.html
+- js/modulos_loader.js
+- js/plantilla_orden.js
+- sw.js
+
+Code.gs no cambia respecto a V404.
