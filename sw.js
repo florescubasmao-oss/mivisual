@@ -1,20 +1,25 @@
-/* MI VISUAL V405 - fix Ranking + texto Consulta de Plantilla */
-const MV339_CACHE = "mivisual-v405-ranking-fix-20260815";
+/* MI VISUAL V408 - caché segura y restauración controlada */
+const MV339_CACHE = "mivisual-v408-restauracion-controlada-20260815";
 const MV339_CORE = [
   "./",
   "./index.html",
   "./manifest.json",
   "./css/estilos.css?v=V404-PLANTILLA-CTO",
+  "./css/gerencia_general_v379.css?v=V408-RESTAURA-V403",
+  "./css/facturas_v382.css?v=V408-FACTURAS-USUARIOS",
   "./js/utilidades.js?v=V339-CORE",
   "./js/login.js?v=V339-CACHE",
   "./js/permisos.js?v=V339-CORE",
-  "./js/app.js?v=V339-LAZY",
-  "./js/modulos_loader.js?v=V405-RANKING-FIX",
+  "./js/app.js?v=V408-RESTAURA-V377",
+  "./js/modulos_loader.js?v=V408-RESTAURACION-CONTROLADA",
   "./js/mapa_cto_fix_v342.js?v=V342-MAPA-CTO",
   "./js/actas_recepcion_v343.js?v=V343-ACTAS-RECEPCION",
   "./js/actas_identidad_v344.js?v=V344-ACTAS-IDENTIDAD",
   "./js/ajustes_perfiles_v345.js?v=V345-PERFILES",
   "./js/actividad_campo_fix_v346.js?v=V346-ACTIVIDAD-CAMPO",
+  "./js/menu_desempeno_v363.js?v=V408-RESTAURA-V403",
+  "./js/gerencia_general_v379.js?v=V408-RESTAURA-V403",
+  "./js/facturas_menu_v382.js?v=V408-FACTURAS-USUARIOS",
   "./img/logo.png",
   "./img/logo-192.png",
   "./img/splash.png"

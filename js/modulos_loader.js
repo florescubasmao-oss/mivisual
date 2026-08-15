@@ -1,5 +1,5 @@
 /* =====================================================
-   MI VISUAL V407 - Carga dinámica de módulos
+   MI VISUAL V408 - Carga dinámica de módulos restaurada
    - El inicio descarga solo el núcleo de la aplicación.
    - Cada opción carga su JavaScript al abrirse.
    - Evita descargas duplicadas y conserva funciones estables.
@@ -7,24 +7,32 @@
 (function(){
   "use strict";
 
-  const VERSION = "V406-RESTAURA-20260815";
+  const VERSION = "V408-RESTAURACION-CONTROLADA-20260815";
   const MODULOS = {
     dashboards_core: {
       archivos: [
-        `./js/dashboards.js?v=V406-RESTAURA-SLA`,
-        `./js/resumen_dashboard_v361.js?v=V406-RESTAURA-SLA`,
-        `./js/sla_gestion_v363.js?v=V406-RESTAURA-SLA`,
-        `./js/dashboard_consolidado_v365.js?v=V406-RESTAURA-SLA`,
-        `./js/informe_gerencial_v355.js?v=V359-TRABAJOS-CUMPLIMIENTO`
+        `./js/dashboards.js?v=V408-RESTAURA-V403`,
+        `./js/resumen_dashboard_v361.js?v=V408-RESTAURA-V403`,
+        `./js/sla_gestion_v363.js?v=V408-RESTAURA-V403`,
+        `./js/dashboard_consolidado_v365.js?v=V408-RESTAURA-V403`,
+        `./js/dashboard_sla_tools_v366.js?v=V408-RESTAURA-V403`,
+        `./js/informe_gerencial_lazy_v361.js?v=V408-RESTAURA-V403`
       ],
-      entradas: ["mostrarProduccionV2", "mostrarDashboardSupervisor", "mostrarDashboardJefatura"]
+      entradas: [
+        "mostrarProduccionV2",
+        "mostrarDashboardSupervisor",
+        "mostrarDashboardJefatura",
+        "mostrarTiempoGestionSla"
+      ]
+    },
+    mi_desempeno: {
+      depende: ["dashboards_core", "indicadores", "ranking"],
+      archivos: [`./js/mi_desempeno_v363.js?v=V408-RESTAURA-V403`],
+      entradas: ["mostrarMiDesempeno"]
     },
     dashboard: {
       depende: ["dashboards_core"],
-      archivos: [
-        `./js/bono_supervisores.js?v=V406-RESTAURA-SLA`,
-        `./js/dashboard_sla_tools_v366.js?v=V406-RESTAURA-SLA`
-      ],
+      archivos: [`./js/bono_supervisores.js?v=V408-RESTAURA-V403`],
       entradas: ["mostrarBonosSupervisores"]
     },
     indicadores: {
@@ -32,34 +40,38 @@
       entradas: ["mostrarEfectividad", "mostrarRecableado", "mostrarVTRGAR"]
     },
     ranking: {
+      depende: ["dashboards_core"],
       archivos: [
-        `./js/ranking.js?v=V406-RANKING-OK`,
-        `./js/dashboards.js?v=V359-TRABAJOS-CUMPLIMIENTO`,
-        `./js/ranking_informe_v358.js?v=V405-RANKING-PERIODOS-FIX`
+        `./js/ranking.js?v=V408-RANKING-CORRECTO`,
+        `./js/ranking_informe_v358.js?v=V408-RESTAURA-V403`
       ],
       entradas: ["mostrarRanking"]
     },
     bonos: {
-      archivos: [`./js/bonos.js?v=${VERSION}`],
+      archivos: [`./js/bonos.js?v=V408-RESTAURA-V403`],
       entradas: ["mostrarBonos"]
     },
     observaciones: {
       archivos: [
         `./js/observaciones.js?v=${VERSION}`,
-        `./js/observaciones_informe_v357.js?v=V357-INFORME-OBSERVACIONES`
+        `./js/observaciones_informe_v357.js?v=V408-RESTAURA-V403`
       ],
       entradas: ["mostrarObservaciones"]
     },
     accesos: {
       archivos: [
         `./js/accesos.js?v=${VERSION}`,
-        `./js/accesos_certificacion_v362.js?v=V406-RESTAURA-ACCESOS`,
-        `./js/accesos_simulacro_v383.js?v=V406-RESTAURA-ACCESOS`
+        `./js/accesos_certificacion_v362.js?v=V408-RESTAURA-V403`,
+        `./js/accesos_simulacro_v383.js?v=V408-RESTAURA-V403`
       ],
       entradas: ["mostrarAccesos", "mostrarBiblioteca", "mostrarCapacitacion"]
     },
     actividad: {
-      archivos: [`./js/actividad_campo.js?v=${VERSION}`],
+      archivos: [
+        `./js/actividad_campo.js?v=V408-RESTAURA-V403`,
+        `./js/actividad_galeria_v371.js?v=V408-RESTAURA-V403`,
+        `./js/actividad_imagen_robusta_v384.js?v=V408-RESTAURA-V403`
+      ],
       entradas: ["mostrarActividadCampo"]
     },
     validacion: {
@@ -70,19 +82,31 @@
       entradas: ["mostrarValidacionTecnica"]
     },
     actas: {
-      archivos: [`./js/actas.js?v=${VERSION}`],
+      archivos: [
+        `./js/actas.js?v=V408-RESTAURA-V403`,
+        `./js/actas_pdf_movil_v373.js?v=V408-RESTAURA-V403`,
+        `./js/actas_correccion_v387.js?v=V408-RESTAURA-V403`,
+        `./js/actas_api_resiliente_v392.js?v=V408-RESTAURA-V403`,
+        `./js/actas_observaciones_v393.js?v=V408-RESTAURA-V403`,
+        `./js/actas_control_finalizadas_v396.js?v=V408-RESTAURA-V403`,
+        `./js/actas_mantenimiento_v402.js?v=V408-RESTAURA-V403`,
+        `./js/actas_motivos_observacion_v403.js?v=V408-RESTAURA-V403`
+      ],
       entradas: ["mostrarGestionActas"]
     },
     equipos: {
-      archivos: [`./js/equipos_averiados.js?v=${VERSION}`],
+      archivos: [`./js/equipos_averiados.js?v=V408-RESTAURA-V403`],
       entradas: ["mostrarEquiposAveriados"]
     },
     analisis: {
-      archivos: [`./js/analisis_economico.js?v=${VERSION}`],
+      archivos: [`./js/analisis_economico.js?v=V408-RESTAURA-V403`],
       entradas: ["mostrarAnalisisEconomico"]
     },
     checklist: {
-      archivos: [`./js/checklist_almacen.js?v=${VERSION}`],
+      archivos: [
+        `./js/checklist_almacen.js?v=V408-RESTAURA-V403`,
+        `./js/checklist_confirmacion_v398.js?v=V408-RESTAURA-V403`
+      ],
       entradas: ["mostrarChecklistAlmacen"]
     },
     descansos: {
@@ -94,33 +118,33 @@
       entradas: ["mostrarTrabajosConjunta"]
     },
     mesa: {
-      archivos: [`./js/consultas_reclamos.js?v=${VERSION}`],
+      archivos: [`./js/consultas_reclamos.js?v=V408-RESTAURA-V403`],
       entradas: ["mostrarConsultasReclamos"]
     },
     mapa: {
-      archivos: [`./js/mapa_operativo.js?v=${VERSION}`,
-        `./js/mapa_partner_visual_v386.js?v=V407-RESTAURA-MAPA`,
-        `./js/mapa_progreso_v393.js?v=V407-RESTAURA-MAPA`,
-        `./js/mapa_rapido_v395.js?v=V407-RESTAURA-MAPA`
+      archivos: [
+        `./js/mapa_operativo.js?v=V408-MAPA-CAMPO`,
+        `./js/mapa_partner_visual_v386.js?v=V408-RESTAURA-V403`,
+        `./js/mapa_progreso_v393.js?v=V408-RESTAURA-V403`,
+        `./js/mapa_rapido_v395.js?v=V408-RESTAURA-V403`,
+        `./js/mapa_campo_v408.js?v=V408-MAPA-CAMPO`
       ],
       entradas: ["mostrarMapaOperativo"]
+    },
+    facturas: {
+      archivos: [`./js/facturas_v380.js?v=V408-RESTAURA-V403`],
+      entradas: ["mostrarFacturas"]
     },
     plantilla: {
       archivos: [`./js/plantilla_orden.js?v=V407-DOCUMENTO-VISIBLE`],
       entradas: ["mostrarPlantillaOrden"]
     },
-    facturas: {
-      archivos: [`./js/facturas_v380.js?v=V406-RESTAURA-FACTURAS`],
-      entradas: ["mostrarFacturas"]
-    },
-    facturas_ui: {
-      archivos: [`./js/facturas_menu_v382.js?v=V407-FACTURAS-USUARIOS`],
-      entradas: []
-    },
     administracion: {
       depende: ["dashboards_core", "accesos", "checklist"],
       archivos: [
-        `./js/base_operativa.js?v=${VERSION}`,
+        `./js/base_operativa.js?v=V408-RESTAURA-V403`,
+        `./js/base_operativa_lectura_v385.js?v=V408-RESTAURA-V403`,
+        `./js/base_operativa_sync_v367.js?v=V408-RESTAURA-V403`,
         `./js/admin_checklist.js?v=${VERSION}`
       ],
       entradas: ["mostrarAdministracion"]
@@ -129,8 +153,10 @@
 
   const FUNCION_MODULO = {
     mostrarProduccionV2: "dashboards_core",
-    mostrarDashboardSupervisor: "dashboard",
-    mostrarDashboardJefatura: "dashboard",
+    mostrarMiDesempeno: "mi_desempeno",
+    mostrarTiempoGestionSla: "dashboards_core",
+    mostrarDashboardSupervisor: "dashboards_core",
+    mostrarDashboardJefatura: "dashboards_core",
     mostrarBonosSupervisores: "dashboard",
     mostrarEfectividad: "indicadores",
     mostrarRecableado: "indicadores",
@@ -151,8 +177,8 @@
     mostrarTrabajosConjunta: "pext",
     mostrarConsultasReclamos: "mesa",
     mostrarMapaOperativo: "mapa",
-    mostrarPlantillaOrden: "plantilla",
     mostrarFacturas: "facturas",
+    mostrarPlantillaOrden: "plantilla",
     mostrarAdministracion: "administracion"
   };
 
@@ -165,12 +191,12 @@
 
   function nombreVisible(id){
     const nombres = {
-      dashboards_core:"Producción", dashboard:"Dashboard", indicadores:"Indicadores",
+      dashboards_core:"Datos operativos", dashboard:"Bono Supervisor", mi_desempeno:"Mi Desempeño", indicadores:"Indicadores",
       ranking:"Ranking", bonos:"Bonos", observaciones:"Observaciones", accesos:"Recursos",
       actividad:"Actividad en Campo", validacion:"Validación Técnica", actas:"Gestión de Actas",
       equipos:"Equipos Averiados", analisis:"Análisis Económico", checklist:"Checklist Almacén",
       descansos:"Programación de Descansos", pext:"PEXT", mesa:"Mesa de Ayuda",
-      mapa:"Mapa Operativo", plantilla:"Plantilla de Orden", facturas:"Facturas", facturas_ui:"Facturas", administracion:"Administración"
+      mapa:"Mapa Operativo", plantilla:"Plantilla de Orden", facturas:"Facturas", administracion:"Administración"
     };
     return nombres[id] || "módulo";
   }
@@ -317,29 +343,27 @@
 
   function prepararPerfil(perfil){
     const p = String(perfil || "").toUpperCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"").trim();
-    // V406: restaura el acceso pequeño de Facturas sin cargar el módulo completo.
-    programarCarga("facturas_ui", 120);
     if(p === "TECNICO"){
-      programarCarga("dashboards_core", 700);
-      programarCarga("indicadores", 1600);
-      programarCarga("validacion", 2800);
+      programarCarga("dashboards_core",350);
+      programarCarga("mi_desempeno",1300);
+      programarCarga("validacion",2800);
       return;
     }
     if(p === "SUPERVISOR"){
-      programarCarga("dashboard", 650);
-      programarCarga("validacion", 1600);
-      programarCarga("descansos", 2600);
+      programarCarga("dashboards_core",250);
+      programarCarga("validacion",1600);
+      programarCarga("descansos",2600);
       return;
     }
-    if(["JEFATURA","JEFATURA GENERAL","GERENCIA LIMA","ADMIN","ADMINISTRADOR"].includes(p)){
-      programarCarga("dashboard", 650);
-      programarCarga("validacion", 1700);
-      programarCarga("descansos", 2900);
+    if(["JEFATURA","JEFATURA GENERAL","GERENCIA LIMA","GERENCIA GENERAL","GERENCIAL GENERAL","ADMIN","ADMINISTRADOR"].includes(p)){
+      programarCarga("dashboards_core",250);
+      programarCarga("validacion",1700);
+      programarCarga("descansos",2900);
       return;
     }
     if(["ALMACEN","JEFATURA ALMACEN"].includes(p)){
-      programarCarga("checklist", 700);
-      programarCarga("actas", 1700);
+      programarCarga("checklist",700);
+      programarCarga("actas",1700);
     }
   }
 
