@@ -1,5 +1,5 @@
 /* ============================================================
-   MI VISUAL V358 - Ranking detallado + Informe Excel
+   MI VISUAL V415 - Ranking detallado + SLA en primera carga + Informe Excel
    - Jefatura y Gerencia Lima.
    - Reutiliza el enriquecimiento analítico del Dashboard.
    - Carga datos en paralelo y conserva caché corta por período.
@@ -140,7 +140,60 @@
     };
   }
 
-  function indicador(titulo,valor,semaforo,detalle){
+  // V415: SLA se pinta con el mismo objeto consolidado del Ranking.
+  // No realiza una segunda consulta después de mostrar las tarjetas.
+  function semaforoSlaRanking(valor){
+    const x = pctNumero(valor);
+    if(x < 60) return "🔴";
+    if(x < 80) return "🟠";
+    if(x < 90) return "🟡";
+    return "🟢";
+  }
+
+  function detalleSlaRanking(r){
+    const d = r.detSla || {};
+    const ajustado = r.slaAjustado ?? r.sla ?? d.slaAjustado ?? 0;
+    const bruto = r.slaBruto ?? d.slaBruto ?? 0;
+    const evaluables = d.evaluables ?? r.slaEvaluables ?? 0;
+    const fuera = d.fueraAjustado ?? d.fueraBruto ?? r.slaFuera ?? 0;
+    const aprobadas = d.excepcionesAprobadas ?? r.slaExcepcionesAprobadas ?? 0;
+    const pendientes = d.excepcionesPendientes ?? 0;
+
+    return {
+      ajustado,
+      linea1:`Bruto ${pct(bruto)} · Evaluables ${num(evaluables)} · Fuera SLA ${num(fuera)}`,
+      linea2:`Excepciones aprobadas ${num(aprobadas)} · Pendientes ${num(pendientes)}`
+    };
+  }
+
+  // V415: usa el período activo del selector, no intenta deducirlo desde
+  // ACTUALIZACION. Evita que aparezca "SIN PERÍODO".
+  function encabezadoPeriodoRankingV415(item){
+    const periodo = periodoNombre(MV276_RANKING_PERIODO || "");
+    const actualizado = item?.actualizacion || "";
+
+    return `
+      <div style="
+        background:linear-gradient(135deg,#0f172a,#1e3a8a);
+        border-radius:18px;
+        padding:16px;
+        margin:12px 0 18px 0;
+        color:white;
+        box-shadow:0 8px 20px rgba(0,0,0,.20);
+      ">
+        <div style="font-size:13px;opacity:.85;">📅 PERÍODO</div>
+        <div style="font-size:22px;font-weight:800;margin-top:4px;">
+          ${esc(periodo || "PERÍODO ACTUAL")}
+        </div>
+        <div style="font-size:14px;margin-top:8px;opacity:.95;">
+          Actualizado al: <b>${esc(actualizado || "-")}</b>
+        </div>
+      </div>
+      ${mv276SelectorPeriodo(MV276_RANKING_PERIODOS, MV276_RANKING_PERIODO, "mostrarRanking", "mv276RankingPeriodo")}
+    `;
+  }
+
+  function indicador(titulo,valor,semaforo,detalle,anchoCompleto=false){
     return `
       <div style="
         background:#0f172a;
@@ -149,6 +202,7 @@
         padding:12px;
         color:white;
         min-width:0;
+        ${anchoCompleto ? "grid-column:1 / -1;" : ""}
       ">
         <div style="font-size:12px;opacity:.80;">${esc(titulo)}</div>
         <div style="display:flex;align-items:center;gap:7px;margin-top:4px;">
@@ -177,6 +231,7 @@
     const vg = detalleVtrGar(r);
     const obs = detalleObservaciones(r);
     const monto = detalleMonto(r);
+    const sla = detalleSlaRanking(r);
 
     return `
       <div style="
@@ -226,6 +281,7 @@
           ${indicador("% VTR/GAR",pct(r.vtrgar),colorSemaforoRanking("vtrgar",r.vtrgar),vg)}
           ${indicador("Observaciones",num(r.observaciones).toFixed(0),"",obs)}
           ${indicador("Monto afectado",money(r.montoAfectadoObs),"",monto)}
+          ${indicador("Tiempo de Gestión - SLA",pct(sla.ajustado),semaforoSlaRanking(sla.ajustado),sla,true)}
         </div>
       </div>`;
   }
@@ -281,7 +337,7 @@
         <div style="text-align:center;font-size:12px;font-weight:800;opacity:.72;margin-bottom:8px;">
           VISTA ${esc(rotulo)}
         </div>
-        ${encabezadoPeriodoRanking(referencia)}
+        ${encabezadoPeriodoRankingV415(referencia)}
         ${mv239FiltroSedeRanking(listaCompleta,sedeFiltro)}
         ${botonExcel()}
         ${listaTarjetas(ordenada,tipoPuesto)}
@@ -407,8 +463,8 @@
       mostrarPantalla(`
         <div style="padding:18px;max-width:980px;margin:auto;">
           <h2 style="text-align:center;margin-bottom:6px;">${titulo}</h2>
-          ${encabezadoPeriodoRanking(referencia)}
-          ${listaTarjetasRanking(listaFiltrada,tipoPuesto)}
+          ${encabezadoPeriodoRankingV415(referencia)}
+          ${listaTarjetas(listaFiltrada,tipoPuesto)}
           <br>
           <button class="button_1" onclick="volverInicio()">⬅️ Volver al menú</button>
         </div>
@@ -948,5 +1004,5 @@
   window.mv358GenerarInformeRanking = generarExcel;
 
   window.MV358_RANKING_DETALLADO_OK = true;
-  console.log("MI VISUAL V358: Ranking detallado e Informe Excel habilitados.");
+  console.log("MI VISUAL V415: Ranking y SLA renderizados juntos desde el consolidado rápido.");
 })();

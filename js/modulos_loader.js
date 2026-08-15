@@ -7,7 +7,7 @@
 (function(){
   "use strict";
 
-  const VERSION = "V414-RANKING-PERIODO-20260815";
+  const VERSION = "V415-RANKING-SLA-PRIMERA-CARGA-20260815";
   const MODULOS = {
     dashboards_core: {
       archivos: [
@@ -44,8 +44,7 @@
       depende: ["dashboards_core"],
       archivos: [
         `./js/ranking.js?v=V408-RANKING-CORRECTO`,
-        `./js/ranking_informe_v358.js?v=V408-RESTAURA-V403`,
-        `./js/ranking_sla_v413.js?v=V414-RANKING-SLA-PERIODO`
+        `./js/ranking_informe_v358.js?v=V415-RANKING-SLA-PRIMERA-CARGA`
       ],
       entradas: ["mostrarRanking"]
     },
