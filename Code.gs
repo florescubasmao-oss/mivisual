@@ -138,6 +138,18 @@ function doGet(e) {
     }
   }
 
+  // V404: búsqueda geográfica de CTO desde Consulta de Plantilla. Solo lectura.
+  if (parametros.accion === "buscarCtosCercanasPlantillaOrden") {
+    try {
+      return respuestaJson(buscarCtosCercanasPlantillaOrden(parametros));
+    } catch (error) {
+      return respuestaJson({
+        ok: false,
+        error: error && error.message ? error.message : String(error)
+      });
+    }
+  }
+
   // V307: las consultas del Mapa Operativo son de solo lectura.
   // Se atienden por GET para evitar que una redirección de Apps Script
   // responda con el saludo general después de registrar una importación.
@@ -13500,6 +13512,84 @@ function valorPlantillaOrden_(etiqueta, valor) {
   return texto ? etiqueta + ": " + texto : "";
 }
 
+function fechaSoloPlantillaOrden_(valor) {
+  if (valor instanceof Date && !isNaN(valor.getTime())) {
+    return Utilities.formatDate(valor, "America/Lima", "dd/MM/yyyy");
+  }
+  const texto = textoMapa(valor);
+  const dmy = texto.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})/);
+  if (dmy) return dmy[1].padStart(2,"0") + "/" + dmy[2].padStart(2,"0") + "/" + dmy[3];
+  const ymd = texto.match(/^(\d{4})-(\d{1,2})-(\d{1,2})/);
+  if (ymd) return ymd[3].padStart(2,"0") + "/" + ymd[2].padStart(2,"0") + "/" + ymd[1];
+  return texto.split(/\s+/)[0] || "";
+}
+
+function horaSoloPlantillaOrden_(valor) {
+  if (valor instanceof Date && !isNaN(valor.getTime())) {
+    return Utilities.formatDate(valor, "America/Lima", "HH:mm");
+  }
+  const texto = textoMapa(valor);
+  const encontrados = texto.match(/\b\d{1,2}:\d{2}(?::\d{2})?\b/g) || [];
+  if (!encontrados.length) return texto;
+  const hora = encontrados[encontrados.length - 1].split(":");
+  return hora[0].padStart(2,"0") + ":" + hora[1].padStart(2,"0");
+}
+
+function indiceCabeceraPlantillaOrden_(cabecera, nombres) {
+  const mapa = {};
+  (cabecera || []).forEach(function(valor, i){
+    mapa[normalizarTexto(valor).replace(/\s+/g,"_")] = i;
+  });
+  for (let i = 0; i < nombres.length; i++) {
+    const clave = normalizarTexto(nombres[i]).replace(/\s+/g,"_");
+    if (mapa[clave] !== undefined) return mapa[clave];
+  }
+  return -1;
+}
+
+function fuentesRelacionPedidoPlantillaOrden_() {
+  return [
+    {hoja:HOJA_ACTAS_ESCANEADAS, pedido:["CODIGO_PEDIDO","CODIGO PEDIDO"], orden:["CODIGO_ORDEN","CODIGO ORDEN"]},
+    {hoja:"BASE_OPERATIVA_HISTORICA", pedido:["CODIGO_PEDIDO","CODIGO PEDIDO"], orden:["CODIGO_LIQUIDACION","CODIGO LIQUIDACION","CODIGO"]},
+    {hoja:"SLA_ORDENES_RESUMEN", pedido:["CODIGO_PEDIDO","CODIGO PEDIDO"], orden:["CODIGO","CODIGO_ORDEN","CODIGO ORDEN"]}
+  ];
+}
+
+function buscarRelacionExactaPlantillaOrden_(valorBuscado, buscarPorPedido) {
+  const textoBuscado = String(valorBuscado || "").trim();
+  const normalizado = normalizarIdentificadorMapa(textoBuscado);
+  const resultado = {};
+  if (!normalizado) return resultado;
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+
+  fuentesRelacionPedidoPlantillaOrden_().forEach(function(fuente){
+    const hoja = ss.getSheetByName(fuente.hoja);
+    if (!hoja || hoja.getLastRow() <= 1 || hoja.getLastColumn() <= 0) return;
+    const cabecera = hoja.getRange(1,1,1,hoja.getLastColumn()).getDisplayValues()[0];
+    const iPedido = indiceCabeceraPlantillaOrden_(cabecera, fuente.pedido);
+    const iOrden = indiceCabeceraPlantillaOrden_(cabecera, fuente.orden);
+    if (iPedido < 0 || iOrden < 0) return;
+    const iBuscar = buscarPorPedido ? iPedido : iOrden;
+    const iDevolver = buscarPorPedido ? iOrden : iPedido;
+    const rango = hoja.getRange(2,iBuscar+1,hoja.getLastRow()-1,1);
+    let celdas = [];
+    try {
+      celdas = rango.createTextFinder(textoBuscado).matchEntireCell(true).useRegularExpression(false).findAll();
+    } catch (e) { celdas = []; }
+    celdas.forEach(function(celda){
+      const valor = hoja.getRange(celda.getRow(),iDevolver+1).getDisplayValue();
+      const clave = normalizarIdentificadorMapa(valor);
+      if (clave) resultado[clave] = textoMapa(valor);
+    });
+  });
+  return resultado;
+}
+
+function buscarOrdenesPorPedidoPlantillaOrden_(valorPedido) {
+  return buscarRelacionExactaPlantillaOrden_(valorPedido, true);
+}
+
+
 function ctoTextoPlantillaOrden_(item) {
   const vistos = {};
   return [item.cto, item.cto1, item.cto2, item.cto3].map(function(valor){
@@ -13512,53 +13602,76 @@ function ctoTextoPlantillaOrden_(item) {
   }).join(" / ");
 }
 
+function agregarLineasProductoPlantillaOrden_(lineas, valor) {
+  const texto = textoMapa(valor);
+  if (!texto) return;
+  texto.split("|").map(function(x){ return x.trim(); }).filter(Boolean).forEach(function(x){ lineas.push(x); });
+}
+
 function construirTextoPlantillaOrden_(item) {
   const lineas = [];
-  const fechaHora = [item.fechaSolicitud, item.horaSolicitud].filter(function(x){ return x; }).join(" ");
-  if (fechaHora) lineas.push(fechaHora);
-  if (item.ordenId) lineas.push("Orden N°: " + item.ordenId);
-  if (item.productoOrigen) lineas.push(item.productoOrigen);
-  if (item.tipoTrabajo) lineas.push(item.tipoTrabajo);
+  if (item.fechaSolicitud) lineas.push("FECHA: " + item.fechaSolicitud);
+  if (item.horaSolicitud) lineas.push("TRAMO: " + item.horaSolicitud);
+  if (item.ordenId) lineas.push("CÓDIGO DE ORDEN: " + item.ordenId);
+  if (item.codigoPedido) lineas.push("CÓDIGO DE PEDIDO: " + item.codigoPedido);
+  if (item.codigoCliente) lineas.push("CÓDIGO DE CLIENTE: " + item.codigoCliente);
+  if (item.codigoSeguimiento) lineas.push("TICKET / CÓDIGO DE SEGUIMIENTO: " + item.codigoSeguimiento);
+  if (item.estado) lineas.push("ESTADO: " + item.estado);
+  if (item.cuadrilla) lineas.push("CUADRILLA: " + item.cuadrilla);
 
-  const producto = textoMapa(item.productoServicio).replace(/\|/g,"\n");
-  if (producto) lineas.push(producto);
-
-  if (item.codigoCliente) lineas.push("Seguimiento Cliente: " + item.codigoCliente);
-  lineas.push("Ticket / Código de seguimiento: " + textoMapa(item.codigoSeguimiento));
-  lineas.push("CTO: " + ctoTextoPlantillaOrden_(item));
-  lineas.push("Puerto: " + textoMapa(item.puerto));
   lineas.push("");
-
+  lineas.push("DATOS DEL CLIENTE");
   [
-    valorPlantillaOrden_("Estado", item.estado),
-    valorPlantillaOrden_("Cuadrilla", item.cuadrilla),
     valorPlantillaOrden_("Cliente", item.cliente),
     valorPlantillaOrden_("Documento", item.numeroDocumento),
     valorPlantillaOrden_("Teléfono móvil", item.telefonoMovil),
     valorPlantillaOrden_("Teléfono fijo", item.telefonoFijo),
     valorPlantillaOrden_("Dirección", item.direccion),
     valorPlantillaOrden_("Referencia", item.direccionAdicional),
+    valorPlantillaOrden_("Región", item.region)
+  ].forEach(function(linea){ if (linea) lineas.push(linea); });
+  if (item.latitud !== "" && item.longitud !== "") lineas.push("Coordenadas: " + item.latitud + "," + item.longitud);
+
+  lineas.push("");
+  lineas.push("DATOS DEL SERVICIO / TRABAJO");
+  if (item.productoOrigen) lineas.push("Servicio / origen: " + item.productoOrigen);
+  if (item.tipoTrabajo) lineas.push("Tipo de trabajo: " + item.tipoTrabajo);
+  if (item.tipo) lineas.push("Tipo de predio / cliente: " + item.tipo);
+  agregarLineasProductoPlantillaOrden_(lineas, item.productoServicio);
+
+  const cto = ctoTextoPlantillaOrden_(item);
+  if (cto || item.puerto) {
+    lineas.push("");
+    lineas.push("DATOS DE RED");
+    if (cto) lineas.push("CTO: " + cto);
+    if (item.puerto) lineas.push("Puerto: " + item.puerto);
+  }
+
+  const gestion = [
     valorPlantillaOrden_("Inicio de visita", item.fechaInicioVisita),
     valorPlantillaOrden_("Fin de visita", item.fechaFinVisita),
     valorPlantillaOrden_("Motivo de cancelación", item.motivoCancelacion),
     valorPlantillaOrden_("Motivo de finalización", item.motivoFinalizacion),
     valorPlantillaOrden_("Motivo de anulación", item.motivoAnulacion),
-    valorPlantillaOrden_("Detalle", item.detalle),
-    valorPlantillaOrden_("Región", item.region)
-  ].forEach(function(linea){ if (linea) lineas.push(linea); });
-
-  if (item.latitud !== "" && item.longitud !== "") {
-    lineas.push("Coordenadas: " + item.latitud + "," + item.longitud);
+    valorPlantillaOrden_("Detalle", item.detalle)
+  ].filter(Boolean);
+  if (gestion.length) {
+    lineas.push("");
+    lineas.push("GESTIÓN / RESULTADO");
+    gestion.forEach(function(linea){ lineas.push(linea); });
   }
+
   return lineas.join("\n").replace(/\n{3,}/g,"\n\n").trim();
 }
+
 
 function consultarPlantillaOrden(data) {
   const usuario = obtenerUsuarioApp(data.usuario);
   if (!perfilPermitidoPlantillaOrden_(usuario.perfil)) throw new Error("No tienes permiso para consultar plantillas de órdenes");
 
-  const codigoBuscado = normalizarIdentificadorMapa(data.codigoCliente);
-  if (!codigoBuscado) throw new Error("Ingrese un código de cliente válido");
+  const consultaOriginal = String(data.consulta || data.codigoCliente || "").trim();
+  const codigoBuscado = normalizarIdentificadorMapa(consultaOriginal);
+  if (!codigoBuscado) throw new Error("Ingrese Código de cliente, DNI, Código de orden o Código de pedido válido");
 
   const hoja = asegurarHojaMapaOperativo();
   if (hoja.getLastRow() <= 1) throw new Error("Mapa Operativo todavía no tiene órdenes registradas");
@@ -13568,32 +13681,115 @@ function consultarPlantillaOrden(data) {
   const cuadrillaTecnico = normalizarCuadrilla(usuario.cuadrilla);
   const cuadrillasSupervisor = perfil === "SUPERVISOR" ? cuadrillasSupervisorMapa(usuario.usuario) : {};
 
-  const coincidencias = filas.filter(function(fila){
-    if (normalizarIdentificadorMapa(fila[14]) !== codigoBuscado) return false;
+  function permitido(fila) {
     const cuadrillaFila = normalizarCuadrilla(fila[7]);
     if (perfil === "TECNICO") return cuadrillaFila === cuadrillaTecnico;
     if (perfil === "SUPERVISOR") return !!cuadrillasSupervisor[cuadrillaFila];
     return true;
-  });
-
-  if (!coincidencias.length) {
-    if (perfil === "TECNICO") throw new Error("No se encontró una orden reciente con ese código asociada a su cuadrilla");
-    if (perfil === "SUPERVISOR") throw new Error("No se encontró una orden con ese código asociada a sus cuadrillas");
-    throw new Error("No se encontró una orden con ese código de cliente");
   }
 
-  coincidencias.sort(compararRecenciaPlantillaOrden_);
-  const fila = coincidencias[0];
+  let coincidencias = [];
+  filas.forEach(function(fila){
+    let criterio = "";
+    if (normalizarIdentificadorMapa(fila[0]) === codigoBuscado) criterio = "Código de orden";
+    else if (normalizarIdentificadorMapa(fila[14]) === codigoBuscado) criterio = "Código de cliente";
+    else if (normalizarIdentificadorMapa(fila[15]) === codigoBuscado) criterio = "DNI";
+    if (criterio && permitido(fila)) coincidencias.push({fila:fila,criterio:criterio,codigoPedido:""});
+  });
+
+  // Código de pedido vive en bases relacionadas, no en MAPA_ORDENES.
+  // Solo se consulta esa relación cuando no hubo coincidencia directa, para mantener la búsqueda rápida.
+  if (!coincidencias.length) {
+    const ordenesPorPedido = buscarOrdenesPorPedidoPlantillaOrden_(consultaOriginal);
+    filas.forEach(function(fila){
+      const orden = normalizarIdentificadorMapa(fila[0]);
+      if (ordenesPorPedido[orden] && permitido(fila)) {
+        coincidencias.push({fila:fila,criterio:"Código de pedido",codigoPedido:ordenesPorPedido[orden]});
+      }
+    });
+  }
+
+  if (!coincidencias.length) {
+    if (perfil === "TECNICO") throw new Error("No se encontró una orden con ese dato asociada a su cuadrilla");
+    if (perfil === "SUPERVISOR") throw new Error("No se encontró una orden con ese dato asociada a sus cuadrillas");
+    throw new Error("No se encontró una orden por Código de cliente, DNI, Código de orden o Código de pedido");
+  }
+
+  coincidencias.sort(function(a,b){ return compararRecenciaPlantillaOrden_(a.fila,b.fila); });
+  const elegida = coincidencias[0];
+  const fila = elegida.fila;
   const item = filaMapaOperativoAObjeto(fila);
+  item.fechaSolicitud = fechaSoloPlantillaOrden_(fila[2]);
+  item.horaSolicitud = horaSoloPlantillaOrden_(fila[3]);
   item.fechaImportacion = textoMapa(fila[26]);
+  item.codigoPedido = elegida.codigoPedido || "";
 
   return {
     ok:true,
     modulo:"PLANTILLA_ORDEN",
     accion:"CONSULTAR",
     coincidencias:coincidencias.length,
+    criterioBusqueda:elegida.criterio,
     orden:item,
     plantilla:construirTextoPlantillaOrden_(item)
+  };
+}
+
+function distanciaMetrosPlantillaOrden_(lat1, lon1, lat2, lon2) {
+  const rad = Math.PI / 180;
+  const dLat = (lat2 - lat1) * rad;
+  const dLon = (lon2 - lon1) * rad;
+  const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+    Math.cos(lat1*rad) * Math.cos(lat2*rad) * Math.sin(dLon/2) * Math.sin(dLon/2);
+  return 6371000 * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+}
+
+function buscarCtosCercanasPlantillaOrden(data) {
+  const usuario = obtenerUsuarioApp(data.usuario);
+  if (!perfilPermitidoPlantillaOrden_(usuario.perfil)) throw new Error("No tienes permiso para consultar CTO cercanas");
+
+  const latitud = Number(String(data.latitud || "").replace(",","."));
+  const longitud = Number(String(data.longitud || "").replace(",","."));
+  if (!isFinite(latitud) || latitud < -90 || latitud > 90 || !isFinite(longitud) || longitud < -180 || longitud > 180) {
+    throw new Error("Coordenadas no válidas");
+  }
+  const radio = Math.min(Math.max(Number(data.radio) || 400, 50), 1000);
+  const limite = Math.min(Math.max(Number(data.limite) || 20, 1), 50);
+  const hoja = asegurarHojaCatalogoCtoMapaOperativo_();
+  const ultimaFila = hoja.getLastRow();
+  if (ultimaFila <= 1) return {ok:true,modulo:"PLANTILLA_ORDEN",accion:"CTO_CERCANAS",radioMetros:radio,ctos:[]};
+
+  const datos = hoja.getRange(2,1,ultimaFila-1,COLUMNAS_CATALOGO_CTO_MAPA_OPERATIVO).getValues();
+  const ctos = [];
+  datos.forEach(function(fila){
+    const codigo = textoMapa(fila[0]);
+    const lat = numeroMapa(fila[1]);
+    const lng = numeroMapa(fila[2]);
+    if (!codigo || lat === "" || lng === "") return;
+    const distancia = distanciaMetrosPlantillaOrden_(latitud,longitud,Number(lat),Number(lng));
+    if (!isFinite(distancia) || distancia > radio) return;
+    ctos.push({
+      codigo:codigo,
+      latitud:Number(lat),
+      longitud:Number(lng),
+      sede:sedeMapaOperativo(fila[4]) || textoMapa(fila[4]),
+      ultimaActualizacion:textoMapa(fila[6]),
+      ordenReferencia:textoMapa(fila[7]),
+      codigoCliente:textoMapa(fila[8]),
+      tipoTrabajo:textoMapa(fila[9]),
+      puerto:textoMapa(fila[10]),
+      vecesDetectada:Number(fila[12]) || 1,
+      distanciaMetros:Math.round(distancia)
+    });
+  });
+  ctos.sort(function(a,b){ return a.distanciaMetros-b.distanciaMetros || b.vecesDetectada-a.vecesDetectada || a.codigo.localeCompare(b.codigo); });
+  return {
+    ok:true,
+    modulo:"PLANTILLA_ORDEN",
+    accion:"CTO_CERCANAS",
+    radioMetros:radio,
+    totalCoincidencias:ctos.length,
+    ctos:ctos.slice(0,limite)
   };
 }
 
@@ -17640,6 +17836,7 @@ function doPost(e) {
     if (data.accion === "registrarPartidaCatalogoOperativa") return respuestaJson(registrarPartidaCatalogoOperativa(data));
 
     if (data.accion === "consultarPlantillaOrden") return respuestaJson(consultarPlantillaOrden(data));
+    if (data.accion === "buscarCtosCercanasPlantillaOrden") return respuestaJson(buscarCtosCercanasPlantillaOrden(data));
     if (data.accion === "importarMapaOperativo") return respuestaJson(importarMapaOperativo(data));
     if (data.accion === "listarMapaOperativo") return respuestaJson(listarMapaOperativo(data));
     if (data.accion === "catalogosMapaOperativo") return respuestaJson(catalogosMapaOperativo(data));

@@ -1,15 +1,15 @@
-/* MI VISUAL V359 - caché segura, Trabajos Diarios y Cumplimiento al Día */
-const MV339_CACHE = "mivisual-v359-trabajos-cumplimiento-20260815";
+/* MI VISUAL V404 - caché segura + Consulta de Plantilla / CTO cercanas */
+const MV339_CACHE = "mivisual-v404-plantilla-cto-20260815";
 const MV339_CORE = [
   "./",
   "./index.html",
   "./manifest.json",
-  "./css/estilos.css?v=V339-LAZY",
+  "./css/estilos.css?v=V404-PLANTILLA-CTO",
   "./js/utilidades.js?v=V339-CORE",
   "./js/login.js?v=V339-CACHE",
   "./js/permisos.js?v=V339-CORE",
   "./js/app.js?v=V339-LAZY",
-  "./js/modulos_loader.js?v=V359-TRABAJOS-CUMPLIMIENTO",
+  "./js/modulos_loader.js?v=V404-PLANTILLA-CTO",
   "./js/mapa_cto_fix_v342.js?v=V342-MAPA-CTO",
   "./js/actas_recepcion_v343.js?v=V343-ACTAS-RECEPCION",
   "./js/actas_identidad_v344.js?v=V344-ACTAS-IDENTIDAD",

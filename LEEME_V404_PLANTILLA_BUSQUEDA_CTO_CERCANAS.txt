@@ -1,0 +1,50 @@
+MI VISUAL V404 - CONSULTA DE PLANTILLA + CTO CERCANAS
+
+BASE
+- Se parte del ZIP entregado por el usuario (mivisual-main (3).zip).
+- Cambios incrementales. No se modifican cálculos, permisos ni módulos ajenos.
+
+CAMBIOS
+1. Consulta de Plantilla
+- Un solo campo permite buscar por Código de cliente, DNI, Código de orden o Código de pedido.
+- Mantiene restricciones por perfil/cuadrilla existentes.
+- Código de Pedido se relaciona con Código de Orden usando, cuando existe, ACTAS_ESCANEADAS, BASE_OPERATIVA_HISTORICA y SLA_ORDENES_RESUMEN.
+- No se crea ni modifica ninguna hoja.
+
+2. Formato de fecha/hora
+- Corrige el efecto 30/12/1899 de las horas guardadas como valores de tiempo en Google Sheets.
+- Fecha y Tramo se muestran separados.
+
+3. Plantilla ordenada y dinámica
+- Datos de la orden.
+- Datos del cliente.
+- Datos del servicio / trabajo.
+- Datos de red.
+- Gestión / resultado solo si existen datos.
+- Se conserva el texto completo para Copiar plantilla y Copiar selección.
+
+4. CTO cercanas
+- Radio fijo de uso en pantalla: 400 metros.
+- Punto de búsqueda por GPS del equipo, coordenadas manuales, coordenadas del cliente o selección en mapa.
+- Usa CATALOGO_CTO existente y devuelve hasta 20 CTO ordenadas por distancia.
+- Solo se consideran CTO con coordenadas válidas.
+- Se indica expresamente que la cercanía no confirma disponibilidad de puerto.
+
+ARCHIVOS MODIFICADOS
+- Code.gs
+- apps_script/Code.gs
+- js/plantilla_orden.js
+- css/estilos.css
+- js/modulos_loader.js
+- index.html
+- sw.js
+
+ARCHIVO NUEVO
+- LEEME_V404_PLANTILLA_BUSQUEDA_CTO_CERCANAS.txt
+
+DESPLIEGUE
+1. Apps Script: reemplazar Code.gs por la versión incluida y crear NUEVA VERSIÓN de la misma implementación.
+2. GitHub: subir/reemplazar los archivos del ZIP manteniendo la estructura.
+3. No se requiere crear hojas ni volver a importar el Excel.
+4. Después del despliegue, probar con Código de cliente, DNI y Código de orden conocidos. Código de pedido funcionará cuando exista relación con la orden en las bases ya registradas.
+5. Probar CTO cercanas con GPS y con coordenadas manuales.

@@ -92,7 +92,7 @@
       entradas: ["mostrarMapaOperativo"]
     },
     plantilla: {
-      archivos: [`./js/plantilla_orden.js?v=${VERSION}`],
+      archivos: [`./js/plantilla_orden.js?v=V404-PLANTILLA-CTO`],
       entradas: ["mostrarPlantillaOrden"]
     },
     administracion: {
