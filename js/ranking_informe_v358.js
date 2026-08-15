@@ -1,5 +1,5 @@
 /* ============================================================
-   MI VISUAL V365 - Ranking detallado por período + SLA
+   MI VISUAL V358 - Ranking detallado + Informe Excel
    - Jefatura y Gerencia Lima.
    - Reutiliza el enriquecimiento analítico del Dashboard.
    - Carga datos en paralelo y conserva caché corta por período.
@@ -16,13 +16,6 @@
     "https://unpkg.com/xlsx@0.18.5/dist/xlsx.full.min.js"
   ];
   let promesaXlsx = null;
-
-  const MV359_ESTADO = {
-    lista:[],
-    sede:"TODAS",
-    periodo:"",
-    periodos:[]
-  };
 
   function norm(valor){
     return String(valor || "")
@@ -86,239 +79,6 @@
     return `${meses[Number(m[2])-1]} ${m[1]}`;
   }
 
-  function mv359PeriodoDesdeFecha(valor){
-    if(typeof window.mv276ClavePeriodo==="function"){
-      const clave = window.mv276ClavePeriodo(valor);
-      if(clave) return clave;
-    }
-
-    const texto = String(valor || "");
-    let m = texto.match(/^(\d{4})-(\d{2})/);
-    if(m) return `${m[1]}-${m[2]}`;
-
-    m = texto.match(/^\d{1,2}\/(\d{1,2})\/(\d{4})/);
-    if(m) return `${m[2]}-${String(Number(m[1])).padStart(2,"0")}`;
-
-    return "";
-  }
-
-  function mv360CorteVisible(valor){
-    if(!valor) return "";
-    const texto = String(valor).trim();
-
-    let m = texto.match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
-    if(m) return texto;
-
-    m = texto.match(/^(\d{4})-(\d{2})-(\d{2})/);
-    if(m) return `${m[3]}/${m[2]}/${m[1]}`;
-
-    return texto;
-  }
-
-  function mv360NormalizarPeriodos(valores,periodoActual,lista){
-    const mapa = new Map();
-
-    function agregar(clave,etiqueta,corte){
-      const periodo = String(clave || "").trim();
-      if(!/^\d{4}-\d{2}$/.test(periodo)) return;
-
-      const anterior = mapa.get(periodo) || {
-        clave:periodo,
-        etiqueta:periodoNombre(periodo),
-        corte:""
-      };
-
-      if(etiqueta) anterior.etiqueta = String(etiqueta);
-      if(corte) anterior.corte = mv360CorteVisible(corte);
-
-      mapa.set(periodo,anterior);
-    }
-
-    (Array.isArray(valores) ? valores : []).forEach(item=>{
-      if(typeof item==="string"){
-        agregar(item,periodoNombre(item),"");
-        return;
-      }
-
-      if(item && typeof item==="object"){
-        const clave = item.clave || item.periodo || item.value || "";
-        agregar(
-          clave,
-          item.etiqueta || item.label || periodoNombre(clave),
-          item.corte || item.actualizacion || ""
-        );
-      }
-    });
-
-    (Array.isArray(lista) ? lista : []).forEach(item=>{
-      const clave = mv359PeriodoDesdeFecha(item?.actualizacion);
-      if(clave) agregar(clave,periodoNombre(clave),item?.actualizacion || "");
-    });
-
-    if(periodoActual){
-      agregar(periodoActual,periodoNombre(periodoActual),"");
-    }
-
-    return Array.from(mapa.values())
-      .sort((a,b)=>b.clave.localeCompare(a.clave));
-  }
-
-  function mv360PeriodoEnCurso(clave){
-    const partes = new Intl.DateTimeFormat("en-CA",{
-      timeZone:"America/Lima",
-      year:"numeric",
-      month:"2-digit"
-    }).formatToParts(new Date());
-
-    const actual = `${partes.find(x=>x.type==="year")?.value}-${partes.find(x=>x.type==="month")?.value}`;
-    return clave===actual;
-  }
-
-  function mv360EtiquetaPeriodo(item){
-    const clave = item?.clave || "";
-    const estado = mv360PeriodoEnCurso(clave) ? "EN CURSO" : "HISTÓRICO";
-    const corte = item?.corte ? ` · al ${item.corte}` : "";
-    return `${item?.etiqueta || periodoNombre(clave)} — ${estado}${corte}`;
-  }
-
-  function mv359SelectorPeriodo(){
-    const periodos = Array.isArray(MV359_ESTADO.periodos)
-      ? MV359_ESTADO.periodos
-      : [];
-
-    if(!periodos.length) return "";
-
-    return `
-      <div style="
-        margin:12px 0 18px;
-        padding:14px;
-        border-radius:16px;
-        background:#142844;
-        border:1px solid rgba(255,255,255,.10);
-        color:#fff;
-      ">
-        <label style="display:block;font-size:12px;font-weight:900;margin-bottom:7px;">
-          📅 Seleccionar período
-        </label>
-        <select
-          id="mv360PeriodoRanking"
-          onchange="mostrarRanking(this.value)"
-          style="
-            width:100%;
-            padding:12px;
-            border-radius:11px;
-            border:1px solid #6ea8e5;
-            background:#fff;
-            color:#0f172a;
-            font-weight:900;
-          "
-        >
-          ${periodos.map(item=>`
-            <option
-              value="${esc(item.clave)}"
-              ${item.clave===MV359_ESTADO.periodo ? "selected" : ""}
-            >
-              ${esc(mv360EtiquetaPeriodo(item))}
-            </option>
-          `).join("")}
-        </select>
-      </div>`;
-  }
-
-  function mv359EncabezadoPeriodo(referencia){
-    const actualizado = referencia?.actualizacion || "";
-    return `
-      <div style="
-        background:linear-gradient(135deg,#0f172a,#1e3a8a);
-        border-radius:18px;
-        padding:16px;
-        margin:12px 0 8px;
-        color:white;
-        box-shadow:0 8px 20px rgba(0,0,0,.20);
-      ">
-        <div style="font-size:13px;opacity:.85;">📅 PERÍODO</div>
-        <div style="font-size:22px;font-weight:900;margin-top:4px;">
-          ${esc(periodoNombre(MV359_ESTADO.periodo))}
-        </div>
-        <div style="font-size:14px;margin-top:8px;opacity:.95;">
-          Actualizado al: <b>${esc(actualizado || "-")}</b>
-        </div>
-      </div>
-      ${mv359SelectorPeriodo()}
-    `;
-  }
-
-  function mv359Sedes(lista){
-    const oficiales = ["CHICLAYO","PIURA","TRUJILLO"];
-    const presentes = Array.from(
-      new Set((lista || []).map(x=>norm(x.sede)).filter(Boolean))
-    );
-    return oficiales
-      .filter(s=>presentes.includes(s))
-      .concat(presentes.filter(s=>!oficiales.includes(s)).sort());
-  }
-
-  function mv359FiltroSede(lista,seleccionada){
-    return `
-      <div style="
-        margin:12px 0;
-        padding:14px;
-        border-radius:16px;
-        background:#142844;
-        border:1px solid rgba(255,255,255,.10);
-        color:#fff;
-      ">
-        <label style="display:block;font-size:12px;font-weight:900;margin-bottom:7px;">
-          🏢 Filtrar por sede
-        </label>
-        <select
-          onchange="mv359CambiarSedeRanking(this.value)"
-          style="
-            width:100%;
-            padding:11px;
-            border-radius:10px;
-            border:1px solid #6ea8e5;
-            background:#fff;
-            color:#0f172a;
-            font-weight:800;
-          "
-        >
-          <option value="TODAS" ${seleccionada==="TODAS" ? "selected" : ""}>TODAS LAS SEDES</option>
-          ${mv359Sedes(lista).map(s=>`
-            <option value="${esc(s)}" ${seleccionada===s ? "selected" : ""}>${esc(s)}</option>
-          `).join("")}
-        </select>
-      </div>`;
-  }
-
-  function mv359CambiarSedeRanking(valor){
-    MV359_ESTADO.sede = norm(valor || "TODAS") || "TODAS";
-    renderEjecutivo();
-  }
-
-  function mv359VistaTecnico(item){
-    return `
-      <div style="padding:18px;max-width:760px;margin:auto;">
-        <h2 style="text-align:center;margin-bottom:6px;">🏆 MI RANKING</h2>
-        ${mv359EncabezadoPeriodo(item)}
-
-        <div style="
-          display:grid;
-          grid-template-columns:repeat(3,minmax(0,1fr));
-          gap:10px;
-          margin:14px 0;
-        ">
-          ${tarjetaPuestoRanking("REGIÓN",item.puestoRegion,medallaRanking(item.puestoRegion),"🌎")}
-          ${tarjetaPuestoRanking("SEDE",item.puestoSede,medallaRanking(item.puestoSede),"🏢")}
-          ${tarjetaPuestoRanking("PLATAFORMA",item.puestoPlataforma,medallaRanking(item.puestoPlataforma),"🛠️")}
-        </div>
-
-        ${tarjetaDetallada(item,"region")}
-
-        <button class="button_1" onclick="volverInicio()">⬅️ Volver al menú</button>
-      </div>`;
-  }
-
   function fechaActualizacion(lista){
     return lista?.[0]?.actualizacion || "";
   }
@@ -360,14 +120,6 @@
     return {
       linea1:`${num(d.total)} incidencias / ${num(d.finalizadas)} finalizadas`,
       linea2:`GAR ${num(d.gar)} · VTR ${num(d.vtr)}`
-    };
-  }
-
-  function detalleSla(r){
-    const d = r.detSla || {};
-    return {
-      linea1:`Ajustado ${num(r.slaAjustado).toFixed(1)}% · Bruto ${num(r.slaBruto).toFixed(1)}%`,
-      linea2:`${num(d.cumplenAjustado)} dentro / ${num(d.evaluables)} evaluables · Excepciones ${num(d.excepcionesAprobadas)}`
     };
   }
 
@@ -423,7 +175,6 @@
     const ef = detalleEfectividad(r);
     const rec = detalleRecableado(r);
     const vg = detalleVtrGar(r);
-    const sla = detalleSla(r);
     const obs = detalleObservaciones(r);
     const monto = detalleMonto(r);
 
@@ -473,7 +224,6 @@
           ${indicador("Efectividad",pct(r.efectividad),colorSemaforoRanking("efectividad",r.efectividad),ef)}
           ${indicador("% Recableado",pct(r.recableado),colorSemaforoRanking("recableado",r.recableado),rec)}
           ${indicador("% VTR/GAR",pct(r.vtrgar),colorSemaforoRanking("vtrgar",r.vtrgar),vg)}
-          ${indicador("Tiempo de Gestión - SLA",`${num(r.slaAjustado).toFixed(1)}%`,(window.mv363SemaforoSla?mv363SemaforoSla(r.slaAjustado).icono:""),sla)}
           ${indicador("Observaciones",num(r.observaciones).toFixed(0),"",obs)}
           ${indicador("Monto afectado",money(r.montoAfectadoObs),"",monto)}
         </div>
@@ -509,8 +259,8 @@
   }
 
   function renderEjecutivo(){
-    const listaCompleta = MV359_ESTADO.lista || [];
-    const sedeFiltro = MV359_ESTADO.sede || "TODAS";
+    const listaCompleta = MV239_RANKING_JEFATURA_LISTA || [];
+    const sedeFiltro = MV239_RANKING_JEFATURA_SEDE || "TODAS";
     const listaFiltrada = sedeFiltro==="TODAS"
       ? listaCompleta
       : listaCompleta.filter(x=>norm(x.sede)===sedeFiltro);
@@ -531,8 +281,8 @@
         <div style="text-align:center;font-size:12px;font-weight:800;opacity:.72;margin-bottom:8px;">
           VISTA ${esc(rotulo)}
         </div>
-        ${mv359EncabezadoPeriodo(referencia)}
-        ${mv359FiltroSede(listaCompleta,sedeFiltro)}
+        ${encabezadoPeriodoRanking(referencia)}
+        ${mv239FiltroSedeRanking(listaCompleta,sedeFiltro)}
         ${botonExcel()}
         ${listaTarjetas(ordenada,tipoPuesto)}
         <br>
@@ -543,22 +293,24 @@
 
   function datosDashboardReutilizables(periodoSolicitado){
     if(typeof window.mv356ObtenerDatosDashboardGerencial!=="function") return null;
-
     const datos = window.mv356ObtenerDatosDashboardGerencial() || {};
     if(datos.periodo!==periodoSolicitado) return null;
     if(!Array.isArray(datos.lista) || !datos.lista.length) return null;
     if(!datos.lista.some(x=>x.detProduccion || x.detEfectividad)) return null;
-
-    return {
-      lista:datos.lista.slice(),
-      periodo:datos.periodo || periodoSolicitado || "",
-      periodos:Array.isArray(datos.periodos) ? datos.periodos.slice() : []
-    };
+    return datos.lista;
   }
 
   async function obtenerLista(periodoSolicitado){
     const reutilizada = datosDashboardReutilizables(periodoSolicitado);
-    if(reutilizada) return reutilizada;
+    if(reutilizada){
+      return {
+        lista:reutilizada.slice(),
+        periodo:periodoSolicitado,
+        periodos:Array.isArray(MV276_DASH_PERIODOS)
+          ? MV276_DASH_PERIODOS.slice()
+          : [periodoSolicitado]
+      };
+    }
 
     const clave = periodoSolicitado || "AUTO";
     const cache = CACHE.get(clave);
@@ -569,24 +321,12 @@
     }
 
     const lista = await mv4ObtenerRanking(periodoSolicitado);
-    const puente = typeof window.mv356ObtenerDatosDashboardGerencial==="function"
-      ? (window.mv356ObtenerDatosDashboardGerencial() || {})
-      : {};
-
-    const periodoDetectado =
-      puente.periodo ||
-      periodoSolicitado ||
-      mv359PeriodoDesdeFecha(lista?.[0]?.actualizacion) ||
-      "";
-
-    const periodosDetectados = Array.isArray(puente.periodos) && puente.periodos.length
-      ? puente.periodos.slice()
-      : [periodoDetectado].filter(Boolean);
-
     const datos = {
       lista:Array.isArray(lista) ? lista : [],
-      periodo:periodoDetectado,
-      periodos:periodosDetectados
+      periodo:MV276_DASH_PERIODO || periodoSolicitado || "",
+      periodos:Array.isArray(MV276_DASH_PERIODOS)
+        ? MV276_DASH_PERIODOS.slice()
+        : []
     };
 
     CACHE.set(clave,{fecha:Date.now(),datos});
@@ -609,17 +349,8 @@
       const datos = await obtenerLista(periodoSeleccionado);
       const lista = datos.lista;
 
-      MV359_ESTADO.periodo =
-        datos.periodo ||
-        periodoSeleccionado ||
-        mv359PeriodoDesdeFecha(lista?.[0]?.actualizacion) ||
-        "";
-
-      MV359_ESTADO.periodos = mv360NormalizarPeriodos(
-        datos.periodos,
-        MV359_ESTADO.periodo,
-        lista
-      );
+      MV276_RANKING_PERIODOS = datos.periodos.slice();
+      MV276_RANKING_PERIODO = datos.periodo;
 
       if(!lista.length){
         mostrarPantalla(`
@@ -650,13 +381,13 @@
           return;
         }
 
-        mostrarPantalla(mv359VistaTecnico(item));
+        mostrarPantalla(vistaTecnicoRanking(item));
         return;
       }
 
       if(typeof mv239EsVistaJefaturaRanking==="function" && mv239EsVistaJefaturaRanking(perfil)){
-        MV359_ESTADO.lista = lista.slice();
-        MV359_ESTADO.sede = "TODAS";
+        MV239_RANKING_JEFATURA_LISTA = lista.slice();
+        MV239_RANKING_JEFATURA_SEDE = "TODAS";
         renderEjecutivo();
         return;
       }
@@ -676,8 +407,8 @@
       mostrarPantalla(`
         <div style="padding:18px;max-width:980px;margin:auto;">
           <h2 style="text-align:center;margin-bottom:6px;">${titulo}</h2>
-          ${mv359EncabezadoPeriodo(referencia)}
-          ${listaTarjetas(listaFiltrada,tipoPuesto)}
+          ${encabezadoPeriodoRanking(referencia)}
+          ${listaTarjetasRanking(listaFiltrada,tipoPuesto)}
           <br>
           <button class="button_1" onclick="volverInicio()">⬅️ Volver al menú</button>
         </div>
@@ -791,11 +522,11 @@
       return;
     }
 
-    const total = (MV359_ESTADO.lista || []).length;
-    const sede = MV359_ESTADO.sede || "TODAS";
+    const total = (MV239_RANKING_JEFATURA_LISTA || []).length;
+    const sede = MV239_RANKING_JEFATURA_SEDE || "TODAS";
     const filtradas = sede==="TODAS"
       ? total
-      : (MV359_ESTADO.lista || []).filter(x=>norm(x.sede)===sede).length;
+      : (MV239_RANKING_JEFATURA_LISTA || []).filter(x=>norm(x.sede)===sede).length;
 
     cerrarModal();
 
@@ -806,7 +537,7 @@
         <div class="mv358-cabecera">
           <div>
             <h2>Informe Excel del Ranking</h2>
-            <p>${esc(periodoNombre(MV359_ESTADO.periodo))}</p>
+            <p>${esc(periodoNombre(MV276_RANKING_PERIODO))}</p>
           </div>
           <button type="button" onclick="mv358CerrarInformeRanking()">×</button>
         </div>
@@ -894,46 +625,19 @@
   }
 
   function resumen(lista){
-    const items=Array.isArray(lista)?lista:[];
-    const total=items.length;
-    const produccion=items.reduce((s,x)=>s+num(x.produccion),0);
-    const ordenes=items.reduce((s,x)=>s+num(x.detProduccion?.totalOrdenes),0);
-
-    const efFinalizadas=items.reduce((s,x)=>s+num(x.detEfectividad?.finalizadas),0);
-    const efTotal=items.reduce((s,x)=>s+num(x.detEfectividad?.total),0);
-    const efectividad=efTotal
-      ? efFinalizadas/efTotal*100
-      : (total?items.reduce((s,x)=>s+pctNumero(x.efectividad),0)/total:0);
-
-    const recableados=items.reduce((s,x)=>s+num(x.detRecableado?.recableados),0);
-    const ordenesVt=items.reduce((s,x)=>s+num(x.detRecableado?.los ?? x.detRecableado?.rojoAsignadas),0);
-    const recableado=ordenesVt
-      ? recableados/ordenesVt*100
-      : (total?items.reduce((s,x)=>s+pctNumero(x.recableado),0)/total:0);
-
-    const incidencias=items.reduce((s,x)=>s+num(x.detVtrGar?.total ?? x.detVtrGar?.totalGarVtr),0);
-    const finalizadasVtr=items.reduce((s,x)=>s+num(x.detVtrGar?.finalizadas),0);
-    const vtrgar=finalizadasVtr
-      ? incidencias/finalizadasVtr*100
-      : (total?items.reduce((s,x)=>s+pctNumero(x.vtrgar),0)/total:0);
-
-    const observaciones=items.reduce((s,x)=>s+num(x.observaciones),0);
-    const montoTotal=items.reduce((s,x)=>s+num(x.montoTotalObs),0);
-    const montoAfectado=items.reduce((s,x)=>s+num(x.montoAfectadoObs),0);
-
-    const slaEvaluables=items.reduce((s,x)=>s+num(x.detSla?.evaluables),0);
-    const slaCumplenBruto=items.reduce((s,x)=>s+num(x.detSla?.cumplenBruto),0);
-    const slaCumplenAjustado=items.reduce((s,x)=>s+num(x.detSla?.cumplenAjustado),0);
-
+    const total = lista.length;
+    const suma = campo=>lista.reduce((s,x)=>s+num(x[campo]),0);
+    const promedio = campo=>total ? lista.reduce((s,x)=>s+pctNumero(x[campo]),0)/total : 0;
     return {
-      total,produccion,ordenes,
-      efectividad,efFinalizadas,efTotal,
-      recableado,recableados,ordenesVt,
-      vtrgar,incidencias,finalizadasVtr,
-      observaciones,montoTotal,montoAfectado,
-      slaEvaluables,slaCumplenBruto,slaCumplenAjustado,
-      slaAjustado:slaEvaluables?slaCumplenAjustado/slaEvaluables*100:0,
-      slaBruto:slaEvaluables?slaCumplenBruto/slaEvaluables*100:0
+      total,
+      produccion:suma("produccion"),
+      ordenes:lista.reduce((s,x)=>s+num(x.detProduccion?.totalOrdenes),0),
+      efectividad:promedio("efectividad"),
+      recableado:promedio("recableado"),
+      vtrgar:promedio("vtrgar"),
+      observaciones:suma("observaciones"),
+      montoTotal:suma("montoTotalObs"),
+      montoAfectado:suma("montoAfectadoObs")
     };
   }
 
@@ -1002,7 +706,6 @@
       red(vg.vtr,0),
       red(vg.total,0),
       red(pctNumero(r.vtrgar),2),
-      red(r.slaBruto,2),red(r.slaAjustado,2),red(r.detSla?.evaluables,0),red(r.detSla?.fueraAjustado,0),red(r.detSla?.excepcionesAprobadas,0),red(r.aporteSla,2),
       red(o.total ?? r.observaciones,0),
       red(o.pendientes,0),
       red(o.estados?.DERIVADO,0),
@@ -1019,7 +722,7 @@
   function construirLibro(lista,alcance){
     const XLSX = window.XLSX;
     const wb = XLSX.utils.book_new();
-    const periodo = MV359_ESTADO.periodo;
+    const periodo = MV276_RANKING_PERIODO;
     const res = resumen(lista);
     const orden = ordenarRankingPorPuesto(lista,"region");
 
@@ -1048,10 +751,6 @@
       ["Efectividad promedio",red(res.efectividad,2)],
       ["Recableado promedio",red(res.recableado,2)],
       ["VTR/GAR promedio",red(res.vtrgar,2)],
-      ["SLA ajustado",red(res.slaAjustado,2)],
-      ["SLA bruto",red(res.slaBruto,2)],
-      ["SLA códigos evaluables",res.slaEvaluables],
-      ["SLA cumplen ajustado",res.slaCumplenAjustado],
       ["Observaciones",res.observaciones],
       ["Monto total observaciones",red(res.montoTotal,2)],
       ["Monto afectado",red(res.montoAfectado,2)],
@@ -1107,7 +806,6 @@
       "EFECTIVIDAD TOTAL","FINALIZADAS","CANCELADAS","REPROGRAMADAS","REGESTIÓN","EFECTIVIDAD %",
       "ÓRDENES VT (LOS)","RECABLEADOS","RECABLEADO %",
       "FINALIZADAS VTR/GAR","GAR","VTR","INCIDENCIAS","VTR/GAR %",
-      "SLA BRUTO %","SLA AJUSTADO %","SLA EVALUABLES","SLA FUERA","EXCEPCIONES APROBADAS","APORTE SLA",
       "OBSERVACIONES","PENDIENTES","DERIVADAS","EN PROCESO","PENALIZADAS","APELADAS","SUBSANADAS",
       "MONTO TOTAL OBS","MONTO AFECTADO","ESTADO GENERAL"
     ]];
@@ -1205,8 +903,8 @@
       'input[name="mv358Alcance"]:checked'
     )?.value || "zona";
 
-    const sede = MV359_ESTADO.sede || "TODAS";
-    let lista = (MV359_ESTADO.lista || []).slice();
+    const sede = MV239_RANKING_JEFATURA_SEDE || "TODAS";
+    let lista = (MV239_RANKING_JEFATURA_LISTA || []).slice();
     let alcance = "Zona Norte completa";
 
     if(alcanceSeleccionado==="filtro" && sede!=="TODAS"){
@@ -1231,7 +929,7 @@
         : "";
       window.XLSX.writeFile(
         wb,
-        `Informe_Ranking_MI_VISUAL_${MV359_ESTADO.periodo}${sufijo}.xlsx`,
+        `Informe_Ranking_MI_VISUAL_${MV276_RANKING_PERIODO}${sufijo}.xlsx`,
         {bookType:"xlsx",compression:true}
       );
       mensaje(`Informe generado correctamente con ${lista.length} cuadrillas.`);
@@ -1245,12 +943,10 @@
 
   window.mostrarRanking = mostrarRankingDetallado;
   window.mv239RenderRankingJefatura = renderEjecutivo;
-  window.mv359CambiarSedeRanking = mv359CambiarSedeRanking;
-  window.mv239CambiarSedeRanking = mv359CambiarSedeRanking;
   window.mv358AbrirInformeRanking = abrirModal;
   window.mv358CerrarInformeRanking = cerrarModal;
   window.mv358GenerarInformeRanking = generarExcel;
 
-  window.MV365_RANKING_SLA_OK = true;
-  console.log("MI VISUAL V365: Ranking detallado por período y SLA habilitado.");
+  window.MV358_RANKING_DETALLADO_OK = true;
+  console.log("MI VISUAL V358: Ranking detallado e Informe Excel habilitados.");
 })();

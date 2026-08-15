@@ -1,5 +1,5 @@
-/* MI VISUAL V399 - caché segura para concurrencia y cargos */
-const MV339_CACHE = "mivisual-v403-actas-motivos-observacion-20260813";
+/* MI VISUAL V359 - caché segura, Trabajos Diarios y Cumplimiento al Día */
+const MV339_CACHE = "mivisual-v359-trabajos-cumplimiento-20260815";
 const MV339_CORE = [
   "./",
   "./index.html",
@@ -9,18 +9,12 @@ const MV339_CORE = [
   "./js/login.js?v=V339-CACHE",
   "./js/permisos.js?v=V339-CORE",
   "./js/app.js?v=V339-LAZY",
-  "./js/modulos_loader.js?v=V399-CONCURRENCIA-CARGOS",
-  "./js/menu_desempeno_v363.js?v=V374-GERENCIA-GENERAL",
-  "./js/resumen_dashboard_v361.js?v=V374-GERENCIA-GENERAL",
-  "./js/dashboard_consolidado_v365.js?v=V374-GERENCIA-GENERAL",
-  "./js/dashboard_sla_tools_v366.js?v=V374-GERENCIA-GENERAL",
-  "./js/base_operativa_sync_v367.js?v=V374-GERENCIA-GENERAL",
+  "./js/modulos_loader.js?v=V359-TRABAJOS-CUMPLIMIENTO",
   "./js/mapa_cto_fix_v342.js?v=V342-MAPA-CTO",
-  "./js/actas_recepcion_v343.js?v=V399-CONCURRENCIA-CARGOS",
+  "./js/actas_recepcion_v343.js?v=V343-ACTAS-RECEPCION",
   "./js/actas_identidad_v344.js?v=V344-ACTAS-IDENTIDAD",
   "./js/ajustes_perfiles_v345.js?v=V345-PERFILES",
   "./js/actividad_campo_fix_v346.js?v=V346-ACTIVIDAD-CAMPO",
-  "./js/actividad_galeria_v371.js?v=V374-GERENCIA-GENERAL",
   "./img/logo.png",
   "./img/logo-192.png",
   "./img/splash.png"

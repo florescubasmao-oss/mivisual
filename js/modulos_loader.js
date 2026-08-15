@@ -7,32 +7,18 @@
 (function(){
   "use strict";
 
-  const VERSION = "V403-ACTAS-MOTIVOS-OBSERVACION-20260813";
+  const VERSION = "V341-VALIDACION-20260803";
   const MODULOS = {
     dashboards_core: {
       archivos: [
-        `./js/dashboards.js?v=V378-GERENCIA-GENERAL-DASHBOARD`,
-        `./js/resumen_dashboard_v361.js?v=V378-GERENCIA-GENERAL-DASHBOARD`,
-        `./js/sla_gestion_v363.js?v=V378-GERENCIA-GENERAL-DASHBOARD`,
-        `./js/dashboard_consolidado_v365.js?v=V378-GERENCIA-GENERAL-DASHBOARD`,
-        `./js/dashboard_sla_tools_v366.js?v=V378-GERENCIA-GENERAL-DASHBOARD`,
-        `./js/informe_gerencial_lazy_v361.js?v=V378-GERENCIA-GENERAL-DASHBOARD`
+        `./js/dashboards.js?v=V359-TRABAJOS-CUMPLIMIENTO`,
+        `./js/informe_gerencial_v355.js?v=V359-TRABAJOS-CUMPLIMIENTO`
       ],
-      entradas: [
-        "mostrarProduccionV2",
-        "mostrarDashboardSupervisor",
-        "mostrarDashboardJefatura",
-        "mostrarTiempoGestionSla"
-      ]
-    },
-    mi_desempeno: {
-      depende: ["dashboards_core", "indicadores", "ranking"],
-      archivos: [`./js/mi_desempeno_v363.js?v=V373-PDF-ACTAS-MOVIL`],
-      entradas: ["mostrarMiDesempeno"]
+      entradas: ["mostrarProduccionV2", "mostrarDashboardSupervisor", "mostrarDashboardJefatura"]
     },
     dashboard: {
       depende: ["dashboards_core"],
-      archivos: [`./js/bono_supervisores.js?v=V373-PDF-ACTAS-MOVIL`],
+      archivos: [`./js/bono_supervisores.js?v=V359-TRABAJOS-CUMPLIMIENTO`],
       entradas: ["mostrarBonosSupervisores"]
     },
     indicadores: {
@@ -40,15 +26,15 @@
       entradas: ["mostrarEfectividad", "mostrarRecableado", "mostrarVTRGAR"]
     },
     ranking: {
-      depende: ["dashboards_core"],
       archivos: [
-        `./ranking.js?v=V373-PDF-ACTAS-MOVIL`,
-        `./js/ranking_informe_v358.js?v=V373-PDF-ACTAS-MOVIL`
+        `./ranking.js?v=V358-RANKING-DETALLE`,
+        `./js/dashboards.js?v=V359-TRABAJOS-CUMPLIMIENTO`,
+        `./js/ranking_informe_v358.js?v=V359-TRABAJOS-CUMPLIMIENTO`
       ],
       entradas: ["mostrarRanking"]
     },
     bonos: {
-      archivos: [`./js/bonos.js?v=V379-GERENCIA-GENERAL`],
+      archivos: [`./js/bonos.js?v=${VERSION}`],
       entradas: ["mostrarBonos"]
     },
     observaciones: {
@@ -59,19 +45,11 @@
       entradas: ["mostrarObservaciones"]
     },
     accesos: {
-      archivos: [
-        `./js/accesos.js?v=${VERSION}`,
-        `./js/accesos_certificacion_v362.js?v=V383-SIMULACRO-CERTIFICACION`,
-        `./js/accesos_simulacro_v383.js?v=V383-SIMULACRO-CERTIFICACION`
-      ],
+      archivos: [`./js/accesos.js?v=${VERSION}`],
       entradas: ["mostrarAccesos", "mostrarBiblioteca", "mostrarCapacitacion"]
     },
     actividad: {
-      archivos: [
-        `./js/actividad_campo.js?v=V384-ACTIVIDAD-IMAGEN-ROBUSTA`,
-        `./js/actividad_galeria_v371.js?v=V384-ACTIVIDAD-IMAGEN-ROBUSTA`,
-        `./js/actividad_imagen_robusta_v384.js?v=V384-ACTIVIDAD-IMAGEN-ROBUSTA`
-      ],
+      archivos: [`./js/actividad_campo.js?v=${VERSION}`],
       entradas: ["mostrarActividadCampo"]
     },
     validacion: {
@@ -82,31 +60,19 @@
       entradas: ["mostrarValidacionTecnica"]
     },
     actas: {
-      archivos: [
-        `./js/actas.js?v=V403-ACTAS-MOTIVOS-OBSERVACION`,
-        `./js/actas_pdf_movil_v373.js?v=V403-ACTAS-MOTIVOS-OBSERVACION`,
-        `./js/actas_correccion_v387.js?v=V403-ACTAS-MOTIVOS-OBSERVACION`,
-        `./js/actas_api_resiliente_v392.js?v=V403-ACTAS-MOTIVOS-OBSERVACION`,
-        `./js/actas_observaciones_v393.js?v=V403-ACTAS-MOTIVOS-OBSERVACION`,
-        `./js/actas_control_finalizadas_v396.js?v=V403-ACTAS-MOTIVOS-OBSERVACION`,
-        `./js/actas_mantenimiento_v402.js?v=V403-ACTAS-MOTIVOS-OBSERVACION`,
-        `./js/actas_motivos_observacion_v403.js?v=V403-ACTAS-MOTIVOS-OBSERVACION`
-      ],
+      archivos: [`./js/actas.js?v=${VERSION}`],
       entradas: ["mostrarGestionActas"]
     },
     equipos: {
-      archivos: [`./js/equipos_averiados.js?v=V403-ACTAS-MOTIVOS-OBSERVACION`],
+      archivos: [`./js/equipos_averiados.js?v=${VERSION}`],
       entradas: ["mostrarEquiposAveriados"]
     },
     analisis: {
-      archivos: [`./js/analisis_economico.js?v=V376-API-CENTRALIZADA`],
+      archivos: [`./js/analisis_economico.js?v=${VERSION}`],
       entradas: ["mostrarAnalisisEconomico"]
     },
     checklist: {
-      archivos: [
-        `./js/checklist_almacen.js?v=V398-CHECKLIST-CONFIRMACION-SEGURA`,
-        `./js/checklist_confirmacion_v398.js?v=V398-CHECKLIST-CONFIRMACION-SEGURA`
-      ],
+      archivos: [`./js/checklist_almacen.js?v=${VERSION}`],
       entradas: ["mostrarChecklistAlmacen"]
     },
     descansos: {
@@ -118,21 +84,12 @@
       entradas: ["mostrarTrabajosConjunta"]
     },
     mesa: {
-      archivos: [`./js/consultas_reclamos.js?v=V379-GERENCIA-GENERAL`],
+      archivos: [`./js/consultas_reclamos.js?v=${VERSION}`],
       entradas: ["mostrarConsultasReclamos"]
     },
     mapa: {
-      archivos: [
-        `./js/mapa_operativo.js?v=V403-ACTAS-MOTIVOS-OBSERVACION`,
-        `./js/mapa_partner_visual_v386.js?v=V403-ACTAS-MOTIVOS-OBSERVACION`,
-        `./js/mapa_progreso_v393.js?v=V403-ACTAS-MOTIVOS-OBSERVACION`,
-        `./js/mapa_rapido_v395.js?v=V403-ACTAS-MOTIVOS-OBSERVACION`
-      ],
+      archivos: [`./js/mapa_operativo.js?v=${VERSION}`],
       entradas: ["mostrarMapaOperativo"]
-    },
-    facturas: {
-      archivos: [`./js/facturas_v380.js?v=V382-FACTURAS-ICONO-CABECERA`],
-      entradas: ["mostrarFacturas"]
     },
     plantilla: {
       archivos: [`./js/plantilla_orden.js?v=${VERSION}`],
@@ -141,9 +98,7 @@
     administracion: {
       depende: ["dashboards_core", "accesos", "checklist"],
       archivos: [
-        `./js/base_operativa.js?v=V385-BASE-OPERATIVA-SIN-BLOQUEO`,
-        `./js/base_operativa_lectura_v385.js?v=V385-BASE-OPERATIVA-SIN-BLOQUEO`,
-        `./js/base_operativa_sync_v367.js?v=V385-BASE-OPERATIVA-SIN-BLOQUEO`,
+        `./js/base_operativa.js?v=${VERSION}`,
         `./js/admin_checklist.js?v=${VERSION}`
       ],
       entradas: ["mostrarAdministracion"]
@@ -152,10 +107,8 @@
 
   const FUNCION_MODULO = {
     mostrarProduccionV2: "dashboards_core",
-    mostrarMiDesempeno: "mi_desempeno",
-    mostrarTiempoGestionSla: "dashboards_core",
-    mostrarDashboardSupervisor: "dashboards_core",
-    mostrarDashboardJefatura: "dashboards_core",
+    mostrarDashboardSupervisor: "dashboard",
+    mostrarDashboardJefatura: "dashboard",
     mostrarBonosSupervisores: "dashboard",
     mostrarEfectividad: "indicadores",
     mostrarRecableado: "indicadores",
@@ -176,7 +129,6 @@
     mostrarTrabajosConjunta: "pext",
     mostrarConsultasReclamos: "mesa",
     mostrarMapaOperativo: "mapa",
-    mostrarFacturas: "facturas",
     mostrarPlantillaOrden: "plantilla",
     mostrarAdministracion: "administracion"
   };
@@ -190,12 +142,12 @@
 
   function nombreVisible(id){
     const nombres = {
-      dashboards_core:"Datos operativos", dashboard:"Bono Supervisor", mi_desempeno:"Mi Desempeño", indicadores:"Indicadores",
+      dashboards_core:"Producción", dashboard:"Dashboard", indicadores:"Indicadores",
       ranking:"Ranking", bonos:"Bonos", observaciones:"Observaciones", accesos:"Recursos",
       actividad:"Actividad en Campo", validacion:"Validación Técnica", actas:"Gestión de Actas",
       equipos:"Equipos Averiados", analisis:"Análisis Económico", checklist:"Checklist Almacén",
       descansos:"Programación de Descansos", pext:"PEXT", mesa:"Mesa de Ayuda",
-      mapa:"Mapa Operativo", facturas:"Facturas", plantilla:"Plantilla de Orden", administracion:"Administración"
+      mapa:"Mapa Operativo", plantilla:"Plantilla de Orden", administracion:"Administración"
     };
     return nombres[id] || "módulo";
   }
@@ -330,96 +282,34 @@
     window[nombre] = wrapper;
   });
 
-  function conexionLenta(){
-    const conexion = navigator.connection || navigator.mozConnection || navigator.webkitConnection;
-    return Boolean(
-      conexion &&
-      (
-        conexion.saveData ||
-        /(^|-)2g$/.test(conexion.effectiveType || "")
-      )
-    );
-  }
-
   function programarCarga(id, demora){
-    if(conexionLenta()) return;
-
+    const conexion = navigator.connection || navigator.mozConnection || navigator.webkitConnection;
+    if(conexion && (conexion.saveData || /(^|-)2g$/.test(conexion.effectiveType || ""))) return;
     setTimeout(function(){
-      const ejecutar = function(){
-        cargarModulo(id).catch(error =>
-          console.warn(`V366: precarga ${id}`, error)
-        );
-      };
-
-      if(typeof requestIdleCallback === "function"){
-        requestIdleCallback(ejecutar,{timeout:2500});
-      }else{
-        ejecutar();
-      }
-    },Math.max(0,Number(demora)||0));
-  }
-
-  function programarResumen(demora){
-    if(conexionLenta()) return;
-
-    setTimeout(function(){
-      const ejecutar = async function(){
-        try{
-          await cargarModulo("dashboards_core");
-
-          if(
-            typeof window.mv361ConsultarResumenDashboardRanking === "function"
-          ){
-            await window.mv361ConsultarResumenDashboardRanking(
-              "",
-              false
-            );
-          }
-        }catch(error){
-          console.warn(
-            "V366: no se pudo precalentar el resumen",
-            error
-          );
-        }
-      };
-
-      if(typeof requestIdleCallback === "function"){
-        requestIdleCallback(ejecutar,{timeout:3500});
-      }else{
-        ejecutar();
-      }
-    },Math.max(0,Number(demora)||0));
+      const ejecutar = function(){ cargarModulo(id).catch(error => console.warn(`V339: precarga ${id}`, error)); };
+      if(typeof requestIdleCallback === "function") requestIdleCallback(ejecutar, {timeout:2500});
+      else ejecutar();
+    }, Math.max(0, Number(demora)||0));
   }
 
   function prepararPerfil(perfil){
     const p = String(perfil || "").toUpperCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"").trim();
     if(p === "TECNICO"){
-      programarCarga("dashboards_core",350);
-      programarResumen(700);
-      programarCarga("mi_desempeno",1300);
-      programarCarga("validacion",2800);
+      programarCarga("dashboards_core", 700);
+      programarCarga("indicadores", 1600);
+      programarCarga("validacion", 2800);
       return;
     }
-
     if(p === "SUPERVISOR"){
-      programarCarga("dashboards_core",250);
-      programarResumen(550);
-      programarCarga("validacion",1600);
-      programarCarga("descansos",2600);
+      programarCarga("dashboard", 650);
+      programarCarga("validacion", 1600);
+      programarCarga("descansos", 2600);
       return;
     }
-
-    if([
-      "JEFATURA",
-      "JEFATURA GENERAL",
-      "GERENCIA LIMA",
-      "ADMIN",
-      "ADMINISTRADOR"
-    ].includes(p)){
-      programarCarga("dashboards_core",250);
-      programarResumen(500);
-      programarCarga("validacion",1700);
-      programarCarga("descansos",2900);
+    if(["JEFATURA","JEFATURA GENERAL","GERENCIA LIMA","ADMIN","ADMINISTRADOR"].includes(p)){
+      programarCarga("dashboard", 650);
+      programarCarga("validacion", 1700);
+      programarCarga("descansos", 2900);
       return;
     }
     if(["ALMACEN","JEFATURA ALMACEN"].includes(p)){

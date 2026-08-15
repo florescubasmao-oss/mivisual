@@ -2838,12 +2838,13 @@ function mv4SedeCard(sede, lista){
 const MV199_INDICADORES_JEFATURA = [
     {valor:"RESUMEN", etiqueta:"RESUMEN GENERAL"},
     {valor:"TRABAJOS_DIARIOS", etiqueta:"TRABAJOS DIARIOS"},
-    {valor:"PRODUCCION", etiqueta:"PRODUCCIÓN"},
+    {valor:"PRODUCCION", etiqueta:"PRODUCCIÓN · AVANCE MENSUAL"},
+    {valor:"CUMPLIMIENTO_DIA", etiqueta:"CUMPLIMIENTO PRODUCTIVO AL DÍA"},
     {valor:"EFECTIVIDAD", etiqueta:"EFECTIVIDAD"},
     {valor:"RECABLEADO", etiqueta:"% RECABLEADO"},
     {valor:"VTRGAR", etiqueta:"% VTR/GAR"},
     {valor:"OBSERVACIONES", etiqueta:"OBSERVACIONES"},
-    {valor:"METAS", etiqueta:"METAS Y CUMPLIMIENTO"},
+    {valor:"METAS", etiqueta:"CUMPLIMIENTO GENERAL · 5 METAS"},
     {valor:"RANKING", etiqueta:"RANKING / POSICIÓN"}
 ];
 
@@ -2910,83 +2911,394 @@ function mv282ClaseEstado(estado){
     return "otro";
 }
 
-function mv282LineaDato(etiqueta, valor){
-    if(valor === undefined || valor === null || String(valor).trim() === "") return "";
-    return `<div><span>${etiqueta}</span><b>${mv198Escapar(valor)}</b></div>`;
+function mv282LineaDato(etiqueta, valor, anchoCompleto){
+    if(
+        valor === undefined ||
+        valor === null ||
+        String(valor).trim() === ""
+    ){
+        return "";
+    }
+
+    return `<div style="
+        ${anchoCompleto ? "grid-column:1/-1;" : ""}
+        background:#0d2037;
+        border:1px solid rgba(148,163,184,.20);
+        border-radius:11px;
+        padding:10px 11px;
+        min-width:0;
+    ">
+        <span style="
+            display:block;
+            font-size:10px;
+            text-transform:uppercase;
+            letter-spacing:.35px;
+            color:#8fb0d4;
+            font-weight:900;
+            margin-bottom:4px;
+        ">${mv198Escapar(etiqueta)}</span>
+        <b style="
+            display:block;
+            font-size:13px;
+            line-height:1.35;
+            color:#ffffff;
+            overflow-wrap:anywhere;
+            word-break:break-word;
+        ">${mv198Escapar(valor)}</b>
+    </div>`;
+}
+
+
+function mv359ColorEstadoTrabajo(estado){
+    const e = mv4Norm(estado);
+    if(e === "FINALIZADA") return {fondo:"#14532d", borde:"#22c55e", texto:"#dcfce7"};
+    if(["CANCELADA","ANULADA","ANULADO"].includes(e)) return {fondo:"#7f1d1d", borde:"#ef4444", texto:"#fee2e2"};
+    if(e === "REPROGRAMADO") return {fondo:"#78350f", borde:"#f59e0b", texto:"#fef3c7"};
+    if(e === "REGESTION") return {fondo:"#1e3a8a", borde:"#60a5fa", texto:"#dbeafe"};
+    return {fondo:"#334155", borde:"#64748b", texto:"#f1f5f9"};
+}
+
+function mv359ResumenTrabajo(icono,titulo,valor,detalle){
+    return `<div style="
+        background:#102844;
+        border:1px solid rgba(148,163,184,.18);
+        border-radius:15px;
+        padding:13px;
+        min-width:0;
+    ">
+        <div style="display:flex;align-items:center;gap:7px;color:#a9c6e6;font-size:10px;font-weight:900;text-transform:uppercase;">
+            <span>${icono}</span><span>${mv198Escapar(titulo)}</span>
+        </div>
+        <div style="font-size:24px;font-weight:900;color:#fff;margin-top:7px;">${mv198Escapar(valor)}</div>
+        <div style="font-size:10px;color:#8fb0d4;margin-top:4px;line-height:1.35;">${mv198Escapar(detalle)}</div>
+    </div>`;
 }
 
 function mv282RenderResultado(data){
-    if(!data) return `<div class="mv282-ayuda">Selecciona la cuadrilla y la fecha, luego pulsa <b>Consultar trabajos</b>.</div>`;
+    if(!data){
+        return `<div style="
+            margin-top:14px;
+            padding:18px;
+            border:1px dashed rgba(148,163,184,.35);
+            border-radius:15px;
+            background:#0d2037;
+            color:#b9cee6;
+            text-align:center;
+            line-height:1.5;
+        ">
+            Selecciona una cuadrilla y una fecha, luego pulsa <b>Consultar trabajos</b>.
+        </div>`;
+    }
+
     const r = data.resumen || {};
     const trabajos = data.trabajos || [];
-    const noFinalizadas = Number(r.canceladas||0) + Number(r.regestiones||0) + Number(r.reprogramadas||0) + Number(r.otrosEstados||0);
-    let html = `<div class="mv282-resultado-cabecera">
-        <div><b>${mv198Escapar(data.cuadrilla || "")}</b><span>${mv198Escapar(data.sede || "")} · ${mv198Escapar(data.fecha || "")}</span></div>
-    </div>
-    <div class="mv282-resumen-grid">
-        ${mv591MiniResumenCard("📋","Total órdenes",mv58Valor(r.total||0),"Órdenes del día","")}
-        ${mv591MiniResumenCard("✅","Finalizadas",mv58Valor(r.finalizadas||0),"Trabajos ejecutados","")}
-        ${mv591MiniResumenCard("📌","Otros estados",mv58Valor(noFinalizadas),"Canceladas, regestión y otros","")}
-        ${mv591MiniResumenCard("⭐","Puntos",mv58Valor(r.puntos||0),"Producción del día","")}
-    </div>`;
+    const noFinalizadas =
+        Number(r.canceladas||0) +
+        Number(r.regestiones||0) +
+        Number(r.reprogramadas||0) +
+        Number(r.otrosEstados||0);
+
+    let html = `
+        <div style="
+            margin-top:15px;
+            padding:14px 16px;
+            border-radius:15px;
+            background:linear-gradient(135deg,#12304f,#0f2743);
+            border:1px solid #315577;
+            color:#fff;
+        ">
+            <div style="font-size:16px;font-weight:900;line-height:1.3;overflow-wrap:anywhere;">
+                ${mv198Escapar(data.cuadrilla || "")}
+            </div>
+            <div style="font-size:11px;color:#a9c6e6;margin-top:5px;">
+                ${mv198Escapar(data.sede || "")} · ${mv198Escapar(data.fecha || "")}
+            </div>
+        </div>
+
+        <div style="
+            display:grid;
+            grid-template-columns:repeat(auto-fit,minmax(150px,1fr));
+            gap:10px;
+            margin-top:11px;
+        ">
+            ${mv359ResumenTrabajo("📋","Total órdenes",String(Number(r.total||0)),"Órdenes asignadas en la fecha")}
+            ${mv359ResumenTrabajo("✅","Finalizadas",String(Number(r.finalizadas||0)),"Trabajos ejecutados")}
+            ${mv359ResumenTrabajo("📌","Otros estados",String(noFinalizadas),"Canceladas, regestión y otros")}
+            ${mv359ResumenTrabajo("⭐","Puntos",String(Number(r.puntos||0)),"Producción obtenida en el día")}
+        </div>`;
 
     if(data.origen === "PRODUCCION_AGRUPADA"){
-        html += `<div class="mv282-aviso">Este período conserva el resumen por tipo de trabajo. Para visualizar código, ticket y cliente debe cargarse nuevamente la base operativa de ese mes.</div>`;
-    }
-    if(!trabajos.length){
-        return html + `<div class="mv4-empty">No existen trabajos registrados para la cuadrilla y fecha seleccionadas.</div>`;
+        html += `<div style="
+            margin-top:11px;
+            padding:11px 13px;
+            border-radius:12px;
+            background:#3f2d0a;
+            border:1px solid #a16207;
+            color:#fef3c7;
+            font-size:11px;
+            line-height:1.45;
+        ">
+            Este período conserva el resumen por tipo de trabajo. Para visualizar
+            código, ticket y cliente debe cargarse nuevamente la base operativa de ese mes.
+        </div>`;
     }
 
-    html += `<div class="mv282-lista">`;
-    trabajos.forEach((x, i) => {
-        const cantidad = Math.max(1, Number(x.cantidad)||1);
-        const titulo = x.tipoPartida || x.tipoAtencion || x.tipoTrabajo || "Trabajo registrado";
+    if(!trabajos.length){
+        return html + `<div style="
+            margin-top:14px;
+            padding:18px;
+            border-radius:15px;
+            background:#0d2037;
+            border:1px solid rgba(148,163,184,.18);
+            color:#b9cee6;
+            text-align:center;
+        ">No existen trabajos registrados para la cuadrilla y fecha seleccionadas.</div>`;
+    }
+
+    html += `<div style="display:grid;gap:12px;margin-top:14px;">`;
+
+    trabajos.forEach((x,i)=>{
+        const cantidad = Math.max(1,Number(x.cantidad)||1);
+        const titulo =
+            x.tipoPartida ||
+            x.tipoAtencion ||
+            x.tipoTrabajo ||
+            "Trabajo registrado";
+
         const puntos = Number(x.puntos)||0;
-        html += `<div class="mv282-trabajo-card">
-            <div class="mv282-trabajo-head">
-                <div><small>TRABAJO ${i+1}</small><b>${mv198Escapar(titulo)}</b></div>
-                <span class="mv282-estado ${mv282ClaseEstado(x.estado)}">${mv198Escapar(x.estado || "SIN ESTADO")}</span>
+        const estadoInfo = mv359ColorEstadoTrabajo(x.estado);
+
+        html += `<article style="
+            background:#142844;
+            border:1px solid rgba(148,163,184,.22);
+            border-radius:17px;
+            overflow:hidden;
+            box-shadow:0 6px 16px rgba(0,0,0,.15);
+        ">
+            <div style="
+                display:flex;
+                justify-content:space-between;
+                gap:12px;
+                align-items:flex-start;
+                padding:13px 14px;
+                background:#10233d;
+                border-bottom:1px solid rgba(148,163,184,.14);
+            ">
+                <div style="min-width:0;flex:1;">
+                    <small style="
+                        display:block;
+                        color:#7fb1df;
+                        font-size:9px;
+                        font-weight:900;
+                        letter-spacing:.5px;
+                        text-transform:uppercase;
+                    ">TRABAJO ${i+1}</small>
+
+                    <b style="
+                        display:block;
+                        color:#fff;
+                        font-size:14px;
+                        line-height:1.35;
+                        margin-top:4px;
+                        overflow-wrap:anywhere;
+                    ">${mv198Escapar(titulo)}</b>
+                </div>
+
+                <span style="
+                    flex:0 0 auto;
+                    padding:6px 9px;
+                    border-radius:999px;
+                    background:${estadoInfo.fondo};
+                    border:1px solid ${estadoInfo.borde};
+                    color:${estadoInfo.texto};
+                    font-size:9px;
+                    font-weight:900;
+                    text-transform:uppercase;
+                ">${mv198Escapar(x.estado || "SIN ESTADO")}</span>
             </div>
-            <div class="mv282-datos-grid">
-                ${mv282LineaDato("Código de pedido", x.codigoPedido)}
-                ${mv282LineaDato("Ticket", x.ticket)}
-                ${mv282LineaDato("Código liquidación", x.codigoLiquidacion)}
-                ${mv282LineaDato("DNI / Documento", x.numeroDocumento)}
-                ${mv282LineaDato("Cliente", x.cliente)}
-                ${mv282LineaDato("Tipo de trabajo", x.tipoTrabajo)}
-                ${mv282LineaDato("Tipo de atención", x.tipoAtencion)}
-                ${mv282LineaDato("Código producción", x.codigoProduccion)}
+
+            <div style="
+                display:grid;
+                grid-template-columns:repeat(auto-fit,minmax(185px,1fr));
+                gap:8px;
+                padding:12px 14px;
+            ">
+                ${mv282LineaDato("Código de pedido",x.codigoPedido)}
+                ${mv282LineaDato("Código liquidación",x.codigoLiquidacion)}
+                ${mv282LineaDato("DNI / Documento",x.numeroDocumento)}
+                ${mv282LineaDato("Cliente",x.cliente)}
+                ${mv282LineaDato("Ticket / Campaña",x.ticket,true)}
+                ${mv282LineaDato("Tipo de trabajo",x.tipoTrabajo)}
+                ${mv282LineaDato("Tipo de atención",x.tipoAtencion)}
+                ${mv282LineaDato("Código producción",x.codigoProduccion)}
             </div>
-            <div class="mv282-trabajo-pie">
-                <span>${cantidad > 1 ? `${cantidad} órdenes agrupadas` : "1 orden"}</span>
-                <b>${mv58Valor(puntos)} pts</b>
+
+            <div style="
+                display:flex;
+                justify-content:space-between;
+                gap:10px;
+                align-items:center;
+                padding:10px 14px;
+                background:#0d2037;
+                border-top:1px solid rgba(148,163,184,.12);
+                color:#b9cee6;
+                font-size:11px;
+            ">
+                <span>${cantidad>1 ? `${cantidad} órdenes agrupadas` : "1 orden"}</span>
+                <b style="font-size:14px;color:#fff;">${Number(puntos).toFixed(1)} pts</b>
             </div>
-        </div>`;
+        </article>`;
     });
+
     return html + `</div>`;
 }
 
 function mv282RenderTrabajosDiarios(lista, filtros, origen){
     const limites = mv282LimitesPeriodo();
-    if(!MV282_TRABAJOS_DIARIOS.fecha) MV282_TRABAJOS_DIARIOS.fecha = limites.predeterminada;
-    const cuadrilla = filtros.cuadrilla || "TODAS";
-    const habilitado = cuadrilla !== "TODAS" && !!MV282_TRABAJOS_DIARIOS.fecha;
-    let resultado = "";
-    if(MV282_TRABAJOS_DIARIOS.cargando) resultado = `<div class="mv4-loading">Consultando trabajos diarios...</div>`;
-    else if(MV282_TRABAJOS_DIARIOS.error) resultado = `<div class="mv4-error">${mv198Escapar(MV282_TRABAJOS_DIARIOS.error)}</div>`;
-    else resultado = mv282RenderResultado(MV282_TRABAJOS_DIARIOS.resultado);
 
-    return `<div class="mv282-panel">
-        <div class="mv282-titulo"><div><b>📅 TRABAJOS DIARIOS POR CUADRILLA</b><span>Consulta qué órdenes atendió una cuadrilla en una fecha específica.</span></div></div>
-        <div class="mv282-consulta">
-            <label>Fecha
-                <input type="date" min="${limites.min}" max="${limites.max}" value="${mv198Escapar(MV282_TRABAJOS_DIARIOS.fecha)}" onchange="mv282CambiarFecha(this.value,'${origen}')">
-            </label>
-            <button type="button" onclick="mv282ConsultarTrabajosDiarios('${origen}')" ${habilitado && !MV282_TRABAJOS_DIARIOS.cargando ? "" : "disabled"}>🔎 Consultar trabajos</button>
+    if(!MV282_TRABAJOS_DIARIOS.fecha){
+        MV282_TRABAJOS_DIARIOS.fecha = limites.predeterminada;
+    }
+
+    const cuadrilla = filtros.cuadrilla || "TODAS";
+    const habilitado =
+        cuadrilla !== "TODAS" &&
+        !!MV282_TRABAJOS_DIARIOS.fecha;
+
+    let resultado = "";
+
+    if(MV282_TRABAJOS_DIARIOS.cargando){
+        resultado = `<div style="
+            margin-top:14px;
+            padding:18px;
+            border-radius:15px;
+            background:#0d2037;
+            color:#dbeafe;
+            text-align:center;
+        ">⏳ Consultando trabajos diarios...</div>`;
+    }else if(MV282_TRABAJOS_DIARIOS.error){
+        resultado = `<div style="
+            margin-top:14px;
+            padding:14px;
+            border-radius:13px;
+            background:#451a1a;
+            border:1px solid #ef4444;
+            color:#fee2e2;
+        ">${mv198Escapar(MV282_TRABAJOS_DIARIOS.error)}</div>`;
+    }else{
+        resultado = mv282RenderResultado(MV282_TRABAJOS_DIARIOS.resultado);
+    }
+
+    return `<section style="
+        margin-top:14px;
+        padding:15px;
+        border-radius:18px;
+        background:#102844;
+        border:1px solid #315577;
+        box-shadow:0 8px 20px rgba(0,0,0,.16);
+    ">
+        <div style="
+            display:flex;
+            justify-content:space-between;
+            align-items:flex-start;
+            gap:12px;
+            flex-wrap:wrap;
+        ">
+            <div>
+                <div style="font-size:16px;font-weight:900;color:#fff;">
+                    📅 TRABAJOS DIARIOS POR CUADRILLA
+                </div>
+                <div style="font-size:11px;color:#9fc1e4;margin-top:4px;line-height:1.45;">
+                    Consulta las órdenes atendidas, estados, cliente, códigos y puntos de una cuadrilla en una fecha específica.
+                </div>
+            </div>
+
+            ${cuadrilla !== "TODAS" ? `<div style="
+                padding:8px 10px;
+                border-radius:10px;
+                background:#0d2037;
+                color:#dbeafe;
+                font-size:10px;
+                font-weight:900;
+                max-width:100%;
+                overflow-wrap:anywhere;
+            ">🔎 ${mv198Escapar(cuadrilla)}</div>` : ""}
         </div>
-        ${cuadrilla === "TODAS" ? `<div class="mv282-aviso">Selecciona una cuadrilla en el filtro superior para realizar la consulta.</div>` : ""}
-        <div class="mv282-resultado">${resultado}</div>
-    </div>`;
+
+        <div style="
+            display:grid;
+            grid-template-columns:minmax(180px,260px) minmax(180px,240px);
+            gap:10px;
+            align-items:end;
+            margin-top:13px;
+        ">
+            <label style="
+                display:flex;
+                flex-direction:column;
+                gap:5px;
+                color:#dbeafe;
+                font-size:11px;
+                font-weight:900;
+            ">
+                Fecha
+                <input
+                    type="date"
+                    min="${limites.min}"
+                    max="${limites.max}"
+                    value="${mv198Escapar(MV282_TRABAJOS_DIARIOS.fecha)}"
+                    onchange="mv282CambiarFecha(this.value,'${origen}')"
+                    style="
+                        width:100%;
+                        box-sizing:border-box;
+                        min-height:42px;
+                        border:1px solid #4b78a6;
+                        border-radius:10px;
+                        padding:9px 10px;
+                        background:#fff;
+                        color:#0f172a;
+                        font-weight:800;
+                    "
+                >
+            </label>
+
+            <button
+                type="button"
+                onclick="mv282ConsultarTrabajosDiarios('${origen}')"
+                ${habilitado && !MV282_TRABAJOS_DIARIOS.cargando ? "" : "disabled"}
+                style="
+                    min-height:42px;
+                    border:0;
+                    border-radius:11px;
+                    padding:10px 13px;
+                    background:${habilitado ? "#1d8be0" : "#475569"};
+                    color:#fff;
+                    font-weight:900;
+                    cursor:${habilitado ? "pointer" : "not-allowed"};
+                    opacity:${habilitado ? "1" : ".72"};
+                "
+            >🔎 Consultar trabajos</button>
+        </div>
+
+        ${cuadrilla === "TODAS" ? `<div style="
+            margin-top:11px;
+            padding:10px 12px;
+            border-radius:11px;
+            background:#3f2d0a;
+            border:1px solid #a16207;
+            color:#fef3c7;
+            font-size:11px;
+        ">Selecciona una cuadrilla en el filtro superior para realizar la consulta.</div>` : ""}
+
+        <div>${resultado}</div>
+
+        <style>
+          @media(max-width:620px){
+            .mv4-page section[style*="background:#102844"] > div[style*="grid-template-columns:minmax(180px,260px)"]{
+              grid-template-columns:1fr !important;
+            }
+          }
+        </style>
+    </section>`;
 }
 
 async function mv282ConsultarTrabajosDiarios(origen){
@@ -3059,23 +3371,127 @@ function mv199MetasCuadrilla(x){
     return mv4Resumen([x]);
 }
 
+
+function mv359CumplimientoDiaCuadrilla(x){
+    const d = x?.mv353CumplimientoDia || {};
+    const puntos = Number(x?.produccion) || 0;
+    const meta = Number(d.metaAcumulada) || 0;
+    const diasCampo = Number(d.diasCampo) || 0;
+    const metaDiaria = Number(d.metaDiaria) || 5;
+    const porcentaje = meta > 0 ? puntos / meta * 100 : null;
+    const brecha = puntos - meta;
+
+    return {
+        puntos,
+        meta,
+        diasCampo,
+        metaDiaria,
+        porcentaje,
+        brecha,
+        fechaCorte:d.fechaCorte || ""
+    };
+}
+
 function mv199ConfigIndicador(indicador){
     const configs = {
-        PRODUCCION:{titulo:"Producción", icono:"📈", campo:"produccion", orden:"DESC", valor:x=>`${Number(x.produccion||0).toFixed(1)} pts`, detalle:x=>`${Math.round((Number(x.produccion||0)/META_PRODUCCION_CUADRILLA)*100)}% de meta`},
-        EFECTIVIDAD:{titulo:"Efectividad", icono:"🎯", campo:"efectividad", orden:"DESC", valor:x=>mv4Per(x.efectividad), detalle:x=>`Meta ≥ ${META_EFECTIVIDAD}%`},
-        RECABLEADO:{titulo:"% Recableado", icono:"🔧", campo:"recableado", orden:"ASC", valor:x=>mv4Per(x.recableado), detalle:x=>`${Number(x.detRecableado?.recableados||0)} recableados / ${Number(x.detRecableado?.rojoAsignadas||0)} órdenes VT`},
-        VTRGAR:{titulo:"% VTR/GAR", icono:"📡", campo:"vtrgar", orden:"ASC", valor:x=>mv4Per(x.vtrgar), detalle:x=>`${Number(x.detVtrGar?.totalGarVtr||0)} incidencias`},
-        OBSERVACIONES:{titulo:"Observaciones", icono:"🚨", campo:"montoAfectadoObs", orden:"ASC", valor:x=>mv4Money(x.montoAfectadoObs||0), detalle:x=>`${Number(x.observaciones||0)} observaciones`},
-        METAS:{titulo:"Metas y cumplimiento", icono:"🏆", campo:"cumplimiento", orden:"DESC", valor:x=>`${mv199MetasCuadrilla(x).cumplimiento}%`, detalle:x=>`${mv199MetasCuadrilla(x).ok} de 5 metas cumplidas`},
-        RANKING:{titulo:"Ranking / posición", icono:"🥇", campo:"puestoRegion", orden:"ASC", valor:x=>x.puestoRegion?`#${x.puestoRegion}`:"-", detalle:x=>`Sede #${x.puestoSede||'-'} · Plataforma #${x.puestoPlataforma||'-'}`}
+        PRODUCCION:{
+            titulo:"Producción · avance mensual",
+            icono:"📈",
+            campo:"produccion",
+            orden:"DESC",
+            valor:x=>`${Number(x.produccion||0).toFixed(1)} pts`,
+            detalle:x=>`${Math.round((Number(x.produccion||0)/META_PRODUCCION_CUADRILLA)*100)}% de 130 pts`
+        },
+        CUMPLIMIENTO_DIA:{
+            titulo:"Cumplimiento productivo al día",
+            icono:"📅",
+            campo:"cumplimientoDia",
+            orden:"DESC",
+            valorOrden:x=>{
+                const d = mv359CumplimientoDiaCuadrilla(x);
+                return d.porcentaje === null ? -1 : d.porcentaje;
+            },
+            valor:x=>{
+                const d = mv359CumplimientoDiaCuadrilla(x);
+                return d.porcentaje === null ? "N/E" : `${d.porcentaje.toFixed(1)}%`;
+            },
+            detalle:x=>{
+                const d = mv359CumplimientoDiaCuadrilla(x);
+                if(d.porcentaje === null){
+                    return "Sin meta acumulada para el período";
+                }
+                const brecha = `${d.brecha > 0 ? "+" : ""}${d.brecha.toFixed(1)} pts`;
+                return `${d.puntos.toFixed(1)} / ${d.meta.toFixed(1)} pts · ${d.diasCampo} días × ${d.metaDiaria} pts · Brecha ${brecha}`;
+            }
+        },
+        EFECTIVIDAD:{
+            titulo:"Efectividad",
+            icono:"🎯",
+            campo:"efectividad",
+            orden:"DESC",
+            valor:x=>mv4Per(x.efectividad),
+            detalle:x=>`${Number(x.detEfectividad?.finalizadas||0)} finalizadas / ${Number(x.detEfectividad?.total||0)} órdenes · Meta ≥ ${META_EFECTIVIDAD}%`
+        },
+        RECABLEADO:{
+            titulo:"% Recableado",
+            icono:"🔧",
+            campo:"recableado",
+            orden:"ASC",
+            valor:x=>mv4Per(x.recableado),
+            detalle:x=>`${Number(x.detRecableado?.recableados||0)} recableados / ${Number(x.detRecableado?.los ?? x.detRecableado?.rojoAsignadas ?? 0)} órdenes VT`
+        },
+        VTRGAR:{
+            titulo:"% VTR/GAR",
+            icono:"📡",
+            campo:"vtrgar",
+            orden:"ASC",
+            valor:x=>mv4Per(x.vtrgar),
+            detalle:x=>`${Number(x.detVtrGar?.total ?? x.detVtrGar?.totalGarVtr ?? 0)} incidencias · GAR ${Number(x.detVtrGar?.gar||0)} · VTR ${Number(x.detVtrGar?.vtr||0)}`
+        },
+        OBSERVACIONES:{
+            titulo:"Observaciones",
+            icono:"🚨",
+            campo:"montoAfectadoObs",
+            orden:"ASC",
+            valor:x=>mv4Money(x.montoAfectadoObs||0),
+            detalle:x=>`${Number(x.observaciones||0)} observaciones · Total ${mv4Money(x.montoTotalObs||0)}`
+        },
+        METAS:{
+            titulo:"Cumplimiento general · 5 metas",
+            icono:"🏆",
+            campo:"cumplimiento",
+            orden:"DESC",
+            valor:x=>`${mv199MetasCuadrilla(x).cumplimiento}%`,
+            detalle:x=>`${mv199MetasCuadrilla(x).ok} de 5 metas cumplidas`
+        },
+        RANKING:{
+            titulo:"Ranking / posición",
+            icono:"🥇",
+            campo:"puestoRegion",
+            orden:"ASC",
+            valor:x=>x.puestoRegion?`#${x.puestoRegion}`:"-",
+            detalle:x=>`Sede #${x.puestoSede||'-'} · Plataforma #${x.puestoPlataforma||'-'}`
+        }
     };
     return configs[indicador] || null;
 }
 
 function mv199ValorOrden(x, config){
-    if(config.campo === "cumplimiento") return Number(mv199MetasCuadrilla(x).cumplimiento||0);
+    if(typeof config.valorOrden === "function"){
+        const personalizado = Number(config.valorOrden(x));
+        return Number.isFinite(personalizado) ? personalizado : -1;
+    }
+    if(config.campo === "cumplimiento"){
+        return Number(mv199MetasCuadrilla(x).cumplimiento||0);
+    }
     const n = Number(x[config.campo]);
-    if(config.orden === "ASC" && (!Number.isFinite(n) || n <= 0) && config.campo === "puestoRegion") return 999999;
+    if(
+        config.orden === "ASC" &&
+        (!Number.isFinite(n) || n <= 0) &&
+        config.campo === "puestoRegion"
+    ){
+        return 999999;
+    }
     return Number.isFinite(n) ? n : 0;
 }
 
