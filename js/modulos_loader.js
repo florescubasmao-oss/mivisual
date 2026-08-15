@@ -7,7 +7,7 @@
 (function(){
   "use strict";
 
-  const VERSION = "V411-SLA-RANKING-CORREGIDO-20260815";
+  const VERSION = "V413-RANKING-SLA-VISUAL-20260815";
   const MODULOS = {
     dashboards_core: {
       archivos: [
@@ -45,7 +45,7 @@
       archivos: [
         `./js/ranking.js?v=V408-RANKING-CORRECTO`,
         `./js/ranking_informe_v358.js?v=V408-RESTAURA-V403`,
-        `./js/ranking_sla_v411.js?v=V411-RANKING-SLA`
+        `./js/ranking_sla_v413.js?v=V413-RANKING-SLA-VISUAL`
       ],
       entradas: ["mostrarRanking"]
     },
