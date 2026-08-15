@@ -1,5 +1,5 @@
 /* =====================================================
-   MI VISUAL V410 - Carga dinámica + parches controlados
+   MI VISUAL V411 - Carga dinámica + corrección SLA y Ranking
    - El inicio descarga solo el núcleo de la aplicación.
    - Cada opción carga su JavaScript al abrirse.
    - Evita descargas duplicadas y conserva funciones estables.
@@ -7,14 +7,14 @@
 (function(){
   "use strict";
 
-  const VERSION = "V410-PARCHE-CONTROLADO-20260815";
+  const VERSION = "V411-SLA-RANKING-CORREGIDO-20260815";
   const MODULOS = {
     dashboards_core: {
       archivos: [
         `./js/dashboards.js?v=V408-RESTAURA-V403`,
         `./js/resumen_dashboard_v361.js?v=V408-RESTAURA-V403`,
         `./js/sla_gestion_v363.js?v=V408-RESTAURA-V403`,
-        `./js/sla_excepciones_v410.js?v=V410-SLA-EXCEPCIONES`,
+        `./js/sla_excepciones_v411.js?v=V411-SLA-EXCEPCIONES`,
         `./js/dashboard_consolidado_v365.js?v=V408-RESTAURA-V403`,
         `./js/dashboard_sla_tools_v366.js?v=V408-RESTAURA-V403`,
         `./js/informe_gerencial_lazy_v361.js?v=V408-RESTAURA-V403`
@@ -45,7 +45,7 @@
       archivos: [
         `./js/ranking.js?v=V408-RANKING-CORRECTO`,
         `./js/ranking_informe_v358.js?v=V408-RESTAURA-V403`,
-        `./js/ranking_sla_v410.js?v=V410-RANKING-SLA`
+        `./js/ranking_sla_v411.js?v=V411-RANKING-SLA`
       ],
       entradas: ["mostrarRanking"]
     },
