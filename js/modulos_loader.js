@@ -1,5 +1,5 @@
 /* =====================================================
-   MI VISUAL V341 - Carga dinámica de módulos
+   MI VISUAL V406 - Carga dinámica de módulos
    - El inicio descarga solo el núcleo de la aplicación.
    - Cada opción carga su JavaScript al abrirse.
    - Evita descargas duplicadas y conserva funciones estables.
@@ -7,18 +7,24 @@
 (function(){
   "use strict";
 
-  const VERSION = "V341-VALIDACION-20260803";
+  const VERSION = "V406-RESTAURA-20260815";
   const MODULOS = {
     dashboards_core: {
       archivos: [
-        `./js/dashboards.js?v=V359-TRABAJOS-CUMPLIMIENTO`,
+        `./js/dashboards.js?v=V406-RESTAURA-SLA`,
+        `./js/resumen_dashboard_v361.js?v=V406-RESTAURA-SLA`,
+        `./js/sla_gestion_v363.js?v=V406-RESTAURA-SLA`,
+        `./js/dashboard_consolidado_v365.js?v=V406-RESTAURA-SLA`,
         `./js/informe_gerencial_v355.js?v=V359-TRABAJOS-CUMPLIMIENTO`
       ],
       entradas: ["mostrarProduccionV2", "mostrarDashboardSupervisor", "mostrarDashboardJefatura"]
     },
     dashboard: {
       depende: ["dashboards_core"],
-      archivos: [`./js/bono_supervisores.js?v=V359-TRABAJOS-CUMPLIMIENTO`],
+      archivos: [
+        `./js/bono_supervisores.js?v=V406-RESTAURA-SLA`,
+        `./js/dashboard_sla_tools_v366.js?v=V406-RESTAURA-SLA`
+      ],
       entradas: ["mostrarBonosSupervisores"]
     },
     indicadores: {
@@ -27,7 +33,7 @@
     },
     ranking: {
       archivos: [
-        `./js/ranking.js?v=V405-RANKING-PERIODOS-FIX`,
+        `./js/ranking.js?v=V406-RANKING-OK`,
         `./js/dashboards.js?v=V359-TRABAJOS-CUMPLIMIENTO`,
         `./js/ranking_informe_v358.js?v=V405-RANKING-PERIODOS-FIX`
       ],
@@ -45,7 +51,11 @@
       entradas: ["mostrarObservaciones"]
     },
     accesos: {
-      archivos: [`./js/accesos.js?v=${VERSION}`],
+      archivos: [
+        `./js/accesos.js?v=${VERSION}`,
+        `./js/accesos_certificacion_v362.js?v=V406-RESTAURA-ACCESOS`,
+        `./js/accesos_simulacro_v383.js?v=V406-RESTAURA-ACCESOS`
+      ],
       entradas: ["mostrarAccesos", "mostrarBiblioteca", "mostrarCapacitacion"]
     },
     actividad: {
@@ -92,8 +102,16 @@
       entradas: ["mostrarMapaOperativo"]
     },
     plantilla: {
-      archivos: [`./js/plantilla_orden.js?v=V405-PLANTILLA-TEXTO`],
+      archivos: [`./js/plantilla_orden.js?v=V406-BOTONES-ORDENADOS`],
       entradas: ["mostrarPlantillaOrden"]
+    },
+    facturas: {
+      archivos: [`./js/facturas_v380.js?v=V406-RESTAURA-FACTURAS`],
+      entradas: ["mostrarFacturas"]
+    },
+    facturas_ui: {
+      archivos: [`./js/facturas_menu_v382.js?v=V406-RESTAURA-FACTURAS`],
+      entradas: []
     },
     administracion: {
       depende: ["dashboards_core", "accesos", "checklist"],
@@ -130,6 +148,7 @@
     mostrarConsultasReclamos: "mesa",
     mostrarMapaOperativo: "mapa",
     mostrarPlantillaOrden: "plantilla",
+    mostrarFacturas: "facturas",
     mostrarAdministracion: "administracion"
   };
 
@@ -147,7 +166,7 @@
       actividad:"Actividad en Campo", validacion:"Validación Técnica", actas:"Gestión de Actas",
       equipos:"Equipos Averiados", analisis:"Análisis Económico", checklist:"Checklist Almacén",
       descansos:"Programación de Descansos", pext:"PEXT", mesa:"Mesa de Ayuda",
-      mapa:"Mapa Operativo", plantilla:"Plantilla de Orden", administracion:"Administración"
+      mapa:"Mapa Operativo", plantilla:"Plantilla de Orden", facturas:"Facturas", facturas_ui:"Facturas", administracion:"Administración"
     };
     return nombres[id] || "módulo";
   }
@@ -294,6 +313,8 @@
 
   function prepararPerfil(perfil){
     const p = String(perfil || "").toUpperCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"").trim();
+    // V406: restaura el acceso pequeño de Facturas sin cargar el módulo completo.
+    programarCarga("facturas_ui", 120);
     if(p === "TECNICO"){
       programarCarga("dashboards_core", 700);
       programarCarga("indicadores", 1600);

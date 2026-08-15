@@ -251,6 +251,11 @@ function renderPlantillaOrden(orden, plantilla){
         </div>
         <div class="po-badges"><span class="po-badge-state">${poEsc(estado)}</span>${orden.codigoCliente?`<span class="po-badge-code">${poEsc(orden.codigoCliente)}</span>`:""}</div>
       </div>
+      <div class="po-actions">
+        <button class="po-primary" type="button" onclick="nuevaBusquedaPlantilla()">Nueva búsqueda</button>
+        <button type="button" onclick="copiarPlantillaCompleta()">Copiar plantilla completa</button>
+      </div>
+
       ${poSeccionHtml("Datos de la orden","📋",`<div class="po-fields">${resumen}</div>`,"po-order-section")}
       ${poSeccionHtml("Datos del cliente","👤",`<div class="po-fields">${cliente}</div>`)}
       ${poSeccionHtml("Datos del servicio / trabajo","🌐",`<div class="po-fields">${servicio}</div>`)}
@@ -261,13 +266,6 @@ function renderPlantillaOrden(orden, plantilla){
         <summary>Ver texto para copiar o seleccionar</summary>
         <textarea id="poTextoPlantilla" class="po-text" readonly spellcheck="false">${poEsc(plantilla)}</textarea>
       </details>
-
-      <div class="po-actions">
-        <button class="po-primary" type="button" onclick="copiarPlantillaCompleta()">Copiar plantilla completa</button>
-        <button type="button" onclick="copiarSeleccionPlantilla()">Copiar selección</button>
-        <button type="button" onclick="nuevaBusquedaPlantilla()">Nueva búsqueda</button>
-        <button type="button" ${tieneUbicacion ? "" : "disabled"} onclick="verUbicacionPlantilla(${tieneUbicacion?latitud:"''"},${tieneUbicacion?longitud:"''"})">Ver ubicación</button>
-      </div>
 
       ${poPanelCtoCercanasHtml(orden,tieneUbicacion)}
     </section>`;
