@@ -1,5 +1,5 @@
 /* ============================================================
-   MI VISUAL V413 - SLA visible en Ranking REAL
+   MI VISUAL V414 - SLA visible + período correcto en Ranking
    - No reemplaza el cálculo ni la carga del Ranking.
    - Conserva ranking_informe_v358.js completo.
    - Después de que V358 dibuja cada tarjeta, agrega SLA usando
@@ -34,8 +34,33 @@
   }
 
   function periodoActual(solicitado){
-    const p = String(solicitado || window.MV276_RANKING_PERIODO || "").trim();
-    return /^\d{4}-\d{2}$/.test(p) ? p : "";
+    const candidatos = [];
+
+    if(solicitado) candidatos.push(solicitado);
+
+    // MV276_RANKING_PERIODO fue declarado con `let` en ranking.js.
+    // Por eso puede existir como binding global pero NO como window.propiedad.
+    try{
+      if(typeof MV276_RANKING_PERIODO !== "undefined"){
+        candidatos.push(MV276_RANKING_PERIODO);
+      }
+    }catch(_){}
+
+    if(window.MV276_RANKING_PERIODO){
+      candidatos.push(window.MV276_RANKING_PERIODO);
+    }
+
+    const selector = document.getElementById("mv276RankingPeriodo");
+    if(selector && selector.value){
+      candidatos.push(selector.value);
+    }
+
+    for(const valor of candidatos){
+      const p = String(valor || "").trim();
+      if(/^\d{4}-\d{2}$/.test(p)) return p;
+    }
+
+    return "";
   }
 
   function etiquetaPeriodo(periodo){
@@ -224,5 +249,5 @@
   }
 
   window.MV413_RANKING_SLA_VISUAL_OK = true;
-  console.log("MI VISUAL V413: SLA insertado sobre el Ranking real sin reemplazar su lógica.");
+  console.log("MI VISUAL V414: SLA y período del Ranking corregidos sin alterar su lógica.");
 })();
