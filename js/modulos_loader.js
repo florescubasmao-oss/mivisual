@@ -124,7 +124,7 @@
     },
     mapa: {
       archivos: [
-        `./js/mapa_operativo.js?v=V418-MAPA-MULTIFILTRO`,
+        `./js/mapa_operativo.js?v=V419-MAPA-MULTIFILTRO-FIX`,
         `./js/mapa_partner_visual_v386.js?v=V408-RESTAURA-V403`,
         `./js/mapa_progreso_v393.js?v=V408-RESTAURA-V403`,
         `./js/mapa_rapido_v395.js?v=V408-RESTAURA-V403`,

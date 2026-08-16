@@ -312,9 +312,14 @@ async function moConsultarMapa(){
     periodo:moPeriodoValido(document.getElementById('moFiltroPeriodo')?.value),
     sede:moNorm(document.getElementById('moFiltroSede')?.value),
     fecha:moNorm(document.getElementById('moFiltroFecha')?.value),
+    // V419: los plurales son los filtros reales del backend.
+    // Los singulares se envían solo como firma compatible con la caché V395.
     gruposTrabajo:JSON.stringify(grupos),
     estados:JSON.stringify(estados),
     cuadrillas:JSON.stringify(cuadrillas),
+    grupoTrabajo:grupos.length?grupos.join('||'):'__TODOS_V419__',
+    estado:estados.length?estados.join('||'):'__TODOS_V419__',
+    cuadrilla:cuadrillas.length?cuadrillas.join('||'):'__TODOS_V419__',
     codigo:moNorm(document.getElementById('moBuscarCodigo')?.value)
   };
   if(!filtros.periodo){document.getElementById('moContador').textContent='Debe seleccionar el período que desea consultar.';return}
