@@ -1,5 +1,5 @@
 /* ============================================================
-   MI VISUAL V422 - Auditoría integrada + alertas operativas
+   MI VISUAL V423 - Auditoría integrada + indicadores completos
    CAPA INCREMENTAL:
    - No modifica Mapa V419 ni optimización V395.
    - Añade "Mostrar órdenes auditadas".
@@ -90,6 +90,15 @@
       .mv422-alerta b{color:#7c2d12}
       .mv422-alerta-ok{padding:9px 10px;border-radius:10px;background:#dcfce7;color:#166534;font-size:12px;line-height:1.4;border-left:4px solid #22c55e}
       .mv422-subtitulo{font-size:12px;font-weight:900;color:#334155;margin:12px 0 6px}
+      .mv423-indicadores{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin-top:8px}
+      .mv423-ind{padding:10px;border-radius:11px;background:#f8fafc;border:1px solid #dbe4ee;color:#0f172a;font-size:11px;line-height:1.35}
+      .mv423-ind b{display:block;font-size:12px;margin-bottom:3px}
+      .mv423-ind strong{font-size:16px}
+      .mv423-ok{border-left:4px solid #22c55e}
+      .mv423-warn{border-left:4px solid #f59e0b;background:#fff7ed}
+      .mv423-bad{border-left:4px solid #ef4444;background:#fef2f2}
+      .mv423-neutral{border-left:4px solid #64748b}
+      @media(max-width:620px){.mv423-indicadores{grid-template-columns:1fr}}
       .mv421-acta{display:flex;gap:10px;align-items:center;justify-content:space-between;flex-wrap:wrap}
       .mv421-history-item{border:1px solid #e2e8f0;border-radius:12px;padding:10px;margin:8px 0;background:#fff}
       .mv421-history-item strong{color:#0f172a}.mv421-history-item small{color:#64748b}
@@ -361,59 +370,95 @@
   function alertasIndicadoresHtmlV422(item){
     if(!item)return `<div class="mv421-note mv421-muted">No se encontró resumen operativo de esta cuadrilla para el período.</div>`;
 
-    // Metas vigentes del sistema.
     const META_EFECTIVIDAD=70;
     const META_RECABLEADO=42;
     const META_VTRGAR=3;
     const META_SLA=95;
 
-    const alertas=[];
+    const bloques=[];
+
     const diario=item.mv353CumplimientoDia||{};
     const metaAcumulada=Number(diario.metaAcumulada)||0;
     const produccion=Number(item.produccion)||0;
-
-    if(metaAcumulada>0 && produccion<metaAcumulada){
+    if(metaAcumulada>0){
       const cumplimiento=(produccion/metaAcumulada)*100;
-      alertas.push(`<div class="mv422-alerta"><b>Producción al día:</b> ${produccion.toFixed(1)} pts frente a meta acumulada de ${metaAcumulada.toFixed(1)} pts (${cumplimiento.toFixed(1)}% de cumplimiento).</div>`);
+      bloques.push(`
+        <div class="mv423-ind ${produccion>=metaAcumulada?'mv423-ok':'mv423-bad'}">
+          <b>Producción al día</b>
+          <strong>${produccion.toFixed(1)} pts</strong><br>
+          Meta acumulada: ${metaAcumulada.toFixed(1)} pts · Cumplimiento: ${cumplimiento.toFixed(1)}%
+        </div>`);
+    }else{
+      bloques.push(`
+        <div class="mv423-ind mv423-neutral">
+          <b>Producción al día</b>
+          <strong>${produccion.toFixed(1)} pts</strong><br>
+          Sin meta acumulada disponible para comparar.
+        </div>`);
     }
 
     const ef=pctV422(item.efectividad);
     const totalEf=Number(item.detEfectividad?.total)||0;
-    if(totalEf>0 && ef<META_EFECTIVIDAD){
-      alertas.push(`<div class="mv422-alerta"><b>Efectividad:</b> ${ef.toFixed(2)}%, por debajo de la meta de ${META_EFECTIVIDAD}%.</div>`);
-    }
+    bloques.push(`
+      <div class="mv423-ind ${totalEf>0?(ef>=META_EFECTIVIDAD?'mv423-ok':'mv423-bad'):'mv423-neutral'}">
+        <b>Efectividad</b>
+        <strong>${ef.toFixed(2)}%</strong><br>
+        Meta: ≥ ${META_EFECTIVIDAD}%${totalEf>0?` · ${Number(item.detEfectividad?.finalizadas)||0} finalizadas / ${totalEf} órdenes`:''}
+      </div>`);
 
     const rec=pctV422(item.recableado);
     const los=Number(item.detRecableado?.los)||0;
-    if(los>0 && rec>META_RECABLEADO){
-      alertas.push(`<div class="mv422-alerta"><b>Recableado:</b> ${rec.toFixed(2)}%, por encima del máximo de ${META_RECABLEADO}% (${Number(item.detRecableado?.recableados)||0} recableados / ${los} órdenes VT).</div>`);
-    }
+    bloques.push(`
+      <div class="mv423-ind ${los>0?(rec<=META_RECABLEADO?'mv423-ok':'mv423-bad'):'mv423-neutral'}">
+        <b>% Recableado</b>
+        <strong>${rec.toFixed(2)}%</strong><br>
+        Meta: ≤ ${META_RECABLEADO}%${los>0?` · ${Number(item.detRecableado?.recableados)||0} recableados / ${los} órdenes VT`:''}
+      </div>`);
 
     const vg=pctV422(item.vtrgar);
     const finVg=Number(item.detVtrGar?.finalizadas)||0;
-    if(finVg>0 && vg>META_VTRGAR){
-      alertas.push(`<div class="mv422-alerta"><b>VTR/GAR:</b> ${vg.toFixed(2)}%, por encima del máximo de ${META_VTRGAR}% (${Number(item.detVtrGar?.total)||0} incidencia(s)).</div>`);
-    }
+    bloques.push(`
+      <div class="mv423-ind ${finVg>0?(vg<=META_VTRGAR?'mv423-ok':'mv423-bad'):'mv423-neutral'}">
+        <b>VTR / GAR</b>
+        <strong>${vg.toFixed(2)}%</strong><br>
+        Meta: ≤ ${META_VTRGAR}%${finVg>0?` · GAR ${Number(item.detVtrGar?.gar)||0} · VTR ${Number(item.detVtrGar?.vtr)||0}`:''}
+      </div>`);
 
     const sla=pctV422(item.slaAjustado??item.sla);
     const evalSla=Number(item.detSla?.evaluables)||0;
-    if(evalSla>0 && sla<META_SLA){
-      alertas.push(`<div class="mv422-alerta"><b>Tiempo de Gestión - SLA:</b> ${sla.toFixed(2)}%, por debajo de la meta de ${META_SLA}%. Fuera de SLA: ${Number(item.detSla?.fueraAjustado??item.detSla?.fueraBruto)||0}.</div>`);
-    }
+    const fueraSla=Number(item.detSla?.fueraAjustado??item.detSla?.fueraBruto)||0;
+    bloques.push(`
+      <div class="mv423-ind ${evalSla>0?(sla>=META_SLA?'mv423-ok':'mv423-bad'):'mv423-neutral'}">
+        <b>Tiempo de Gestión - SLA</b>
+        <strong>${sla.toFixed(2)}%</strong><br>
+        Meta: ≥ ${META_SLA}%${evalSla>0?` · Evaluables ${evalSla} · Fuera SLA ${fueraSla}`:''}
+      </div>`);
 
     const obs=Number(item.observaciones)||0;
+    const d=item.detObservaciones||{};
+    const estados=d.estados||{};
+    const pendientes=Number(d.pendientes)||0;
+    const penalizadas=Number(estados.PENALIZADO)||0;
+    const derivadas=Number(estados.DERIVADO)||0;
+
     if(obs>0){
-      const d=item.detObservaciones||{};
-      const estados=d.estados||{};
-      const pendientes=Number(d.pendientes)||0;
-      const penalizadas=Number(estados.PENALIZADO)||0;
-      const derivadas=Number(estados.DERIVADO)||0;
-      alertas.push(`<div class="mv422-alerta"><b>Observaciones:</b> ${obs} registrada(s). Pendientes: ${pendientes} · Penalizadas: ${penalizadas} · Derivadas: ${derivadas} · Monto afectado: ${moneyV422(item.montoAfectadoObs)}.</div>`);
+      bloques.push(`
+        <div class="mv423-ind mv423-bad">
+          <b>Observaciones</b>
+          <strong>${obs}</strong><br>
+          Pendientes: ${pendientes} · Penalizadas: ${penalizadas} · Derivadas: ${derivadas}<br>
+          Monto afectado: ${moneyV422(item.montoAfectadoObs)}
+        </div>`);
+    }else{
+      bloques.push(`
+        <div class="mv423-ind mv423-ok">
+          <b>Observaciones</b>
+          <strong>0</strong><br>
+          Sin observaciones en el período actual.
+        </div>`);
     }
 
-    return alertas.length
-      ?`<div class="mv422-alertas">${alertas.join("")}</div>`
-      :`<div class="mv422-alerta-ok">✓ Los indicadores disponibles de la cuadrilla se encuentran dentro de las metas operativas.</div>`;
+    return `<div class="mv423-indicadores">${bloques.join("")}</div>`;
   }
 
   async function cargarIndicadoresFichaV422(orden){

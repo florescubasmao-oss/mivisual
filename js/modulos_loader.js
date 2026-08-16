@@ -129,7 +129,7 @@
         `./js/mapa_progreso_v393.js?v=V408-RESTAURA-V403`,
         `./js/mapa_rapido_v395.js?v=V408-RESTAURA-V403`,
         `./js/mapa_campo_v408.js?v=V408-MAPA-CAMPO`,
-        `./js/mapa_auditoria_v421.js?v=V422-ALERTAS-OPERATIVAS`
+        `./js/mapa_auditoria_v421.js?v=V423-INDICADORES-COMPLETOS`
       ],
       entradas: ["mostrarMapaOperativo"]
     },
