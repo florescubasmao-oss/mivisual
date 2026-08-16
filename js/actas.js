@@ -442,7 +442,7 @@ function construirFiltrosActas(actas){
         cont.innerHTML = `<div class="actas-filters">
             <div class="actas-filters-title">🔎 Filtros de mis actas</div>
             <div class="actas-filters-grid tech">
-                <div class="actas-filter-field"><label>Código de pedido</label><input id="filtroActaCodigoPedido" value="${limpiarHtmlActas(prev.codigoPedido)}" placeholder="Buscar código" oninput="aplicarFiltrosActas()"></div>
+                <div class="actas-filter-field"><label>Código de pedido / cliente</label><input id="filtroActaCodigoPedido" value="${limpiarHtmlActas(prev.codigoPedido)}" placeholder="Buscar código" oninput="aplicarFiltrosActas()"></div>
                 <div class="actas-filter-field"><label>Número de acta</label><input id="filtroActaNumero" value="${limpiarHtmlActas(prev.numeroActa)}" placeholder="Buscar número" oninput="aplicarFiltrosActas()"></div>
                 <div class="actas-filter-actions"><button class="actas-btn sec" type="button" onclick="limpiarFiltrosActas()">Limpiar filtros</button></div>
             </div>
@@ -456,6 +456,7 @@ function construirFiltrosActas(actas){
     cont.innerHTML = `<div class="actas-filters">
         <div class="actas-filters-title">🔎 Filtros de Gestión de Actas</div>
         <div class="actas-filters-grid">
+            <div class="actas-filter-field"><label>Código de pedido / cliente</label><input id="filtroActaCodigoPedido" value="${limpiarHtmlActas(prev.codigoPedido)}" placeholder="Buscar código" oninput="aplicarFiltrosActas()"></div>
             <div class="actas-filter-field"><label>Número de acta</label><input id="filtroActaNumero" value="${limpiarHtmlActas(prev.numeroActa)}" placeholder="Buscar número" oninput="aplicarFiltrosActas()"></div>
             <div class="actas-filter-field"><label>Fecha</label><input type="date" id="filtroActaFecha" value="${limpiarHtmlActas(prev.fecha)}" onchange="aplicarFiltrosActas()"></div>
             ${mostrarSede ? `<div class="actas-filter-field"><label>Sede</label><select id="filtroActaSede" onchange="actualizarCuadrillasFiltroActas();aplicarFiltrosActas()"><option value="">Todas</option>${sedes.map(x=>`<option value="${limpiarHtmlActas(x)}" ${normalizarActas(prev.sede)===normalizarActas(x)?"selected":""}>${limpiarHtmlActas(x)}</option>`).join("")}</select></div>` : ""}
@@ -900,8 +901,19 @@ async function cargarResumenActas(dataPrecargada){
 function resumenTablasActas(data){
     const sedes = (data.sedes || []).map(x => `<tr><td>${limpiarHtmlActas(x.sede)}</td><td>${x.escaneadas}</td><td>${x.finalizadas}</td><td>${x.observadas}</td><td>${x.pendientes}</td></tr>`).join("") || `<tr><td colspan="5" class="actas-empty">No existen actas registradas por sede.</td></tr>`;
     const cuadrillas = (data.cuadrillas || []).map(x => `<tr><td>${limpiarHtmlActas(x.sede)}</td><td>${limpiarHtmlActas(x.cuadrilla)}</td><td>${x.escaneadas}</td><td>${x.finalizadas}</td><td>${x.observadas}</td><td>${x.pendientes}</td></tr>`).join("") || `<tr><td colspan="6" class="actas-empty">No existen actas registradas por cuadrilla.</td></tr>`;
-    return `<div class="actas-card"><b>Resumen por sede</b><table class="actas-table" style="display:table;margin-top:8px;"><thead><tr><th>Sede</th><th>Escaneadas</th><th>Finalizadas</th><th>Observadas</th><th>Pendientes</th></tr></thead><tbody>${sedes}</tbody></table></div>
-    <div class="actas-card"><b>Resumen por cuadrilla</b><table class="actas-table" style="display:table;margin-top:8px;"><thead><tr><th>Sede</th><th>Cuadrilla</th><th>Escaneadas</th><th>Finalizadas</th><th>Observadas</th><th>Pendientes</th></tr></thead><tbody>${cuadrillas}</tbody></table></div>`;
+    const estiloResumen = `cursor:pointer;font-weight:900;display:flex;align-items:center;justify-content:space-between;gap:10px;list-style:none;`;
+    return `<details class="actas-card actas-resumen-desplegable">
+        <summary style="${estiloResumen}"><span>📍 Resumen por sede</span><span style="font-size:12px;opacity:.7;">Ver detalle ▾</span></summary>
+        <div style="margin-top:8px;overflow-x:auto;">
+            <table class="actas-table" style="display:table;margin-top:0;"><thead><tr><th>Sede</th><th>Escaneadas</th><th>Finalizadas</th><th>Observadas</th><th>Pendientes</th></tr></thead><tbody>${sedes}</tbody></table>
+        </div>
+    </details>
+    <details class="actas-card actas-resumen-desplegable">
+        <summary style="${estiloResumen}"><span>👥 Resumen por cuadrilla</span><span style="font-size:12px;opacity:.7;">Ver detalle ▾</span></summary>
+        <div style="margin-top:8px;overflow-x:auto;">
+            <table class="actas-table" style="display:table;margin-top:0;"><thead><tr><th>Sede</th><th>Cuadrilla</th><th>Escaneadas</th><th>Finalizadas</th><th>Observadas</th><th>Pendientes</th></tr></thead><tbody>${cuadrillas}</tbody></table>
+        </div>
+    </details>`;
 }
 
 function fechaHoyLimaActas(){
