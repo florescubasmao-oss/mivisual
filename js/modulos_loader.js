@@ -7,7 +7,7 @@
 (function(){
   "use strict";
 
-  const VERSION = "V420-LOADER-ANTIBLOQUEO-20260816";
+  const VERSION = "V421-AUDITORIA-MAPA-INCREMENTAL-20260816";
   const MODULOS = {
     dashboards_core: {
       archivos: [
@@ -128,7 +128,8 @@
         `./js/mapa_partner_visual_v386.js?v=V408-RESTAURA-V403`,
         `./js/mapa_progreso_v393.js?v=V408-RESTAURA-V403`,
         `./js/mapa_rapido_v395.js?v=V408-RESTAURA-V403`,
-        `./js/mapa_campo_v408.js?v=V408-MAPA-CAMPO`
+        `./js/mapa_campo_v408.js?v=V408-MAPA-CAMPO`,
+        `./js/mapa_auditoria_v421.js?v=V421-AUDITORIA-CAMPO`
       ],
       entradas: ["mostrarMapaOperativo"]
     },
