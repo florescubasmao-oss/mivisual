@@ -131,6 +131,89 @@ function moPintarUltimaActualizacion(texto){
   e.innerHTML=`<span class="mo-update-icon" aria-hidden="true">🕒</span><span class="mo-update-copy"><small>Última actualización</small><strong>${moEscape(valor)}</strong></span>`;
 }
 
+/* V418 - selección múltiple sin alterar la carga optimizada del Mapa */
+const MO_MULTI_FILTROS_V418={grupoTrabajo:[],estado:[],cuadrilla:[]};
+
+function moMultiCfgV418(tipo){
+  const cfg={
+    grupoTrabajo:{menu:'moMultiMenuGrupo',label:'moMultiLabelGrupo',todos:'Todos'},
+    estado:{menu:'moMultiMenuEstado',label:'moMultiLabelEstado',todos:'Todos'},
+    cuadrilla:{menu:'moMultiMenuCuadrilla',label:'moMultiLabelCuadrilla',todos:'Todas'}
+  };
+  return cfg[tipo]||null;
+}
+function moMultiValoresV418(tipo){
+  return Array.isArray(MO_MULTI_FILTROS_V418[tipo])?MO_MULTI_FILTROS_V418[tipo].slice():[];
+}
+function moMultiResetV418(){
+  MO_MULTI_FILTROS_V418.grupoTrabajo=[];
+  MO_MULTI_FILTROS_V418.estado=[];
+  MO_MULTI_FILTROS_V418.cuadrilla=[];
+}
+function moMultiEtiquetaV418(tipo){
+  const cfg=moMultiCfgV418(tipo),lista=moMultiValoresV418(tipo);
+  if(!cfg)return '';
+  if(!lista.length)return cfg.todos;
+  if(lista.length===1)return lista[0];
+  return `${lista.length} seleccionados`;
+}
+function moMultiCerrarTodosV418(excepto){
+  ['grupoTrabajo','estado','cuadrilla'].forEach(tipo=>{
+    if(tipo===excepto)return;
+    const cfg=moMultiCfgV418(tipo),menu=cfg&&document.getElementById(cfg.menu);
+    if(menu)menu.hidden=true;
+  });
+}
+function moMultiToggleV418(tipo){
+  const cfg=moMultiCfgV418(tipo);if(!cfg)return;
+  const menu=document.getElementById(cfg.menu);if(!menu)return;
+  const abrir=menu.hidden;
+  moMultiCerrarTodosV418(tipo);
+  menu.hidden=!abrir;
+}
+function moMultiSeleccionV418(tipo,valor,marcado){
+  const actual=new Set(moMultiValoresV418(tipo));
+  if(valor==='__TODOS__'){
+    actual.clear();
+  }else if(marcado){
+    actual.add(valor);
+  }else{
+    actual.delete(valor);
+  }
+  MO_MULTI_FILTROS_V418[tipo]=Array.from(actual);
+  moMultiRefrescarV418(tipo);
+}
+function moMultiRefrescarV418(tipo){
+  const cfg=moMultiCfgV418(tipo);if(!cfg)return;
+  const label=document.getElementById(cfg.label);
+  if(label)label.textContent=moMultiEtiquetaV418(tipo);
+  const menu=document.getElementById(cfg.menu);
+  if(!menu)return;
+  const seleccion=new Set(moMultiValoresV418(tipo));
+  menu.querySelectorAll('input[data-mo-multi]').forEach(ch=>{
+    const valor=ch.getAttribute('data-mo-multi')||'';
+    ch.checked=valor==='__TODOS__'?!seleccion.size:seleccion.has(valor);
+  });
+}
+function moMultiCargarOpcionesV418(tipo,lista){
+  const cfg=moMultiCfgV418(tipo);if(!cfg)return;
+  const menu=document.getElementById(cfg.menu);if(!menu)return;
+  const opciones=(lista||[]).filter(Boolean);
+  menu.innerHTML=[
+    `<label class="mo-multi-item mo-multi-todos"><input type="checkbox" data-mo-multi="__TODOS__" onchange="moMultiSeleccionV418('${tipo}','__TODOS__',this.checked)"><span>${cfg.todos}</span></label>`,
+    ...opciones.map(x=>`<label class="mo-multi-item"><input type="checkbox" data-mo-multi="${moEscape(x)}" onchange="moMultiSeleccionV418('${tipo}',this.getAttribute('data-mo-multi'),this.checked)"><span>${moEscape(x)}</span></label>`)
+  ].join('');
+  moMultiRefrescarV418(tipo);
+}
+function moMultiInstalarCierreV418(){
+  if(window.MO_MULTI_CIERRE_V418)return;
+  window.MO_MULTI_CIERRE_V418=true;
+  document.addEventListener('click',function(e){
+    if(e.target&&e.target.closest&&e.target.closest('.mo-multi-v418'))return;
+    moMultiCerrarTodosV418('');
+  });
+}
+
 function moCargarScript(src,globalName){return new Promise((resolve,reject)=>{if(globalName&&window[globalName])return resolve(window[globalName]);const s=document.createElement('script');s.src=src;s.onload=()=>resolve(globalName?window[globalName]:true);s.onerror=()=>reject(new Error('No se pudo cargar un componente del mapa'));document.head.appendChild(s)})}
 function moCargarCss(href){if([...document.styleSheets].some(x=>x.href&&x.href.includes('leaflet')))return;const l=document.createElement('link');l.rel='stylesheet';l.href=href;document.head.appendChild(l)}
 async function moDependencias(){
@@ -144,16 +227,28 @@ async function mostrarMapaOperativo(){
   const menu=document.getElementById('menuPrincipal');
   if(menu) menu.style.setProperty('display','none','important');
   const p=document.getElementById('pantalla');
-  p.innerHTML=`<div class="mo-wrap"><div class="mo-head"><h2 class="mo-title">🗺️ MAPA OPERATIVO</h2><div class="mo-actions"><div id="moUltimaActualizacion" class="mo-update-status" aria-live="polite"><span class="mo-update-icon" aria-hidden="true">🕒</span><span class="mo-update-copy"><small>Última actualización</small><strong>Consultando...</strong></span></div>${moPuedeImportar()?'<button class="mo-btn mo-btn-sec" onclick="moMostrarImportacion()">Ingresar datos</button>':''}</div></div>
+  moMultiResetV418();
+  moMultiInstalarCierreV418();
+  p.innerHTML=`<style>
+  .mo-multi-v418{position:relative;min-width:0}
+  .mo-multi-btn-v418{width:100%;min-height:38px;border:1px solid #cbd5e1;border-radius:9px;background:#fff;color:#0f172a;padding:8px 10px;display:flex;align-items:center;justify-content:space-between;gap:8px;font:inherit;text-align:left;cursor:pointer}
+  .mo-multi-btn-v418 b{font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .mo-multi-menu-v418{position:absolute;z-index:2500;left:0;right:0;top:calc(100% + 5px);max-height:285px;overflow:auto;background:#fff;border:1px solid #cbd5e1;border-radius:11px;box-shadow:0 12px 28px rgba(15,23,42,.22);padding:6px}
+  .mo-multi-menu-v418[hidden]{display:none!important}
+  .mo-multi-item{display:flex;align-items:flex-start;gap:8px;padding:8px;border-radius:8px;font-size:12px;line-height:1.25;cursor:pointer;color:#0f172a}
+  .mo-multi-item:hover{background:#eff6ff}
+  .mo-multi-item input{margin-top:1px;accent-color:#2563eb;flex:0 0 auto}
+  .mo-multi-todos{border-bottom:1px solid #e2e8f0;margin-bottom:4px;font-weight:800}
+  </style><div class="mo-wrap"><div class="mo-head"><h2 class="mo-title">🗺️ MAPA OPERATIVO</h2><div class="mo-actions"><div id="moUltimaActualizacion" class="mo-update-status" aria-live="polite"><span class="mo-update-icon" aria-hidden="true">🕒</span><span class="mo-update-copy"><small>Última actualización</small><strong>Consultando...</strong></span></div>${moPuedeImportar()?'<button class="mo-btn mo-btn-sec" onclick="moMostrarImportacion()">Ingresar datos</button>':''}</div></div>
   <div id="moVistaFiltros" class="mo-panel">
     <b>Seleccione la información que desea visualizar</b>
     <div class="mo-filtros mo-filtros-amplios" style="margin-top:9px">
       <div><label class="mo-label">Período</label><select id="moFiltroPeriodo" class="mo-select" onchange="moActualizarRangoFecha()"><option value="">Cargando...</option></select></div>
       <div><label class="mo-label">Sede</label><select id="moFiltroSede" class="mo-select"><option value="">Todas</option></select></div>
       <div><label class="mo-label">Fecha (opcional)</label><input id="moFiltroFecha" class="mo-input" type="date"></div>
-      <div><label class="mo-label">Grupo de trabajo</label><select id="moFiltroGrupo" class="mo-select"><option value="">Todos</option></select></div>
-      <div><label class="mo-label">Estado</label><select id="moFiltroEstado" class="mo-select"><option value="">Todos</option></select></div>
-      <div><label class="mo-label">Cuadrilla</label><select id="moFiltroCuadrilla" class="mo-select"><option value="">Todas</option></select></div>
+      <div><label class="mo-label">Grupo de trabajo</label><div class="mo-multi-v418"><button type="button" class="mo-multi-btn-v418" onclick="event.stopPropagation();moMultiToggleV418('grupoTrabajo')"><b id="moMultiLabelGrupo">Todos</b><span>▾</span></button><div id="moMultiMenuGrupo" class="mo-multi-menu-v418" hidden onclick="event.stopPropagation()"></div></div></div>
+      <div><label class="mo-label">Estado</label><div class="mo-multi-v418"><button type="button" class="mo-multi-btn-v418" onclick="event.stopPropagation();moMultiToggleV418('estado')"><b id="moMultiLabelEstado">Todos</b><span>▾</span></button><div id="moMultiMenuEstado" class="mo-multi-menu-v418" hidden onclick="event.stopPropagation()"></div></div></div>
+      <div><label class="mo-label">Cuadrilla</label><div class="mo-multi-v418"><button type="button" class="mo-multi-btn-v418" onclick="event.stopPropagation();moMultiToggleV418('cuadrilla')"><b id="moMultiLabelCuadrilla">Todas</b><span>▾</span></button><div id="moMultiMenuCuadrilla" class="mo-multi-menu-v418" hidden onclick="event.stopPropagation()"></div></div></div>
       <div><label class="mo-label">Código de orden</label><input id="moBuscarCodigo" class="mo-input" placeholder="Ej. 1234567"></div>
       <button class="mo-btn" onclick="moConsultarMapa()">Ver mapa</button>
       <button class="mo-btn mo-btn-sec" onclick="moLimpiarFiltros()">Limpiar</button>
@@ -199,20 +294,33 @@ function moPrepararCargaArchivoMapa(){
 }
 function moMostrarImportacion(){document.getElementById('moVistaFiltros').style.display='none';document.getElementById('moMapa').style.display='none';document.getElementById('moVistaImportacion').style.display='block'}
 function moVolverFiltros(){document.getElementById('moVistaImportacion').style.display='none';document.getElementById('moVistaFiltros').style.display='block';document.getElementById('moMapa').style.display='block';setTimeout(()=>moMapa&&moMapa.invalidateSize(),50)}
-function moLimpiarFiltros(){['moFiltroSede','moFiltroFecha','moFiltroGrupo','moFiltroEstado','moFiltroCuadrilla','moBuscarCodigo'].forEach(id=>{const e=document.getElementById(id);if(e)e.value=''});const periodo=document.getElementById('moFiltroPeriodo');if(periodo)periodo.value=moPeriodoActual();moActualizarRangoFecha();const cto=document.getElementById('moMostrarCtosCercanas');if(cto)cto.checked=false;moOcultarCatalogoCto();moRegistros=[];moRenderMarcadores([]);document.getElementById('moContador').textContent='Seleccione filtros y presione Ver mapa.'}
+function moLimpiarFiltros(){['moFiltroSede','moFiltroFecha','moBuscarCodigo'].forEach(id=>{const e=document.getElementById(id);if(e)e.value=''});moMultiResetV418();['grupoTrabajo','estado','cuadrilla'].forEach(moMultiRefrescarV418);moMultiCerrarTodosV418('');const periodo=document.getElementById('moFiltroPeriodo');if(periodo)periodo.value=moPeriodoActual();moActualizarRangoFecha();const cto=document.getElementById('moMostrarCtosCercanas');if(cto)cto.checked=false;moOcultarCatalogoCto();moRegistros=[];moRenderMarcadores([]);document.getElementById('moContador').textContent='Seleccione filtros y presione Ver mapa.'}
 async function moCargarCatalogos(){
   const d=await moApiLectura({accion:'catalogosMapaOperativo',usuario:moUsuario()});
   const llenar=(id,lista,todos)=>{const e=document.getElementById(id);if(e)e.innerHTML=`<option value="">${todos}</option>`+(lista||[]).map(x=>`<option>${moEscape(x)}</option>`).join('')};
   moCargarPeriodos(d.periodos||[]);
-  llenar('moFiltroSede',d.sedes,'Todas');llenar('moFiltroGrupo',d.gruposTrabajo,'Todos');llenar('moFiltroEstado',d.estados,'Todos');llenar('moFiltroCuadrilla',d.cuadrillas,'Todas');
+  llenar('moFiltroSede',d.sedes,'Todas');
+  moMultiCargarOpcionesV418('grupoTrabajo',d.gruposTrabajo||[]);
+  moMultiCargarOpcionesV418('estado',d.estados||[]);
+  moMultiCargarOpcionesV418('cuadrilla',d.cuadrillas||[]);
   moConstruirEstilosCuadrillas(d.cuadrillas||[]);
   moPintarUltimaActualizacion(d.ultimaActualizacionTexto);
 }
 async function moConsultarMapa(){
-  const filtros={periodo:moPeriodoValido(document.getElementById('moFiltroPeriodo')?.value),sede:moNorm(document.getElementById('moFiltroSede')?.value),fecha:moNorm(document.getElementById('moFiltroFecha')?.value),grupoTrabajo:moNorm(document.getElementById('moFiltroGrupo')?.value),estado:moNorm(document.getElementById('moFiltroEstado')?.value),cuadrilla:moNorm(document.getElementById('moFiltroCuadrilla')?.value),codigo:moNorm(document.getElementById('moBuscarCodigo')?.value)};
+  const grupos=moMultiValoresV418('grupoTrabajo'),estados=moMultiValoresV418('estado'),cuadrillas=moMultiValoresV418('cuadrilla');
+  const filtros={
+    periodo:moPeriodoValido(document.getElementById('moFiltroPeriodo')?.value),
+    sede:moNorm(document.getElementById('moFiltroSede')?.value),
+    fecha:moNorm(document.getElementById('moFiltroFecha')?.value),
+    gruposTrabajo:JSON.stringify(grupos),
+    estados:JSON.stringify(estados),
+    cuadrillas:JSON.stringify(cuadrillas),
+    codigo:moNorm(document.getElementById('moBuscarCodigo')?.value)
+  };
   if(!filtros.periodo){document.getElementById('moContador').textContent='Debe seleccionar el período que desea consultar.';return}
   if(filtros.fecha&&!filtros.fecha.startsWith(filtros.periodo+'-')){document.getElementById('moContador').textContent='La fecha debe pertenecer al período seleccionado.';return}
-  if(!Object.values(filtros).some(Boolean)){document.getElementById('moContador').textContent='Debe seleccionar al menos un filtro para evitar cargar toda la base.';return}
+  const hayFiltro=!!(filtros.periodo||filtros.sede||filtros.fecha||grupos.length||estados.length||cuadrillas.length||filtros.codigo);
+  if(!hayFiltro){document.getElementById('moContador').textContent='Debe seleccionar al menos un filtro para evitar cargar toda la base.';return}
   document.getElementById('moContador').textContent='Consultando órdenes...';
   const d=await moApiLectura(Object.assign({accion:'listarMapaOperativo',usuario:moUsuario()},filtros));moRegistros=d.ordenes||[];moPintarUltimaActualizacion(d.ultimaActualizacionTexto);moRenderMarcadores(moRegistros);if(document.getElementById('moMostrarCtosCercanas')?.checked)await moCargarCtosCercanas();
 }
