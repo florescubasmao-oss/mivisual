@@ -111,7 +111,7 @@
       entradas: ["mostrarChecklistAlmacen"]
     },
     descansos: {
-      archivos: [`./js/programacion_descansos.js?v=${VERSION}`],
+      archivos: [`./js/programacion_descansos.js?v=V417-DESCANSOS-FILTROS-FECHA`],
       entradas: ["mostrarProgramacionDescansos"]
     },
     pext: {

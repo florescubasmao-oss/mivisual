@@ -1,4 +1,4 @@
-// MI VISUAL - Programación de Descansos V336
+// MI VISUAL - Programación de Descansos V417
 const API_DESCANSOS = (window.MI_VISUAL_API_URL || "https://script.google.com/macros/s/AKfycbwugGpuEMcJYFsDNS1hkcdZXJ92PUvXNv5ttpktyhZWv2fWB7ceCZNkfIFYxAs5wsgN/exec");
 let PD_DATA={programacion:[],cuadrillas:[]};
 let PD_CAMBIOS={};
@@ -347,7 +347,6 @@ function pdRenderGestion(){
   const tipoPersonalSel=['TODAS','CUADRILLA','PERSONAL','SUPERVISOR','ALMACEN'].includes(estadoVista.tipoPersonal)?estadoVista.tipoPersonal:'TODAS';
   const estadoInformeSel=['TODOS','EN CAMPO','EN CAMPO BOLSA','DESCANSO','VACACIONES'].includes(estadoVista.estadoInforme)?estadoVista.estadoInforme:'TODOS';
   const tecnicoSel=estadoVista.tecnico||'';
-  const supervisorSel=estadoVista.supervisor||'TODOS';
   const modo=['MES','RANGO','DIA'].includes(estadoVista.modo)?estadoVista.modo:'MES';
   const rango=pdRangoVisualMes(per);
   let desde=estadoVista.desde||rango.desde,hasta=estadoVista.hasta||rango.hasta;
@@ -357,19 +356,17 @@ function pdRenderGestion(){
   const baseHistorial=(PD_DATA.historial&&PD_DATA.historial.length?PD_DATA.historial:PD_DATA.programacion||[]);
   const historial=baseHistorial.filter(x=>esSupervisor?pdNorm(x.sede)===u.sede:true).slice(0,120);
   const alertasJefatura=esSupervisor?historial.filter(x=>pdNorm(x.origen)==='JEFATURA'&&pdNorm(x.accion)==='CAMBIO APLICADO'):[];
-  const supervisores=[...new Set((PD_DATA.cuadrillas||[]).filter(c=>pdNorm(c.tipoPersonal)==='CUADRILLA').map(c=>c.supervisor).filter(Boolean))].sort();
-  window.PD_FILTROS={sede:sedeSel,plataforma:plataformaSel,tipoPersonal:tipoPersonalSel,supervisor:supervisorSel,modo,desde,hasta,cuadrilla:estadoVista.cuadrilla||'TODAS',tecnico:tecnicoSel,estadoInforme:estadoInformeSel};
+  window.PD_FILTROS={sede:sedeSel,plataforma:plataformaSel,tipoPersonal:tipoPersonalSel,modo,desde,hasta,cuadrilla:estadoVista.cuadrilla||'TODAS',tecnico:tecnicoSel,estadoInforme:estadoInformeSel};
   // El estado personal del Supervisor se muestra únicamente en el menú de inicio.
   // Dentro del módulo se conserva solo la gestión de sus cuadrillas.
   document.getElementById('pdContenido').innerHTML=`
   <div class="pd-card"><div class="pd-toolbar">
     <div class="pd-field"><label>Periodo principal</label><select id="pdPeriodo" onchange="pdCambiarVista()">${pdOpcionesMesHtml(per)}</select><div class="pd-note">Mes anterior, actual y siguiente disponibles.</div></div>
     <div class="pd-field"><label>Consulta</label><select id="pdModo" onchange="pdAjustarModoFechas()"><option value="MES" ${modo==='MES'?'selected':''}>Mes visual completo</option><option value="RANGO" ${modo==='RANGO'?'selected':''}>De fecha a fecha</option><option value="DIA" ${modo==='DIA'?'selected':''}>Un día</option></select></div>
-    <div class="pd-field"><label>Desde</label><input type="date" id="pdDesde" value="${desde}" ${modo==='MES'?'disabled':''}></div>
-    <div class="pd-field"><label>Hasta</label><input type="date" id="pdHasta" value="${hasta}" ${modo!=='RANGO'?'disabled':''}></div>
+    <div class="pd-field" id="pdCampoDesde" style="${modo==='MES'?'display:none':''}"><label id="pdLabelDesde">${modo==='DIA'?'Fecha':'Desde'}</label><input type="date" id="pdDesde" value="${desde}" ${modo==='MES'?'disabled':''}></div>
+    <div class="pd-field" id="pdCampoHasta" style="${modo==='RANGO'?'':'display:none'}"><label>Hasta</label><input type="date" id="pdHasta" value="${hasta}" ${modo==='RANGO'?'':'disabled'}></div>
     ${esSupervisor?'':`<div class="pd-field"><label>Sede</label><select id="pdSede">${sedes.map(x=>`<option ${x===sedeSel?'selected':''}>${x}</option>`).join('')}</select></div>`}
     ${esJefatura?`<div class="pd-field"><label>Tipo de personal</label><select id="pdTipoPersonal"><option value="TODAS" ${tipoPersonalSel==='TODAS'?'selected':''}>Todos</option><option value="CUADRILLA" ${tipoPersonalSel==='CUADRILLA'?'selected':''}>Cuadrillas</option><option value="PERSONAL" ${tipoPersonalSel==='PERSONAL'?'selected':''}>Supervisores y almacén</option><option value="SUPERVISOR" ${tipoPersonalSel==='SUPERVISOR'?'selected':''}>Supervisores</option><option value="ALMACEN" ${tipoPersonalSel==='ALMACEN'?'selected':''}>Responsables de almacén</option></select></div>`:''}
-    ${esJefatura?`<div class="pd-field"><label>Supervisor</label><select id="pdSupervisor"><option value="TODOS">Todos</option>${supervisores.map(s=>`<option value="${pdEsc(s)}" ${supervisorSel===s?'selected':''}>${pdEsc(s)}</option>`).join('')}</select></div>`:''}
     <div class="pd-field"><label>Plataforma</label><select id="pdPlataforma"><option value="TODAS" ${plataformaSel==='TODAS'?'selected':''}>Todas</option><option value="INSTALACIONES" ${plataformaSel==='INSTALACIONES'?'selected':''}>Instalaciones</option><option value="VISITA TECNICA" ${plataformaSel==='VISITA TECNICA'?'selected':''}>Visita Técnica</option><option value="TRASLADOS" ${plataformaSel==='TRASLADOS'?'selected':''}>Traslados</option></select></div>
     <div class="pd-field"><label>${esJefatura?'Cuadrilla / Personal':'Cuadrilla'}</label><select id="pdCuadrilla"><option value="TODAS">Todas</option>${PD_DATA.cuadrillas.filter(c=>esSupervisor||sedeSel==='TODAS'||pdNorm(c.sede)===pdNorm(sedeSel)).map(c=>`<option value="${pdEsc(c.cuadrilla)}" ${estadoVista.cuadrilla===c.cuadrilla?'selected':''}>${pdEsc(c.nombrePersonal||c.cuadrilla)}</option>`).join('')}</select></div>
     <div class="pd-field"><label>Técnico</label><input id="pdTecnico" list="pdListaTecnicos" value="${pdEsc(tecnicoSel)}" placeholder="Buscar técnico"><datalist id="pdListaTecnicos">${[...new Set((PD_DATA.cuadrillas||[]).flatMap(c=>Array.isArray(c.tecnicos)?c.tecnicos:[]).filter(Boolean))].sort().map(n=>`<option value="${pdEsc(n)}"></option>`).join('')}</datalist></div>
@@ -404,10 +401,18 @@ function pdRangoVisualMes(periodo){
 }
 
 function pdAjustarModoFechas(){
-  const modo=document.getElementById('pdModo').value,per=document.getElementById('pdPeriodo').value,ultimo=String(pdDiasMes(per)).padStart(2,'0'),desde=document.getElementById('pdDesde'),hasta=document.getElementById('pdHasta');
-  if(modo==='MES'){const r=pdRangoVisualMes(per);desde.value=r.desde;hasta.value=r.hasta;desde.disabled=true;hasta.disabled=true;}
-  else if(modo==='DIA'){desde.disabled=false;hasta.disabled=true;if(!desde.value.startsWith(per))desde.value=per===pdPeriodoActual()?pdHoy():`${per}-01`;hasta.value=desde.value;}
-  else{desde.disabled=false;hasta.disabled=false;if(!desde.value.startsWith(per))desde.value=`${per}-01`;if(!hasta.value.startsWith(per))hasta.value=`${per}-${ultimo}`;}
+  const modo=document.getElementById('pdModo').value,per=document.getElementById('pdPeriodo').value,ultimo=String(pdDiasMes(per)).padStart(2,'0'),desde=document.getElementById('pdDesde'),hasta=document.getElementById('pdHasta'),campoDesde=document.getElementById('pdCampoDesde'),campoHasta=document.getElementById('pdCampoHasta'),labelDesde=document.getElementById('pdLabelDesde');
+  if(!desde||!hasta)return;
+  if(modo==='MES'){
+    const r=pdRangoVisualMes(per);desde.value=r.desde;hasta.value=r.hasta;desde.disabled=true;hasta.disabled=true;
+    if(campoDesde)campoDesde.style.display='none';if(campoHasta)campoHasta.style.display='none';
+  }else if(modo==='DIA'){
+    desde.disabled=false;hasta.disabled=true;if(!desde.value.startsWith(per))desde.value=per===pdPeriodoActual()?pdHoy():`${per}-01`;hasta.value=desde.value;
+    if(labelDesde)labelDesde.textContent='Fecha';if(campoDesde)campoDesde.style.display='';if(campoHasta)campoHasta.style.display='none';
+  }else{
+    desde.disabled=false;hasta.disabled=false;if(!desde.value.startsWith(per))desde.value=`${per}-01`;if(!hasta.value.startsWith(per))hasta.value=`${per}-${ultimo}`;
+    if(labelDesde)labelDesde.textContent='Desde';if(campoDesde)campoDesde.style.display='';if(campoHasta)campoHasta.style.display='';
+  }
 }
 
 function pdCapturarFiltros(){
@@ -416,7 +421,7 @@ function pdCapturarFiltros(){
   if(modo==='MES'){const r=pdRangoVisualMes(per);desde=r.desde;hasta=r.hasta;}
   if(modo==='DIA')hasta=desde;
   if(desde>hasta){const t=desde;desde=hasta;hasta=t;}
-  window.PD_FILTROS={modo,desde,hasta,sede:document.getElementById('pdSede')?.value||pdUser().sede,plataforma:document.getElementById('pdPlataforma')?.value||'TODAS',tipoPersonal:document.getElementById('pdTipoPersonal')?.value||'TODAS',supervisor:document.getElementById('pdSupervisor')?.value||'TODOS',cuadrilla:document.getElementById('pdCuadrilla')?.value||'TODAS',tecnico:document.getElementById('pdTecnico')?.value.trim()||'',estadoInforme:document.getElementById('pdEstadoInforme')?.value||'TODOS'};
+  window.PD_FILTROS={modo,desde,hasta,sede:document.getElementById('pdSede')?.value||pdUser().sede,plataforma:document.getElementById('pdPlataforma')?.value||'TODAS',tipoPersonal:document.getElementById('pdTipoPersonal')?.value||'TODAS',cuadrilla:document.getElementById('pdCuadrilla')?.value||'TODAS',tecnico:document.getElementById('pdTecnico')?.value.trim()||'',estadoInforme:document.getElementById('pdEstadoInforme')?.value||'TODOS'};
   return window.PD_FILTROS;
 }
 
@@ -433,7 +438,6 @@ function pdCuadrillasFiltradas(){
     if(f.sede!=='TODAS'&&pdNorm(x.sede)!==pdNorm(f.sede))return false;
     if(f.tipoPersonal==='PERSONAL'&&!['SUPERVISOR','ALMACEN'].includes(tipo))return false;
     if(!['TODAS','PERSONAL'].includes(f.tipoPersonal)&&tipo!==pdNorm(f.tipoPersonal))return false;
-    if(f.supervisor!=='TODOS'&&tipo==='CUADRILLA'&&pdNorm(x.supervisor)!==pdNorm(f.supervisor))return false;
     if(f.plataforma!=='TODAS'&&(tipo!=='CUADRILLA'||pdNorm(x.plataforma)!==pdNorm(f.plataforma)))return false;
     if(f.cuadrilla!=='TODAS'&&pdNorm(x.cuadrilla)!==pdNorm(f.cuadrilla))return false;
     if(f.tecnico){const q=pdNorm(f.tecnico);const tecnicos=Array.isArray(x.tecnicos)?x.tecnicos:[];if(!tecnicos.some(n=>pdNorm(n).includes(q)))return false;}
@@ -481,7 +485,7 @@ function pdRenderConsultaOperativa(){
   if(fechas.length===1){
     const fecha=fechas[0],campo=[],descanso=[];
     cuadrillas.forEach(c=>{const estado=PD_CAMBIOS[c.cuadrilla+'|'+fecha]||pdEstadoVisible(pdBuscar(c.cuadrilla,fecha));(estado==='DESCANSO'?descanso:campo).push(c);});
-    const lista=a=>a.length?a.map(c=>`<div>• ${pdEsc(c.cuadrilla)} <small>(${pdEsc(c.sede)} · ${pdEsc(c.plataforma)})</small></div>`).join(''):'<div class="pd-note">Ninguna cuadrilla.</div>';
+    const lista=a=>a.length?a.map(c=>{const tipo=pdNorm(c.tipoPersonal||'CUADRILLA'),nombre=tipo==='CUADRILLA'?(c.cuadrilla||''):(c.nombrePersonal||c.cuadrilla||''),tecnicos=Array.isArray(c.tecnicos)?c.tecnicos.filter(Boolean):[],detalleTecnicos=tipo==='CUADRILLA'&&tecnicos.length?`<div class="pd-note" style="margin:2px 0 0 14px">👤 ${tecnicos.map(pdEsc).join(' · ')}</div>`:'';return `<div style="margin:4px 0">• <b>${pdEsc(nombre)}</b> <small>(${pdEsc(c.sede)} · ${pdEsc(c.plataforma)})</small>${detalleTecnicos}</div>`;}).join(''):'<div class="pd-note">Ninguna cuadrilla.</div>';
     cont.innerHTML=`<b>Consulta operativa del ${pdEsc(fecha)}</b><div class="pd-summary" style="margin-top:8px"><div class="pd-kpi verde"><small>EN CAMPO</small><b>${campo.length}</b></div><div class="pd-kpi"><small>DESCANSO</small><b>${descanso.length}</b></div></div><div class="pd-query-list" style="margin-top:8px"><div class="pd-query-box"><h4>🟢 Cuadrillas en campo</h4>${lista(campo)}</div><div class="pd-query-box"><h4>😴 Cuadrillas en descanso</h4>${lista(descanso)}</div></div>`;
   }else if(f.cuadrilla!=='TODAS'){
     const descansos=fechas.filter(fecha=>(PD_CAMBIOS[f.cuadrilla+'|'+fecha]||pdEstadoVisible(pdBuscar(f.cuadrilla,fecha)))==='DESCANSO');
@@ -789,7 +793,7 @@ async function pdGenerarExcelDescansos(){
     if(boton){boton.disabled=true;boton.textContent='Generando...';}
     const sede=pdNorm(f.sede||'TODAS'),plataforma=pdNorm(f.plataforma||'TODAS');
     const tipo=pdNorm(f.tipoPersonal||'TODAS'),estadoFiltro=pdNorm(f.estadoInforme||'TODOS');
-    const supervisor=pdNorm(f.supervisor||'TODOS'),cuadrilla=pdNorm(f.cuadrilla||'TODAS');
+    const cuadrilla=pdNorm(f.cuadrilla||'TODAS');
     const u=pdUser(),datos=await pdDatosRangoReporte(desde,hasta),fechas=pdFechasEntre(desde,hasta);
     let entidades=datos.entidades.filter(c=>{
       const t=pdTipoEntidadReporte(c);
@@ -797,7 +801,6 @@ async function pdGenerarExcelDescansos(){
       if(tipo==='PERSONAL'&&!['SUPERVISOR','ALMACEN'].includes(t))return false;
       if(!['TODAS','PERSONAL'].includes(tipo)&&t!==tipo)return false;
       if(plataforma!=='TODAS'&&(t!=='CUADRILLA'||pdNorm(c.plataforma)!==plataforma))return false;
-      if(supervisor!=='TODOS'&&t==='CUADRILLA'&&pdNorm(c.supervisor)!==supervisor)return false;
       if(cuadrilla!=='TODAS'&&pdNorm(c.cuadrilla)!==cuadrilla)return false;
       return true;
     });
