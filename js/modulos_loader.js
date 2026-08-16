@@ -7,7 +7,7 @@
 (function(){
   "use strict";
 
-  const VERSION = "V415-RANKING-SLA-PRIMERA-CARGA-20260815";
+  const VERSION = "V420-LOADER-ANTIBLOQUEO-20260816";
   const MODULOS = {
     dashboards_core: {
       archivos: [
@@ -190,6 +190,17 @@
   const wrappers = Object.create(null);
   const metricas = [];
 
+  // V420: evita que un script deje el módulo atrapado indefinidamente.
+  const MV420_SCRIPT_TIMEOUT_MS = 12000;
+  const fallosScript = new Map();
+
+  function urlScriptV420(url){
+    const fallos = Number(fallosScript.get(url) || 0);
+    if(!fallos) return url;
+    const sep = url.includes("?") ? "&" : "?";
+    return `${url}${sep}mvretry=${Date.now()}-${fallos}`;
+  }
+
   function nombreVisible(id){
     const nombres = {
       dashboards_core:"Datos operativos", dashboard:"Bono Supervisor", mi_desempeno:"Mi Desempeño", indicadores:"Indicadores",
@@ -207,7 +218,8 @@
     const html = `<div style="max-width:760px;margin:24px auto;padding:18px;background:#fff;border-radius:18px;color:#0f172a;box-shadow:0 10px 28px rgba(15,23,42,.15);text-align:center">
       <div style="font-size:30px;margin-bottom:8px">⏳</div>
       <b style="font-size:17px">Abriendo ${nombre}...</b>
-      <p style="margin:7px 0 0;color:#64748b;font-size:12px">La primera apertura puede tardar unos segundos. Las siguientes serán más rápidas.</p>
+      <p style="margin:7px 0 0;color:#64748b;font-size:12px">La primera apertura puede tardar unos segundos. Si una descarga no responde, MI VISUAL la cancelará y permitirá reintentar.</p>
+      <button type="button" onclick="volverInicio()" style="margin-top:12px;border:0;border-radius:10px;padding:9px 13px;background:#64748b;color:#fff;font-weight:800;cursor:pointer">Volver al menú</button>
     </div>`;
     if(typeof window.mostrarPantalla === "function") window.mostrarPantalla(html);
   }
@@ -219,7 +231,10 @@
     const html = `<div style="max-width:760px;margin:24px auto;padding:18px;background:#fff7ed;border:2px solid #fb923c;border-radius:18px;color:#9a3412;box-shadow:0 10px 28px rgba(15,23,42,.12)">
       <h3 style="margin:0 0 8px">No se pudo abrir ${nombre}</h3>
       <div style="font-size:13px;line-height:1.45">${String(mensaje).replace(/</g,"&lt;").replace(/>/g,"&gt;")}</div>
-      <button id="${reintentoId}" type="button" style="margin-top:12px;border:0;border-radius:10px;padding:10px 14px;background:#ea580c;color:#fff;font-weight:800;cursor:pointer">Reintentar</button>
+      <div style="display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-top:12px">
+        <button id="${reintentoId}" type="button" style="border:0;border-radius:10px;padding:10px 14px;background:#ea580c;color:#fff;font-weight:800;cursor:pointer">Reintentar</button>
+        <button type="button" onclick="volverInicio()" style="border:0;border-radius:10px;padding:10px 14px;background:#64748b;color:#fff;font-weight:800;cursor:pointer">Volver al menú</button>
+      </div>
     </div>`;
     if(typeof window.mostrarPantalla === "function") window.mostrarPantalla(html);
     setTimeout(function(){
@@ -237,27 +252,62 @@
   function cargarScript(url){
     if(promesasScript.has(url)) return promesasScript.get(url);
 
-    const existente = Array.from(document.scripts).find(s => s.src && s.src.includes(url.split("?")[0].replace(/^\.\//,"")));
+    const rutaBase = url.split("?")[0].replace(/^\.\//,"");
+    const existente = Array.from(document.scripts).find(s => s.src && s.src.includes(rutaBase));
     if(existente && existente.dataset.mv339Listo === "si") return Promise.resolve();
 
     const inicio = performance.now();
     const promesa = new Promise((resolve, reject) => {
       const script = document.createElement("script");
-      script.src = url;
+      let terminado = false;
+      let temporizador = null;
+
+      function limpiar(){
+        if(temporizador) clearTimeout(temporizador);
+        script.onload = null;
+        script.onerror = null;
+      }
+
+      function fallar(mensaje){
+        if(terminado) return;
+        terminado = true;
+        limpiar();
+        fallosScript.set(url, Number(fallosScript.get(url) || 0) + 1);
+        promesasScript.delete(url);
+        try{ script.remove(); }catch(_){}
+        reject(new Error(mensaje));
+      }
+
+      script.src = urlScriptV420(url);
       script.async = true;
       script.dataset.mv339Modulo = "si";
+
       script.onload = function(){
+        if(terminado) return;
+        terminado = true;
+        limpiar();
         script.dataset.mv339Listo = "si";
-        metricas.push({tipo:"script", recurso:url, ms:Math.round(performance.now()-inicio), fecha:Date.now()});
+        fallosScript.delete(url);
+        metricas.push({
+          tipo:"script",
+          recurso:url,
+          ms:Math.round(performance.now()-inicio),
+          fecha:Date.now()
+        });
         resolve();
       };
+
       script.onerror = function(){
-        promesasScript.delete(url);
-        script.remove();
-        reject(new Error("No se pudo descargar el archivo del módulo. Verifique la conexión y vuelva a intentar."));
+        fallar("No se pudo descargar un archivo del módulo. Verifique la conexión y pulse Reintentar.");
       };
+
+      temporizador = setTimeout(function(){
+        fallar("La carga del módulo superó 12 segundos y fue cancelada para evitar que MI VISUAL quede bloqueado. Pulse Reintentar.");
+      }, MV420_SCRIPT_TIMEOUT_MS);
+
       document.head.appendChild(script);
     });
+
     promesasScript.set(url, promesa);
     return promesa;
   }
