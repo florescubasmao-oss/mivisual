@@ -1,4 +1,4 @@
-// MI VISUAL - Actividad en Campo V425 · Trabajos Asignados dentro de Actividad en Campo
+// MI VISUAL - Actividad en Campo V426 · Asignaciones, alertas y generación desde Mapa
 
 const API_ACTIVIDAD_CAMPO = "https://script.google.com/macros/s/AKfycbwugGpuEMcJYFsDNS1hkcdZXJ92PUvXNv5ttpktyhZWv2fWB7ceCZNkfIFYxAs5wsgN/exec";
 
@@ -24,6 +24,16 @@ function usuarioActualActividad(){
 function esJefaturaActividad(perfil){
     const p = (perfil || "").toUpperCase();
     return p === "JEFATURA" || p === "ADMIN" || p === "ADMINISTRADOR" || p === "OPERACIONES LIMA" || p === "GERENCIA LIMA";
+}
+
+function actPuedeAsignarTrabajoV426(perfil){
+    const p = (perfil || "").toUpperCase();
+    return esJefaturaActividad(p) ||
+        p === "JEFATURA GENERAL" ||
+        p === "JEFATURA OPERACIONES" ||
+        p === "JEFATURA DE OPERACIONES" ||
+        p === "GERENCIA GENERAL" ||
+        p === "GERENCIAL GENERAL";
 }
 
 // V311 - consulta mensual. El mes vigente se abre automáticamente y los
@@ -511,7 +521,7 @@ function mostrarActividadCampo(){
             </div>
             <div class="act-actions">
                 ${(typeof pmPuede==="function" ? pmPuede("ACTIVIDAD CAMPO","REGISTRAR") : u.perfil === "SUPERVISOR") ? `<button class="act-btn ok" onclick="mostrarFormularioActividadCampo()">+ Nueva actividad</button>` : ""}
-                ${esJefaturaActividad(u.perfil) ? `<button class="act-btn warn" onclick="mv424MostrarTrabajos()">📋 Trabajos asignados</button><button class="act-btn ok" onclick="mv424NuevaAsignacion()">+ Asignar trabajo</button>` : ""}
+                ${actPuedeAsignarTrabajoV426(u.perfil) ? `<button class="act-btn warn" onclick="mv424MostrarTrabajos()">📋 Trabajos asignados</button><button class="act-btn ok" onclick="mv424NuevaAsignacion()">+ Asignar trabajo</button>` : ""}
                 ${u.perfil === "SUPERVISOR" ? `<button class="act-btn warn" onclick="mv424MostrarTrabajos()">📋 Mis trabajos asignados</button>` : ""}
                 <button class="act-btn sec" onclick="cargarActividadCampo()">🔄 Actualizar lista</button>
             </div>

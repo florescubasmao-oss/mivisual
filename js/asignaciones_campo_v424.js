@@ -1,5 +1,5 @@
 /* ============================================================
-   MI VISUAL V425 - Trabajos asignados dentro de Actividad en Campo
+   MI VISUAL V426 - Trabajos asignados + alertas y recomendaciones
    CAPA INCREMENTAL:
    - Entrada principal desde Actividad en Campo; Mapa solo como apoyo.
    - Jefatura asigna casos por código.
@@ -26,6 +26,10 @@
   let integracionActividad = false;
   let mostrarActividadAnterior = null;
   let construirAuditoriaAnterior = null;
+  let motivoSugeridoV426 = "";
+  let prefillAsignacionV426 = null;
+  let alertasCuadrillasV426 = [];
+  let alertasPeriodoV426 = "";
 
   function n(v){return String(v ?? "").trim();}
   function nt(v){return n(v).toUpperCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"").replace(/\s+/g," ");}
@@ -34,7 +38,11 @@
   function usuario(){return localStorage.getItem("usuario")||"";}
   function esSupervisor(){return perfil()==="SUPERVISOR";}
   function puedeAsignar(){
-    return ["JEFATURA","ADMIN","ADMINISTRADOR","JEFATURA OPERACIONES","JEFATURA DE OPERACIONES","OPERACIONES"].includes(perfil());
+    return [
+      "JEFATURA","JEFATURA GENERAL","ADMIN","ADMINISTRADOR",
+      "JEFATURA OPERACIONES","JEFATURA DE OPERACIONES","OPERACIONES",
+      "GERENCIA GENERAL","GERENCIAL GENERAL","GERENCIA LIMA"
+    ].includes(perfil());
   }
   function esGestion(){
     return puedeAsignar() || ["GERENCIA GENERAL","GERENCIAL GENERAL","GERENCIA LIMA"].includes(perfil());
@@ -68,7 +76,13 @@
       .mv424-est-PENDIENTE{background:#fef3c7;color:#92400e}.mv424-est-EN-PROCESO{background:#dbeafe;color:#1d4ed8}.mv424-est-COMPLETADO{background:#dcfce7;color:#166534}.mv424-est-ANULADO{background:#e5e7eb;color:#475569}
       .mv424-note{padding:10px;border-radius:10px;background:#eff6ff;color:#1e40af;font-size:12px;line-height:1.4}.mv424-ok{background:#dcfce7;color:#166534}.mv424-warn{background:#fff7ed;color:#9a3412}
       .mv424-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px 16px}.mv424-dato{border-bottom:1px dashed #d7e0eb;padding:6px 0}.mv424-dato b{display:block;font-size:10px;color:#64748b;text-transform:uppercase}.mv424-dato span{font-weight:800;display:block;margin-top:3px;overflow-wrap:anywhere}
-      @media(max-width:700px){.mv424-filter,.mv424-grid,.mv424-kpis{grid-template-columns:1fr}.mv424-wrap{padding:10px 8px 80px}.mv424-item-top{flex-direction:column}}
+      .mv426-alert-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px}
+      .mv426-alert-card{border:1px solid #fed7aa;border-left:5px solid #f59e0b;background:#fffaf3;border-radius:12px;padding:11px}
+      .mv426-alert-card strong{display:block;font-size:13px}.mv426-alert-card small{color:#64748b}
+      .mv426-alert-chips{display:flex;gap:5px;flex-wrap:wrap;margin:8px 0}.mv426-alert-chip{font-size:10px;font-weight:900;padding:4px 7px;border-radius:999px;background:#fee2e2;color:#b91c1c}
+      .mv426-reco{font-size:11px;line-height:1.4;color:#475569;background:#f8fafc;border-radius:9px;padding:8px}
+      .mv426-selected{margin-top:9px;padding:9px;border-radius:10px;background:#ede9fe;color:#5b21b6;font-size:11px}
+      @media(max-width:700px){.mv424-filter,.mv424-grid,.mv424-kpis,.mv426-alert-grid{grid-template-columns:1fr}.mv424-wrap{padding:10px 8px 80px}.mv424-item-top{flex-direction:column}}
     `;
     document.head.appendChild(s);
   }
@@ -187,22 +201,180 @@
     const c=document.getElementById("mv424ListaCasos");if(c)c.innerHTML=lista.length?lista.map(tarjeta).join(""):`<div class="mv424-note">No hay coincidencias.</div>`;
   }
 
-  async function nuevaAsignacion(){
+  function periodoActualV426(){
+    const p=new Intl.DateTimeFormat("en-CA",{timeZone:"America/Lima",year:"numeric",month:"2-digit"}).formatToParts(new Date());
+    return `${p.find(x=>x.type==="year")?.value}-${p.find(x=>x.type==="month")?.value}`;
+  }
+
+  function pctV426(v){
+    const x=Number(v)||0;
+    return x<=1?x*100:x;
+  }
+
+  function alertasItemV426(x){
+    const a=[];
+    const diario=x.mv353CumplimientoDia||{};
+    const meta=Number(diario.metaAcumulada)||0;
+    const prod=Number(x.produccion)||0;
+    if(meta>0&&prod<meta)a.push({corto:`Producción ${prod.toFixed(1)}/${meta.toFixed(1)} pts`,motivo:"PRODUCCION POR DEBAJO DE META"});
+
+    const ef=pctV426(x.efectividad);
+    if(Number(x.detEfectividad?.total)>0&&ef<70)a.push({corto:`Efectividad ${ef.toFixed(1)}%`,motivo:"EFECTIVIDAD POR DEBAJO DE META"});
+
+    const rec=pctV426(x.recableado);
+    if(Number(x.detRecableado?.los)>0&&rec>42)a.push({corto:`Recableado ${rec.toFixed(1)}%`,motivo:"RECABLEADO / CALIDAD TECNICA"});
+
+    const vg=pctV426(x.vtrgar);
+    if(Number(x.detVtrGar?.finalizadas)>0&&vg>3)a.push({corto:`VTR/GAR ${vg.toFixed(1)}%`,motivo:"VTR / GAR"});
+
+    const sla=pctV426(x.slaAjustado??x.sla);
+    if(Number(x.detSla?.evaluables)>0&&sla<95)a.push({corto:`SLA ${sla.toFixed(1)}%`,motivo:"TIEMPO DE GESTION SLA"});
+
+    const obs=Number(x.observaciones)||0;
+    if(obs>0)a.push({corto:`Observaciones ${obs}`,motivo:"OBSERVACIONES / REINCIDENCIA"});
+
+    return a;
+  }
+
+  function recomendacionV426(item,alertas){
+    const motivos=[...new Set((alertas||[]).map(a=>a.motivo))];
+    if(!motivos.length)return "";
+    return `Revisar ${item.cuadrilla}: ${motivos.join(" · ")}. Validar orden, acta y condiciones encontradas en campo.`;
+  }
+
+  function renderAlertasCuadrillasV426(){
+    const cont=document.getElementById("mv426AlertasCuadrillas");
+    if(!cont)return;
+    const sede=nt(document.getElementById("mv426FiltroSedeAlertas")?.value);
+    const lista=alertasCuadrillasV426
+      .filter(x=>!sede||nt(x.item.sede)===sede)
+      .slice(0,18);
+
+    if(!lista.length){
+      cont.innerHTML=`<div class="mv424-note mv424-ok">No se detectan cuadrillas fuera de los indicadores evaluados para el filtro seleccionado.</div>`;
+      return;
+    }
+
+    cont.innerHTML=`<div class="mv426-alert-grid">${lista.map(x=>{
+      const q=x.item;
+      const reco=recomendacionV426(q,x.alertas);
+      return `<div class="mv426-alert-card">
+        <strong>${esc(q.cuadrilla||"")}</strong>
+        <small>${esc(q.sede||"")} · ${esc(q.plataforma||"")}</small>
+        <div class="mv426-alert-chips">${x.alertas.map(a=>`<span class="mv426-alert-chip">${esc(a.corto)}</span>`).join("")}</div>
+        <div class="mv426-reco"><b>Recomendación:</b> ${esc(reco)}</div>
+        <div class="mv424-actions">
+          <button class="mv424-btn sec" onclick="mv426IrMapaCuadrilla('${esc(q.cuadrilla||"")}','${esc(q.sede||"")}')">🗺️ Ver órdenes en mapa</button>
+          <button class="mv424-btn" onclick="mv426UsarRecomendacion('${encodeURIComponent(reco)}')">✍️ Usar recomendación</button>
+        </div>
+      </div>`;
+    }).join("")}</div>`;
+  }
+
+  async function cargarAlertasCuadrillasV426(){
+    const cont=document.getElementById("mv426AlertasCuadrillas");
+    if(!cont)return;
+    cont.innerHTML=`<div class="mv424-note">Consultando indicadores del período actual...</div>`;
+    try{
+      alertasPeriodoV426=periodoActualV426();
+      const d=await apiGet("obtenerResumenDashboardRanking",{periodo:alertasPeriodoV426});
+      alertasCuadrillasV426=(d.lista||[])
+        .map(item=>({item,alertas:alertasItemV426(item)}))
+        .filter(x=>x.alertas.length)
+        .sort((a,b)=>b.alertas.length-a.alertas.length);
+
+      const sedes=[...new Set(alertasCuadrillasV426.map(x=>nt(x.item.sede)).filter(Boolean))].sort();
+      const sel=document.getElementById("mv426FiltroSedeAlertas");
+      if(sel){
+        sel.innerHTML=`<option value="">Todas las sedes</option>${sedes.map(s=>`<option>${esc(s)}</option>`).join("")}`;
+      }
+      renderAlertasCuadrillasV426();
+    }catch(e){
+      cont.innerHTML=`<div class="mv424-note mv424-warn">Alertas de cuadrillas no disponibles temporalmente: ${esc(e.message)}</div>`;
+    }
+  }
+
+  function usarRecomendacionV426(valorCodificado){
+    let txt="";
+    try{txt=decodeURIComponent(valorCodificado||"");}catch(_){txt=valorCodificado||"";}
+    motivoSugeridoV426=txt;
+    const aviso=document.getElementById("mv426MotivoSeleccionado");
+    if(aviso)aviso.innerHTML=`<b>Motivo sugerido seleccionado:</b> ${esc(txt)}`;
+    const campo=document.getElementById("mv424Motivo");
+    if(campo&&!campo.value)campo.value=txt;
+    document.getElementById("mv424Codigo")?.focus();
+  }
+
+  async function irMapaCuadrillaV426(cuadrilla,sede){
+    try{
+      if(typeof window.mv339CargarModulo==="function")await window.mv339CargarModulo("mapa");
+      if(typeof window.mostrarMapaOperativo!=="function")throw new Error("Mapa Operativo no disponible.");
+      await window.mostrarMapaOperativo();
+      setTimeout(async()=>{
+        try{
+          const periodo=document.getElementById("moFiltroPeriodo");
+          if(periodo)periodo.value=periodoActualV426();
+          const sedeSel=document.getElementById("moFiltroSede");
+          if(sedeSel&&sede)sedeSel.value=sede;
+          if(typeof MO_MULTI_FILTROS_V418!=="undefined"){
+            MO_MULTI_FILTROS_V418.cuadrilla=[cuadrilla];
+            if(typeof moMultiRefrescarV418==="function")moMultiRefrescarV418("cuadrilla");
+          }
+          if(typeof moActualizarRangoFecha==="function")moActualizarRangoFecha();
+          if(typeof moConsultarMapa==="function")await moConsultarMapa();
+        }catch(e){console.warn("V426 filtro mapa",e);}
+      },100);
+    }catch(e){
+      alert("No se pudo abrir el mapa: "+(e?.message||e));
+    }
+  }
+
+  async function irMapaGeneralV426(){
+    try{
+      if(typeof window.mv339CargarModulo==="function")await window.mv339CargarModulo("mapa");
+      if(typeof window.mostrarMapaOperativo==="function")return window.mostrarMapaOperativo();
+      throw new Error("Mapa Operativo no disponible.");
+    }catch(e){alert("No se pudo abrir el mapa: "+(e?.message||e));}
+  }
+
+  async function nuevaAsignacion(prefill){
     if(!puedeAsignar())return;
     fichaPreparada=null;
+    prefillAsignacionV426=prefill&&typeof prefill==="object"?prefill:null;
+    if(prefillAsignacionV426?.motivo)motivoSugeridoV426=prefillAsignacionV426.motivo;
     instalarEstilos();
+
     if(typeof mostrarPantalla==="function")mostrarPantalla(`<div class="mv424-wrap">
-      <div class="mv424-head"><h2>➕ Asignar trabajo de campo</h2><p>Primero busque la orden. MI VISUAL completará cliente, cuadrilla, sede y ubicación desde la información ya existente.</p><div class="mv424-actions"><button class="mv424-btn sec" onclick="mv424MostrarTrabajos()">← Volver</button></div></div>
+      <div class="mv424-head"><h2>➕ Asignar trabajo de campo</h2><p>Puede partir de una alerta de cuadrilla, buscar una orden por código o revisar primero las órdenes en el Mapa Operativo.</p><div class="mv424-actions"><button class="mv424-btn sec" onclick="mv424MostrarTrabajos()">← Volver</button><button class="mv424-btn" onclick="mv426IrMapaGeneral()">🗺️ Ir al mapa operativo</button></div></div>
+
       <div class="mv424-card">
+        <h3>⚠️ Alertas de cuadrillas para orientar el trabajo</h3>
+        <div class="mv424-note">Se muestran desviaciones del período actual en Producción, Efectividad, Recableado, VTR/GAR, SLA y Observaciones. Sirven para orientar la selección; no significan por sí solas una irregularidad.</div>
+        <div class="mv424-field" style="max-width:300px;margin-top:9px"><label>Sede</label><select id="mv426FiltroSedeAlertas" onchange="mv426RenderAlertas()"><option value="">Todas las sedes</option></select></div>
+        <div id="mv426AlertasCuadrillas" style="margin-top:10px"><div class="mv424-note">Cargando alertas...</div></div>
+      </div>
+
+      <div class="mv424-card">
+        <h3>🔎 Seleccionar orden</h3>
         <div class="mv424-field"><label>Código de orden / pedido / cliente / DNI</label><input id="mv424Codigo" placeholder="Ingrese cualquiera de estos datos"></div>
+        <div id="mv426MotivoSeleccionado" class="mv426-selected" style="${motivoSugeridoV426?'':'display:none'}">${motivoSugeridoV426?`<b>Motivo sugerido seleccionado:</b> ${esc(motivoSugeridoV426)}`:""}</div>
         <button class="mv424-btn" style="margin-top:9px" onclick="mv424PrepararCodigo()">🔎 Buscar</button>
         <div id="mv424ResultadoCodigo" style="margin-top:10px"></div>
       </div>
       <div id="mv424FormularioAsignacion"></div>
     </div>`);
+
+    cargarAlertasCuadrillasV426();
+
+    if(prefillAsignacionV426?.codigo){
+      const c=document.getElementById("mv424Codigo");
+      if(c)c.value=prefillAsignacionV426.codigo;
+      await prepararCodigo(prefillAsignacionV426);
+    }
   }
 
-  async function prepararCodigo(){
+
+  async function prepararCodigo(prefill){
     const codigo=n(document.getElementById("mv424Codigo")?.value);
     const r=document.getElementById("mv424ResultadoCodigo");
     const f=document.getElementById("mv424FormularioAsignacion");
@@ -226,6 +398,12 @@
         <div class="mv424-field mv424-wide"><label>Observación adicional de Jefatura</label><textarea id="mv424Observacion" placeholder="Opcional"></textarea></div>
       </div>
       <button class="mv424-btn ok" style="margin-top:10px" onclick="mv424CrearAsignacion(this)">✅ Asignar al Supervisor</button><div id="mv424MsgCrear" style="margin-top:9px"></div></div>`;
+
+      const usar=prefill&&typeof prefill==="object"?prefill:prefillAsignacionV426;
+      const motivoCampo=document.getElementById("mv424Motivo");
+      if(motivoCampo&&!motivoCampo.value&&(usar?.motivo||motivoSugeridoV426))motivoCampo.value=usar?.motivo||motivoSugeridoV426;
+      const tipoCampo=document.getElementById("mv424Tipo");
+      if(tipoCampo&&usar?.tipoActividad)tipoCampo.value=usar.tipoActividad;
     }catch(e){
       fichaPreparada=null;if(r)r.innerHTML=`<div class="mv424-note mv424-warn">❌ ${esc(e.message)}</div>`;
     }
@@ -442,10 +620,24 @@
     if(typeof mostrarActividadCampo==="function") return mostrarActividadCampo();
   }
 
+  function nuevaAsignacionDesdeOrdenV426(codigo,motivo,tipoActividad){
+    return nuevaAsignacion({
+      codigo:n(codigo),
+      motivo:n(motivo)||"AUDITORIA SOLICITADA DESDE MAPA OPERATIVO",
+      tipoActividad:n(tipoActividad)||"AUDITORIA EN FRIO"
+    });
+  }
+
   window.mv424MostrarTrabajos=mostrarTrabajos;
   window.mv424Recargar=mostrarTrabajos;
   window.mv424AplicarFiltro=aplicarFiltro;
   window.mv424NuevaAsignacion=nuevaAsignacion;
+  window.mv424NuevaAsignacionDesdeOrden=nuevaAsignacionDesdeOrdenV426;
+  window.mv424PuedeAsignar=puedeAsignar;
+  window.mv426RenderAlertas=renderAlertasCuadrillasV426;
+  window.mv426UsarRecomendacion=usarRecomendacionV426;
+  window.mv426IrMapaCuadrilla=irMapaCuadrillaV426;
+  window.mv426IrMapaGeneral=irMapaGeneralV426;
   window.mv424PrepararCodigo=prepararCodigo;
   window.mv424CrearAsignacion=crearAsignacion;
   window.mv424AbrirAsignacion=abrirAsignacion;

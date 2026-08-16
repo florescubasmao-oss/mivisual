@@ -1,5 +1,5 @@
 /* ============================================================
-   MI VISUAL V423 - Auditoría integrada + indicadores completos
+   MI VISUAL V426 - Auditoría integrada + generación a Supervisor
    CAPA INCREMENTAL:
    - No modifica Mapa V419 ni optimización V395.
    - Añade "Mostrar órdenes auditadas".
@@ -35,6 +35,13 @@
   function perfil(){return normTxt(localStorage.getItem("perfil")||"");}
   function usuario(){return localStorage.getItem("usuario")||"";}
   function puedeRegistrar(){return perfil()==="SUPERVISOR";}
+  function puedeGenerarAuditoriaV426(){
+    return [
+      "JEFATURA","JEFATURA GENERAL","ADMIN","ADMINISTRADOR",
+      "JEFATURA OPERACIONES","JEFATURA DE OPERACIONES","OPERACIONES",
+      "GERENCIA GENERAL","GERENCIAL GENERAL","GERENCIA LIMA"
+    ].includes(perfil());
+  }
   function periodoActualMapa(){return norm(document.getElementById("moFiltroPeriodo")?.value);}
 
   async function apiGet(accion, params){
@@ -203,7 +210,8 @@
     const aud=encontrarResumenAuditoria(x);
     const badge=aud?`<div class="mv421-popup-auditada">✓ Auditada${Number(aud.cantidad)>1?` · ${Number(aud.cantidad)} veces`:""}</div>`:"";
     const id=normId(x?.ordenId);
-    const acciones=`${badge}<div class="mv421-popup-actions"><button type="button" class="mv421-popup-btn" onclick="mv421AbrirFichaAuditoria('${id}')">🔎 Auditar orden</button></div>`;
+    const texto=puedeGenerarAuditoriaV426()?"📋 Generar auditoría":"🔎 Auditar orden";
+    const acciones=`${badge}<div class="mv421-popup-actions"><button type="button" class="mv421-popup-btn" onclick="mv421AbrirFichaAuditoria('${id}')">${texto}</button></div>`;
     if(!html)return `<div class="mo-popup">${acciones}</div>`;
     return html.replace(/<\/div>\s*$/,acciones+"</div>");
   }
@@ -508,11 +516,37 @@
       <div class="mv421-card"><h3>🕘 Historial de auditorías de esta orden</h3>${historialHtml(hist)}</div>
 
       <div class="mv421-card"><h3>🎯 Motivo de selección de la auditoría</h3><div class="mv421-reasons">
-        ${["ALTO CONSUMO DE MATERIALES","OBSERVACIONES / REINCIDENCIA","RECABLEADO / CALIDAD TECNICA","VTR / GAR","SELECCION ALEATORIA","OTRO"].map(x=>`<label><input type="checkbox" name="mv421Motivo" value="${esc(x)}"> ${esc(x)}</label>`).join("")}
+        ${["ALTO CONSUMO DE MATERIALES","OBSERVACIONES / REINCIDENCIA","RECABLEADO / CALIDAD TECNICA","VTR / GAR","TIEMPO DE GESTION SLA","SELECCION ALEATORIA","OTRO"].map(x=>`<label><input type="checkbox" name="mv421Motivo" value="${esc(x)}"> ${esc(x)}</label>`).join("")}
       </div></div>
 
-      <div class="mv421-card"><h3>📝 Registrar resultado en Actividad en Campo</h3>${puede?`<div class="mv421-note mv421-ok">El registro se guardará en <b>Actividad en Campo → Auditoría en Frío</b>. La orden y la cuadrilla se cargarán automáticamente.</div><button class="mv421-btn ok" style="margin-top:10px" onclick="mv421RegistrarAuditoriaDesdeFicha('${normId(o.ordenId)}')">✅ Registrar auditoría en frío</button>`:`<div class="mv421-note mv421-muted">La consulta está habilitada, pero el registro de auditorías queda reservado al perfil Supervisor.</div>`}</div>
+      ${puede
+        ? `<div class="mv421-card"><h3>📝 Registrar resultado en Actividad en Campo</h3><div class="mv421-note mv421-ok">El registro se guardará en <b>Actividad en Campo → Auditoría en Frío</b>. La orden y la cuadrilla se cargarán automáticamente.</div><button class="mv421-btn ok" style="margin-top:10px" onclick="mv421RegistrarAuditoriaDesdeFicha('${normId(o.ordenId)}')">✅ Registrar auditoría en frío</button></div>`
+        : puedeGenerarAuditoriaV426()
+          ? `<div class="mv421-card"><h3>📋 Generar auditoría a Supervisor</h3><div class="mv421-note mv421-ok">Seleccione arriba el motivo de la auditoría. MI VISUAL llevará esta orden a <b>Actividad en Campo → Trabajos asignados</b> para elegir al Supervisor y generar el encargo.</div><button class="mv421-btn ok" style="margin-top:10px" onclick="mv426GenerarAuditoriaSupervisor('${normId(o.ordenId)}')">📋 Generar auditoría a Supervisor</button></div>`
+          : `<div class="mv421-card"><h3>📝 Actividad en Campo</h3><div class="mv421-note mv421-muted">Perfil habilitado únicamente para consulta.</div></div>`
+      }
     </div>`;
+  }
+
+  async function generarAuditoriaSupervisorV426(orderId){
+    if(!puedeGenerarAuditoriaV426())return;
+    const id=normId(orderId);
+    const motivos=Array.from(document.querySelectorAll('input[name="mv421Motivo"]:checked')).map(x=>x.value);
+    const motivo=motivos.length
+      ? motivos.join(" · ")
+      : "AUDITORIA SOLICITADA DESDE MAPA OPERATIVO";
+
+    try{
+      if(typeof window.mv339CargarModulo==="function"){
+        await window.mv339CargarModulo("actividad");
+      }
+      if(typeof window.mv424NuevaAsignacionDesdeOrden!=="function"){
+        throw new Error("Trabajos asignados no terminó de cargar.");
+      }
+      return window.mv424NuevaAsignacionDesdeOrden(id,motivo,"AUDITORIA EN FRIO");
+    }catch(e){
+      alert("No se pudo preparar la auditoría para el Supervisor: "+(e?.message||e));
+    }
   }
 
   async function abrirFicha(orderId,forzar=false){
@@ -620,6 +654,7 @@
   try{moRenderMarcadores=renderV421;}catch(_){}
 
   window.mv421AbrirFichaAuditoria=abrirFicha;
+  window.mv426GenerarAuditoriaSupervisor=generarAuditoriaSupervisorV426;
   window.mv421RegistrarAuditoriaDesdeFicha=registrarDesdeFicha;
   window.mv421VolverMapa=volverMapa;
   window.MV421_MAPA_AUDITORIA_OK=true;

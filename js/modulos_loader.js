@@ -7,7 +7,7 @@
 (function(){
   "use strict";
 
-  const VERSION = "V425-ASIGNACIONES-EN-ACTIVIDAD-20260816";
+  const VERSION = "V426-GENERAR-AUDITORIA-20260816";
   const MODULOS = {
     dashboards_core: {
       archivos: [
@@ -69,10 +69,10 @@
     },
     actividad: {
       archivos: [
-        `./js/actividad_campo.js?v=V425-ASIGNACIONES-EN-ACTIVIDAD`,
+        `./js/actividad_campo.js?v=V426-GENERAR-AUDITORIA`,
         `./js/actividad_galeria_v371.js?v=V408-RESTAURA-V403`,
         `./js/actividad_imagen_robusta_v384.js?v=V408-RESTAURA-V403`,
-        `./js/asignaciones_campo_v424.js?v=V425-ASIGNACIONES-EN-ACTIVIDAD`
+        `./js/asignaciones_campo_v424.js?v=V426-ALERTAS-ASIGNACION`
       ],
       entradas: ["mostrarActividadCampo"]
     },
@@ -130,7 +130,7 @@
         `./js/mapa_progreso_v393.js?v=V408-RESTAURA-V403`,
         `./js/mapa_rapido_v395.js?v=V408-RESTAURA-V403`,
         `./js/mapa_campo_v408.js?v=V408-MAPA-CAMPO`,
-        `./js/mapa_auditoria_v421.js?v=V423-INDICADORES-COMPLETOS`
+        `./js/mapa_auditoria_v421.js?v=V426-GENERAR-AUDITORIA`
       ],
       entradas: ["mostrarMapaOperativo"]
     },
