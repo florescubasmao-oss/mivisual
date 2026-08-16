@@ -1,4 +1,4 @@
-// MI VISUAL - Actividad en Campo V263 · Auditorías con autocompletado y vista gerencial
+// MI VISUAL - Actividad en Campo V424 · Integración incremental con Trabajos Asignados
 
 const API_ACTIVIDAD_CAMPO = "https://script.google.com/macros/s/AKfycbwugGpuEMcJYFsDNS1hkcdZXJ92PUvXNv5ttpktyhZWv2fWB7ceCZNkfIFYxAs5wsgN/exec";
 
@@ -871,6 +871,7 @@ async function guardarActividadCampo(btn){
         const foto4=audit?await leerArchivoActividad(document.getElementById("actFoto4")?.files[0]):null;
         const checklist=tipo==="CHECKLIST"?await armarChecklistActividadCampo(cuadrilla,comentarioFinal):null;
         const payload={accion:"registrarActividadCampo",usuario:u.usuario,cuadrilla,tipoActividad:tipo,
+            asignacionCampoId:(window.MV424_ASIGNACION_CAMPO_ACTIVA&&window.MV424_ASIGNACION_CAMPO_ACTIVA.id)||"",
             clientePresente:tipo==="AUDITORIA EN FRIO"?obtenerValor("actClientePresente"):"",dniValidado:tipo==="AUDITORIA EN FRIO"?obtenerValor("actDniValidado"):"",
             estadoInstalacion:tipo==="AUDITORIA EN FRIO"?obtenerValor("actEstadoInstalacion"):obtenerEstadoResumenActividad(tipo),dropMetraje:tipo==="AUDITORIA EN FRIO"?obtenerValor("actDropMetraje"):"",templadores:tipo==="AUDITORIA EN FRIO"?obtenerValor("actTempladores"):"",reservaCable:tipo==="AUDITORIA EN FRIO"?obtenerValor("actReservaCable"):"",potenciaConforme:tipo==="AUDITORIA EN FRIO"?obtenerValor("actPotenciaConforme"):"",velocidadConforme:tipo==="AUDITORIA EN FRIO"?obtenerValor("actVelocidadConforme"):"",limpiezaTrabajo:tipo==="AUDITORIA EN FRIO"?obtenerValor("actLimpiezaTrabajo"):"",clienteConforme:tipo==="AUDITORIA EN FRIO"?obtenerValor("actClienteConforme"):obtenerClienteConformeGenerico(tipo),
             observaciones:armarDetalleActividad(tipo),foto1,foto2,foto3,foto4,auditoria,checklist,
