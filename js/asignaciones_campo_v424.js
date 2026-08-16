@@ -1,7 +1,7 @@
 /* ============================================================
-   MI VISUAL V424 - Trabajos asignados / Agenda de campo
+   MI VISUAL V425 - Trabajos asignados dentro de Actividad en Campo
    CAPA INCREMENTAL:
-   - No modifica Mapa Operativo V419 ni optimización V395.
+   - Entrada principal desde Actividad en Campo; Mapa solo como apoyo.
    - Jefatura asigna casos por código.
    - Supervisor ejecuta usando Actividad en Campo existente.
    - Plantilla / Acta / ubicación se consultan desde fuentes existentes.
@@ -11,7 +11,6 @@
   if(window.MV424_ASIGNACIONES_CAMPO_OK) return;
 
   const API = window.MI_VISUAL_API_URL || "";
-  const mostrarMapaBaseV424 = window.mostrarMapaOperativo;
   const TIPOS = [
     "AUDITORIA EN FRIO",
     "AUDITORIA EN CALIENTE",
@@ -107,26 +106,6 @@
     return `<div class="mv424-dato"><b>${esc(l)}</b><span>${esc(v)}</span></div>`;
   }
 
-  function instalarBotonMapa(){
-    instalarEstilos();
-    const acciones=document.querySelector(".mo-head .mo-actions");
-    if(!acciones||document.getElementById("mv424TrabajosBtn"))return;
-    const b=document.createElement("button");
-    b.id="mv424TrabajosBtn";b.type="button";b.className="mv424-map-btn";
-    b.innerHTML='📋 Trabajos de campo <b id="mv424Count">…</b>';
-    b.onclick=()=>mostrarTrabajos();
-    acciones.appendChild(b);
-    actualizarContador().catch(()=>{});
-  }
-
-  async function actualizarContador(){
-    const e=document.getElementById("mv424Count");if(!e)return;
-    try{
-      const d=await apiGet("listarAsignacionesCampoV424",{estado:"ACTIVAS",soloConteo:"SI"});
-      e.textContent=String(d.total||0);
-    }catch(_){e.textContent="-";}
-  }
-
   function estadoClase(v){return "mv424-est-"+nt(v).replace(/\s+/g,"-");}
   function prioClase(v){return "mv424-prio-"+nt(v).replace(/\s+/g,"-");}
 
@@ -168,7 +147,7 @@
       cacheLista=d.asignaciones||[];cachePorId=Object.create(null);cacheLista.forEach(x=>cachePorId[x.id]=x);
       renderLista(d);
     }catch(e){
-      if(typeof mostrarPantalla==="function")mostrarPantalla(`<div class="mv424-wrap"><div class="mv424-card"><h3>❌ No se pudo cargar</h3><div class="mv424-note mv424-warn">${esc(e.message)}</div><button class="mv424-btn sec" style="margin-top:10px" onclick="mv424VolverMapa()">🗺️ Volver al mapa</button></div></div>`);
+      if(typeof mostrarPantalla==="function")mostrarPantalla(`<div class="mv424-wrap"><div class="mv424-card"><h3>❌ No se pudo cargar</h3><div class="mv424-note mv424-warn">${esc(e.message)}</div><button class="mv424-btn sec" style="margin-top:10px" onclick="mv424VolverActividad()">← Volver a Actividad en Campo</button></div></div>`);
     }
   }
 
@@ -181,7 +160,7 @@
         <h2>📋 Trabajos de campo</h2>
         <p>${esSupervisor()?"Casos asignados por Jefatura para ejecución en campo.":"Planificación y seguimiento de trabajos asignados a Supervisores."}</p>
         <div class="mv424-actions">
-          <button class="mv424-btn sec" onclick="mv424VolverMapa()">🗺️ Volver al mapa</button>
+          <button class="mv424-btn sec" onclick="mv424VolverActividad()">← Volver a Actividad en Campo</button>
           ${puedeAsignar()?`<button class="mv424-btn ok" onclick="mv424NuevaAsignacion()">+ Asignar trabajo</button>`:""}
           <button class="mv424-btn" onclick="mv424Recargar()">🔄 Actualizar</button>
         </div>
@@ -425,34 +404,43 @@
 
   async function verEnMapa(id){
     const a=cachePorId[id];if(!a)return;
-    window.MV424_BUSCAR_EN_MAPA={ordenId:a.codigoOrden,fecha:a.fechaOrden||""};
-    return window.mostrarMapaOperativo();
+    try{
+      if(typeof window.mv339CargarModulo==="function"){
+        await window.mv339CargarModulo("mapa");
+      }
+      if(typeof window.mostrarMapaOperativo!=="function"){
+        throw new Error("Mapa Operativo no está disponible.");
+      }
+
+      await window.mostrarMapaOperativo();
+
+      setTimeout(async function(){
+        const codigo=document.getElementById("moBuscarCodigo");
+        const fecha=document.getElementById("moFiltroFecha");
+        const periodo=document.getElementById("moFiltroPeriodo");
+
+        if(codigo) codigo.value=a.codigoOrden||"";
+
+        const fechaOrden=a._ficha?.orden?.fechaSolicitud||"";
+        const m=n(fechaOrden).match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})/);
+        if(m&&periodo){
+          periodo.value=`${m[3]}-${String(m[2]).padStart(2,"0")}`;
+        }
+
+        if(fecha) fecha.value="";
+        try{if(typeof moActualizarRangoFecha==="function")moActualizarRangoFecha();}catch(_){}
+        try{if(typeof moConsultarMapa==="function")await moConsultarMapa();}catch(e){console.warn("V425 mapa caso",e);}
+      },80);
+    }catch(e){
+      alert("No se pudo abrir el caso en el mapa: "+(e?.message||e));
+    }
   }
 
-  async function aplicarBusquedaMapaPendiente(){
-    const q=window.MV424_BUSCAR_EN_MAPA;if(!q)return;
-    window.MV424_BUSCAR_EN_MAPA=null;
-    const codigo=document.getElementById("moBuscarCodigo");
-    const fecha=document.getElementById("moFiltroFecha");
-    const periodo=document.getElementById("moFiltroPeriodo");
-    if(codigo)codigo.value=q.ordenId||"";
-    const m=n(q.fecha).match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})/);
-    if(m&&periodo)periodo.value=`${m[3]}-${String(m[2]).padStart(2,"0")}`;
-    if(fecha)fecha.value="";
-    try{if(typeof moActualizarRangoFecha==="function")moActualizarRangoFecha();}catch(_){}
-    try{if(typeof moConsultarMapa==="function")await moConsultarMapa();}catch(_){}
+  function volverActividad(){
+    window.MV424_ASIGNACION_CAMPO_ACTIVA=null;
+    if(typeof window.mostrarActividadCampo==="function") return window.mostrarActividadCampo();
+    if(typeof mostrarActividadCampo==="function") return mostrarActividadCampo();
   }
-
-  async function mostrarMapaV424(){
-    const r=typeof mostrarMapaBaseV424==="function"?await mostrarMapaBaseV424.apply(this,arguments):undefined;
-    setTimeout(()=>{instalarBotonMapa();aplicarBusquedaMapaPendiente();},40);
-    return r;
-  }
-
-  function volverMapa(){return window.mostrarMapaOperativo();}
-
-  window.mostrarMapaOperativo=mostrarMapaV424;
-  try{mostrarMapaOperativo=mostrarMapaV424;}catch(_){}
 
   window.mv424MostrarTrabajos=mostrarTrabajos;
   window.mv424Recargar=mostrarTrabajos;
@@ -464,6 +452,6 @@
   window.mv424IniciarAsignacion=iniciarAsignacion;
   window.mv424AnularAsignacion=anularAsignacion;
   window.mv424VerEnMapa=verEnMapa;
-  window.mv424VolverMapa=volverMapa;
+  window.mv424VolverActividad=volverActividad;
   window.MV424_ASIGNACIONES_CAMPO_OK=true;
 })();

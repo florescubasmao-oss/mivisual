@@ -1,4 +1,4 @@
-// MI VISUAL - Actividad en Campo V424 · Integración incremental con Trabajos Asignados
+// MI VISUAL - Actividad en Campo V425 · Trabajos Asignados dentro de Actividad en Campo
 
 const API_ACTIVIDAD_CAMPO = "https://script.google.com/macros/s/AKfycbwugGpuEMcJYFsDNS1hkcdZXJ92PUvXNv5ttpktyhZWv2fWB7ceCZNkfIFYxAs5wsgN/exec";
 
@@ -511,6 +511,8 @@ function mostrarActividadCampo(){
             </div>
             <div class="act-actions">
                 ${(typeof pmPuede==="function" ? pmPuede("ACTIVIDAD CAMPO","REGISTRAR") : u.perfil === "SUPERVISOR") ? `<button class="act-btn ok" onclick="mostrarFormularioActividadCampo()">+ Nueva actividad</button>` : ""}
+                ${esJefaturaActividad(u.perfil) ? `<button class="act-btn warn" onclick="mv424MostrarTrabajos()">📋 Trabajos asignados</button><button class="act-btn ok" onclick="mv424NuevaAsignacion()">+ Asignar trabajo</button>` : ""}
+                ${u.perfil === "SUPERVISOR" ? `<button class="act-btn warn" onclick="mv424MostrarTrabajos()">📋 Mis trabajos asignados</button>` : ""}
                 <button class="act-btn sec" onclick="cargarActividadCampo()">🔄 Actualizar lista</button>
             </div>
             ${esJefaturaActividad(u.perfil) ? `<div class="act-note">Vista Jefatura: consulta y validación visual de registros realizados por supervisores. El registro de nuevas actividades queda habilitado solo para Supervisores.</div>` : ""}
