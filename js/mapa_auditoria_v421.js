@@ -1,5 +1,5 @@
 /* ============================================================
-   MI VISUAL V421 - Auditoría integrada desde Mapa Operativo
+   MI VISUAL V422 - Auditoría integrada + alertas operativas
    CAPA INCREMENTAL:
    - No modifica Mapa V419 ni optimización V395.
    - Añade "Mostrar órdenes auditadas".
@@ -22,6 +22,8 @@
   let cargandoIndice = null;
   let estadoRetorno = null;
   const fichaCache = Object.create(null);
+  const resumenIndicadoresCacheV422 = Object.create(null);
+  const resumenIndicadoresPromesaV422 = Object.create(null);
   let integracionActividadLista = false;
   let mostrarActividadOriginal = null;
   let construirAuditoriaOriginal = null;
@@ -83,6 +85,11 @@
       .mv421-dato{border-bottom:1px dashed #d7e0eb;padding:7px 0;min-width:0}.mv421-dato b{display:block;font-size:10px;color:#64748b;text-transform:uppercase}.mv421-dato span{display:block;margin-top:3px;font-weight:800;overflow-wrap:anywhere}
       .mv421-note{padding:10px;border-radius:11px;background:#e0f2fe;color:#075985;font-size:12px;line-height:1.4}
       .mv421-ok{background:#dcfce7;color:#166534}.mv421-warn{background:#fff7ed;color:#9a3412}.mv421-muted{background:#f1f5f9;color:#475569}
+      .mv422-alertas{display:grid;gap:7px;margin-top:9px}
+      .mv422-alerta{padding:9px 10px;border-radius:10px;background:#fff7ed;color:#9a3412;font-size:12px;line-height:1.4;border-left:4px solid #f59e0b}
+      .mv422-alerta b{color:#7c2d12}
+      .mv422-alerta-ok{padding:9px 10px;border-radius:10px;background:#dcfce7;color:#166534;font-size:12px;line-height:1.4;border-left:4px solid #22c55e}
+      .mv422-subtitulo{font-size:12px;font-weight:900;color:#334155;margin:12px 0 6px}
       .mv421-acta{display:flex;gap:10px;align-items:center;justify-content:space-between;flex-wrap:wrap}
       .mv421-history-item{border:1px solid #e2e8f0;border-radius:12px;padding:10px;margin:8px 0;background:#fff}
       .mv421-history-item strong{color:#0f172a}.mv421-history-item small{color:#64748b}
@@ -305,10 +312,121 @@
       }
       const dif=Number(d.diferenciaPct)||0;
       const clase=dif>0?"mv421-warn":"mv421-ok";
-      const frase=dif>0?`${dif.toFixed(1)}% por encima del promedio de ${esc(d.sede||"la sede")}`:`${Math.abs(dif).toFixed(1)}% por debajo del promedio de ${esc(d.sede||"la sede")}`;
-      cont.innerHTML=`<div class="mv421-note ${clase}"><b>Consumo de materiales:</b> ${frase}.</div><div class="mv421-grid" style="margin-top:8px">${dato("Costo cuadrilla",`S/ ${Number(d.costoCuadrilla||0).toFixed(2)}`)}${dato("Órdenes finalizadas",d.ordenesFinalizadas)}${dato("Costo promedio / orden",`S/ ${Number(d.promedioCuadrilla||0).toFixed(2)}`)}${dato("Promedio sede / orden",`S/ ${Number(d.promedioSede||0).toFixed(2)}`)}</div>${Array.isArray(d.materialesPrincipales)&&d.materialesPrincipales.length?`<div class="mv421-note mv421-muted" style="margin-top:8px"><b>Materiales con mayor costo:</b> ${d.materialesPrincipales.map(x=>`${esc(x.material)} (${Number(x.cantidad||0).toFixed(1)})`).join(" · ")}</div>`:""}`;
+      const frase=dif>0
+        ?`${dif.toFixed(1)}% por encima del promedio de ${esc(d.sede||"la sede")}`
+        :`${Math.abs(dif).toFixed(1)}% por debajo del promedio de ${esc(d.sede||"la sede")}`;
+
+      cont.innerHTML=`
+        <div class="mv421-note ${clase}"><b>Consumo de materiales:</b> ${frase}.</div>
+        <div class="mv421-grid" style="margin-top:8px">
+          ${dato("Costo promedio / orden",`S/ ${Number(d.promedioCuadrilla||0).toFixed(2)}`)}
+          ${dato("Promedio sede / orden",`S/ ${Number(d.promedioSede||0).toFixed(2)}`)}
+        </div>
+        ${Array.isArray(d.materialesPrincipales)&&d.materialesPrincipales.length
+          ?`<div class="mv421-note mv421-muted" style="margin-top:8px"><b>Detalle de materiales:</b> ${d.materialesPrincipales.map(x=>`${esc(x.material)} (${Number(x.cantidad||0).toFixed(1)})`).join(" · ")}</div>`
+          :""
+        }`;
     }catch(e){
       cont.innerHTML=`<div class="mv421-note mv421-muted">Comparación de materiales no disponible: ${esc(e.message)}</div>`;
+    }
+  }
+
+  function pctV422(v){
+    const n=Number(v)||0;
+    return n<=1?n*100:n;
+  }
+
+  function moneyV422(v){
+    return `S/ ${(Number(v)||0).toFixed(2)}`;
+  }
+
+  async function resumenIndicadoresV422(periodo){
+    const p=norm(periodo)||fechaPeriodo("");
+    if(resumenIndicadoresCacheV422[p])return resumenIndicadoresCacheV422[p];
+    if(resumenIndicadoresPromesaV422[p])return resumenIndicadoresPromesaV422[p];
+
+    resumenIndicadoresPromesaV422[p]=apiGet("obtenerResumenDashboardRanking",{periodo:p})
+      .then(d=>{
+        resumenIndicadoresCacheV422[p]=d;
+        delete resumenIndicadoresPromesaV422[p];
+        return d;
+      })
+      .catch(e=>{
+        delete resumenIndicadoresPromesaV422[p];
+        throw e;
+      });
+    return resumenIndicadoresPromesaV422[p];
+  }
+
+  function alertasIndicadoresHtmlV422(item){
+    if(!item)return `<div class="mv421-note mv421-muted">No se encontró resumen operativo de esta cuadrilla para el período.</div>`;
+
+    // Metas vigentes del sistema.
+    const META_EFECTIVIDAD=70;
+    const META_RECABLEADO=42;
+    const META_VTRGAR=3;
+    const META_SLA=95;
+
+    const alertas=[];
+    const diario=item.mv353CumplimientoDia||{};
+    const metaAcumulada=Number(diario.metaAcumulada)||0;
+    const produccion=Number(item.produccion)||0;
+
+    if(metaAcumulada>0 && produccion<metaAcumulada){
+      const cumplimiento=(produccion/metaAcumulada)*100;
+      alertas.push(`<div class="mv422-alerta"><b>Producción al día:</b> ${produccion.toFixed(1)} pts frente a meta acumulada de ${metaAcumulada.toFixed(1)} pts (${cumplimiento.toFixed(1)}% de cumplimiento).</div>`);
+    }
+
+    const ef=pctV422(item.efectividad);
+    const totalEf=Number(item.detEfectividad?.total)||0;
+    if(totalEf>0 && ef<META_EFECTIVIDAD){
+      alertas.push(`<div class="mv422-alerta"><b>Efectividad:</b> ${ef.toFixed(2)}%, por debajo de la meta de ${META_EFECTIVIDAD}%.</div>`);
+    }
+
+    const rec=pctV422(item.recableado);
+    const los=Number(item.detRecableado?.los)||0;
+    if(los>0 && rec>META_RECABLEADO){
+      alertas.push(`<div class="mv422-alerta"><b>Recableado:</b> ${rec.toFixed(2)}%, por encima del máximo de ${META_RECABLEADO}% (${Number(item.detRecableado?.recableados)||0} recableados / ${los} órdenes VT).</div>`);
+    }
+
+    const vg=pctV422(item.vtrgar);
+    const finVg=Number(item.detVtrGar?.finalizadas)||0;
+    if(finVg>0 && vg>META_VTRGAR){
+      alertas.push(`<div class="mv422-alerta"><b>VTR/GAR:</b> ${vg.toFixed(2)}%, por encima del máximo de ${META_VTRGAR}% (${Number(item.detVtrGar?.total)||0} incidencia(s)).</div>`);
+    }
+
+    const sla=pctV422(item.slaAjustado??item.sla);
+    const evalSla=Number(item.detSla?.evaluables)||0;
+    if(evalSla>0 && sla<META_SLA){
+      alertas.push(`<div class="mv422-alerta"><b>Tiempo de Gestión - SLA:</b> ${sla.toFixed(2)}%, por debajo de la meta de ${META_SLA}%. Fuera de SLA: ${Number(item.detSla?.fueraAjustado??item.detSla?.fueraBruto)||0}.</div>`);
+    }
+
+    const obs=Number(item.observaciones)||0;
+    if(obs>0){
+      const d=item.detObservaciones||{};
+      const estados=d.estados||{};
+      const pendientes=Number(d.pendientes)||0;
+      const penalizadas=Number(estados.PENALIZADO)||0;
+      const derivadas=Number(estados.DERIVADO)||0;
+      alertas.push(`<div class="mv422-alerta"><b>Observaciones:</b> ${obs} registrada(s). Pendientes: ${pendientes} · Penalizadas: ${penalizadas} · Derivadas: ${derivadas} · Monto afectado: ${moneyV422(item.montoAfectadoObs)}.</div>`);
+    }
+
+    return alertas.length
+      ?`<div class="mv422-alertas">${alertas.join("")}</div>`
+      :`<div class="mv422-alerta-ok">✓ Los indicadores disponibles de la cuadrilla se encuentran dentro de las metas operativas.</div>`;
+  }
+
+  async function cargarIndicadoresFichaV422(orden){
+    const cont=document.getElementById("mv422Indicadores");if(!cont)return;
+    cont.innerHTML=`<div class="mv421-note mv421-muted">Consultando indicadores de la cuadrilla...</div>`;
+    try{
+      const periodo=fechaPeriodo(orden.fechaSolicitud||"");
+      const d=await resumenIndicadoresV422(periodo);
+      const cuad=normTxt(orden.cuadrilla||"");
+      const item=(d.lista||[]).find(x=>normTxt(x.cuadrilla||"")===cuad);
+      cont.innerHTML=alertasIndicadoresHtmlV422(item);
+    }catch(e){
+      cont.innerHTML=`<div class="mv421-note mv421-muted">Indicadores no disponibles temporalmente: ${esc(e.message)}</div>`;
     }
   }
 
@@ -340,7 +458,7 @@
 
       <div class="mv421-card"><h3>📄 Acta registrada</h3>${actaHtml(acta)}</div>
 
-      <div class="mv421-card"><h3>⚠️ Alertas para orientar la auditoría</h3><div id="mv421Materiales"></div><div class="mv421-note mv421-muted" style="margin-top:8px">Estas alertas orientan la revisión; no significan por sí solas una irregularidad.</div></div>
+      <div class="mv421-card"><h3>⚠️ Alertas para orientar la auditoría</h3><div id="mv421Materiales"></div><div class="mv422-subtitulo">Indicadores de la cuadrilla</div><div id="mv422Indicadores"></div><div class="mv421-note mv421-muted" style="margin-top:8px">Estas alertas orientan la revisión; no significan por sí solas una irregularidad.</div></div>
 
       <div class="mv421-card"><h3>🕘 Historial de auditorías de esta orden</h3>${historialHtml(hist)}</div>
 
@@ -364,6 +482,7 @@
       fichaCache[id]=d;
       if(typeof mostrarPantalla==="function")mostrarPantalla(renderFicha(d));
       cargarMaterialesFicha(id,d.orden||{});
+      cargarIndicadoresFichaV422(d.orden||{});
     }catch(e){
       if(typeof mostrarPantalla==="function")mostrarPantalla(`<div class="mv421-wrap"><div class="mv421-card"><h3>❌ No se pudo abrir la auditoría</h3><div class="mv421-note mv421-warn">${esc(e.message)}</div><button class="mv421-btn sec" style="margin-top:10px" onclick="mv421VolverMapa()">🗺️ Volver al mapa</button></div></div>`);
     }
