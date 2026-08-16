@@ -1,5 +1,5 @@
 /* ============================================================
-   MI VISUAL V427 - Asignación flexible por cuadrilla u orden/cliente
+   MI VISUAL V428 - Asignación flexible con secciones desplegables
    CAPA INCREMENTAL:
    - Entrada principal desde Actividad en Campo; Mapa solo como apoyo.
    - Jefatura/Gerencia asignan por cuadrilla o por Código/DNI.
@@ -87,7 +87,15 @@
       .mv427-ref{background:#f8fafc;border:1px dashed #94a3b8;border-radius:12px;padding:11px;margin-top:9px}
       .mv427-ref-ok{background:#ecfdf5;border-color:#86efac}
       .mv427-inline{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px}
-      @media(max-width:700px){.mv424-filter,.mv424-grid,.mv424-kpis,.mv426-alert-grid,.mv427-inline{grid-template-columns:1fr}.mv424-wrap{padding:10px 8px 80px}.mv424-item-top{flex-direction:column}}
+      .mv428-collapse{padding:0!important;overflow:hidden}
+      .mv428-collapse>summary{list-style:none;cursor:pointer;padding:14px 16px;font-size:17px;font-weight:900;display:flex;align-items:center;justify-content:space-between;gap:10px;background:#f8fafc;color:#0f172a;user-select:none}
+      .mv428-collapse>summary::-webkit-details-marker{display:none}
+      .mv428-collapse>summary::after{content:"▼";font-size:12px;color:#64748b;transition:transform .18s ease}
+      .mv428-collapse[open]>summary::after{transform:rotate(180deg)}
+      .mv428-collapse[open]>summary{border-bottom:1px solid #dbe5f0}
+      .mv428-collapse-body{padding:14px}
+      .mv428-collapse-note{font-size:10px;color:#64748b;font-weight:700;margin-left:auto}
+      @media(max-width:700px){.mv424-filter,.mv424-grid,.mv424-kpis,.mv426-alert-grid,.mv427-inline{grid-template-columns:1fr}.mv424-wrap{padding:10px 8px 80px}.mv424-item-top{flex-direction:column}.mv428-collapse>summary{font-size:15px;padding:13px}}
     `;
     document.head.appendChild(s);
   }
@@ -411,7 +419,9 @@
       aviso.innerHTML=`<b>Recomendación aplicada:</b> ${esc(cuadrilla||"")} · ${esc(tipoActividad||"")}<br>${esc(txt)}`;
     }
 
-    document.getElementById("mv427Trabajo")?.scrollIntoView({behavior:"smooth",block:"start"});
+    const trabajo=document.getElementById("mv427Trabajo");
+    if(trabajo&&trabajo.tagName==="DETAILS")trabajo.open=true;
+    trabajo?.scrollIntoView({behavior:"smooth",block:"start"});
   }
 
   async function irMapaCuadrillaV426(cuadrilla,sede){
@@ -457,42 +467,48 @@
     if(typeof mostrarPantalla==="function")mostrarPantalla(`<div class="mv424-wrap">
       <div class="mv424-head"><h2>➕ Asignar trabajo de campo</h2><p>Puede asignar una actividad directamente a una cuadrilla o vincularla a una orden/cliente mediante Código o DNI.</p><div class="mv424-actions"><button class="mv424-btn sec" onclick="mv424MostrarTrabajos()">← Volver</button><button class="mv424-btn" onclick="mv426IrMapaGeneral()">🗺️ Ir al mapa operativo</button></div></div>
 
-      <div class="mv424-card">
-        <h3>⚠️ Alertas de cuadrillas para orientar el trabajo</h3>
-        <div class="mv424-note">Se muestran desviaciones del período actual en Producción, Efectividad, Recableado, VTR/GAR, SLA y Observaciones. Puede filtrar por sede y cuadrilla.</div>
-        <div class="mv427-inline" style="margin-top:9px">
-          <div class="mv424-field"><label>Sede</label><select id="mv426FiltroSedeAlertas" onchange="actualizarFiltroCuadrillaAlertasV427();mv426RenderAlertas()"><option value="">Todas las sedes</option></select></div>
-          <div class="mv424-field"><label>Cuadrilla</label><select id="mv427FiltroCuadrillaAlertas" onchange="mv426RenderAlertas()"><option value="">Todas las cuadrillas</option></select></div>
+      <details class="mv424-card mv428-collapse">
+        <summary>⚠️ Alertas de cuadrillas para orientar el trabajo <span class="mv428-collapse-note">Desplegar</span></summary>
+        <div class="mv428-collapse-body">
+          <div class="mv424-note">Se muestran desviaciones del período actual en Producción, Efectividad, Recableado, VTR/GAR, SLA y Observaciones. Puede filtrar por sede y cuadrilla.</div>
+          <div class="mv427-inline" style="margin-top:9px">
+            <div class="mv424-field"><label>Sede</label><select id="mv426FiltroSedeAlertas" onchange="actualizarFiltroCuadrillaAlertasV427();mv426RenderAlertas()"><option value="">Todas las sedes</option></select></div>
+            <div class="mv424-field"><label>Cuadrilla</label><select id="mv427FiltroCuadrillaAlertas" onchange="mv426RenderAlertas()"><option value="">Todas las cuadrillas</option></select></div>
+          </div>
+          <div id="mv426AlertasCuadrillas" style="margin-top:10px"><div class="mv424-note">Cargando alertas...</div></div>
         </div>
-        <div id="mv426AlertasCuadrillas" style="margin-top:10px"><div class="mv424-note">Cargando alertas...</div></div>
-      </div>
+      </details>
 
-      <div class="mv424-card" id="mv427Trabajo">
-        <h3>📋 Definir trabajo para el Supervisor</h3>
-        <div class="mv424-filter">
-          <div class="mv424-field"><label>Sede</label><select id="mv427Sede" onchange="cambioSedeAsignacionV427()"><option value="">Cargando...</option></select></div>
-          <div class="mv424-field"><label>Cuadrilla</label><select id="mv427Cuadrilla"><option value="">Cargando...</option></select></div>
-          <div class="mv424-field"><label>Supervisor</label><select id="mv424Supervisor"><option value="">Seleccione Supervisor</option></select></div>
-          <div class="mv424-field"><label>Tipo de actividad</label><select id="mv424Tipo" onchange="cambioTipoAsignacionV427()">${TIPOS.map(x=>`<option>${x}</option>`).join("")}</select></div>
-          <div class="mv424-field"><label>Prioridad</label><select id="mv424Prioridad"><option>NORMAL</option><option>ALTA</option><option>URGENTE</option></select></div>
-          <div class="mv424-field"><label>Fecha límite</label><input type="date" id="mv424FechaLimite"></div>
-          <div class="mv424-field mv424-wide"><label>Motivo / indicación para el Supervisor</label><textarea id="mv424Motivo" placeholder="Ejemplo: Realizar seguimiento hoy a la cuadrilla por baja efectividad.">${esc(motivoSugeridoV426)}</textarea></div>
-          <div class="mv424-field mv424-wide"><label>Observación adicional de Jefatura / Gerencia</label><textarea id="mv424Observacion" placeholder="Opcional"></textarea></div>
+      <details class="mv424-card mv428-collapse" id="mv427Trabajo">
+        <summary>📋 Definir trabajo para el Supervisor <span class="mv428-collapse-note">Desplegar</span></summary>
+        <div class="mv428-collapse-body">
+          <div class="mv424-filter">
+            <div class="mv424-field"><label>Sede</label><select id="mv427Sede" onchange="cambioSedeAsignacionV427()"><option value="">Cargando...</option></select></div>
+            <div class="mv424-field"><label>Cuadrilla</label><select id="mv427Cuadrilla"><option value="">Cargando...</option></select></div>
+            <div class="mv424-field"><label>Supervisor</label><select id="mv424Supervisor"><option value="">Seleccione Supervisor</option></select></div>
+            <div class="mv424-field"><label>Tipo de actividad</label><select id="mv424Tipo" onchange="cambioTipoAsignacionV427()">${TIPOS.map(x=>`<option>${x}</option>`).join("")}</select></div>
+            <div class="mv424-field"><label>Prioridad</label><select id="mv424Prioridad"><option>NORMAL</option><option>ALTA</option><option>URGENTE</option></select></div>
+            <div class="mv424-field"><label>Fecha límite</label><input type="date" id="mv424FechaLimite"></div>
+            <div class="mv424-field mv424-wide"><label>Motivo / indicación para el Supervisor</label><textarea id="mv424Motivo" placeholder="Ejemplo: Realizar seguimiento hoy a la cuadrilla por baja efectividad.">${esc(motivoSugeridoV426)}</textarea></div>
+            <div class="mv424-field mv424-wide"><label>Observación adicional de Jefatura / Gerencia</label><textarea id="mv424Observacion" placeholder="Opcional"></textarea></div>
+          </div>
+          <div id="mv427GuiaTipo" class="mv427-guia">${esc(guiaTipoV427(prefillAsignacionV426?.tipoActividad||"AUDITORIA EN FRIO"))}</div>
+          <div id="mv426MotivoSeleccionado" class="mv426-selected" style="${motivoSugeridoV426?'':'display:none'}">${motivoSugeridoV426?`<b>Motivo precargado:</b> ${esc(motivoSugeridoV426)}`:""}</div>
         </div>
-        <div id="mv427GuiaTipo" class="mv427-guia">${esc(guiaTipoV427(prefillAsignacionV426?.tipoActividad||"AUDITORIA EN FRIO"))}</div>
-        <div id="mv426MotivoSeleccionado" class="mv426-selected" style="${motivoSugeridoV426?'':'display:none'}">${motivoSugeridoV426?`<b>Motivo precargado:</b> ${esc(motivoSugeridoV426)}`:""}</div>
-      </div>
+      </details>
 
-      <div class="mv424-card">
-        <h3>🔎 Vincular orden / cliente <small style="font-weight:500;color:#64748b">(cuando aplique)</small></h3>
-        <div id="mv427NotaReferencia" class="mv424-note"><b>Orden requerida:</b> ingrese Código o DNI y pulse Buscar antes de asignar.</div>
-        <div class="mv424-field" style="margin-top:9px"><label>Código o DNI</label><input id="mv424Codigo" placeholder="Código de orden/pedido o DNI del cliente"></div>
-        <div class="mv424-actions">
-          <button class="mv424-btn" onclick="mv424PrepararCodigo()">🔎 Buscar cliente / orden</button>
-          <button class="mv424-btn sec" onclick="mv427LimpiarReferencia()">Sin orden / solo cuadrilla</button>
+      <details class="mv424-card mv428-collapse">
+        <summary>🔎 Vincular orden / cliente <span class="mv428-collapse-note">Cuando aplique · Desplegar</span></summary>
+        <div class="mv428-collapse-body">
+          <div id="mv427NotaReferencia" class="mv424-note"><b>Orden requerida:</b> ingrese Código o DNI y pulse Buscar antes de asignar.</div>
+          <div class="mv424-field" style="margin-top:9px"><label>Código o DNI</label><input id="mv424Codigo" placeholder="Código de orden/pedido o DNI del cliente"></div>
+          <div class="mv424-actions">
+            <button class="mv424-btn" onclick="mv424PrepararCodigo()">🔎 Buscar cliente / orden</button>
+            <button class="mv424-btn sec" onclick="mv427LimpiarReferencia()">Sin orden / solo cuadrilla</button>
+          </div>
+          <div id="mv424ResultadoCodigo" style="margin-top:10px"><div class="mv427-ref">Si la actividad es Seguimiento, Capacitación, Checklist o una gestión solo de cuadrilla, puede dejar este campo vacío.</div></div>
         </div>
-        <div id="mv424ResultadoCodigo" style="margin-top:10px"><div class="mv427-ref">Si la actividad es Seguimiento, Capacitación, Checklist o una gestión solo de cuadrilla, puede dejar este campo vacío.</div></div>
-      </div>
+      </details>
 
       <div class="mv424-card">
         <button class="mv424-btn ok" onclick="mv424CrearAsignacion(this)">✅ Asignar trabajo al Supervisor</button>
@@ -510,8 +526,14 @@
       }
 
       if(prefillAsignacionV426?.codigo){
-        const c=document.getElementById("mv424Codigo");
-        if(c)c.value=prefillAsignacionV426.codigo;
+        const trabajo=document.getElementById("mv427Trabajo");
+        if(trabajo&&trabajo.tagName==="DETAILS")trabajo.open=true;
+        const codigo=document.getElementById("mv424Codigo");
+        if(codigo){
+          const details=codigo.closest("details");
+          if(details)details.open=true;
+          codigo.value=prefillAsignacionV426.codigo;
+        }
         await prepararCodigo(prefillAsignacionV426);
       }
     }catch(e){

@@ -7,7 +7,7 @@
 (function(){
   "use strict";
 
-  const VERSION = "V427-ASIGNACION-FLEXIBLE-20260816";
+  const VERSION = "V428-DESPLEGABLES-ASIGNACION-20260816";
   const MODULOS = {
     dashboards_core: {
       archivos: [
@@ -72,7 +72,7 @@
         `./js/actividad_campo.js?v=V426-GENERAR-AUDITORIA`,
         `./js/actividad_galeria_v371.js?v=V408-RESTAURA-V403`,
         `./js/actividad_imagen_robusta_v384.js?v=V408-RESTAURA-V403`,
-        `./js/asignaciones_campo_v424.js?v=V427-ASIGNACION-FLEXIBLE`
+        `./js/asignaciones_campo_v424.js?v=V428-DESPLEGABLES`
       ],
       entradas: ["mostrarActividadCampo"]
     },
