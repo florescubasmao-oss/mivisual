@@ -7,7 +7,7 @@
 (function(){
   "use strict";
 
-  const VERSION = "V428-DESPLEGABLES-ASIGNACION-20260816";
+  const VERSION = "V430-VALIDACION-DATOS-20260817";
   const MODULOS = {
     dashboards_core: {
       archivos: [
@@ -79,7 +79,8 @@
     validacion: {
       archivos: [
         `./js/validacion_tecnica_v173.js?v=${VERSION}`,
-        `./js/validacion_tecnica_optimizacion_v341.js?v=${VERSION}`
+        `./js/validacion_tecnica_optimizacion_v341.js?v=${VERSION}`,
+        `./js/validacion_tecnica_datos_v430.js?v=V430-DATOS-CORRECTOS`
       ],
       entradas: ["mostrarValidacionTecnica"]
     },
