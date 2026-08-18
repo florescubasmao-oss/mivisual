@@ -7,7 +7,7 @@
 (function(){
   "use strict";
 
-  const VERSION = "V430-VALIDACION-DATOS-20260817";
+  const VERSION = "V433-SEGURIDAD-AJUSTES-20260817";
   const MODULOS = {
     dashboards_core: {
       archivos: [
@@ -144,7 +144,7 @@
       entradas: ["mostrarPlantillaOrden"]
     },
     seguridad: {
-      archivos: [`./js/seguridad_v432.js?v=V432-ATS-PETAR`],
+      archivos: [`./js/seguridad_v433.js?v=V433-ATS-PETAR`],
       entradas: ["mostrarSeguridad"]
     },
     administracion: {
