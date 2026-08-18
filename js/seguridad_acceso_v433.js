@@ -1,4 +1,4 @@
-/* MI VISUAL V433 - Acceso ligero a Seguridad ATS/PETAR */
+/* MI VISUAL V434 - Acceso ligero a Seguridad ATS/PETAR */
 (function(){
   'use strict';
   if(window.__seg433Acceso) return; window.__seg433Acceso=true;
@@ -21,13 +21,13 @@
   function abrir(){if(typeof window.mostrarSeguridad==='function')return window.mostrarSeguridad();alert('Seguridad se está cargando. Intente nuevamente.');}
   function prefetchModulo(){
     if(document.getElementById('seg433Prefetch'))return;
-    const l=document.createElement('link');l.id='seg433Prefetch';l.rel='prefetch';l.as='script';l.href='./js/seguridad_v433.js?v=V433-ATS-PETAR';document.head.appendChild(l);
+    const l=document.createElement('link');l.id='seg433Prefetch';l.rel='prefetch';l.as='script';l.href='./js/seguridad_v435.js?v=V435-SEGURIDAD-SEGUIMIENTO-PROCESO';document.head.appendChild(l);
   }
   function instalar(){
     if(!localStorage.getItem('usuario')||!permitido())return;
     estilos(); const w=document.getElementById('mv55Welcome'); if(!w)return;
     let btn=document.getElementById('seg433Acceso');
-    if(!btn){btn=document.createElement('button');btn.id='seg433Acceso';btn.type='button';btn.className='seg433-icon-btn';btn.title='ATS / PETAR';btn.setAttribute('aria-label','ATS / PETAR');btn.onclick=abrir;btn.innerHTML='<img src="./img/seguridad-ats-petar.png?v=V433" alt="">';}
+    if(!btn){btn=document.createElement('button');btn.id='seg433Acceso';btn.type='button';btn.className='seg433-icon-btn';btn.title='ATS / PETAR';btn.setAttribute('aria-label','ATS / PETAR');btn.onclick=abrir;btn.innerHTML='<img src="./img/seguridad-ats-petar.png?v=V434" alt="">';}
     const estado=document.getElementById('pdEstadoMenu');
     if(estado){let row=document.getElementById('seg433StatusRow');if(!row){row=document.createElement('div');row.id='seg433StatusRow';row.className='seg433-status-row';estado.parentNode.insertBefore(row,estado);row.appendChild(btn);row.appendChild(estado);}else{if(!row.contains(btn))row.insertBefore(btn,row.firstChild);if(!row.contains(estado))row.appendChild(estado);}}
     else if(!btn.isConnected){w.appendChild(btn)}

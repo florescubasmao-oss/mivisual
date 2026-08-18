@@ -144,7 +144,7 @@
       entradas: ["mostrarPlantillaOrden"]
     },
     seguridad: {
-      archivos: [`./js/seguridad_v433.js?v=V433-ATS-PETAR`],
+      archivos: [`./js/seguridad_v435.js?v=V435-SEGURIDAD-SEGUIMIENTO-PROCESO`],
       entradas: ["mostrarSeguridad"]
     },
     administracion: {
