@@ -144,7 +144,7 @@
       entradas: ["mostrarPlantillaOrden"]
     },
     seguridad: {
-      archivos: [`./js/seguridad_v436.js?v=V436-FIRMA-SUPLENCIA-OPTIMIZACION`],
+      archivos: [`./js/seguridad_v437.js?v=V437-PDF-FINAL-CORRELATIVO-GLOBAL`],
       entradas: ["mostrarSeguridad"]
     },
     administracion: {
