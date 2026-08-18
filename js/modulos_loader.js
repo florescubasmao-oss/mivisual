@@ -144,7 +144,7 @@
       entradas: ["mostrarPlantillaOrden"]
     },
     seguridad: {
-      archivos: [`./js/seguridad_v438.js?v=V438-PDF-FINAL-CORRELATIVO-GLOBAL`],
+      archivos: [`./js/seguridad_v439.js?v=V439-PDF-SIN-DOCS-DESCARGA`],
       entradas: ["mostrarSeguridad"]
     },
     administracion: {
