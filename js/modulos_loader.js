@@ -144,7 +144,7 @@
       entradas: ["mostrarPlantillaOrden"]
     },
     seguridad: {
-      archivos: [`./js/seguridad_v442.js?v=V442-PDF-FORMATO-FISICO-COMPACTO`],
+      archivos: [`./js/seguridad_v443.js?v=V443-GUIA-SIN-PREMARCADO-FIX`],
       entradas: ["mostrarSeguridad"]
     },
     administracion: {
