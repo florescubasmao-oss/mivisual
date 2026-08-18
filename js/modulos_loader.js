@@ -7,7 +7,7 @@
 (function(){
   "use strict";
 
-  const VERSION = "V433-SEGURIDAD-AJUSTES-20260817";
+  const VERSION = "V436-SEGURIDAD-20260817";
   const MODULOS = {
     dashboards_core: {
       archivos: [
@@ -144,7 +144,7 @@
       entradas: ["mostrarPlantillaOrden"]
     },
     seguridad: {
-      archivos: [`./js/seguridad_v435.js?v=V435-SEGURIDAD-SEGUIMIENTO-PROCESO`],
+      archivos: [`./js/seguridad_v436.js?v=V436-FIRMA-SUPLENCIA-OPTIMIZACION`],
       entradas: ["mostrarSeguridad"]
     },
     administracion: {
