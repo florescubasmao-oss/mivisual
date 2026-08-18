@@ -144,7 +144,7 @@
       entradas: ["mostrarPlantillaOrden"]
     },
     seguridad: {
-      archivos: [`./js/seguridad_v440.js?v=V440-INGRESO-GUIADO-PDF-HORIZONTAL`],
+      archivos: [`./js/seguridad_v442.js?v=V442-PDF-FORMATO-FISICO-COMPACTO`],
       entradas: ["mostrarSeguridad"]
     },
     administracion: {
