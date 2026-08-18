@@ -143,6 +143,10 @@
       archivos: [`./js/plantilla_orden.js?v=V407-DOCUMENTO-VISIBLE`],
       entradas: ["mostrarPlantillaOrden"]
     },
+    seguridad: {
+      archivos: [`./js/seguridad_v432.js?v=V432-ATS-PETAR`],
+      entradas: ["mostrarSeguridad"]
+    },
     administracion: {
       depende: ["dashboards_core", "accesos", "checklist"],
       archivos: [
@@ -183,6 +187,7 @@
     mostrarMapaOperativo: "mapa",
     mostrarFacturas: "facturas",
     mostrarPlantillaOrden: "plantilla",
+    mostrarSeguridad: "seguridad",
     mostrarAdministracion: "administracion"
   };
 
@@ -211,7 +216,7 @@
       actividad:"Actividad en Campo", validacion:"Validación Técnica", actas:"Gestión de Actas",
       equipos:"Equipos Averiados", analisis:"Análisis Económico", checklist:"Checklist Almacén",
       descansos:"Programación de Descansos", pext:"PEXT", mesa:"Mesa de Ayuda",
-      mapa:"Mapa Operativo", plantilla:"Plantilla de Orden", facturas:"Facturas", administracion:"Administración"
+      mapa:"Mapa Operativo", plantilla:"Plantilla de Orden", facturas:"Facturas", seguridad:"Seguridad ATS/PETAR", administracion:"Administración"
     };
     return nombres[id] || "módulo";
   }
