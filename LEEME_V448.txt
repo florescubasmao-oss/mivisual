@@ -1,0 +1,33 @@
+MI VISUAL V448 – Validación Técnica estable + sesión recuperable
+
+OBJETIVO
+1. Evitar el correo "Exceeded maximum execution time" del trigger procesarValidacionesTecnicasVencidas.
+2. Recuperar la sesión y el borrador de Validación Técnica si Android/iOS recarga la pestaña al cambiar de aplicación.
+
+BACKEND
+- procesarValidacionesTecnicasVencidas queda dedicado solo a VALIDACION_TECNICA.
+- Procesamiento de fechas pendientes de Actas se mueve a procesarFechasPendientesActasTriggerV448 cada 15 min.
+- No cambia la aprobación automática de Recableado (15 min), ni los datos, ni estados.
+
+IMPORTANTE DESPUÉS DE PUBLICAR CODE.GS
+Ejecutar UNA VEZ desde Apps Script:
+  crearTriggersMantenimientoV448
+Autorizar si Google lo solicita.
+Esto deja:
+- Validación Técnica: trigger cada 1 minuto.
+- Actas: trigger separado cada 15 minutos.
+
+FRONTEND
+- Si el teléfono descarga/reinicia la pestaña, MI VISUAL recupera la sesión existente de localStorage.
+- Si estaba en Validación Técnica, reabre el módulo.
+- Conserva durante 4 horas el borrador del Técnico.
+- Por seguridad, una atención validada no se considera válida solo por localStorage: al recuperar la pantalla vuelve a consultar DNI/Código/Ticket.
+- Al finalizar correctamente una solicitud, el borrador se elimina.
+- Cerrar sesión sigue eliminando la sesión como hasta ahora.
+
+ARCHIVOS GITHUB
+- index.html
+- js/modulos_loader.js
+
+NO MODIFICA
+Ranking, SLA, Mapa, Actas funcionales, Descansos, Seguridad ATS/PETAR, permisos ni estructura de hojas.

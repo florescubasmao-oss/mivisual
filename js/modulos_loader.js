@@ -7,7 +7,7 @@
 (function(){
   "use strict";
 
-  const VERSION = "V436-SEGURIDAD-20260817";
+  const VERSION = "V448-SESION-RECUPERABLE-20260819";
   const MODULOS = {
     dashboards_core: {
       archivos: [
@@ -364,6 +364,7 @@
 
   async function abrirFuncion(nombre, args){
     const modulo = FUNCION_MODULO[nombre];
+    try{ if(typeof window.mv448RegistrarModuloActivo === "function") window.mv448RegistrarModuloActivo(modulo,nombre); }catch(_){}
     if(!modulo) throw new Error(`No se encontró el módulo para ${nombre}`);
     if(!modulosListos.has(modulo)) mostrarCarga(modulo);
 
@@ -431,4 +432,195 @@
   window.mv339AbrirFuncion = abrirFuncion;
   window.mv339PrepararPerfil = prepararPerfil;
   window.mv339Metricas = metricas;
+})();
+
+
+/* ============================================================
+   MI VISUAL V448 - SESIÓN RECUPERABLE + BORRADOR VALIDACIÓN TÉCNICA
+   Capa incremental. No modifica autenticación, permisos ni el flujo VT.
+   - Si Android/iOS recarga la pestaña, recupera la sesión desde localStorage.
+   - Si el usuario estaba en Validación Técnica, reabre ese módulo.
+   - Guarda temporalmente el borrador del formulario durante 4 horas.
+   - Un ticket previamente validado se vuelve a consultar al recuperar la
+     pantalla; no se conserva como "validado" sin comprobarlo de nuevo.
+============================================================ */
+(function(){
+  "use strict";
+  if(window.MV448_SESION_RECUPERABLE) return;
+  window.MV448_SESION_RECUPERABLE = true;
+
+  const MODULO_KEY_PREFIX = "MV448_MODULO_ACTIVO|";
+  const BORRADOR_KEY_PREFIX = "MV448_VT_BORRADOR|";
+  const BORRADOR_TTL = 4 * 60 * 60 * 1000;
+  const IDS = [
+    "vt430Consulta","vtTipoTicket","vtNumeroTicket","vtTipoValidacion",
+    "vtOrigenOrden","vtCodigo","vtDniCliente","vtClienteNombreV430","vtMotivo"
+  ];
+
+  function usuario(){ return (localStorage.getItem("usuario") || "").trim(); }
+  function perfil(){ return (localStorage.getItem("perfil") || "").toUpperCase().trim(); }
+  function moduloKey(){ return MODULO_KEY_PREFIX + usuario(); }
+  function borradorKey(){ return BORRADOR_KEY_PREFIX + usuario(); }
+
+  function guardarModulo(modulo){
+    const u=usuario(); if(!u) return;
+    try{
+      if(modulo === "validacion"){
+        localStorage.setItem(moduloKey(), JSON.stringify({modulo:"validacion",t:Date.now()}));
+      }else{
+        localStorage.removeItem(moduloKey());
+      }
+    }catch(_){ }
+  }
+
+  window.mv448RegistrarModuloActivo = function(modulo){ guardarModulo(modulo); };
+
+  function estadoModoFormulario(){
+    const codigo=document.getElementById("vtCodigo");
+    const tipo=document.getElementById("vtTipoTicket");
+    if(codigo && codigo.readOnly && tipo && !tipo.disabled) return "IDENTIDAD";
+    if((codigo && codigo.readOnly) || (tipo && tipo.disabled)) return "VALIDADO";
+    return "MANUAL";
+  }
+
+  function capturarBorrador(){
+    if(perfil() !== "TECNICO") return;
+    const existe=IDS.some(id=>document.getElementById(id));
+    if(!existe) return;
+    const valores={};
+    IDS.forEach(id=>{
+      const el=document.getElementById(id);
+      if(el) valores[id]=el.value || "";
+    });
+    const data={t:Date.now(),modo:estadoModoFormulario(),valores};
+    try{ localStorage.setItem(borradorKey(),JSON.stringify(data)); }catch(_){ }
+  }
+
+  function leerBorrador(){
+    try{
+      const x=JSON.parse(localStorage.getItem(borradorKey()) || "null");
+      if(!x || !x.t || Date.now()-Number(x.t)>BORRADOR_TTL){
+        localStorage.removeItem(borradorKey());
+        return null;
+      }
+      return x;
+    }catch(_){ return null; }
+  }
+
+  function limpiarBorrador(){
+    try{ localStorage.removeItem(borradorKey()); }catch(_){ }
+  }
+  window.mv448LimpiarBorradorVT = limpiarBorrador;
+
+  async function restaurarBorradorEnFormulario(){
+    if(perfil() !== "TECNICO") return;
+    const b=leerBorrador();
+    if(!b || !b.valores) return;
+
+    const motivo=b.valores.vtMotivo || "";
+    const origen=b.valores.vtOrigenOrden || "";
+    const consulta=b.valores.vt430Consulta || b.valores.vtDniCliente || b.valores.vtCodigo || "";
+
+    // Si el registro era manual, se restaura como manual.
+    if(b.modo === "MANUAL" && typeof window.vt430ActivarManual === "function"){
+      try{ window.vt430ActivarManual(); }catch(_){ }
+      IDS.forEach(id=>{
+        const el=document.getElementById(id);
+        if(el && b.valores[id] !== undefined) el.value=b.valores[id];
+      });
+      if(typeof window.actualizarTipoValidacionPorTicket === "function"){
+        try{ window.actualizarTipoValidacionPorTicket(); }catch(_){ }
+      }
+      return;
+    }
+
+    // Para datos previamente validados, nunca confiamos solo en localStorage:
+    // se vuelve a ejecutar la búsqueda. Si hay varias atenciones, el técnico
+    // selecciona nuevamente el ticket correcto.
+    const q=document.getElementById("vt430Consulta");
+    if(q && consulta){
+      q.value=consulta;
+      if(typeof window.vt430BuscarDatos === "function"){
+        try{ await window.vt430BuscarDatos(); }catch(_){ }
+      }
+    }
+
+    // Motivo y origen no alteran la identidad validada; se restauran al final.
+    const motivoEl=document.getElementById("vtMotivo");
+    if(motivoEl) motivoEl.value=motivo;
+    const origenEl=document.getElementById("vtOrigenOrden");
+    if(origenEl && origen) origenEl.value=origen;
+  }
+
+  let restauracionProgramada=false;
+  function observarPantalla(){
+    const pantalla=document.getElementById("pantalla");
+    if(!pantalla) return;
+    const obs=new MutationObserver(function(){
+      if(document.querySelector(".vt-confirm")){
+        limpiarBorrador();
+        return;
+      }
+      if(!restauracionProgramada && document.getElementById("vtCodigo")){
+        restauracionProgramada=true;
+        setTimeout(async function(){
+          try{ await restaurarBorradorEnFormulario(); }
+          finally{ restauracionProgramada=false; }
+        },140);
+      }
+    });
+    obs.observe(pantalla,{childList:true,subtree:true});
+  }
+
+  document.addEventListener("input",function(e){
+    if(e && e.target && IDS.includes(e.target.id)) capturarBorrador();
+  },true);
+  document.addEventListener("change",function(e){
+    if(e && e.target && IDS.includes(e.target.id)) capturarBorrador();
+  },true);
+
+  async function restaurarSesion(){
+    const u=usuario();
+    const p=perfil();
+    const estado=(localStorage.getItem("estado") || "ACTIVO").toUpperCase().trim();
+    if(!u || !p || estado === "BAJA" || estado === "SUSPENDIDO") return;
+
+    const panel=document.getElementById("panelLogin");
+    const menu=document.getElementById("menuPrincipal");
+    if(panel) panel.style.display="none";
+    if(menu) menu.style.display="grid";
+    if(typeof window.setBotonNavegacion === "function") window.setBotonNavegacion("menu");
+
+    try{
+      if(typeof window.configurarMenu === "function") await window.configurarMenu();
+    }catch(error){
+      console.warn("V448: no se pudo refrescar el menú durante la recuperación de sesión",error);
+    }
+
+    let activo=null;
+    try{ activo=JSON.parse(localStorage.getItem(moduloKey()) || "null"); }catch(_){ }
+    if(activo && activo.modulo === "validacion" && Date.now()-Number(activo.t||0)<BORRADOR_TTL){
+      setTimeout(function(){
+        if(typeof window.mostrarValidacionTecnica === "function") window.mostrarValidacionTecnica();
+      },180);
+    }
+  }
+
+  // Evita que una recarga posterior en el menú vuelva a abrir VT.
+  const volverOriginal=window.volverInicio;
+  if(typeof volverOriginal === "function"){
+    window.volverInicio=function(){
+      guardarModulo("");
+      return volverOriginal.apply(this,arguments);
+    };
+    try{ volverInicio=window.volverInicio; }catch(_){ }
+  }
+
+  window.addEventListener("load",function(){
+    observarPantalla();
+    setTimeout(restaurarSesion,320);
+  });
+  window.addEventListener("pageshow",function(e){
+    if(e && e.persisted) setTimeout(restaurarSesion,80);
+  });
 })();
