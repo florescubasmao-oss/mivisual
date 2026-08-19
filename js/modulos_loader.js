@@ -71,6 +71,7 @@
       entradas: ["mostrarAccesos", "mostrarBiblioteca", "mostrarCapacitacion"]
     },
     actividad: {
+      depende: ["checklist"],
       archivos: [
         `./js/actividad_campo.js?v=V426-GENERAR-AUDITORIA`,
         `./js/actividad_galeria_v371.js?v=V408-RESTAURA-V403`,

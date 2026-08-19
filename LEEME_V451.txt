@@ -1,0 +1,19 @@
+MI VISUAL V451 - Actividad en Campo / Checklist
+
+CORRECCION
+- Actividad en Campo declara Checklist Almacen como dependencia tecnica.
+- Al abrir Actividad en Campo se cargan primero las funciones CK_EQUIPOS, ckEquipoBlock y ckField necesarias para el tipo CHECKLIST.
+- Corrige el caso del usuario SUPPIURA2 que entraba directamente a Actividad en Campo y recibia: No se pudo cargar el formulario de Checklist.
+
+NO CAMBIA
+- Permisos por perfil.
+- Usuarios ni hoja USUARIOS.
+- Flujo/validacion de Checklist.
+- Apps Script/backend.
+- Dashboard, bonos, descansos, ranking, SLA, mapa, validacion tecnica ni actas.
+
+REEMPLAZAR EN GITHUB
+1. index.html
+2. js/modulos_loader.js
+
+No hay cambio de Code.gs ni nueva implementacion de Apps Script.
