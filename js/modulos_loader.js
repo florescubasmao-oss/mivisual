@@ -33,7 +33,10 @@
     },
     dashboard: {
       depende: ["dashboards_core"],
-      archivos: [`./js/bono_supervisores.js?v=V408-RESTAURA-V403`],
+      archivos: [
+        `./js/bono_supervisores.js?v=V408-RESTAURA-V403`,
+        `./js/bono_supervisores_habilitados_v450.js?v=V450-HABILITACION-BONO`
+      ],
       entradas: ["mostrarBonosSupervisores"]
     },
     indicadores: {
