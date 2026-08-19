@@ -1,4 +1,4 @@
-// MI VISUAL - Módulo Observaciones V336
+// MI VISUAL - Módulo Observaciones V447 - guardado rápido de estado
 
 const API_OBSERVACIONES = "https://script.google.com/macros/s/AKfycbwugGpuEMcJYFsDNS1hkcdZXJ92PUvXNv5ttpktyhZWv2fWB7ceCZNkfIFYxAs5wsgN/exec";
 
@@ -819,8 +819,15 @@ async function guardarCambioEstadoObservacion(id, btn){
             monto: document.getElementById("nuevoMontoObs").value
         });
         if(!data.ok) throw new Error(data.error || "Error al cambiar estado");
-        msg.innerHTML = "✅ Estado actualizado.";
-        setTimeout(mostrarObservaciones, 800);
+        msg.innerHTML = "✅ Estado actualizado. Actualizando indicadores en segundo plano...";
+
+        // V447: primero refresca la lista para confirmar visualmente el cambio.
+        // Resumen/Ranking se recalculan después con la ruta ya existente,
+        // sin bloquear la confirmación del guardado.
+        setTimeout(mostrarObservaciones, 300);
+        if(data.actualizacionPendiente){
+            setTimeout(() => actualizarIndicadoresObservacionesEnSegundoPlano(u.usuario), 1800);
+        }
     }catch(err){
         msg.innerHTML = `❌ ${obsEsc(err.message)}`;
     }finally{

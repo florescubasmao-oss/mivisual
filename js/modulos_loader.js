@@ -54,7 +54,7 @@
     },
     observaciones: {
       archivos: [
-        `./js/observaciones.js?v=${VERSION}`,
+        `./js/observaciones.js?v=V447-OBS-GUARDADO-RAPIDO`,
         `./js/observaciones_informe_v357.js?v=V408-RESTAURA-V403`
       ],
       entradas: ["mostrarObservaciones"]

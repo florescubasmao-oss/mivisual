@@ -1,0 +1,15 @@
+MI VISUAL V447 – Observaciones: guardado rápido de cambio de estado
+
+CAMBIO ACOTADO:
+- El cambio de Estado/Monto se guarda y confirma primero.
+- Resumen de Observaciones y Ranking se actualizan después en segundo plano.
+- La búsqueda de una observación por ID ya no lee toda la hoja; usa búsqueda directa.
+- No cambia fórmulas, estados, permisos, Ranking, SLA ni estructura de hojas.
+
+GITHUB: reemplazar únicamente:
+- js/observaciones.js
+- js/modulos_loader.js
+
+APPS SCRIPT:
+- reemplazar Code.gs por Code_V447_COMPLETO_MI_VISUAL.gs
+- editar la implementación actual -> Nueva versión -> Implementar
