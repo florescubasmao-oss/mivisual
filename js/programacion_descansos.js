@@ -1,4 +1,4 @@
-// MI VISUAL - Programación de Descansos V417
+// MI VISUAL - Programación de Descansos V449 · SIN ACTIVIDAD + optimización segura
 const API_DESCANSOS = (window.MI_VISUAL_API_URL || "https://script.google.com/macros/s/AKfycbwugGpuEMcJYFsDNS1hkcdZXJ92PUvXNv5ttpktyhZWv2fWB7ceCZNkfIFYxAs5wsgN/exec");
 let PD_DATA={programacion:[],cuadrillas:[]};
 let PD_CAMBIOS={};
@@ -70,11 +70,16 @@ function pdDiasMes(periodo){const [y,m]=periodo.split("-").map(Number);return ne
 function pdFecha(periodo,dia){return `${periodo}-${String(dia).padStart(2,"0")}`;}
 function pdNombreMes(periodo){const [y,m]=periodo.split("-").map(Number);return new Intl.DateTimeFormat("es-PE",{month:"long",year:"numeric"}).format(new Date(y,m-1,1)).toUpperCase();}
 function pdDiaCorto(fecha){return ["D","L","M","M","J","V","S"][new Date(fecha+"T12:00:00").getDay()];}
-function pdNormalizarEstado(v){const e=pdNorm(v||"EN CAMPO");if(["C","CAMPO","EN CAMPO"].includes(e))return "EN CAMPO";if(["CB","C B","Cᴮ","CAMPO BOLSA","EN CAMPO BOLSA","BOLSA"].includes(e))return "EN CAMPO BOLSA";if(["D","DESCANSO"].includes(e))return "DESCANSO";if(["V","VACACIONES"].includes(e))return "VACACIONES";return e||"EN CAMPO";}
+function pdNormalizarEstado(v){const e=pdNorm(v||"EN CAMPO");if(["C","CAMPO","EN CAMPO"].includes(e))return "EN CAMPO";if(["CB","C B","Cᴮ","CAMPO BOLSA","EN CAMPO BOLSA","BOLSA"].includes(e))return "EN CAMPO BOLSA";if(["D","DESCANSO"].includes(e))return "DESCANSO";if(["V","VACACIONES"].includes(e))return "VACACIONES";if(["SA","S A","S/A","SIN ACTIVIDAD","SIN ACTIVIDADES"].includes(e))return "SIN ACTIVIDAD";return e||"EN CAMPO";}
 function pdEstadoVisible(item){if(!item)return "EN CAMPO";return pdNorm(item.estadoProgramacion)==="APROBADO"?pdNormalizarEstado(item.estadoDia||"EN CAMPO"):"EN CAMPO";}
-function pdEsBolsa(estado){return ["EN CAMPO BOLSA","CAMPO BOLSA","BOLSA"].includes(pdNorm(estado));}
-function pdEstadoTecnico(estado){return pdEsBolsa(estado)?"DESCANSO":pdNorm(estado||"EN CAMPO");}
-function pdEtiquetaEstado(estado){const e=pdNorm(estado);if(e==="DESCANSO")return "D";if(e==="VACACIONES")return "V";if(pdEsBolsa(e))return 'C<span class="pd-bolsa-mark">B</span>';return "C";}
+function pdEsBolsa(estado){return pdNormalizarEstado(estado)==="EN CAMPO BOLSA";}
+function pdEsSinActividad(estado){return pdNormalizarEstado(estado)==="SIN ACTIVIDAD";}
+// V449: Técnico también ve Cᴮ como estado propio; ya no se disfraza como DESCANSO.
+function pdEstadoTecnico(estado){return pdNormalizarEstado(estado||"EN CAMPO");}
+function pdEtiquetaEstado(estado){const e=pdNormalizarEstado(estado);if(e==="DESCANSO")return "D";if(e==="VACACIONES")return "V";if(e==="SIN ACTIVIDAD")return "S/A";if(pdEsBolsa(e))return 'C<span class="pd-bolsa-mark">B</span>';return "C";}
+function pdClaseDia(estado){const e=pdNormalizarEstado(estado);if(e==="DESCANSO")return "pd-descanso";if(e==="VACACIONES")return "pd-vacaciones";if(e==="SIN ACTIVIDAD")return "pd-sin-actividad";if(pdEsBolsa(e))return "pd-bolsa";return "pd-campo";}
+function pdClaseTecnico(estado){const e=pdNormalizarEstado(estado);if(e==="DESCANSO")return "descanso";if(e==="VACACIONES")return "vacaciones";if(e==="SIN ACTIVIDAD")return "sin-actividad";if(pdEsBolsa(e))return "bolsa";return "campo";}
+function pdTituloEstado(estado){const e=pdNormalizarEstado(estado);if(e==="DESCANSO")return "😴 DESCANSO";if(e==="VACACIONES")return "🏖️ VACACIONES";if(e==="SIN ACTIVIDAD")return "⏸️ SIN ACTIVIDAD";if(pdEsBolsa(e))return "🟦 EN CAMPO B";return "🟢 EN CAMPO";}
 function pdBuscar(cuadrilla,fecha){return PD_DATA.programacion.find(x=>pdNorm(x.cuadrilla)===pdNorm(cuadrilla)&&x.fecha===fecha);}
 function pdEstadoPropuesto(item){return item&&item.solicitudCambio?pdNorm(item.solicitudCambio):pdNorm(item?.estadoDia||"EN CAMPO");}
 function pdHayCambios(){return Object.keys(PD_CAMBIOS).length>0;}
@@ -118,7 +123,7 @@ async function pdActualizarNotificacionesDescansosMenu(){
 }
 
 function pdStyle(){return `<style>
-.pd-wrap{max-width:1200px;margin:auto;padding:10px;color:#0f172a}.pd-head{background:linear-gradient(135deg,#1d4ed8,#0f766e);color:#fff;border-radius:18px;padding:16px;margin-bottom:11px}.pd-head h2{margin:0 0 4px;font-size:22px}.pd-head p{margin:0;font-size:12px;opacity:.9}.pd-card{background:#fff;border:1px solid #dbe4ef;border-radius:15px;padding:12px;margin-bottom:10px;box-shadow:0 5px 14px rgba(15,23,42,.08)}.pd-toolbar{display:flex;gap:8px;flex-wrap:wrap;align-items:end}.pd-field label{display:block;font-size:11px;font-weight:900;color:#334155;margin-bottom:4px}.pd-field input,.pd-field select,.pd-field textarea{border:1px solid #cbd5e1;border-radius:9px;padding:8px;background:#fff;color:#0f172a}.pd-btn{border:0;border-radius:10px;padding:9px 12px;font-weight:900;cursor:pointer}.pd-blue{background:#2563eb;color:#fff}.pd-green{background:#16a34a;color:#fff}.pd-orange{background:#f59e0b;color:#111827}.pd-red{background:#dc2626;color:#fff}.pd-gray{background:#64748b;color:#fff}.pd-kpis{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}.pd-kpi{border:2px solid #cbd5e1;border-radius:13px;padding:10px;background:#f8fafc}.pd-kpi b{display:block;font-size:20px}.pd-kpi small{font-size:10px;font-weight:900}.pd-kpi.verde{background:#ecfdf5;border-color:#22c55e;color:#166534}.pd-kpi.amarillo{background:#fffbeb;border-color:#f59e0b;color:#92400e}.pd-kpi.rojo{background:#fef2f2;border-color:#ef4444;color:#991b1b}.pd-cal-scroll{overflow:auto;border:2px solid #94a3b8;border-radius:12px}.pd-cal{border-collapse:separate;border-spacing:0;min-width:1000px;width:100%;font-size:10px}.pd-cal th,.pd-cal td{border-right:1px solid #94a3b8;border-bottom:1px solid #94a3b8;text-align:center;padding:4px}.pd-cal th:first-child,.pd-cal td:first-child{border-left:1px solid #94a3b8}.pd-cal thead th{border-top:1px solid #94a3b8}.pd-cal th{position:sticky;top:0;background:#eff6ff;color:#1e3a8a;z-index:2}.pd-cal .pd-sticky{position:sticky;left:0;background:#fff;z-index:3;text-align:left;min-width:220px;font-weight:900}.pd-cuadrilla-nombre{font-weight:900;line-height:1.15}.pd-tech-toggle{margin-top:5px;border:0;background:#dbeafe;color:#1e3a8a;border-radius:999px;padding:3px 7px;font-size:8px;font-weight:900;cursor:pointer}.pd-integrantes{display:none;gap:2px;margin-top:5px;padding:5px 7px;border-radius:8px;background:rgba(255,255,255,.72);font-size:8px;font-weight:700;line-height:1.25}.pd-integrantes.abierto{display:grid}.pd-integrantes span{display:block}.pd-day{width:28px;height:28px;border:0;border-radius:7px;font-size:10px;font-weight:900;cursor:pointer}.pd-campo{background:#dcfce7;color:#166534}.pd-bolsa{background:#dcfce7;color:#166534;position:relative}.pd-bolsa-mark{display:block;font-size:7px;line-height:7px;margin-top:-1px;font-weight:900}.pd-descanso{background:#2563eb;color:#fff}.pd-vacaciones{background:#7c3aed;color:#fff}.pd-pendiente{outline:3px solid #dc2626;position:relative}.pd-pendiente::after{content:"!";position:absolute;right:-4px;top:-7px;background:#dc2626;color:#fff;border-radius:50%;width:13px;height:13px;line-height:13px;font-size:9px}.pd-hoy{box-shadow:inset 0 0 0 3px #dc2626!important}.pd-current-day{background:#fef2f2!important;border-left:3px solid #dc2626!important;border-right:3px solid #dc2626!important}.pd-cal th.pd-current-day{background:#dc2626!important;color:#fff!important;font-weight:900}.pd-cal td.pd-current-day{background:#fff1f2!important}.pd-group{background:#dbeafe!important;color:#1e3a8a!important;font-weight:900;text-align:left!important}.pd-status{font-size:10px;padding:4px 7px;border-radius:999px;font-weight:900}.pd-status.campo{background:#dcfce7;color:#166534}.pd-status.descanso{background:#e5e7eb;color:#374151}.pd-status.vacaciones{background:#ede9fe;color:#6d28d9}.pd-status.pendiente{background:#fef3c7;color:#92400e}.pd-tech-state{padding:20px;border-radius:18px;text-align:center}.pd-tech-state.campo{background:#dcfce7;border:3px solid #22c55e;color:#166534}.pd-tech-state.descanso{background:#f1f5f9;border:3px solid #94a3b8;color:#334155}.pd-tech-state h2{font-size:28px;margin:5px 0}.pd-request{border:2px solid #f59e0b;background:#fff7ed;border-radius:13px;padding:11px;margin-top:10px}.pd-list{display:grid;gap:8px}.pd-item{border:1px solid #dbe4ef;border-radius:12px;padding:10px;background:#fff}.pd-item strong{display:block;margin-bottom:4px}.pd-actions{display:flex;gap:7px;flex-wrap:wrap;margin-top:8px}.pd-note{font-size:11px;color:#64748b;line-height:1.4}.pd-alert{background:#fff7ed;border:2px solid #fb923c;color:#9a3412;border-radius:12px;padding:10px;font-size:12px;font-weight:800}.pd-grid2{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px}.pd-summary{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px}.pd-summary .pd-kpi{min-height:72px}.pd-query-list{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}.pd-query-box{border:1px solid #cbd5e1;border-radius:12px;padding:10px;background:#f8fafc}.pd-query-box h4{margin:0 0 6px}.pd-alert-row{border:2px solid #ef4444;background:#fef2f2;color:#991b1b;border-radius:12px;padding:10px;margin-top:8px}.pd-collapse-head{display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;cursor:pointer}.pd-collapse-title{font-weight:900}.pd-collapse-body{display:none;margin-top:8px}.pd-collapse-body.abierto{display:block}.pd-collapse-btn{border:0;background:#e2e8f0;color:#0f172a;border-radius:999px;padding:6px 10px;font-weight:900;cursor:pointer}.pd-select-all{display:flex;gap:6px;align-items:center;font-size:11px;font-weight:900;color:#334155}.pd-alert-compact{border:2px solid #ef4444;background:#fef2f2;color:#991b1b;border-radius:12px;padding:10px}.pd-alert-detail{display:none;margin-top:8px}.pd-alert-detail.abierto{display:block}.pd-month-label{background:#dbeafe!important;color:#1e3a8a!important;font-weight:900}.pd-row-instalaciones td{background:#eff6ff}.pd-row-visita td{background:#ecfdf5}.pd-row-traslados td{background:#ecfeff}.pd-row-instalaciones .pd-sticky{background:#bfdbfe!important;color:#1e3a8a}.pd-row-visita .pd-sticky{background:#bbf7d0!important;color:#166534}.pd-row-traslados .pd-sticky{background:#a5f3fc!important;color:#155e75}.pd-row-personal td{background:#f8fafc}.pd-row-personal .pd-sticky{background:#e2e8f0!important;color:#334155}.pd-personal-badge{display:inline-block;margin-top:3px;padding:2px 6px;border-radius:999px;background:#e2e8f0;color:#334155;font-size:8px;font-weight:900}.pd-sunday{border-left:3px solid #f59e0b!important;border-right:3px solid #f59e0b!important;background:#fff7ed!important}.pd-cal th.pd-sunday{background:#ffedd5!important;color:#9a3412!important;font-weight:900}.pd-cal td.pd-sunday{background:#fff7ed!important}.pd-report-action{margin-left:auto}.pd-disabled{opacity:.55;cursor:not-allowed}.pd-tech-month-head{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap}.pd-tech-calendar{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:6px;margin-top:10px}.pd-tech-weekday{text-align:center;font-size:9px;font-weight:900;color:#64748b;padding:3px}.pd-tech-cal-empty{min-height:54px}.pd-tech-cal-day{min-height:58px;border:1px solid #cbd5e1;border-radius:11px;padding:6px;background:#f8fafc;display:flex;flex-direction:column;justify-content:space-between;gap:4px}.pd-tech-cal-day b{font-size:12px}.pd-tech-cal-day small{font-size:8px;font-weight:900}.pd-tech-cal-day.campo{background:#ecfdf5;border-color:#86efac;color:#166534}.pd-tech-cal-day.descanso{background:#dbeafe;border-color:#60a5fa;color:#1e3a8a}.pd-tech-cal-day.vacaciones{background:#ede9fe;border-color:#a78bfa;color:#6d28d9}.pd-tech-cal-day.hoy{box-shadow:inset 0 0 0 3px #ef4444}.pd-tech-legend{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px;font-size:9px;font-weight:800}.pd-tech-legend span{display:inline-flex;align-items:center;gap:4px}.pd-tech-dot{width:9px;height:9px;border-radius:50%;display:inline-block}.pd-tech-dot.campo{background:#22c55e}.pd-tech-dot.descanso{background:#2563eb}.pd-tech-dot.vacaciones{background:#7c3aed}.pd-solicitud-estado.aprobado{background:#dcfce7;color:#166534}.pd-solicitud-estado.rechazado{background:#fee2e2;color:#991b1b}.pd-solicitud-estado.pendiente{background:#fef3c7;color:#92400e}@media(max-width:700px){.pd-wrap{padding:6px}.pd-kpis{grid-template-columns:1fr}.pd-summary{grid-template-columns:repeat(2,minmax(0,1fr))}.pd-query-list{grid-template-columns:1fr}.pd-grid2{grid-template-columns:1fr}.pd-head h2{font-size:19px}.pd-cal .pd-sticky{min-width:170px}}
+.pd-wrap{max-width:1200px;margin:auto;padding:10px;color:#0f172a}.pd-head{background:linear-gradient(135deg,#1d4ed8,#0f766e);color:#fff;border-radius:18px;padding:16px;margin-bottom:11px}.pd-head h2{margin:0 0 4px;font-size:22px}.pd-head p{margin:0;font-size:12px;opacity:.9}.pd-card{background:#fff;border:1px solid #dbe4ef;border-radius:15px;padding:12px;margin-bottom:10px;box-shadow:0 5px 14px rgba(15,23,42,.08)}.pd-toolbar{display:flex;gap:8px;flex-wrap:wrap;align-items:end}.pd-field label{display:block;font-size:11px;font-weight:900;color:#334155;margin-bottom:4px}.pd-field input,.pd-field select,.pd-field textarea{border:1px solid #cbd5e1;border-radius:9px;padding:8px;background:#fff;color:#0f172a}.pd-btn{border:0;border-radius:10px;padding:9px 12px;font-weight:900;cursor:pointer}.pd-blue{background:#2563eb;color:#fff}.pd-green{background:#16a34a;color:#fff}.pd-orange{background:#f59e0b;color:#111827}.pd-red{background:#dc2626;color:#fff}.pd-gray{background:#64748b;color:#fff}.pd-kpis{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}.pd-kpi{border:2px solid #cbd5e1;border-radius:13px;padding:10px;background:#f8fafc}.pd-kpi b{display:block;font-size:20px}.pd-kpi small{font-size:10px;font-weight:900}.pd-kpi.verde{background:#ecfdf5;border-color:#22c55e;color:#166534}.pd-kpi.amarillo{background:#fffbeb;border-color:#f59e0b;color:#92400e}.pd-kpi.rojo{background:#fef2f2;border-color:#ef4444;color:#991b1b}.pd-cal-scroll{overflow:auto;border:2px solid #94a3b8;border-radius:12px}.pd-cal{border-collapse:separate;border-spacing:0;min-width:1000px;width:100%;font-size:10px}.pd-cal th,.pd-cal td{border-right:1px solid #94a3b8;border-bottom:1px solid #94a3b8;text-align:center;padding:4px}.pd-cal th:first-child,.pd-cal td:first-child{border-left:1px solid #94a3b8}.pd-cal thead th{border-top:1px solid #94a3b8}.pd-cal th{position:sticky;top:0;background:#eff6ff;color:#1e3a8a;z-index:2}.pd-cal .pd-sticky{position:sticky;left:0;background:#fff;z-index:3;text-align:left;min-width:220px;font-weight:900}.pd-cuadrilla-nombre{font-weight:900;line-height:1.15}.pd-tech-toggle{margin-top:5px;border:0;background:#dbeafe;color:#1e3a8a;border-radius:999px;padding:3px 7px;font-size:8px;font-weight:900;cursor:pointer}.pd-integrantes{display:none;gap:2px;margin-top:5px;padding:5px 7px;border-radius:8px;background:rgba(255,255,255,.72);font-size:8px;font-weight:700;line-height:1.25}.pd-integrantes.abierto{display:grid}.pd-integrantes span{display:block}.pd-day{width:28px;height:28px;border:0;border-radius:7px;font-size:10px;font-weight:900;cursor:pointer}.pd-campo{background:#dcfce7;color:#166534}.pd-bolsa{background:#dcfce7;color:#166534;position:relative}.pd-bolsa-mark{display:block;font-size:7px;line-height:7px;margin-top:-1px;font-weight:900}.pd-descanso{background:#2563eb;color:#fff}.pd-vacaciones{background:#7c3aed;color:#fff}.pd-sin-actividad{background:#e2e8f0;color:#475569;border:1px dashed #64748b}.pd-pendiente{outline:3px solid #dc2626;position:relative}.pd-pendiente::after{content:"!";position:absolute;right:-4px;top:-7px;background:#dc2626;color:#fff;border-radius:50%;width:13px;height:13px;line-height:13px;font-size:9px}.pd-hoy{box-shadow:inset 0 0 0 3px #dc2626!important}.pd-current-day{background:#fef2f2!important;border-left:3px solid #dc2626!important;border-right:3px solid #dc2626!important}.pd-cal th.pd-current-day{background:#dc2626!important;color:#fff!important;font-weight:900}.pd-cal td.pd-current-day{background:#fff1f2!important}.pd-group{background:#dbeafe!important;color:#1e3a8a!important;font-weight:900;text-align:left!important}.pd-status{font-size:10px;padding:4px 7px;border-radius:999px;font-weight:900}.pd-status.campo{background:#dcfce7;color:#166534}.pd-status.descanso{background:#e5e7eb;color:#374151}.pd-status.vacaciones{background:#ede9fe;color:#6d28d9}.pd-status.sin-actividad{background:#e2e8f0;color:#475569}.pd-status.bolsa{background:#cffafe;color:#155e75}.pd-status.pendiente{background:#fef3c7;color:#92400e}.pd-tech-state{padding:20px;border-radius:18px;text-align:center}.pd-tech-state.campo{background:#dcfce7;border:3px solid #22c55e;color:#166534}.pd-tech-state.descanso{background:#f1f5f9;border:3px solid #94a3b8;color:#334155}.pd-tech-state.bolsa{background:#ecfeff;border:3px solid #22d3ee;color:#155e75}.pd-tech-state.vacaciones{background:#f5f3ff;border:3px solid #a78bfa;color:#6d28d9}.pd-tech-state.sin-actividad{background:#f1f5f9;border:3px dashed #64748b;color:#334155}.pd-tech-state h2{font-size:28px;margin:5px 0}.pd-request{border:2px solid #f59e0b;background:#fff7ed;border-radius:13px;padding:11px;margin-top:10px}.pd-list{display:grid;gap:8px}.pd-item{border:1px solid #dbe4ef;border-radius:12px;padding:10px;background:#fff}.pd-item strong{display:block;margin-bottom:4px}.pd-actions{display:flex;gap:7px;flex-wrap:wrap;margin-top:8px}.pd-note{font-size:11px;color:#64748b;line-height:1.4}.pd-alert{background:#fff7ed;border:2px solid #fb923c;color:#9a3412;border-radius:12px;padding:10px;font-size:12px;font-weight:800}.pd-grid2{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px}.pd-summary{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px}.pd-summary .pd-kpi{min-height:72px}.pd-query-list{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}.pd-query-box{border:1px solid #cbd5e1;border-radius:12px;padding:10px;background:#f8fafc}.pd-query-box h4{margin:0 0 6px}.pd-alert-row{border:2px solid #ef4444;background:#fef2f2;color:#991b1b;border-radius:12px;padding:10px;margin-top:8px}.pd-collapse-head{display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;cursor:pointer}.pd-collapse-title{font-weight:900}.pd-collapse-body{display:none;margin-top:8px}.pd-collapse-body.abierto{display:block}.pd-collapse-btn{border:0;background:#e2e8f0;color:#0f172a;border-radius:999px;padding:6px 10px;font-weight:900;cursor:pointer}.pd-select-all{display:flex;gap:6px;align-items:center;font-size:11px;font-weight:900;color:#334155}.pd-alert-compact{border:2px solid #ef4444;background:#fef2f2;color:#991b1b;border-radius:12px;padding:10px}.pd-alert-detail{display:none;margin-top:8px}.pd-alert-detail.abierto{display:block}.pd-month-label{background:#dbeafe!important;color:#1e3a8a!important;font-weight:900}.pd-row-instalaciones td{background:#eff6ff}.pd-row-visita td{background:#ecfdf5}.pd-row-traslados td{background:#ecfeff}.pd-row-instalaciones .pd-sticky{background:#bfdbfe!important;color:#1e3a8a}.pd-row-visita .pd-sticky{background:#bbf7d0!important;color:#166534}.pd-row-traslados .pd-sticky{background:#a5f3fc!important;color:#155e75}.pd-row-personal td{background:#f8fafc}.pd-row-personal .pd-sticky{background:#e2e8f0!important;color:#334155}.pd-personal-badge{display:inline-block;margin-top:3px;padding:2px 6px;border-radius:999px;background:#e2e8f0;color:#334155;font-size:8px;font-weight:900}.pd-sunday{border-left:3px solid #f59e0b!important;border-right:3px solid #f59e0b!important;background:#fff7ed!important}.pd-cal th.pd-sunday{background:#ffedd5!important;color:#9a3412!important;font-weight:900}.pd-cal td.pd-sunday{background:#fff7ed!important}.pd-report-action{margin-left:auto}.pd-disabled{opacity:.55;cursor:not-allowed}.pd-tech-month-head{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap}.pd-tech-calendar{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:6px;margin-top:10px}.pd-tech-weekday{text-align:center;font-size:9px;font-weight:900;color:#64748b;padding:3px}.pd-tech-cal-empty{min-height:54px}.pd-tech-cal-day{min-height:58px;border:1px solid #cbd5e1;border-radius:11px;padding:6px;background:#f8fafc;display:flex;flex-direction:column;justify-content:space-between;gap:4px}.pd-tech-cal-day b{font-size:12px}.pd-tech-cal-day small{font-size:8px;font-weight:900}.pd-tech-cal-day.campo{background:#ecfdf5;border-color:#86efac;color:#166534}.pd-tech-cal-day.descanso{background:#dbeafe;border-color:#60a5fa;color:#1e3a8a}.pd-tech-cal-day.vacaciones{background:#ede9fe;border-color:#a78bfa;color:#6d28d9}.pd-tech-cal-day.bolsa{background:#ecfeff;border-color:#22d3ee;color:#155e75}.pd-tech-cal-day.sin-actividad{background:#e2e8f0;border-color:#94a3b8;color:#475569;border-style:dashed}.pd-tech-cal-day.hoy{box-shadow:inset 0 0 0 3px #ef4444}.pd-tech-legend{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px;font-size:9px;font-weight:800}.pd-tech-legend span{display:inline-flex;align-items:center;gap:4px}.pd-tech-dot{width:9px;height:9px;border-radius:50%;display:inline-block}.pd-tech-dot.campo{background:#22c55e}.pd-tech-dot.descanso{background:#2563eb}.pd-tech-dot.vacaciones{background:#7c3aed}.pd-tech-dot.bolsa{background:#06b6d4}.pd-tech-dot.sin-actividad{background:#64748b}.pd-solicitud-estado.aprobado{background:#dcfce7;color:#166534}.pd-solicitud-estado.rechazado{background:#fee2e2;color:#991b1b}.pd-solicitud-estado.pendiente{background:#fef3c7;color:#92400e}@media(max-width:700px){.pd-wrap{padding:6px}.pd-kpis{grid-template-columns:1fr}.pd-summary{grid-template-columns:repeat(2,minmax(0,1fr))}.pd-query-list{grid-template-columns:1fr}.pd-grid2{grid-template-columns:1fr}.pd-head h2{font-size:19px}.pd-cal .pd-sticky{min-width:170px}}
 </style>`;}
 
 
@@ -150,11 +155,11 @@ async function actualizarIndicadorDescansoMenu(){
       }
       const item=(data.programacion||[]).find(x=>pdNorm(x.cuadrilla)===pdNorm(clave)&&x.fecha===pdHoy());
       const estado=pdEstadoTecnico(pdEstadoVisible(item));
-      const descanso=estado==="DESCANSO",vacaciones=estado==="VACACIONES";
+      const noCampo=estado!=="EN CAMPO";
       indicador=document.getElementById("pdEstadoMenu");
       if(indicador){
-        indicador.className="pd-menu-status "+(descanso?"descanso":"campo");
-        indicador.innerHTML=`<span class="pd-menu-dot"></span><strong>${vacaciones?'VACACIONES':(descanso?'DESCANSO':'EN CAMPO')}</strong><small>Ver programación</small>`;
+        indicador.className="pd-menu-status "+(noCampo?"descanso":"campo");
+        indicador.innerHTML=`<span class="pd-menu-dot"></span><strong>${pdEsc(pdTituloEstado(estado).replace(/^[^A-ZÁÉÍÓÚÑ]+/i,''))}</strong><small>Ver programación</small>`;
       }
     }catch(e){
       indicador=document.getElementById("pdEstadoMenu");
@@ -247,8 +252,8 @@ function pdEntidadPersonalActual(){
 function pdEstadoPersonalHtml(entidad){
   if(!entidad)return '<div class="pd-note">No se encontró programación personal.</div>';
   const hoy=pdHoy(),item=pdBuscar(entidad.cuadrilla,hoy),estado=pdEstadoTecnico(pdEstadoVisible(item));
-  const clase=estado==='DESCANSO'?'descanso':'campo';
-  const titulo=estado==='DESCANSO'?'😴 DESCANSO':(estado==='VACACIONES'?'🏖️ VACACIONES':'🟢 EN CAMPO');
+  const clase=pdClaseTecnico(estado);
+  const titulo=pdTituloEstado(estado);
   return `<div class="pd-tech-state ${clase}"><div>ESTADO PERSONAL DE HOY</div><h2>${titulo}</h2><div>${pdEsc(new Date(hoy+'T12:00:00').toLocaleDateString('es-PE',{weekday:'long',day:'2-digit',month:'long'}))}</div></div>`;
 }
 function pdCalendarioPersonalHtml(entidad){
@@ -257,7 +262,7 @@ function pdCalendarioPersonalHtml(entidad){
   let h='<div class="pd-card"><b>Mi programación mensual</b><div class="pd-cal-scroll" style="margin-top:8px"><table class="pd-cal"><thead><tr><th class="pd-sticky">Personal</th>';
   for(let d=1;d<=dias;d++){const f=pdFecha(per,d),domingo=pdDiaCorto(f)==='D',hoy=f===pdHoy();h+=`<th class="${domingo?'pd-sunday ':''}${hoy?'pd-current-day':''}">${pdDiaCorto(f)}<br>${d}</th>`;}
   h+='</tr></thead><tbody><tr class="pd-row-personal"><td class="pd-sticky"><div class="pd-cuadrilla-nombre">'+pdEsc(entidad.nombrePersonal||entidad.cuadrilla)+'</div><span class="pd-personal-badge">'+pdEsc(entidad.tipoPersonal||'PERSONAL')+'</span></td>';
-  for(let d=1;d<=dias;d++){const f=pdFecha(per,d),est=pdEstadoTecnico(pdEstadoVisible(pdBuscar(entidad.cuadrilla,f))),cl=est==='DESCANSO'?'pd-descanso':(est==='VACACIONES'?'pd-vacaciones':'pd-campo'),domingo=pdDiaCorto(f)==='D',hoy=f===pdHoy();h+=`<td class="${domingo?'pd-sunday ':''}${hoy?'pd-current-day':''}"><button class="pd-day ${cl} ${hoy?'pd-hoy':''}" disabled>${pdEtiquetaEstado(est)}</button></td>`;}
+  for(let d=1;d<=dias;d++){const f=pdFecha(per,d),est=pdEstadoTecnico(pdEstadoVisible(pdBuscar(entidad.cuadrilla,f))),cl=pdClaseDia(est),domingo=pdDiaCorto(f)==='D',hoy=f===pdHoy();h+=`<td class="${domingo?'pd-sunday ':''}${hoy?'pd-current-day':''}"><button class="pd-day ${cl} ${hoy?'pd-hoy':''}" disabled>${pdEtiquetaEstado(est)}</button></td>`;}
   return h+'</tr></tbody></table></div></div>';
 }
 function pdRenderPersonal(){
@@ -275,11 +280,11 @@ function pdRenderPersonalSimple(){
   }
   const itemHoy=pdBuscar(ent.cuadrilla,hoy);
   const estado=pdEstadoTecnico(pdEstadoVisible(itemHoy));
-  const clase=estado==='DESCANSO'?'descanso':'campo';
-  const titulo=estado==='DESCANSO'?'😴 DESCANSO':(estado==='VACACIONES'?'🏖️ VACACIONES':'🟢 EN CAMPO');
+  const clase=pdClaseTecnico(estado);
+  const titulo=pdTituloEstado(estado);
   const proximos=(PD_DATA.programacion||[])
     .filter(x=>pdNorm(x.cuadrilla)===pdNorm(ent.cuadrilla)&&x.fecha>=hoy&&pdNorm(x.estadoProgramacion)==='APROBADO')
-    .filter(x=>['DESCANSO','EN CAMPO BOLSA','CAMPO BOLSA','BOLSA'].includes(pdNorm(x.estadoDia)))
+    .filter(x=>pdNormalizarEstado(x.estadoDia)==='DESCANSO')
     .sort((a,b)=>a.fecha.localeCompare(b.fecha));
   const proximo=proximos[0]?.fecha||'Sin descanso programado';
   document.getElementById('pdContenido').innerHTML=`
@@ -304,11 +309,11 @@ function pdCalendarioTecnicoHtml(cuadrilla,periodo){
   for(let i=0;i<inicio;i++)html+='<div class="pd-tech-cal-empty"></div>';
   for(let dia=1;dia<=dias;dia++){
     const fecha=pdFecha(periodo,dia),item=pdBuscar(cuadrilla,fecha),estado=pdEstadoTecnico(pdEstadoVigenteTecnico(item));
-    const clase=estado==='DESCANSO'?'descanso':(estado==='VACACIONES'?'vacaciones':'campo');
-    const etiqueta=estado==='DESCANSO'?'DESCANSO':(estado==='VACACIONES'?'VACACIONES':'CAMPO');
+    const clase=pdClaseTecnico(estado);
+    const etiqueta=estado==='DESCANSO'?'DESCANSO':(estado==='VACACIONES'?'VACACIONES':(estado==='SIN ACTIVIDAD'?'SIN ACTIVIDAD':(pdEsBolsa(estado)?'CAMPO B':'CAMPO')));
     html+=`<div class="pd-tech-cal-day ${clase} ${fecha===pdHoy()?'hoy':''}" title="${pdEsc(fecha)} · ${pdEsc(etiqueta)}"><b>${dia}</b><small>${etiqueta}</small></div>`;
   }
-  return html+'</div><div class="pd-tech-legend"><span><i class="pd-tech-dot campo"></i>En campo</span><span><i class="pd-tech-dot descanso"></i>Descanso</span><span><i class="pd-tech-dot vacaciones"></i>Vacaciones</span></div>';
+  return html+'</div><div class="pd-tech-legend"><span><i class="pd-tech-dot campo"></i>En campo</span><span><i class="pd-tech-dot bolsa"></i>Campo B</span><span><i class="pd-tech-dot descanso"></i>Descanso</span><span><i class="pd-tech-dot vacaciones"></i>Vacaciones</span><span><i class="pd-tech-dot sin-actividad"></i>Sin actividad</span></div>';
 }
 function pdClaseEstadoSolicitud(estado){const e=pdNorm(estado).replace(/_/g,' ');if(e.includes('APROB'))return 'aprobado';if(e.includes('RECHAZ'))return 'rechazado';return 'pendiente';}
 async function pdCambiarMesTecnico(periodo){
@@ -319,13 +324,13 @@ function pdRenderTecnico(){
   const u=pdUser(),hoy=pdHoy(),per=PD_DATA.periodo||pdPeriodoActual(),esMesActual=per===pdPeriodoActual();
   const itemHoy=esMesActual?pdBuscar(u.cuadrilla,hoy):null;
   const estado=pdEstadoTecnico(pdEstadoVigenteTecnico(itemHoy));
-  const descansosMes=(PD_DATA.programacion||[]).filter(x=>pdNorm(x.cuadrilla)===pdNorm(u.cuadrilla)&&x.fecha.slice(0,7)===per&&["DESCANSO","EN CAMPO BOLSA","CAMPO BOLSA","BOLSA"].includes(pdNorm(pdEstadoVigenteTecnico(x)))).sort((a,b)=>a.fecha.localeCompare(b.fecha));
+  const descansosMes=(PD_DATA.programacion||[]).filter(x=>pdNorm(x.cuadrilla)===pdNorm(u.cuadrilla)&&x.fecha.slice(0,7)===per&&pdNormalizarEstado(pdEstadoVigenteTecnico(x))==="DESCANSO").sort((a,b)=>a.fecha.localeCompare(b.fecha));
   const descansosSolicitables=descansosMes.filter(x=>x.fecha>=hoy);
   const proximo=descansosSolicitables[0]?.fecha||"Sin descanso programado en el periodo";
   const historialBase=(PD_DATA.historial&&PD_DATA.historial.length?PD_DATA.historial:PD_DATA.programacion)||[];
   const solicitudes=historialBase.filter(x=>pdNorm(x.cuadrilla)===pdNorm(u.cuadrilla)&&pdNorm(x.tipoRegistro)==="SOLICITUD_TECNICO").sort((a,b)=>String(b.fechaSolicitud||'').localeCompare(String(a.fechaSolicitud||''))).slice(0,12);
   const pendienteActivo=solicitudes.some(x=>pdClaseEstadoSolicitud(x.estadoValidacion||x.estadoProgramacion)==='pendiente');
-  const estadoHoyHtml=esMesActual?`<div class="pd-tech-state ${estado==="DESCANSO"?'descanso':'campo'}"><div>ESTADO DE HOY</div><h2>${estado==="DESCANSO"?'😴 DESCANSO':(estado==='VACACIONES'?'🏖️ VACACIONES':'🟢 EN CAMPO')}</h2><div>${pdEsc(new Date(hoy+'T12:00:00').toLocaleDateString('es-PE',{weekday:'long',day:'2-digit',month:'long'}))}</div></div>`:'';
+  const estadoHoyHtml=esMesActual?`<div class="pd-tech-state ${pdClaseTecnico(estado)}"><div>ESTADO DE HOY</div><h2>${pdTituloEstado(estado)}</h2><div>${pdEsc(new Date(hoy+'T12:00:00').toLocaleDateString('es-PE',{weekday:'long',day:'2-digit',month:'long'}))}</div></div>`:'';
   document.getElementById("pdContenido").innerHTML=`
   ${estadoHoyHtml}
   <div class="pd-card"><div class="pd-tech-month-head"><div><b>Mi programación mensual</b><div class="pd-note">Consulta el mes anterior, el actual y el siguiente.</div></div><div class="pd-field"><label>Mes disponible</label><select onchange="pdCambiarMesTecnico(this.value)">${pdOpcionesMesHtml(per)}</select></div></div>${pdCalendarioTecnicoHtml(u.cuadrilla,per)}</div>
@@ -345,7 +350,7 @@ function pdRenderGestion(){
   const sedeSel=sedes.includes(estadoVista.sede)?estadoVista.sede:(esSupervisor?u.sede:'TODAS');
   const plataformaSel=['TODAS','INSTALACIONES','VISITA TECNICA','TRASLADOS'].includes(estadoVista.plataforma)?estadoVista.plataforma:'TODAS';
   const tipoPersonalSel=['TODAS','CUADRILLA','PERSONAL','SUPERVISOR','ALMACEN'].includes(estadoVista.tipoPersonal)?estadoVista.tipoPersonal:'TODAS';
-  const estadoInformeSel=['TODOS','EN CAMPO','EN CAMPO BOLSA','DESCANSO','VACACIONES'].includes(estadoVista.estadoInforme)?estadoVista.estadoInforme:'TODOS';
+  const estadoInformeSel=['TODOS','EN CAMPO','EN CAMPO BOLSA','DESCANSO','VACACIONES','SIN ACTIVIDAD'].includes(estadoVista.estadoInforme)?estadoVista.estadoInforme:'TODOS';
   const tecnicoSel=estadoVista.tecnico||'';
   const modo=['MES','RANGO','DIA'].includes(estadoVista.modo)?estadoVista.modo:'MES';
   const rango=pdRangoVisualMes(per);
@@ -370,7 +375,7 @@ function pdRenderGestion(){
     <div class="pd-field"><label>Plataforma</label><select id="pdPlataforma"><option value="TODAS" ${plataformaSel==='TODAS'?'selected':''}>Todas</option><option value="INSTALACIONES" ${plataformaSel==='INSTALACIONES'?'selected':''}>Instalaciones</option><option value="VISITA TECNICA" ${plataformaSel==='VISITA TECNICA'?'selected':''}>Visita Técnica</option><option value="TRASLADOS" ${plataformaSel==='TRASLADOS'?'selected':''}>Traslados</option></select></div>
     <div class="pd-field"><label>${esJefatura?'Cuadrilla / Personal':'Cuadrilla'}</label><select id="pdCuadrilla"><option value="TODAS">Todas</option>${PD_DATA.cuadrillas.filter(c=>esSupervisor||sedeSel==='TODAS'||pdNorm(c.sede)===pdNorm(sedeSel)).map(c=>`<option value="${pdEsc(c.cuadrilla)}" ${estadoVista.cuadrilla===c.cuadrilla?'selected':''}>${pdEsc(c.nombrePersonal||c.cuadrilla)}</option>`).join('')}</select></div>
     <div class="pd-field"><label>Técnico</label><input id="pdTecnico" list="pdListaTecnicos" value="${pdEsc(tecnicoSel)}" placeholder="Buscar técnico"><datalist id="pdListaTecnicos">${[...new Set((PD_DATA.cuadrillas||[]).flatMap(c=>Array.isArray(c.tecnicos)?c.tecnicos:[]).filter(Boolean))].sort().map(n=>`<option value="${pdEsc(n)}"></option>`).join('')}</datalist></div>
-    <div class="pd-field"><label>Estado informe</label><select id="pdEstadoInforme"><option value="TODOS" ${estadoInformeSel==='TODOS'?'selected':''}>Todos</option><option value="EN CAMPO" ${estadoInformeSel==='EN CAMPO'?'selected':''}>En campo</option><option value="EN CAMPO BOLSA" ${estadoInformeSel==='EN CAMPO BOLSA'?'selected':''}>En campo bolsa</option><option value="DESCANSO" ${estadoInformeSel==='DESCANSO'?'selected':''}>Descanso</option><option value="VACACIONES" ${estadoInformeSel==='VACACIONES'?'selected':''}>Vacaciones</option></select></div>
+    <div class="pd-field"><label>Estado informe</label><select id="pdEstadoInforme"><option value="TODOS" ${estadoInformeSel==='TODOS'?'selected':''}>Todos</option><option value="EN CAMPO" ${estadoInformeSel==='EN CAMPO'?'selected':''}>En campo</option><option value="EN CAMPO BOLSA" ${estadoInformeSel==='EN CAMPO BOLSA'?'selected':''}>En campo bolsa</option><option value="DESCANSO" ${estadoInformeSel==='DESCANSO'?'selected':''}>Descanso</option><option value="VACACIONES" ${estadoInformeSel==='VACACIONES'?'selected':''}>Vacaciones</option><option value="SIN ACTIVIDAD" ${estadoInformeSel==='SIN ACTIVIDAD'?'selected':''}>Sin actividad</option></select></div>
     <button class="pd-btn pd-blue" onclick="pdCambiarVista()">Consultar</button>
     <button id="pdBtnDescargarExcel" class="pd-btn pd-green pd-report-action" onclick="pdGenerarExcelDescansos()">Descargar Excel</button>
   </div></div>
@@ -474,7 +479,7 @@ function pdRenderCalendario(){
     const nombre=c.nombrePersonal||c.cuadrilla;
     const badge=tipo!=='CUADRILLA'?`<span class="pd-personal-badge">${pdEsc(tipo==='ALMACEN'?'RESPONSABLE DE ALMACÉN':tipo)}</span>`:'';
     html+=`<tr class="${claseFila}"><td class="pd-sticky"><div class="pd-cuadrilla-nombre">${pdEsc(nombre)}</div>${badge}${integrantesHtml}</td>`;
-    fechas.forEach(fecha=>{const key=c.cuadrilla+'|'+fecha,item=pdBuscar(c.cuadrilla,fecha),pend=pdEsPendiente(item),estado=PD_CAMBIOS[key]||(pend?pdEstadoPropuesto(item):pdEstadoVisible(item)),cl=estado==='DESCANSO'?'pd-descanso':(estado==='VACACIONES'?'pd-vacaciones':(pdEsBolsa(estado)?'pd-bolsa':'pd-campo')),domingo=pdDiaCorto(fecha)==='D',hoy=fecha===pdHoy(),detalle=pend?`${item.estadoProgramacion} · ${item.motivoSolicitud||'Sin comentario'} · ${item.solicitadoPor||''}`:(item?.estadoProgramacion||'APROBADO'),editable=!pdSoloLectura()&&(tipo==='CUADRILLA'||u.perfil!=='SUPERVISOR'),click=pend?`pdMostrarDetallePendiente('${pdEsc(item.id)}')`:(editable?`pdToggleDia('${pdEsc(c.cuadrilla)}','${fecha}',this)`:'');html+=`<td class="${domingo?'pd-sunday ':''}${hoy?'pd-current-day':''}"><button class="pd-day ${cl} ${pend?'pd-pendiente':''} ${hoy?'pd-hoy':''} ${editable?'':'pd-disabled'}" ${click?`onclick="${click}"`:'disabled'} title="${pdEsc(detalle)}">${pdEtiquetaEstado(estado)}</button></td>`;});
+    fechas.forEach(fecha=>{const key=c.cuadrilla+'|'+fecha,item=pdBuscar(c.cuadrilla,fecha),pend=pdEsPendiente(item),estado=PD_CAMBIOS[key]||(pend?pdEstadoPropuesto(item):pdEstadoVisible(item)),cl=pdClaseDia(estado),domingo=pdDiaCorto(fecha)==='D',hoy=fecha===pdHoy(),detalle=pend?`${item.estadoProgramacion} · ${item.motivoSolicitud||'Sin comentario'} · ${item.solicitadoPor||''}`:(item?.estadoProgramacion||'APROBADO'),editable=!pdSoloLectura()&&(tipo==='CUADRILLA'||u.perfil!=='SUPERVISOR'),click=pend?`pdMostrarDetallePendiente('${pdEsc(item.id)}')`:(editable?`pdToggleDia('${pdEsc(c.cuadrilla)}','${fecha}',this)`:'');html+=`<td class="${domingo?'pd-sunday ':''}${hoy?'pd-current-day':''}"><button class="pd-day ${cl} ${pend?'pd-pendiente':''} ${hoy?'pd-hoy':''} ${editable?'':'pd-disabled'}" ${click?`onclick="${click}"`:'disabled'} title="${pdEsc(detalle)}">${pdEtiquetaEstado(estado)}</button></td>`;});
     html+='</tr>';
   });
   html+='</tbody></table></div>';document.getElementById('pdCalendario').innerHTML=html;
@@ -483,17 +488,22 @@ function pdRenderConsultaOperativa(){
   const cont=document.getElementById('pdConsultaDia');if(!cont)return;
   const f=pdCapturarFiltros(),fechas=pdFechasVista(),cuadrillas=pdCuadrillasFiltradas();
   if(fechas.length===1){
-    const fecha=fechas[0],campo=[],descanso=[];
-    cuadrillas.forEach(c=>{const estado=PD_CAMBIOS[c.cuadrilla+'|'+fecha]||pdEstadoVisible(pdBuscar(c.cuadrilla,fecha));(estado==='DESCANSO'?descanso:campo).push(c);});
+    const fecha=fechas[0],grupos={"EN CAMPO":[],"EN CAMPO BOLSA":[],"DESCANSO":[],"VACACIONES":[],"SIN ACTIVIDAD":[]};
+    cuadrillas.forEach(c=>{const estado=pdNormalizarEstado(PD_CAMBIOS[c.cuadrilla+'|'+fecha]||pdEstadoVisible(pdBuscar(c.cuadrilla,fecha)));(grupos[estado]||grupos["EN CAMPO"]).push(c);});
     const lista=a=>a.length?a.map(c=>{const tipo=pdNorm(c.tipoPersonal||'CUADRILLA'),nombre=tipo==='CUADRILLA'?(c.cuadrilla||''):(c.nombrePersonal||c.cuadrilla||''),tecnicos=Array.isArray(c.tecnicos)?c.tecnicos.filter(Boolean):[],detalleTecnicos=tipo==='CUADRILLA'&&tecnicos.length?`<div class="pd-note" style="margin:2px 0 0 14px">👤 ${tecnicos.map(pdEsc).join(' · ')}</div>`:'';return `<div style="margin:4px 0">• <b>${pdEsc(nombre)}</b> <small>(${pdEsc(c.sede)} · ${pdEsc(c.plataforma)})</small>${detalleTecnicos}</div>`;}).join(''):'<div class="pd-note">Ninguna cuadrilla.</div>';
-    cont.innerHTML=`<b>Consulta operativa del ${pdEsc(fecha)}</b><div class="pd-summary" style="margin-top:8px"><div class="pd-kpi verde"><small>EN CAMPO</small><b>${campo.length}</b></div><div class="pd-kpi"><small>DESCANSO</small><b>${descanso.length}</b></div></div><div class="pd-query-list" style="margin-top:8px"><div class="pd-query-box"><h4>🟢 Cuadrillas en campo</h4>${lista(campo)}</div><div class="pd-query-box"><h4>😴 Cuadrillas en descanso</h4>${lista(descanso)}</div></div>`;
+    const definiciones=[
+      ['EN CAMPO','🟢','En campo','verde'],['EN CAMPO BOLSA','🟦','Campo B',''],['DESCANSO','😴','Descanso',''],['VACACIONES','🏖️','Vacaciones',''],['SIN ACTIVIDAD','⏸️','Sin actividad','']
+    ];
+    const kpis=definiciones.map(([e,ico,nombre,cl])=>`<div class="pd-kpi ${cl}"><small>${nombre.toUpperCase()}</small><b>${grupos[e].length}</b></div>`).join('');
+    const detalle=definiciones.filter(([e])=>grupos[e].length).map(([e,ico,nombre])=>`<div class="pd-query-box"><h4>${ico} ${nombre}</h4>${lista(grupos[e])}</div>`).join('');
+    cont.innerHTML=`<b>Consulta operativa del ${pdEsc(fecha)}</b><div class="pd-summary" style="margin-top:8px">${kpis}</div><div class="pd-query-list" style="margin-top:8px">${detalle||'<div class="pd-note">Sin registros.</div>'}</div>`;
   }else if(f.cuadrilla!=='TODAS'){
-    const descansos=fechas.filter(fecha=>(PD_CAMBIOS[f.cuadrilla+'|'+fecha]||pdEstadoVisible(pdBuscar(f.cuadrilla,fecha)))==='DESCANSO');
+    const descansos=fechas.filter(fecha=>pdNormalizarEstado(PD_CAMBIOS[f.cuadrilla+'|'+fecha]||pdEstadoVisible(pdBuscar(f.cuadrilla,fecha)))==='DESCANSO');
     cont.innerHTML=`<b>Descansos de ${pdEsc(f.cuadrilla)}</b><div class="pd-query-box" style="margin-top:8px">${descansos.length?descansos.map(x=>`<span class="pd-status descanso" style="display:inline-block;margin:3px">${pdEsc(x)}</span>`).join(''):'<span class="pd-note">No registra descansos en el periodo consultado.</span>'}</div>`;
-  }else cont.innerHTML='<b>Consulta rápida</b><div class="pd-note" style="margin-top:5px">Seleccione <b>Un día</b> para ver quiénes están en campo o descanso, o seleccione una <b>cuadrilla</b> para ver sus fechas de descanso.</div>';
+  }else cont.innerHTML='<b>Consulta rápida</b><div class="pd-note" style="margin-top:5px">Seleccione <b>Un día</b> para ver el estado de las cuadrillas, o seleccione una <b>cuadrilla</b> para ver sus fechas de descanso.</div>';
 }
 
-function pdToggleDia(cuadrilla,fecha,btn){const key=cuadrilla+'|'+fecha,current=PD_CAMBIOS[key]||pdEstadoVisible(pdBuscar(cuadrilla,fecha)),next=current==='EN CAMPO'?'EN CAMPO BOLSA':(pdEsBolsa(current)?'DESCANSO':(current==='DESCANSO'?'VACACIONES':'EN CAMPO')),base=pdEstadoVisible(pdBuscar(cuadrilla,fecha));if(next===base)delete PD_CAMBIOS[key];else PD_CAMBIOS[key]=next;btn.innerHTML=pdEtiquetaEstado(next);btn.classList.toggle('pd-descanso',next==='DESCANSO');btn.classList.toggle('pd-vacaciones',next==='VACACIONES');btn.classList.toggle('pd-bolsa',pdEsBolsa(next));btn.classList.toggle('pd-campo',next==='EN CAMPO');btn.classList.remove('pd-pendiente');pdActualizarBotonCambios();pdCargarCobertura();pdRenderConsultaOperativa();}
+function pdToggleDia(cuadrilla,fecha,btn){const key=cuadrilla+'|'+fecha,current=pdNormalizarEstado(PD_CAMBIOS[key]||pdEstadoVisible(pdBuscar(cuadrilla,fecha))),next=current==='EN CAMPO'?'EN CAMPO BOLSA':(pdEsBolsa(current)?'DESCANSO':(current==='DESCANSO'?'VACACIONES':(current==='VACACIONES'?'SIN ACTIVIDAD':'EN CAMPO'))),base=pdNormalizarEstado(pdEstadoVisible(pdBuscar(cuadrilla,fecha)));if(next===base)delete PD_CAMBIOS[key];else PD_CAMBIOS[key]=next;btn.innerHTML=pdEtiquetaEstado(next);['pd-campo','pd-bolsa','pd-descanso','pd-vacaciones','pd-sin-actividad'].forEach(c=>btn.classList.remove(c));btn.classList.add(pdClaseDia(next));btn.classList.remove('pd-pendiente');pdActualizarBotonCambios();pdCargarCobertura();pdRenderConsultaOperativa();}
 
 function pdReglaCobertura(plataforma,fecha){const dia=new Date(fecha+'T12:00:00').getDay(),p=pdNorm(plataforma);if(p==='INSTALACIONES'){if(dia===0)return{objetivo:.60,minimo:.60};if(dia===6)return{objetivo:.80,minimo:.80};return{objetivo:.85,minimo:.85};}if(dia===0)return{objetivo:.70,minimo:.70};if(dia===6)return{objetivo:.85,minimo:.85};return{objetivo:.90,minimo:.90};}
 function pdRedondeo(v){return Math.floor(Number(v)+.5);}
@@ -515,34 +525,37 @@ async function pdCargarCobertura(){
 
     function evaluar(plataforma,dia){
       const qs=cuadrillas.filter(c=>pdNorm(c.plataforma)===plataforma);
-      const vacaciones=qs.filter(c=>(PD_CAMBIOS[c.cuadrilla+'|'+dia]||pdEstadoVisible(pdBuscar(c.cuadrilla,dia)))==='VACACIONES').length;
-      const total=qs.length-vacaciones;
+      const estadoDe=c=>pdNormalizarEstado(PD_CAMBIOS[c.cuadrilla+'|'+dia]||pdEstadoVisible(pdBuscar(c.cuadrilla,dia)));
+      const vacaciones=qs.filter(c=>estadoDe(c)==='VACACIONES').length;
+      const sinActividad=qs.filter(c=>estadoDe(c)==='SIN ACTIVIDAD').length;
+      const bolsa=qs.filter(c=>estadoDe(c)==='EN CAMPO BOLSA').length;
+      const total=qs.length-vacaciones-sinActividad;
       if(!qs.length)return null;
-      if(!total)return{plataforma,total:0,totalRegistradas:qs.length,vacaciones,campo:0,porcentaje:1,estado:'verde',aplica:false,tipo:'VACACIONES',objetivoPct:0,alerta:false};
-      const campo=qs.filter(c=>(PD_CAMBIOS[c.cuadrilla+'|'+dia]||pdEstadoVisible(pdBuscar(c.cuadrilla,dia)))==='EN CAMPO').length;
+      if(!total)return{plataforma,total:0,totalRegistradas:qs.length,vacaciones,sinActividad,bolsa,campo:0,porcentaje:1,estado:'verde',aplica:false,tipo:'NO_OPERATIVAS',objetivoPct:0,alerta:false};
+      const campo=qs.filter(c=>estadoDe(c)==='EN CAMPO').length;
       const porcentaje=campo/total,regla=pdReglaCobertura(plataforma,dia);
 
       if(esSupervisor&&total===1){
-        return{plataforma,total,vacaciones,campo,porcentaje,estado:'verde',aplica:false,tipo:'UNA',objetivoPct:Math.round(regla.objetivo*100),alerta:false};
+        return{plataforma,total,vacaciones,sinActividad,bolsa,campo,porcentaje,estado:'verde',aplica:false,tipo:'UNA',objetivoPct:Math.round(regla.objetivo*100),alerta:false};
       }
       if(esSupervisor&&total===2){
         const alerta=campo===0;
-        return{plataforma,total,vacaciones,campo,porcentaje,estado:alerta?'rojo':'verde',aplica:false,tipo:'DOS',objetivo:1,objetivoPct:Math.round(regla.objetivo*100),alerta};
+        return{plataforma,total,vacaciones,sinActividad,bolsa,campo,porcentaje,estado:alerta?'rojo':'verde',aplica:false,tipo:'DOS',objetivo:1,objetivoPct:Math.round(regla.objetivo*100),alerta};
       }
       if(esSupervisor&&total===3){
         const alerta=campo<2;
         const estado=alerta?'rojo':'verde';
-        return{plataforma,total,vacaciones,campo,porcentaje,estado,aplica:false,tipo:'TRES',objetivo:3,minimo:2,objetivoPct:Math.round(regla.objetivo*100),alerta};
+        return{plataforma,total,vacaciones,sinActividad,bolsa,campo,porcentaje,estado,aplica:false,tipo:'TRES',objetivo:3,minimo:2,objetivoPct:Math.round(regla.objetivo*100),alerta};
       }
       if(esSupervisor&&total===4){
         const alerta=campo<3;
         const estado=alerta?'rojo':'verde';
-        return{plataforma,total,vacaciones,campo,porcentaje,estado,aplica:false,tipo:'CUATRO',objetivo:4,minimo:3,objetivoPct:Math.round(regla.objetivo*100),alerta};
+        return{plataforma,total,vacaciones,sinActividad,bolsa,campo,porcentaje,estado,aplica:false,tipo:'CUATRO',objetivo:4,minimo:3,objetivoPct:Math.round(regla.objetivo*100),alerta};
       }
 
       const requerido=pdRedondeo(total*regla.objetivo);
       const estado=campo>=requerido?'verde':(campo===requerido-1?'amarillo':'rojo');
-      return{plataforma,total,vacaciones,campo,porcentaje,estado,aplica:true,tipo:'PORCENTAJE',objetivo:requerido,objetivoPct:Math.round(regla.objetivo*100),alerta:estado!=='verde'};
+      return{plataforma,total,vacaciones,sinActividad,bolsa,campo,porcentaje,estado,aplica:true,tipo:'PORCENTAJE',objetivo:requerido,objetivoPct:Math.round(regla.objetivo*100),alerta:estado!=='verde'};
     }
 
     const items=plataformas.map(p=>evaluar(p,fecha)).filter(Boolean);
@@ -557,16 +570,16 @@ async function pdCargarCobertura(){
 
     const tarjetas=items.length?items.map(x=>{
       let detalle='';
-      if(x.tipo==='VACACIONES')detalle='Todas las cuadrillas registradas están de vacaciones; no se genera alerta.';
+      if(x.tipo==='NO_OPERATIVAS')detalle='No hay cuadrillas operativas programadas: vacaciones o sin actividad; no se genera alerta.';
       else if(!x.aplica&&x.tipo==='UNA')detalle='No aplica alerta: existe 1 sola cuadrilla operativa en esta plataforma.';
-      else if(!x.aplica&&x.tipo==='DOS')detalle=x.alerta?'ALERTA: las 2 cuadrillas descansan el mismo día.':'Regla especial: las 2 cuadrillas no pueden descansar el mismo día.';
+      else if(!x.aplica&&x.tipo==='DOS')detalle=x.alerta?'ALERTA: ninguna de las 2 cuadrillas está en campo.':'Regla especial: con 2 cuadrillas operativas debe mantenerse al menos 1 en campo.';
       else if(!x.aplica&&x.tipo==='TRES')detalle=x.alerta?'ALERTA: menos de 2 de 3 cuadrillas en campo.':'Cumple mínimo operativo: al menos 2 de 3 en campo.';
       else if(!x.aplica&&x.tipo==='CUATRO')detalle=x.alerta?'ALERTA: menos de 3 de 4 cuadrillas en campo.':'Cumple mínimo operativo: al menos 3 de 4 en campo.';
       else detalle=x.estado==='verde'?`Meta diaria ${x.objetivoPct}% · requerido ${x.objetivo}/${x.total}`:(x.estado==='amarillo'?`Alerta preventiva: falta 1 cuadrilla para la meta de ${x.objetivo}/${x.total}`:`ALERTA: capacidad por debajo de la meta ${x.objetivo}/${x.total}`);
-      return `<div class="pd-kpi ${x.estado}"><small>${pdEsc(x.plataforma)}</small><b>${x.aplica?Math.round(x.porcentaje*100)+'%':(x.tipo==='UNA'||x.tipo==='DOS'||x.tipo==='VACACIONES'?'NO APLICA':Math.round(x.porcentaje*100)+'%')}</b><div>${x.campo}/${x.total} cuadrillas operativas en campo${x.vacaciones?' · '+x.vacaciones+' vacaciones':''}</div><small>${pdEsc(detalle)}</small></div>`;
+      return `<div class="pd-kpi ${x.estado}"><small>${pdEsc(x.plataforma)}</small><b>${x.aplica?Math.round(x.porcentaje*100)+'%':(x.tipo==='UNA'||x.tipo==='DOS'||x.tipo==='NO_OPERATIVAS'?'NO APLICA':Math.round(x.porcentaje*100)+'%')}</b><div>${x.campo}/${x.total} cuadrillas operativas en campo${x.bolsa?' · '+x.bolsa+' bolsa':''}${x.vacaciones?' · '+x.vacaciones+' vacaciones':''}${x.sinActividad?' · '+x.sinActividad+' sin actividad':''}</div><small>${pdEsc(detalle)}</small></div>`;
     }).join(''):'<div class="pd-note">No hay datos para los filtros seleccionados.</div>';
 
-    const detalleAlertas=alertas.length?`<div class="pd-alert-compact"><div class="pd-collapse-head"><div><b>⚠️ ${alertas.length} alerta(s) operativa(s) en el periodo visible</b><div class="pd-note" style="color:inherit;margin-top:3px">Incluye alertas preventivas y críticas. La alerta no bloquea el envío; Jefatura decide si procede.</div></div><button type="button" class="pd-collapse-btn" data-pd-toggle="pdAlertasDetalle" onclick="pdTogglePanel('pdAlertasDetalle')">▼ Ver</button></div><div id="pdAlertasDetalle" class="pd-alert-detail">${alertas.slice(0,30).map(a=>{if(a.tipo==='DOS')return `<div>${a.fecha} · ${pdEsc(a.plataforma)}: las 2 cuadrillas están en descanso.</div>`;if(a.tipo==='TRES')return `<div>${a.fecha} · ${pdEsc(a.plataforma)}: ${a.campo}/3 en campo. Mínimo operativo: 2.</div>`;if(a.tipo==='CUATRO')return `<div>${a.fecha} · ${pdEsc(a.plataforma)}: ${a.campo}/4 en campo. Mínimo operativo: 3.</div>`;return `<div>${a.fecha} · ${pdEsc(a.plataforma)}: ${a.campo}/${a.total} en campo (${Math.round(a.porcentaje*100)}%, meta ${a.objetivoPct}%).</div>`;}).join('')}</div></div>`:'';
+    const detalleAlertas=alertas.length?`<div class="pd-alert-compact"><div class="pd-collapse-head"><div><b>⚠️ ${alertas.length} alerta(s) operativa(s) en el periodo visible</b><div class="pd-note" style="color:inherit;margin-top:3px">Incluye alertas preventivas y críticas. La alerta no bloquea el envío; Jefatura decide si procede.</div></div><button type="button" class="pd-collapse-btn" data-pd-toggle="pdAlertasDetalle" onclick="pdTogglePanel('pdAlertasDetalle')">▼ Ver</button></div><div id="pdAlertasDetalle" class="pd-alert-detail">${alertas.slice(0,30).map(a=>{if(a.tipo==='DOS')return `<div>${a.fecha} · ${pdEsc(a.plataforma)}: 0/2 cuadrillas en campo. Mínimo operativo: 1.</div>`;if(a.tipo==='TRES')return `<div>${a.fecha} · ${pdEsc(a.plataforma)}: ${a.campo}/3 en campo. Mínimo operativo: 2.</div>`;if(a.tipo==='CUATRO')return `<div>${a.fecha} · ${pdEsc(a.plataforma)}: ${a.campo}/4 en campo. Mínimo operativo: 3.</div>`;return `<div>${a.fecha} · ${pdEsc(a.plataforma)}: ${a.campo}/${a.total} en campo (${Math.round(a.porcentaje*100)}%, meta ${a.objetivoPct}%).</div>`;}).join('')}</div></div>`:'';
 
     const alertasBox=document.getElementById('pdAlertasOperativas');
     if(alertasBox){
@@ -657,7 +670,7 @@ function pdReporteHtml(){
       ${sedeControl}
       <div class="pd-field"><label>Plataforma</label><select id="pdRepPlataforma"><option value="TODAS">Todas</option><option value="INSTALACIONES">Instalaciones</option><option value="VISITA TECNICA">Visita Técnica</option><option value="TRASLADOS">Traslados</option></select></div>
       <div class="pd-field"><label>Tipo de personal</label><select id="pdRepTipo"><option value="TODAS">Todos</option><option value="CUADRILLA">Cuadrillas técnicas</option><option value="SUPERVISOR">Supervisores</option><option value="ALMACEN">Encargados de almacén</option></select></div>
-      <div class="pd-field"><label>Estado</label><select id="pdRepEstado"><option value="TODOS">Todos</option><option value="EN CAMPO">En campo</option><option value="EN CAMPO BOLSA">En campo bolsa</option><option value="DESCANSO">Descanso</option><option value="VACACIONES">Vacaciones</option></select></div>
+      <div class="pd-field"><label>Estado</label><select id="pdRepEstado"><option value="TODOS">Todos</option><option value="EN CAMPO">En campo</option><option value="EN CAMPO BOLSA">En campo bolsa</option><option value="DESCANSO">Descanso</option><option value="VACACIONES">Vacaciones</option><option value="SIN ACTIVIDAD">Sin actividad</option></select></div>
     </div>
     <div class="pd-note" style="margin-top:8px">El calendario del Excel mostrará el mes arriba y cada fecha como <b>LUN<br>5</b>. La cuadrilla aparecerá con su nombre completo y sus técnicos debajo.</div>
   </div>`;
@@ -716,7 +729,7 @@ function pdEstadoReporte(entidad,fecha,programacion){
   return pdNorm(item?.estadoDia||'EN CAMPO');
 }
 function pdSiglaReporte(estado){
-  const e=pdNorm(estado);if(e==='DESCANSO')return 'D';if(e==='VACACIONES')return 'V';if(pdEsBolsa(e))return 'Cᴮ';return 'C';
+  const e=pdNormalizarEstado(estado);if(e==='DESCANSO')return 'D';if(e==='VACACIONES')return 'V';if(e==='SIN ACTIVIDAD')return 'S/A';if(pdEsBolsa(e))return 'Cᴮ';return 'C';
 }
 function pdNombreDiaReporte(fecha){return ['DOM','LUN','MAR','MIÉ','JUE','VIE','SÁB'][new Date(fecha+'T12:00:00').getDay()];}
 function pdFechaVisibleReporte(fecha){const [y,m,d]=fecha.split('-');return `${d}/${m}/${y}`;}
@@ -749,7 +762,7 @@ function pdEstiloRangoExcel(ws,r1,c1,r2,c2,estilo){
   }
 }
 function pdEstilizarCalendarioExcel(ws,fechas,entidades){
-  const XLSX=window.XLSX,totalCols=1+fechas.length+4,ultimaFila=3+entidades.length,borde=pdBordeExcel();
+  const XLSX=window.XLSX,totalCols=1+fechas.length+5,ultimaFila=3+entidades.length,borde=pdBordeExcel();
   pdEstiloRangoExcel(ws,0,0,0,totalCols-1,{font:{bold:true,color:{rgb:'FFFFFF'},sz:16},fill:{fgColor:{rgb:'1F4E78'}},alignment:{horizontal:'left',vertical:'center'}});
   pdEstiloRangoExcel(ws,1,0,1,totalCols-1,{font:{bold:true,color:{rgb:'FFFFFF'},sz:12},fill:{fgColor:{rgb:'0F766E'}},alignment:{horizontal:'left',vertical:'center'}});
   pdEstiloRangoExcel(ws,3,0,3,totalCols-1,{font:{bold:true,color:{rgb:'000000'}},fill:{fgColor:{rgb:'B7DEE8'}},alignment:{horizontal:'center',vertical:'center',wrapText:true},border:borde});
@@ -761,6 +774,7 @@ function pdEstilizarCalendarioExcel(ws,fechas,entidades){
       if(v==='D'){color='2563EB';font='FFFFFF';}
       else if(v==='V'){color='7C3AED';font='FFFFFF';}
       else if(v==='Cᴮ'){color='A5F3FC';font='155E75';}
+      else if(v==='S/A'){color='E2E8F0';font='475569';}
       ws[ref].s={font:{bold:true,color:{rgb:font}},fill:{fgColor:{rgb:color}},alignment:{horizontal:'center',vertical:'center'},border:borde};
     }
     pdEstiloRangoExcel(ws,r,1+fechas.length,r,totalCols-1,{font:{bold:true},alignment:{horizontal:'center',vertical:'center'},border:borde});
@@ -808,12 +822,12 @@ async function pdGenerarExcelDescansos(){
     if(!entidades.length) throw new Error('No existen registros para los filtros seleccionados.');
     entidades.sort((a,b)=>pdNorm(a.sede).localeCompare(pdNorm(b.sede))||pdTipoEntidadReporte(a).localeCompare(pdTipoEntidadReporte(b))||pdNorm(a.plataforma).localeCompare(pdNorm(b.plataforma))||pdNorm(pdEtiquetaEntidadReporte(a)).localeCompare(pdNorm(pdEtiquetaEntidadReporte(b)),undefined,{numeric:true}));
 
-    const conteo={campo:0,bolsa:0,descanso:0,vacaciones:0};
+    const conteo={campo:0,bolsa:0,descanso:0,vacaciones:0,sinActividad:0};
     const detalle=[['FECHA','DÍA','SEDE','PLATAFORMA','CUADRILLA / PERSONAL','TÉCNICOS','ESTADO','SUPERVISOR','TIPO DE PERSONAL']];
     entidades.forEach(c=>fechas.forEach(fecha=>{
       const e=pdEstadoReporte(c,fecha,datos.programacion);
       if(estadoFiltro!=='TODOS'&&e!==estadoFiltro)return;
-      if(e==='DESCANSO')conteo.descanso++;else if(e==='VACACIONES')conteo.vacaciones++;else if(pdEsBolsa(e))conteo.bolsa++;else conteo.campo++;
+      if(e==='DESCANSO')conteo.descanso++;else if(e==='VACACIONES')conteo.vacaciones++;else if(e==='SIN ACTIVIDAD')conteo.sinActividad++;else if(pdEsBolsa(e))conteo.bolsa++;else conteo.campo++;
       detalle.push([pdFechaVisibleReporte(fecha),pdNombreDiaReporte(fecha),c.sede||'',pdTipoEntidadReporte(c)==='CUADRILLA'?(c.plataforma||''):'',pdEtiquetaEntidadReporte(c),pdTipoEntidadReporte(c)==='CUADRILLA'?pdNombresTecnicosReporte(c):'',e,c.supervisor||'',pdTipoEntidadReporte(c)]);
     }));
 
@@ -824,16 +838,16 @@ async function pdGenerarExcelDescansos(){
       ['Sede',sede==='TODAS'?'TODAS':sede],['Plataforma',plataforma==='TODAS'?'TODAS':plataforma],
       ['Tipo de personal',tipo==='TODAS'?'TODOS':tipo],['Estado',estadoFiltro==='TODOS'?'TODOS':estadoFiltro],
       ['Generado por',localStorage.getItem('nombresApellidos')||u.usuario],['Fecha y hora',formatearFechaHoraPeruApp(new Date(),new Date(),false)],[],
-      ['INDICADOR','TOTAL'],['En campo',conteo.campo],['En campo bolsa',conteo.bolsa],['Descanso',conteo.descanso],['Vacaciones',conteo.vacaciones],['Registros incluidos',detalle.length-1]
+      ['INDICADOR','TOTAL'],['En campo',conteo.campo],['En campo bolsa',conteo.bolsa],['Descanso',conteo.descanso],['Vacaciones',conteo.vacaciones],['Sin actividad',conteo.sinActividad],['Registros incluidos',detalle.length-1]
     ];
 
-    const calendario=[['PROGRAMACIÓN DE DESCANSOS'],[`MES: ${tituloMes}`],[],['CUADRILLA / PERSONAL',...fechas.map(fecha=>`${pdNombreDiaReporte(fecha)}\n${Number(fecha.slice(8,10))}`),'CAMPO','CAMPO BOLSA','DESCANSO','VACACIONES']];
+    const calendario=[['PROGRAMACIÓN DE DESCANSOS'],[`MES: ${tituloMes}`],[],['CUADRILLA / PERSONAL',...fechas.map(fecha=>`${pdNombreDiaReporte(fecha)}\n${Number(fecha.slice(8,10))}`),'CAMPO','CAMPO BOLSA','DESCANSO','VACACIONES','SIN ACTIVIDAD']];
     entidades.forEach(c=>{
-      let ca=0,bo=0,de=0,va=0;
-      const estados=fechas.map(fecha=>{const e=pdEstadoReporte(c,fecha,datos.programacion);if(e==='DESCANSO')de++;else if(e==='VACACIONES')va++;else if(pdEsBolsa(e))bo++;else ca++;return pdSiglaReporte(e);});
+      let ca=0,bo=0,de=0,va=0,sa=0;
+      const estados=fechas.map(fecha=>{const e=pdEstadoReporte(c,fecha,datos.programacion);if(e==='DESCANSO')de++;else if(e==='VACACIONES')va++;else if(e==='SIN ACTIVIDAD')sa++;else if(pdEsBolsa(e))bo++;else ca++;return pdSiglaReporte(e);});
       const tecnicos=pdTipoEntidadReporte(c)==='CUADRILLA'?pdNombresTecnicosReporte(c):'';
       const nombre=pdEtiquetaEntidadReporte(c);
-      calendario.push([`${nombre}${tecnicos?'\n'+tecnicos:''}`,...estados,ca,bo,de,va]);
+      calendario.push([`${nombre}${tecnicos?'\n'+tecnicos:''}`,...estados,ca,bo,de,va,sa]);
     });
 
     const XLSX=await pdCargarXlsx(),wb=XLSX.utils.book_new();
@@ -842,9 +856,9 @@ async function pdGenerarExcelDescansos(){
     pdAplicarAnchos(wsResumen,[28,48]);pdEstilizarResumenExcel(wsResumen,resumen.length);
     XLSX.utils.book_append_sheet(wb,wsResumen,'RESUMEN');
 
-    const wsCalendario=XLSX.utils.aoa_to_sheet(calendario),totalCols=1+fechas.length+4;
+    const wsCalendario=XLSX.utils.aoa_to_sheet(calendario),totalCols=1+fechas.length+5;
     wsCalendario['!merges']=[{s:{r:0,c:0},e:{r:0,c:totalCols-1}},{s:{r:1,c:0},e:{r:1,c:totalCols-1}}];
-    wsCalendario['!cols']=[{wch:58},...fechas.map(()=>({wch:7})),{wch:11},{wch:14},{wch:11},{wch:12}];
+    wsCalendario['!cols']=[{wch:58},...fechas.map(()=>({wch:7})),{wch:11},{wch:14},{wch:11},{wch:12},{wch:14}];
     wsCalendario['!rows']=[{hpt:28},{hpt:24},{hpt:8},{hpt:38},...entidades.map(()=>({hpt:42}))];
     wsCalendario['!freeze']={xSplit:1,ySplit:4};pdEstilizarCalendarioExcel(wsCalendario,fechas,entidades);
     XLSX.utils.book_append_sheet(wb,wsCalendario,'CALENDARIO');

@@ -11,7 +11,7 @@
   const MODULOS = {
     dashboards_core: {
       archivos: [
-        `./js/dashboards.js?v=V408-RESTAURA-V403`,
+        `./js/dashboards.js?v=V449-SIN-ACTIVIDAD-META`,
         `./js/resumen_dashboard_v361.js?v=V408-RESTAURA-V403`,
         `./js/sla_gestion_v363.js?v=V408-RESTAURA-V403`,
         `./js/sla_excepciones_v411.js?v=V411-SLA-EXCEPCIONES`,
@@ -102,7 +102,7 @@
       entradas: ["mostrarEquiposAveriados"]
     },
     analisis: {
-      archivos: [`./js/analisis_economico.js?v=V408-RESTAURA-V403`],
+      archivos: [`./js/analisis_economico.js?v=V449-META-PROGRAMADA`],
       entradas: ["mostrarAnalisisEconomico"]
     },
     checklist: {
@@ -113,7 +113,7 @@
       entradas: ["mostrarChecklistAlmacen"]
     },
     descansos: {
-      archivos: [`./js/programacion_descansos.js?v=V417-DESCANSOS-FILTROS-FECHA`],
+      archivos: [`./js/programacion_descansos.js?v=V449-SIN-ACTIVIDAD`],
       entradas: ["mostrarProgramacionDescansos"]
     },
     pext: {

@@ -441,7 +441,8 @@ function mv353ResumenLista(lista){
         diasDescanso +=
             (Number(dato.diasDescanso)||0) +
             (Number(dato.diasVacaciones)||0) +
-            (Number(dato.diasBolsa)||0);
+            (Number(dato.diasBolsa)||0) +
+            (Number(dato.diasSinActividad)||0);
 
         fechaCorte = dato.fechaCorte || fechaCorte;
         evaluadas++;
@@ -531,7 +532,7 @@ function mv353TarjetaTecnico(dato,puntos){
             ${mv353TextoBrecha(brecha)}
         </div>
         <div style="margin-top:5px;font-size:10px;color:#9fb7d8;">
-            Descanso: ${Number(dato.diasDescanso||0)} · Vacaciones: ${Number(dato.diasVacaciones||0)} · Campo Bolsa: ${Number(dato.diasBolsa||0)}
+            Descanso: ${Number(dato.diasDescanso||0)} · Vacaciones: ${Number(dato.diasVacaciones||0)} · Campo Bolsa: ${Number(dato.diasBolsa||0)} · Sin actividad: ${Number(dato.diasSinActividad||0)}
         </div>
     </div>`;
 }

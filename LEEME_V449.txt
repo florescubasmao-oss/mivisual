@@ -1,0 +1,94 @@
+MI VISUAL V449 — SIN ACTIVIDAD + METAS SEGÚN PROGRAMACIÓN
+Fecha: 19/08/2026
+Base: V448 vigente
+
+OBJETIVO
+Agregar el estado SIN ACTIVIDAD a Programación de Descansos y hacer que las metas se generen únicamente cuando la cuadrilla esté EN CAMPO.
+
+REGLA DEFINITIVA
+- EN CAMPO: meta Dashboard = 5 puntos/día; meta Producción Valorizada = S/ 500/día.
+- EN CAMPO B / EN CAMPO BOLSA (Cᴮ): meta 0 en Dashboard y Producción Valorizada.
+- DESCANSO: meta 0.
+- VACACIONES: meta 0.
+- SIN ACTIVIDAD (S/A): meta 0.
+
+PROGRAMACIÓN DE DESCANSOS
+- Nuevo estado SIN ACTIVIDAD, visible como S/A.
+- Secuencia de edición: EN CAMPO → EN CAMPO B → DESCANSO → VACACIONES → SIN ACTIVIDAD → EN CAMPO.
+- Cᴮ se mantiene como estado visual independiente; no se convierte en DESCANSO.
+- Técnico, Supervisor, Jefatura y perfiles de solo lectura conservan su flujo/permiso vigente.
+- Filtros, consulta de un día e informe Excel contemplan SIN ACTIVIDAD.
+- Los descansos del Técnico cuentan únicamente el estado DESCANSO; Cᴮ no aparece como descanso.
+
+DASHBOARD / PUNTOS
+- Meta acumulada = días EN CAMPO × 5 puntos.
+- Cᴮ, DESCANSO, VACACIONES y SIN ACTIVIDAD suman 0.
+- Se informa también la cantidad de días SIN ACTIVIDAD.
+- No se modifica la producción real, los puntos obtenidos ni la fórmula del Ranking.
+
+PRODUCCIÓN VALORIZADA
+- Meta programada = jornadas EN CAMPO × S/ 500.
+- Cᴮ, DESCANSO, VACACIONES y SIN ACTIVIDAD suman S/ 0.
+- La meta por cuadrilla y por sede se calcula con sus jornadas EN CAMPO reales del período.
+- Una cuadrilla que inicia a mitad de mes puede marcar los días previos como SIN ACTIVIDAD y esos días no generan meta.
+- Producción, tarifas y órdenes no se modifican.
+
+OPTIMIZACIÓN SEGURA
+- Se conserva la caché/sessionStorage histórica de Programación de Descansos.
+- Se conserva el GET resiliente mv336ApiGet y sus reintentos/timeout.
+- Los cambios de varios días se escriben en PROGRAMACION_DESCANSOS en un solo setValues, manteniendo las mismas 38 columnas.
+- Dashboard y Producción Valorizada reutilizan una caché corta compartida de estados aprobados por período.
+- La caché se invalida con el mecanismo vigente cuando cambia la programación.
+- No se agregan lecturas por cuadrilla ni por día.
+
+COBERTURA OPERATIVA
+- EN CAMPO cuenta como cuadrilla en campo.
+- EN CAMPO B y DESCANSO reducen la cobertura del día.
+- VACACIONES y SIN ACTIVIDAD se excluyen del denominador operativo.
+- No se cambian porcentajes ni reglas históricas por plataforma/día.
+
+PERFILES / SEGURIDAD
+No se cambian las funciones de permisos ni el alcance de datos de Programación de Descansos o Análisis Económico.
+
+TRIGGERS
+- No crear ningún trigger nuevo para Gestión de Actas.
+- El trigger existente procesarValidacionesTecnicasVencidas se mantiene.
+- V449 corrige el helper manual para que, si alguna vez se ejecuta, administre únicamente Validación Técnica.
+- Para instalar V449 NO hay que ejecutar ningún helper de triggers.
+
+GOOGLE SHEETS
+- NO cambiar columnas, encabezados, fórmulas ni estructura.
+- PROGRAMACION_DESCANSOS conserva sus 38 columnas actuales (A:AL).
+- SIN ACTIVIDAD se guarda en los campos de estado existentes.
+
+ARCHIVOS APPS SCRIPT
+1. Reemplazar Code actual por Code_V449_COMPLETO_MI_VISUAL.gs.
+2. Guardar.
+3. Editar la implementación ACTUAL → Nueva versión → Implementar.
+4. NO ejecutar crearTriggersMantenimientoV448 ni ningún helper de triggers.
+
+ARCHIVOS GITHUB A REEMPLAZAR
+- js/programacion_descansos.js
+- js/dashboards.js
+- js/analisis_economico.js
+- js/modulos_loader.js
+
+NO REEMPLAZAR index.html.
+
+NO MODIFICADO
+- Ranking V415 / SLA.
+- Gestión de Actas V416.
+- Mapa y optimización V395.
+- Validación Técnica V448 y recuperación de sesión.
+- Seguridad ATS/PETAR.
+- Observaciones V447.
+- Checklist, PEXT, Facturas y demás módulos.
+
+PRUEBA RECOMENDADA
+En una cuadrilla de prueba marcar, en días diferentes:
+C / Cᴮ / D / V / S/A.
+Validar:
+1. Programación muestra los cinco estados separados.
+2. Dashboard genera meta solo en C.
+3. Producción Valorizada genera S/ 500 solo en C.
+4. Cᴮ y S/A aparecen visualmente pero generan meta 0.
