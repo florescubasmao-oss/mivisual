@@ -1,5 +1,5 @@
 /* ============================================================
-   MI VISUAL V346 - Actividad en Campo
+   MI VISUAL V452 - Actividad en Campo · puente Checklist vigente
    Corrige la carga de formularios por tipo de actividad sin
    retirar la optimización dinámica V339.
 ============================================================ */
@@ -16,9 +16,11 @@
   }
 
   function dependenciasChecklistDisponibles(){
+    // V452: el Checklist actual ya no usa CK_TIPOS_V140/ckFormularioPorTipo.
+    // Actividad en Campo solo necesita los constructores vigentes del formulario.
     return (
-      typeof window.CK_TIPOS_V140 !== "undefined" &&
-      typeof window.ckFormularioPorTipo === "function"
+      typeof window.ckEquipoBlock === "function" &&
+      typeof window.ckField === "function"
     );
   }
 
@@ -159,7 +161,7 @@
     window.MV346_ACTIVIDAD_CAMPO_OK = true;
     aplicado = true;
 
-    console.log("MI VISUAL V346: formularios de Actividad en Campo corregidos.");
+    console.log("MI VISUAL V452: enlace Actividad en Campo → Checklist vigente.");
     return true;
   }
 

@@ -1,0 +1,16 @@
+MI VISUAL V452 – Corrección general Actividad en Campo → Checklist + botones Bono Supervisor
+
+CAMBIOS
+1. Actividad en Campo vuelve a cargar Checklist solo al seleccionar CHECKLIST.
+2. El puente V346 deja de buscar componentes antiguos y valida los constructores vigentes del Checklist.
+3. No se cambian permisos, usuarios, hoja USUARIOS ni Apps Script.
+4. Bono Supervisor: las 4 acciones quedan en una fila en PC/tablet y 2x2 en móvil.
+5. No se modifican cálculos de bono, escalas, habilitación de supervisores, Ranking, SLA ni otros módulos.
+
+ARCHIVOS A REEMPLAZAR/AGREGAR EN GITHUB
+- index.html
+- js/modulos_loader.js
+- js/actividad_campo_fix_v346.js
+- js/bono_supervisores_layout_v452.js (nuevo)
+
+NO REQUIERE APPS SCRIPT NI NUEVA IMPLEMENTACIÓN.
