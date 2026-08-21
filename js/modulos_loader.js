@@ -96,7 +96,7 @@
         `./js/actas_api_resiliente_v392.js?v=V408-RESTAURA-V403`,
         `./js/actas_observaciones_v393.js?v=V408-RESTAURA-V403`,
         `./js/actas_control_finalizadas_v396.js?v=V408-RESTAURA-V403`,
-        `./js/actas_mantenimiento_v402.js?v=V408-RESTAURA-V403`,
+        `./js/actas_mantenimiento_v402.js?v=V453-ACTAS-EDICION-JEFATURA`,
         `./js/actas_motivos_observacion_v403.js?v=V408-RESTAURA-V403`
       ],
       entradas: ["mostrarGestionActas"]

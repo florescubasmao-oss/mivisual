@@ -1,4 +1,4 @@
-/* MI VISUAL V402 - ACTAS: CORRECCIÓN INTEGRAL */
+/* MI VISUAL V453 - ACTAS: CORRECCIÓN INTEGRAL + CÓDIGOS JEFATURA ALMACÉN */
 (function(){
 "use strict";
 if(window.MV402_ACTAS_CORRECCION_OK)return;
@@ -15,6 +15,11 @@ function esc(v){
 function puedeEditar(){
   const u=usuarioActualActas();
   return esAlmacenActas(u.perfil)||esJefaturaAlmacenActas(u.perfil);
+}
+
+function puedeEditarCodigos(){
+  const u=usuarioActualActas();
+  return esJefaturaAlmacenActas(u.perfil);
 }
 
 function actaPorId(id){
@@ -77,6 +82,7 @@ function mv402AbrirEditarActa(id){
   const fecha=/^\d{4}-\d{2}-\d{2}$/.test(String(a.fechaGestion||""))
     ? a.fechaGestion:"";
   const tipo=normalizarActas(a.tipoEjecucion||"");
+  const editarCodigos=puedeEditarCodigos();
 
   const m=document.createElement("div");
   m.className="mv402-modal";
@@ -84,7 +90,7 @@ function mv402AbrirEditarActa(id){
   m.innerHTML=`
     <div class="mv402-box">
       <h3>✏️ Editar datos del Acta</h3>
-      <p>Acta N.º <b>${esc(a.numeroActa||"-")}</b> · Pedido <b>${esc(a.codigoPedido||"-")}</b> · ${esc(a.cuadrilla||"-")}</p>
+      <p>Acta N.º <b>${esc(a.numeroActa||"-")}</b> · Orden <b>${esc(a.codigoOrden||"-")}</b> · Pedido <b>${esc(a.codigoPedido||"-")}</b> · ${esc(a.cuadrilla||"-")}</p>
       <div class="mv402-grid">
         <div class="mv402-field">
           <label>FECHA DE ATENCIÓN</label>
@@ -97,10 +103,20 @@ function mv402AbrirEditarActa(id){
             <option value="VISITA TECNICA" ${tipo==="VISITA TECNICA"?"selected":""}>VISITA TÉCNICA</option>
           </select>
         </div>
+        ${editarCodigos?`
+        <div class="mv402-field">
+          <label>CÓDIGO DE ORDEN</label>
+          <input id="mv402CodigoOrden" type="text" value="${esc(a.codigoOrden||"")}" autocomplete="off">
+        </div>
+        <div class="mv402-field">
+          <label>CÓDIGO DE PEDIDO</label>
+          <input id="mv402CodigoPedido" type="text" value="${esc(a.codigoPedido||"")}" autocomplete="off">
+        </div>`:""}
       </div>
+      ${editarCodigos?`<div class="mv402-status" style="margin-top:10px;background:#fff7ed;border-color:#fdba74;color:#9a3412">Jefatura de Almacén puede corregir Orden y Pedido. El ID interno, N.º de Acta, validaciones y estados se conservan.</div>`:""}
       <div class="mv402-field" style="margin-top:10px">
         <label>MOTIVO DE LA CORRECCIÓN</label>
-        <textarea id="mv402Motivo" placeholder="Indique por qué se corrige la fecha o el tipo de trabajo."></textarea>
+        <textarea id="mv402Motivo" placeholder="Indique por qué se corrige la fecha, el tipo de ejecución o los códigos."></textarea>
       </div>
       <div id="mv402Estado" class="mv402-status" style="display:none"></div>
       <div class="mv402-actions">
@@ -113,32 +129,55 @@ function mv402AbrirEditarActa(id){
 
 async function mv402GuardarEdicion(id){
   const u=usuarioActualActas();
+  const a=actaPorId(id);
   const fecha=document.getElementById("mv402Fecha")?.value||"";
   const tipo=document.getElementById("mv402Tipo")?.value||"";
   const motivo=document.getElementById("mv402Motivo")?.value?.trim()||"";
   const estado=document.getElementById("mv402Estado");
   const btn=document.getElementById("mv402Guardar");
+  const editarCodigos=puedeEditarCodigos();
+  const codigoOrden=editarCodigos
+    ? (document.getElementById("mv402CodigoOrden")?.value||"").trim()
+    : String(a?.codigoOrden||"").trim();
+  const codigoPedido=editarCodigos
+    ? (document.getElementById("mv402CodigoPedido")?.value||"").trim()
+    : String(a?.codigoPedido||"").trim();
 
   if(!motivo){alert("Debe indicar el motivo de la corrección.");return;}
+  if(editarCodigos&&!codigoOrden){alert("Debe ingresar el Código de Orden.");return;}
+  if(editarCodigos&&!codigoPedido){alert("Debe ingresar el Código de Pedido.");return;}
 
   if(btn)btn.disabled=true;
-  if(estado){estado.style.display="block";estado.textContent="Guardando corrección y ubicando el PDF...";}
+  if(estado){estado.style.display="block";estado.textContent="Guardando corrección...";}
 
   try{
-    await apiActas({
+    const payload={
       accion:"editarUbicacionActaV402",
       usuario:u.usuario,
       id:id,
       fechaGestion:fecha,
       tipoEjecucion:tipo,
       motivo:motivo
-    });
+    };
 
-    if(estado)estado.textContent="✅ Corrección guardada.";
+    // Seguridad doble: el backend también exige Jefatura de Almacén para
+    // aceptar cambios en Código de Orden o Código de Pedido.
+    if(editarCodigos){
+      payload.codigoOrden=codigoOrden;
+      payload.codigoPedido=codigoPedido;
+    }
+
+    const respuesta=await apiActas(payload);
+
+    if(estado){
+      estado.innerHTML=`✅ Corrección guardada.${editarCodigos
+        ? `<br>Orden: ${esc(respuesta.codigoOrden||codigoOrden)} · Pedido: ${esc(respuesta.codigoPedido||codigoPedido)}`
+        : ""}`;
+    }
     setTimeout(()=>{
       document.getElementById("mv402Modal")?.remove();
       cargarActas({forzar:true});
-    },600);
+    },650);
   }catch(e){
     if(estado)estado.textContent="❌ "+(e?.message||"No se pudo guardar.");
     if(btn)btn.disabled=false;
