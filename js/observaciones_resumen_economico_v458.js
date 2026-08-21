@@ -231,13 +231,11 @@
     return true;
   }
 
-  // Observaciones es un módulo lazy. Espera hasta que observaciones.js exista
-  // y reemplaza únicamente sus funciones de renderizado del resumen.
-  let intentos = 0;
+  // Observaciones es un módulo lazy. Se revisa con baja frecuencia hasta que
+  // el usuario abra el módulo; después se instala una sola vez y se detiene.
   const reloj = setInterval(function(){
-    intentos++;
-    if(instalar() || intentos > 1200) clearInterval(reloj);
-  },50);
+    if(instalar()) clearInterval(reloj);
+  },500);
 
   instalar();
 })();
