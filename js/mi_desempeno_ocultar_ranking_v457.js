@@ -1,0 +1,50 @@
+/* ============================================================
+   MI VISUAL V457 - Ocultar "Ver Ranking completo" en Mi Desempeño del Técnico
+   Alcance:
+   - Solo en la vista Mi Desempeño del perfil Técnico.
+   - No modifica datos, cálculos ni el módulo Ranking.
+   - Mantiene las tarjetas de Región / Sede / Plataforma.
+============================================================ */
+(function(){
+  "use strict";
+
+  if(window.MV457_OCULTAR_RANKING_TEC_OK) return;
+  window.MV457_OCULTAR_RANKING_TEC_OK = true;
+
+  function esTecnico(){
+    const perfil = String(localStorage.getItem("perfil") || "").trim().toUpperCase();
+    return perfil === "TECNICO" || perfil === "TÉCNICO";
+  }
+
+  function ocultarBotonRankingTecnico(){
+    if(!esTecnico()) return;
+    const pantalla = document.getElementById("pantalla");
+    if(!pantalla) return;
+
+    const titulo = pantalla.querySelector("h2");
+    if(!titulo || !/MI\s+DESEMPEÑO/i.test((titulo.textContent || "").trim())) return;
+
+    Array.from(pantalla.querySelectorAll("button")).forEach(btn => {
+      const texto = (btn.textContent || "").replace(/\s+/g," ").trim().toUpperCase();
+      if(texto === "VER RANKING COMPLETO") btn.style.display = "none";
+    });
+  }
+
+  const mostrarPantallaBase = window.mostrarPantalla;
+  if(typeof mostrarPantallaBase === "function"){
+    window.mostrarPantalla = function(){
+      const r = mostrarPantallaBase.apply(this, arguments);
+      setTimeout(ocultarBotonRankingTecnico, 0);
+      setTimeout(ocultarBotonRankingTecnico, 120);
+      return r;
+    };
+  }
+
+  if(typeof MutationObserver === "function"){
+    const objetivo = document.getElementById("pantalla") || document.body;
+    const obs = new MutationObserver(ocultarBotonRankingTecnico);
+    obs.observe(objetivo, {childList:true, subtree:true});
+  }
+
+  setTimeout(ocultarBotonRankingTecnico, 0);
+})();
