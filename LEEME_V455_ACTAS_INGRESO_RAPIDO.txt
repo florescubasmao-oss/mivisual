@@ -1,0 +1,67 @@
+MI VISUAL V455 – INGRESO RÁPIDO DE ACTAS DEL TÉCNICO
+Fecha: 21/08/2026
+
+OBJETIVO
+Simplificar únicamente la forma de ingreso al subir una ACTA NUEVA y reducir esperas antes de Guardar, sin modificar el flujo existente de Gestión de Actas.
+
+CAMBIO PARA EL TÉCNICO – ACTA NUEVA
+1. El formulario muestra únicamente:
+   - Código cliente o DNI.
+   - Número de acta.
+   - Archivo PDF.
+2. MI VISUAL busca automáticamente la orden correspondiente dentro de las órdenes FINALIZADAS de la cuadrilla del técnico.
+3. Internamente completa los mismos campos vigentes:
+   - Código de Orden.
+   - Código de cliente/pedido.
+4. Si un DNI o código tiene varias órdenes pendientes, MI VISUAL NO adivina: obliga a seleccionar la atención correcta mostrando Código de Orden, fecha y tipo de trabajo.
+5. Si la orden no se puede resolver automáticamente, aparece “No aparece mi orden · usar ingreso manual”, que restaura el formulario anterior completo.
+6. Se consultan el período actual y el anterior para evitar elegir una atención histórica equivocada.
+
+MEJORA DE VELOCIDAD
+1. La información necesaria para identificar la orden se precarga al abrir el formulario.
+2. El PDF se lee y prepara en memoria desde el momento en que el técnico lo selecciona, sin modificar ni comprimir el archivo.
+3. La validación preventiva V396 se ejecuta mientras el técnico completa el formulario y se reutiliza durante 60 segundos al pulsar Guardar.
+4. La segunda barrera de validación del backend continúa activa durante registrarActaEscaneada; no se elimina seguridad.
+
+NO SE MODIFICÓ
+- Code.gs / Apps Script.
+- URL /exec actual.
+- Google Sheets ni columnas.
+- Estructura de carpetas de Drive.
+- Nombre del PDF ni guardado por Código de Orden.
+- Reemplazo de PDF de acta OBSERVADA.
+- Completar ACTA FALTANTE.
+- Validaciones de Almacén / Jefatura de Almacén.
+- Entrega física.
+- Cargos y recepción masiva.
+- Estados, historial ni permisos.
+- Control V396 de órdenes FINALIZADAS.
+
+ARCHIVOS AGREGADOS
+- js/actas_ingreso_rapido_v455.js
+- js/actas_guardado_rapido_v455.js
+
+ARCHIVO MODIFICADO
+- index.html: únicamente se agregaron las referencias a los dos archivos V455.
+
+APPS SCRIPT
+- NO requiere reemplazar Code.gs.
+- NO requiere nueva implementación de Apps Script.
+
+PRUEBAS RECOMENDADAS
+1. Técnico > Gestión de Actas > Subir nueva acta:
+   debe aparecer Código cliente o DNI + Número de acta + PDF.
+2. Ingresar un Código cliente con una sola orden pendiente:
+   debe mostrar “Orden XXXXX validada” y habilitar Guardar.
+3. Ingresar un DNI con más de una atención:
+   debe obligar a escoger la orden correcta.
+4. Probar una orden cuya acta ya esté subida/finalizada:
+   no debe permitir crear duplicado.
+5. Abrir una acta OBSERVADA > Reemplazar PDF:
+   debe conservar exactamente el flujo anterior.
+6. Abrir una ACTA FALTANTE:
+   debe conservar exactamente el flujo anterior.
+7. Si una orden no aparece automáticamente, usar Ingreso manual y comprobar que el formulario anterior continúa operativo.
+
+ACTUALIZACIÓN DEL NAVEGADOR
+- Realizar una vez Ctrl + F5 para cargar los nuevos archivos V455.
