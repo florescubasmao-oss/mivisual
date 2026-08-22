@@ -1,0 +1,46 @@
+name: Generar Code V459 Completo
+
+on:
+  push:
+    paths:
+      - '.github/workflows/generar_code_v459_completo.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  generar:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Descargar repositorio
+        uses: actions/checkout@v4
+
+      - name: Generar Code.gs completo V459
+        shell: bash
+        run: |
+          set -e
+          cp Code.gs Code_V459_COMPLETO.gs
+          printf '\n\n' >> Code_V459_COMPLETO.gs
+          cat Code_V459_OBSERVACIONES_RANKING_DASHBOARD_PATCH.gs >> Code_V459_COMPLETO.gs
+          printf '\n\n' >> Code_V459_COMPLETO.gs
+          cat Code_V459B_PROTECCION_HISTORICO_RANKING_PATCH.gs >> Code_V459_COMPLETO.gs
+
+      - name: Confirmar que contiene V459 y V459B
+        shell: bash
+        run: |
+          grep -q 'MV459_REGLA_OBS_RANKING_' Code_V459_COMPLETO.gs
+          grep -q 'V459B' Code_V459_COMPLETO.gs
+          test "$(wc -c < Code_V459_COMPLETO.gs)" -gt "$(wc -c < Code.gs)"
+
+      - name: Guardar archivo completo
+        shell: bash
+        run: |
+          if git diff --quiet -- Code_V459_COMPLETO.gs && git ls-files --error-unmatch Code_V459_COMPLETO.gs >/dev/null 2>&1; then
+            echo 'El archivo ya estaba actualizado.'
+            exit 0
+          fi
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add Code_V459_COMPLETO.gs
+          git commit -m 'V459 generar Code.gs completo para reemplazo'
+          git push
