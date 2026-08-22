@@ -1,0 +1,64 @@
+MI VISUAL V459 - OBSERVACIONES 60/40
+====================================
+
+REGLA APROBADA
+--------------
+RANKING CUADRILLAS
+- El peso total de OBSERVACIONES no cambia (Agosto 2026 = 15%).
+- Dentro de ese indicador:
+  * 60% = cantidad de observaciones.
+  * 40% = monto finalmente PENALIZADO.
+- WIN y VISUAL afectan el Ranking y se muestran separados.
+- DERIVADO, EN PROCESO, PENALIZADO, APELADO y SUBSANADO cuentan como incidencia.
+- SUBSANADO sigue contando en cantidad, pero su monto final penalizado es S/ 0.
+- ANULADO no cuenta y no tiene impacto económico.
+
+DASHBOARD / BONO SUPERVISOR
+- Solo usa observaciones WIN.
+- VISUAL no afecta al Supervisor porque es control interno que él puede generar.
+- Cantidad WIN = 60% del subindicador Observaciones.
+- Monto penalizado WIN = 40%.
+- Se conserva la referencia económica ya existente de S/ 300.
+- Para cantidad: 5 observaciones WIN no anuladas en una cuadrilla representan alerta máxima para esa cuadrilla; el puntaje se consolida entre las cuadrillas asignadas.
+
+COMPATIBILIDAD
+--------------
+- No se eliminan ni renombran los 27 campos actuales de RANKING.
+- Monto Total Obs y Monto Afectado Obs permanecen para compatibilidad.
+- V459 agrega nuevas columnas al final de RANKING.
+- No se cambia OBSERVACIONES ni RESUMEN_OBSERVACIONES.
+- No se cambia Producción, Efectividad, SLA, Recableado ni VTR/GAR.
+- V369 de carga rápida se conserva.
+- Se evita repetir inmediatamente actualizarResumenObservaciones cuando actualizarRanking viene justo después de esa actualización.
+- V459B conserva las columnas nuevas de períodos históricos cuando el Ranking original vuelve a reescribir la hoja.
+
+ARCHIVOS FRONTEND YA ACTIVADOS EN GITHUB
+----------------------------------------
+js/dashboard_observaciones_win_v459.js
+js/ranking_observaciones_v459.js
+
+Mientras Apps Script V459 no esté desplegado, ambos hacen fallback al comportamiento anterior.
+
+PASO MANUAL APPS SCRIPT - NO REEMPLAZAR Code.gs
+------------------------------------------------
+1. Abrir el proyecto Apps Script vigente de MI VISUAL.
+2. Abrir Code.gs.
+3. Ir hasta la ÚLTIMA línea del archivo.
+4. Pegar COMPLETO, al final, el contenido de:
+   Code_V459_OBSERVACIONES_RANKING_DASHBOARD_PATCH.gs
+5. Inmediatamente debajo pegar COMPLETO el contenido de:
+   Code_V459B_PROTECCION_HISTORICO_RANKING_PATCH.gs
+6. Guardar.
+7. Implementar > Administrar implementaciones > Editar.
+8. Seleccionar Nueva versión y volver a implementar.
+9. Mantener la misma URL /exec vigente.
+
+PRUEBAS DESPUÉS DEL DESPLIEGUE
+------------------------------
+- Observaciones V458 debe verse igual.
+- Ranking debe mostrar WIN y VISUAL por separado.
+- Subsanado debe seguir sumando en cantidad; Anulado no.
+- Monto para el nuevo componente económico del Ranking = solo PENALIZADO.
+- Dashboard debe mostrar Observaciones WIN, no VISUAL.
+- Bono Supervisor debe ignorar VISUAL.
+- Producción, Efectividad, SLA, Recableado y VTR/GAR deben conservar valores.
