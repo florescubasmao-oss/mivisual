@@ -1,4 +1,4 @@
-/* MI VISUAL V361 - Carga diferida del Informe Gerencial */
+/* MI VISUAL V475 - Carga diferida del Informe Gerencial + Excel por sede */
 (function(){
   "use strict";
   if(window.MV361_INFORME_GERENCIAL_LAZY_OK) return;
@@ -9,20 +9,47 @@
     return ["JEFATURA","JEFATURA GENERAL","GERENCIA LIMA"].includes(perfil);
   }
 
-  function cargar(){
-    if(window.MV355_INFORME_GERENCIAL_OK) return Promise.resolve();
-    if(promesa) return promesa;
-    promesa=new Promise((resolve,reject)=>{
+  function cargarScript(src,comprobar,mensaje){
+    if(comprobar()) return Promise.resolve();
+    return new Promise((resolve,reject)=>{
+      const ruta=src.split("?")[0];
+      const existente=Array.from(document.scripts).find(s=>s.src && s.src.includes(ruta.replace(/^\.\//,"")));
+      if(existente){
+        if(comprobar()) return resolve();
+        existente.addEventListener("load",resolve,{once:true});
+        existente.addEventListener("error",()=>reject(new Error(mensaje)),{once:true});
+        return;
+      }
       const script=document.createElement("script");
-      script.src="./js/informe_gerencial_v355.js?v=V361-RESUMEN-CONSOLIDADO";
+      script.src=src;
       script.async=true;
       script.onload=resolve;
-      script.onerror=()=>{
-        promesa=null;
-        reject(new Error("No se pudo cargar el Informe Gerencial."));
-      };
+      script.onerror=()=>reject(new Error(mensaje));
       document.head.appendChild(script);
     });
+  }
+
+  function cargar(){
+    if(window.MV355_INFORME_GERENCIAL_OK && window.MV475_INFORME_EXCEL_OK) return Promise.resolve();
+    if(promesa) return promesa;
+
+    promesa=(async()=>{
+      await cargarScript(
+        "./js/informe_gerencial_v355.js?v=V361-RESUMEN-CONSOLIDADO",
+        ()=>!!window.MV355_INFORME_GERENCIAL_OK,
+        "No se pudo cargar el Informe Gerencial."
+      );
+
+      await cargarScript(
+        "./js/informe_gerencial_excel_v475.js?v=V475-PERIODO-SEDE-TODOS-INDICADORES",
+        ()=>!!window.MV475_INFORME_EXCEL_OK,
+        "No se pudo cargar la mejora Excel del Dashboard."
+      );
+    })().catch(error=>{
+      promesa=null;
+      throw error;
+    });
+
     return promesa;
   }
 
