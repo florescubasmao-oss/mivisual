@@ -1,6 +1,6 @@
-/* MI VISUAL V462 - Flujo libre + tarjetas desplegables del minicurso "Mis Funciones".
+/* MI VISUAL V463 - Flujo libre + tarjetas desplegables del minicurso "Mis Funciones".
    Ajuste aislado: Continuar siempre habilitado. Las tarjetas abren y cierran con un toque,
-   y el contador refleja únicamente las tarjetas que están abiertas en ese momento. */
+   el contador refleja únicamente las tarjetas abiertas y se carga el detalle ampliado. */
 (function(){
   'use strict';
   if(window.MV462_CAP_FLUJO_LIBRE) return;
@@ -28,6 +28,16 @@
     actualizarContador(curso);
   }
 
+  function cargarDetalleV463(){
+    if(window.MV463_CAP_MIS_FUNCIONES_DETALLE) return;
+    if(document.querySelector('script[data-mv463-detalle]')) return;
+    const s=document.createElement('script');
+    s.src='./js/capacitacion_mis_funciones_detalle_v463.js?v=V463-DETALLE-TARJETAS';
+    s.async=true;
+    s.dataset.mv463Detalle='1';
+    document.head.appendChild(s);
+  }
+
   const pantalla = document.getElementById('pantalla');
   if(pantalla){
     const obs = new MutationObserver(habilitarContinuar);
@@ -48,5 +58,6 @@
     habilitarContinuar();
   },true);
 
+  cargarDetalleV463();
   setTimeout(habilitarContinuar,0);
 })();
