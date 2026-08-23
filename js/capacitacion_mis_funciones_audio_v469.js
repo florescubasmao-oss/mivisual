@@ -1,22 +1,24 @@
-/* MI VISUAL V471 - Audio contextual / Minicurso 01: Mis Funciones
+/* MI VISUAL V472 - Audio contextual con voz mas natural / Minicurso 01: Mis Funciones
    - Lee automaticamente la opcion que el tecnico abre.
    - Si toca otra opcion, corta la anterior y lee la nueva.
    - Si sale del minicurso o cambia de pantalla, el audio se detiene.
+   - Prioriza voces naturales disponibles y aplica ritmo/pausas segun el contenido.
    - Sin backend, audios externos, observers ni cambios a otros modulos. */
 (function(){
   'use strict';
-  if(window.MV471_CAP_AUDIO_MIS_FUNCIONES) return;
-  window.MV471_CAP_AUDIO_MIS_FUNCIONES=true;
+  if(window.MV472_CAP_AUDIO_MIS_FUNCIONES) return;
+  window.MV472_CAP_AUDIO_MIS_FUNCIONES=true;
 
   const synth=window.speechSynthesis;
   let cola=[];
   let destacado=null;
   let vigilante=null;
+  let vozPreferida=null;
 
   function css(){
-    if(document.getElementById('mv471-audio-css')) return;
+    if(document.getElementById('mv472-audio-css')) return;
     const s=document.createElement('style');
-    s.id='mv471-audio-css';
+    s.id='mv472-audio-css';
     s.textContent=`
       #mv466curso .mv471-audio{display:flex;gap:7px;flex-wrap:wrap;margin-top:9px;padding-top:9px;border-top:1px solid #e2e8f0}
       #mv466curso .mv471-audio button{min-height:36px;padding:8px 10px;border:1px solid #bfdbfe;border-radius:10px;background:#fff;color:#1d4ed8;font-size:10.5px;font-weight:900;cursor:pointer}
@@ -51,12 +53,58 @@
       .trim();
   }
 
+  function naturalizar(txt){
+    return limpiar(txt)
+      .replace(/\bT1\b/gi,'T uno')
+      .replace(/\bT2\b/gi,'T dos')
+      .replace(/\bEPP\b/gi,'E P P')
+      .replace(/\bMI VISUAL\b/gi,'Mi Visual')
+      .replace(/\bAPP\b/gi,'aplicación')
+      .replace(/\s*\/\s*/g,' o ')
+      .replace(/\s*·\s*/g,'. ')
+      .replace(/\s+/g,' ')
+      .trim();
+  }
+
+  function puntuarVoz(v){
+    const nombre=(v.name||'').toLowerCase();
+    const lang=(v.lang||'').toLowerCase();
+    if(!lang.startsWith('es')) return -1000;
+    let p=0;
+    if(lang==='es-pe') p+=90;
+    else if(lang.startsWith('es-')) p+=50;
+    if(/natural|neural|premium|enhanced|online/.test(nombre)) p+=80;
+    if(/google|microsoft/.test(nombre)) p+=55;
+    if(/sabina|alvaro|álvaro|elvira|dalia|jorge|paulina/.test(nombre)) p+=25;
+    if(v.localService===false) p+=20;
+    return p;
+  }
+
   function elegirVoz(){
+    if(vozPreferida) return vozPreferida;
     if(!synth || !synth.getVoices) return null;
-    const voces=synth.getVoices();
-    return voces.find(v=>/^es-PE$/i.test(v.lang)) ||
-      voces.find(v=>/^es(-|_)/i.test(v.lang) && /peru|perú/i.test(v.name||'')) ||
-      voces.find(v=>/^es(-|_)/i.test(v.lang)) || null;
+    const voces=synth.getVoices().filter(v=>(v.lang||'').toLowerCase().startsWith('es'));
+    if(!voces.length) return null;
+    voces.sort((a,b)=>puntuarVoz(b)-puntuarVoz(a));
+    vozPreferida=voces[0]||null;
+    return vozPreferida;
+  }
+
+  if(synth && 'onvoiceschanged' in synth){
+    synth.onvoiceschanged=function(){ vozPreferida=null; elegirVoz(); };
+  }
+
+  function prosodia(tipo){
+    switch(tipo){
+      case 'titulo': return {rate:0.90,pitch:1.03,pausa:360};
+      case 'resumen': return {rate:0.96,pitch:1.01,pausa:300};
+      case 'significado': return {rate:0.94,pitch:1.00,pausa:430};
+      case 'accion': return {rate:0.95,pitch:1.01,pausa:430};
+      case 'ejemplo': return {rate:0.93,pitch:1.04,pausa:520};
+      case 'critico': return {rate:0.89,pitch:0.98,pausa:550};
+      case 'intro': return {rate:0.94,pitch:1.02,pausa:380};
+      default: return {rate:0.94,pitch:1.01,pausa:360};
+    }
   }
 
   function estado(txt){
@@ -99,7 +147,7 @@
       return;
     }
     const limpios=bloques
-      .map(b=>({texto:limpiar(b.texto),el:b.el||null}))
+      .map(b=>({texto:naturalizar(b.texto),el:b.el||null,tipo:b.tipo||'normal'}))
       .filter(b=>b.texto);
     if(!limpios.length) return;
     detener(true);
@@ -123,15 +171,26 @@
       destacado=b.el;
       b.el.classList.add('mv471-speaking');
     }
+    const p=prosodia(b.tipo);
     const u=new SpeechSynthesisUtterance(b.texto);
     u.lang='es-PE';
-    u.rate=0.90;
-    u.pitch=1;
+    u.rate=p.rate;
+    u.pitch=p.pitch;
+    u.volume=1;
     const v=elegirVoz(); if(v) u.voice=v;
     u.onstart=actualizarPausa;
-    u.onend=()=>setTimeout(siguiente,220);
+    u.onend=()=>setTimeout(siguiente,p.pausa);
     u.onerror=()=>{ limpiarDestacado();estado('No se pudo reproducir esta parte. Puedes tocarla nuevamente.');actualizarPausa(); };
     synth.speak(u);
+  }
+
+  function tipoBloque(block){
+    const etiqueta=(block.querySelector('strong')?.textContent||'').toLowerCase();
+    if(etiqueta.includes('ejemplo')) return 'ejemplo';
+    if(etiqueta.includes('punto clave')) return 'critico';
+    if(etiqueta.includes('qué significa') || etiqueta.includes('que significa')) return 'significado';
+    if(etiqueta.includes('qué debes hacer') || etiqueta.includes('que debes hacer')) return 'accion';
+    return 'normal';
   }
 
   function bloquesTarjeta(item){
@@ -139,15 +198,15 @@
     const out=[];
     const titulo=item.querySelector('b');
     const resumen=item.querySelector('small');
-    if(titulo) out.push({texto:titulo.textContent,el:item});
-    if(resumen) out.push({texto:resumen.textContent,el:item});
+    if(titulo) out.push({texto:titulo.textContent,el:item,tipo:'titulo'});
+    if(resumen) out.push({texto:resumen.textContent,el:item,tipo:'resumen'});
     const detalle=item.querySelector('.mv466-detail');
     if(detalle && visible(detalle)){
       detalle.querySelectorAll('.mv466-block').forEach(block=>{
         if(!visible(block)) return;
         const etiqueta=block.querySelector('strong')?.textContent||'';
         const contenido=block.querySelector('span')?.textContent||'';
-        if(etiqueta || contenido) out.push({texto:[etiqueta,contenido].filter(Boolean).join('. '),el:block});
+        if(etiqueta || contenido) out.push({texto:[etiqueta,contenido].filter(Boolean).join('. '),el:block,tipo:tipoBloque(block)});
       });
     }
     return out;
@@ -158,15 +217,15 @@
     const out=[];
     const titulo=row.querySelector('.mv466-seq-title b');
     const resumen=row.querySelector('.mv466-seq-title small');
-    if(titulo) out.push({texto:titulo.textContent,el:row});
-    if(resumen) out.push({texto:resumen.textContent,el:row});
+    if(titulo) out.push({texto:titulo.textContent,el:row,tipo:'titulo'});
+    if(resumen) out.push({texto:resumen.textContent,el:row,tipo:'resumen'});
     const body=row.querySelector('.mv466-seq-body');
     if(body && visible(body)){
       body.querySelectorAll('.mv466-block').forEach(block=>{
         if(!visible(block)) return;
         const etiqueta=block.querySelector('strong')?.textContent||'';
         const contenido=block.querySelector('span')?.textContent||'';
-        if(etiqueta || contenido) out.push({texto:[etiqueta,contenido].filter(Boolean).join('. '),el:block});
+        if(etiqueta || contenido) out.push({texto:[etiqueta,contenido].filter(Boolean).join('. '),el:block,tipo:tipoBloque(block)});
       });
     }
     return out;
@@ -179,14 +238,14 @@
     const step=screen.querySelector('.mv466-step');
     const h=screen.querySelector('h2');
     const intro=screen.querySelector(':scope > p');
-    if(step && visible(step)) out.push({texto:step.textContent,el:step});
-    if(h && visible(h)) out.push({texto:h.textContent,el:h});
-    if(intro && visible(intro)) out.push({texto:intro.textContent,el:intro});
+    if(step && visible(step)) out.push({texto:step.textContent,el:step,tipo:'intro'});
+    if(h && visible(h)) out.push({texto:h.textContent,el:h,tipo:'titulo'});
+    if(intro && visible(intro)) out.push({texto:intro.textContent,el:intro,tipo:'intro'});
     screen.querySelectorAll('.mv466-item.open').forEach(item=>out.push(...bloquesTarjeta(item)));
     const seq=screen.querySelector('.mv466-seq-row.active.open');
     if(seq) out.push(...bloquesSecuencia(seq));
     const key=screen.querySelector('.mv466-key');
-    if(key && visible(key)) out.push({texto:key.textContent,el:key});
+    if(key && visible(key)) out.push({texto:key.textContent,el:key,tipo:'critico'});
     return out;
   }
 
@@ -223,7 +282,8 @@
     if(!note) return;
     const bar=document.createElement('div');
     bar.className='mv471-audio';
-    bar.innerHTML=`<button type="button" class="mv471-main" data-audio-play>🔊 Escuchar pantalla</button><button type="button" data-audio-pause>⏸ Pausar</button><button type="button" data-audio-stop>⏹ Detener</button><div class="mv471-status">Toca cualquier tarjeta u opción para escuchar automáticamente solo su contenido.</div>`;
+    const voz=elegirVoz();
+    bar.innerHTML=`<button type="button" class="mv471-main" data-audio-play>🔊 Escuchar pantalla</button><button type="button" data-audio-pause>⏸ Pausar</button><button type="button" data-audio-stop>⏹ Detener</button><div class="mv471-status">Toca cualquier tarjeta para escucharla. ${voz?'Se usará la mejor voz en español disponible en tu dispositivo.':'La voz dependerá del motor disponible en tu dispositivo.'}</div>`;
     note.insertAdjacentElement('afterend',bar);
     bar.querySelector('[data-audio-play]').addEventListener('click',escucharPantalla);
     bar.querySelector('[data-audio-pause]').addEventListener('click',pausarReanudar);
@@ -234,7 +294,6 @@
     if(!e.target.closest) return;
     const curso=document.getElementById('mv466curso');
 
-    // Si el curso existe y el usuario hace clic fuera, la voz se apaga inmediatamente.
     if(curso && !e.target.closest('#mv466curso')){
       detener(true);
       return;
@@ -243,14 +302,12 @@
 
     if(e.target.closest('[data-audio-play],[data-audio-pause],[data-audio-stop]')) return;
 
-    // Navegar dentro o salir del curso siempre corta el audio actual.
     if(e.target.closest('[data-next],[data-back],[data-seq-next],[data-capacitacion]')){
       detener(true);
       setTimeout(ponerControles,40);
       return;
     }
 
-    // Al abrir/cerrar una opcion, esperamos que la interfaz actualice su estado y luego leemos solo esa opcion.
     const opcion=e.target.closest('.mv466-item,.mv466-seq-row.active .mv466-seq-head');
     if(opcion){
       detener(true);
@@ -268,7 +325,6 @@
     };
   }
 
-  // Refuerzo: cualquier navegacion principal conocida debe apagar la lectura.
   document.addEventListener('visibilitychange',()=>{ if(document.hidden) detener(true); });
   window.addEventListener('pagehide',()=>detener(true));
   window.addEventListener('beforeunload',()=>detener(true));
