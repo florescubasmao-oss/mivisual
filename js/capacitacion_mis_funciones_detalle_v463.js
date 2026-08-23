@@ -1,9 +1,10 @@
-/* MI VISUAL V463 - Detalle ampliado de tarjetas / Minicurso Mis Funciones
-   Capa aislada: solo enriquece el contenido visual del minicurso. */
+/* MI VISUAL V464 - Detalle ampliado estable / Minicurso Mis Funciones
+   Capa aislada: solo enriquece el contenido visual del minicurso.
+   No observa cambios internos para evitar bucles de renderizado. */
 (function(){
   'use strict';
-  if(window.MV463_CAP_MIS_FUNCIONES_DETALLE) return;
-  window.MV463_CAP_MIS_FUNCIONES_DETALLE = true;
+  if(window.MV464_CAP_MIS_FUNCIONES_DETALLE) return;
+  window.MV464_CAP_MIS_FUNCIONES_DETALLE = true;
 
   const D = {
     'RECONOCER': ['Identificar con claridad qué responsabilidades te corresponden como técnico dentro de la cuadrilla.','Antes de iniciar la jornada debes tener claro qué debes ejecutar, controlar, comunicar y cerrar. Esto evita dejar actividades incompletas o asumir que otra persona las realizará.'],
@@ -58,16 +59,15 @@
   }
 
   function agregarEstilos(){
-    if(document.getElementById('mv463detallecss')) return;
+    if(document.getElementById('mv464detallecss')) return;
     const s=document.createElement('style');
-    s.id='mv463detallecss';
+    s.id='mv464detallecss';
     s.textContent=`
       #mv460curso .mv460-item .d{font-size:11.5px;line-height:1.5}
       #mv460curso .mv463-bloque{margin-top:8px;padding:9px 10px;border-radius:9px;background:#fff;border:1px solid #dbeafe}
       #mv460curso .mv463-bloque:first-child{margin-top:0}
       #mv460curso .mv463-titulo{display:block;margin-bottom:3px;color:#1d4ed8;font-size:10px;font-weight:900;text-transform:uppercase;letter-spacing:.03em}
       #mv460curso .mv463-texto{display:block;color:#334155;font-size:11.5px;line-height:1.45}
-      #mv460curso .mv463-clave{margin-top:8px;padding:8px 9px;border-left:3px solid #0ea5e9;border-radius:7px;background:#f0f9ff;color:#0c4a6e;font-size:10.8px;font-weight:700;line-height:1.4}
       @media(max-width:640px){#mv460curso .mv463-bloque{padding:9px}#mv460curso .mv463-texto{font-size:11.8px}}
     `;
     document.head.appendChild(s);
@@ -86,21 +86,22 @@
     curso.querySelectorAll('.mv460-item').forEach(item=>{
       const titulo=norm(item.querySelector('b')?.textContent || '');
       const d=item.querySelector('.d');
-      if(!d || d.dataset.mv463==='1') return;
+      if(!d || d.dataset.mv464==='1') return;
       const base=d.textContent.trim();
       const extra=D[titulo];
       d.innerHTML=detalleHTML(base,extra);
-      d.dataset.mv463='1';
+      d.dataset.mv464='1';
     });
   }
 
   const pantalla=document.getElementById('pantalla');
   if(pantalla){
-    const obs=new MutationObserver(()=>setTimeout(enriquecer,0));
-    obs.observe(pantalla,{childList:true,subtree:true});
+    const obs=new MutationObserver(function(){
+      requestAnimationFrame(enriquecer);
+    });
+    // Solo detecta cuando MI VISUAL cambia la pantalla completa.
+    obs.observe(pantalla,{childList:true,subtree:false});
   }
-  document.addEventListener('click',function(e){
-    if(e.target.closest && e.target.closest('#mv460curso .mv460-item')) setTimeout(enriquecer,0);
-  },true);
+
   setTimeout(enriquecer,0);
 })();
