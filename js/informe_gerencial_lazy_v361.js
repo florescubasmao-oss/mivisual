@@ -1,4 +1,4 @@
-/* MI VISUAL V475 - Carga diferida del Informe Gerencial + Excel por sede */
+/* MI VISUAL V476 - Carga diferida del Informe Gerencial + Excel completo */
 (function(){
   "use strict";
   if(window.MV361_INFORME_GERENCIAL_LAZY_OK) return;
@@ -30,7 +30,11 @@
   }
 
   function cargar(){
-    if(window.MV355_INFORME_GERENCIAL_OK && window.MV475_INFORME_EXCEL_OK) return Promise.resolve();
+    if(
+      window.MV355_INFORME_GERENCIAL_OK &&
+      window.MV475_INFORME_EXCEL_OK &&
+      window.MV476_INFORME_EXCEL_TODOS_OK
+    ) return Promise.resolve();
     if(promesa) return promesa;
 
     promesa=(async()=>{
@@ -43,7 +47,13 @@
       await cargarScript(
         "./js/informe_gerencial_excel_v475.js?v=V475-PERIODO-SEDE-TODOS-INDICADORES",
         ()=>!!window.MV475_INFORME_EXCEL_OK,
-        "No se pudo cargar la mejora Excel del Dashboard."
+        "No se pudo cargar la base Excel del Dashboard."
+      );
+
+      await cargarScript(
+        "./js/informe_gerencial_excel_v476.js?v=V476-TODOS-INDICADORES-VISIBLES",
+        ()=>!!window.MV476_INFORME_EXCEL_TODOS_OK,
+        "No se pudo cargar el Excel completo de indicadores."
       );
     })().catch(error=>{
       promesa=null;
