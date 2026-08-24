@@ -140,7 +140,17 @@
     if(base.__mv479FechaSubida) return true;
 
     function badgeActaV479(a){
-      return base.apply(this, arguments) + etiquetaSubida(a);
+      const htmlBase = base.apply(this, arguments);
+      const subida = etiquetaSubida(a);
+      if(!subida) return htmlBase;
+
+      // V393 puede añadir un <details> con el motivo observado. La etiqueta
+      // SUBIDA debe quedar en la zona superior de estados, antes de ese detalle.
+      const marcador = '<details class="mv393-acta-obs">';
+      if(String(htmlBase).includes(marcador)){
+        return String(htmlBase).replace(marcador, subida + marcador);
+      }
+      return String(htmlBase) + subida;
     }
     badgeActaV479.__mv479FechaSubida = true;
 
