@@ -17,6 +17,7 @@
   const MESES = ["ENERO","FEBRERO","MARZO","ABRIL","MAYO","JUNIO","JULIO","AGOSTO","SEPTIEMBRE","OCTUBRE","NOVIEMBRE","DICIEMBRE"];
   let timer = null;
   let observer = null;
+  let ultimaLista = null;
 
   function norm(v){
     return String(v == null ? "" : v)
@@ -237,10 +238,16 @@
   function construirPanel(){
     const wrap = document.querySelector("#pantalla .actas-wrap");
     const head = wrap && wrap.querySelector(".actas-head");
-    if(!wrap || !head || !Array.isArray(window._actasTodas)) return false;
+    const listaActual = Array.isArray(window._actasTodas) ? window._actasTodas : null;
+    if(!wrap || !head || !listaActual) return false;
+
+    let panel = document.getElementById("mv480DescargaActas");
+
+    // El observador escucha toda la pantalla. Si el panel ya corresponde a
+    // la misma carga de Actas, no lo reconstruye al reaccionar a su propio DOM.
+    if(panel && ultimaLista === listaActual) return true;
 
     const periodos = periodosDisponibles();
-    let panel = document.getElementById("mv480DescargaActas");
     const actual = panel && panel.querySelector("#mv480PeriodoActas") ? panel.querySelector("#mv480PeriodoActas").value : "";
 
     if(!panel){
@@ -271,6 +278,7 @@
     if(select) select.onchange = actualizarConteo;
     if(boton) boton.onclick = descargarPeriodo;
     actualizarConteo();
+    ultimaLista = listaActual;
     return true;
   }
 
