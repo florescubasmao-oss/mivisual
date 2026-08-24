@@ -1,0 +1,60 @@
+MI VISUAL V477 - AUTODETECCION SEGURA GAR / VTR
+Fecha: 23/08/2026
+
+OBJETIVO
+- Automatizar únicamente los casos GAR/VTR con evidencia histórica fuerte.
+- Corregir la experiencia ante errores temporales de candado en la pantalla de Calificación VTR/GAR.
+- Mantener intactos los cálculos y estructuras existentes de VTR/GAR, Ranking, Dashboard, Bonos y Validación Técnica.
+
+REGLA AUTOMATICA
+1. La incidencia debe ser GAR o VTR detectada por la Base Operativa.
+2. Se usa NUMERO_DOCUMENTO / DNI exacto como llave principal.
+3. Se busca hacia atrás un máximo de 30 días en BASE_OPERATIVA_HISTORICA.
+4. Solo se consideran trabajos FINALIZADOS anteriores a la incidencia.
+5. GAR requiere antecedente de INSTALACION.
+6. VTR requiere antecedente de VISITA TECNICA / AVERIA / otra gestión de servicio compatible.
+7. Otra GAR/VTR nunca se toma como trabajo originador.
+8. Se usa el antecedente elegible más reciente.
+9. Si en esa misma fecha hay más de una cuadrilla posible, el caso permanece manual.
+10. Misma cuadrilla origen y ejecutora: PROPIA / CONFIRMADO.
+11. Cuadrilla distinta: ASIGNADA / REASIGNADO a la cuadrilla origen.
+12. Si falta DNI, antecedente o existe ambigüedad: PENDIENTE para revisión manual.
+
+PROTECCION DEL HISTORICO
+- Solo se autocompletan incidencias PENDIENTES del período operativo activo.
+- Meses anteriores sirven como fuente de búsqueda, pero no se modifican automáticamente.
+- CONFIRMADO, REASIGNADO y ANULADO existentes nunca se sobrescriben.
+
+RENDIMIENTO / CANDADO
+- La pantalla usa lectura directa de las hojas existentes sin ejecutar migraciones al abrir.
+- El frontend reintenta silenciosamente errores transitorios de candado.
+- El lote automático usa tryLock corto; si otro proceso está trabajando, no arroja el error técnico al usuario y deja los casos pendientes.
+- Se crea un índice por DNI una sola vez por consulta/lote.
+- El porcentaje VTR/GAR y Ranking se recalculan una sola vez después de todo el lote automático.
+
+VISUALIZACION
+Cada incidencia muestra, cuando existe evidencia:
+- PROPIA o ASIGNADA.
+- Fecha del trabajo anterior.
+- Tipo de trabajo anterior.
+- Cuadrilla origen.
+- Cuadrilla que atendió GAR/VTR.
+- Días transcurridos.
+- Criterio utilizado.
+Los casos no concluyentes muestran REVISIÓN MANUAL y la causa.
+
+ARCHIVOS V477
+- Code_V477_AUTODETECCION_GAR_VTR_PATCH.gs
+- Code_V477_COMPLETO.gs (generado automáticamente sobre Code_V459_COMPLETO.gs)
+- js/vtr_gar_autodeteccion_v477.js
+- index.html
+
+NO SE MODIFICA
+- Estructura de BASE_OPERATIVA_HISTORICA.
+- Estructura de BASE_VTR_GAR_DETECTADA.
+- Estructura de POR VTR/GAR.
+- Regla de cálculo del indicador VTR/GAR.
+- Fórmula del Ranking.
+- Fórmulas del Dashboard.
+- Reglas de Bono / No Bono de Validación Técnica.
+- Calificaciones históricas existentes.
