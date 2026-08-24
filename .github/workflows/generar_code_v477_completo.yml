@@ -4,6 +4,7 @@ on:
   push:
     paths:
       - 'Code_V477_AUTODETECCION_GAR_VTR_PATCH.gs'
+      - 'Code_V477B_SEGURIDAD_RENDIMIENTO_GAR_VTR_PATCH.gs'
       - '.github/workflows/generar_code_v477_completo.yml'
 
 permissions:
@@ -23,14 +24,18 @@ jobs:
           cp Code_V459_COMPLETO.gs Code_V477_COMPLETO.gs
           printf '\n\n' >> Code_V477_COMPLETO.gs
           cat Code_V477_AUTODETECCION_GAR_VTR_PATCH.gs >> Code_V477_COMPLETO.gs
+          printf '\n\n' >> Code_V477_COMPLETO.gs
+          cat Code_V477B_SEGURIDAD_RENDIMIENTO_GAR_VTR_PATCH.gs >> Code_V477_COMPLETO.gs
 
-      - name: Validar V459 y V477
+      - name: Validar V459, V477 y V477B
         shell: bash
         run: |
           grep -q 'MV459_REGLA_OBS_RANKING_' Code_V477_COMPLETO.gs
           grep -q 'MV477_VERSION_' Code_V477_COMPLETO.gs
+          grep -q 'MV477B_VERSION_' Code_V477_COMPLETO.gs
           grep -q 'mv477DetectarOrigen_' Code_V477_COMPLETO.gs
           grep -q 'listarGestionVtrGar = function' Code_V477_COMPLETO.gs
+          grep -q 'Una unica escritura para todas las incidencias del lote' Code_V477_COMPLETO.gs
           test "$(wc -c < Code_V477_COMPLETO.gs)" -gt "$(wc -c < Code_V459_COMPLETO.gs)"
 
       - name: Guardar archivo completo
