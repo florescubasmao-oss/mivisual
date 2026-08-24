@@ -1,0 +1,47 @@
+name: Generar Code V477 Completo
+
+on:
+  push:
+    paths:
+      - 'Code_V477_AUTODETECCION_GAR_VTR_PATCH.gs'
+      - '.github/workflows/generar_code_v477_completo.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  generar:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Descargar repositorio
+        uses: actions/checkout@v4
+
+      - name: Generar Code.gs completo V477
+        shell: bash
+        run: |
+          set -e
+          cp Code_V459_COMPLETO.gs Code_V477_COMPLETO.gs
+          printf '\n\n' >> Code_V477_COMPLETO.gs
+          cat Code_V477_AUTODETECCION_GAR_VTR_PATCH.gs >> Code_V477_COMPLETO.gs
+
+      - name: Validar V459 y V477
+        shell: bash
+        run: |
+          grep -q 'MV459_REGLA_OBS_RANKING_' Code_V477_COMPLETO.gs
+          grep -q 'MV477_VERSION_' Code_V477_COMPLETO.gs
+          grep -q 'mv477DetectarOrigen_' Code_V477_COMPLETO.gs
+          grep -q 'listarGestionVtrGar = function' Code_V477_COMPLETO.gs
+          test "$(wc -c < Code_V477_COMPLETO.gs)" -gt "$(wc -c < Code_V459_COMPLETO.gs)"
+
+      - name: Guardar archivo completo
+        shell: bash
+        run: |
+          if git diff --quiet -- Code_V477_COMPLETO.gs && git ls-files --error-unmatch Code_V477_COMPLETO.gs >/dev/null 2>&1; then
+            echo 'El archivo ya estaba actualizado.'
+            exit 0
+          fi
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add Code_V477_COMPLETO.gs
+          git commit -m 'V477 generar Code.gs completo GAR VTR'
+          git push
