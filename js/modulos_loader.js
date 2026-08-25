@@ -158,7 +158,8 @@
         `./js/base_operativa.js?v=V408-RESTAURA-V403`,
         `./js/base_operativa_lectura_v385.js?v=V408-RESTAURA-V403`,
         `./js/base_operativa_sync_v367.js?v=V408-RESTAURA-V403`,
-        `./js/admin_checklist.js?v=${VERSION}`
+        `./js/admin_checklist.js?v=${VERSION}`,
+        `./js/produccion_win_paralela_v487.js?v=V487-SOLO-LECTURA`
       ],
       entradas: ["mostrarAdministracion"]
     }
