@@ -19638,6 +19638,7 @@ function doPost(e) {
     if (data.accion === "guardarSatisfaccionBonoSupervisor") return respuestaJson(guardarSatisfaccionBonoSupervisor(data));
     if (data.accion === "listarTrabajosDiariosCuadrilla") return respuestaJson(listarTrabajosDiariosCuadrilla(data));
     if (data.accion === "previsualizarBaseOperativa") return respuestaJson(previsualizarBaseOperativa(data));
+    if (data.accion === "previsualizarProduccionWinParalelaV487") return respuestaJson(previsualizarProduccionWinParalelaV487(data));
     if (data.accion === "procesarBaseOperativa") return respuestaJson(procesarBaseOperativa(data));
     if (data.accion === "listarGestionVtrGar") return respuestaJson(listarGestionVtrGar(data));
     if (data.accion === "calificarIncidenciaVtrGar") return respuestaJson(calificarIncidenciaVtrGar(data));
@@ -22082,4 +22083,325 @@ function validarRecepcionEquiposAveriados(data) {
   }
 }
 
+
+
+
+/* ================================================================
+   MI VISUAL V487 - Produccion WIN paralela (solo lectura)
+
+   Garantias de esta fase:
+   - WIN / MAPA_ORDENES es la fuente oficial de ordenes y estado.
+   - Solo considera Estado WIN = FINALIZADA.
+   - OrdenId es la llave unica y se cruza con Codigo de Liquidacion Partner.
+   - CATALOGO_ORDENES se consulta; nunca se modifica.
+   - PRODUCCION_APP, Efectividad, Recableados, VTR/GAR y Ranking no se escriben.
+   - Una diferencia de cuadrilla es solo propuesta; la ejecutora sigue siendo WIN.
+================================================================ */
+
+function mv487Texto_(valor) {
+  if (valor === null || valor === undefined) return "";
+  if (typeof valor === "number" && Math.floor(valor) === valor) return String(valor);
+  return String(valor).trim();
+}
+
+function mv487Norm_(valor) {
+  return normalizarTexto(mv487Texto_(valor)).replace(/[^A-Z0-9]+/g, " ").replace(/\s+/g, " ").trim();
+}
+
+function mv487Id_(valor) {
+  return mv487Texto_(valor).replace(/\.0+$/, "").trim();
+}
+
+function mv487Fecha_(valor) {
+  if (valor instanceof Date && !isNaN(valor.getTime())) return valor;
+  const texto = mv487Texto_(valor);
+  if (!texto) return null;
+  let m = texto.match(/^(\d{4})[-\/]([01]?\d)[-\/]([0-3]?\d)/);
+  if (m) return new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]));
+  m = texto.match(/^([0-3]?\d)[-\/]([01]?\d)[-\/](\d{4})/);
+  if (m) return new Date(Number(m[3]), Number(m[2]) - 1, Number(m[1]));
+  const d = new Date(texto);
+  return isNaN(d.getTime()) ? null : d;
+}
+
+function mv487FechaIso_(valor) {
+  const d = mv487Fecha_(valor);
+  return d ? Utilities.formatDate(d, "America/Lima", "yyyy-MM-dd") : "";
+}
+
+function mv487Periodo_(valor) {
+  const d = mv487Fecha_(valor);
+  return d ? Utilities.formatDate(d, "America/Lima", "yyyy-MM") : "";
+}
+
+function mv487PeriodoAnterior_(periodo) {
+  const m = String(periodo || "").match(/^(\d{4})-(\d{2})$/);
+  if (!m) return "";
+  return Utilities.formatDate(new Date(Number(m[1]), Number(m[2]) - 2, 1), "America/Lima", "yyyy-MM");
+}
+
+function mv487ClaseServicio_(tipo) {
+  const n = mv487Norm_(tipo);
+  return n.indexOf("CONDOMINIO") >= 0 || n.indexOf("EDIFICIO") >= 0 ? "CONDOMINIO" : "RESIDENCIAL";
+}
+
+function mv487ClaveCuadrilla_(valor) {
+  const n = mv487Norm_(valor);
+  const p = n.match(/(?:^|\s)P\s*(\d+)(?:\s|$)/);
+  let plataforma = "";
+  if (n.indexOf("TRASLADO") >= 0) plataforma = "TRASLADO";
+  else if (n.indexOf("SGA") >= 0) plataforma = "SGA";
+  else if (n.indexOf("SGI") >= 0) plataforma = "SGI";
+  return p ? "P" + Number(p[1]) + "|" + plataforma : n;
+}
+
+function mv487ValidarLectura_(usuarioSesion) {
+  const usuario = obtenerUsuarioApp(usuarioSesion);
+  const perfil = normalizarTexto(usuario.perfil);
+  if (perfil !== "SUPERVISOR" && !esPerfilJefatura(perfil)) {
+    throw new Error("Solo Supervisor, Jefatura o Administracion puede consultar Produccion WIN paralela");
+  }
+  return usuario;
+}
+
+function mv487MapaUsuarios_() {
+  const base = obtenerMapaUsuarios();
+  const salida = {};
+  Object.keys(base || {}).forEach(function(cuadrilla) {
+    salida[mv487ClaveCuadrilla_(cuadrilla)] = Object.assign({cuadrilla:cuadrilla}, base[cuadrilla]);
+  });
+  return salida;
+}
+
+function mv487OrdenMapa_(fila) {
+  const o = filaMapaOperativoAObjeto(fila);
+  const fecha = o.fechaFinVisita || o.fechaUltimoEstado || o.fechaSolicitud;
+  return {
+    ordenId:mv487Id_(o.ordenId), tipoTrabajo:mv487Texto_(o.tipoTrabajo),
+    fecha:mv487FechaIso_(fecha), periodo:mv487Periodo_(fecha), cliente:mv487Texto_(o.cliente),
+    tipo:mv487Texto_(o.tipo), cuadrilla:normalizarCuadrilla(o.cuadrilla),
+    estado:normalizarTexto(o.estado), region:normalizarTexto(o.region),
+    codigoPedido:mv487Texto_(o.codigoCliente || o.codigoSeguimiento),
+    numeroDocumento:mv487Texto_(o.numeroDocumento), motivoFinalizacion:mv487Texto_(o.motivoFinalizacion),
+    fechaImportacion:fila[26] instanceof Date ? fila[26].getTime() : 0
+  };
+}
+
+function mv487LeerWin_() {
+  const hoja = asegurarHojaMapaOperativo();
+  if (hoja.getLastRow() <= 1) return [];
+  const filas = hoja.getRange(2, 1, hoja.getLastRow() - 1, COLUMNAS_MAPA_OPERATIVO).getValues();
+  const porOrden = {};
+  filas.forEach(function(fila) {
+    const item = mv487OrdenMapa_(fila);
+    if (!item.ordenId) return;
+    const anterior = porOrden[item.ordenId];
+    if (!anterior || item.fechaImportacion >= anterior.fechaImportacion) porOrden[item.ordenId] = item;
+  });
+  return Object.keys(porOrden).map(function(id){ return porOrden[id]; });
+}
+
+function mv487PartnerPorOrden_(catalogo) {
+  const historica = leerBaseOperativaHistorica().registros || [];
+  const salida = {};
+  historica.forEach(function(r) {
+    const id = mv487Id_(r.codigoLiquidacion);
+    if (!id) return;
+    const tipo = normalizarTexto(r.tipoPartida);
+    const alterna = normalizarTexto(r.tipoPartidaAlterna);
+    let cat = catalogo.porTipo[tipo] || null;
+    if (!cat && alterna) cat = catalogo.porTipo[alterna] || null;
+    if (!salida[id]) salida[id] = [];
+    salida[id].push({
+      ordenId:id, periodo:mv487Periodo_(r.fecha), fecha:mv487FechaIso_(r.fecha),
+      cuadrilla:normalizarCuadrilla(r.cuadrilla), sede:normalizarTexto(r.sede),
+      codigo:cat ? cat.codigo : "", tipoPartida:cat ? cat.tipoOrden : (alterna || tipo),
+      estado:normalizarTexto(r.estado)
+    });
+  });
+  return salida;
+}
+
+function mv487PartidaPartner_(filas, periodo) {
+  const delPeriodo = (filas || []).filter(function(x){ return !periodo || x.periodo === periodo; });
+  const fuente = delPeriodo.length ? delPeriodo : (filas || []);
+  const codigos = {};
+  fuente.forEach(function(x){ if (x.codigo) codigos[x.codigo] = true; });
+  const lista = Object.keys(codigos).sort();
+  const representante = fuente.slice().sort(function(a,b){
+    return Number(b.estado === "FINALIZADA") - Number(a.estado === "FINALIZADA");
+  })[0] || null;
+  return {codigos:lista, representante:representante};
+}
+
+function mv487SumarRegla_(mapa, clave, codigo) {
+  if (!clave || !codigo) return;
+  if (!mapa[clave]) mapa[clave] = {total:0, codigos:{}};
+  mapa[clave].total++;
+  mapa[clave].codigos[codigo] = (mapa[clave].codigos[codigo] || 0) + 1;
+}
+
+function mv487CerrarReglas_(conteos, soporteMinimo) {
+  const reglas = {};
+  Object.keys(conteos).forEach(function(clave) {
+    const x = conteos[clave];
+    const codigos = Object.keys(x.codigos).sort(function(a,b){ return x.codigos[b] - x.codigos[a]; });
+    if (x.total < soporteMinimo || codigos.length !== 1) return;
+    reglas[clave] = {codigo:codigos[0], soporte:x.total, pureza:1};
+  });
+  return reglas;
+}
+
+function mv487ConstruirReglas_(win, partner, periodoEntrenamiento) {
+  const exactos = {}, motivos = {};
+  let filasEntrenamiento = 0;
+  win.forEach(function(o) {
+    if (o.estado !== "FINALIZADA" || o.periodo !== periodoEntrenamiento) return;
+    const p = mv487PartidaPartner_(partner[o.ordenId], periodoEntrenamiento);
+    if (p.codigos.length !== 1) return;
+    const servicio = mv487ClaseServicio_(o.tipo);
+    mv487SumarRegla_(exactos, [mv487Norm_(o.tipoTrabajo), mv487Norm_(o.motivoFinalizacion), servicio].join("|"), p.codigos[0]);
+    mv487SumarRegla_(motivos, [mv487Norm_(o.motivoFinalizacion), servicio].join("|"), p.codigos[0]);
+    filasEntrenamiento++;
+  });
+  return {
+    exactas:mv487CerrarReglas_(exactos, 2),
+    motivoServicio:mv487CerrarReglas_(motivos, 3),
+    filasEntrenamiento:filasEntrenamiento
+  };
+}
+
+function mv487ReglaOrden_(orden, reglas) {
+  const servicio = mv487ClaseServicio_(orden.tipo);
+  const exacta = reglas.exactas[[mv487Norm_(orden.tipoTrabajo), mv487Norm_(orden.motivoFinalizacion), servicio].join("|")];
+  if (exacta) return {regla:exacta, nivel:"EXACTA MES ANTERIOR"};
+  const amplia = reglas.motivoServicio[[mv487Norm_(orden.motivoFinalizacion), servicio].join("|")];
+  return amplia ? {regla:amplia, nivel:"MOTIVO + SERVICIO MES ANTERIOR"} : null;
+}
+
+function mv487ResumenActual_(periodo, catalogo, usuarios) {
+  const hoja = obtenerHoja(HOJA_PRODUCCION);
+  if (hoja.getLastRow() <= 1) return {ordenes:0,puntos:0,diario:{}};
+  const datos = hoja.getRange(2,1,hoja.getLastRow()-1,Math.min(hoja.getLastColumn(),7)).getValues();
+  let ordenes = 0, puntos = 0;
+  const diario = {};
+  datos.forEach(function(f) {
+    const fechaPeriodo = mv487Periodo_(f[2]);
+    if (fechaPeriodo !== periodo) return;
+    const cuadrilla = normalizarCuadrilla(f[1]);
+    const codigo = mv487Texto_(f[3]);
+    const cantidad = Number(f[4]) || 0;
+    const cat = catalogo.lista.filter(function(x){ return mv487Texto_(x.codigo) === codigo; })[0];
+    const p = cantidad * Number(cat && cat.puntaje || 0);
+    const fecha = mv487FechaIso_(f[2]);
+    const u = usuarios[mv487ClaveCuadrilla_(cuadrilla)] || {};
+    const clave = [u.sede || "SIN SEDE", cuadrilla, fecha].join("|");
+    ordenes += cantidad; puntos += p;
+    diario[clave] = (diario[clave] || 0) + p;
+  });
+  return {ordenes:ordenes,puntos:puntos,diario:diario};
+}
+
+function previsualizarProduccionWinParalelaV487(data) {
+  const usuario = mv487ValidarLectura_(data.usuario);
+  const win = mv487LeerWin_();
+  const finalizadas = win.filter(function(o){ return o.estado === "FINALIZADA" && o.periodo; });
+  if (!finalizadas.length) throw new Error("MAPA_ORDENES no contiene ordenes WIN FINALIZADAS con fecha valida");
+  const periodos = {};
+  finalizadas.forEach(function(o){ periodos[o.periodo] = true; });
+  const disponibles = Object.keys(periodos).sort().reverse();
+  const periodo = /^\d{4}-\d{2}$/.test(String(data.periodo || "")) && periodos[data.periodo] ? data.periodo : disponibles[0];
+  const periodoEntrenamiento = mv487PeriodoAnterior_(periodo);
+  const catalogo = catalogoPartidasBaseOperativa();
+  const partner = mv487PartnerPorOrden_(catalogo);
+  const reglas = mv487ConstruirReglas_(win, partner, periodoEntrenamiento);
+  const usuarios = mv487MapaUsuarios_();
+  const porCodigo = {};
+  catalogo.lista.forEach(function(x){ porCodigo[mv487Texto_(x.codigo)] = x; });
+  const actual = mv487ResumenActual_(periodo, catalogo, usuarios);
+  const detalle = [];
+  const diarioNuevo = {};
+
+  finalizadas.filter(function(o){ return o.periodo === periodo; }).sort(function(a,b){
+    return a.fecha.localeCompare(b.fecha) || a.cuadrilla.localeCompare(b.cuadrilla) || a.ordenId.localeCompare(b.ordenId);
+  }).forEach(function(o) {
+    const partnerInfo = mv487PartidaPartner_(partner[o.ordenId], periodo);
+    const propuestaPartner = partnerInfo.codigos.length === 1 ? partnerInfo.codigos[0] : "";
+    const auto = mv487ReglaOrden_(o, reglas);
+    let codigo = "", clasificacion = "DUDOSA", regla = "SIN REGLA CONFIABLE", soporte = 0;
+    if (auto) {
+      codigo = auto.regla.codigo; clasificacion = "AUTOMATICA"; regla = auto.nivel; soporte = auto.regla.soporte;
+    } else if (propuestaPartner) {
+      codigo = propuestaPartner; clasificacion = "USANDO PARTNER"; regla = "PROPUESTA PARTNER";
+    }
+    const conflicto = !!(codigo && propuestaPartner && codigo !== propuestaPartner);
+    if (conflicto) { clasificacion = "DUDOSA"; regla += " / CONFLICTO PARTNER"; }
+    const p = partnerInfo.representante;
+    const cuadrillaPartner = p ? p.cuadrilla : "";
+    const cuadrillaDiferente = !!(cuadrillaPartner && mv487ClaveCuadrilla_(o.cuadrilla) !== mv487ClaveCuadrilla_(cuadrillaPartner));
+    const requiereIntervencion = clasificacion === "DUDOSA" || cuadrillaDiferente || partnerInfo.codigos.length > 1;
+    const cat = porCodigo[codigo] || null;
+    const u = usuarios[mv487ClaveCuadrilla_(o.cuadrilla)] || {};
+    const sede = u.sede || o.region || (p && p.sede) || "SIN SEDE";
+    const puntos = Number(cat && cat.puntaje || 0);
+    const razones = [];
+    if (clasificacion === "DUDOSA") razones.push(conflicto ? "Partida automatica diferente a Partner" : "Sin regla confiable ni propuesta Partner unica");
+    if (partnerInfo.codigos.length > 1) razones.push("Partner tiene partidas diferentes para el mismo OrdenId");
+    if (cuadrillaDiferente) razones.push("Cuadrilla WIN diferente a Partner; requiere aprobacion");
+    const claveDiaria = [sede, o.cuadrilla, o.fecha].join("|");
+    diarioNuevo[claveDiaria] = (diarioNuevo[claveDiaria] || 0) + puntos;
+    detalle.push({
+      sede:sede, cuadrillaWin:o.cuadrilla, cuadrillaEjecutora:o.cuadrilla,
+      fecha:o.fecha, ordenId:o.ordenId, codigoPedido:o.codigoPedido, dni:o.numeroDocumento,
+      cliente:o.cliente, tipoTrabajoWin:o.tipoTrabajo, motivoFinalizacionWin:o.motivoFinalizacion,
+      tipoServicioWin:o.tipo, estadoWin:o.estado, clasificacion:clasificacion, regla:regla,
+      soporteRegla:soporte, codigoPartida:codigo, tipoPartida:cat ? cat.tipoOrden : "",
+      puntos:puntos, codigoPartidaPartner:propuestaPartner,
+      tipoPartidaPartner:propuestaPartner && porCodigo[propuestaPartner] ? porCodigo[propuestaPartner].tipoOrden : "",
+      partnerEncontrado:!!(partner[o.ordenId] && partner[o.ordenId].length),
+      partidaDiferente:conflicto, cuadrillaPartner:cuadrillaPartner,
+      cuadrillaDiferente:cuadrillaDiferente, requiereIntervencion:requiereIntervencion,
+      motivoIntervencion:razones.join("; ")
+    });
+  });
+
+  const todasClaves = {};
+  Object.keys(actual.diario).forEach(function(k){ todasClaves[k] = true; });
+  Object.keys(diarioNuevo).forEach(function(k){ todasClaves[k] = true; });
+  const comparacionDiaria = Object.keys(todasClaves).sort().map(function(clave) {
+    const p = clave.split("|");
+    const puntosActuales = Number(actual.diario[clave] || 0);
+    const puntosNuevos = Number(diarioNuevo[clave] || 0);
+    return {sede:p[0],cuadrilla:p[1],fecha:p[2],puntosActuales:puntosActuales,puntosNuevos:puntosNuevos,diferencia:puntosNuevos-puntosActuales};
+  });
+  const conteo = {automaticas:0,partner:0,dudosas:0,intervencion:0,cuadrillaDiferente:0};
+  let puntosNuevos = 0;
+  detalle.forEach(function(x){
+    if (x.clasificacion === "AUTOMATICA") conteo.automaticas++;
+    else if (x.clasificacion === "USANDO PARTNER") conteo.partner++;
+    else conteo.dudosas++;
+    if (x.requiereIntervencion) conteo.intervencion++;
+    if (x.cuadrillaDiferente) conteo.cuadrillaDiferente++;
+    puntosNuevos += Number(x.puntos || 0);
+  });
+  return {
+    ok:true, modulo:"PRODUCCION_WIN_PARALELA", accion:"PREVISUALIZAR", version:"V487",
+    soloLectura:true, fuenteOrdenes:"WIN / MAPA_ORDENES", fuentePartner:"BASE_OPERATIVA_HISTORICA",
+    periodo:periodo, periodoEntrenamiento:periodoEntrenamiento, periodosDisponibles:disponibles,
+    calculadoPor:usuario.usuario, calculadoAl:Utilities.formatDate(new Date(),"America/Lima","dd/MM/yyyy HH:mm"),
+    reglas:{filasEntrenamiento:reglas.filasEntrenamiento,exactas:Object.keys(reglas.exactas).length,motivoServicio:Object.keys(reglas.motivoServicio).length},
+    resumen:{
+      ordenesFinalizadas:detalle.length, automaticas:conteo.automaticas, usandoPartner:conteo.partner,
+      dudosas:conteo.dudosas, intervencion:conteo.intervencion, cuadrillaDiferente:conteo.cuadrillaDiferente,
+      ordenesActuales:actual.ordenes, puntosActuales:actual.puntos, puntosNuevos:puntosNuevos,
+      diferenciaOrdenes:detalle.length-actual.ordenes, diferenciaPuntos:puntosNuevos-actual.puntos
+    },
+    detalle:detalle, comparacionDiaria:comparacionDiaria,
+    controles:{
+      escribeProduccion:false, escribeEfectividad:false, escribeRecableado:false,
+      escribeVtrGar:false, escribeRanking:false, modificaCatalogo:false,
+      reasignaCuadrilla:false, creaPartidas:false
+    }
+  };
+}
 
