@@ -40,33 +40,32 @@
     };
   }
 
-  // Reemplaza solo el mensaje posterior al registro para exponer los
-  // controles nuevos que devuelve el backend V484.
-  if(typeof window.moRegistrarImportacion === "function"){
+  // Conservamos intacta la funcion original de registro. Solo capturamos
+  // la respuesta de importarMapaOperativo para ampliar el mensaje final.
+  let ultimoResultadoImportacion = null;
+  const apiOriginal = window.moApi;
+  if(typeof apiOriginal === "function"){
+    window.moApi = async function(payload){
+      const d = await apiOriginal.apply(this,arguments);
+      if(payload && payload.accion === "importarMapaOperativo") ultimoResultadoImportacion = d;
+      return d;
+    };
+  }
+
+  const registrarOriginal = window.moRegistrarImportacion;
+  if(typeof registrarOriginal === "function"){
     window.moRegistrarImportacion = async function(){
-      if(!window.moImportacion || !window.moImportacion.length) return;
-      const btn=document.getElementById('moBtnImportar');
-      const msg=document.getElementById('moImportMsg');
-      if(btn) btn.disabled=true;
-      if(msg){msg.className='mo-msg';msg.textContent='Registrando información...';}
-      try{
-        const d=await window.moApi({accion:'importarMapaOperativo',usuario:window.moUsuario(),registros:window.moImportacion});
-        const c=d.catalogoCto||{};
-        const cambios=Number(d.cambiosEstado||0);
-        const antiguas=Number(d.versionesAntiguasIgnoradas||0);
-        const confirmacion=`Registro confirmado: ${d.nuevos} nuevos, ${d.actualizados} actualizados, ${d.repetidosCarga||0} repetidos consolidados y ${d.omitidos||0} omitidos. Estados modificados: ${cambios}. Versiones antiguas protegidas: ${antiguas}.${d.consolidadosExistentes?` Se depuraron ${d.consolidadosExistentes} duplicados anteriores.`:''} Catálogo CTO: ${c.nuevos||0} nuevos, ${c.actualizados||0} actualizados, ${c.total||0} únicos.`;
-        if(msg){msg.className='mo-msg mo-ok';msg.textContent=confirmacion;}
-        if(typeof window.moPintarUltimaActualizacion === 'function') window.moPintarUltimaActualizacion(d.ultimaActualizacionTexto);
-        window.moImportacion=[];
-        try{
-          if(typeof window.moCargarCatalogos === 'function') await window.moCargarCatalogos();
-        }catch(errorCatalogos){
-          if(msg){msg.className='mo-msg mo-ok';msg.textContent=confirmacion+' Los filtros se actualizarán al volver al mapa.';}
-        }
-      }catch(e){
-        if(msg){msg.className='mo-msg mo-error';msg.textContent=e && e.message ? e.message : String(e);}
-        if(btn) btn.disabled=false;
+      ultimoResultadoImportacion = null;
+      const r = await registrarOriginal.apply(this,arguments);
+      const d = ultimoResultadoImportacion;
+      const msg = document.getElementById("moImportMsg");
+      if(d && msg && msg.classList.contains("mo-ok")){
+        const cambios = Number(d.cambiosEstado || 0);
+        const antiguas = Number(d.versionesAntiguasIgnoradas || 0);
+        const extra = ` Estados modificados: ${cambios}. Versiones antiguas protegidas: ${antiguas}.`;
+        if(!msg.textContent.includes("Versiones antiguas protegidas")) msg.textContent += extra;
       }
+      return r;
     };
   }
 })();
