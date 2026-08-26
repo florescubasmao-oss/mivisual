@@ -120,3 +120,58 @@
     obs.observe(document.documentElement,{childList:true,subtree:true});
   }
 })();
+
+/* ============================================================
+   MI VISUAL V494 - LOADER LAZY DE SEGMENTACION VTR/GAR
+
+   - Carga V494 unicamente cuando el usuario entra a VTR/GAR.
+   - No agrega peso al inicio general de MI VISUAL.
+   - No realiza llamadas a Apps Script.
+============================================================ */
+(function(){
+  "use strict";
+
+  if(window.MV494_LOADER_OK) return;
+  window.MV494_LOADER_OK = true;
+
+  let promesa = null;
+
+  function correspondeCargar(){
+    return window.MV488_VT_MODO === "VTRGAR" &&
+      !!(document.getElementById("mv489Tabs") || document.getElementById("mv489Contenido") || document.querySelector(".vt-wrap"));
+  }
+
+  function cargar(){
+    if(window.MV494_VTRGAR_SEGMENTACION_OK) return Promise.resolve();
+    if(promesa) return promesa;
+
+    promesa = new Promise(function(resolve,reject){
+      const s = document.createElement("script");
+      s.src = "./js/validacion_tecnica_segmentacion_v494.js?v=V494-20260826A";
+      s.async = true;
+      s.onload = resolve;
+      s.onerror = function(){
+        promesa = null;
+        reject(new Error("No se pudo cargar V494."));
+      };
+      document.head.appendChild(s);
+    });
+
+    return promesa;
+  }
+
+  function revisar(){
+    if(!correspondeCargar()) return;
+    cargar().catch(function(e){
+      console.warn("MI VISUAL V494:",e && e.message ? e.message : e);
+    });
+  }
+
+  setTimeout(revisar,250);
+  setTimeout(revisar,900);
+
+  if(document.body){
+    const obs = new MutationObserver(function(){ revisar(); });
+    obs.observe(document.body,{childList:true,subtree:true});
+  }
+})();
