@@ -7,10 +7,13 @@
    - Efectividad conserva la relacion vigente: FINALIZADAS / TOTAL CERRADAS.
    - Estados abiertos (AGENDADA, EN CAMINO, INICIADA, REVISION y otros no
      cerrados) no entran al indicador.
-   - VTR/GAR finalizadas quedan fuera de Efectividad y se mantienen en su
-     indicador propio.
-   - El desglose Cancelada/Reprogramada es informativo: no modifica el
-     porcentaje porque ambas son ordenes cerradas no finalizadas.
+   - Para Efectividad, VTR/GAR se reconoce por TIPO_TRABAJO WIN
+     REITERADA/GARANTIA. Un ticket VTR-/GAR- no convierte por si solo un
+     LOS ROJO u otro TipoTraba en VTR/GAR para este indicador.
+   - Cancelada/Reprogramada forman parte del denominador; el desglose es
+     informativo. Motivos de RESERVA se marcan para control porque WIN los
+     entrega como Cancelada y la base anterior no permite derivar su estado
+     historico de forma univoca solo con el motivo.
    - % Recableado: solo FINALIZADAS cuyo TIPO_TRABAJO contiene "LOS ROJO".
    - Numerador: de esas mismas LOS ROJO, MOTIVO_FINALIZACION contiene
      "RECABLEADO". El numerador siempre es subconjunto del denominador.
@@ -74,9 +77,14 @@
     };
   }
 
-  function esVtrGar(o){
-    return o.tipoTrabajo==="REITERADA" || o.tipoTrabajo==="GARANTIA" ||
-      /^VTR-/.test(o.codigoSeguimiento) || /^GAR-/.test(o.codigoSeguimiento);
+  function esVtrGarEfectividad(o){
+    return o.tipoTrabajo==="REITERADA" || o.tipoTrabajo==="GARANTIA";
+  }
+
+  function esReservaCandidata(o){
+    if(o.estado!=="CANCELADA") return false;
+    const r=o.motivoCancelacion;
+    return r.includes("RESERVA CLIENTE") || r.includes("ORDEN RESERVADA");
   }
 
   function grupoCerrado(o){
@@ -85,7 +93,7 @@
     if(o.estado==="ANULADA") return "CANCELADA";
     if(o.estado==="CANCELADA"){
       const razon=[o.motivoCancelacion,o.motivoAnulacion,o.motivoRegestion].join(" ");
-      if(/REPROGRAM|RESERVA|POSTERGA/.test(razon)) return "REPROGRAMADA";
+      if(/REPROGRAM|POSTERGA/.test(razon)) return "REPROGRAMADA";
       return "CANCELADA";
     }
     return "";
@@ -93,7 +101,7 @@
 
   function acumular(mapa,cuadrilla){
     const k=norm(cuadrilla)||"SIN CUADRILLA";
-    if(!mapa[k]) mapa[k]={cuadrilla:cuadrilla||"SIN CUADRILLA",finalizadas:0,canceladas:0,regestiones:0,reprogramadas:0,total:0,efectividad:0,losRojo:0,recableados:0,porcentajeRecableado:0};
+    if(!mapa[k]) mapa[k]={cuadrilla:cuadrilla||"SIN CUADRILLA",finalizadas:0,canceladas:0,regestiones:0,reprogramadas:0,total:0,efectividad:0,losRojo:0,recableados:0,porcentajeRecableado:0,reservasCandidatas:0};
     return mapa[k];
   }
 
@@ -109,6 +117,7 @@
       ordenesUnicas:unicas.length,
       abiertasExcluidas:0,
       vtrGarExcluidasEfectividad:0,
+      reservasCandidatas:0,
       cerradasEfectividad:0,
       finalizadasEfectividad:0,
       losRojoFinalizadas:0,
@@ -118,7 +127,7 @@
     unicas.forEach(function(o){
       const fila=acumular(porCuadrilla,o.cuadrilla);
 
-      // Recableado: independiente de Efectividad.
+      // Recableado: TipoTraba manda. El prefijo del ticket no lo saca del universo LOS ROJO.
       if(o.estado==="FINALIZADA" && o.tipoTrabajo.includes("LOS ROJO")){
         fila.losRojo++;
         control.losRojoFinalizadas++;
@@ -131,9 +140,13 @@
       // Efectividad.
       const grupo=grupoCerrado(o);
       if(!grupo){ control.abiertasExcluidas++; return; }
-      if(o.estado==="FINALIZADA" && esVtrGar(o)){
+      if(o.estado==="FINALIZADA" && esVtrGarEfectividad(o)){
         control.vtrGarExcluidasEfectividad++;
         return;
+      }
+      if(esReservaCandidata(o)){
+        fila.reservasCandidatas++;
+        control.reservasCandidatas++;
       }
 
       fila.total++;
@@ -162,7 +175,8 @@
         efectividad:"FINALIZADAS / TOTAL ORDENES CERRADAS ELEGIBLES",
         abiertosFuera:true,
         deduplicaOrdenId:true,
-        vtrGarFueraEfectividad:true,
+        vtrGarEfectividadPorTipoTraba:true,
+        reservasMarcadasParaControl:true,
         recableado:"FINALIZADA + TIPO_TRABAJO contiene LOS ROJO; numerador = MOTIVO_FINALIZACION contiene RECABLEADO"
       },
       control:control,
