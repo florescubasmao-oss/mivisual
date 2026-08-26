@@ -1,22 +1,21 @@
 /* ================================================================
-   MI VISUAL V487.8 - Efectividad + % Recableado desde WIN
+   MI VISUAL V487.10 - Efectividad + % Recableado desde WIN
 
    MOTOR DE CALCULO / SIN ESCRITURAS DIRECTAS
    - Fuente: WIN / MAPA_ORDENES.
    - OrdenId = llave unica.
    - Si llegan varias versiones de una orden, usa FECHA_ULTIMO_ESTADO mas
      reciente; si empata, FECHA_IMPORTACION mas reciente.
-   - Efectividad conserva el contrato vigente:
+   - Efectividad conserva el contrato oficial vigente:
        FINALIZADAS / TOTAL ORDENES CERRADAS ELEGIBLES.
+   - Toda FINALIZADA entra en Efectividad, incluido VTR/GAR.
    - AGENDADA, EN CAMINO, INICIADA, REVISION y demas estados abiertos fuera.
    - RESERVA / ORDEN RESERVADA = PENDIENTE hasta un estado posterior.
-   - CANCELADA, REPROGRAMADA, REGESTION y ANULADA entran al denominador.
-   - VTR/GAR queda fuera de Efectividad cuando TIPO_TRABAJO WIN es
-     REITERADA / GARANTIA. Un ticket VTR-/GAR- por si solo no cambia la
-     clasificacion de Efectividad.
+   - CANCELADA, REPROGRAMADA, REGESTION y ANULADA entran al denominador;
+     ANULADA/ANULADO se agrupa dentro de CANCELADA como en la regla vigente.
    - % Recableado: FINALIZADA + TIPO_TRABAJO contiene "LOS ROJO".
-   - Numerador: subconjunto anterior cuyo MOTIVO_FINALIZACION contiene
-     "RECABLEADO".
+   - Numerador: subconjunto exacto anterior cuyo MOTIVO_FINALIZACION contiene
+     "RECABLEADO". Asi numerador y denominador siempre comparten poblacion.
 ================================================================ */
 (function(){
   "use strict";
@@ -74,7 +73,6 @@
     return {ordenes:Array.from(porId.values()),duplicados};
   }
 
-  function esVtrGarEfectividad(o){return o.tipoTrabajo==="REITERADA"||o.tipoTrabajo==="GARANTIA";}
   function esReservaPendiente(o){
     if(o.estado!=="CANCELADA"&&o.estado!=="CANCELADO")return false;
     return /RESERVA|RESERVAD/.test([o.motivoCancelacion,o.motivoAnulacion,o.detalle].join(" "));
@@ -103,7 +101,7 @@
 
   function calcular(ordenes){
     const canon=canonicalizar(ordenes),unicas=canon.ordenes,porCuadrilla={};
-    const control={ordenesUnicas:unicas.length,duplicadosResueltos:canon.duplicados,abiertasExcluidas:0,vtrGarExcluidasEfectividad:0,reservasPendientes:0,cerradasEfectividad:0,finalizadasEfectividad:0,losRojoFinalizadas:0,recableadosLosRojo:0};
+    const control={ordenesUnicas:unicas.length,duplicadosResueltos:canon.duplicados,abiertasExcluidas:0,reservasPendientes:0,cerradasEfectividad:0,finalizadasEfectividad:0,losRojoFinalizadas:0,recableadosLosRojo:0,recableadosFueraPoblacion:0};
 
     unicas.forEach(o=>{
       const fila=acumular(porCuadrilla,o.cuadrilla);
@@ -111,6 +109,8 @@
       if((o.estado==="FINALIZADA"||o.estado==="FINALIZADO")&&o.tipoTrabajo.includes("LOS ROJO")){
         fila.losRojo++;control.losRojoFinalizadas++;
         if(o.motivoFinalizacion.includes("RECABLEADO")){fila.recableados++;control.recableadosLosRojo++;}
+      }else if((o.estado==="FINALIZADA"||o.estado==="FINALIZADO")&&o.motivoFinalizacion.includes("RECABLEADO")){
+        control.recableadosFueraPoblacion++;
       }
 
       if(esReservaPendiente(o)){
@@ -118,7 +118,6 @@
       }
       const grupo=grupoCerrado(o);
       if(!grupo){fila.abiertas++;control.abiertasExcluidas++;return;}
-      if(grupo==="FINALIZADA"&&esVtrGarEfectividad(o)){control.vtrGarExcluidasEfectividad++;return;}
 
       fila.total++;control.cerradasEfectividad++;
       if(grupo==="FINALIZADA"){fila.finalizadas++;control.finalizadasEfectividad++;}
@@ -137,15 +136,15 @@
     control.efectividadGeneral=control.cerradasEfectividad?control.finalizadasEfectividad/control.cerradasEfectividad:0;
     control.porcentajeRecableadoGeneral=control.losRojoFinalizadas?control.recableadosLosRojo/control.losRojoFinalizadas:0;
 
-    return {ok:true,version:"V487.8",soloLectura:true,reglas:{efectividad:"FINALIZADAS / TOTAL ORDENES CERRADAS ELEGIBLES",abiertosFuera:true,reservaPendiente:true,ultimoEstadoPorFechaHora:true,deduplicaOrdenId:true,vtrGarEfectividadPorTipoTraba:true,recableado:"FINALIZADA + TIPO_TRABAJO contiene LOS ROJO; numerador = MOTIVO_FINALIZACION contiene RECABLEADO"},control,detalle,ordenesCanonicas:unicas};
+    return {ok:true,version:"V487.10",soloLectura:true,reglas:{efectividad:"FINALIZADAS / TOTAL ORDENES CERRADAS ELEGIBLES",vtrGarIncluidoEfectividad:true,anuladaComoCancelada:true,abiertosFuera:true,reservaPendiente:true,ultimoEstadoPorFechaHora:true,deduplicaOrdenId:true,recableado:"FINALIZADA + TIPO_TRABAJO contiene LOS ROJO; numerador = subconjunto cuyo MOTIVO_FINALIZACION contiene RECABLEADO",numeradorRecableadoSubconjuntoDenominador:true},control,detalle,ordenesCanonicas:unicas};
   }
 
   async function apiGet(payload){
     if(!API)throw new Error("No se encontro la URL de MI VISUAL.");
     const url=new URL(API);Object.keys(payload||{}).forEach(k=>{const v=payload[k];if(v!==undefined&&v!==null&&v!=="")url.searchParams.set(k,typeof v==="object"?JSON.stringify(v):String(v));});
-    url.searchParams.set("_v4878",String(Date.now()));
+    url.searchParams.set("_v48710",String(Date.now()));
     const r=await fetch(url.toString(),{method:"GET",cache:"no-store"});const t=await r.text();let j;
-    try{j=JSON.parse(t);}catch(_){throw new Error("La API no devolvio datos validos para V487.8.");}
+    try{j=JSON.parse(t);}catch(_){throw new Error("La API no devolvio datos validos para V487.10.");}
     if(!j||j.ok===false)throw new Error(j&&j.error?j.error:"No se pudo consultar WIN.");return j;
   }
   function listaMapa(r){if(Array.isArray(r&&r.ordenes))return r.ordenes;if(Array.isArray(r&&r.registros))return r.registros;return [];}
