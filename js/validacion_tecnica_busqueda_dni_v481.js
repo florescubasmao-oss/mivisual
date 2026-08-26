@@ -16,14 +16,36 @@
 
   const hookAnterior = window.mv339Antes_mostrarValidacionTecnica;
   let mv4871Carga = null;
+  let mv4874Carga = null;
 
   function texto(v){
     return String(v == null ? "" : v).trim();
   }
 
+  function cargarEdicionVtrGarV4874(){
+    if(window.MV4874_EDICION_VTR_GAR_PREVIEW_OK){
+      if(typeof window.mv4874InstalarEdicion === "function") setTimeout(window.mv4874InstalarEdicion,0);
+      return Promise.resolve();
+    }
+    if(mv4874Carga) return mv4874Carga;
+    mv4874Carga = new Promise(function(resolve,reject){
+      const s=document.createElement("script");
+      s.src="./js/validacion_tecnica_vtr_gar_edicion_preview_v4874.js?v=V4874-EDICION-AUDITABLE-PREVIEW";
+      s.async=true;
+      s.onload=function(){
+        if(typeof window.mv4874InstalarEdicion === "function") setTimeout(window.mv4874InstalarEdicion,0);
+        resolve();
+      };
+      s.onerror=function(){mv4874Carga=null;reject(new Error("No se pudo cargar la previsualización de edición VTR/GAR V487.4"));};
+      document.head.appendChild(s);
+    });
+    return mv4874Carga;
+  }
+
   function cargarControlVtrGarV4871(){
     if(window.MV4871_VTR_GAR_WIN_OK){
       if(typeof window.mv4871InstalarAccesoValidacion === "function") setTimeout(window.mv4871InstalarAccesoValidacion,0);
+      cargarEdicionVtrGarV4874().catch(function(){});
       return Promise.resolve();
     }
     if(mv4871Carga) return mv4871Carga;
@@ -33,6 +55,7 @@
       s.async=true;
       s.onload=function(){
         if(typeof window.mv4871InstalarAccesoValidacion === "function") setTimeout(window.mv4871InstalarAccesoValidacion,0);
+        cargarEdicionVtrGarV4874().catch(function(){});
         resolve();
       };
       s.onerror=function(){mv4871Carga=null;reject(new Error("No se pudo cargar el control VTR/GAR V487.1"));};
@@ -102,7 +125,7 @@
       try{ hookAnterior.apply(this, arguments); }catch(_){}
     }
 
-    // V487.1: solo al abrir Validación Técnica se descarga el control WIN.
+    // V487.1/V487.4: solo al abrir Validación Técnica se descargan los controles WIN.
     // No agrega peso al login ni al resto de módulos.
     cargarControlVtrGarV4871().catch(function(){});
     instalarFiltro();
@@ -113,6 +136,7 @@
       instalarFiltro();
       ajustarBuscador();
       if(typeof window.mv4871InstalarAccesoValidacion === "function") window.mv4871InstalarAccesoValidacion();
+      if(typeof window.mv4874InstalarEdicion === "function") window.mv4874InstalarEdicion();
     }, 0);
   };
 
