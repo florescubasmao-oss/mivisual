@@ -122,9 +122,9 @@
 })();
 
 /* ============================================================
-   MI VISUAL V494 - LOADER LAZY DE SEGMENTACION VTR/GAR
+   MI VISUAL V495 - LOADER LAZY DE SEGMENTACION VTR/GAR
 
-   - Carga V494 unicamente cuando el usuario entra a VTR/GAR.
+   - Carga el ajuste visual unicamente cuando el usuario entra a VTR/GAR.
    - No agrega peso al inicio general de MI VISUAL.
    - No realiza llamadas a Apps Script.
 ============================================================ */
@@ -147,12 +147,12 @@
 
     promesa = new Promise(function(resolve,reject){
       const s = document.createElement("script");
-      s.src = "./js/validacion_tecnica_segmentacion_v494.js?v=V494-20260826A";
+      s.src = "./js/validacion_tecnica_segmentacion_v494.js?v=V495-20260826B";
       s.async = true;
       s.onload = resolve;
       s.onerror = function(){
         promesa = null;
-        reject(new Error("No se pudo cargar V494."));
+        reject(new Error("No se pudo cargar V495."));
       };
       document.head.appendChild(s);
     });
@@ -163,7 +163,7 @@
   function revisar(){
     if(!correspondeCargar()) return;
     cargar().catch(function(e){
-      console.warn("MI VISUAL V494:",e && e.message ? e.message : e);
+      console.warn("MI VISUAL V495:",e && e.message ? e.message : e);
     });
   }
 
