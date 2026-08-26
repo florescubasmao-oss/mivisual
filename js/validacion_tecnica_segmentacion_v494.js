@@ -1,12 +1,14 @@
 /* ============================================================
-   MI VISUAL V494 - VALIDACION VTR/GAR SEGMENTADA
+   MI VISUAL V495 - VALIDACION VTR/GAR SEGMENTADA
 
    Alcance:
-   - Elimina duplicidad visual de Registro / Validacion.
+   - En REGISTRO conserva la navegacion Registro / Validacion.
+   - Dentro de VALIDACION oculta el boton Validacion porque ya es la vista activa.
    - Elimina el filtro manual de periodo.
    - Conserva filtros: busqueda, tipo y estado.
-   - Mantiene la segmentacion automatica por PERIODO.
+   - Ordena periodos por la fecha real mas reciente de sus casos.
    - Dentro de cada periodo segmenta por SEDE.
+   - Periodo, sede y caso quedan cerrados por defecto.
    - No agrega llamadas API ni modifica backend, cache o reglas.
 ============================================================ */
 (function(){
@@ -27,13 +29,22 @@
       .trim();
   }
 
+  const MESES = ["ENERO","FEBRERO","MARZO","ABRIL","MAYO","JUNIO","JULIO","AGOSTO","SEPTIEMBRE","OCTUBRE","NOVIEMBRE","DICIEMBRE"];
+
+  function nombrePeriodoDesdeFecha(ts){
+    if(!Number.isFinite(ts) || ts <= 0) return "";
+    const d = new Date(ts);
+    return `${MESES[d.getMonth()]} ${d.getFullYear()}`;
+  }
+
   function nombrePeriodo(v){
     const t = String(v == null ? "" : v).trim();
     const m = t.match(/^(\d{4})[-\/]?(\d{2})$/);
-    if(!m) return t || "SIN PERIODO";
-    const meses = ["ENERO","FEBRERO","MARZO","ABRIL","MAYO","JUNIO","JULIO","AGOSTO","SEPTIEMBRE","OCTUBRE","NOVIEMBRE","DICIEMBRE"];
-    const n = Number(m[2]);
-    return `${meses[n-1] || m[2]} ${m[1]}`;
+    if(m){
+      const n = Number(m[2]);
+      return `${MESES[n-1] || m[2]} ${m[1]}`;
+    }
+    return t || "SIN PERIODO";
   }
 
   function instalarCss(){
@@ -69,10 +80,18 @@
     const tabs = document.getElementById("mv489Tabs") || grupos[0];
     if(!tabs) return;
 
+    const enValidacion = !!document.querySelector(".mv489-wrap");
     const vistos = {};
+
     Array.from(tabs.querySelectorAll("button")).forEach(function(b){
       const t = norm(b.textContent).replace(/^[^A-Z0-9]+/,"");
       const clave = t.indexOf("VALIDACION") >= 0 ? "VALIDACION" : (t.indexOf("REGISTRO") >= 0 ? "REGISTRO" : t);
+
+      if(enValidacion && clave === "VALIDACION"){
+        b.remove();
+        return;
+      }
+
       if(vistos[clave]) b.remove();
       else vistos[clave] = true;
     });
@@ -86,6 +105,38 @@
     }
   }
 
+  function parseFecha(v){
+    const t = String(v == null ? "" : v).trim();
+    if(!t) return 0;
+
+    let m = t.match(/^(\d{4})[-\/](\d{1,2})[-\/](\d{1,2})/);
+    if(m){
+      return new Date(Number(m[1]),Number(m[2])-1,Number(m[3])).getTime();
+    }
+
+    m = t.match(/^(\d{1,2})[-\/](\d{1,2})[-\/](\d{4})/);
+    if(m){
+      return new Date(Number(m[3]),Number(m[2])-1,Number(m[1])).getTime();
+    }
+
+    const d = new Date(t);
+    return Number.isNaN(d.getTime()) ? 0 : d.getTime();
+  }
+
+  function fechaCaso(caso){
+    if(!caso) return 0;
+    const bloques = Array.from(caso.querySelectorAll(".mv489-detail .mv489-grid > div"));
+    for(let i=0;i<bloques.length;i++){
+      const lab = norm(bloques[i].querySelector(".mv489-label") && bloques[i].querySelector(".mv489-label").textContent);
+      if(lab === "FECHA"){
+        const val = bloques[i].querySelector(".mv489-value");
+        const ts = parseFecha(val && val.textContent);
+        if(ts) return ts;
+      }
+    }
+    return 0;
+  }
+
   function sedeDeCaso(caso){
     if(!caso) return "SIN SEDE";
     const summary = caso.querySelector(":scope > summary") || caso.querySelector("summary");
@@ -93,7 +144,8 @@
 
     const bloques = Array.from(summary.children || []);
     for(let i=0;i<bloques.length;i++){
-      const etiqueta = norm(bloques[i].querySelector && bloques[i].querySelector(".mv489-label")?.textContent);
+      const etiquetaEl = bloques[i].querySelector && bloques[i].querySelector(".mv489-label");
+      const etiqueta = norm(etiquetaEl && etiquetaEl.textContent);
       if(etiqueta === "SEDE"){
         const val = bloques[i].querySelector(".mv489-value");
         return norm(val && val.textContent) || "SIN SEDE";
@@ -111,15 +163,30 @@
     return na !== nb ? na-nb : a.localeCompare(b);
   }
 
+  function obtenerCasosDirectos(body){
+    return Array.from(body.children).filter(function(x){
+      return x.classList && x.classList.contains("mv489-case");
+    });
+  }
+
   function segmentarMes(mes){
     if(!mes) return;
     const body = mes.querySelector(":scope > .mv489-month-body");
     if(!body) return;
 
-    const casos = Array.from(body.children).filter(function(x){
-      return x.classList && x.classList.contains("mv489-case");
+    const casos = obtenerCasosDirectos(body);
+    if(!casos.length){
+      mes.open = false;
+      return;
+    }
+
+    casos.forEach(function(caso){ caso.open = false; });
+
+    let ultima = 0;
+    casos.forEach(function(caso){
+      ultima = Math.max(ultima,fechaCaso(caso));
     });
-    if(!casos.length) return;
+    mes.dataset.mv495Fecha = String(ultima || 0);
 
     const grupos = {};
     casos.forEach(function(caso){
@@ -132,14 +199,17 @@
     Object.keys(grupos).sort(ordenSedes).forEach(function(sede){
       const det = document.createElement("details");
       det.className = "mv494-sede";
-      det.open = true;
+      det.open = false;
 
       const sum = document.createElement("summary");
       sum.innerHTML = `<span>🏢 ${sede}</span><span class="mv494-sede-cant">${grupos[sede].length} caso${grupos[sede].length === 1 ? "" : "s"}</span>`;
 
       const inner = document.createElement("div");
       inner.className = "mv494-sede-body";
-      grupos[sede].forEach(function(caso){ inner.appendChild(caso); });
+      grupos[sede].forEach(function(caso){
+        caso.open = false;
+        inner.appendChild(caso);
+      });
 
       det.appendChild(sum);
       det.appendChild(inner);
@@ -148,21 +218,44 @@
 
     body.innerHTML = "";
     body.appendChild(frag);
+    mes.open = false;
 
     const resumen = mes.querySelector(":scope > summary");
     if(resumen){
       const spans = resumen.querySelectorAll("span");
       if(spans[0]){
-        spans[0].textContent = nombrePeriodo(spans[0].textContent);
+        const original = spans[0].textContent;
+        spans[0].textContent = nombrePeriodoDesdeFecha(ultima) || nombrePeriodo(original);
         spans[0].classList.add("mv494-periodo");
       }
     }
+  }
+
+  function asegurarTodoCerrado(cont){
+    if(!cont) return;
+    cont.querySelectorAll("details.mv489-month,details.mv494-sede,details.mv489-case").forEach(function(d){
+      d.open = false;
+    });
+  }
+
+  function ordenarPeriodos(cont){
+    if(!cont) return;
+    const meses = Array.from(cont.querySelectorAll(":scope > .mv489-month"));
+    meses.sort(function(a,b){
+      const fa = Number(a.dataset.mv495Fecha || 0);
+      const fb = Number(b.dataset.mv495Fecha || 0);
+      if(fa !== fb) return fb-fa;
+      return norm(b.textContent).localeCompare(norm(a.textContent));
+    });
+    meses.forEach(function(m){ cont.appendChild(m); });
   }
 
   function segmentarContenido(){
     const cont = document.getElementById("mv489Contenido");
     if(!cont) return;
     Array.from(cont.querySelectorAll(":scope > .mv489-month")).forEach(segmentarMes);
+    ordenarPeriodos(cont);
+    asegurarTodoCerrado(cont);
   }
 
   function aplicar(){
