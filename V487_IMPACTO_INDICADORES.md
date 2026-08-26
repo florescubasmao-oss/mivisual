@@ -1,109 +1,76 @@
-# V487 - Impacto de Producción, Efectividad, % Recableado y VTR/GAR
+# V487.12 - Indicadores operativos desde WIN
 
-## Principio de implementación
-V487 cambia principalmente la fuente y la obtención de datos. No se rediseñan las pantallas ni se cambian los contratos de datos que ya consume MI VISUAL.
+## Estado
+V487.12 está preparado para activarse desde AGOSTO 2026. JULIO 2026 y periodos anteriores permanecen congelados.
 
-Fuente principal: WIN / MAPA_ORDENES + histórico propio por OrdenId.
-Fuente auxiliar opcional: Partner, solo para completar/corregir casos que requieran revisión; no sobrescribe WIN automáticamente.
+## Principio
+El cambio es principalmente de fuente de datos y actualización interna. No se rediseñan los módulos consumidores ni se cambian sus contratos.
 
-## Salidas compatibles que se conservan
-- PRODUCCION_APP
-- EFECTIVIDAD
-- PORCENTAJE REC
-- POR VTR/GAR
-
-Estas hojas deben seguir entregando la misma estructura que hoy espera el aplicativo. El nuevo motor las generará desde WIN/histórico/homologaciones, evitando modificar cada módulo consumidor.
-
-## Efectividad
-- OrdenId único.
-- Manda el último estado por FECHA_ULTIMO_ESTADO; empate: FECHA_IMPORTACION más reciente.
-- Agendada, En camino, Iniciada, Revisión y Reserva/Orden reservada = pendientes; no entran.
-- Cuando la misma OrdenId evoluciona, se actualiza a su último estado.
-- Toda Finalizada entra al numerador y denominador, incluido VTR/GAR, conservando la regla oficial vigente.
-- Cancelada, Reprogramada, Regestión y Anulada entran al denominador cuando son el estado vigente.
-- Anulada/Anulado se agrupa dentro de Cancelada.
-
-## % Recableado
-- Medición al período.
-- Denominador: FINALIZADA y TIPO_TRABAJO contiene LOS ROJO.
-- Incluye LOS ROJO, INTERMITENCIA LOS ROJO y futuras variantes que contengan ese texto.
-- Numerador: subconjunto anterior cuyo MOTIVO_FINALIZACION contiene RECABLEADO.
-- Nunca puede superar 100%.
+- Fuente principal: WIN / MAPA_ORDENES + histórico propio por OrdenId.
+- Fuente auxiliar: Partner, solo para correcciones puntuales, clasificación y control de RESERVA.
+- OrdenId es la llave única.
+- Manda FECHA_ULTIMO_ESTADO; empate: FECHA_IMPORTACION más reciente.
+- Una orden ausente de una carga posterior no se elimina.
 
 ## Producción
-- OrdenId único.
-- VTR/GAR siempre 0 puntos de Producción.
-- No cuentan en meta diaria, meta mensual ni Ranking-Producción.
-- Aplica a técnico/cuadrilla y supervisor.
+- Se reconstruye solamente el periodo publicado.
+- VTR/GAR siempre 0 Producción, incluso cuando el TipoTrabajo no sea REITERADA/GARANTIA pero el ticket identifique VTR/GAR.
+- No cuenta en meta diaria, meta mensual ni Ranking-Producción.
+- Si existe una orden sin partida confiable, se bloquea toda la publicación y se restaura el estado anterior.
+
+## Efectividad
+- FINALIZADAS / total de órdenes cerradas elegibles.
+- Toda FINALIZADA cuenta, incluido VTR/GAR.
+- Cancelada, Reprogramada, Regestión y Anulada forman parte del denominador.
+- Anulada se agrupa en Cancelada.
+- Agendada, En camino, Iniciada y estados abiertos quedan fuera.
+- RESERVA/RESERVADO queda pendiente.
+- Una Cancelada con texto de reserva solo se excluye si Partner confirma que actualmente está RESERVA/RESERVADO; el texto WIN por sí solo no basta.
+
+## % Recableado
+- Denominador: FINALIZADA cuyo TIPO_TRABAJO contenga LOS ROJO.
+- Incluye INTERMITENCIA LOS ROJO y futuras variantes.
+- Numerador: subconjunto exacto anterior cuyo MOTIVO_FINALIZACION contiene RECABLEADO.
+- Nunca puede superar 100%.
 
 ## VTR/GAR
-- Forma parte del mismo cierre V487; no es un módulo aislado.
-- Fuente principal de existencia/estado: WIN / MAPA_ORDENES.
-- Detección por TIPO_TRABAJO REITERADA/GARANTIA y control adicional por ticket VTR-/GAR- cuando corresponda.
-- La validación operativa permanece centralizada en VALIDACION_TECNICA.
-- PROPIA / ASIGNADA / MANUAL y BONO / NO BONO se conservan para el control e indicador VTR/GAR, nunca para sumar Producción.
-- El indicador se atribuye a la cuadrilla/origen responsable de la orden que generó la incidencia, no necesariamente a quien resolvió la VTR/GAR.
-- El denominador del indicador conserva la regla vigente: Total Ordenes FINALIZADAS de Efectividad.
-- Reporte ausente o correspondencia dudosa queda en revisión sin alterar Producción.
-- La corrección de una validación debe conservar trazabilidad/historial.
-- La salida POR VTR/GAR debe mantener el contrato esperado por Dashboard, Mi Desempeño, Ranking, informes y Supervisor.
+- Denominador: Total de órdenes FINALIZADAS de Efectividad.
+- VTR/GAR ya CONFIRMADO, REASIGNADO, ANULADO o PENDIENTE se conserva.
+- Solo CONFIRMADO y REASIGNADO afectan el indicador.
+- WIN agrega únicamente incidencias nuevas como PENDIENTE.
+- Una incidencia histórica no se elimina si deja de aparecer como REITERADA/GARANTIA en WIN.
+- El indicador se atribuye a la cuadrilla de origen/responsable; la atención VTR/GAR aporta 0 Producción.
 
-## Migración histórica acordada
-- JULIO 2026 y periodos anteriores quedan congelados; V487 no los reescribe.
-- La migración empieza en AGOSTO 2026.
-- Las incidencias VTR/GAR ya calificadas en agosto se conservan exactamente con su estado y cuadrilla responsable.
-- Estados existentes CONFIRMADO, REASIGNADO, ANULADO y PENDIENTE no se recalifican automáticamente.
-- WIN solo incorpora incidencias nuevas faltantes como PENDIENTE para revisión.
-- Solo CONFIRMADO y REASIGNADO afectan el indicador VTR/GAR.
+## Cuadrillas e histórico
+- Cambio de número/nombre con la misma identidad puede homologarse automáticamente a la cuadrilla vigente.
+- Reemplazo por persona distinta no transfiere automáticamente la ejecución.
+- Se conserva la cuadrilla ejecutora original para trazabilidad.
 
-## Publicador protegido V487.11
-- `apps_script/V487_Publicador.gs` prepara el cierre desde WIN sin activar escrituras.
-- Existe bloqueo duro de código: `MV487_PUBLICADOR_ESCRITURA_COMPILADA_ = false`.
-- Además bloquea cualquier periodo anterior a `2026-08`.
-- La futura activación exigirá confirmación explícita y reconstruirá únicamente el periodo solicitado.
-- En esta fase PRODUCCION_APP, EFECTIVIDAD, PORCENTAJE REC, POR VTR/GAR y RANKING continúan sin modificaciones.
+## Publicador V487.12
+Archivo: `apps_script/V487_Publicador.gs`.
 
-## Histórico y homologación
-- Una orden vista anteriormente no se borra si deja de aparecer en una descarga WIN posterior.
-- Cambio de número/nombre de la misma cuadrilla puede homologarse manteniendo continuidad de indicadores y trazabilidad del ejecutor original.
-- Reemplazo de persona/cuadrilla no transfiere automáticamente ejecución ni indicadores.
-- Las diferencias/homologaciones se muestran mediante Observación desplegable, sin recargar la tarjeta principal.
+Protecciones:
+- `MV487_PUBLICADOR_PERIODO_MINIMO_ = "2026-08"`.
+- Confirmación interna obligatoria `PUBLICAR_V487_CONFIRMADO`.
+- ScriptLock durante la publicación.
+- Snapshots de Producción, Efectividad, Recableado, VTR/GAR, base VTR/GAR y Ranking.
+- Rollback automático si falla cualquier etapa.
+- Reconstrucción solo del periodo solicitado.
+- Invalidación de cachés y reconstrucción de Ranking/resumen al finalizar.
 
-## Módulos consumidores a proteger
-1. Indicadores del Técnico: lee Producción, EFECTIVIDAD, PORCENTAJE REC y POR VTR/GAR.
-2. Validación Técnica: Recableado conserva su flujo actual y VTR/GAR concentra reporte, validación, origen y correcciones auditables.
-3. Dashboard Técnico / Supervisor / Jefatura: recibe Producción, Efectividad, Recableado, VTR/GAR y sus detalles desde el resumen consolidado.
-4. Mi Desempeño: consume el mismo resumen consolidado y abre los módulos individuales.
-5. Ranking: usa Producción, Efectividad, Recableado y VTR/GAR en puntaje y posiciones; VTR/GAR nunca suma Producción.
-6. Ranking detallado e informe Excel: reutiliza detProduccion, detEfectividad, detRecableado y detVtrGar.
-7. Informe Gerencial PDF/Excel: reutiliza la lista ya consolidada del Dashboard.
-8. Bono Supervisor: backend consume los indicadores operativos; cualquier cambio de fuente debe conservar el contrato y la atribución por supervisor/cuadrillas.
-9. Análisis Económico / Utilidad: depende de PRODUCCION_APP; mantener estructura evita romperlo.
-10. Materiales: existen controles que toman FINALIZADAS desde EFECTIVIDAD; deben recibir las finalizadas deduplicadas correctas.
-11. Corte automático de Ranking: usa fechas de PRODUCCION_APP y EFECTIVIDAD; las nuevas cargas WIN deben actualizar el corte sin intervención manual.
-12. VTR/GAR por Supervisor: el consolidado del supervisor debe reflejar las incidencias atribuibles a sus cuadrillas/origen, sin convertirlas en Producción.
+## Actualización automática
+Al abrir Mapa Operativo se cargan:
+- `mapa_partner_visual_v386.js?v=V48712-ESTADO-WIN`
+- `indicadores_win_sync_v4879.js?v=V48712-PUBLICADOR-ACTIVO`
 
-## Estrategia de seguridad
-- No conectar cada pantalla directamente a MAPA_ORDENES.
-- Centralizar cálculo en backend y escribir/servir salidas compatibles.
-- Mantener nombres de campos y estructura actuales.
-- Invalidar/reconstruir resúmenes y cachés después de una importación WIN válida para que Dashboard, Ranking, Mi Desempeño, informes y Bono Supervisor reciban el nuevo corte.
-- Mantener VTR/GAR separado de Producción en todos los cálculos y vistas.
-- No tocar V486/main durante pruebas.
-- PR permanece Draft hasta comparar cuadrilla por cuadrilla y supervisor.
+Después de una importación WIN válida, el sincronizador solicita al backend la publicación del periodo importado. Periodos anteriores a agosto se omiten por cierre.
 
-## Pruebas obligatorias antes del Merge
-- Comparación por cuadrilla: actual vs WIN para Producción, Efectividad, Recableado y VTR/GAR.
-- Comparación por supervisor y sede para los cuatro indicadores.
-- Ranking antes/después, comprobando que VTR/GAR no sume Producción y sí afecte solo su indicador propio.
-- Mi Desempeño técnico.
-- Dashboard Supervisor y Jefatura.
-- Validación Técnica VTR/GAR: reportada/no reportada, PROPIA/ASIGNADA/MANUAL, BONO/NO BONO, ejecutor vs origen, correspondencia dudosa y edición auditada en preview.
-- Informe gerencial y Ranking Excel.
-- Bono Supervisor.
-- Análisis Económico (solo comprobar que la nueva Producción mantiene contrato y totales esperados).
-- Materiales (finalizadas).
-- Cambio de estado en cargas sucesivas: pendiente -> finalizada/cancelada/reprogramada/regestión/anulada y cancelada -> agendada.
-- Orden ausente en carga posterior.
-- Homologación de cuadrilla y reemplazo de persona.
-- Atribución VTR/GAR: incidencia resuelta por una cuadrilla distinta debe afectar el indicador de la cuadrilla/origen responsable, no la Producción de la cuadrilla ejecutora.
+## Despliegue
+`Code_V487_COMPLETO.gs` es el artefacto completo para Apps Script. Contiene el backend vigente más el publicador V487.12 y las rutas necesarias.
+
+El orden seguro de puesta en producción es:
+1. Desplegar `Code_V487_COMPLETO.gs` en Apps Script.
+2. Validar la ruta V487.12.
+3. Fusionar el PR a main para que GitHub Pages cargue el sincronizador.
+4. Ejecutar la primera publicación completa de agosto.
+5. Validar Dashboard, Ranking, Mi Desempeño y los cuatro indicadores.
