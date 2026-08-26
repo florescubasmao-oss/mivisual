@@ -20,6 +20,10 @@ jobs:
       - name: Aplicar rutas V487, conectar Mapa y generar Code completo
         run: python3 scripts/aplicar_v487_backend.py
 
+      - name: Generar copia TXT descargable
+        shell: bash
+        run: cp Code_V487_COMPLETO.gs Code_V487_COMPLETO.txt
+
       - name: Validar sintaxis JavaScript
         shell: bash
         run: |
@@ -32,16 +36,17 @@ jobs:
           grep -q 'MV487_PUBLICADOR_PERIODO_MINIMO_ = "2026-08"' Code_V487_COMPLETO.gs
           grep -q 'indicadores_win_sync_v4879.js?v=V48712-PUBLICADOR-ACTIVO' js/modulos_loader.js
           grep -q 'modulos_loader.js?v=V48712-PUBLICADOR-ACTIVO' index.html
+          cmp -s Code_V487_COMPLETO.gs Code_V487_COMPLETO.txt
 
       - name: Guardar archivos generados
         shell: bash
         run: |
-          if git diff --quiet -- apps_script/Code.gs js/modulos_loader.js index.html Code_V487_COMPLETO.gs && git ls-files --error-unmatch Code_V487_COMPLETO.gs >/dev/null 2>&1; then
+          if git diff --quiet -- apps_script/Code.gs js/modulos_loader.js index.html Code_V487_COMPLETO.gs Code_V487_COMPLETO.txt && git ls-files --error-unmatch Code_V487_COMPLETO.gs >/dev/null 2>&1 && git ls-files --error-unmatch Code_V487_COMPLETO.txt >/dev/null 2>&1; then
             echo 'V487 ya estaba actualizado.'
             exit 0
           fi
           git config user.name 'github-actions[bot]'
           git config user.email '4189826+github-actions[bot]@users.noreply.github.com'
-          git add apps_script/Code.gs js/modulos_loader.js index.html Code_V487_COMPLETO.gs
-          git commit -m 'V487.12 generar backend completo activo agosto'
+          git add apps_script/Code.gs js/modulos_loader.js index.html Code_V487_COMPLETO.gs Code_V487_COMPLETO.txt
+          git commit -m 'V487.12 generar Code completo en TXT'
           git push
