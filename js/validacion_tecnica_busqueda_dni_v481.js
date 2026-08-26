@@ -268,3 +268,44 @@
   instalarObservacionPantalla();
   setTimeout(observarPendientes,300);
 })();
+
+/* ============================================================
+   MI VISUAL V489 - CARGA LAZY VISTA UNIFICADA VTR/GAR
+   - Se descarga solo junto con Validacion Tecnica.
+   - No agrega carga al inicio general.
+============================================================ */
+(function(){
+  "use strict";
+
+  if(window.MV489_LOADER_OK) return;
+  window.MV489_LOADER_OK = true;
+
+  const hookAnterior = window.mv339Antes_mostrarValidacionTecnica;
+  let promesa = null;
+
+  function cargar(){
+    if(window.MV489_VT_UNIFICADA_OK) return Promise.resolve();
+    if(promesa) return promesa;
+
+    promesa = new Promise(function(resolve,reject){
+      const s=document.createElement("script");
+      s.src="./js/validacion_tecnica_unificada_v489.js?v=V489-20260826";
+      s.async=true;
+      s.onload=resolve;
+      s.onerror=function(){ promesa=null; reject(new Error("No se pudo cargar V489.")); };
+      document.head.appendChild(s);
+    });
+    return promesa;
+  }
+
+  window.mv339Antes_mostrarValidacionTecnica = function(){
+    if(typeof hookAnterior === "function"){
+      try{ hookAnterior.apply(this,arguments); }catch(_){}
+    }
+    setTimeout(function(){ cargar().catch(function(e){ console.warn("MI VISUAL V489:",e && e.message ? e.message : e); }); },320);
+  };
+
+  setTimeout(function(){
+    if(window.MV488_VT_PORTAL_ACTIVO) cargar().catch(function(){});
+  },0);
+})();
