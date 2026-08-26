@@ -94,3 +94,62 @@
   // Compatibilidad si Validación Técnica ya hubiera sido precargada.
   instalarFiltro();
 })();
+
+/* ============================================================
+   MI VISUAL V487.25 - CARGA PEREZOSA DEL SUBMODULO VTR/GAR
+   - Mantiene intacto V481.
+   - El archivo VTR/GAR solo se descarga cuando se abre Validacion Tecnica.
+   - No agrega carga al inicio general de MI VISUAL.
+============================================================ */
+(function(){
+  "use strict";
+
+  if(window.MV48725_LOADER_VTRGAR_VT_OK) return;
+  window.MV48725_LOADER_VTRGAR_VT_OK = true;
+
+  const hookAnterior = window.mv339Antes_mostrarValidacionTecnica;
+  let promesa = null;
+
+  function cargarSubmodulo(){
+    if(window.MI_VISUAL_V48725_VTRGAR_VT_ACTIVO){
+      if(typeof window.mv48725MontarVtrGarValidacion === "function"){
+        window.mv48725MontarVtrGarValidacion();
+      }
+      return Promise.resolve();
+    }
+    if(promesa) return promesa;
+
+    promesa = new Promise(function(resolve,reject){
+      const s = document.createElement("script");
+      s.src = "./js/validacion_tecnica_vtrgar_v48725.js?v=V487.25-WIN";
+      s.async = true;
+      s.onload = function(){
+        if(typeof window.mv48725MontarVtrGarValidacion === "function"){
+          window.mv48725MontarVtrGarValidacion();
+        }
+        resolve();
+      };
+      s.onerror = function(){
+        promesa = null;
+        reject(new Error("No se pudo cargar el submódulo VTR/GAR."));
+      };
+      document.head.appendChild(s);
+    });
+
+    return promesa;
+  }
+
+  window.mv339Antes_mostrarValidacionTecnica = function(){
+    if(typeof hookAnterior === "function"){
+      try{ hookAnterior.apply(this,arguments); }catch(_){}
+    }
+
+    // El hook se ejecuta justo antes de pintar Validación Técnica.
+    // Se espera un instante para montar el submódulo sobre la pantalla ya dibujada.
+    setTimeout(function(){
+      cargarSubmodulo().catch(function(error){
+        console.warn("MI VISUAL V487.25:",error && error.message ? error.message : error);
+      });
+    },250);
+  };
+})();
