@@ -219,3 +219,34 @@
     obs.observe(document.body,{childList:true,subtree:true});
   }
 })();
+
+/* ============================================================
+   MI VISUAL V497 - LOADER LAZY HERRAMIENTAS DASHBOARD JEFATURA
+============================================================ */
+(function(){
+  "use strict";
+  if(window.MV497_HERRAMIENTAS_LOADER_OK) return;
+  window.MV497_HERRAMIENTAS_LOADER_OK=true;
+  let cargando=false;
+
+  function revisar(){
+    const p=String(localStorage.getItem("perfil")||"").toUpperCase().trim();
+    if(p!=="JEFATURA" && p!=="JEFATURA GENERAL") return;
+    if(!window.MV496_CONTINUIDAD_CUADRILLAS_OK || window.MV497_HERRAMIENTAS_DASHBOARD_OK || cargando) return;
+    cargando=true;
+    const s=document.createElement("script");
+    s.src="./js/dashboard_herramientas_v497.js?v=V497-20260826A";
+    s.async=true;
+    s.onload=function(){cargando=false;};
+    s.onerror=function(){cargando=false;console.warn("MI VISUAL V497: no se pudieron cargar herramientas compactas.");};
+    document.head.appendChild(s);
+  }
+
+  setTimeout(revisar,500);
+  setTimeout(revisar,1400);
+  setTimeout(revisar,3000);
+  if(document.body){
+    const obs=new MutationObserver(revisar);
+    obs.observe(document.body,{childList:true,subtree:true});
+  }
+})();
