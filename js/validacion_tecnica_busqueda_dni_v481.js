@@ -151,11 +151,12 @@
    MI VISUAL V487.27 - PENDIENTES SOLO RECABLEADO / OTRO
 
    REGLA DEFINITIVA:
-   - VTR y GAR NO se muestran en "Validaciones pendientes".
-   - VTR/GAR se gestionan exclusivamente dentro de Gestión VTR/GAR.
+   - VTR y GAR NO se muestran en "Validaciones pendientes" del flujo Recableado.
+   - VTR/GAR se gestionan en su submódulo independiente.
    - Recableado y Otro conservan la vista, botones y lógica existentes.
    - No agrega llamadas a Apps Script ni modifica caché/optimización.
-   - MutationObserver solo observa el bloque visual vtPendientes.
+   - V488: cuando el usuario abre el flujo VTR/GAR de registro/historial,
+     este filtro no interviene.
 ============================================================ */
 (function(){
   "use strict";
@@ -198,11 +199,12 @@
   }
 
   function renderSoloRecableado(){
+    if(window.MV488_VT_MODO === "VTRGAR") return true;
+
     const el = document.getElementById("vtPendientes");
     const render = obtenerRender();
     if(!el || !render) return false;
 
-    // Si este contenido ya lo pintó V487.27, no vuelve a escribirlo.
     if(el.querySelector('[data-mv48727="1"]')) return true;
 
     const lista = listaPendientePermitida();
