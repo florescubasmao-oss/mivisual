@@ -175,3 +175,47 @@
     obs.observe(document.body,{childList:true,subtree:true});
   }
 })();
+
+/* ============================================================
+   MI VISUAL V496 - LOADER LAZY CONTINUIDAD DE CUADRILLAS
+   Carga la herramienta solo cuando el nucleo del Dashboard ya existe.
+============================================================ */
+(function(){
+  "use strict";
+  if(window.MV496_CONTINUIDAD_LOADER_OK) return;
+  window.MV496_CONTINUIDAD_LOADER_OK = true;
+
+  let promesa = null;
+
+  function listo(){
+    return typeof window.mv4ObtenerRanking === "function" &&
+           typeof window.mv199RenderJefatura === "function";
+  }
+
+  function cargar(){
+    if(window.MV496_CONTINUIDAD_CUADRILLAS_OK) return Promise.resolve();
+    if(promesa) return promesa;
+    promesa = new Promise(function(resolve,reject){
+      const s=document.createElement("script");
+      s.src="./js/dashboard_continuidad_cuadrillas_v496.js?v=V496-20260826A";
+      s.async=true;
+      s.onload=resolve;
+      s.onerror=function(){promesa=null;reject(new Error("No se pudo cargar V496 Continuidad."));};
+      document.head.appendChild(s);
+    });
+    return promesa;
+  }
+
+  function revisar(){
+    if(!listo()) return;
+    cargar().catch(function(e){console.warn("MI VISUAL V496:",e && e.message ? e.message : e);});
+  }
+
+  setTimeout(revisar,300);
+  setTimeout(revisar,1100);
+  setTimeout(revisar,2500);
+  if(document.body){
+    const obs=new MutationObserver(revisar);
+    obs.observe(document.body,{childList:true,subtree:true});
+  }
+})();
