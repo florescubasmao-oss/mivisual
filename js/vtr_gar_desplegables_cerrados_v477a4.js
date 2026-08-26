@@ -53,7 +53,7 @@
    - No cambia cálculos, reglas, fuentes ni hojas.
    - WIN/Partner se resuelven en backend antes de esta capa.
    - Memoria 2 min; una sola solicitud simultánea por clave.
-   - Respaldo en memoria hasta 15 min solo si falla la red.
+   - Respaldo en memoria hasta 5 min solo si falla la red.
    - Invalida caché tras escrituras relacionadas con VTR/GAR.
 ========================================================== */
 (function(){
@@ -66,7 +66,7 @@
   const cache = new Map();
   const pendientes = new Map();
   const TTL_FRESCO = 2 * 60 * 1000;
-  const TTL_RESPALDO = 15 * 60 * 1000;
+  const TTL_RESPALDO = 5 * 60 * 1000;
 
   function normalizar(v){
     return String(v || "")
