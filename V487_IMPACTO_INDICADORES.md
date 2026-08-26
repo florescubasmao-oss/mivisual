@@ -16,8 +16,8 @@ Para cuadrillas, un cambio de número/nombre con la misma identidad puede homolo
 
 El publicador `apps_script/V487_Publicador.gs` usa periodo mínimo 2026-08, confirmación interna, ScriptLock, snapshots y rollback automático. Reconstruye solo el periodo solicitado e invalida los cachés y Ranking al finalizar.
 
-El módulo Mapa ya carga `mapa_partner_visual_v386.js?v=V48712-ESTADO-WIN` y `indicadores_win_sync_v4879.js?v=V48712-PUBLICADOR-ACTIVO`. Después de una importación WIN válida, el sincronizador solicita la publicación del periodo importado; periodos anteriores a agosto se omiten por cierre.
+El módulo Mapa ya carga el control de estado WIN y el sincronizador V487.12. Después de una importación WIN válida, el sincronizador solicita la publicación del periodo importado; periodos anteriores a agosto se omiten por cierre.
 
 `Code_V487_COMPLETO.gs` es el artefacto único de despliegue de Apps Script. Contiene el backend vigente, las rutas V487 y el publicador, y pasó la validación automática de sintaxis en GitHub Actions.
 
-Orden seguro: desplegar `Code_V487_COMPLETO.gs` en Apps Script, validar V487.12, fusionar PR a main, ejecutar la primera publicación completa de agosto y validar Dashboard/Ranking/Mi Desempeño/los cuatro indicadores.
+Estado actual: código listo en la rama V487; PR todavía Draft y sin Merge. Falta desplegar el backend V487 en Apps Script antes de fusionar GitHub Pages.
