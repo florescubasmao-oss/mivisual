@@ -1,109 +1,160 @@
 /* ================================================================
-   MI VISUAL V487.6 - Efectividad + % Recableado desde WIN
+   MI VISUAL V487.8 - Efectividad + % Recableado desde WIN
 
-   SOLO LECTURA / PRUEBA
+   MOTOR DE CALCULO / SIN ESCRITURAS DIRECTAS
    - Fuente: WIN / MAPA_ORDENES.
-   - OrdenId es la llave unica.
-   - Efectividad conserva la relacion vigente: FINALIZADAS / TOTAL CERRADAS.
-   - Estados abiertos no entran: AGENDADA, EN CAMINO, INICIADA, REVISION.
-   - RESERVA / ORDEN RESERVADA se considera PENDIENTE hasta que la misma
-     OrdenId reciba un estado posterior (FINALIZADA, CANCELADA, etc.).
-   - Para Efectividad, VTR/GAR se reconoce por TIPO_TRABAJO WIN
-     REITERADA/GARANTIA, conservando la logica actual del indicador.
-   - % Recableado: solo FINALIZADAS cuyo TIPO_TRABAJO contiene "LOS ROJO".
-   - Numerador: de esas mismas LOS ROJO, MOTIVO_FINALIZACION contiene
-     "RECABLEADO". El numerador siempre es subconjunto del denominador.
-   - No escribe EFECTIVIDAD, PORCENTAJE REC, RANKING ni ninguna otra hoja.
+   - OrdenId = llave unica.
+   - Si llegan varias versiones de una orden, usa FECHA_ULTIMO_ESTADO mas
+     reciente; si empata, FECHA_IMPORTACION mas reciente.
+   - Efectividad conserva el contrato vigente:
+       FINALIZADAS / TOTAL ORDENES CERRADAS ELEGIBLES.
+   - AGENDADA, EN CAMINO, INICIADA, REVISION y demas estados abiertos fuera.
+   - RESERVA / ORDEN RESERVADA = PENDIENTE hasta un estado posterior.
+   - CANCELADA, REPROGRAMADA, REGESTION y ANULADA entran al denominador.
+   - VTR/GAR queda fuera de Efectividad cuando TIPO_TRABAJO WIN es
+     REITERADA / GARANTIA. Un ticket VTR-/GAR- por si solo no cambia la
+     clasificacion de Efectividad.
+   - % Recableado: FINALIZADA + TIPO_TRABAJO contiene "LOS ROJO".
+   - Numerador: subconjunto anterior cuyo MOTIVO_FINALIZACION contiene
+     "RECABLEADO".
 ================================================================ */
 (function(){
   "use strict";
   if(window.MV4876_EFECTIVIDAD_RECABLEADO_WIN) return;
   window.MV4876_EFECTIVIDAD_RECABLEADO_WIN = true;
 
-  const API = window.MI_VISUAL_API_URL || "";
-  function txt(v){ return String(v == null ? "" : v).trim(); }
-  function norm(v){ return txt(v).toUpperCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"").replace(/\s+/g," ").trim(); }
-  function id(v){ return txt(v).replace(/\.0+$/,""); }
-  function val(o){ for(let i=1;i<arguments.length;i++){ const k=arguments[i]; if(o && o[k] !== undefined && o[k] !== null && txt(o[k]) !== "") return o[k]; } return ""; }
-  function usuario(){ return localStorage.getItem("usuario") || localStorage.getItem("correo") || ""; }
+  const API=window.MI_VISUAL_API_URL||"";
 
-  async function apiGet(payload){
-    if(!API) throw new Error("No se encontro la URL de MI VISUAL.");
-    const url=new URL(API);
-    Object.keys(payload||{}).forEach(function(k){ const v=payload[k]; if(v!==undefined&&v!==null&&v!=="") url.searchParams.set(k,typeof v==="object"?JSON.stringify(v):String(v)); });
-    url.searchParams.set("_v4876",String(Date.now()));
-    const r=await fetch(url.toString(),{method:"GET",cache:"no-store"});
-    const t=await r.text(); let j;
-    try{j=JSON.parse(t);}catch(_){throw new Error("La API no devolvio datos validos para V487.6.");}
-    if(!j||j.ok===false) throw new Error(j&&j.error?j.error:"No se pudo consultar WIN.");
-    return j;
+  function txt(v){return String(v==null?"":v).trim();}
+  function norm(v){return txt(v).toUpperCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"").replace(/\s+/g," ").trim();}
+  function id(v){return txt(v).replace(/\.0+$/,"");}
+  function val(o){for(let i=1;i<arguments.length;i++){const k=arguments[i];if(o&&o[k]!==undefined&&o[k]!==null&&txt(o[k])!=="")return o[k];}return "";}
+  function usuario(){return localStorage.getItem("usuario")||localStorage.getItem("correo")||"";}
+
+  function fechaMs(v){
+    if(v instanceof Date&&!isNaN(v.getTime()))return v.getTime();
+    const s=txt(v);if(!s)return 0;
+    let m=s.match(/^(\d{1,2})[\/-](\d{1,2})[\/-](\d{4})(?:[ T](\d{1,2}):(\d{2})(?::(\d{2}))?)?/);
+    if(m)return new Date(+m[3],+m[2]-1,+m[1],+(m[4]||0),+(m[5]||0),+(m[6]||0)).getTime();
+    m=s.match(/^(\d{4})[\/-](\d{1,2})[\/-](\d{1,2})(?:[ T](\d{1,2}):(\d{2})(?::(\d{2}))?)?/);
+    if(m)return new Date(+m[1],+m[2]-1,+m[3],+(m[4]||0),+(m[5]||0),+(m[6]||0)).getTime();
+    const d=new Date(s);return isNaN(d.getTime())?0:d.getTime();
   }
-  function listaMapa(r){ if(Array.isArray(r&&r.ordenes)) return r.ordenes; if(Array.isArray(r&&r.registros)) return r.registros; return []; }
+
   function normalizar(raw){
+    const motor=window.MV4877_WIN_ESTADO_HISTORICO;
     return {
-      ordenId:id(val(raw,"ordenId","ORDEN_ID")), tipoTrabajo:norm(val(raw,"tipoTrabajo","TIPO_TRABAJO")), cuadrilla:txt(val(raw,"cuadrilla","CUADRILLA")), estado:norm(val(raw,"estado","ESTADO")),
-      motivoCancelacion:norm(val(raw,"motivoCancelacion","MOTIVO_CANCELACION")), motivoFinalizacion:norm(val(raw,"motivoFinalizacion","MOTIVO_FINALIZACION")), motivoAnulacion:norm(val(raw,"motivoAnulacion","MOTIVO_ANULACION")),
-      motivoRegestion:norm(val(raw,"detalle","DETALLE","motivoRegestion","MOTIVO_REGESTION")), codigoSeguimiento:norm(val(raw,"codigoSeguimiento","CODIGO_SEGUIMIENTO"))
+      ordenId:id(val(raw,"ordenId","ORDEN_ID","OrdenId")),
+      tipoTrabajo:norm(val(raw,"tipoTrabajo","TIPO_TRABAJO","TipoTraba")),
+      cuadrilla:txt(val(raw,"cuadrilla","CUADRILLA","Cuadrilla")),
+      estado:norm(val(raw,"estado","ESTADO","Estado")),
+      motivoCancelacion:norm(val(raw,"motivoCancelacion","MOTIVO_CANCELACION","Motivo Cancelacion","Motivo Cancelación")),
+      motivoFinalizacion:norm(val(raw,"motivoFinalizacion","MOTIVO_FINALIZACION","Motivo Finalizacion","Motivo Finalización")),
+      motivoAnulacion:norm(val(raw,"motivoAnulacion","MOTIVO_ANULACION","Motivo Anulacion","Motivo Anulación")),
+      detalle:norm(val(raw,"detalle","DETALLE","motivoRegestion","MOTIVO_REGESTION")),
+      codigoSeguimiento:norm(val(raw,"codigoSeguimiento","CODIGO_SEGUIMIENTO")),
+      fechaEstado:motor&&typeof motor.fechaEstadoMs==="function"
+        ? motor.fechaEstadoMs(raw)
+        : (fechaMs(val(raw,"fechaUltimoEstado","FECHA_ULTIMO_ESTADO","FechaUltiEsta"))||fechaMs(val(raw,"fechaFinVisita","FECHA_FIN_VISITA","FechaFinVisi"))||fechaMs(val(raw,"fechaInicioVisita","FECHA_INICIO_VISITA","FechaIniVisi"))||fechaMs(val(raw,"fechaSolicitud","FECHA_SOLICITUD","F.Soli"))),
+      fechaImportacion:fechaMs(val(raw,"fechaImportacion","FECHA_IMPORTACION","Fecha Importacion","Fecha Importación")),
+      raw:raw
     };
   }
-  function esVtrGarEfectividad(o){ return o.tipoTrabajo==="REITERADA" || o.tipoTrabajo==="GARANTIA"; }
-  function esReservaPendiente(o){
-    if(o.estado!=="CANCELADA") return false;
-    const razon=[o.motivoCancelacion,o.motivoAnulacion,o.motivoRegestion].join(" ");
-    return /RESERVA|RESERVAD/.test(razon);
+
+  function canonicalizar(ordenes){
+    const porId=new Map();
+    let duplicados=0;
+    (ordenes||[]).forEach((raw,indice)=>{
+      const o=normalizar(raw),k=o.ordenId||`__SIN_ID_${indice}`;
+      const previo=porId.get(k);
+      if(!previo){porId.set(k,o);return;}
+      duplicados++;
+      if(o.fechaEstado>previo.fechaEstado || (o.fechaEstado===previo.fechaEstado&&o.fechaImportacion>=previo.fechaImportacion)) porId.set(k,o);
+    });
+    return {ordenes:Array.from(porId.values()),duplicados};
   }
+
+  function esVtrGarEfectividad(o){return o.tipoTrabajo==="REITERADA"||o.tipoTrabajo==="GARANTIA";}
+  function esReservaPendiente(o){
+    if(o.estado!=="CANCELADA"&&o.estado!=="CANCELADO")return false;
+    return /RESERVA|RESERVAD/.test([o.motivoCancelacion,o.motivoAnulacion,o.detalle].join(" "));
+  }
+
   function grupoCerrado(o){
-    if(esReservaPendiente(o)) return "";
-    if(o.estado==="FINALIZADA") return "FINALIZADA";
-    if(o.estado==="REGESTION" || o.estado==="REGESTIÓN") return "REGESTION";
-    if(o.estado==="ANULADA") return "ANULADA";
-    if(o.estado==="CANCELADA"){
-      const razon=[o.motivoCancelacion,o.motivoAnulacion,o.motivoRegestion].join(" ");
-      if(/REPROGRAM|POSTERGA/.test(razon)) return "REPROGRAMADA";
+    const e=o.estado;
+    if(esReservaPendiente(o))return "";
+    if(e==="FINALIZADA"||e==="FINALIZADO")return "FINALIZADA";
+    if(e.startsWith("REGEST"))return "REGESTION";
+    if(e==="ANULADA"||e==="ANULADO")return "CANCELADA";
+    if(e==="REPROGRAMADA"||e==="REPROGRAMADO")return "REPROGRAMADA";
+    if(e==="CANCELADA"||e==="CANCELADO"){
+      const razon=[o.motivoCancelacion,o.motivoAnulacion,o.detalle].join(" ");
+      if(/REPROGRAM|POSTERGA/.test(razon))return "REPROGRAMADA";
       return "CANCELADA";
     }
     return "";
   }
+
   function acumular(mapa,cuadrilla){
     const k=norm(cuadrilla)||"SIN CUADRILLA";
-    if(!mapa[k]) mapa[k]={cuadrilla:cuadrilla||"SIN CUADRILLA",finalizadas:0,canceladas:0,anuladas:0,regestiones:0,reprogramadas:0,total:0,efectividad:0,losRojo:0,recableados:0,porcentajeRecableado:0,reservasPendientes:0};
+    if(!mapa[k])mapa[k]={cuadrilla:cuadrilla||"SIN CUADRILLA",finalizadas:0,canceladas:0,regestiones:0,reprogramadas:0,total:0,efectividad:0,losRojo:0,recableados:0,porcentajeRecableado:0,reservasPendientes:0,abiertas:0};
     return mapa[k];
   }
-  function calcular(ordenes){
-    const porId={};
-    (ordenes||[]).forEach(function(raw){ const o=normalizar(raw); if(o.ordenId) porId[o.ordenId]=o; });
-    const unicas=Object.keys(porId).map(function(k){return porId[k];});
-    const porCuadrilla={};
-    const control={ordenesUnicas:unicas.length,abiertasExcluidas:0,reservasPendientes:0,vtrGarExcluidasEfectividad:0,cerradasEfectividad:0,finalizadasEfectividad:0,losRojoFinalizadas:0,recableadosLosRojo:0};
 
-    unicas.forEach(function(o){
+  function calcular(ordenes){
+    const canon=canonicalizar(ordenes),unicas=canon.ordenes,porCuadrilla={};
+    const control={ordenesUnicas:unicas.length,duplicadosResueltos:canon.duplicados,abiertasExcluidas:0,vtrGarExcluidasEfectividad:0,reservasPendientes:0,cerradasEfectividad:0,finalizadasEfectividad:0,losRojoFinalizadas:0,recableadosLosRojo:0};
+
+    unicas.forEach(o=>{
       const fila=acumular(porCuadrilla,o.cuadrilla);
-      if(o.estado==="FINALIZADA" && o.tipoTrabajo.includes("LOS ROJO")){
-        fila.losRojo++; control.losRojoFinalizadas++;
-        if(o.motivoFinalizacion.includes("RECABLEADO")){ fila.recableados++; control.recableadosLosRojo++; }
+
+      if((o.estado==="FINALIZADA"||o.estado==="FINALIZADO")&&o.tipoTrabajo.includes("LOS ROJO")){
+        fila.losRojo++;control.losRojoFinalizadas++;
+        if(o.motivoFinalizacion.includes("RECABLEADO")){fila.recableados++;control.recableadosLosRojo++;}
       }
 
-      if(esReservaPendiente(o)){ fila.reservasPendientes++; control.reservasPendientes++; control.abiertasExcluidas++; return; }
+      if(esReservaPendiente(o)){
+        fila.reservasPendientes++;control.reservasPendientes++;control.abiertasExcluidas++;return;
+      }
       const grupo=grupoCerrado(o);
-      if(!grupo){ control.abiertasExcluidas++; return; }
-      if(o.estado==="FINALIZADA" && esVtrGarEfectividad(o)){ control.vtrGarExcluidasEfectividad++; return; }
+      if(!grupo){fila.abiertas++;control.abiertasExcluidas++;return;}
+      if(grupo==="FINALIZADA"&&esVtrGarEfectividad(o)){control.vtrGarExcluidasEfectividad++;return;}
 
-      fila.total++; control.cerradasEfectividad++;
-      if(grupo==="FINALIZADA"){ fila.finalizadas++; control.finalizadasEfectividad++; }
-      else if(grupo==="REGESTION") fila.regestiones++;
-      else if(grupo==="REPROGRAMADA") fila.reprogramadas++;
-      else if(grupo==="ANULADA") fila.anuladas++;
+      fila.total++;control.cerradasEfectividad++;
+      if(grupo==="FINALIZADA"){fila.finalizadas++;control.finalizadasEfectividad++;}
+      else if(grupo==="REGESTION")fila.regestiones++;
+      else if(grupo==="REPROGRAMADA")fila.reprogramadas++;
       else fila.canceladas++;
     });
 
-    const detalle=Object.keys(porCuadrilla).map(function(k){
-      const x=porCuadrilla[k]; x.efectividad=x.total?x.finalizadas/x.total:0; x.porcentajeRecableado=x.losRojo?x.recableados/x.losRojo:0; return x;
-    }).sort(function(a,b){return norm(a.cuadrilla).localeCompare(norm(b.cuadrilla));});
+    const detalle=Object.keys(porCuadrilla).map(k=>{
+      const x=porCuadrilla[k];
+      x.efectividad=x.total?x.finalizadas/x.total:0;
+      x.porcentajeRecableado=x.losRojo?x.recableados/x.losRojo:0;
+      return x;
+    }).sort((a,b)=>norm(a.cuadrilla).localeCompare(norm(b.cuadrilla)));
+
     control.efectividadGeneral=control.cerradasEfectividad?control.finalizadasEfectividad/control.cerradasEfectividad:0;
     control.porcentajeRecableadoGeneral=control.losRojoFinalizadas?control.recableadosLosRojo/control.losRojoFinalizadas:0;
-    return {ok:true,version:"V487.6-RESERVA-PENDIENTE",soloLectura:true,reglas:{efectividad:"FINALIZADAS / TOTAL ORDENES CERRADAS ELEGIBLES",abiertosFuera:true,reservaPendiente:true,deduplicaOrdenId:true,vtrGarEfectividadPorTipoTraba:true,recableado:"FINALIZADA + TIPO_TRABAJO contiene LOS ROJO; numerador = MOTIVO_FINALIZACION contiene RECABLEADO"},control:control,detalle:detalle};
+
+    return {ok:true,version:"V487.8",soloLectura:true,reglas:{efectividad:"FINALIZADAS / TOTAL ORDENES CERRADAS ELEGIBLES",abiertosFuera:true,reservaPendiente:true,ultimoEstadoPorFechaHora:true,deduplicaOrdenId:true,vtrGarEfectividadPorTipoTraba:true,recableado:"FINALIZADA + TIPO_TRABAJO contiene LOS ROJO; numerador = MOTIVO_FINALIZACION contiene RECABLEADO"},control,detalle,ordenesCanonicas:unicas};
   }
-  async function consultar(periodo){ const r=await apiGet({accion:"listarMapaOperativo",usuario:usuario(),periodo:periodo||""}); const out=calcular(listaMapa(r)); out.periodo=periodo||r.periodo||""; return out; }
+
+  async function apiGet(payload){
+    if(!API)throw new Error("No se encontro la URL de MI VISUAL.");
+    const url=new URL(API);Object.keys(payload||{}).forEach(k=>{const v=payload[k];if(v!==undefined&&v!==null&&v!=="")url.searchParams.set(k,typeof v==="object"?JSON.stringify(v):String(v));});
+    url.searchParams.set("_v4878",String(Date.now()));
+    const r=await fetch(url.toString(),{method:"GET",cache:"no-store"});const t=await r.text();let j;
+    try{j=JSON.parse(t);}catch(_){throw new Error("La API no devolvio datos validos para V487.8.");}
+    if(!j||j.ok===false)throw new Error(j&&j.error?j.error:"No se pudo consultar WIN.");return j;
+  }
+  function listaMapa(r){if(Array.isArray(r&&r.ordenes))return r.ordenes;if(Array.isArray(r&&r.registros))return r.registros;return [];}
+  async function consultar(periodo){
+    const r=await apiGet({accion:"listarMapaOperativo",usuario:usuario(),periodo:periodo||""});
+    const out=calcular(listaMapa(r));out.periodo=periodo||r.periodo||"";out.actualizadoAl=r.actualizadoAl||r.ultimaActualizacion||"";return out;
+  }
+
   window.mv4876CalcularEfectividadRecableado=calcular;
   window.mv4876ConsultarEfectividadRecableado=consultar;
+  window.mv4878CanonicalizarOrdenesWin=canonicalizar;
 })();
