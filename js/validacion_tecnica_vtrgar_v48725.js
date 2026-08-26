@@ -22,7 +22,7 @@
   if(document.querySelector('script[data-mv490="1"]')) return;
 
   const s = document.createElement("script");
-  s.src = "./js/validacion_tecnica_limpieza_v490.js?v=V490-20260826";
+  s.src = "./js/validacion_tecnica_limpieza_v490.js?v=V490-20260826B";
   s.async = true;
   s.dataset.mv490 = "1";
   s.onerror = function(){
