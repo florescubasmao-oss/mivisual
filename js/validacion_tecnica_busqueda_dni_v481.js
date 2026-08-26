@@ -153,3 +153,133 @@
     },250);
   };
 })();
+
+/* ============================================================
+   MI VISUAL V487.26 - PESTAÑAS DE PENDIENTES
+   - Separa visualmente VALIDACIONES PENDIENTES en dos etiquetas:
+     RECABLEADO y VTR/GAR.
+   - Reutiliza renderListaValidaciones existente: no cambia acciones ni lógica.
+   - RECABLEADO conserva también OTRO para no ocultar casos especiales.
+============================================================ */
+(function(){
+  "use strict";
+
+  if(window.MV48726_VT_TABS_PENDIENTES_OK) return;
+  window.MV48726_VT_TABS_PENDIENTES_OK = true;
+
+  let tabActiva = "RECABLEADO";
+  let intentosWrapper = 0;
+
+  function normalizar(v){
+    return String(v == null ? "" : v)
+      .toUpperCase()
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g,"")
+      .replace(/\s+/g," ")
+      .trim();
+  }
+
+  function renderBase(){
+    if(typeof window.renderListaValidaciones === "function") return window.renderListaValidaciones;
+    try{
+      if(typeof renderListaValidaciones === "function") return renderListaValidaciones;
+    }catch(_){}
+    return null;
+  }
+
+  function pendientesPorTipo(){
+    const todas = Array.isArray(window.vtValidacionesActuales) ? window.vtValidacionesActuales : [];
+    const pendientes = todas.filter(function(x){
+      return normalizar(x && x.estado) === "PENDIENTE";
+    });
+
+    const vtrgar = pendientes.filter(function(x){
+      const tipo = normalizar(x && (x.tipoValidacion || x.tipo));
+      return tipo === "VTR" || tipo === "GAR";
+    });
+
+    const recableado = pendientes.filter(function(x){
+      const tipo = normalizar(x && (x.tipoValidacion || x.tipo));
+      return tipo !== "VTR" && tipo !== "GAR";
+    });
+
+    return {recableado:recableado,vtrgar:vtrgar};
+  }
+
+  function botonTab(tipo,label,cantidad){
+    const activa = tabActiva === tipo;
+    const fondo = activa ? "#2563eb" : "#eff6ff";
+    const color = activa ? "#ffffff" : "#1d4ed8";
+    const borde = activa ? "#2563eb" : "#93c5fd";
+    return `<button type="button" onclick="mv48726CambiarTabPendienteVT('${tipo}')" style="border:1px solid ${borde};background:${fondo};color:${color};border-radius:999px;padding:9px 14px;font-weight:900;font-size:12px;cursor:pointer;box-shadow:${activa ? "0 5px 12px rgba(37,99,235,.22)" : "none"}">${label} (${cantidad})</button>`;
+  }
+
+  function renderTabs(){
+    const el = document.getElementById("vtPendientes");
+    const render = renderBase();
+    if(!el || !render) return false;
+
+    const grupos = pendientesPorTipo();
+    const lista = tabActiva === "VTRGAR" ? grupos.vtrgar : grupos.recableado;
+    const vacio = tabActiva === "VTRGAR"
+      ? "No hay VTR/GAR pendientes."
+      : "No hay recableados pendientes.";
+
+    el.innerHTML = `
+      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:12px;padding-bottom:10px;border-bottom:1px solid #e2e8f0">
+        ${botonTab("RECABLEADO","🔧 RECABLEADO",grupos.recableado.length)}
+        ${botonTab("VTRGAR","📡 VTR/GAR",grupos.vtrgar.length)}
+      </div>
+      <div id="mv48726PendientesContenido">
+        ${lista.length ? render(lista,true) : `<div class="vt-sub">${vacio}</div>`}
+      </div>`;
+
+    return true;
+  }
+
+  window.mv48726CambiarTabPendienteVT = function(tipo){
+    tabActiva = tipo === "VTRGAR" ? "VTRGAR" : "RECABLEADO";
+    renderTabs();
+  };
+
+  function envolverCargaDespuesVtrGar(){
+    const base = window.cargarValidacionesTecnicas;
+    if(typeof base !== "function") return false;
+    if(base.__mv48726TabsPendientes) return true;
+
+    // Espera a que V487.25 termine de envolver primero la carga.
+    if(!base.__mv48725VtrGar && intentosWrapper < 12){
+      intentosWrapper++;
+      setTimeout(envolverCargaDespuesVtrGar,250);
+      return false;
+    }
+
+    const envuelta = async function(){
+      const r = await base.apply(this,arguments);
+      try{ renderTabs(); }catch(_){}
+      return r;
+    };
+
+    envuelta.__mv48726TabsPendientes = true;
+    envuelta.__mv48726Base = base;
+    window.cargarValidacionesTecnicas = envuelta;
+    try{ cargarValidacionesTecnicas = envuelta; }catch(_){}
+    return true;
+  }
+
+  const hookAnterior = window.mv339Antes_mostrarValidacionTecnica;
+  window.mv339Antes_mostrarValidacionTecnica = function(){
+    if(typeof hookAnterior === "function"){
+      try{ hookAnterior.apply(this,arguments); }catch(_){}
+    }
+
+    intentosWrapper = 0;
+    setTimeout(envolverCargaDespuesVtrGar,650);
+    setTimeout(renderTabs,950);
+    setTimeout(renderTabs,1800);
+  };
+
+  // Compatibilidad si la pantalla ya estaba abierta al actualizar el archivo.
+  setTimeout(envolverCargaDespuesVtrGar,500);
+  setTimeout(renderTabs,1200);
+})();
