@@ -116,7 +116,7 @@
 
     promesa = new Promise(function(resolve,reject){
       const s = document.createElement("script");
-      s.src = "./js/validacion_tecnica_vtrgar_v48725.js?v=V487.25-WIN";
+      s.src = "./js/validacion_tecnica_vtrgar_v48725.js?v=V490-UNIFICADO-20260826";
       s.async = true;
       s.onload = function(){
         if(typeof window.mv48725MontarVtrGarValidacion === "function"){
@@ -141,7 +141,7 @@
 
     setTimeout(function(){
       cargarSubmodulo().catch(function(error){
-        console.warn("MI VISUAL V487.25:",error && error.message ? error.message : error);
+        console.warn("MI VISUAL V490:",error && error.message ? error.message : error);
       });
     },250);
   };
@@ -289,7 +289,7 @@
 
     promesa = new Promise(function(resolve,reject){
       const s=document.createElement("script");
-      s.src="./js/validacion_tecnica_unificada_v489.js?v=V489-20260826";
+      s.src="./js/validacion_tecnica_unificada_v489.js?v=V489-20260826B";
       s.async=true;
       s.onload=resolve;
       s.onerror=function(){ promesa=null; reject(new Error("No se pudo cargar V489.")); };
