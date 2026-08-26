@@ -15,9 +15,30 @@
   window.MV481_VT_BUSQUEDA_DNI_OK = true;
 
   const hookAnterior = window.mv339Antes_mostrarValidacionTecnica;
+  let mv4871Carga = null;
 
   function texto(v){
     return String(v == null ? "" : v).trim();
+  }
+
+  function cargarControlVtrGarV4871(){
+    if(window.MV4871_VTR_GAR_WIN_OK){
+      if(typeof window.mv4871InstalarAccesoValidacion === "function") setTimeout(window.mv4871InstalarAccesoValidacion,0);
+      return Promise.resolve();
+    }
+    if(mv4871Carga) return mv4871Carga;
+    mv4871Carga = new Promise(function(resolve,reject){
+      const s=document.createElement("script");
+      s.src="./js/validacion_tecnica_vtr_gar_win_v4871.js?v=V4871-CONTROL-WIN-SOLO-LECTURA";
+      s.async=true;
+      s.onload=function(){
+        if(typeof window.mv4871InstalarAccesoValidacion === "function") setTimeout(window.mv4871InstalarAccesoValidacion,0);
+        resolve();
+      };
+      s.onerror=function(){mv4871Carga=null;reject(new Error("No se pudo cargar el control VTR/GAR V487.1"));};
+      document.head.appendChild(s);
+    });
+    return mv4871Carga;
   }
 
   function instalarFiltro(){
@@ -81,6 +102,9 @@
       try{ hookAnterior.apply(this, arguments); }catch(_){}
     }
 
+    // V487.1: solo al abrir Validación Técnica se descarga el control WIN.
+    // No agrega peso al login ni al resto de módulos.
+    cargarControlVtrGarV4871().catch(function(){});
     instalarFiltro();
 
     // mostrarValidacionTecnica dibuja el Historial de forma síncrona.
@@ -88,6 +112,7 @@
     setTimeout(function(){
       instalarFiltro();
       ajustarBuscador();
+      if(typeof window.mv4871InstalarAccesoValidacion === "function") window.mv4871InstalarAccesoValidacion();
     }, 0);
   };
 
