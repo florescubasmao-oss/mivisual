@@ -32,13 +32,13 @@ if 'indicadores_win_sync_v4879.js?v=V48712-PUBLICADOR-ACTIVO' not in loader:
     loader = loader.replace(loader_marker, loader_block, 1)
     loader_path.write_text(loader, encoding="utf-8")
 
-# Fuerza a navegadores y service worker a descargar el cargador nuevo.
-old_loader_refs = [
+# Fuerza a navegadores y al service worker a descargar el cargador nuevo.
+for old in [
     './js/modulos_loader.js?v=V454-VT-GAR-VTR-OBSERVAR-REENVIAR',
     './js/modulos_loader.js?v=V408-RESTAURACION-CONTROLADA',
-]
-for old in old_loader_refs:
+]:
     index = index.replace(old, './js/modulos_loader.js?v=V48712-PUBLICADOR-ACTIVO')
+index = index.replace('./sw.js?v=V408-RESTAURACION-CONTROLADA', './sw.js?v=V48712-PUBLICADOR-ACTIVO')
 index_path.write_text(index, encoding="utf-8")
 
 combined = code.rstrip() + "\n\n\n" + publisher.strip() + "\n"
@@ -58,5 +58,7 @@ if 'indicadores_win_sync_v4879.js?v=V48712-PUBLICADOR-ACTIVO' not in loader:
     raise SystemExit("El sincronizador V487.12 no quedo conectado al Mapa")
 if './js/modulos_loader.js?v=V48712-PUBLICADOR-ACTIVO' not in index:
     raise SystemExit("index.html no fuerza el loader V487.12")
+if './sw.js?v=V48712-PUBLICADOR-ACTIVO' not in index:
+    raise SystemExit("index.html no fuerza el service worker V487.12")
 
 print(f"Code V487 completo: {len(combined)} bytes")
