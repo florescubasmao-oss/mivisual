@@ -1,15 +1,15 @@
 /* ================================================================
-   MI VISUAL V487.3 - Origen PROPIA / ASIGNADA para Produccion WIN
+   MI VISUAL V487.6 - Origen PROPIA / ASIGNADA para VTR/GAR
 
    SOLO LECTURA
-   - Complementa la compuerta V487.2 sin modificar V486 ni hojas.
+   - Complementa la compuerta V487.5 sin modificar V486 ni hojas.
    - Busca la atencion FINALIZADA inmediatamente anterior del mismo cliente
      dentro de los 30 dias previos.
    - Misma cuadrilla = PROPIA. Cuadrilla distinta = ASIGNADA.
    - Sin antecedente confiable = MANUAL.
-   - ASIGNADA: debe estar reportada en Validacion Tecnica para sumar;
-     si esta reportada y no esta RECHAZADA/OBSERVADA se habilita automaticamente.
-   - PROPIA: debe estar reportada y RESULTADO_FINAL = BONO para sumar.
+   - La validacion BONO / NO BONO se conserva exclusivamente para VTR/GAR.
+   - VTR y GAR SIEMPRE aportan 0 puntos a Produccion, meta diaria,
+     meta mensual y Ranking-Produccion, para cuadrillas y supervisores.
    - El indicador VTR/GAR se atribuye a la cuadrilla de la atencion anterior.
 ================================================================ */
 (function(){
@@ -47,7 +47,7 @@
   async function apiGet(payload){
     if(!API)throw new Error("No se encontro la URL de MI VISUAL.");
     const url=new URL(API);Object.keys(payload||{}).forEach(k=>{const v=payload[k];if(v!==undefined&&v!==null&&v!=="")url.searchParams.set(k,typeof v==="object"?JSON.stringify(v):String(v));});
-    url.searchParams.set("_v4873",String(Date.now()));
+    url.searchParams.set("_v4876",String(Date.now()));
     const r=await fetch(url.toString(),{method:"GET",cache:"no-store"});const t=await r.text();let j;
     try{j=JSON.parse(t);}catch(_){throw new Error("La API no devolvio datos validos para determinar origen VTR/GAR.");}
     if(!j||j.ok===false)throw new Error(j&&j.error?j.error:"No se pudo determinar origen VTR/GAR.");return j;
@@ -68,30 +68,36 @@
     return {origen:propia?"PROPIA":"ASIGNADA",anterior:ant,dias:Math.max(0,Math.floor((fin-ant.fecha.getTime())/MS_DIA)),motivo:"Atencion FINALIZADA inmediatamente anterior del mismo cliente dentro de 30 dias."};
   }
   function aplicarReglaOrigen(x,origen){
-    const puntosBase=Number(x.puntosBaseVtrGar!=null?x.puntosBaseVtrGar:x.puntos||0);
     const estadoReporte=norm(x.resultadoReporteVtrGar||"");
+    x.excluidaProduccion=true;
+    x.excluidaMetaDiaria=true;
+    x.excluidaMetaMensual=true;
+    x.excluidaRankingProduccion=true;
+    x.puntosProduccionVtrGar=0;
+    x.puntos=0;
+
     if(!x.reportadaVtrGar){
-      x.estadoConsideracion="NO CONSIDERADA";x.detalleConsideracion="SIN REPORTE";x.motivoConsideracion="VTR/GAR FINALIZADA en WIN, visible en historial, pero sin reporte del tecnico.";x.puntos=0;return;
+      x.habilitadaVtrGar=false;x.estadoConsideracion="NO CONSIDERADA";x.detalleConsideracion="SIN REPORTE";x.motivoConsideracion="VTR/GAR FINALIZADA en WIN, visible en historial, pero sin reporte del tecnico. No suma Produccion.";return;
     }
     if(origen==="MANUAL"){
-      x.estadoConsideracion="NO CONSIDERADA";x.detalleConsideracion="PENDIENTE ORIGEN MANUAL";x.motivoConsideracion="Fue reportada, pero no se pudo confirmar si es PROPIA o ASIGNADA.";x.puntos=0;return;
+      x.habilitadaVtrGar=false;x.estadoConsideracion="NO CONSIDERADA";x.detalleConsideracion="PENDIENTE ORIGEN MANUAL";x.motivoConsideracion="Fue reportada, pero no se pudo confirmar si es PROPIA o ASIGNADA. No suma Produccion.";return;
     }
     if(origen==="ASIGNADA"){
       if(estadoReporte==="RECHAZADO"||estadoReporte==="OBSERVADO"){
-        x.estadoConsideracion="NO CONSIDERADA";x.detalleConsideracion=estadoReporte;x.motivoConsideracion="ASIGNADA reportada, pero el registro esta "+estadoReporte+".";x.puntos=0;return;
+        x.habilitadaVtrGar=false;x.estadoConsideracion="NO CONSIDERADA";x.detalleConsideracion=estadoReporte;x.motivoConsideracion="ASIGNADA reportada, pero el registro esta "+estadoReporte+". No suma Produccion.";return;
       }
       if(estadoReporte==="NO BONO"){
-        x.estadoConsideracion="NO CONSIDERADA";x.detalleConsideracion="REVISAR NO BONO LEGACY";x.motivoConsideracion="ASIGNADA reportada con NO BONO previo; requiere revision antes de aplicar la nueva regla automatica.";x.puntos=0;return;
+        x.habilitadaVtrGar=false;x.estadoConsideracion="NO CONSIDERADA";x.detalleConsideracion="REVISAR NO BONO LEGACY";x.motivoConsideracion="ASIGNADA reportada con NO BONO previo; requiere revision dentro de VTR/GAR. No suma Produccion.";return;
       }
-      x.estadoConsideracion="CONSIDERADA";x.detalleConsideracion="ASIGNADA REPORTADA";x.motivoConsideracion="ASIGNADA confirmada por WIN y reportada por el tecnico: habilitacion automatica.";x.puntos=puntosBase;return;
+      x.habilitadaVtrGar=true;x.estadoConsideracion="VALIDADA VTR/GAR";x.detalleConsideracion="ASIGNADA REPORTADA";x.motivoConsideracion="ASIGNADA confirmada y reportada. Valida solo para control VTR/GAR; 0 puntos de Produccion.";return;
     }
     if(estadoReporte==="BONO"){
-      x.estadoConsideracion="CONSIDERADA";x.detalleConsideracion="PROPIA · BONO VALIDADO";x.motivoConsideracion="PROPIA reportada y validada como BONO.";x.puntos=puntosBase;return;
+      x.habilitadaVtrGar=true;x.estadoConsideracion="VALIDADA VTR/GAR";x.detalleConsideracion="PROPIA · BONO VALIDADO";x.motivoConsideracion="PROPIA reportada y validada como BONO. Valida solo para control VTR/GAR; 0 puntos de Produccion.";return;
     }
     if(estadoReporte==="NO BONO"||estadoReporte==="RECHAZADO"||estadoReporte==="OBSERVADO"){
-      x.estadoConsideracion="NO CONSIDERADA";x.detalleConsideracion="PROPIA · "+estadoReporte;x.motivoConsideracion="PROPIA reportada pero no habilitada para bono.";x.puntos=0;return;
+      x.habilitadaVtrGar=false;x.estadoConsideracion="NO CONSIDERADA";x.detalleConsideracion="PROPIA · "+estadoReporte;x.motivoConsideracion="PROPIA reportada pero no habilitada para bono. 0 puntos de Produccion.";return;
     }
-    x.estadoConsideracion="NO CONSIDERADA";x.detalleConsideracion="PROPIA · PENDIENTE VALIDACION";x.motivoConsideracion="PROPIA reportada; requiere validacion BONO / NO BONO.";x.puntos=0;
+    x.habilitadaVtrGar=false;x.estadoConsideracion="NO CONSIDERADA";x.detalleConsideracion="PROPIA · PENDIENTE VALIDACION";x.motivoConsideracion="PROPIA reportada; requiere validacion BONO / NO BONO. 0 puntos de Produccion.";
   }
   function recomputar(resultado){
     const nuevos={};(resultado.detalle||[]).forEach(x=>{const k=[x.sede||"SIN SEDE",x.cuadrillaWin||x.cuadrillaEjecutora||"",x.fecha||""].join("|");nuevos[k]=(nuevos[k]||0)+Number(x.puntos||0);});
@@ -110,12 +116,12 @@
       if(!x.esVtrGar)return;
       const inc=mapa[id(x.ordenId)]||{ordenId:id(x.ordenId),codigo:id(x.codigoPedido),dni:id(x.dni),cuadrilla:txt(x.cuadrillaWin),estado:"FINALIZADA",fecha:fecha(x.fecha)};
       const o=buscarOrigen(inc,ordenes);x.origenVtrGar=o.origen;x.cuadrillaOrigenVtrGar=o.anterior?o.anterior.cuadrilla:"";x.ordenOrigenVtrGar=o.anterior?o.anterior.ordenId:"";x.fechaOrigenVtrGar=o.anterior&&o.anterior.fecha?o.anterior.fecha.toLocaleDateString("es-PE"):"";x.diasOrigenVtrGar=o.dias;x.motivoOrigenVtrGar=o.motivo;x.afectaIndicadorVtrGar=o.origen!=="MANUAL"&&!!x.cuadrillaOrigenVtrGar;
-      aplicarReglaOrigen(x,o.origen);x.requiereIntervencion=x.requiereIntervencion||o.origen==="MANUAL"||x.estadoConsideracion!=="CONSIDERADA";
+      aplicarReglaOrigen(x,o.origen);x.requiereIntervencion=x.requiereIntervencion||o.origen==="MANUAL"||!x.habilitadaVtrGar;
       if(o.origen==="PROPIA")propias++;else if(o.origen==="ASIGNADA")asignadas++;else manuales++;
-      if(x.estadoConsideracion==="CONSIDERADA")habilitadas++;else noConsideradas++;
+      if(x.habilitadaVtrGar)habilitadas++;else noConsideradas++;
     });
-    resultado.resumen=resultado.resumen||{};resultado.resumen.vtrGarPropias=propias;resultado.resumen.vtrGarAsignadas=asignadas;resultado.resumen.vtrGarOrigenManual=manuales;resultado.resumen.vtrGarHabilitadas=habilitadas;resultado.resumen.vtrGarNoConsideradas=noConsideradas;
-    resultado.reglaVtrGar=Object.assign({},resultado.reglaVtrGar||{},{version:"V487.3",clasificaOrigen30Dias:true,asignadaReportadaAutomatica:true,propiaRequiereBono:true,indicadorCuadrillaOrigen:true});recomputar(resultado);return resultado;
+    resultado.resumen=resultado.resumen||{};resultado.resumen.vtrGarPropias=propias;resultado.resumen.vtrGarAsignadas=asignadas;resultado.resumen.vtrGarOrigenManual=manuales;resultado.resumen.vtrGarHabilitadas=habilitadas;resultado.resumen.vtrGarNoConsideradas=noConsideradas;resultado.resumen.vtrGarPuntosProduccion=0;
+    resultado.reglaVtrGar=Object.assign({},resultado.reglaVtrGar||{},{version:"V487.6",clasificaOrigen30Dias:true,asignadaReportadaAutomatica:true,propiaRequiereBono:true,indicadorCuadrillaOrigen:true,excluidaProduccion:true,excluidaMetaDiaria:true,excluidaMetaMensual:true,excluidaRankingProduccion:true,aplicaCuadrilla:true,aplicaSupervisor:true});recomputar(resultado);return resultado;
   }
 
   window.mv4873AplicarOrigenVtrGar=aplicar;
