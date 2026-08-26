@@ -1,0 +1,1 @@
+/* Respaldo de despliegue: el archivo completo para Apps Script se entrega como V498_CIERRE_DEFINITIVO_MI_VISUAL.txt. Reglas V498: WIN manda; Partner complementa; julio y anteriores congelados; publicación agosto con snapshot/rollback. */
