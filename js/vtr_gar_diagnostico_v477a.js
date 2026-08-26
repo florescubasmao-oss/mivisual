@@ -250,3 +250,26 @@
     obs.observe(document.body,{childList:true,subtree:true});
   }
 })();
+
+/* ============================================================
+   MI VISUAL V497 - LOADER INDEPENDIENTE DEL HOOK WIN
+   Solo descarga el hook cuando Mapa Operativo ya existe.
+============================================================ */
+(function(){
+  "use strict";
+  if(window.MV497_WIN_HOOK_LOADER_OK)return;
+  window.MV497_WIN_HOOK_LOADER_OK=true;
+  let cargando=false;
+  function revisar(){
+    if(window.MV497_WIN_IMPORT_HOOK_OK||cargando)return;
+    if(typeof window.moRegistrarImportacion!=="function")return;
+    cargando=true;
+    const s=document.createElement("script");
+    s.src="./js/mapa_sync_indicadores_v497.js?v=V497-20260826A";
+    s.async=true;
+    s.onload=function(){cargando=false;};
+    s.onerror=function(){cargando=false;console.warn("MI VISUAL V497: no se pudo cargar el hook WIN.");};
+    document.head.appendChild(s);
+  }
+  const t=setInterval(function(){revisar();if(window.MV497_WIN_IMPORT_HOOK_OK)clearInterval(t);},250);
+})();
