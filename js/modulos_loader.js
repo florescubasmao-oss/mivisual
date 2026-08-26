@@ -132,7 +132,8 @@
     mapa: {
       archivos: [
         `./js/mapa_operativo.js?v=V419-MAPA-MULTIFILTRO-FIX`,
-        `./js/mapa_partner_visual_v386.js?v=V408-RESTAURA-V403`,
+        `./js/mapa_partner_visual_v386.js?v=V48712-ESTADO-WIN`,
+        `./js/indicadores_win_sync_v4879.js?v=V48712-PUBLICADOR-ACTIVO`,
         `./js/mapa_progreso_v393.js?v=V408-RESTAURA-V403`,
         `./js/mapa_rapido_v395.js?v=V408-RESTAURA-V403`,
         `./js/mapa_campo_v408.js?v=V408-MAPA-CAMPO`,
@@ -158,7 +159,8 @@
         `./js/base_operativa.js?v=V408-RESTAURA-V403`,
         `./js/base_operativa_lectura_v385.js?v=V408-RESTAURA-V403`,
         `./js/base_operativa_sync_v367.js?v=V408-RESTAURA-V403`,
-        `./js/admin_checklist.js?v=${VERSION}`
+        `./js/admin_checklist.js?v=${VERSION}`,
+        `./js/produccion_win_paralela_v487.js?v=V487-SOLO-LECTURA`
       ],
       entradas: ["mostrarAdministracion"]
     }
