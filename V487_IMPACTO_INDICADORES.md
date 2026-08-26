@@ -47,7 +47,7 @@ El cambio es principalmente de fuente de datos y actualización interna. No se r
 - Se conserva la cuadrilla ejecutora original para trazabilidad.
 
 ## Publicador V487.12
-Archivo: `apps_script/V487_Publicador.gs`.
+Archivo fuente: `apps_script/V487_Publicador.gs`.
 
 Protecciones:
 - `MV487_PUBLICADOR_PERIODO_MINIMO_ = "2026-08"`.
@@ -66,7 +66,7 @@ Al abrir Mapa Operativo se cargan:
 Después de una importación WIN válida, el sincronizador solicita al backend la publicación del periodo importado. Periodos anteriores a agosto se omiten por cierre.
 
 ## Despliegue
-`Code_V487_COMPLETO.gs` es el artefacto completo para Apps Script. Contiene el backend vigente más el publicador V487.12 y las rutas necesarias.
+`Code_V487_COMPLETO.gs` es el artefacto completo para Apps Script. Contiene el backend vigente, las rutas de publicación y el publicador V487.12 en un único archivo.
 
 El orden seguro de puesta en producción es:
 1. Desplegar `Code_V487_COMPLETO.gs` en Apps Script.
