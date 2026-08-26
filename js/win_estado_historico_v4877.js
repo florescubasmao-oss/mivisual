@@ -1,7 +1,7 @@
 /* ================================================================
-   MI VISUAL V487.7 - Motor de prueba WIN: estado vigente + historico
+   MI VISUAL V487.9 - Motor WIN: estado vigente + historico
 
-   SOLO PRUEBA / SIN ESCRITURAS
+   IMPLEMENTACION CONTROLADA
    - OrdenId = llave unica.
    - El estado vigente se decide por FECHA_ULTIMO_ESTADO / FechaUltiEsta.
    - Si empatan, gana FECHA_IMPORTACION mas reciente.
@@ -9,6 +9,8 @@
    - RESERVA / ORDEN RESERVADA = PENDIENTE hasta recibir un estado posterior.
    - Partner es apoyo opcional: propone correcciones/observaciones, no pisa WIN.
    - La cuadrilla ejecutora original se conserva aunque exista homologacion.
+   - Despues de una importacion WIN valida carga V487.9 y solicita el
+     recalculo controlado de Produccion, Efectividad, Recableado y VTR/GAR.
 ================================================================ */
 (function(root){
   "use strict";
@@ -75,16 +77,17 @@
       val(o,"DETALLE","Motivo Regestión","motivoRegestion")
     ].join(" "));
   }
-  function esReservaPendiente(o){ return estado(o)==="CANCELADA" && /RESERVA|RESERVAD/.test(motivoReserva(o)); }
+  function esReservaPendiente(o){ return (estado(o)==="CANCELADA"||estado(o)==="CANCELADO") && /RESERVA|RESERVAD/.test(motivoReserva(o)); }
 
   function clasificarEfectividad(o){
     const e=estado(o), t=tipoTrabajo(o);
     if(esReservaPendiente(o)) return "PENDIENTE_RESERVA";
-    if(e==="FINALIZADA" && (t==="REITERADA" || t==="GARANTIA")) return "FUERA_VTR_GAR";
-    if(e==="FINALIZADA") return "FINALIZADA";
-    if(e==="REGESTION" || e==="REGESTIÓN") return "REGESTION";
-    if(e==="ANULADA") return "ANULADA";
-    if(e==="CANCELADA"){
+    if((e==="FINALIZADA"||e==="FINALIZADO") && (t==="REITERADA" || t==="GARANTIA")) return "FUERA_VTR_GAR";
+    if(e==="FINALIZADA"||e==="FINALIZADO") return "FINALIZADA";
+    if(e.indexOf("REGEST")===0) return "REGESTION";
+    if(e==="ANULADA"||e==="ANULADO") return "ANULADA";
+    if(e==="REPROGRAMADA"||e==="REPROGRAMADO") return "REPROGRAMADA";
+    if(e==="CANCELADA"||e==="CANCELADO"){
       const m=norm([val(o,"MOTIVO_CANCELACION","Motivo Cancelación","motivoCancelacion"),val(o,"DETALLE","Motivo Regestión","motivoRegestion")].join(" "));
       return /REPROGRAM|POSTERGA/.test(m)?"REPROGRAMADA":"CANCELADA";
     }
@@ -92,7 +95,8 @@
   }
 
   function clasificarRecableado(o){
-    const aplica=estado(o)==="FINALIZADA" && tipoTrabajo(o).includes("LOS ROJO");
+    const e=estado(o);
+    const aplica=(e==="FINALIZADA"||e==="FINALIZADO") && tipoTrabajo(o).includes("LOS ROJO");
     const rec=aplica && norm(val(o,"MOTIVO_FINALIZACION","Motivo Finalización","motivoFinalizacion","Tipo de Trabajo")).includes("RECABLEADO");
     return {aplica:aplica,recableado:rec};
   }
@@ -120,7 +124,28 @@
     return {visible:r.hasta||nombre,ejecutorOriginal:nombre,tipo:norm(r.tipo)||"REEMPLAZO",unificaIndicadores:false};
   }
 
+  function cargarSincronizador(periodos){
+    if(typeof window==="undefined") return;
+    const ejecutar=function(){
+      if(typeof window.mv4879SincronizarIndicadoresWin==="function"){
+        window.mv4879SincronizarIndicadoresWin(periodos||[]).catch(function(error){console.warn("V487.9: no se pudo recalcular indicadores despues de la carga WIN",error);});
+      }
+    };
+    if(typeof window.mv4879SincronizarIndicadoresWin==="function"){ejecutar();return;}
+    const existente=Array.from(document.scripts).find(function(s){return s.src&&s.src.includes("indicadores_win_sync_v4879.js");});
+    if(existente){existente.addEventListener("load",ejecutar,{once:true});return;}
+    const s=document.createElement("script");s.src="./js/indicadores_win_sync_v4879.js?v=V4879-4-INDICADORES";s.async=true;s.onload=ejecutar;s.onerror=function(){console.warn("V487.9: no se pudo cargar el sincronizador de indicadores.");};document.head.appendChild(s);
+  }
+
   const api={fechaMs,ordenId,estado,tipoTrabajo,cuadrilla,fechaEstadoMs,compararVersion,fusionarHistorico,esReservaPendiente,clasificarEfectividad,clasificarRecableado,partnerOpcional,homologarCuadrilla};
   if(typeof module!=="undefined"&&module.exports) module.exports=api;
   root.MV4877_WIN_ESTADO_HISTORICO=api;
+
+  if(typeof window!=="undefined"&&!window.MV4879_WIN_IMPORT_HOOK_OK){
+    window.MV4879_WIN_IMPORT_HOOK_OK=true;
+    window.addEventListener("mv487WinImportado",function(e){
+      const periodos=e&&e.detail&&Array.isArray(e.detail.periodos)?e.detail.periodos:[];
+      cargarSincronizador(periodos);
+    });
+  }
 })(typeof window!=="undefined"?window:globalThis);
