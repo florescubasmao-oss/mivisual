@@ -31,16 +31,17 @@ jobs:
           grep -q 'publicarIndicadoresWinV487' apps_script/Code.gs
           grep -q 'MV487_PUBLICADOR_PERIODO_MINIMO_ = "2026-08"' Code_V487_COMPLETO.gs
           grep -q 'indicadores_win_sync_v4879.js?v=V48712-PUBLICADOR-ACTIVO' js/modulos_loader.js
+          grep -q 'modulos_loader.js?v=V48712-PUBLICADOR-ACTIVO' index.html
 
       - name: Guardar archivos generados
         shell: bash
         run: |
-          if git diff --quiet -- apps_script/Code.gs js/modulos_loader.js Code_V487_COMPLETO.gs && git ls-files --error-unmatch Code_V487_COMPLETO.gs >/dev/null 2>&1; then
+          if git diff --quiet -- apps_script/Code.gs js/modulos_loader.js index.html Code_V487_COMPLETO.gs && git ls-files --error-unmatch Code_V487_COMPLETO.gs >/dev/null 2>&1; then
             echo 'V487 ya estaba actualizado.'
             exit 0
           fi
           git config user.name 'github-actions[bot]'
           git config user.email '4189826+github-actions[bot]@users.noreply.github.com'
-          git add apps_script/Code.gs js/modulos_loader.js Code_V487_COMPLETO.gs
+          git add apps_script/Code.gs js/modulos_loader.js index.html Code_V487_COMPLETO.gs
           git commit -m 'V487.12 generar backend completo activo agosto'
           git push
