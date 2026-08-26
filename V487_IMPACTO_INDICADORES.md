@@ -50,8 +50,8 @@ El cambio es principalmente de fuente de datos y actualización interna. No se r
 Archivo fuente: `apps_script/V487_Publicador.gs`.
 
 Protecciones:
-- `MV487_PUBLICADOR_PERIODO_MINIMO_ = "2026-08"`.
-- Confirmación interna obligatoria `PUBLICAR_V487_CONFIRMADO`.
+- Periodo mínimo `2026-08`.
+- Confirmación interna obligatoria antes de escribir.
 - ScriptLock durante la publicación.
 - Snapshots de Producción, Efectividad, Recableado, VTR/GAR, base VTR/GAR y Ranking.
 - Rollback automático si falla cualquier etapa.
@@ -59,16 +59,12 @@ Protecciones:
 - Invalidación de cachés y reconstrucción de Ranking/resumen al finalizar.
 
 ## Actualización automática
-Al abrir Mapa Operativo se cargan:
-- `mapa_partner_visual_v386.js?v=V48712-ESTADO-WIN`
-- `indicadores_win_sync_v4879.js?v=V48712-PUBLICADOR-ACTIVO`
+Al abrir Mapa Operativo se cargan el control de estado WIN y el sincronizador V487.12. Después de una importación WIN válida, el sincronizador publica el periodo importado. Periodos anteriores a agosto se omiten por cierre.
 
-Después de una importación WIN válida, el sincronizador solicita al backend la publicación del periodo importado. Periodos anteriores a agosto se omiten por cierre.
+## Artefacto de despliegue
+`Code_V487_COMPLETO.gs` contiene el backend vigente, las rutas de publicación y el publicador V487.12 en un único archivo y pasó validación automática de sintaxis en GitHub Actions.
 
-## Despliegue
-`Code_V487_COMPLETO.gs` es el artefacto completo para Apps Script. Contiene el backend vigente, las rutas de publicación y el publicador V487.12 en un único archivo.
-
-El orden seguro de puesta en producción es:
+## Orden seguro de puesta en producción
 1. Desplegar `Code_V487_COMPLETO.gs` en Apps Script.
 2. Validar la ruta V487.12.
 3. Fusionar el PR a main para que GitHub Pages cargue el sincronizador.
