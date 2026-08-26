@@ -1,5 +1,5 @@
 /* ================================================================
-   MI VISUAL V487.9 - Orquestador WIN de los 4 indicadores
+   MI VISUAL V487.10 - Orquestador WIN de los 4 indicadores
 
    FASE DE IMPLEMENTACION CONTROLADA
    - Consolida Produccion, Efectividad, % Recableado y VTR/GAR desde WIN.
@@ -8,6 +8,8 @@
      comparar antes de activar la publicacion backend definitiva.
    - Se puede ejecutar despues de cada importacion WIN; usa debounce para no
      repetir calculos pesados si llegan varias notificaciones seguidas.
+   - Efectividad conserva la regla oficial, incluido VTR/GAR FINALIZADO.
+   - El denominador del indicador VTR/GAR conserva Total Ordenes FINALIZADAS.
 ================================================================ */
 (function(){
   "use strict";
@@ -70,17 +72,17 @@
   }
 
   async function dependencias(){
-    await cargarScript("./js/win_estado_historico_v4877.js?v=V4879","MV4877_WIN_ESTADO_HISTORICO");
-    await cargarScript("./js/efectividad_recableado_win_v4876.js?v=V4879","MV4876_EFECTIVIDAD_RECABLEADO_WIN");
-    await cargarScript("./js/produccion_vtr_gar_gate_v4872.js?v=V4879-CERO-PRODUCCION","MV4872_PRODUCCION_VTR_GAR_GATE");
-    await cargarScript("./js/produccion_vtr_gar_origen_v4873.js?v=V4879-CERO-PRODUCCION","MV4873_ORIGEN_VTR_GAR");
+    await cargarScript("./js/win_estado_historico_v4877.js?v=V48710","MV4877_WIN_ESTADO_HISTORICO");
+    await cargarScript("./js/efectividad_recableado_win_v4876.js?v=V48710","MV4876_EFECTIVIDAD_RECABLEADO_WIN");
+    await cargarScript("./js/produccion_vtr_gar_gate_v4872.js?v=V48710-CERO-PRODUCCION","MV4872_PRODUCCION_VTR_GAR_GATE");
+    await cargarScript("./js/produccion_vtr_gar_origen_v4873.js?v=V48710-CERO-PRODUCCION","MV4873_ORIGEN_VTR_GAR");
   }
 
   async function apiGet(payload){
     if(!API)throw new Error("No se encontro la URL de MI VISUAL.");
-    const url=new URL(API);Object.keys(payload||{}).forEach(k=>{const v=payload[k];if(v!==undefined&&v!==null&&v!=="")url.searchParams.set(k,typeof v==="object"?JSON.stringify(v):String(v));});url.searchParams.set("_v4879",Date.now());
+    const url=new URL(API);Object.keys(payload||{}).forEach(k=>{const v=payload[k];if(v!==undefined&&v!==null&&v!=="")url.searchParams.set(k,typeof v==="object"?JSON.stringify(v):String(v));});url.searchParams.set("_v48710",Date.now());
     const r=await fetch(url.toString(),{method:"GET",cache:"no-store"});const t=await r.text();let j;
-    try{j=JSON.parse(t);}catch(_){throw new Error("La API no devolvio JSON en V487.9.");}
+    try{j=JSON.parse(t);}catch(_){throw new Error("La API no devolvio JSON en V487.10.");}
     if(!j||j.ok===false)throw new Error(j&&j.error?j.error:"No se pudo consultar WIN.");return j;
   }
   async function apiPost(payload){
@@ -118,7 +120,6 @@
   }
 
   function esFinalizada(o){return /^FINALIZAD[AO]$/.test(norm(val(o,"estado","ESTADO","Estado")));}
-  function esVtrGarTipoEfectividad(o){const t=norm(val(o,"tipoTrabajo","TIPO_TRABAJO","TipoTraba"));return t==="REITERADA"||t==="GARANTIA";}
 
   function cutoff(ordenes,periodo){
     let max=0;(ordenes||[]).forEach(o=>{const f=fechaOrden(o);if(f&&f.getTime()>max)max=f.getTime();});
@@ -135,7 +136,7 @@
     function fila(nombre){const k=claveCuadrilla(nombre)||"SIN CUADRILLA";if(!por[k])por[k]={cuadrilla:nombre||"SIN CUADRILLA",finalizadas:0,gar:0,vtr:0,total:0,porcentaje:0,incidencias:[]};return por[k];}
 
     ordenes.forEach(o=>{
-      const f=fechaOrden(o);if(!f||f<inicio||f>fin||!esFinalizada(o)||esVtrGarTipoEfectividad(o))return;
+      const f=fechaOrden(o);if(!f||f<inicio||f>fin||!esFinalizada(o))return;
       fila(val(o,"cuadrilla","CUADRILLA","Cuadrilla")).finalizadas++;
     });
 
@@ -150,7 +151,7 @@
     }));
 
     Object.values(por).forEach(x=>x.porcentaje=x.finalizadas?x.total/x.finalizadas:0);
-    return {version:"V487.9",desde:inicio, hasta:fin,corte:corte,detalle:Object.values(por).sort((a,b)=>claveCuadrilla(a.cuadrilla).localeCompare(claveCuadrilla(b.cuadrilla))),incidencias,control:{incidenciasAtribuidas:incidencias.length,manualesSinAtribuir:[prodAnterior,prodActual].reduce((s,p)=>s+(p&&Array.isArray(p.detalle)?p.detalle.filter(x=>x.esVtrGar&&x.origenVtrGar==="MANUAL").length:0),0)}};
+    return {version:"V487.10",desde:inicio,hasta:fin,corte:corte,detalle:Object.values(por).sort((a,b)=>claveCuadrilla(a.cuadrilla).localeCompare(claveCuadrilla(b.cuadrilla))),incidencias,control:{denominadorIncluyeTodaFinalizada:true,incidenciasAtribuidas:incidencias.length,manualesSinAtribuir:[prodAnterior,prodActual].reduce((s,p)=>s+(p&&Array.isArray(p.detalle)?p.detalle.filter(x=>x.esVtrGar&&x.origenVtrGar==="MANUAL").length:0),0)}};
   }
 
   async function calcularPeriodo(periodo){
@@ -165,7 +166,7 @@
     const mapa=listaMapa(mapaR),mapaPrev=listaMapa(mapaPrevR);
     const er=window.mv4876CalcularEfectividadRecableado(mapa);
     const vg=vtrGarRolling(p,mapa,mapaPrev,produccion,produccionPrev);
-    const salida={ok:true,version:"V487.9",periodo:p,calculadoEn:new Date().toISOString(),soloPrevisualizacion:true,fuente:"WIN / MAPA_ORDENES + historico propio",produccion,efectividadRecableado:er,vtrGar:vg,controles:{escribeProduccion:false,escribeEfectividad:false,escribeRecableado:false,escribeVtrGar:false,escribeRanking:false}};
+    const salida={ok:true,version:"V487.10",periodo:p,calculadoEn:new Date().toISOString(),soloPrevisualizacion:true,fuente:"WIN / MAPA_ORDENES + historico propio",produccion,efectividadRecableado:er,vtrGar:vg,controles:{escribeProduccion:false,escribeEfectividad:false,escribeRecableado:false,escribeVtrGar:false,escribeRanking:false}};
     ultima=salida;
     try{window.dispatchEvent(new CustomEvent("mv487IndicadoresCalculados",{detail:salida}));}catch(_){}
     return salida;
