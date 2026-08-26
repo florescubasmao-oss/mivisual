@@ -1,0 +1,43 @@
+name: Generar Code V487 Completo
+
+on:
+  push:
+    paths:
+      - 'apps_script/V487_Publicador.gs'
+      - 'scripts/aplicar_v487_backend.py'
+      - '.github/workflows/generar_code_v487_completo.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  generar:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Descargar repositorio
+        uses: actions/checkout@v4
+
+      - name: Aplicar rutas V487 y generar Code completo
+        run: python3 scripts/aplicar_v487_backend.py
+
+      - name: Validar sintaxis JavaScript
+        shell: bash
+        run: |
+          cp Code_V487_COMPLETO.gs /tmp/Code_V487_COMPLETO.js
+          node --check /tmp/Code_V487_COMPLETO.js
+          grep -q 'MV487_PUBLICADOR_VERSION_ = "V487.12"' Code_V487_COMPLETO.gs
+          grep -q 'publicarIndicadoresWinV487' apps_script/Code.gs
+          grep -q 'MV487_PUBLICADOR_PERIODO_MINIMO_ = "2026-08"' Code_V487_COMPLETO.gs
+
+      - name: Guardar archivos generados
+        shell: bash
+        run: |
+          if git diff --quiet -- apps_script/Code.gs Code_V487_COMPLETO.gs && git ls-files --error-unmatch Code_V487_COMPLETO.gs >/dev/null 2>&1; then
+            echo 'V487 ya estaba actualizado.'
+            exit 0
+          fi
+          git config user.name 'github-actions[bot]'
+          git config user.email '4189826+github-actions[bot]@users.noreply.github.com'
+          git add apps_script/Code.gs Code_V487_COMPLETO.gs
+          git commit -m 'V487.12 generar backend completo activo agosto'
+          git push
