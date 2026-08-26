@@ -19,9 +19,9 @@ Estas hojas deben seguir entregando la misma estructura que hoy espera el aplica
 - Manda el último estado por FECHA_ULTIMO_ESTADO; empate: FECHA_IMPORTACION más reciente.
 - Agendada, En camino, Iniciada, Revisión y Reserva/Orden reservada = pendientes; no entran.
 - Cuando la misma OrdenId evoluciona, se actualiza a su último estado.
-- Finalizada entra al numerador y denominador.
+- Toda Finalizada entra al numerador y denominador, incluido VTR/GAR, conservando la regla oficial vigente.
 - Cancelada, Reprogramada, Regestión y Anulada entran al denominador cuando son el estado vigente.
-- VTR/GAR se mantiene fuera de Efectividad cuando TIPO_TRABAJO WIN es REITERADA/GARANTIA.
+- Anulada/Anulado se agrupa dentro de Cancelada.
 
 ## % Recableado
 - Medición al período.
@@ -43,9 +43,25 @@ Estas hojas deben seguir entregando la misma estructura que hoy espera el aplica
 - La validación operativa permanece centralizada en VALIDACION_TECNICA.
 - PROPIA / ASIGNADA / MANUAL y BONO / NO BONO se conservan para el control e indicador VTR/GAR, nunca para sumar Producción.
 - El indicador se atribuye a la cuadrilla/origen responsable de la orden que generó la incidencia, no necesariamente a quien resolvió la VTR/GAR.
+- El denominador del indicador conserva la regla vigente: Total Ordenes FINALIZADAS de Efectividad.
 - Reporte ausente o correspondencia dudosa queda en revisión sin alterar Producción.
-- La corrección de una validación debe conservar trazabilidad/historial; durante la prueba el guardado real sigue bloqueado.
+- La corrección de una validación debe conservar trazabilidad/historial.
 - La salida POR VTR/GAR debe mantener el contrato esperado por Dashboard, Mi Desempeño, Ranking, informes y Supervisor.
+
+## Migración histórica acordada
+- JULIO 2026 y periodos anteriores quedan congelados; V487 no los reescribe.
+- La migración empieza en AGOSTO 2026.
+- Las incidencias VTR/GAR ya calificadas en agosto se conservan exactamente con su estado y cuadrilla responsable.
+- Estados existentes CONFIRMADO, REASIGNADO, ANULADO y PENDIENTE no se recalifican automáticamente.
+- WIN solo incorpora incidencias nuevas faltantes como PENDIENTE para revisión.
+- Solo CONFIRMADO y REASIGNADO afectan el indicador VTR/GAR.
+
+## Publicador protegido V487.11
+- `apps_script/V487_Publicador.gs` prepara el cierre desde WIN sin activar escrituras.
+- Existe bloqueo duro de código: `MV487_PUBLICADOR_ESCRITURA_COMPILADA_ = false`.
+- Además bloquea cualquier periodo anterior a `2026-08`.
+- La futura activación exigirá confirmación explícita y reconstruirá únicamente el periodo solicitado.
+- En esta fase PRODUCCION_APP, EFECTIVIDAD, PORCENTAJE REC, POR VTR/GAR y RANKING continúan sin modificaciones.
 
 ## Histórico y homologación
 - Una orden vista anteriormente no se borra si deja de aparecer en una descarga WIN posterior.
