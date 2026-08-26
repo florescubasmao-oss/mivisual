@@ -132,7 +132,8 @@
     mapa: {
       archivos: [
         `./js/mapa_operativo.js?v=V419-MAPA-MULTIFILTRO-FIX`,
-        `./js/mapa_partner_visual_v386.js?v=V408-RESTAURA-V403`,
+        `./js/mapa_partner_visual_v386.js?v=V48712-ESTADO-WIN`,
+        `./js/indicadores_win_sync_v4879.js?v=V48712-PUBLICADOR-ACTIVO`,
         `./js/mapa_progreso_v393.js?v=V408-RESTAURA-V403`,
         `./js/mapa_rapido_v395.js?v=V408-RESTAURA-V403`,
         `./js/mapa_campo_v408.js?v=V408-MAPA-CAMPO`,
