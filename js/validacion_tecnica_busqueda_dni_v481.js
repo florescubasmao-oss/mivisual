@@ -34,8 +34,6 @@
         return base.apply(this, arguments);
       }
 
-      // El filtro original conserva tipo, sede, estado, cuadrilla, origen y período.
-      // Solo anulamos temporalmente SU búsqueda por código para ampliarla a Código + DNI.
       let filtradas;
       if(input) input.value = "";
       try{
@@ -83,15 +81,12 @@
 
     instalarFiltro();
 
-    // mostrarValidacionTecnica dibuja el Historial de forma síncrona.
-    // Se ajusta el placeholder al siguiente ciclo sin bloquear la apertura.
     setTimeout(function(){
       instalarFiltro();
       ajustarBuscador();
     }, 0);
   };
 
-  // Compatibilidad si Validación Técnica ya hubiera sido precargada.
   instalarFiltro();
 })();
 
@@ -144,8 +139,6 @@
       try{ hookAnterior.apply(this,arguments); }catch(_){}
     }
 
-    // El hook se ejecuta justo antes de pintar Validación Técnica.
-    // Se espera un instante para montar el submódulo sobre la pantalla ya dibujada.
     setTimeout(function(){
       cargarSubmodulo().catch(function(error){
         console.warn("MI VISUAL V487.25:",error && error.message ? error.message : error);
@@ -155,22 +148,27 @@
 })();
 
 /* ============================================================
-   MI VISUAL V487.26 - PESTAÑAS DE PENDIENTES
-   - Separa visualmente VALIDACIONES PENDIENTES en dos etiquetas:
-     RECABLEADO y VTR/GAR.
-   - Reutiliza renderListaValidaciones existente: no cambia acciones ni lógica.
-   - RECABLEADO conserva también OTRO para no ocultar casos especiales.
+   MI VISUAL V487.27 - PENDIENTES SOLO RECABLEADO / OTRO
+
+   REGLA DEFINITIVA:
+   - VTR y GAR NO se muestran en "Validaciones pendientes".
+   - VTR/GAR se gestionan exclusivamente dentro de Gestión VTR/GAR.
+   - Recableado y Otro conservan la vista, botones y lógica existentes.
+   - No agrega llamadas a Apps Script ni modifica caché/optimización.
+   - MutationObserver solo observa el bloque visual vtPendientes.
 ============================================================ */
 (function(){
   "use strict";
 
-  if(window.MV48726_VT_TABS_PENDIENTES_OK) return;
-  window.MV48726_VT_TABS_PENDIENTES_OK = true;
+  if(window.MV48727_VT_PENDIENTES_SOLO_RECABLEADO_OK) return;
+  window.MV48727_VT_PENDIENTES_SOLO_RECABLEADO_OK = true;
 
-  let tabActiva = "RECABLEADO";
-  let intentosWrapper = 0;
+  let observerPendientes = null;
+  let elementoObservado = null;
+  let timerRender = null;
+  let observerPantalla = null;
 
-  function normalizar(v){
+  function norm(v){
     return String(v == null ? "" : v)
       .toUpperCase()
       .normalize("NFD")
@@ -179,7 +177,7 @@
       .trim();
   }
 
-  function renderBase(){
+  function obtenerRender(){
     if(typeof window.renderListaValidaciones === "function") return window.renderListaValidaciones;
     try{
       if(typeof renderListaValidaciones === "function") return renderListaValidaciones;
@@ -187,84 +185,71 @@
     return null;
   }
 
-  function pendientesPorTipo(){
-    const todas = Array.isArray(window.vtValidacionesActuales) ? window.vtValidacionesActuales : [];
-    const pendientes = todas.filter(function(x){
-      return normalizar(x && x.estado) === "PENDIENTE";
-    });
+  function listaPendientePermitida(){
+    const todas = Array.isArray(window.vtValidacionesActuales)
+      ? window.vtValidacionesActuales
+      : [];
 
-    const vtrgar = pendientes.filter(function(x){
-      const tipo = normalizar(x && (x.tipoValidacion || x.tipo));
-      return tipo === "VTR" || tipo === "GAR";
+    return todas.filter(function(x){
+      const estado = norm(x && x.estado);
+      const tipo = norm(x && (x.tipoValidacion || x.tipo));
+      return estado === "PENDIENTE" && tipo !== "VTR" && tipo !== "GAR";
     });
-
-    const recableado = pendientes.filter(function(x){
-      const tipo = normalizar(x && (x.tipoValidacion || x.tipo));
-      return tipo !== "VTR" && tipo !== "GAR";
-    });
-
-    return {recableado:recableado,vtrgar:vtrgar};
   }
 
-  function botonTab(tipo,label,cantidad){
-    const activa = tabActiva === tipo;
-    const fondo = activa ? "#2563eb" : "#eff6ff";
-    const color = activa ? "#ffffff" : "#1d4ed8";
-    const borde = activa ? "#2563eb" : "#93c5fd";
-    return `<button type="button" onclick="mv48726CambiarTabPendienteVT('${tipo}')" style="border:1px solid ${borde};background:${fondo};color:${color};border-radius:999px;padding:9px 14px;font-weight:900;font-size:12px;cursor:pointer;box-shadow:${activa ? "0 5px 12px rgba(37,99,235,.22)" : "none"}">${label} (${cantidad})</button>`;
-  }
-
-  function renderTabs(){
+  function renderSoloRecableado(){
     const el = document.getElementById("vtPendientes");
-    const render = renderBase();
+    const render = obtenerRender();
     if(!el || !render) return false;
 
-    const grupos = pendientesPorTipo();
-    const lista = tabActiva === "VTRGAR" ? grupos.vtrgar : grupos.recableado;
-    const vacio = tabActiva === "VTRGAR"
-      ? "No hay VTR/GAR pendientes."
-      : "No hay recableados pendientes.";
+    // Si este contenido ya lo pintó V487.27, no vuelve a escribirlo.
+    if(el.querySelector('[data-mv48727="1"]')) return true;
 
-    el.innerHTML = `
-      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:12px;padding-bottom:10px;border-bottom:1px solid #e2e8f0">
-        ${botonTab("RECABLEADO","🔧 RECABLEADO",grupos.recableado.length)}
-        ${botonTab("VTRGAR","📡 VTR/GAR",grupos.vtrgar.length)}
-      </div>
-      <div id="mv48726PendientesContenido">
-        ${lista.length ? render(lista,true) : `<div class="vt-sub">${vacio}</div>`}
-      </div>`;
-
+    const lista = listaPendientePermitida();
+    el.innerHTML = `<div data-mv48727="1">${
+      lista.length
+        ? render(lista,true)
+        : `<div class="vt-sub">No hay validaciones de Recableado/Otro pendientes.</div>`
+    }</div>`;
     return true;
   }
 
-  window.mv48726CambiarTabPendienteVT = function(tipo){
-    tabActiva = tipo === "VTRGAR" ? "VTRGAR" : "RECABLEADO";
-    renderTabs();
-  };
+  function observarPendientes(){
+    const el = document.getElementById("vtPendientes");
+    if(!el) return false;
 
-  function envolverCargaDespuesVtrGar(){
-    const base = window.cargarValidacionesTecnicas;
-    if(typeof base !== "function") return false;
-    if(base.__mv48726TabsPendientes) return true;
+    if(elementoObservado !== el){
+      if(observerPendientes) observerPendientes.disconnect();
+      elementoObservado = el;
 
-    // Espera a que V487.25 termine de envolver primero la carga.
-    if(!base.__mv48725VtrGar && intentosWrapper < 12){
-      intentosWrapper++;
-      setTimeout(envolverCargaDespuesVtrGar,250);
-      return false;
+      observerPendientes = new MutationObserver(function(){
+        clearTimeout(timerRender);
+        timerRender = setTimeout(function(){
+          try{ renderSoloRecableado(); }catch(_){}
+        },0);
+      });
+
+      observerPendientes.observe(el,{
+        childList:true,
+        subtree:true
+      });
     }
 
-    const envuelta = async function(){
-      const r = await base.apply(this,arguments);
-      try{ renderTabs(); }catch(_){}
-      return r;
-    };
-
-    envuelta.__mv48726TabsPendientes = true;
-    envuelta.__mv48726Base = base;
-    window.cargarValidacionesTecnicas = envuelta;
-    try{ cargarValidacionesTecnicas = envuelta; }catch(_){}
+    renderSoloRecableado();
     return true;
+  }
+
+  function instalarObservacionPantalla(){
+    if(observerPantalla || !document.body) return;
+    observerPantalla = new MutationObserver(function(){
+      if(document.getElementById("vtPendientes")){
+        observarPendientes();
+      }
+    });
+    observerPantalla.observe(document.body,{
+      childList:true,
+      subtree:true
+    });
   }
 
   const hookAnterior = window.mv339Antes_mostrarValidacionTecnica;
@@ -273,13 +258,11 @@
       try{ hookAnterior.apply(this,arguments); }catch(_){}
     }
 
-    intentosWrapper = 0;
-    setTimeout(envolverCargaDespuesVtrGar,650);
-    setTimeout(renderTabs,950);
-    setTimeout(renderTabs,1800);
+    setTimeout(observarPendientes,250);
+    setTimeout(observarPendientes,900);
+    setTimeout(observarPendientes,1800);
   };
 
-  // Compatibilidad si la pantalla ya estaba abierta al actualizar el archivo.
-  setTimeout(envolverCargaDespuesVtrGar,500);
-  setTimeout(renderTabs,1200);
+  instalarObservacionPantalla();
+  setTimeout(observarPendientes,300);
 })();
