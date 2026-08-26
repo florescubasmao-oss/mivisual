@@ -1,24 +1,20 @@
 /* ============================================================
-   MI VISUAL V491 - RETIRO FLUJO LEGADO CALIFICAR VTR/GAR
+   MI VISUAL V491/V492 - RETIRO LEGADO + PENDIENTES VTR/GAR
 
-   Motivo:
-   - El acceso independiente "CALIFICAR VTR/GAR" pertenecía al flujo
-     histórico ligado a Base Operativa / Partner.
-   - La gestión vigente de VTR/GAR se realiza dentro de Validación Técnica
-     y la detección/propuesta usa la data WIN definida para el proyecto.
-
-   Alcance estricto:
-   - Retira únicamente la tarjeta/acceso legado.
-   - Neutraliza llamadas residuales a mostrarAsignacionesVtrGar().
-   - Redirige esas llamadas a Validación Técnica > VTR/GAR.
-   - NO borra hojas ni históricos.
-   - NO modifica Producción, Efectividad, Recableado, Ranking ni porcentajes.
+   - Retira el acceso independiente CALIFICAR VTR/GAR (flujo Partner).
+   - Redirige llamadas residuales al flujo vigente Validacion Tecnica > VTR/GAR.
+   - En REGISTRO VTR/GAR vuelve a mostrar solicitudes PENDIENTES.
+   - Los pendientes se muestran SIN botones de validacion para no duplicar acciones.
+   - La validacion/decision permanece en la pestaña VALIDACION.
+   - No agrega llamadas API ni toca cache V341.
 ============================================================ */
 (function(){
   "use strict";
 
-  if(window.MV491_RETIRO_VTRGAR_LEGADO_OK) return;
-  window.MV491_RETIRO_VTRGAR_LEGADO_OK = true;
+  if(window.MV492_VTRGAR_COMPAT_OK) return;
+  window.MV492_VTRGAR_COMPAT_OK = true;
+
+  let timerPendientes = null;
 
   function norm(v){
     return String(v == null ? "" : v)
@@ -39,20 +35,10 @@
   }
 
   function retirarTarjetas(){
-    const candidatos = document.querySelectorAll(
-      '[onclick],button,a,.card,.adm-card,.adm104-card,.adm104-option,.adm-option'
-    );
-
-    candidatos.forEach(function(el){
+    document.querySelectorAll('[onclick],button,a,.card,.adm-card,.adm104-card,.adm104-option,.adm-option').forEach(function(el){
       if(!esAccesoLegado(el)) return;
-
-      const objetivo = el.closest(
-        '.adm104-card,.adm-card,.adm104-option,.adm-option,.card,[onclick],button,a'
-      ) || el;
-
-      if(objetivo && objetivo.id !== "cardVTRGAR"){
-        objetivo.remove();
-      }
+      const objetivo = el.closest('.adm104-card,.adm-card,.adm104-option,.adm-option,.card,[onclick],button,a') || el;
+      if(objetivo && objetivo.id !== "cardVTRGAR") objetivo.remove();
     });
   }
 
@@ -60,15 +46,14 @@
     if(typeof window.mostrarValidacionTecnica === "function"){
       window.mostrarValidacionTecnica();
       setTimeout(function(){
-        if(typeof window.mv488AbrirVtrGar === "function"){
-          window.mv488AbrirVtrGar();
-        }else if(typeof window.mv489AbrirRegistroVtrGar === "function"){
+        if(typeof window.mv489AbrirRegistroVtrGar === "function"){
           window.mv489AbrirRegistroVtrGar();
+        }else if(typeof window.mv488AbrirVtrGar === "function"){
+          window.mv488AbrirVtrGar();
         }
       },500);
       return;
     }
-
     if(typeof window.volverInicio === "function") window.volverInicio();
   }
 
@@ -78,24 +63,51 @@
 
     const reemplazo = function(){
       abrirVigente();
-      return Promise.resolve({
-        ok:true,
-        retirado:true,
-        version:"V491",
-        destino:"VALIDACION_TECNICA_VTRGAR"
-      });
+      return Promise.resolve({ok:true,retirado:true,version:"V492",destino:"VALIDACION_TECNICA_VTRGAR"});
     };
     reemplazo.__mv491Retirada = true;
     reemplazo.__mv491Base = actual;
-
     window.mostrarAsignacionesVtrGar = reemplazo;
     try{ mostrarAsignacionesVtrGar = reemplazo; }catch(_){}
+    return true;
+  }
+
+  function pendientesVtrGar(){
+    const todas = Array.isArray(window.vtValidacionesActuales) ? window.vtValidacionesActuales : [];
+    return todas.filter(function(x){
+      const tipo = norm(x && (x.tipoValidacion || x.tipo));
+      const estado = norm(x && x.estado);
+      return (tipo === "VTR" || tipo === "GAR") && estado === "PENDIENTE";
+    });
+  }
+
+  function restaurarPendientesRegistro(){
+    if(window.MV488_VT_MODO !== "VTRGAR") return false;
+    if(document.querySelector(".mv489-wrap")) return false;
+
+    const el = document.getElementById("vtPendientes");
+    const render = window.renderListaValidaciones;
+    if(!el || typeof render !== "function") return false;
+
+    const card = el.closest(".vt-card");
+    if(card){
+      card.style.display = "";
+      const titulo = card.querySelector("h3");
+      if(titulo) titulo.textContent = "📌 Registros pendientes";
+    }
+
+    const lista = pendientesVtrGar();
+    el.innerHTML = lista.length
+      ? render(lista,false)
+      : '<div class="vt-sub">No hay registros VTR/GAR pendientes.</div>';
     return true;
   }
 
   function aplicar(){
     retirarTarjetas();
     neutralizarFuncionLegada();
+    clearTimeout(timerPendientes);
+    timerPendientes = setTimeout(restaurarPendientesRegistro,0);
   }
 
   aplicar();
@@ -104,9 +116,7 @@
   setTimeout(aplicar,1800);
 
   if(document.documentElement){
-    const obs = new MutationObserver(function(){
-      aplicar();
-    });
+    const obs = new MutationObserver(function(){ aplicar(); });
     obs.observe(document.documentElement,{childList:true,subtree:true});
   }
 })();
