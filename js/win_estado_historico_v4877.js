@@ -1,5 +1,5 @@
 /* ================================================================
-   MI VISUAL V487.9 - Motor WIN: estado vigente + historico
+   MI VISUAL V487.10 - Motor WIN: estado vigente + historico
 
    IMPLEMENTACION CONTROLADA
    - OrdenId = llave unica.
@@ -7,6 +7,8 @@
    - Si empatan, gana FECHA_IMPORTACION mas reciente.
    - Una orden que no viene en una carga nueva NO se borra del historico.
    - RESERVA / ORDEN RESERVADA = PENDIENTE hasta recibir un estado posterior.
+   - Efectividad conserva la regla oficial vigente: toda FINALIZADA entra como
+     FINALIZADA, incluido VTR/GAR. ANULADA/ANULADO se clasifica como CANCELADA.
    - Partner es apoyo opcional: propone correcciones/observaciones, no pisa WIN.
    - La cuadrilla ejecutora original se conserva aunque exista homologacion.
    - Despues de una importacion WIN valida carga V487.9 y solicita el
@@ -80,12 +82,11 @@
   function esReservaPendiente(o){ return (estado(o)==="CANCELADA"||estado(o)==="CANCELADO") && /RESERVA|RESERVAD/.test(motivoReserva(o)); }
 
   function clasificarEfectividad(o){
-    const e=estado(o), t=tipoTrabajo(o);
+    const e=estado(o);
     if(esReservaPendiente(o)) return "PENDIENTE_RESERVA";
-    if((e==="FINALIZADA"||e==="FINALIZADO") && (t==="REITERADA" || t==="GARANTIA")) return "FUERA_VTR_GAR";
     if(e==="FINALIZADA"||e==="FINALIZADO") return "FINALIZADA";
     if(e.indexOf("REGEST")===0) return "REGESTION";
-    if(e==="ANULADA"||e==="ANULADO") return "ANULADA";
+    if(e==="ANULADA"||e==="ANULADO") return "CANCELADA";
     if(e==="REPROGRAMADA"||e==="REPROGRAMADO") return "REPROGRAMADA";
     if(e==="CANCELADA"||e==="CANCELADO"){
       const m=norm([val(o,"MOTIVO_CANCELACION","Motivo Cancelación","motivoCancelacion"),val(o,"DETALLE","Motivo Regestión","motivoRegestion")].join(" "));
@@ -134,7 +135,7 @@
     if(typeof window.mv4879SincronizarIndicadoresWin==="function"){ejecutar();return;}
     const existente=Array.from(document.scripts).find(function(s){return s.src&&s.src.includes("indicadores_win_sync_v4879.js");});
     if(existente){existente.addEventListener("load",ejecutar,{once:true});return;}
-    const s=document.createElement("script");s.src="./js/indicadores_win_sync_v4879.js?v=V4879-4-INDICADORES";s.async=true;s.onload=ejecutar;s.onerror=function(){console.warn("V487.9: no se pudo cargar el sincronizador de indicadores.");};document.head.appendChild(s);
+    const s=document.createElement("script");s.src="./js/indicadores_win_sync_v4879.js?v=V48710-4-INDICADORES";s.async=true;s.onload=ejecutar;s.onerror=function(){console.warn("V487.10: no se pudo cargar el sincronizador de indicadores.");};document.head.appendChild(s);
   }
 
   const api={fechaMs,ordenId,estado,tipoTrabajo,cuadrilla,fechaEstadoMs,compararVersion,fusionarHistorico,esReservaPendiente,clasificarEfectividad,clasificarRecableado,partnerOpcional,homologarCuadrilla};
