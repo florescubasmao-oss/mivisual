@@ -1,14 +1,17 @@
 /* ================================================================
-   MI VISUAL V487.5 - Compuerta estricta VTR/GAR para Produccion WIN
+   MI VISUAL V487.9 - Compuerta estricta VTR/GAR para Produccion WIN
 
-   SOLO LECTURA
+   IMPLEMENTACION CONTROLADA / SIN ESCRITURAS
    - Detecta VTR/GAR por TIPO_TRABAJO / PRODUCTO_ORIGEN y tambien por
      CODIGO_SEGUIMIENTO VTR-/GAR- cuando WIN no tipifica REITERADA/GARANTIA.
    - La orden FINALIZADA siempre permanece visible en el historial.
    - El reporte se considera confiable solo si coincide tipo + numero de
      ticket y el codigo del cliente es coherente con WIN.
-   - Coincidencias solo por codigo/DNI quedan para revision y suman 0.
-   - No escribe ninguna hoja ni modifica V486.
+   - Coincidencias debiles quedan como REVISAR CORRESPONDENCIA.
+   - VTR/GAR SIEMPRE = 0 puntos de Produccion, sin importar BONO/NO BONO,
+     PROPIA/ASIGNADA/MANUAL o estado del reporte.
+   - VTR/GAR queda fuera de meta diaria, meta mensual y Ranking-Produccion,
+     para cuadrillas y supervisores.
 ================================================================ */
 (function(){
   "use strict";
@@ -43,7 +46,7 @@
     if(!API)throw new Error("No se encontro la URL de MI VISUAL.");
     const url=new URL(API);
     Object.keys(payload||{}).forEach(function(k){const v=payload[k];if(v!==undefined&&v!==null&&v!=="")url.searchParams.set(k,typeof v==="object"?JSON.stringify(v):String(v));});
-    url.searchParams.set("_v4875",String(Date.now()));
+    url.searchParams.set("_v4879",String(Date.now()));
     const r=await fetch(url.toString(),{method:"GET",cache:"no-store"});
     const t=await r.text();let j;
     try{j=JSON.parse(t);}catch(_){throw new Error("La API no devolvio datos validos para validar VTR/GAR.");}
@@ -114,6 +117,16 @@
     return {validacion:null,seguro:false,tipo:"SIN REPORTE"};
   }
 
+  function excluirProduccion(x,puntosBase){
+    x.puntosBaseVtrGar=puntosBase;
+    x.excluidaProduccion=true;
+    x.excluidaMetaDiaria=true;
+    x.excluidaMetaMensual=true;
+    x.excluidaRankingProduccion=true;
+    x.puntosProduccionVtrGar=0;
+    x.puntos=0;
+  }
+
   function recomputarComparacion(resultado){
     const nuevos={};(resultado.detalle||[]).forEach(function(x){const k=[x.sede||"SIN SEDE",x.cuadrillaWin||x.cuadrillaEjecutora||"",x.fecha||""].join("|");nuevos[k]=(nuevos[k]||0)+Number(x.puntos||0);});
     const actuales={};(resultado.comparacionDiaria||[]).forEach(function(x){actuales[[x.sede||"SIN SEDE",x.cuadrilla||"",x.fecha||""].join("|")]=Number(x.puntosActuales||0);});
@@ -123,48 +136,96 @@
 
   async function aplicar(resultado,periodo){
     if(!resultado||!Array.isArray(resultado.detalle))return resultado;
-    const respuestas=await Promise.all([apiGet({accion:"listarMapaOperativo",usuario:usuario(),periodo:periodo}),apiGet({accion:"listarValidacionTecnica",usuario:usuario()})]);
+    const respuestas=await Promise.all([
+      apiGet({accion:"listarMapaOperativo",usuario:usuario(),periodo:periodo}),
+      apiGet({accion:"listarValidacionTecnica",usuario:usuario()})
+    ]);
     const mapa={};listaMapa(respuestas[0]).forEach(function(raw){const o=normalizarMapa(raw);if(o.ordenId)mapa[o.ordenId]=o;});
     const validaciones=(Array.isArray(respuestas[1].validaciones)?respuestas[1].validaciones:[]).map(normalizarValidacion);
     const indices=construirIndices(validaciones);
-    let detectadas=0,reportadasSeguras=0,sinReporte=0,revisar=0,habilitadas=0,noConsideradas=0;
+    let detectadas=0,reportadasSeguras=0,sinReporte=0,revisar=0,bono=0,noBonoOPendiente=0;
 
     (resultado.detalle||[]).forEach(function(x){
       const inc=mapa[id(x.ordenId)];
       if(!inc||!inc.tipo||inc.estado.indexOf("FINALIZ")<0){
         x.esVtrGar=false;x.estadoConsideracion="CONSIDERADA";x.detalleConsideracion="REGLA NORMAL";return;
       }
+
       detectadas++;
       const match=elegirReporte(inc,indices),reporte=match.validacion,puntosBase=Number(x.puntos||0);
-      x.esVtrGar=true;x.tipoVtrGar=inc.tipo;x.puntosBaseVtrGar=puntosBase;x.ticketWinVtrGar=inc.ticket;
-      x.reporteDetectadoVtrGar=!!reporte;x.reporteSeguroVtrGar=!!(reporte&&match.seguro);x.correspondenciaReporteVtrGar=match.tipo;
+      x.esVtrGar=true;
+      x.tipoVtrGar=inc.tipo;
+      x.ticketWinVtrGar=inc.ticket;
+      x.reporteDetectadoVtrGar=!!reporte;
+      x.reporteSeguroVtrGar=!!(reporte&&match.seguro);
+      x.correspondenciaReporteVtrGar=match.tipo;
       x.reportadaVtrGar=!!(reporte&&match.seguro);
-      x.idReporteVtrGar=reporte?reporte.id:"";x.ticketReporteVtrGar=reporte?reporte.ticket:"";
+      x.idReporteVtrGar=reporte?reporte.id:"";
+      x.ticketReporteVtrGar=reporte?reporte.ticket:"";
       x.resultadoReporteVtrGar=reporte?reporte.estado:"SIN REPORTE";
-      x.puntos=0;
+      excluirProduccion(x,puntosBase);
+
       if(!reporte){
-        sinReporte++;x.estadoConsideracion="NO CONSIDERADA";x.detalleConsideracion="SIN REPORTE";x.motivoConsideracion="FINALIZADA en WIN, pero sin reporte del tecnico en Validacion Tecnica.";
+        sinReporte++;
+        x.validadaControlVtrGar=false;
+        x.estadoConsideracion="NO PRODUCCION";
+        x.detalleConsideracion="SIN REPORTE · 0 PTS PRODUCCION";
+        x.motivoConsideracion="VTR/GAR FINALIZADA en WIN sin reporte del tecnico. Permanece visible y aporta 0 puntos de Produccion.";
+        x.requiereIntervencion=true;
       }else if(!match.seguro){
-        revisar++;x.estadoConsideracion="NO CONSIDERADA";x.detalleConsideracion="REVISAR CORRESPONDENCIA";x.motivoConsideracion=match.tipo+". No se habilitan puntos por coincidencia debil.";
+        revisar++;
+        x.validadaControlVtrGar=false;
+        x.estadoConsideracion="NO PRODUCCION";
+        x.detalleConsideracion="REVISAR CORRESPONDENCIA · 0 PTS PRODUCCION";
+        x.motivoConsideracion=match.tipo+". Requiere revision VTR/GAR y aporta 0 puntos de Produccion.";
+        x.requiereIntervencion=true;
       }else{
         reportadasSeguras++;
+        x.validadaControlVtrGar=true;
+        x.estadoConsideracion="NO PRODUCCION";
         if(reporte.estado==="BONO"){
-          habilitadas++;x.estadoConsideracion="CONSIDERADA";x.detalleConsideracion="BONO VALIDADO";x.motivoConsideracion="Reporte confirmado por ticket y codigo.";x.puntos=puntosBase;
+          bono++;
+          x.detalleConsideracion="BONO VALIDADO · 0 PTS PRODUCCION";
+          x.motivoConsideracion="Reporte VTR/GAR confirmado por ticket y codigo. BONO solo aplica al control VTR/GAR; Produccion permanece en 0.";
         }else{
-          noConsideradas++;x.estadoConsideracion="NO CONSIDERADA";x.detalleConsideracion=reporte.estado||"PENDIENTE VALIDACION";x.motivoConsideracion="Reporte confirmado; la regla PROPIA/ASIGNADA definira si puede habilitar puntos.";
+          noBonoOPendiente++;
+          x.detalleConsideracion=(reporte.estado||"PENDIENTE VALIDACION")+" · 0 PTS PRODUCCION";
+          x.motivoConsideracion="Reporte VTR/GAR confirmado. Su estado solo afecta el control VTR/GAR; Produccion permanece en 0.";
+          x.requiereIntervencion=true;
         }
       }
-      if(x.estadoConsideracion!=="CONSIDERADA")x.requiereIntervencion=true;
     });
 
     const puntosNuevos=(resultado.detalle||[]).reduce(function(s,x){return s+Number(x.puntos||0);},0);
     resultado.resumen=resultado.resumen||{};
-    resultado.resumen.puntosNuevos=puntosNuevos;resultado.resumen.diferenciaPuntos=puntosNuevos-Number(resultado.resumen.puntosActuales||0);
-    resultado.resumen.vtrGarDetectadas=detectadas;resultado.resumen.vtrGarReportadas=reportadasSeguras;
-    resultado.resumen.vtrGarSinReporte=sinReporte;resultado.resumen.vtrGarRevisarCorrespondencia=revisar;
-    resultado.resumen.vtrGarHabilitadas=habilitadas;resultado.resumen.vtrGarNoConsideradas=detectadas-habilitadas;
-    resultado.reglaVtrGar={version:"V487.5",soloLectura:true,visibleSinReporte:true,detectaPorTipoOTicketWin:true,exigeTicketYCodigo:true,fuenteIncidencia:"WIN / MAPA_ORDENES",fuenteReporte:"VALIDACION_TECNICA"};
-    recomputarComparacion(resultado);return resultado;
+    resultado.resumen.puntosNuevos=puntosNuevos;
+    resultado.resumen.diferenciaPuntos=puntosNuevos-Number(resultado.resumen.puntosActuales||0);
+    resultado.resumen.vtrGarDetectadas=detectadas;
+    resultado.resumen.vtrGarReportadas=reportadasSeguras;
+    resultado.resumen.vtrGarSinReporte=sinReporte;
+    resultado.resumen.vtrGarRevisarCorrespondencia=revisar;
+    resultado.resumen.vtrGarBonosControl=bono;
+    resultado.resumen.vtrGarNoBonoOPendiente=noBonoOPendiente;
+    resultado.resumen.vtrGarValidadasControl=reportadasSeguras;
+    resultado.resumen.vtrGarPuntosProduccion=0;
+
+    resultado.reglaVtrGar={
+      version:"V487.9",
+      soloLectura:true,
+      visibleSinReporte:true,
+      detectaPorTipoOTicketWin:true,
+      exigeTicketYCodigo:true,
+      fuenteIncidencia:"WIN / MAPA_ORDENES",
+      fuenteReporte:"VALIDACION_TECNICA",
+      siempreCeroProduccion:true,
+      excluidaMetaDiaria:true,
+      excluidaMetaMensual:true,
+      excluidaRankingProduccion:true,
+      aplicaCuadrilla:true,
+      aplicaSupervisor:true
+    };
+    recomputarComparacion(resultado);
+    return resultado;
   }
 
   window.mv4872AplicarReglaVtrGar=aplicar;
