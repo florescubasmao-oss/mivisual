@@ -1,16 +1,18 @@
 /* ================================================================
-   MI VISUAL V487.12 - Sincronizador automatico de indicadores WIN
+   MI VISUAL V505 - Sincronizador automatico WIN -> indicadores
 
-   - Se ejecuta despues de una importacion WIN valida.
-   - El backend V487.12 es la unica fuente del calculo oficial.
+   Base compatible V487.12 / backend V503.
+   - Se ejecuta despues de una importacion WIN valida del Mapa Operativo.
    - Publica SOLO desde agosto 2026.
-   - Julio 2026 y periodos anteriores se omiten por cierre.
-   - Produccion, Efectividad, Recableado y VTR/GAR se actualizan juntos.
+   - Julio 2026 y anteriores permanecen cerrados.
+   - Produccion, Efectividad, Recableado y VTR/GAR se publican juntos.
    - Ranking y caches se reconstruyen en backend.
+   - No altera la logica SLA.
 ================================================================ */
 (function(){
   "use strict";
-  if(window.MV4879_INDICADORES_WIN_SYNC_OK)return;
+  if(window.MV505_INDICADORES_WIN_SYNC_OK)return;
+  window.MV505_INDICADORES_WIN_SYNC_OK=true;
   window.MV4879_INDICADORES_WIN_SYNC_OK=true;
 
   const API=window.MI_VISUAL_API_URL||"";
@@ -19,9 +21,16 @@
   let timer=null;
   let pendientes=new Set();
   let ultima=null;
+  let promesaPendiente=null;
+  let resolverPendiente=null;
+  let rechazarPendiente=null;
+  let hookInstalado=false;
 
   function txt(v){return String(v==null?"":v).trim();}
+  function norm(v){return txt(v).toUpperCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"").replace(/\s+/g," ").trim();}
   function usuario(){return localStorage.getItem("usuario")||localStorage.getItem("correo")||"";}
+  function perfil(){return norm(localStorage.getItem("perfil"));}
+  function puedePublicar(){return ["JEFATURA","JEFATURA GENERAL","ADMIN","ADMINISTRADOR"].includes(perfil());}
   function periodoValido(p){return /^\d{4}-\d{2}$/.test(txt(p));}
 
   function periodoActual(){
@@ -31,33 +40,57 @@
     return y&&m?`${y}-${m}`:"";
   }
 
+  function periodoMapa(){
+    const p=txt(document.getElementById("moFiltroPeriodo")?.value||"");
+    return periodoValido(p)?p:periodoActual();
+  }
+
   async function apiPost(payload){
     if(!API)throw new Error("No se encontro la URL de MI VISUAL.");
     const r=await fetch(API,{
       method:"POST",
-      headers:{"Content-Type":"text/plain;charset=utf-8"},
+      headers:{"Content-Type":"text/plain;charset=utf-8","Accept":"application/json"},
       body:JSON.stringify(payload),
-      cache:"no-store"
+      cache:"no-store",
+      redirect:"follow"
     });
-    const t=await r.text();
+    const t=(await r.text()).trim();
     let j;
-    try{j=JSON.parse(t);}catch(_){throw new Error("La API no devolvio JSON para V487.12.");}
-    if(!j||j.ok===false)throw new Error(j&&j.error?j.error:"No se pudo completar V487.12.");
+    try{j=JSON.parse(t);}catch(_){throw new Error("La API no devolvio JSON para sincronizar indicadores WIN.");}
+    if(!j||j.ok===false)throw new Error(j&&j.error?j.error:"No se pudo completar la publicacion WIN.");
     return j;
   }
 
-  function mostrarEstado(texto,esError){
+  function anexarEstado(texto,tipo){
     const msg=document.getElementById("moImportMsg");
     if(!msg)return;
-    msg.className=esError?"mo-msg mo-error":"mo-msg mo-ok";
-    msg.textContent=String(msg.textContent||"")+"\n"+texto;
+    if(tipo==="ok") msg.className="mo-msg mo-ok";
+    else if(tipo==="warn" && !msg.classList.contains("mo-ok")) msg.className="mo-msg";
+    const previo=String(msg.textContent||"").trim();
+    msg.textContent=(previo?previo+"\n":"")+texto;
   }
+
+  function invalidarCachesCliente(periodo){
+    try{
+      sessionStorage.removeItem("MV395_MAPA_CAT");
+      sessionStorage.removeItem("MV395_MAPA_LIST");
+    }catch(_){}
+    try{
+      if(typeof window.mv366InvalidarResumenDashboard==="function"){
+        window.mv366InvalidarResumenDashboard(periodo||"");
+      }
+    }catch(_){}
+    try{
+      window.dispatchEvent(new CustomEvent("mv505CachesIndicadoresInvalidadas",{detail:{periodo:periodo||""}}));
+    }catch(_){}
+  }
+  window.mv4879InvalidarCachesCliente=invalidarCachesCliente;
 
   async function previsualizarPeriodo(periodo){
     const p=periodoValido(periodo)?periodo:periodoActual();
     if(!p)throw new Error("No se pudo determinar el periodo WIN.");
     if(p<PERIODO_MINIMO){
-      return {ok:true,version:"V487.12",periodo:p,omitidoPorCierre:true,julioCongelado:true};
+      return {ok:true,version:"V505",periodo:p,omitidoPorCierre:true,julioCongelado:true};
     }
     return apiPost({
       accion:"previsualizarPublicacionIndicadoresWinV487",
@@ -70,7 +103,7 @@
     const p=periodoValido(periodo)?periodo:periodoActual();
     if(!p)throw new Error("No se pudo determinar el periodo WIN.");
     if(p<PERIODO_MINIMO){
-      return {ok:true,version:"V487.12",periodo:p,omitidoPorCierre:true,julioCongelado:true};
+      return {ok:true,version:"V505",periodo:p,omitidoPorCierre:true,julioCongelado:true};
     }
 
     const preview=await previsualizarPeriodo(p);
@@ -86,13 +119,13 @@
     });
     publicado.previsualizacion=preview;
     ultima=publicado;
+    invalidarCachesCliente(p);
 
+    const prod=publicado.produccion||{};
     const ef=publicado.efectividad&&publicado.efectividad.control?publicado.efectividad.control:{};
-    const rec=publicado.recableado||{};
-    const vg=publicado.vtrGar||{};
-    mostrarEstado(
-      `📊 V487.12 actualizado: ${p} · Efectividad ${ef.totalEfectividad||0} orden(es) · LOS ROJO ${rec.losRojo||0} · VTR/GAR nuevos pendientes ${vg.pendientesNuevos&&vg.pendientesNuevos.agregados||0}.`,
-      false
+    anexarEstado(
+      `📊 Indicadores actualizados: ${p} · Produccion ${prod.ordenes||0} orden(es) / ${prod.puntos||0} pts · Efectividad ${ef.totalEfectividad||0} orden(es).`,
+      "ok"
     );
     try{window.dispatchEvent(new CustomEvent("mv487IndicadoresPublicados",{detail:publicado}));}catch(_){}
     return publicado;
@@ -123,20 +156,91 @@
   function sincronizar(periodos){
     (Array.isArray(periodos)?periodos:[periodos]).filter(Boolean).forEach(p=>pendientes.add(txt(p)));
     if(!pendientes.size)pendientes.add(periodoActual());
+
+    if(!promesaPendiente){
+      promesaPendiente=new Promise((resolve,reject)=>{
+        resolverPendiente=resolve;
+        rechazarPendiente=reject;
+      });
+    }
+    const salida=promesaPendiente;
     if(timer)clearTimeout(timer);
-    return new Promise((resolve,reject)=>{
-      timer=setTimeout(async()=>{
-        try{resolve(await ejecutarPendientes());}
-        catch(e){
-          mostrarEstado("⚠ V487.12: la carga WIN se guardo, pero los indicadores no se publicaron: "+(e&&e.message?e.message:String(e)),true);
-          reject(e);
+    timer=setTimeout(async()=>{
+      const resolver=resolverPendiente, rechazar=rechazarPendiente;
+      timer=null;
+      promesaPendiente=null; resolverPendiente=null; rechazarPendiente=null;
+      try{ resolver(await ejecutarPendientes()); }
+      catch(e){
+        anexarEstado("⚠ La carga WIN se guardo, pero la publicacion de indicadores quedo pendiente: "+(e&&e.message?e.message:String(e)),"warn");
+        rechazar(e);
+      }
+    },900);
+    return salida;
+  }
+
+  function cargaWinConfirmada(){
+    const msg=document.getElementById("moImportMsg");
+    if(!msg)return false;
+    const texto=norm(msg.textContent||"");
+    return msg.classList.contains("mo-ok") || texto.includes("REGISTRO CONFIRMADO");
+  }
+
+  function instalarHookMapa(){
+    if(hookInstalado) return true;
+    const original=window.moRegistrarImportacion;
+    if(typeof original!=="function") return false;
+    if(original.__mv505WinHook){ hookInstalado=true; return true; }
+
+    const ajustada=async function(){
+      const r=await original.apply(this,arguments);
+      if(!cargaWinConfirmada()) return r;
+      const p=periodoMapa();
+      if(!puedePublicar()){
+        anexarEstado("ℹ Carga WIN registrada. La publicacion automatica de indicadores requiere perfil Jefatura/Administrador.","warn");
+        return r;
+      }
+      try{
+        anexarEstado("⏳ Actualizando Produccion e indicadores desde WIN...","warn");
+        await sincronizar(p?[p]:[]);
+      }catch(e){
+        console.warn("V505 WIN -> indicadores",e);
+      }
+      return r;
+    };
+    ajustada.__mv505WinHook=true;
+    ajustada.__original=original;
+    window.moRegistrarImportacion=ajustada;
+    try{moRegistrarImportacion=ajustada;}catch(_){}
+    hookInstalado=true;
+    console.log("MI VISUAL V505: hook WIN -> indicadores habilitado.");
+    return true;
+  }
+
+  function observarCargaMapa(){
+    if(instalarHookMapa()) return;
+    const head=document.head||document.documentElement;
+    if(!head)return;
+    const obs=new MutationObserver(muts=>{
+      muts.forEach(m=>Array.from(m.addedNodes||[]).forEach(n=>{
+        if(!n||n.tagName!=="SCRIPT")return;
+        const src=String(n.src||"");
+        if(src.includes("mapa_rapido_v395.js")){
+          n.addEventListener("load",()=>setTimeout(()=>{
+            if(instalarHookMapa()) obs.disconnect();
+          },30),{once:true});
         }
-      },900);
+      }));
     });
+    obs.observe(head,{childList:true,subtree:true});
+    const rapido=Array.from(document.scripts).find(s=>String(s.src||"").includes("mapa_rapido_v395.js"));
+    if(rapido) setTimeout(()=>{ if(instalarHookMapa()) obs.disconnect(); },120);
   }
 
   window.mv4879CalcularIndicadoresWin=calcularPeriodo;
   window.mv4879PublicarIndicadoresWin=publicarPeriodo;
   window.mv4879SincronizarIndicadoresWin=sincronizar;
   window.mv4879UltimoResultado=()=>ultima;
+  window.mv505InstalarHookWin=instalarHookMapa;
+
+  observarCargaMapa();
 })();
