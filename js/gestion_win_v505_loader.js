@@ -1,9 +1,10 @@
 /* ============================================================
-   MI VISUAL V512A - LOADER COMPLEMENTOS INCREMENTALES
+   MI VISUAL V512B - LOADER COMPLEMENTOS INCREMENTALES
 
    Carga incremental:
    - Sincronizador WIN -> indicadores optimizado desde el inicio.
-   - Sello real de publicacion en Dashboard, Ranking y Mi Desempeno.
+   - Sello V512B independiente SOLO en Dashboard.
+   - Mantiene sello V512A compatible en Ranking/Mi Desempeno.
    - Checklist rapido: precarga/cache + render por sede bajo demanda.
    - Gestion de Actas: descarga por periodo oculta para Tecnico.
    - Gestion de Actas: sincroniza Guardar cuando Mapa + Produccion resolvieron.
@@ -17,6 +18,7 @@
   window.MV505_GESTION_WIN_LOADER_OK=true;
   window.MV512_GESTION_WIN_LOADER_OK=true;
   window.MV512A_GESTION_WIN_LOADER_OK=true;
+  window.MV512B_GESTION_WIN_LOADER_OK=true;
 
   const cargados=new Set();
   const promesas=new Map();
@@ -61,32 +63,38 @@
       }
     }catch(e){
       dashboardPreparado=false;
-      console.warn("V512A Complementos: complemento Dashboard pendiente",e);
+      console.warn("V512B Complementos: complemento Dashboard pendiente",e);
     }
   }
 
+  // V512B: archivo nuevo e independiente. Evita cualquier bloqueo por
+  // versiones cacheadas del sello V507/V512A.
+  cargar("./js/dashboard_actualizacion_indicadores_v512b.js?v=V512B-DASHBOARD-20260827").catch(e=>
+    console.warn("V512B Complementos: sello Dashboard pendiente",e)
+  );
+
   cargar("./js/actualizacion_win_v507.js?v=V512A-SELLO-DASHBOARD").catch(e=>
-    console.warn("V512A Complementos: sello de indicadores pendiente",e)
+    console.warn("V512B Complementos: sello compatible pendiente",e)
   );
 
   cargar("./js/indicadores_win_sync_v4879.js?v=V512-SYNC-UNICA-PUBLICACION").catch(e=>
-    console.warn("V512A Complementos: sincronizador WIN pendiente",e)
+    console.warn("V512B Complementos: sincronizador WIN pendiente",e)
   );
 
   cargar("./js/checklist_rapido_v508.js?v=V508-CHECKLIST-RAPIDO").catch(e=>
-    console.warn("V512A Complementos: optimizacion Checklist pendiente",e)
+    console.warn("V512B Complementos: optimizacion Checklist pendiente",e)
   );
 
   cargar("./js/actas_tecnico_sin_descarga_v508.js?v=V508-ACTAS-TECNICO").catch(e=>
-    console.warn("V512A Complementos: restriccion descarga Actas pendiente",e)
+    console.warn("V512B Complementos: restriccion descarga Actas pendiente",e)
   );
 
   cargar("./js/actas_guardar_sync_v510.js?v=V511-GUARDAR-ACTA").catch(e=>
-    console.warn("V512A Complementos: sincronizacion Guardar Acta pendiente",e)
+    console.warn("V512B Complementos: sincronizacion Guardar Acta pendiente",e)
   );
 
   cargar("./js/actas_multiples_trabajos_v511.js?v=V511-MULTIPLES-TRABAJOS").catch(e=>
-    console.warn("V512A Complementos: multiples trabajos por pedido pendiente",e)
+    console.warn("V512B Complementos: multiples trabajos por pedido pendiente",e)
   );
 
   const objetivo=document.getElementById("pantalla")||document.body;
