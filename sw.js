@@ -1,5 +1,5 @@
-/* MI VISUAL V513 - Auto WIN + Partidas V513 */
-const MV339_CACHE = "mivisual-v513-partidas-20260827";
+/* MI VISUAL V513C - Auto WIN + Partidas lote manual */
+const MV339_CACHE = "mivisual-v513c-partidas-lote-20260827";
 const MV339_CORE = [
   "./",
   "./index.html",
@@ -12,11 +12,11 @@ const MV339_CORE = [
   "./js/permisos.js?v=V339-CORE",
   "./js/app.js?v=V408-RESTAURA-V377",
   "./js/modulos_loader.js?v=V498-CIERRE-DEFINITIVO",
-  // index.html actual usa esta URL; el nuevo SW la vuelve a cachear con el loader V513.
   "./js/gestion_win_v505_loader.js?v=V512-WIN-SYNC",
   "./js/partidas_win_v505.js?v=V506-PARTIDAS-BASE",
   "./js/partidas_lote_v506.js?v=V506-LOTE",
   "./js/partidas_win_v513.js?v=V513-PARTIDAS-20260827",
+  "./js/partidas_lote_manual_v513c.js?v=V513C-LOTE-MANUAL-20260827",
   "./js/dashboard_actualizacion_indicadores_v512b.js?v=V512E-DASHBOARD-PIE-20260827",
   "./js/actualizacion_win_v507.js?v=V512A-SELLO-DASHBOARD",
   "./js/indicadores_win_sync_v4879.js?v=V512-SYNC-UNICA-PUBLICACION",
