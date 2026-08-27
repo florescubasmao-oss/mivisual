@@ -1,5 +1,5 @@
 /* ============================================================
-   MI VISUAL V512 - SELLO REAL DE ACTUALIZACION DE INDICADORES
+   MI VISUAL V512A - SELLO REAL DE ACTUALIZACION DE INDICADORES
 
    Alcance estricto:
    - Dashboard, Ranking y Mi Desempeno muestran un sello compacto.
@@ -9,12 +9,15 @@
    - El boton 🔄 publica manualmente el periodo para Jefatura/Admin.
      Para otros perfiles solo refresca el sello visible.
    - No modifica calculos, Produccion, Ranking, SLA ni Partner.
+   - V512A reconoce Dashboard Jefatura/Supervisor aunque el titulo visual
+     no contenga literalmente la palabra DASHBOARD.
 ============================================================ */
 (function(){
   "use strict";
   if(window.MV507_ACTUALIZACION_WIN_OK) return;
   window.MV507_ACTUALIZACION_WIN_OK=true;
   window.MV512_ACTUALIZACION_INDICADORES_OK=true;
+  window.MV512A_ACTUALIZACION_INDICADORES_OK=true;
 
   const API=window.MI_VISUAL_API_URL||"";
   const TTL=15000;
@@ -112,8 +115,6 @@
       try{
         dato=await consultarSelloPublicacion();
       }catch(e){
-        // El respaldo permite desplegar V512 frontend antes de publicar el
-        // pequeno complemento Apps Script. No cambia ningun indicador.
         dato=await consultarSelloMapaRespaldo();
       }
       if(dato&&dato.valor) cache={valor:dato.valor,fecha:Date.now(),fuente:dato.fuente||""};
@@ -129,10 +130,21 @@
     const p=pantallaActual();
     if(!p) return "";
     const titulos=Array.from(p.querySelectorAll("h1,h2,h3"))
-      .slice(0,8).map(x=>norm(x.textContent||"")).join(" | ");
+      .slice(0,10).map(x=>norm(x.textContent||"")).join(" | ");
+    const textoInicial=norm((p.textContent||"").slice(0,1400));
+
     if(/MI DESEMPENO/.test(titulos)) return "MI DESEMPEÑO";
     if(/RANKING/.test(titulos)) return "RANKING";
     if(/DASHBOARD/.test(titulos)) return "DASHBOARD";
+
+    // V512A: Dashboard actual de Jefatura se presenta como
+    // "JEFATURA / ZONA NORTE" y no contiene la palabra DASHBOARD.
+    if(/JEFATURA/.test(titulos) && /ZONA NORTE/.test(textoInicial)) return "DASHBOARD";
+
+    // Supervisor: reconoce la pantalla por encabezado y filtros operativos,
+    // evitando depender de un texto visual fijo.
+    if(/SUPERVISOR/.test(titulos) && (/PERIODO/.test(textoInicial) || /INDICADOR/.test(textoInicial))) return "DASHBOARD";
+
     return "";
   }
 
@@ -180,7 +192,7 @@
       pintar(dato.valor||"");
       return dato.valor||"";
     }catch(e){
-      console.warn("V512 actualizacion indicadores",e);
+      console.warn("V512A actualizacion indicadores",e);
       if(cache.valor) pintar(cache.valor);
       return cache.valor||"";
     }
@@ -207,7 +219,7 @@
       }
       await refrescar(true);
     }catch(e){
-      console.warn("V512 actualizacion manual",e);
+      console.warn("V512A actualizacion manual",e);
       alert("No se pudo actualizar los indicadores: "+(e&&e.message?e.message:String(e)));
     }finally{
       actualizandoManual=false;
@@ -240,5 +252,5 @@
   if(document.readyState==="loading") document.addEventListener("DOMContentLoaded",iniciar,{once:true});
   else iniciar();
 
-  console.log("MI VISUAL V512: sello real de indicadores habilitado.");
+  console.log("MI VISUAL V512A: sello real de indicadores habilitado.");
 })();
