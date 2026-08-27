@@ -1,0 +1,149 @@
+/* ================================================================
+   MI VISUAL V512 - PARCHE APPS SCRIPT
+   PEGAR AL FINAL DEL BACKEND V503/V501 ACTUAL Y VOLVER A IMPLEMENTAR.
+
+   OBJETIVO
+   - Registrar la hora REAL de una publicacion exitosa de indicadores.
+   - Exponer esa hora al frontend V512.
+   - No modifica formulas, SLA, puntos, Partner, VTR/GAR ni historicos.
+================================================================ */
+var MV512_VERSION_ = "V512-SYNC-SELLO-20260827";
+var MV512_PROP_PUBLICACION_ = "MV512_ULTIMA_PUBLICACION_";
+
+function mv512PeriodoSeguro_(periodo) {
+  var p=String(periodo||"").trim();
+  if (!/^\d{4}-\d{2}$/.test(p)) {
+    p=Utilities.formatDate(new Date(),"America/Lima","yyyy-MM");
+  }
+  if (p < "2026-08") {
+    throw new Error("V512: julio 2026 y periodos anteriores permanecen congelados.");
+  }
+  return p;
+}
+
+function mv512SelloTexto_(fecha) {
+  return Utilities.formatDate(fecha,"America/Lima","dd/MM/yyyy HH:mm");
+}
+
+function mv512GuardarSelloPublicacion_(periodo, usuario) {
+  var p=mv512PeriodoSeguro_(periodo);
+  var ahora=new Date();
+  var obj={
+    periodo:p,
+    iso:ahora.toISOString(),
+    texto:mv512SelloTexto_(ahora),
+    usuario:String(usuario||"")
+  };
+  PropertiesService.getScriptProperties().setProperty(
+    MV512_PROP_PUBLICACION_+p,
+    JSON.stringify(obj)
+  );
+  return obj;
+}
+
+function mv512LeerSelloControlFallback_(periodo) {
+  var ss=SpreadsheetApp.getActiveSpreadsheet();
+  var h=ss.getSheetByName("CONTROL_CIERRE_INDICADORES");
+  if (!h || h.getLastRow()<=1) return null;
+  var d=h.getDataRange().getValues();
+  for (var i=1;i<d.length;i++) {
+    if (String(d[i][0]||"").trim()!==periodo) continue;
+    var fecha=(typeof mv487pFecha_==="function") ? mv487pFecha_(d[i][4]) : null;
+    if (!fecha) return null;
+    return {
+      periodo:periodo,
+      iso:fecha.toISOString(),
+      texto:mv512SelloTexto_(fecha),
+      usuario:String(d[i][3]||""),
+      fuente:"CONTROL_CIERRE_FALLBACK"
+    };
+  }
+  return null;
+}
+
+function obtenerActualizacionIndicadoresWinV512(data) {
+  data=data||{};
+  // Lectura permitida a cualquier usuario valido de MI VISUAL.
+  obtenerUsuarioApp(data.usuario);
+  var periodo=mv512PeriodoSeguro_(data.periodo);
+  var raw=PropertiesService.getScriptProperties().getProperty(
+    MV512_PROP_PUBLICACION_+periodo
+  );
+  if (raw) {
+    try {
+      var x=JSON.parse(raw);
+      if (x && x.texto) {
+        return {
+          ok:true,
+          version:MV512_VERSION_,
+          periodo:periodo,
+          fechaPublicacion:x.iso,
+          fechaPublicacionTexto:x.texto,
+          actualizadoPor:x.usuario||"",
+          fuente:"PUBLICACION_V512"
+        };
+      }
+    } catch (_) {}
+  }
+
+  // Compatibilidad inicial: mientras aun no exista una primera publicacion
+  // V512, toma el ultimo sello disponible del control vigente.
+  var fb=mv512LeerSelloControlFallback_(periodo);
+  if (fb) {
+    return {
+      ok:true,
+      version:MV512_VERSION_,
+      periodo:periodo,
+      fechaPublicacion:fb.iso,
+      fechaPublicacionTexto:fb.texto,
+      actualizadoPor:fb.usuario||"",
+      fuente:fb.fuente
+    };
+  }
+
+  return {
+    ok:true,
+    version:MV512_VERSION_,
+    periodo:periodo,
+    fechaPublicacion:"",
+    fechaPublicacionTexto:"",
+    actualizadoPor:"",
+    fuente:"SIN_SELLO"
+  };
+}
+
+/* Guarda el sello SOLO despues de que el publicador vigente termina OK.
+   El publicador base conserva LockService, validaciones, snapshots y rollback. */
+var MV512_PUBLICAR_BASE_ = publicarIndicadoresWinV487;
+publicarIndicadoresWinV487 = function(data) {
+  var salida=MV512_PUBLICAR_BASE_.apply(this,arguments);
+  if (salida && salida.ok) {
+    var sello=mv512GuardarSelloPublicacion_(
+      salida.periodo || (data&&data.periodo),
+      (data&&data.usuario)||""
+    );
+    salida.versionV512=MV512_VERSION_;
+    salida.fechaPublicacion=sello.iso;
+    salida.fechaPublicacionTexto=sello.texto;
+  }
+  return salida;
+};
+
+/* Ruta GET incremental. Se encadena al doGet ya desplegado. */
+var MV512_DOGET_BASE_ = doGet;
+doGet = function(e) {
+  var data=Object.assign({},e&&e.parameter?e.parameter:{});
+  var accion=String(data.accion||"");
+  if (accion==="obtenerActualizacionIndicadoresWinV512") {
+    try {
+      return respuestaJson(obtenerActualizacionIndicadoresWinV512(data));
+    } catch(error) {
+      return respuestaJson({
+        ok:false,
+        modulo:"V512_ACTUALIZACION_INDICADORES",
+        error:error&&error.message?error.message:String(error)
+      });
+    }
+  }
+  return MV512_DOGET_BASE_(e);
+};
