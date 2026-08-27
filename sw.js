@@ -1,5 +1,5 @@
-/* MI VISUAL V508 - Checklist rapido + Actas tecnico sin descarga */
-const MV339_CACHE = "mivisual-v508-checklist-actas-20260827";
+/* MI VISUAL V510 - Checklist rapido + Actas tecnico + Guardar Acta */
+const MV339_CACHE = "mivisual-v510-actas-guardar-20260827";
 const MV339_CORE = [
   "./",
   "./index.html",
@@ -16,6 +16,7 @@ const MV339_CORE = [
   "./js/actualizacion_win_v507.js?v=V507-FECHA-HORA-PERU",
   "./js/checklist_rapido_v508.js?v=V508-CHECKLIST-RAPIDO",
   "./js/actas_tecnico_sin_descarga_v508.js?v=V508-ACTAS-TECNICO",
+  "./js/actas_guardar_sync_v510.js?v=V510-GUARDAR-ACTA",
   "./js/mapa_cto_fix_v342.js?v=V342-MAPA-CTO",
   "./js/actas_recepcion_v343.js?v=V343-ACTAS-RECEPCION",
   "./js/actas_identidad_v344.js?v=V344-ACTAS-IDENTIDAD",
