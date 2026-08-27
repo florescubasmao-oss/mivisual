@@ -1,11 +1,12 @@
 /* ============================================================
-   MI VISUAL V508 - LOADER COMPLEMENTOS INCREMENTALES
+   MI VISUAL V510 - LOADER COMPLEMENTOS INCREMENTALES
 
    Carga incremental:
    - Sincronizador WIN -> indicadores desde el inicio.
    - Fecha/hora unica WIN en Dashboard, Ranking y Mi Desempeno.
    - Checklist rapido: precarga/cache + render por sede bajo demanda.
    - Gestion de Actas: descarga por periodo oculta para Tecnico.
+   - Gestion de Actas: sincroniza Guardar cuando Mapa + Produccion resolvieron.
    - Continuidad al abrir dashboards.
    - Partidas + validacion por lote + herramientas solo para Jefatura.
 ============================================================ */
@@ -57,24 +58,28 @@
       }
     }catch(e){
       dashboardPreparado=false;
-      console.warn("V508 Complementos: complemento Dashboard pendiente",e);
+      console.warn("V510 Complementos: complemento Dashboard pendiente",e);
     }
   }
 
   cargar("./js/actualizacion_win_v507.js?v=V507-FECHA-HORA-PERU").catch(e=>
-    console.warn("V508 Complementos: fecha/hora WIN pendiente",e)
+    console.warn("V510 Complementos: fecha/hora WIN pendiente",e)
   );
 
   cargar("./js/indicadores_win_sync_v4879.js?v=V505-HOOK-WIN").catch(e=>
-    console.warn("V508 Complementos: sincronizador WIN pendiente",e)
+    console.warn("V510 Complementos: sincronizador WIN pendiente",e)
   );
 
   cargar("./js/checklist_rapido_v508.js?v=V508-CHECKLIST-RAPIDO").catch(e=>
-    console.warn("V508 Complementos: optimizacion Checklist pendiente",e)
+    console.warn("V510 Complementos: optimizacion Checklist pendiente",e)
   );
 
   cargar("./js/actas_tecnico_sin_descarga_v508.js?v=V508-ACTAS-TECNICO").catch(e=>
-    console.warn("V508 Complementos: restriccion descarga Actas pendiente",e)
+    console.warn("V510 Complementos: restriccion descarga Actas pendiente",e)
+  );
+
+  cargar("./js/actas_guardar_sync_v510.js?v=V510-GUARDAR-ACTA").catch(e=>
+    console.warn("V510 Complementos: sincronizacion Guardar Acta pendiente",e)
   );
 
   const objetivo=document.getElementById("pantalla")||document.body;
