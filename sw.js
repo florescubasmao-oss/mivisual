@@ -1,5 +1,5 @@
-/* MI VISUAL V512D - Herramientas al final + sello Dashboard + sync WIN */
-const MV339_CACHE = "mivisual-v512d-herramientas-final-20260827";
+/* MI VISUAL V512E - Auto WIN + sello Dashboard inferior izquierdo */
+const MV339_CACHE = "mivisual-v512e-dashboard-pie-20260827";
 const MV339_CORE = [
   "./",
   "./index.html",
@@ -12,8 +12,9 @@ const MV339_CORE = [
   "./js/permisos.js?v=V339-CORE",
   "./js/app.js?v=V408-RESTAURA-V377",
   "./js/modulos_loader.js?v=V498-CIERRE-DEFINITIVO",
+  // index.html actual usa esta URL; se vuelve a cachear con el loader V512E.
   "./js/gestion_win_v505_loader.js?v=V512-WIN-SYNC",
-  "./js/dashboard_actualizacion_indicadores_v512b.js?v=V512B-DASHBOARD-20260827",
+  "./js/dashboard_actualizacion_indicadores_v512b.js?v=V512E-DASHBOARD-PIE-20260827",
   "./js/actualizacion_win_v507.js?v=V512A-SELLO-DASHBOARD",
   "./js/indicadores_win_sync_v4879.js?v=V512-SYNC-UNICA-PUBLICACION",
   "./js/dashboard_herramientas_final_v512d.js?v=V512D-HERRAMIENTAS-FINAL",
