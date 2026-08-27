@@ -1,8 +1,9 @@
 /* ============================================================
-   MI VISUAL V506 - LOADER GESTION WIN
+   MI VISUAL V507 - LOADER GESTION WIN
 
    Carga incremental:
    - Sincronizador WIN -> indicadores desde el inicio.
+   - Fecha/hora unica WIN en Dashboard, Ranking y Mi Desempeno.
    - Continuidad al abrir dashboards.
    - Partidas + validacion por lote + herramientas solo para Jefatura.
 ============================================================ */
@@ -54,12 +55,16 @@
       }
     }catch(e){
       dashboardPreparado=false;
-      console.warn("V506 Gestion WIN: complemento Dashboard pendiente",e);
+      console.warn("V507 Gestion WIN: complemento Dashboard pendiente",e);
     }
   }
 
+  cargar("./js/actualizacion_win_v507.js?v=V507-FECHA-HORA-PERU").catch(e=>
+    console.warn("V507 Gestion WIN: fecha/hora WIN pendiente",e)
+  );
+
   cargar("./js/indicadores_win_sync_v4879.js?v=V505-HOOK-WIN").catch(e=>
-    console.warn("V506 Gestion WIN: sincronizador pendiente",e)
+    console.warn("V507 Gestion WIN: sincronizador pendiente",e)
   );
 
   const objetivo=document.getElementById("pantalla")||document.body;
