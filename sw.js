@@ -1,5 +1,5 @@
-/* MI VISUAL V498 - cache segura y cierre definitivo */
-const MV339_CACHE = "mivisual-v498-cierre-definitivo-20260826";
+/* MI VISUAL V501 - cache segura continuidad + Validacion Tecnica */
+const MV339_CACHE = "mivisual-v501-continuidad-vtrgar-20260826";
 const MV339_CORE = [
   "./",
   "./index.html",
