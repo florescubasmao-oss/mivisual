@@ -1,5 +1,5 @@
-/* MI VISUAL V513D - Auto WIN + cierre Partidas */
-const MV339_CACHE = "mivisual-v513d-cierre-partidas-20260827";
+/* MI VISUAL V514 - Restaura Validacion VTR/GAR */
+const MV339_CACHE = "mivisual-v514-validacion-vtrgar-20260827";
 const MV339_CORE = [
   "./",
   "./index.html",
@@ -13,6 +13,7 @@ const MV339_CORE = [
   "./js/app.js?v=V408-RESTAURA-V377",
   "./js/modulos_loader.js?v=V498-CIERRE-DEFINITIVO",
   "./js/gestion_win_v505_loader.js?v=V512-WIN-SYNC",
+  "./js/vtr_gar_validacion_restaurar_v514.js?v=V514-VALIDACION-VTRGAR-20260827",
   "./js/partidas_win_v505.js?v=V506-PARTIDAS-BASE",
   "./js/partidas_lote_v506.js?v=V506-LOTE",
   "./js/partidas_win_v513.js?v=V513-PARTIDAS-20260827",
