@@ -1,5 +1,5 @@
-/* MI VISUAL V511 - Actas mismo pedido con varias Ordenes */
-const MV339_CACHE = "mivisual-v511-actas-multiples-20260827";
+/* MI VISUAL V512 - Sincronizacion WIN optimizada + sello indicadores */
+const MV339_CACHE = "mivisual-v512-win-sync-20260827";
 const MV339_CORE = [
   "./",
   "./index.html",
@@ -12,8 +12,9 @@ const MV339_CORE = [
   "./js/permisos.js?v=V339-CORE",
   "./js/app.js?v=V408-RESTAURA-V377",
   "./js/modulos_loader.js?v=V498-CIERRE-DEFINITIVO",
-  "./js/gestion_win_v505_loader.js?v=V511-GESTION-WIN-ACTAS",
-  "./js/actualizacion_win_v507.js?v=V507-FECHA-HORA-PERU",
+  "./js/gestion_win_v505_loader.js?v=V512-WIN-SYNC",
+  "./js/actualizacion_win_v507.js?v=V512-SELLO-INDICADORES",
+  "./js/indicadores_win_sync_v4879.js?v=V512-SYNC-UNICA-PUBLICACION",
   "./js/checklist_rapido_v508.js?v=V508-CHECKLIST-RAPIDO",
   "./js/actas_tecnico_sin_descarga_v508.js?v=V508-ACTAS-TECNICO",
   "./js/actas_guardar_sync_v510.js?v=V511-GUARDAR-ACTA",
