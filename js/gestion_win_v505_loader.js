@@ -1,5 +1,5 @@
 /* ============================================================
-   MI VISUAL V512B - LOADER COMPLEMENTOS INCREMENTALES
+   MI VISUAL V512D - LOADER COMPLEMENTOS INCREMENTALES
 
    Carga incremental:
    - Sincronizador WIN -> indicadores optimizado desde el inicio.
@@ -11,6 +11,7 @@
    - Gestion de Actas: selector cuando un mismo pedido tiene varias Ordenes.
    - Continuidad al abrir dashboards.
    - Partidas + validacion por lote + herramientas solo para Jefatura.
+   - V512D mueve la barra Herramientas al final del Dashboard.
 ============================================================ */
 (function(){
   "use strict";
@@ -19,6 +20,7 @@
   window.MV512_GESTION_WIN_LOADER_OK=true;
   window.MV512A_GESTION_WIN_LOADER_OK=true;
   window.MV512B_GESTION_WIN_LOADER_OK=true;
+  window.MV512D_GESTION_WIN_LOADER_OK=true;
 
   const cargados=new Set();
   const promesas=new Map();
@@ -60,41 +62,40 @@
         await cargar("./js/partidas_win_v505.js?v=V506-PARTIDAS-BASE");
         await cargar("./js/partidas_lote_v506.js?v=V506-LOTE");
         await cargar("./js/dashboard_herramientas_v497.js?v=V505-HERRAMIENTAS");
+        await cargar("./js/dashboard_herramientas_final_v512d.js?v=V512D-HERRAMIENTAS-FINAL");
       }
     }catch(e){
       dashboardPreparado=false;
-      console.warn("V512B Complementos: complemento Dashboard pendiente",e);
+      console.warn("V512D Complementos: complemento Dashboard pendiente",e);
     }
   }
 
-  // V512B: archivo nuevo e independiente. Evita cualquier bloqueo por
-  // versiones cacheadas del sello V507/V512A.
   cargar("./js/dashboard_actualizacion_indicadores_v512b.js?v=V512B-DASHBOARD-20260827").catch(e=>
-    console.warn("V512B Complementos: sello Dashboard pendiente",e)
+    console.warn("V512D Complementos: sello Dashboard pendiente",e)
   );
 
   cargar("./js/actualizacion_win_v507.js?v=V512A-SELLO-DASHBOARD").catch(e=>
-    console.warn("V512B Complementos: sello compatible pendiente",e)
+    console.warn("V512D Complementos: sello compatible pendiente",e)
   );
 
   cargar("./js/indicadores_win_sync_v4879.js?v=V512-SYNC-UNICA-PUBLICACION").catch(e=>
-    console.warn("V512B Complementos: sincronizador WIN pendiente",e)
+    console.warn("V512D Complementos: sincronizador WIN pendiente",e)
   );
 
   cargar("./js/checklist_rapido_v508.js?v=V508-CHECKLIST-RAPIDO").catch(e=>
-    console.warn("V512B Complementos: optimizacion Checklist pendiente",e)
+    console.warn("V512D Complementos: optimizacion Checklist pendiente",e)
   );
 
   cargar("./js/actas_tecnico_sin_descarga_v508.js?v=V508-ACTAS-TECNICO").catch(e=>
-    console.warn("V512B Complementos: restriccion descarga Actas pendiente",e)
+    console.warn("V512D Complementos: restriccion descarga Actas pendiente",e)
   );
 
   cargar("./js/actas_guardar_sync_v510.js?v=V511-GUARDAR-ACTA").catch(e=>
-    console.warn("V512B Complementos: sincronizacion Guardar Acta pendiente",e)
+    console.warn("V512D Complementos: sincronizacion Guardar Acta pendiente",e)
   );
 
   cargar("./js/actas_multiples_trabajos_v511.js?v=V511-MULTIPLES-TRABAJOS").catch(e=>
-    console.warn("V512B Complementos: multiples trabajos por pedido pendiente",e)
+    console.warn("V512D Complementos: multiples trabajos por pedido pendiente",e)
   );
 
   const objetivo=document.getElementById("pantalla")||document.body;
