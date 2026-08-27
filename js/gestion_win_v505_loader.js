@@ -1,8 +1,9 @@
 /* ============================================================
-   MI VISUAL V513C - LOADER COMPLEMENTOS INCREMENTALES
+   MI VISUAL V513D - LOADER COMPLEMENTOS INCREMENTALES
 
    Carga incremental:
    - Sincronizador WIN -> indicadores automatico optimizado.
+   - Snapshot Partidas se actualiza tras carga WIN, sin ralentizar apertura.
    - Sello Dashboard inferior izquierdo, igual al Ranking.
    - Mantiene sello compatible en Ranking/Mi Desempeno.
    - Checklist rapido: precarga/cache + render por sede bajo demanda.
@@ -23,6 +24,7 @@
   window.MV512E_GESTION_WIN_LOADER_OK=true;
   window.MV513_GESTION_WIN_LOADER_OK=true;
   window.MV513C_GESTION_WIN_LOADER_OK=true;
+  window.MV513D_GESTION_WIN_LOADER_OK=true;
 
   const cargados=new Set();
   const promesas=new Map();
@@ -70,36 +72,38 @@
       }
     }catch(e){
       dashboardPreparado=false;
-      console.warn("V513C Complementos: complemento Dashboard pendiente",e);
+      console.warn("V513D Complementos: complemento Dashboard pendiente",e);
     }
   }
 
   cargar("./js/dashboard_actualizacion_indicadores_v512b.js?v=V512E-DASHBOARD-PIE-20260827").catch(e=>
-    console.warn("V513C Complementos: sello Dashboard pendiente",e)
+    console.warn("V513D Complementos: sello Dashboard pendiente",e)
   );
 
   cargar("./js/actualizacion_win_v507.js?v=V512A-SELLO-DASHBOARD").catch(e=>
-    console.warn("V513C Complementos: sello compatible pendiente",e)
+    console.warn("V513D Complementos: sello compatible pendiente",e)
   );
 
-  cargar("./js/indicadores_win_sync_v4879.js?v=V512-SYNC-UNICA-PUBLICACION").catch(e=>
-    console.warn("V513C Complementos: sincronizador WIN pendiente",e)
+  cargar("./js/indicadores_win_sync_v4879.js?v=V512-SYNC-UNICA-PUBLICACION").then(()=>
+    cargar("./js/partidas_snapshot_auto_v513d.js?v=V513D-SNAPSHOT-AUTO-20260827")
+  ).catch(e=>
+    console.warn("V513D Complementos: sincronizador WIN / snapshot Partidas pendiente",e)
   );
 
   cargar("./js/checklist_rapido_v508.js?v=V508-CHECKLIST-RAPIDO").catch(e=>
-    console.warn("V513C Complementos: optimizacion Checklist pendiente",e)
+    console.warn("V513D Complementos: optimizacion Checklist pendiente",e)
   );
 
   cargar("./js/actas_tecnico_sin_descarga_v508.js?v=V508-ACTAS-TECNICO").catch(e=>
-    console.warn("V513C Complementos: restriccion descarga Actas pendiente",e)
+    console.warn("V513D Complementos: restriccion descarga Actas pendiente",e)
   );
 
   cargar("./js/actas_guardar_sync_v510.js?v=V511-GUARDAR-ACTA").catch(e=>
-    console.warn("V513C Complementos: sincronizacion Guardar Acta pendiente",e)
+    console.warn("V513D Complementos: sincronizacion Guardar Acta pendiente",e)
   );
 
   cargar("./js/actas_multiples_trabajos_v511.js?v=V511-MULTIPLES-TRABAJOS").catch(e=>
-    console.warn("V513C Complementos: multiples trabajos por pedido pendiente",e)
+    console.warn("V513D Complementos: multiples trabajos por pedido pendiente",e)
   );
 
   const objetivo=document.getElementById("pantalla")||document.body;
