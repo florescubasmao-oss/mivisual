@@ -1,16 +1,16 @@
 /* ============================================================
-   MI VISUAL V497 - HERRAMIENTAS COMPACTAS DASHBOARD JEFATURA
+   MI VISUAL V505 - HERRAMIENTAS COMPACTAS DASHBOARD JEFATURA
 
-   - Reduce la tarjeta V496 a una franja administrativa pequeña.
-   - Mantiene Cambio / Continuidad de Cuadrilla.
-   - Agrega acceso directo a Base Partner como respaldo/corrección.
-   - Base Partner se carga SOLO al pulsar el botón, preservando rendimiento.
-   - Después de aplicar Partner, vuelve a publicar indicadores desde WIN
-     cuando el publicador V487.12/V497 esté disponible.
+   - Conserva Continuidad de Cuadrilla.
+   - Agrega Partidas WIN (validacion IR <-> IC).
+   - Conserva Partner como respaldo/correccion auxiliar.
+   - WIN mantiene prioridad.
+   - No modifica SLA.
 ============================================================ */
 (function(){
   "use strict";
-  if(window.MV497_HERRAMIENTAS_DASHBOARD_OK) return;
+  if(window.MV505_HERRAMIENTAS_DASHBOARD_OK) return;
+  window.MV505_HERRAMIENTAS_DASHBOARD_OK=true;
   window.MV497_HERRAMIENTAS_DASHBOARD_OK=true;
 
   function norm(v){
@@ -39,6 +39,7 @@
     return `<div style="display:flex;align-items:center;gap:7px;flex-wrap:wrap;padding:7px 9px;background:#f8fafc;border:1px solid #cbd5e1;border-radius:11px;margin:7px 0 10px;box-shadow:none">
       <span style="font-size:11px;font-weight:900;color:#475569;margin-right:2px">⚙️ Herramientas</span>
       <button type="button" onclick="mv496AbrirContinuidad()" style="border:0;border-radius:8px;padding:7px 9px;background:#1d4ed8;color:white;font-size:11px;font-weight:800;cursor:pointer">🔄 Cuadrilla</button>
+      <button type="button" onclick="mv505AbrirPartidas()" style="border:0;border-radius:8px;padding:7px 9px;background:#d97706;color:white;font-size:11px;font-weight:800;cursor:pointer">🎯 Partidas</button>
       <button type="button" onclick="mv497AbrirPartner()" style="border:0;border-radius:8px;padding:7px 9px;background:#475569;color:white;font-size:11px;font-weight:800;cursor:pointer">🛠 Partner</button>
       <span style="font-size:10px;color:#64748b">Solo Jefatura · WIN mantiene prioridad</span>
     </div>`;
@@ -47,8 +48,10 @@
   function compactar(){
     if(!esJefatura()) return;
     const box=document.getElementById("mv496Herramienta");
-    if(!box || box.dataset.mv497Compacto==="si") return;
+    if(!box) return;
+    if(box.dataset.mv505Compacto==="si") return;
     box.dataset.mv497Compacto="si";
+    box.dataset.mv505Compacto="si";
     box.style.cssText="margin:0;padding:0;background:transparent;border:0;box-shadow:none;";
     box.innerHTML=htmlBarra();
   }
@@ -69,7 +72,7 @@
       await window.mv339CargarModulo("administracion");
       if(typeof window.mostrarActualizarBaseOperativa==="function") return;
     }
-    await cargarScript("./js/base_operativa.js?v=V497-PARTNER-LAZY");
+    await cargarScript("./js/base_operativa.js?v=V505-PARTNER-LAZY");
   }
 
   function rotularPartner(){
@@ -78,11 +81,11 @@
     const h=wrap.querySelector(".bo-head h2");
     const p=wrap.querySelector(".bo-head p");
     if(h) h.textContent="🛠 Respaldo / corrección Base Partner";
-    if(p) p.textContent="Partner complementa y corrige casos puntuales. WIN continúa siendo la fuente principal de órdenes, estados e indicadores.";
+    if(p) p.textContent="Partner complementa y propone correcciones puntuales. WIN continúa siendo la fuente principal de órdenes, estados e indicadores.";
 
     const nota=wrap.querySelector(".bo-card .bo-note");
     if(nota){
-      nota.innerHTML="<b>Regla:</b> primero se previsualiza. Partner no debe reemplazar masivamente a WIN; después de aplicar el respaldo, MI VISUAL vuelve a publicar los indicadores desde WIN.";
+      nota.innerHTML="<b>Regla:</b> Partner es auxiliar. Las diferencias IR/IC deben validarse en <b>🎯 Partidas</b>. WIN mantiene la cuadrilla ejecutora y el estado oficial.";
     }
 
     const btn=document.getElementById("boProcesar");
@@ -91,7 +94,7 @@
 
   function instalarSincronizacionPartner(){
     const original=window.boProcesarBase;
-    if(typeof original!=="function" || original.__mv497Partner) return;
+    if(typeof original!=="function" || original.__mv505Partner) return;
     const ajustada=async function(){
       const r=await original.apply(this,arguments);
       if(window.MV497_PARTNER_MODO_ACTIVO){
@@ -101,17 +104,17 @@
             await window.mv4879SincronizarIndicadoresWin(p?[p]:[]);
           }
         }catch(e){
-          console.warn("V497 Partner: respaldo aplicado; publicación WIN pendiente",e);
+          console.warn("V505 Partner: respaldo aplicado; publicacion WIN pendiente",e);
           const msg=document.getElementById("boMensaje");
           if(msg){
             msg.className="bo-msg bo-warn";
-            msg.textContent=String(msg.textContent||"")+"\n⚠ Respaldo Partner guardado. La republicación WIN quedó pendiente: "+(e?.message||e);
+            msg.textContent=String(msg.textContent||"")+"\n⚠ Respaldo Partner guardado. La republicacion WIN quedo pendiente: "+(e?.message||e);
           }
         }
       }
       return r;
     };
-    ajustada.__mv497Partner=true;
+    ajustada.__mv505Partner=true;
     ajustada.__original=original;
     window.boProcesarBase=ajustada;
     try{boProcesarBase=ajustada;}catch(_){}
