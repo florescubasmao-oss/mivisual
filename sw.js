@@ -1,5 +1,5 @@
-/* MI VISUAL V512A - Sincronizacion WIN optimizada + sello Dashboard */
-const MV339_CACHE = "mivisual-v512a-sello-dashboard-20260827";
+/* MI VISUAL V512B - Sello independiente Dashboard + sync WIN */
+const MV339_CACHE = "mivisual-v512b-dashboard-indicadores-20260827";
 const MV339_CORE = [
   "./",
   "./index.html",
@@ -12,7 +12,11 @@ const MV339_CORE = [
   "./js/permisos.js?v=V339-CORE",
   "./js/app.js?v=V408-RESTAURA-V377",
   "./js/modulos_loader.js?v=V498-CIERRE-DEFINITIVO",
+  // La URL siguiente coincide exactamente con index.html actual.
+  // Al instalar V512B se vuelve a descargar y cachear el loader vigente.
+  "./js/gestion_win_v505_loader.js?v=V512-WIN-SYNC",
   "./js/gestion_win_v505_loader.js?v=V512A-WIN-SYNC",
+  "./js/dashboard_actualizacion_indicadores_v512b.js?v=V512B-DASHBOARD-20260827",
   "./js/actualizacion_win_v507.js?v=V512A-SELLO-DASHBOARD",
   "./js/indicadores_win_sync_v4879.js?v=V512-SYNC-UNICA-PUBLICACION",
   "./js/checklist_rapido_v508.js?v=V508-CHECKLIST-RAPIDO",
