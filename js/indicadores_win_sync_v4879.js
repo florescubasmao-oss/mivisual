@@ -1,19 +1,22 @@
 /* ================================================================
-   MI VISUAL V505 - Sincronizador automatico WIN -> indicadores
+   MI VISUAL V512 - Sincronizador automatico WIN -> indicadores
 
-   Base compatible V487.12 / backend V503.
+   Base compatible V487.12 / backend V503+.
    - Se ejecuta despues de una importacion WIN valida del Mapa Operativo.
    - Publica SOLO desde agosto 2026.
    - Julio 2026 y anteriores permanecen cerrados.
    - Produccion, Efectividad, Recableado y VTR/GAR se publican juntos.
    - Ranking y caches se reconstruyen en backend.
    - No altera la logica SLA.
+   - V512 elimina la previsualizacion duplicada del flujo automatico.
+   - V512 reutiliza una publicacion en curso del mismo periodo.
 ================================================================ */
 (function(){
   "use strict";
   if(window.MV505_INDICADORES_WIN_SYNC_OK)return;
   window.MV505_INDICADORES_WIN_SYNC_OK=true;
   window.MV4879_INDICADORES_WIN_SYNC_OK=true;
+  window.MV512_INDICADORES_WIN_SYNC_OK=true;
 
   const API=window.MI_VISUAL_API_URL||"";
   const PERIODO_MINIMO="2026-08";
@@ -25,6 +28,7 @@
   let resolverPendiente=null;
   let rechazarPendiente=null;
   let hookInstalado=false;
+  const publicacionesEnCurso=new Map();
 
   function txt(v){return String(v==null?"":v).trim();}
   function norm(v){return txt(v).toUpperCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"").replace(/\s+/g," ").trim();}
@@ -90,7 +94,7 @@
     const p=periodoValido(periodo)?periodo:periodoActual();
     if(!p)throw new Error("No se pudo determinar el periodo WIN.");
     if(p<PERIODO_MINIMO){
-      return {ok:true,version:"V505",periodo:p,omitidoPorCierre:true,julioCongelado:true};
+      return {ok:true,version:"V512",periodo:p,omitidoPorCierre:true,julioCongelado:true};
     }
     return apiPost({
       accion:"previsualizarPublicacionIndicadoresWinV487",
@@ -103,35 +107,50 @@
     const p=periodoValido(periodo)?periodo:periodoActual();
     if(!p)throw new Error("No se pudo determinar el periodo WIN.");
     if(p<PERIODO_MINIMO){
-      return {ok:true,version:"V505",periodo:p,omitidoPorCierre:true,julioCongelado:true};
+      return {ok:true,version:"V512",periodo:p,omitidoPorCierre:true,julioCongelado:true};
     }
 
-    const preview=await previsualizarPeriodo(p);
-    if(preview.produccion&&preview.produccion.ok===false){
-      throw new Error(preview.produccion.error||"Produccion tiene casos pendientes de clasificar.");
+    // V512: si este periodo ya se esta publicando, no lanzar una segunda
+    // reconstruccion. La llamada comparte exactamente la misma promesa.
+    if(publicacionesEnCurso.has(p)) return publicacionesEnCurso.get(p);
+
+    const tarea=(async()=>{
+      // El publicador backend vuelve a leer MAPA_ORDENES, calcula Produccion,
+      // valida clasificacion, toma snapshots, escribe solo el periodo y hace
+      // rollback si algo falla. Por eso el preview automatico era duplicado.
+      const publicado=await apiPost({
+        accion:"publicarIndicadoresWinV487",
+        usuario:usuario(),
+        periodo:p,
+        confirmacion:CONFIRMACION
+      });
+
+      publicado.previsualizacionAutomaticaOmitida=true;
+      publicado.sincronizador="V512";
+      ultima=publicado;
+      invalidarCachesCliente(p);
+
+      const prod=publicado.produccion||{};
+      const ef=publicado.efectividad&&publicado.efectividad.control?publicado.efectividad.control:{};
+      anexarEstado(
+        `📊 Indicadores actualizados: ${p} · Produccion ${prod.ordenes||0} orden(es) / ${prod.puntos||0} pts · Efectividad ${ef.totalEfectividad||0} orden(es).`,
+        "ok"
+      );
+      try{window.dispatchEvent(new CustomEvent("mv487IndicadoresPublicados",{detail:publicado}));}catch(_){}
+      return publicado;
+    })();
+
+    publicacionesEnCurso.set(p,tarea);
+    try{
+      return await tarea;
+    }finally{
+      if(publicacionesEnCurso.get(p)===tarea) publicacionesEnCurso.delete(p);
     }
-
-    const publicado=await apiPost({
-      accion:"publicarIndicadoresWinV487",
-      usuario:usuario(),
-      periodo:p,
-      confirmacion:CONFIRMACION
-    });
-    publicado.previsualizacion=preview;
-    ultima=publicado;
-    invalidarCachesCliente(p);
-
-    const prod=publicado.produccion||{};
-    const ef=publicado.efectividad&&publicado.efectividad.control?publicado.efectividad.control:{};
-    anexarEstado(
-      `📊 Indicadores actualizados: ${p} · Produccion ${prod.ordenes||0} orden(es) / ${prod.puntos||0} pts · Efectividad ${ef.totalEfectividad||0} orden(es).`,
-      "ok"
-    );
-    try{window.dispatchEvent(new CustomEvent("mv487IndicadoresPublicados",{detail:publicado}));}catch(_){}
-    return publicado;
   }
 
   async function calcularPeriodo(periodo){
+    // Se conserva para diagnostico/manual. No participa en la sincronizacion
+    // automatica de V512.
     const r=await previsualizarPeriodo(periodo);
     ultima=r;
     try{window.dispatchEvent(new CustomEvent("mv487IndicadoresCalculados",{detail:r}));}catch(_){}
@@ -203,16 +222,17 @@
         anexarEstado("⏳ Actualizando Produccion e indicadores desde WIN...","warn");
         await sincronizar(p?[p]:[]);
       }catch(e){
-        console.warn("V505 WIN -> indicadores",e);
+        console.warn("V512 WIN -> indicadores",e);
       }
       return r;
     };
     ajustada.__mv505WinHook=true;
+    ajustada.__mv512WinHook=true;
     ajustada.__original=original;
     window.moRegistrarImportacion=ajustada;
     try{moRegistrarImportacion=ajustada;}catch(_){}
     hookInstalado=true;
-    console.log("MI VISUAL V505: hook WIN -> indicadores habilitado.");
+    console.log("MI VISUAL V512: hook WIN -> indicadores optimizado habilitado.");
     return true;
   }
 
@@ -241,6 +261,7 @@
   window.mv4879SincronizarIndicadoresWin=sincronizar;
   window.mv4879UltimoResultado=()=>ultima;
   window.mv505InstalarHookWin=instalarHookMapa;
+  window.mv512PublicacionesEnCurso=()=>Array.from(publicacionesEnCurso.keys());
 
   observarCargaMapa();
 })();
