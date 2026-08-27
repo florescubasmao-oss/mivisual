@@ -1,5 +1,5 @@
-/* MI VISUAL V513C - Auto WIN + Partidas lote manual */
-const MV339_CACHE = "mivisual-v513c-partidas-lote-20260827";
+/* MI VISUAL V513D - Auto WIN + cierre Partidas */
+const MV339_CACHE = "mivisual-v513d-cierre-partidas-20260827";
 const MV339_CORE = [
   "./",
   "./index.html",
@@ -17,6 +17,7 @@ const MV339_CORE = [
   "./js/partidas_lote_v506.js?v=V506-LOTE",
   "./js/partidas_win_v513.js?v=V513-PARTIDAS-20260827",
   "./js/partidas_lote_manual_v513c.js?v=V513C-LOTE-MANUAL-20260827",
+  "./js/partidas_snapshot_auto_v513d.js?v=V513D-SNAPSHOT-AUTO-20260827",
   "./js/dashboard_actualizacion_indicadores_v512b.js?v=V512E-DASHBOARD-PIE-20260827",
   "./js/actualizacion_win_v507.js?v=V512A-SELLO-DASHBOARD",
   "./js/indicadores_win_sync_v4879.js?v=V512-SYNC-UNICA-PUBLICACION",
