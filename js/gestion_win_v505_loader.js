@@ -1,10 +1,10 @@
 /* ============================================================
-   MI VISUAL V505 - LOADER GESTION WIN
+   MI VISUAL V506 - LOADER GESTION WIN
 
    Carga incremental:
    - Sincronizador WIN -> indicadores desde el inicio.
    - Continuidad al abrir dashboards.
-   - Partidas + herramientas solo para Jefatura.
+   - Partidas + validacion por lote + herramientas solo para Jefatura.
 ============================================================ */
 (function(){
   "use strict";
@@ -48,17 +48,18 @@
     try{
       await cargar("./js/dashboard_continuidad_cuadrillas_v496.js?v=V505-CONTINUIDAD");
       if(esJefatura()){
-        await cargar("./js/partidas_win_v505.js?v=V505-PARTIDAS");
+        await cargar("./js/partidas_win_v505.js?v=V506-PARTIDAS-BASE");
+        await cargar("./js/partidas_lote_v506.js?v=V506-LOTE");
         await cargar("./js/dashboard_herramientas_v497.js?v=V505-HERRAMIENTAS");
       }
     }catch(e){
       dashboardPreparado=false;
-      console.warn("V505 Gestion WIN: complemento Dashboard pendiente",e);
+      console.warn("V506 Gestion WIN: complemento Dashboard pendiente",e);
     }
   }
 
   cargar("./js/indicadores_win_sync_v4879.js?v=V505-HOOK-WIN").catch(e=>
-    console.warn("V505 Gestion WIN: sincronizador pendiente",e)
+    console.warn("V506 Gestion WIN: sincronizador pendiente",e)
   );
 
   const objetivo=document.getElementById("pantalla")||document.body;
