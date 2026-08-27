@@ -1,5 +1,5 @@
-/* MI VISUAL V501 - cache segura continuidad + Validacion Tecnica */
-const MV339_CACHE = "mivisual-v501-continuidad-vtrgar-20260826";
+/* MI VISUAL V505 - gestion WIN, Partidas y cache segura */
+const MV339_CACHE = "mivisual-v505-gestion-win-partidas-20260827";
 const MV339_CORE = [
   "./",
   "./index.html",
@@ -12,6 +12,7 @@ const MV339_CORE = [
   "./js/permisos.js?v=V339-CORE",
   "./js/app.js?v=V408-RESTAURA-V377",
   "./js/modulos_loader.js?v=V498-CIERRE-DEFINITIVO",
+  "./js/gestion_win_v505_loader.js?v=V505-GESTION-WIN",
   "./js/mapa_cto_fix_v342.js?v=V342-MAPA-CTO",
   "./js/actas_recepcion_v343.js?v=V343-ACTAS-RECEPCION",
   "./js/actas_identidad_v344.js?v=V344-ACTAS-IDENTIDAD",
