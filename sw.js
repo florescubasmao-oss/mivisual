@@ -1,5 +1,5 @@
-/* MI VISUAL V505 - gestion WIN, Partidas y cache segura */
-const MV339_CACHE = "mivisual-v505-gestion-win-partidas-20260827";
+/* MI VISUAL V506 - Partidas por lote y cache segura */
+const MV339_CACHE = "mivisual-v506-partidas-lote-20260827";
 const MV339_CORE = [
   "./",
   "./index.html",
