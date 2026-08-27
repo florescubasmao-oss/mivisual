@@ -1,17 +1,15 @@
 /* ============================================================
-   MI VISUAL V512D - LOADER COMPLEMENTOS INCREMENTALES
+   MI VISUAL V512E - LOADER COMPLEMENTOS INCREMENTALES
 
    Carga incremental:
-   - Sincronizador WIN -> indicadores optimizado desde el inicio.
-   - Sello V512B independiente SOLO en Dashboard.
-   - Mantiene sello V512A compatible en Ranking/Mi Desempeno.
+   - Sincronizador WIN -> indicadores automatico optimizado.
+   - Sello Dashboard inferior izquierdo, igual al Ranking.
+   - Mantiene sello compatible en Ranking/Mi Desempeno.
    - Checklist rapido: precarga/cache + render por sede bajo demanda.
-   - Gestion de Actas: descarga por periodo oculta para Tecnico.
-   - Gestion de Actas: sincroniza Guardar cuando Mapa + Produccion resolvieron.
-   - Gestion de Actas: selector cuando un mismo pedido tiene varias Ordenes.
+   - Gestion de Actas V508/V511 intacta.
    - Continuidad al abrir dashboards.
-   - Partidas + validacion por lote + herramientas solo para Jefatura.
-   - V512D mueve la barra Herramientas al final del Dashboard.
+   - Partidas + herramientas solo para Jefatura.
+   - Barra Herramientas permanece al final del Dashboard.
 ============================================================ */
 (function(){
   "use strict";
@@ -21,6 +19,7 @@
   window.MV512A_GESTION_WIN_LOADER_OK=true;
   window.MV512B_GESTION_WIN_LOADER_OK=true;
   window.MV512D_GESTION_WIN_LOADER_OK=true;
+  window.MV512E_GESTION_WIN_LOADER_OK=true;
 
   const cargados=new Set();
   const promesas=new Map();
@@ -66,36 +65,36 @@
       }
     }catch(e){
       dashboardPreparado=false;
-      console.warn("V512D Complementos: complemento Dashboard pendiente",e);
+      console.warn("V512E Complementos: complemento Dashboard pendiente",e);
     }
   }
 
-  cargar("./js/dashboard_actualizacion_indicadores_v512b.js?v=V512B-DASHBOARD-20260827").catch(e=>
-    console.warn("V512D Complementos: sello Dashboard pendiente",e)
+  cargar("./js/dashboard_actualizacion_indicadores_v512b.js?v=V512E-DASHBOARD-PIE-20260827").catch(e=>
+    console.warn("V512E Complementos: sello Dashboard pendiente",e)
   );
 
   cargar("./js/actualizacion_win_v507.js?v=V512A-SELLO-DASHBOARD").catch(e=>
-    console.warn("V512D Complementos: sello compatible pendiente",e)
+    console.warn("V512E Complementos: sello compatible pendiente",e)
   );
 
   cargar("./js/indicadores_win_sync_v4879.js?v=V512-SYNC-UNICA-PUBLICACION").catch(e=>
-    console.warn("V512D Complementos: sincronizador WIN pendiente",e)
+    console.warn("V512E Complementos: sincronizador WIN pendiente",e)
   );
 
   cargar("./js/checklist_rapido_v508.js?v=V508-CHECKLIST-RAPIDO").catch(e=>
-    console.warn("V512D Complementos: optimizacion Checklist pendiente",e)
+    console.warn("V512E Complementos: optimizacion Checklist pendiente",e)
   );
 
   cargar("./js/actas_tecnico_sin_descarga_v508.js?v=V508-ACTAS-TECNICO").catch(e=>
-    console.warn("V512D Complementos: restriccion descarga Actas pendiente",e)
+    console.warn("V512E Complementos: restriccion descarga Actas pendiente",e)
   );
 
   cargar("./js/actas_guardar_sync_v510.js?v=V511-GUARDAR-ACTA").catch(e=>
-    console.warn("V512D Complementos: sincronizacion Guardar Acta pendiente",e)
+    console.warn("V512E Complementos: sincronizacion Guardar Acta pendiente",e)
   );
 
   cargar("./js/actas_multiples_trabajos_v511.js?v=V511-MULTIPLES-TRABAJOS").catch(e=>
-    console.warn("V512D Complementos: multiples trabajos por pedido pendiente",e)
+    console.warn("V512E Complementos: multiples trabajos por pedido pendiente",e)
   );
 
   const objetivo=document.getElementById("pantalla")||document.body;
