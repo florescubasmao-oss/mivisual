@@ -1,14 +1,16 @@
 /* ============================================================
-   MI VISUAL V510 - SINCRONIZACION GUARDAR ACTA
+   MI VISUAL V510/V511 - SINCRONIZACION GUARDAR ACTA
 
    Corrige una carrera entre:
    - actas.js: resuelve datos desde Mapa Operativo + Produccion.
    - actas_ingreso_rapido_v455.js: mantiene su propio estado de orden resuelta.
+   - V511: si un pedido tiene varias Ordenes, espera seleccion explicita.
 
    SEGURIDAD
    - NO salta validaciones del backend.
    - NO habilita si V455 detecto un bloqueo explicito: acta observada,
      faltante, ya subida/finalizada, codigos invertidos o varias ordenes.
+   - NO habilita mientras V511 requiera elegir el trabajo correcto.
    - Solo sincroniza cuando el flujo base confirma datos y existen ambos
      codigos necesarios para guardar.
 ============================================================ */
@@ -69,6 +71,10 @@
     if(!esTecnico()) return false;
     const form = document.getElementById("formActa");
     if(!form || form.dataset.mv510Guardando === "1") return false;
+
+    // V511 tiene prioridad: cuando un mismo pedido tiene varias Ordenes,
+    // Guardar permanece bloqueado hasta que el tecnico elija el trabajo.
+    if(window._mv511RequiereSeleccion === true) return false;
 
     // V455 solo transforma el alta nueva de Tecnico. En reemplazo/faltante
     // no interferimos con el flujo vigente.
@@ -155,5 +161,5 @@
   if(document.readyState === "loading") document.addEventListener("DOMContentLoaded",iniciar,{once:true});
   else iniciar();
 
-  console.log("MI VISUAL V510: sincronizacion Guardar Acta activa.");
+  console.log("MI VISUAL V510/V511: sincronizacion Guardar Acta activa.");
 })();
