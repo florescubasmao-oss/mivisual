@@ -1,5 +1,5 @@
-/* MI VISUAL V518.1 - MAPA HORA SINCRONIZADA */
-const MV339_CACHE = "mivisual-v5181-mapa-hora-sync-20260828-1";
+/* MI VISUAL V518.2 - MAPA PROGRESO NO BLOQUEANTE */
+const MV339_CACHE = "mivisual-v5182-mapa-progreso-20260828-1";
 const MV339_CORE = [
   "./",
   "./index.html",
