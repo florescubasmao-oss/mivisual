@@ -73,7 +73,7 @@
       let label=r,clase="ok";
       if(r==="NO BONO"){label="NO BONO";clase="info";}
       if(r==="OBSERVADO"){label="OBSERVADO";clase="obs";}
-      if(esExcepcion){label=(r==="BONO"?"BONO":"NO BONO")+" · EXCEPCION";clase="info";}
+      if(esExcepcion&&r==="BONO"){label="BONO · EXCEPCIÓN";clase="info";}
       setBadge(card,t=>t.includes("BONO")||t.includes("OBSERV"),label,clase);
       setField(card,"BONO",label);
     }
@@ -114,17 +114,17 @@
       if(!hayClas&&!hayNormal&&!hayEx){alert("No has seleccionado cambios.");return;}
       if(decision==="REASIGNAR"&&!cuad){alert("Seleccione la cuadrilla responsable.");return;}
       if((decision==="ANULAR"||decision==="NO_ES_GAR_VTR")&&!comentarioClas){alert("Ingrese el motivo de la clasificacion.");return;}
-      if((decision==="ANULAR"||decision==="NO_ES_GAR_VTR")&&hayEx){alert("No corresponde otorgar Bono excepcional si el caso se anula o se define como NO ES GAR/VTR.");return;}
+      if((decision==="ANULAR"||decision==="NO_ES_GAR_VTR")&&hayEx){alert("No corresponde otorgar Bono si el caso se anula o se define como NO ES GAR/VTR.");return;}
       if(hayNormal){
         if(!comentarioNormal){alert(resultadoNormal==="OBSERVADO"?"Ingrese el motivo de la observacion.":"Ingrese el comentario de Bono / No Bono.");return;}
         if(resultadoNormal==="BONO"&&(!isFinite(puntajeNormal)||puntajeNormal<=0)){alert("Ingrese un puntaje mayor a 0.");return;}
       }
       if(hayEx){
-        if(!comentarioEx){alert("Ingrese el sustento de la evaluacion excepcional.");return;}
+        if(!comentarioEx){alert("Ingrese el sustento de la evaluacion de Jefatura.");return;}
         if(resultadoEx==="BONO"&&(!isFinite(puntajeEx)||puntajeEx<=0)){alert("Ingrese un puntaje mayor a 0.");return;}
       }
 
-      btn.disabled=true;btn.textContent="Guardando todo...";
+      btn.disabled=true;btn.textContent="Guardando...";
       const cancelar=modal.querySelector("#mv517c1Cancelar");if(cancelar)cancelar.disabled=true;
       try{
         if(hayClas){
@@ -143,7 +143,8 @@
           await apiPost({accion:"validarBonoExcepcionalVtrGarV517C5",usuario:usuario(),periodo:periodo(),ticket:id,resultado:resultadoEx,puntajeVtrGar:resultadoEx==="BONO"?puntajeEx:0,motivo:comentarioEx});
         }
         bg.remove();
-        actualizarCard(id,decision,cuad,hayNormal?resultadoNormal:(hayEx?resultadoEx:"SIN_CAMBIO"),hayEx);
+        const esBonoExcepcion=hayEx&&norm(resultadoEx)==="BONO";
+        actualizarCard(id,decision,cuad,hayNormal?resultadoNormal:(hayEx?resultadoEx:"SIN_CAMBIO"),esBonoExcepcion);
         toast("Cambios guardados correctamente. El caso queda actualizado en esta misma vista.",false);
       }catch(e){
         btn.disabled=false;btn.textContent="Guardar cambios";if(cancelar)cancelar.disabled=false;
