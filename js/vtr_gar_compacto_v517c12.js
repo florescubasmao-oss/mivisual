@@ -1,13 +1,17 @@
 /* ============================================================
-   MI VISUAL V517C.16 - GAR/VTR COMPACTO SIN DUPLICADOS
-   - Conserva vista compacta V517C.12.
-   - Una sola capa dibuja Ver ficha / Corregir validacion / Gestionar caso.
-   - No carga fixes antiguos de correccion.
-   - Sin duplicar informacion de orden WIN.
+   MI VISUAL V517C.19 - GAR/VTR COMPACTO + ACCIONES ESTABLES
+   - Conserva la vista compacta aprobada de V517C.12/V517C.16.
+   - Fuerza una identidad de versión propia para que una copia antigua
+     no bloquee esta versión mediante MV517C12_COMPACTO_OK.
+   - Mantiene arriba: Ver ficha | Corregir validación | Gestionar caso.
+   - Una sola orden WIN se integra al bloque principal.
+   - Varias órdenes conservan historial.
+   - No modifica backend, Sheets, Ranking, Dashboard ni Producción.
 ============================================================ */
 (function(){
   "use strict";
-  if(window.MV517C12_COMPACTO_OK) return;
+  if(window.MV517C19_COMPACTO_OK) return;
+  window.MV517C19_COMPACTO_OK=true;
   window.MV517C12_COMPACTO_OK=true;
 
   let timer=null;
@@ -51,13 +55,13 @@
     const bruto=txt(row&&row.textContent);
     const orden=(norm(bruto).match(/ORDEN\s+(\d+)/)||[])[1]||"";
     let fecha="",m=bruto.match(/\b(\d{2}\/\d{2}\/\d{4})\b/);
-    if(m)fecha=m[1];
+    if(m) fecha=m[1];
     if(!fecha){m=bruto.match(/\b(\d{4}-\d{2}-\d{2})\b/);if(m)fecha=m[1];}
     return {orden,fecha};
   }
 
   function ponerCampo(grid,key,label,value){
-    if(!grid||!txt(value))return;
+    if(!grid||!txt(value)) return;
     let el=grid.querySelector(`[data-mv517c12-field="${key}"]`);
     if(!el){el=document.createElement("div");el.className="mv517c1-field";el.dataset.mv517c12Field=key;grid.appendChild(el);}
     el.innerHTML=`<small>${label}</small><b>${txt(value)}</b>`;
@@ -65,7 +69,7 @@
 
   function tarjetaResuelta(card){
     const n=norm(card&&card.textContent);
-    const bono=(n.includes("NO BONO")||n.includes("OBSERVADO")||(n.includes("BONO")&&!n.includes("BONO PENDIENTE")&&!n.includes("BONO POR VALIDAR")));
+    const bono=n.includes("NO BONO")||n.includes("OBSERVADO")||(n.includes("BONO")&&!n.includes("BONO PENDIENTE")&&!n.includes("BONO POR VALIDAR"));
     const resp=n.includes("RESPONSABLE CONFIRMADO")||n.includes("RESPONSABLE REASIGNADO")||n.includes("RESP. CONFIRMADA")||n.includes("RESP. REASIGNADA")||n.includes("NO ES GAR/VTR")||n.includes("NO CORRESPONDE A GAR/VTR")||n.includes("ANULADO");
     return bono||resp;
   }
@@ -74,42 +78,46 @@
     Array.from(actions.querySelectorAll(".mv517c14-btn,.mv517c14a-btn,.mv517c15-btn")).forEach(b=>b.remove());
     const actual=actions.querySelector(".mv517c16-btn");
     if(!esValidador()||!tarjetaResuelta(card)){
-      if(actual)actual.remove();
+      if(actual) actual.remove();
       return;
     }
-    if(actual)return;
+    if(actual) return;
     const ticket=txt(card.querySelector(".mv517c1-ticket")?.textContent);
-    if(!/^(GAR|VTR)-\d+/i.test(ticket))return;
+    if(!/^(GAR|VTR)-\d+/i.test(ticket)) return;
     const b=document.createElement("button");
-    b.type="button";b.className="mv517c1-btn mv517c16-btn";b.textContent="✏️ Corregir validación";
+    b.type="button";
+    b.className="mv517c1-btn mv517c16-btn";
+    b.textContent="✏️ Corregir validación";
     b.onclick=e=>{
       e.preventDefault();e.stopPropagation();
-      if(typeof window.mv517c16Corregir==="function")window.mv517c16Corregir(ticket);
+      if(typeof window.mv517c16Corregir==="function") window.mv517c16Corregir(ticket);
       else alert("La corrección todavía está cargando. Intente nuevamente en unos segundos.");
     };
     const gestionar=Array.from(actions.querySelectorAll("button")).find(z=>norm(z.textContent).includes("GESTIONAR CASO"));
-    if(gestionar)actions.insertBefore(b,gestionar);else actions.appendChild(b);
+    if(gestionar) actions.insertBefore(b,gestionar); else actions.appendChild(b);
   }
 
   function moverAcciones(card){
-    const summary=card.querySelector(":scope > summary");if(!summary)return;
+    const summary=card.querySelector(":scope > summary");
+    if(!summary) return;
     let actions=card.querySelector(":scope > .mv517c12-actions");
     if(!actions){actions=document.createElement("div");actions.className="mv517c12-actions";summary.insertAdjacentElement("afterend",actions);}
 
     const botones=Array.from(card.querySelectorAll("button.mv517c1-btn")).filter(btn=>{
-      const n=norm(btn.textContent);return n.includes("VER FICHA")||n.includes("GESTIONAR CASO");
+      const n=norm(btn.textContent);
+      return n.includes("VER FICHA")||n.includes("GESTIONAR CASO");
     });
-    botones.forEach(btn=>{if(btn.parentElement!==actions)actions.appendChild(btn);});
+    botones.forEach(btn=>{if(btn.parentElement!==actions) actions.appendChild(btn);});
     asegurarCorreccion(card,actions);
 
-    Array.from(card.querySelectorAll(".mv517c1-actions")).forEach(el=>{if(!el.querySelector("button"))el.style.display="none";});
-    if(!actions.children.length)actions.remove();
+    Array.from(card.querySelectorAll(".mv517c1-actions")).forEach(el=>{if(!el.querySelector("button")) el.style.display="none";});
+    if(!actions.children.length) actions.remove();
   }
 
   function copiarDetalleOrden(card,row){
     const detail=card.querySelector(".mv517c1-detail");
     const grid=detail&&detail.querySelector(":scope > .mv517c1-grid");
-    if(!detail||!grid||!row)return;
+    if(!detail||!grid||!row) return;
     const d=extraerFila(row);
     ponerCampo(grid,"orden","Orden WIN",d.orden);
     ponerCampo(grid,"fechaOrden","Fecha orden",d.fecha);
@@ -133,7 +141,7 @@
 
   function compactarOrdenes(card){
     const box=boxPorTitulo(card,"ORDENES WIN ASOCIADAS")||boxPorTitulo(card,"HISTORIAL / ORDENES WIN DEL MISMO TICKET");
-    if(!box)return;
+    if(!box) return;
     const filas=filasOrden(box);
     if(filas.length===1){copiarDetalleOrden(card,filas[0]);box.style.display="none";box.dataset.mv517c12Compacta="1";return;}
     box.style.display="";box.dataset.mv517c12Compacta="0";
@@ -147,8 +155,24 @@
   }
 
   window.mv517c12Ejecutar=ejecutar;
-  function schedule(){clearTimeout(timer);timer=setTimeout(ejecutar,50);}
-  const obs=new MutationObserver(schedule);
+  function schedule(delay){clearTimeout(timer);timer=setTimeout(ejecutar,delay==null?40:delay);}
+
+  const obs=new MutationObserver(()=>schedule(35));
   obs.observe(document.documentElement,{subtree:true,childList:true,attributes:true,attributeFilter:["open"]});
-  setTimeout(ejecutar,250);
+
+  document.addEventListener("click",e=>{
+    if(!e.target.closest(".mv517c1-case>summary,.mv517c1-case button,.mv517c1-q,.mv517c1-tools")) return;
+    schedule(20);setTimeout(ejecutar,120);setTimeout(ejecutar,350);
+  },true);
+
+  const renderBase=window.mv517c1Render;
+  if(typeof renderBase==="function"&&!renderBase._mv517c19){
+    const wrapped=function(){const r=renderBase.apply(this,arguments);schedule(20);setTimeout(ejecutar,120);return r;};
+    wrapped._mv517c19=true;
+    window.mv517c1Render=wrapped;
+  }
+
+  setTimeout(ejecutar,80);
+  setTimeout(ejecutar,300);
+  setTimeout(ejecutar,900);
 })();
