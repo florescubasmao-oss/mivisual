@@ -1,20 +1,8 @@
 /* ============================================================
-   MI VISUAL V517C.14A - PUENTE GAR/VTR
-   Orden de carga controlado:
-   1) UX/rendimiento V517C.3
-   2) compatibilidad histórica VALIDACION_TECNICA
-   3) gestión V517C.2 con histórico + OBSERVADO
-   4) días entre último antecedente FINALIZADO y GAR/VTR actual
-   5) motivo WIN + bono excepcional sin registro técnico
-   6) usabilidad simple + ficha por GET + filtros reversibles
-   7) estabilidad post-guardado + snapshot local + reintento backend
-   8) guardado único: responsabilidad + bono/observación/excepción
-   9) partida de la orden GAR/VTR actual, bajo demanda y sin usar antecedente
-   10) vista compacta sobre la estructura visible: sin duplicados + acciones arriba
-   11) corrección controlada V517C.14
-   12) fix V517C.14A: autorización por usuario exacto JEFZNORTE
-
-   NO modifica Ranking, Dashboard, Producción ni Recableado.
+   MI VISUAL V517C.15 - PUENTE GAR/VTR
+   Carga controlada sobre la vista estable existente.
+   V517C.15 agrega correccion basada en tarjeta visible y consulta bajo demanda.
+   NO modifica Ranking, Dashboard, Produccion ni Recableado.
 ============================================================ */
 (function(){
   "use strict";
@@ -48,8 +36,7 @@
     .then(()=>cargar("./js/vtr_gar_guardado_unico_v517c8.js?v=V517C8-GUARDADO-UNICO-20260828-1","MV517C8_GUARDADO_UNICO_OK"))
     .then(()=>cargar("./js/vtr_gar_partida_actual_v517c9.js?v=V517C9-PARTIDA-ORDEN-ACTUAL-20260828-2","MV517C9_PARTIDA_ACTUAL_OK"))
     .then(()=>cargar("./js/vtr_gar_compacto_v517c12.js?v=V517C12-COMPACTO-20260828-1","MV517C12_COMPACTO_OK"))
-    .then(()=>cargar("./js/vtr_gar_correccion_v517c14.js?v=V517C14-CORRECCION-20260828-1","MV517C14_CORRECCION_OK"))
-    .then(()=>cargar("./js/vtr_gar_correccion_fix_v517c14a.js?v=V517C14A-FIX-AUTORIZACION-20260828-1","MV517C14A_FIX_OK"))
-    .then(()=>console.log("MI VISUAL V517C.14A: GAR/VTR correccion controlada cargada."))
-    .catch(e=>console.error("MI VISUAL V517C.14A: error de carga",e));
+    .then(()=>cargar("./js/vtr_gar_correccion_dom_v517c15.js?v=V517C15-CORRECCION-DOM-20260828-1","MV517C15_CORRECCION_DOM_OK"))
+    .then(()=>console.log("MI VISUAL V517C.15: GAR/VTR estable + correccion DOM cargada."))
+    .catch(e=>console.error("MI VISUAL V517C.15: error de carga",e));
 })();
