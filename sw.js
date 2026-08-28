@@ -1,5 +1,5 @@
-/* MI VISUAL V517C.17 - GAR/VTR CACHE SINCRONIZADA */
-const MV339_CACHE = "mivisual-v517c17-garvtr-sync-cache-20260828-1";
+/* MI VISUAL V518.1 - MAPA HORA SINCRONIZADA */
+const MV339_CACHE = "mivisual-v5181-mapa-hora-sync-20260828-1";
 const MV339_CORE = [
   "./",
   "./index.html",
