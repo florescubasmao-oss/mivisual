@@ -1,10 +1,11 @@
 /* ============================================================
-   MI VISUAL V515 - VTR/GAR: PUNTAJE JEFATURA + MI DESEMPEÑO
+   MI VISUAL V515B - VTR/GAR: PUNTAJE JEFATURA + MI DESEMPEÑO
 
    Frontend incremental y compatible con backend anterior:
    - Solo se activa cuando detecta backend V515.
    - Jefatura define BONO/NO BONO + puntaje + comentario.
    - Técnico ve sus VTR/GAR en Producción > detalle por día.
+   - Reengancha el detalle tras la carga dinámica de módulos.
    - NO altera puntos ni totales de PRODUCCION_APP.
    - Dashboard queda intacto.
 ============================================================ */
@@ -14,10 +15,9 @@
   window.MV515_VTRGAR_FRONT_OK = true;
 
   const API = window.MI_VISUAL_API_URL || "https://script.google.com/macros/s/AKfycbwugGpuEMcJYFsDNS1hkcdZXJ92PUvXNv5ttpktyhZWv2fWB7ceCZNkfIFYxAs5wsgN/exec";
-  const VERSION = "V515-VTRGAR-FRONT-20260828";
+  const VERSION = "V515B-VTRGAR-FRONT-20260828";
   let backendEstado = null;
   let backendChequeado = 0;
-  let produccionEnvuelta = false;
   let validacionEnvuelta = false;
   let validarBonoBase = null;
   let tokenDetalle = 0;
@@ -212,14 +212,16 @@
       const pantalla=document.getElementById("pantalla");
       if(pantalla) pantalla.insertAdjacentHTML("beforeend",html);
     }catch(e){
-      console.warn("MI VISUAL V515 Mi Desempeño:",e && e.message ? e.message : e);
+      console.warn("MI VISUAL V515B Mi Desempeño:",e && e.message ? e.message : e);
     }
   }
 
   function envolverProduccion(){
-    if(produccionEnvuelta || typeof window.mostrarProduccionV2 !== "function") return false;
-    const base=window.mostrarProduccionV2;
-    if(base && base.__mv515) { produccionEnvuelta=true; return true; }
+    const actual=window.mostrarProduccionV2;
+    if(typeof actual !== "function") return false;
+    if(actual.__mv515) return true;
+
+    const base=actual;
     const envuelta=async function(periodoSeleccionado){
       const token=++tokenDetalle;
       const r=await base.apply(this,arguments);
@@ -230,7 +232,6 @@
     envuelta.__mv515Base=base;
     window.mostrarProduccionV2=envuelta;
     try{ mostrarProduccionV2=envuelta; }catch(_){}
-    produccionEnvuelta=true;
     return true;
   }
 
