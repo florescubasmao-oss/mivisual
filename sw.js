@@ -1,5 +1,5 @@
-/* MI VISUAL V517C.5 - GAR/VTR MOTIVO WIN + BONO EXCEPCIONAL · CACHE CONTROLADO */
-const MV339_CACHE = "mivisual-v517c5-garvtr-bono-excepcion-20260828-1";
+/* MI VISUAL V517C.6 - GAR/VTR USABILIDAD SIMPLE · CACHE CONTROLADO */
+const MV339_CACHE = "mivisual-v517c6-garvtr-usabilidad-20260828-1";
 const MV339_CORE = [
   "./",
   "./index.html",
@@ -19,12 +19,13 @@ const MV339_CORE = [
   "./js/vtr_gar_ui_fix_v516a.js?v=V516A-ROBUSTA-20260828",
   "./js/vtr_gar_ui_fix_v516b.js?v=V516B-PREEMPTIVA-20260828",
   "./js/vtr_gar_tabs_guard_v516c.js?v=V516C-TABS-20260828",
-  "./js/vtr_gar_ux_v517b.js?v=V517C5-MOTIVO-BONO-EXCEPCION-20260828-1",
+  "./js/vtr_gar_ux_v517b.js?v=V517C6-USABILIDAD-20260828-1",
   "./js/vtr_gar_ux_v517c3.js?v=V517C3-UX-RAPIDA-20260828-1",
   "./js/vtr_gar_legacy_assoc_v517c2a.js?v=V517C2A-LEGACY-20260828-1",
   "./js/vtr_gar_gestion_v517c2.js?v=V517C2-HISTORICO-OBSERVADO-20260828-1",
   "./js/vtr_gar_antecedente_dias_v517c4.js?v=V517C4-ANTECEDENTE-DIAS-20260828-1",
   "./js/vtr_gar_bono_excepcion_v517c5.js?v=V517C5-MOTIVO-BONO-EXCEPCION-20260828-1",
+  "./js/vtr_gar_usabilidad_v517c6.js?v=V517C6-USABILIDAD-20260828-1",
   "./js/partidas_win_v505.js?v=V506-PARTIDAS-BASE",
   "./js/partidas_lote_v506.js?v=V506-LOTE",
   "./js/partidas_win_v513.js?v=V513-PARTIDAS-20260827",
@@ -45,7 +46,7 @@ const MV339_CORE = [
   "./js/actividad_campo_fix_v346.js?v=V452-CHECKLIST-ACTUAL",
   "./js/menu_desempeno_v363.js?v=V408-RESTAURA-V403",
   "./js/gerencia_general_v379.js?v=V408-RESTAURA-V403",
-  "./js/facturas_menu_v382.js?v=V408-FACTURAS-USUARIOS",
+  "./js/facturas_menu_v382.js?v=V408-RESTAURA-V403",
   "./img/logo.png",
   "./img/logo-192.png",
   "./img/splash.png"
