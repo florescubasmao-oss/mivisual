@@ -1,22 +1,49 @@
 /* ============================================================
-   MI VISUAL V514 - RESTAURA PESTAÑA VALIDACIÓN VTR/GAR
+   MI VISUAL V514A - RESTAURA VALIDACION VTR/GAR + TABS UNICAS
 
    Alcance estricto:
-   - Corrige únicamente el montaje tardío de V489 en VTR/GAR.
-   - Si Registro ya estaba abierto antes de cargar V489, vuelve a montar
-     la vista una sola vez para que aparezcan Registro / Validación.
-   - No cambia datos, permisos, API, cálculos, Ranking ni SLA.
-   - No activa el flujo legado Partner.
+   - Mantiene la restauracion tardia de V489.
+   - Deja una sola barra Registro / Validacion.
+   - En la vista unificada conserva la barra interna de V489.
+   - No cambia datos, permisos, API, calculos, Ranking ni SLA.
+   - No activa ni consulta flujo Partner.
 ============================================================ */
 (function(){
   "use strict";
 
-  if(window.MV514_VTRGAR_VALIDACION_RESTAURADA_OK) return;
+  if(window.MV514A_VTRGAR_TABS_UNICA_OK) return;
+  window.MV514A_VTRGAR_TABS_UNICA_OK = true;
   window.MV514_VTRGAR_VALIDACION_RESTAURADA_OK = true;
 
   let promesaV489 = null;
   let remontando = false;
   let timer = null;
+  let timerTabs = null;
+
+  function normalizarTabs(){
+    clearTimeout(timerTabs);
+    timerTabs = setTimeout(function(){
+      const barras = Array.from(document.querySelectorAll(".mv489-tabs"));
+      if(!barras.length) return;
+
+      const wrap = document.querySelector(".mv489-wrap");
+      let conservar = wrap ? wrap.querySelector(".mv489-tabs") : null;
+      if(!conservar){
+        conservar = document.getElementById("mv489Tabs") || barras[0];
+      }
+
+      barras.forEach(function(barra){
+        if(barra !== conservar) barra.remove();
+      });
+
+      if(conservar){
+        document.querySelectorAll("#mv489Tabs").forEach(function(el){
+          if(el !== conservar) el.removeAttribute("id");
+        });
+        conservar.id = "mv489Tabs";
+      }
+    },0);
+  }
 
   function corresponde(){
     return window.MV488_VT_MODO === "VTRGAR" &&
@@ -34,8 +61,6 @@
       });
 
       if(existente){
-        // Puede existir por la carga lazy anterior. Damos un margen breve
-        // para que termine de ejecutar antes de crear una segunda descarga.
         let intentos = 0;
         const espera = setInterval(function(){
           intentos++;
@@ -44,19 +69,19 @@
             resolve();
           }else if(intentos >= 20){
             clearInterval(espera);
-            reject(new Error("V489 no terminó de inicializar."));
+            reject(new Error("V489 no termino de inicializar."));
           }
         },100);
         return;
       }
 
       const s = document.createElement("script");
-      s.src = "./js/validacion_tecnica_unificada_v489.js?v=V514-RESTAURA-VALIDACION-20260827";
+      s.src = "./js/validacion_tecnica_unificada_v489.js?v=V514A-TABS-UNICA-20260828";
       s.async = true;
       s.onload = resolve;
       s.onerror = function(){
         promesaV489 = null;
-        reject(new Error("No se pudo cargar la vista Validación VTR/GAR."));
+        reject(new Error("No se pudo cargar la vista Validacion VTR/GAR."));
       };
       document.head.appendChild(s);
     });
@@ -65,24 +90,29 @@
   }
 
   function asegurar(){
+    normalizarTabs();
     clearTimeout(timer);
     timer = setTimeout(function(){
+      normalizarTabs();
       if(!corresponde()) return;
       if(document.getElementById("mv489Tabs")) return;
       if(typeof window.mv488AbrirVtrGar !== "function") return;
 
       cargarV489().then(function(){
+        normalizarTabs();
         if(!corresponde() || document.getElementById("mv489Tabs") || remontando) return;
         if(typeof window.mv489AbrirRegistroVtrGar !== "function") return;
 
         remontando = true;
         try{
           window.mv489AbrirRegistroVtrGar();
+          setTimeout(normalizarTabs,80);
+          setTimeout(normalizarTabs,350);
         }finally{
           setTimeout(function(){ remontando = false; },900);
         }
       }).catch(function(e){
-        console.warn("MI VISUAL V514 VTR/GAR:", e && e.message ? e.message : e);
+        console.warn("MI VISUAL V514A VTR/GAR:", e && e.message ? e.message : e);
       });
     },60);
   }
