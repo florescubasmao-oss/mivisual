@@ -71,8 +71,13 @@
   }
 
   function asegurarCorreccion(card,actions){
-    Array.from(actions.querySelectorAll(".mv517c14-btn,.mv517c14a-btn,.mv517c15-btn,.mv517c16-btn")).forEach(b=>b.remove());
-    if(!esValidador()||!tarjetaResuelta(card))return;
+    Array.from(actions.querySelectorAll(".mv517c14-btn,.mv517c14a-btn,.mv517c15-btn")).forEach(b=>b.remove());
+    const actual=actions.querySelector(".mv517c16-btn");
+    if(!esValidador()||!tarjetaResuelta(card)){
+      if(actual)actual.remove();
+      return;
+    }
+    if(actual)return;
     const ticket=txt(card.querySelector(".mv517c1-ticket")?.textContent);
     if(!/^(GAR|VTR)-\d+/i.test(ticket))return;
     const b=document.createElement("button");
