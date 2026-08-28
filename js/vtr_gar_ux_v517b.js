@@ -1,7 +1,19 @@
 /* ============================================================
-   MI VISUAL V517C.15 - PUENTE GAR/VTR
-   Carga controlada sobre la vista estable existente.
-   V517C.15 agrega correccion basada en tarjeta visible y consulta bajo demanda.
+   MI VISUAL V517C.16 - PUENTE UNICO GAR/VTR
+   Orden de carga controlado:
+   1) UX/rendimiento V517C.3
+   2) compatibilidad historica VALIDACION_TECNICA
+   3) gestion V517C.2 con historico + OBSERVADO
+   4) dias entre antecedente y GAR/VTR
+   5) motivo WIN + bono excepcional
+   6) usabilidad + ficha por GET
+   7) estabilidad post-guardado + snapshot local
+   8) guardado unico
+   9) partida de la orden actual bajo demanda
+   10) manejador unico de correccion V517C.16
+   11) vista compacta V517C.12 como unica capa de acciones
+
+   NO carga V517C.14 / V517C.14A / V517C.15.
    NO modifica Ranking, Dashboard, Produccion ni Recableado.
 ============================================================ */
 (function(){
@@ -18,7 +30,7 @@
         if(window[id]){resolve();return;}
         existe.addEventListener("load",resolve,{once:true});
         existe.addEventListener("error",reject,{once:true});
-        setTimeout(function(){if(window[id])resolve();},60);
+        setTimeout(function(){if(window[id])resolve();},80);
         return;
       }
       const s=document.createElement("script");
@@ -35,8 +47,11 @@
     .then(()=>cargar("./js/vtr_gar_estabilidad_v517c7.js?v=V517C7-ESTABILIDAD-20260828-1","MV517C7_ESTABILIDAD_OK"))
     .then(()=>cargar("./js/vtr_gar_guardado_unico_v517c8.js?v=V517C8-GUARDADO-UNICO-20260828-1","MV517C8_GUARDADO_UNICO_OK"))
     .then(()=>cargar("./js/vtr_gar_partida_actual_v517c9.js?v=V517C9-PARTIDA-ORDEN-ACTUAL-20260828-2","MV517C9_PARTIDA_ACTUAL_OK"))
-    .then(()=>cargar("./js/vtr_gar_compacto_v517c12.js?v=V517C12-COMPACTO-20260828-1","MV517C12_COMPACTO_OK"))
-    .then(()=>cargar("./js/vtr_gar_correccion_dom_v517c15.js?v=V517C15-CORRECCION-DOM-20260828-1","MV517C15_CORRECCION_DOM_OK"))
-    .then(()=>console.log("MI VISUAL V517C.15: GAR/VTR estable + correccion DOM cargada."))
-    .catch(e=>console.error("MI VISUAL V517C.15: error de carga",e));
+    .then(()=>cargar("./js/vtr_gar_correccion_handler_v517c16.js?v=V517C16-CORRECCION-HANDLER-20260828-1","MV517C16_CORRECCION_HANDLER_OK"))
+    .then(()=>cargar("./js/vtr_gar_compacto_v517c12.js?v=V517C16-COMPACTO-ACCIONES-20260828-1","MV517C12_COMPACTO_OK"))
+    .then(()=>{
+      if(typeof window.mv517c12Ejecutar==="function")window.mv517c12Ejecutar();
+      console.log("MI VISUAL V517C.16: GAR/VTR cadena unica cargada.");
+    })
+    .catch(e=>console.error("MI VISUAL V517C.16: error de carga",e));
 })();
