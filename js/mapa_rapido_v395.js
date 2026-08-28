@@ -1,11 +1,12 @@
 /* ============================================================
-   MI VISUAL V395 - MAPA OPERATIVO RÁPIDO
+   MI VISUAL V395 / V518.1 - MAPA OPERATIVO RÁPIDO
    FRONTEND
 
    - Leaflet carga al entrar al mapa.
    - XLSX NO carga al entrar: solo cuando se abre/lee una importación.
    - Caché corta en sesión para catálogos y última consulta.
-   - Importar una nueva base limpia inmediatamente esa caché.
+   - V518.1 limpia la caché ANTES y DESPUÉS de importar para evitar
+     que una lectura antigua vuelva a pintar la hora previa.
    - Marcadores numerosos se renderizan por bloques para no congelar UI.
 ============================================================ */
 (function(){
@@ -158,12 +159,16 @@
   }
 
   async function registrarV395(){
-    const resultado=await registrarBase.apply(this,arguments);
-
-    // El wrapper V393 no retorna el JSON, pero al terminar correctamente
-    // moImportacion queda vacío. Limpiamos caché siempre: es barato y seguro.
+    // V518.1: eliminar cualquier catálogo/listado anterior ANTES de que
+    // la capa base registre y vuelva a consultar la última actualización.
     limpiarCacheV395();
-    return resultado;
+    try{
+      return await registrarBase.apply(this,arguments);
+    }finally{
+      // También limpiar al finalizar o fallar para que el siguiente acceso
+      // consulte siempre el estado real del backend.
+      limpiarCacheV395();
+    }
   }
 
   // Render progresivo para consultas amplias.
@@ -315,5 +320,5 @@
   }
 
   window.MV395_MAPA_RAPIDO_OK=true;
-  console.log("MI VISUAL V395: Mapa Operativo rápido habilitado.");
+  console.log("MI VISUAL V518.1: Mapa rápido + hora sincronizada habilitados.");
 })();
