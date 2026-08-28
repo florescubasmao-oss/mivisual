@@ -1,24 +1,21 @@
 /* ============================================================
-   MI VISUAL V517C - PUENTE DE COMPATIBILIDAD DESDE V517B
+   MI VISUAL V517C.1 - PUENTE DE COMPATIBILIDAD DESDE V517B
 
-   Este archivo se conserva porque index.html de versiones previas ya lo carga.
-   V517B deja de ejecutar su UX anterior para evitar conflicto con V517C.
-   La unica responsabilidad de este puente es cargar GAR/VTR unificado V517C.
+   Este archivo se conserva porque index.html ya lo carga.
+   V517B y V517C anteriores dejan de ejecutar su UX para evitar conflictos.
+   La única responsabilidad de este puente es cargar V517C.1.
 
-   NO modifica datos, backend, Ranking, Dashboard ni Produccion.
+   NO modifica datos, backend, Ranking, Dashboard, Producción ni Recableado.
 ============================================================ */
 (function(){
   "use strict";
-
-  /* Marca V517B como atendido para impedir que otra copia antigua se reinicialice. */
   window.MV517B_VTRGAR_UX_OK = true;
 
-  if(window.MV517C_GARVTR_UNIFICADO_OK) return;
+  if(window.MV517C1_GARVTR_GESTION_OK) return;
 
-  const SRC = "./js/vtr_gar_unificado_v517c.js?v=V517C-UNIFICADO-20260828-1";
-
+  const SRC = "./js/vtr_gar_gestion_v517c1.js?v=V517C1-GESTION-LIMPIA-20260828-1";
   const existente = Array.from(document.scripts).find(function(s){
-    return String(s.src || "").includes("vtr_gar_unificado_v517c.js");
+    return String(s.src || "").includes("vtr_gar_gestion_v517c1.js");
   });
   if(existente) return;
 
@@ -26,10 +23,10 @@
   s.src = SRC;
   s.async = false;
   s.onload = function(){
-    console.log("MI VISUAL V517C: GAR/VTR unificado cargado desde puente V517B.");
+    console.log("MI VISUAL V517C.1: gestión GAR/VTR limpia cargada.");
   };
   s.onerror = function(){
-    console.error("MI VISUAL V517C: no se pudo cargar el frontend unificado.");
+    console.error("MI VISUAL V517C.1: no se pudo cargar la gestión GAR/VTR limpia.");
   };
   document.head.appendChild(s);
 })();
