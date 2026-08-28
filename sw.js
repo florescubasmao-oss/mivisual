@@ -1,5 +1,5 @@
-/* MI VISUAL V517C.14A - GAR/VTR CORRECCION CONTROLADA · CACHE CONTROLADO */
-const MV339_CACHE = "mivisual-v517c14a-garvtr-correccion-20260828-1";
+/* MI VISUAL V517C.14B - GAR/VTR CORRECCION CONTROLADA · CACHE CONTROLADO */
+const MV339_CACHE = "mivisual-v517c14b-garvtr-correccion-20260828-1";
 const MV339_CORE = [
   "./",
   "./index.html",
@@ -31,7 +31,7 @@ const MV339_CORE = [
   "./js/vtr_gar_partida_actual_v517c9.js?v=V517C9-PARTIDA-ORDEN-ACTUAL-20260828-2",
   "./js/vtr_gar_compacto_v517c12.js?v=V517C12-COMPACTO-20260828-1",
   "./js/vtr_gar_correccion_v517c14.js?v=V517C14-CORRECCION-20260828-1",
-  "./js/vtr_gar_correccion_fix_v517c14a.js?v=V517C14A-FIX-AUTORIZACION-20260828-1",
+  "./js/vtr_gar_correccion_fix_v517c14a.js?v=V517C14B-CARGA-DIRECTA-20260828-1",
   "./js/partidas_win_v505.js?v=V506-PARTIDAS-BASE",
   "./js/partidas_lote_v506.js?v=V506-LOTE",
   "./js/partidas_win_v513.js?v=V513-PARTIDAS-20260827",
