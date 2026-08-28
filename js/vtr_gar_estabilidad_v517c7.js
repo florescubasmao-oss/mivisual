@@ -1,13 +1,13 @@
 /* ============================================================
-   MI VISUAL V517C.7 - ESTABILIDAD POST-GUARDADO + SNAPSHOT LOCAL
+   MI VISUAL V517C.17 - ESTABILIDAD + SNAPSHOT SINCRONIZADO
    Solo frontend. No modifica backend, hojas, Ranking, Dashboard o Producción.
 
    OBJETIVOS
    - Evitar reconstrucción bloqueante de toda la consolidación tras guardar.
    - Mantener la última respuesta JSON válida como snapshot de respaldo.
-   - Aplicar localmente la decisión recién guardada para respuesta inmediata.
+   - Sincronizar BONO / NO BONO sin registro dentro del snapshot local.
+   - Descartar una sola vez caches anteriores a V517C.17.
    - Revalidar contra backend en segundo plano con reintento.
-   - Si backend devuelve temporalmente HTML/no JSON, conservar la vista válida.
 ============================================================ */
 (function(){
   "use strict";
@@ -16,6 +16,8 @@
 
   const FETCH_PREV=window.fetch.bind(window);
   const PREF="MV517C7|LISTA|";
+  const SCHEMA="V517C17-SYNC-EVALUACION-SIN-REGISTRO-20260828-1";
+  const MARKER="MV517C7|SCHEMA";
   const TTL_RAPIDO=5*60*1000;
   const TTL_RESPALDO=30*60*1000;
   let toastTimer=null;
@@ -25,6 +27,26 @@
   function usuario(){return txt(localStorage.getItem("usuario")||localStorage.getItem("correo")||"");}
   function key(b,periodoReal){return PREF+norm(b&&b.usuario||usuario())+"|"+txt(periodoReal||b&&b.periodo||"AUTO");}
   function responseJson(obj){return Promise.resolve(new Response(JSON.stringify(obj),{status:200,headers:{"Content-Type":"application/json;charset=utf-8"}}));}
+
+  function limpiarCachesObsoletos(){
+    try{
+      if(localStorage.getItem(MARKER)===SCHEMA)return;
+      Object.keys(localStorage).filter(k=>k.startsWith(PREF)||k.startsWith("MV517C6|LISTA|")).forEach(k=>localStorage.removeItem(k));
+      Object.keys(sessionStorage).filter(k=>k.startsWith("MV517C3|LISTA|")).forEach(k=>sessionStorage.removeItem(k));
+      localStorage.setItem(MARKER,SCHEMA);
+    }catch(_){}
+  }
+  limpiarCachesObsoletos();
+
+  function limpiarCacheC3(user,periodo){
+    const U=norm(user||usuario()),P=txt(periodo||"");
+    try{
+      Object.keys(sessionStorage).filter(k=>{
+        if(!k.startsWith("MV517C3|LISTA|"+U+"|"))return false;
+        return !P||k.endsWith("|"+P)||k.endsWith("|AUTO");
+      }).forEach(k=>sessionStorage.removeItem(k));
+    }catch(_){}
+  }
 
   function getSnap(k,maxAge){
     try{const j=JSON.parse(localStorage.getItem(k)||"null");return j&&j.data&&Date.now()-Number(j.ts||0)<=maxAge?j:null;}catch(_){return null;}
@@ -85,7 +107,7 @@
       const x=inc.find(z=>txt(z.validacionId)===txt(b.id));
       if(x){
         const antes=!!x.requiereBono||norm(x.bono)==="PENDIENTE";
-        const res=accion==="validarValidacionTecnica"?txt(b.resultado):txt(b.resultado);
+        const res=txt(b.resultado);
         x.bono=res;x.estadoRegistroTecnico=res;x.requiereBono=false;
         if(b.puntajeVtrGar!=null)x.puntajeVtrGar=Number(b.puntajeVtrGar)||0;
         x.comentarioJefatura=txt(b.motivo||b.motivoValidacion||x.comentarioJefatura);
@@ -117,18 +139,35 @@
 
     if(accion==="validarBonoExcepcionalVtrGarV517C5"){
       const x=inc.find(z=>norm(z.ticket)===norm(b.ticket));
-      if(x){x.bono=txt(b.resultado);x.bonoExcepcional=true;x.puntajeVtrGar=Number(b.puntajeVtrGar)||0;x.comentarioJefatura=txt(b.motivo||"");}
+      if(x){
+        const r=norm(b.resultado);
+        x.bono=r==="NO_BONO"?"NO BONO":txt(b.resultado);
+        x.bonoExcepcional=r==="BONO";
+        x.evaluacionJefaturaSinRegistro=true;
+        x.bonoFuente="JEFATURA_SIN_REGISTRO";
+        x.requiereBono=false;
+        x.puntajeVtrGar=r==="BONO"?(Number(b.puntajeVtrGar)||0):0;
+        x.comentarioJefatura=txt(b.motivo||"");
+        x.validadoPor=txt(b.usuario||x.validadoPor);
+      }
     }
     return data;
   }
 
   function parchearSnapshots(b){
     const snaps=matchingSnaps(b.usuario,b.periodo);
-    snaps.forEach(({k,s})=>{const copia=JSON.parse(JSON.stringify(s.data));parchearData(copia,b);setSnap(k,copia);if(copia.periodo)setSnap(key({usuario:b.usuario},copia.periodo),copia);});
+    snaps.forEach(({k,s})=>{
+      const copia=JSON.parse(JSON.stringify(s.data));
+      parchearData(copia,b);
+      setSnap(k,copia);
+      if(copia.periodo)setSnap(key({usuario:b.usuario},copia.periodo),copia);
+    });
+    limpiarCacheC3(b.usuario,b.periodo);
   }
 
   function refrescarSegundoPlano(input,init,b){
     setTimeout(async()=>{
+      limpiarCacheC3(b.usuario,b.periodo);
       const z=await redConReintento(input,init,2);
       if(z.j){setSnap(key(b),z.j);if(z.j.periodo)setSnap(key(b,z.j.periodo),z.j);}
     },2200);
@@ -142,6 +181,7 @@
       const k=key(b),fresh=getSnap(k,TTL_RAPIDO);
       if(fresh){refrescarSegundoPlano(input,init,b);return responseJson(fresh.data);}
       return (async()=>{
+        limpiarCacheC3(b.usuario,b.periodo);
         const z=await redConReintento(input,init,2);
         if(z.j){setSnap(k,z.j);if(z.j.periodo)setSnap(key(b,z.j.periodo),z.j);return new Response(JSON.stringify(z.j),{status:200,headers:{"Content-Type":"application/json;charset=utf-8"}});}
         const backup=getSnap(k,TTL_RESPALDO)||matchingSnaps(b.usuario,b.periodo)[0]?.s||null;
@@ -158,7 +198,7 @@
         if(j){
           parchearSnapshots(b);
           window.MV517C7_ULTIMO_GUARDADO={ts:Date.now(),accion:b.accion,id:b.id||b.ticket||b.clave||""};
-          toast("✅ Guardado correctamente. Actualizando el caso sin recargar toda la base.");
+          toast("✅ Guardado correctamente. El resultado quedó sincronizado.");
         }
         return r;
       });
@@ -166,7 +206,7 @@
     return FETCH_PREV(input,init);
   };
 
-  /* Si existe snapshot V517C6 válido, lo reutiliza como semilla para la primera entrada. */
+  /* Solo reutiliza V517C6 si pertenece al esquema actual. La limpieza inicial elimina copias antiguas. */
   try{
     for(let i=0;i<localStorage.length;i++){
       const k=localStorage.key(i);if(!k||!k.startsWith("MV517C6|LISTA|"))continue;
