@@ -1,5 +1,5 @@
-/* MI VISUAL V517C.2A - GAR/VTR HISTORICO + OBSERVADO · CACHE CONTROLADO */
-const MV339_CACHE = "mivisual-v517c2a-garvtr-historico-20260828-1";
+/* MI VISUAL V517C.3 - GAR/VTR UX CLARA + CACHE CONTROLADO */
+const MV339_CACHE = "mivisual-v517c3-garvtr-ux-20260828-1";
 const MV339_CORE = [
   "./",
   "./index.html",
@@ -19,7 +19,8 @@ const MV339_CORE = [
   "./js/vtr_gar_ui_fix_v516a.js?v=V516A-ROBUSTA-20260828",
   "./js/vtr_gar_ui_fix_v516b.js?v=V516B-PREEMPTIVA-20260828",
   "./js/vtr_gar_tabs_guard_v516c.js?v=V516C-TABS-20260828",
-  "./js/vtr_gar_ux_v517b.js?v=V517B-UX-CACHE-20260828",
+  "./js/vtr_gar_ux_v517b.js?v=V517C2A-HISTORICO-20260828-1",
+  "./js/vtr_gar_ux_v517c3.js?v=V517C3-UX-RAPIDA-20260828-1",
   "./js/vtr_gar_legacy_assoc_v517c2a.js?v=V517C2A-LEGACY-20260828-1",
   "./js/vtr_gar_gestion_v517c2.js?v=V517C2-HISTORICO-OBSERVADO-20260828-1",
   "./js/partidas_win_v505.js?v=V506-PARTIDAS-BASE",
@@ -60,9 +61,7 @@ self.addEventListener("activate", event => {
   event.waitUntil(
     caches.keys()
       .then(keys => Promise.all(
-        keys
-          .filter(key => key.startsWith("mivisual-") && key !== MV339_CACHE)
-          .map(key => caches.delete(key))
+        keys.filter(key => key.startsWith("mivisual-") && key !== MV339_CACHE).map(key => caches.delete(key))
       ))
       .then(() => self.clients.claim())
   );
@@ -71,7 +70,6 @@ self.addEventListener("activate", event => {
 self.addEventListener("fetch", event => {
   const req = event.request;
   if(req.method !== "GET") return;
-
   const url = new URL(req.url);
   if(url.origin !== self.location.origin) return;
 
@@ -80,9 +78,7 @@ self.addEventListener("fetch", event => {
       fetch(req)
         .then(res => {
           const copia = res.clone();
-          caches.open(MV339_CACHE)
-            .then(cache => cache.put("./index.html", copia))
-            .catch(() => {});
+          caches.open(MV339_CACHE).then(cache => cache.put("./index.html", copia)).catch(() => {});
           return res;
         })
         .catch(() => caches.match("./index.html").then(r => r || caches.match("./")))
@@ -92,7 +88,6 @@ self.addEventListener("fetch", event => {
 
   const esEstatico = /\.(?:js|css|png|jpg|jpeg|webp|svg|ico|json)$/i.test(url.pathname);
   if(!esEstatico) return;
-
   event.respondWith(
     caches.match(req).then(cacheado => {
       const red = fetch(req).then(res => {
