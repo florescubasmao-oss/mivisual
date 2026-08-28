@@ -1,9 +1,11 @@
 /* ============================================================
-   MI VISUAL V393 - Mapa Operativo: avance de registro
+   MI VISUAL V393 / V518.2 - Mapa Operativo: avance de registro
    - No cambia importarMapaOperativo ni la estructura enviada.
    - Muestra etapas reales: preparación -> servidor -> filtros.
    - Cronómetro visible durante el registro.
    - Conserva validación V386 de cuadrillas P#.
+   - V518.2 reconoce la confirmación real del backend sin esperar
+     la recarga posterior de catálogos/filtros.
 ============================================================ */
 (function(){
   "use strict";
@@ -105,6 +107,14 @@
     if(f && ancho) f.style.width=ancho;
   }
 
+  function mensajeConfirmado(){
+    const msg=document.getElementById("moImportMsg");
+    return !!msg && (
+      msg.classList.contains("mo-ok") ||
+      /Registro confirmado/i.test(msg.textContent||"")
+    );
+  }
+
   async function registrarV393(){
     const total=cantidad();
     if(!total) return await registrarBase.apply(this,arguments);
@@ -112,6 +122,8 @@
     const p=panel();
     const inicio=Date.now();
     let timer=null;
+    let observador=null;
+    let confirmadoAnticipado=false;
 
     estado(
       "1 de 3 · Preparando información",
@@ -132,16 +144,33 @@
       "52%"
     );
 
+    const marcarConfirmado=()=>{
+      if(confirmadoAnticipado || !mensajeConfirmado()) return false;
+      confirmadoAnticipado=true;
+      estado(
+        "3 de 3 · Registro completado",
+        "Información registrada. Los filtros se están actualizando en segundo plano; puede volver al mapa.",
+        "100%"
+      );
+      if(p)p.classList.add("is-ok");
+      if(timer){clearInterval(timer);timer=null;}
+      const e=document.getElementById("mv393MapaTiempo");
+      if(e)e.textContent=`${Math.floor((Date.now()-inicio)/1000)} s`;
+      return true;
+    };
+
+    const msg=document.getElementById("moImportMsg");
+    if(msg && typeof MutationObserver!=="undefined"){
+      observador=new MutationObserver(()=>marcarConfirmado());
+      observador.observe(msg,{childList:true,subtree:true,characterData:true,attributes:true,attributeFilter:["class"]});
+    }
+
     try{
       // Incluye la protección V386: si hay una cuadrilla que no comienza por P#,
       // esa función bloquea la carga antes de llegar al servidor.
       const resultado=await registrarBase.apply(this,arguments);
 
-      const msg=document.getElementById("moImportMsg");
-      const correcto=!!msg && (
-        msg.classList.contains("mo-ok") ||
-        /Registro confirmado/i.test(msg.textContent||"")
-      );
+      const correcto=mensajeConfirmado();
 
       if(correcto){
         estado(
@@ -151,9 +180,10 @@
         );
         if(p)p.classList.add("is-ok");
       }else{
+        const mensaje=document.getElementById("moImportMsg");
         estado(
           "Registro no completado",
-          (msg?.textContent||"Revise el mensaje mostrado y vuelva a intentar."),
+          (mensaje?.textContent||"Revise el mensaje mostrado y vuelva a intentar."),
           "100%"
         );
         if(p)p.classList.add("is-error");
@@ -161,6 +191,18 @@
 
       return resultado;
     }catch(error){
+      // Si el backend ya confirmó la escritura, un fallo posterior de refresco
+      // no debe convertir el registro real en un falso error visual.
+      if(confirmadoAnticipado || mensajeConfirmado()){
+        estado(
+          "3 de 3 · Registro completado",
+          "Información registrada. Los filtros terminarán de actualizarse al volver al mapa.",
+          "100%"
+        );
+        if(p)p.classList.add("is-ok");
+        return;
+      }
+
       estado(
         "No se pudo completar el registro",
         error?.message||"Revise la conexión e intente nuevamente.",
@@ -169,6 +211,7 @@
       if(p)p.classList.add("is-error");
       throw error;
     }finally{
+      if(observador)observador.disconnect();
       if(timer)clearInterval(timer);
       const e=document.getElementById("mv393MapaTiempo");
       if(e)e.textContent=`${Math.floor((Date.now()-inicio)/1000)} s`;
@@ -176,6 +219,7 @@
   }
 
   registrarV393.__mv393=true;
+  registrarV393.__mv5182=true;
   registrarV393.__original=registrarBase;
   window.moRegistrarImportacion=registrarV393;
   try{moRegistrarImportacion=registrarV393}catch(_){}
