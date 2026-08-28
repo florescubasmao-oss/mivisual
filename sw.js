@@ -1,5 +1,5 @@
-/* MI VISUAL V515 - VTR/GAR ranking, bono, puntaje y Mi Desempeno */
-const MV339_CACHE = "mivisual-v515-vtrgar-bono-desempeno-20260828";
+/* MI VISUAL V515B - VTR/GAR ranking, bono, puntaje y Mi Desempeno */
+const MV339_CACHE = "mivisual-v515b-vtrgar-bono-desempeno-20260828";
 const MV339_CORE = [
   "./",
   "./index.html",
