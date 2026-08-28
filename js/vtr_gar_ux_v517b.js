@@ -1,11 +1,12 @@
 /* ============================================================
-   MI VISUAL V517C.5 - PUENTE GAR/VTR
+   MI VISUAL V517C.6 - PUENTE GAR/VTR
    Orden de carga controlado:
    1) UX/rendimiento V517C.3
    2) compatibilidad histórica VALIDACION_TECNICA
    3) gestión V517C.2 con histórico + OBSERVADO
    4) días entre último antecedente FINALIZADO y GAR/VTR actual
    5) motivo WIN + bono excepcional sin registro técnico
+   6) usabilidad simple + ficha por GET + filtros reversibles + caché persistente
 
    NO modifica Ranking, Dashboard, Producción ni Recableado.
 ============================================================ */
@@ -36,6 +37,7 @@
     .then(()=>cargar("./js/vtr_gar_gestion_v517c2.js?v=V517C2-HISTORICO-OBSERVADO-20260828-1","MV517C2_GARVTR_GESTION_OK"))
     .then(()=>cargar("./js/vtr_gar_antecedente_dias_v517c4.js?v=V517C4-ANTECEDENTE-DIAS-20260828-1","MV517C4_ANTECEDENTE_DIAS_OK"))
     .then(()=>cargar("./js/vtr_gar_bono_excepcion_v517c5.js?v=V517C5-MOTIVO-BONO-EXCEPCION-20260828-1","MV517C5_BONO_EXCEPCION_OK"))
-    .then(()=>console.log("MI VISUAL V517C.5: GAR/VTR cargado."))
-    .catch(e=>console.error("MI VISUAL V517C.5: error de carga",e));
+    .then(()=>cargar("./js/vtr_gar_usabilidad_v517c6.js?v=V517C6-USABILIDAD-20260828-1","MV517C6_USABILIDAD_OK"))
+    .then(()=>console.log("MI VISUAL V517C.6: GAR/VTR cargado."))
+    .catch(e=>console.error("MI VISUAL V517C.6: error de carga",e));
 })();
