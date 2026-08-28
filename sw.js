@@ -1,5 +1,5 @@
-/* MI VISUAL V515B - VTR/GAR ranking, bono, puntaje y Mi Desempeno */
-const MV339_CACHE = "mivisual-v515b-vtrgar-bono-desempeno-20260828";
+/* MI VISUAL V516 - fix interfaz VTR/GAR */
+const MV339_CACHE = "mivisual-v516-vtrgar-ui-20260828";
 const MV339_CORE = [
   "./",
   "./index.html",
@@ -12,9 +12,10 @@ const MV339_CORE = [
   "./js/permisos.js?v=V339-CORE",
   "./js/app.js?v=V408-RESTAURA-V377",
   "./js/modulos_loader.js?v=V498-CIERRE-DEFINITIVO",
-  "./js/gestion_win_v505_loader.js?v=V512-WIN-SYNC",
+  "./js/gestion_win_v505_loader.js?v=V516-VTRGAR-UI",
   "./js/vtr_gar_validacion_restaurar_v514.js?v=V514A-TABS-UNICA-20260828",
   "./js/vtr_gar_v515.js?v=V515-VTRGAR-BONO-DESEMPENO-20260828",
+  "./js/vtr_gar_ui_fix_v516.js?v=V516-TABS-DESPLEGABLES-20260828",
   "./js/partidas_win_v505.js?v=V506-PARTIDAS-BASE",
   "./js/partidas_lote_v506.js?v=V506-LOTE",
   "./js/partidas_win_v513.js?v=V513-PARTIDAS-20260827",
