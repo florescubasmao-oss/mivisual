@@ -1,8 +1,9 @@
 /* ============================================================
-   MI VISUAL V517C.16B - EVALUACION JEFATURA SIN REGISTRO
+   MI VISUAL V517C.18 - EVALUACION JEFATURA SIN REGISTRO
    - Restaura BONO / NO BONO para FINALIZADAS sin registro tecnico.
    - NO BONO es resultado normal, no excepcion.
    - Solo BONO sin registro se identifica como excepcion.
+   - Reconoce evaluacionJefaturaSinRegistro / bonoFuente de V517C.17.
    - Sin MutationObserver; se integra antes del guardado unico V517C.8.
 ============================================================ */
 (function(){
@@ -34,9 +35,17 @@
     const e=norm(x&&(x.estadoResponsabilidad||x.estadoDecision)||campoCard(card(ticket),"RESPONSABLE"));
     return e==="NO_ES_GAR_VTR"||e==="ANULADO"||e.includes("NO ES GAR/VTR")||e.includes("ANULADO");
   }
+  function resultadoEvaluacion(x){
+    if(!x||txt(x.validacionId))return "";
+    const fuente=norm(x.bonoFuente||"");
+    const evaluada=x.evaluacionJefaturaSinRegistro===true||fuente==="JEFATURA_SIN_REGISTRO"||x.bonoExcepcional===true;
+    if(!evaluada)return "";
+    const r=norm(x.bono||x.estadoRegistroTecnico||"");
+    if(r==="NO_BONO")return "NO BONO";
+    return r==="BONO"||r==="NO BONO"?r:"";
+  }
   function actual(ticket,x){
-    let r="";
-    if(x&&x.bonoExcepcional) r=norm(x.bono||x.estadoRegistroTecnico||"");
+    let r=resultadoEvaluacion(x);
     if(!r){
       const c=card(ticket);const b=norm(campoCard(c,"BONO"));
       if(b==="BONO"||b.includes("BONO · EXCEPC"))r="BONO";
