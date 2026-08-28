@@ -1,5 +1,5 @@
 /* ============================================================
-   MI VISUAL V517C.18 - PUENTE UNICO GAR/VTR + NO BONO SIN REGISTRO
+   MI VISUAL V517C.19 - PUENTE UNICO GAR/VTR + ACCIONES ESTABLES
    Orden de carga controlado:
    1) UX/rendimiento V517C.3
    2) compatibilidad historica VALIDACION_TECNICA
@@ -12,11 +12,12 @@
    9) guardado unico
    10) partida de la orden actual bajo demanda
    11) manejador unico de correccion V517C.16
-   12) vista compacta V517C.12 como unica capa de acciones
+   12) vista compacta V517C.19 como unica capa de acciones
 
    Regla vigente:
    - SIN REGISTRO + NO BONO = NO BONO.
    - SIN REGISTRO + BONO = BONO · EXCEPCION.
+   - Acciones arriba: Ver ficha | Corregir validacion | Gestionar caso.
 
    NO modifica Ranking, Dashboard, Produccion ni Recableado.
 ============================================================ */
@@ -53,10 +54,10 @@
     .then(()=>cargar("./js/vtr_gar_guardado_unico_v517c8.js?v=V517C16-1-GUARDADO-REGLA-20260828-1","MV517C8_GUARDADO_UNICO_OK"))
     .then(()=>cargar("./js/vtr_gar_partida_actual_v517c9.js?v=V517C9-PARTIDA-ORDEN-ACTUAL-20260828-2","MV517C9_PARTIDA_ACTUAL_OK"))
     .then(()=>cargar("./js/vtr_gar_correccion_handler_v517c16.js?v=V517C16-CORRECCION-HANDLER-20260828-1","MV517C16_CORRECCION_HANDLER_OK"))
-    .then(()=>cargar("./js/vtr_gar_compacto_v517c12.js?v=V517C16-COMPACTO-ACCIONES-20260828-1","MV517C12_COMPACTO_OK"))
+    .then(()=>cargar("./js/vtr_gar_compacto_v517c12.js?v=V517C19-COMPACTO-ACCIONES-20260828-1","MV517C19_COMPACTO_OK"))
     .then(()=>{
       if(typeof window.mv517c12Ejecutar==="function")window.mv517c12Ejecutar();
-      console.log("MI VISUAL V517C.18: NO BONO sin registro sincronizado.");
+      console.log("MI VISUAL V517C.19: vista compacta y acciones restauradas.");
     })
-    .catch(e=>console.error("MI VISUAL V517C.18: error de carga",e));
+    .catch(e=>console.error("MI VISUAL V517C.19: error de carga",e));
 })();
