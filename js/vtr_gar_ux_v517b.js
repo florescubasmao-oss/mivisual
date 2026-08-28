@@ -1,5 +1,5 @@
 /* ============================================================
-   MI VISUAL V517C.10 - PUENTE GAR/VTR
+   MI VISUAL V517C.11 - PUENTE GAR/VTR
    Orden de carga controlado:
    1) UX/rendimiento V517C.3
    2) compatibilidad histórica VALIDACION_TECNICA
@@ -11,6 +11,7 @@
    8) guardado único: responsabilidad + bono/observación/excepción
    9) partida de la orden GAR/VTR actual, bajo demanda y sin usar antecedente
    10) detalle operativo: GAR/VTR actual + última finalizada + movimientos + antecedente
+   11) vista compacta: sin duplicados + acciones en encabezado
 
    NO modifica Ranking, Dashboard, Producción ni Recableado.
 ============================================================ */
@@ -46,6 +47,7 @@
     .then(()=>cargar("./js/vtr_gar_guardado_unico_v517c8.js?v=V517C8-GUARDADO-UNICO-20260828-1","MV517C8_GUARDADO_UNICO_OK"))
     .then(()=>cargar("./js/vtr_gar_partida_actual_v517c9.js?v=V517C9-PARTIDA-ORDEN-ACTUAL-20260828-2","MV517C9_PARTIDA_ACTUAL_OK"))
     .then(()=>cargar("./js/vtr_gar_detalle_operativo_v517c10.js?v=V517C10-DETALLE-OPERATIVO-20260828-1","MV517C10_DETALLE_OPERATIVO_OK"))
-    .then(()=>console.log("MI VISUAL V517C.10: GAR/VTR cargado."))
-    .catch(e=>console.error("MI VISUAL V517C.10: error de carga",e));
+    .then(()=>cargar("./js/vtr_gar_vista_compacta_v517c11.js?v=V517C11-VISTA-COMPACTA-20260828-1","MV517C11_VISTA_COMPACTA_OK"))
+    .then(()=>console.log("MI VISUAL V517C.11: GAR/VTR cargado."))
+    .catch(e=>console.error("MI VISUAL V517C.11: error de carga",e));
 })();
