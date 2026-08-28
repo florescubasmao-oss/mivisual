@@ -1,5 +1,5 @@
-/* MI VISUAL V516 - fix interfaz VTR/GAR */
-const MV339_CACHE = "mivisual-v516-vtrgar-ui-20260828";
+/* MI VISUAL V517C - GAR/VTR UNIFICADO · CACHE CONTROLADO */
+const MV339_CACHE = "mivisual-v517c-garvtr-unificado-20260828-1";
 const MV339_CORE = [
   "./",
   "./index.html",
@@ -12,10 +12,15 @@ const MV339_CORE = [
   "./js/permisos.js?v=V339-CORE",
   "./js/app.js?v=V408-RESTAURA-V377",
   "./js/modulos_loader.js?v=V498-CIERRE-DEFINITIVO",
-  "./js/gestion_win_v505_loader.js?v=V516-VTRGAR-UI",
+  "./js/gestion_win_v505_loader.js?v=V517A-VTRGAR-UI",
   "./js/vtr_gar_validacion_restaurar_v514.js?v=V514A-TABS-UNICA-20260828",
   "./js/vtr_gar_v515.js?v=V515-VTRGAR-BONO-DESEMPENO-20260828",
   "./js/vtr_gar_ui_fix_v516.js?v=V516-TABS-DESPLEGABLES-20260828",
+  "./js/vtr_gar_ui_fix_v516a.js?v=V516A-ROBUSTA-20260828",
+  "./js/vtr_gar_ui_fix_v516b.js?v=V516B-PREEMPTIVA-20260828",
+  "./js/vtr_gar_tabs_guard_v516c.js?v=V516C-TABS-20260828",
+  "./js/vtr_gar_ux_v517b.js?v=V517B-UX-CACHE-20260828",
+  "./js/vtr_gar_unificado_v517c.js?v=V517C-UNIFICADO-20260828-1",
   "./js/partidas_win_v505.js?v=V506-PARTIDAS-BASE",
   "./js/partidas_lote_v506.js?v=V506-LOTE",
   "./js/partidas_win_v513.js?v=V513-PARTIDAS-20260827",
@@ -53,7 +58,11 @@ self.addEventListener("install", event => {
 self.addEventListener("activate", event => {
   event.waitUntil(
     caches.keys()
-      .then(keys => Promise.all(keys.filter(key => key.startsWith("mivisual-") && key !== MV339_CACHE).map(key => caches.delete(key))))
+      .then(keys => Promise.all(
+        keys
+          .filter(key => key.startsWith("mivisual-") && key !== MV339_CACHE)
+          .map(key => caches.delete(key))
+      ))
       .then(() => self.clients.claim())
   );
 });
@@ -65,12 +74,15 @@ self.addEventListener("fetch", event => {
   const url = new URL(req.url);
   if(url.origin !== self.location.origin) return;
 
+  /* Navegación: red primero para recibir index.html actualizado. */
   if(req.mode === "navigate"){
     event.respondWith(
       fetch(req)
         .then(res => {
           const copia = res.clone();
-          caches.open(MV339_CACHE).then(cache => cache.put("./index.html", copia)).catch(() => {});
+          caches.open(MV339_CACHE)
+            .then(cache => cache.put("./index.html", copia))
+            .catch(() => {});
           return res;
         })
         .catch(() => caches.match("./index.html").then(r => r || caches.match("./")))
@@ -81,6 +93,7 @@ self.addEventListener("fetch", event => {
   const esEstatico = /\.(?:js|css|png|jpg|jpeg|webp|svg|ico|json)$/i.test(url.pathname);
   if(!esEstatico) return;
 
+  /* Estáticos: cache primero, pero cada URL versionada corresponde a una versión concreta. */
   event.respondWith(
     caches.match(req).then(cacheado => {
       const red = fetch(req).then(res => {
