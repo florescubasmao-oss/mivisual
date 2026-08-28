@@ -1,5 +1,5 @@
-/* MI VISUAL V517C - GAR/VTR UNIFICADO · CACHE CONTROLADO */
-const MV339_CACHE = "mivisual-v517c-garvtr-unificado-20260828-1";
+/* MI VISUAL V517C.1 - GAR/VTR GESTION CONSOLIDADA · CACHE CONTROLADO */
+const MV339_CACHE = "mivisual-v517c1-garvtr-gestion-20260828-1";
 const MV339_CORE = [
   "./",
   "./index.html",
@@ -20,7 +20,7 @@ const MV339_CORE = [
   "./js/vtr_gar_ui_fix_v516b.js?v=V516B-PREEMPTIVA-20260828",
   "./js/vtr_gar_tabs_guard_v516c.js?v=V516C-TABS-20260828",
   "./js/vtr_gar_ux_v517b.js?v=V517B-UX-CACHE-20260828",
-  "./js/vtr_gar_unificado_v517c.js?v=V517C-UNIFICADO-20260828-1",
+  "./js/vtr_gar_gestion_v517c1.js?v=V517C1-GESTION-LIMPIA-20260828-1",
   "./js/partidas_win_v505.js?v=V506-PARTIDAS-BASE",
   "./js/partidas_lote_v506.js?v=V506-LOTE",
   "./js/partidas_win_v513.js?v=V513-PARTIDAS-20260827",
@@ -74,7 +74,6 @@ self.addEventListener("fetch", event => {
   const url = new URL(req.url);
   if(url.origin !== self.location.origin) return;
 
-  /* Navegación: red primero para recibir index.html actualizado. */
   if(req.mode === "navigate"){
     event.respondWith(
       fetch(req)
@@ -93,7 +92,6 @@ self.addEventListener("fetch", event => {
   const esEstatico = /\.(?:js|css|png|jpg|jpeg|webp|svg|ico|json)$/i.test(url.pathname);
   if(!esEstatico) return;
 
-  /* Estáticos: cache primero, pero cada URL versionada corresponde a una versión concreta. */
   event.respondWith(
     caches.match(req).then(cacheado => {
       const red = fetch(req).then(res => {
