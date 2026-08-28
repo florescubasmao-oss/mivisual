@@ -1,5 +1,5 @@
 /* ============================================================
-   MI VISUAL V517C.7 - PUENTE GAR/VTR
+   MI VISUAL V517C.8 - PUENTE GAR/VTR
    Orden de carga controlado:
    1) UX/rendimiento V517C.3
    2) compatibilidad histórica VALIDACION_TECNICA
@@ -8,6 +8,7 @@
    5) motivo WIN + bono excepcional sin registro técnico
    6) usabilidad simple + ficha por GET + filtros reversibles
    7) estabilidad post-guardado + snapshot local + reintento backend
+   8) guardado único: responsabilidad + bono/observación/excepción
 
    NO modifica Ranking, Dashboard, Producción ni Recableado.
 ============================================================ */
@@ -40,6 +41,7 @@
     .then(()=>cargar("./js/vtr_gar_bono_excepcion_v517c5.js?v=V517C5-MOTIVO-BONO-EXCEPCION-20260828-1","MV517C5_BONO_EXCEPCION_OK"))
     .then(()=>cargar("./js/vtr_gar_usabilidad_v517c6.js?v=V517C6-USABILIDAD-20260828-1","MV517C6_USABILIDAD_OK"))
     .then(()=>cargar("./js/vtr_gar_estabilidad_v517c7.js?v=V517C7-ESTABILIDAD-20260828-1","MV517C7_ESTABILIDAD_OK"))
-    .then(()=>console.log("MI VISUAL V517C.7: GAR/VTR cargado."))
-    .catch(e=>console.error("MI VISUAL V517C.7: error de carga",e));
+    .then(()=>cargar("./js/vtr_gar_guardado_unico_v517c8.js?v=V517C8-GUARDADO-UNICO-20260828-1","MV517C8_GUARDADO_UNICO_OK"))
+    .then(()=>console.log("MI VISUAL V517C.8: GAR/VTR cargado."))
+    .catch(e=>console.error("MI VISUAL V517C.8: error de carga",e));
 })();
