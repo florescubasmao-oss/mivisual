@@ -1,6 +1,10 @@
 /* ============================================================
-   MI VISUAL V517C.5 - MOTIVO WIN + BONO EXCEPCIONAL SIN REGISTRO
+   MI VISUAL V517C.18 - MOTIVO WIN + EVALUACION JEFATURA SIN REGISTRO
    FRONTEND ADITIVO
+   - NO BONO sin registro es evaluacion normal.
+   - BONO sin registro es BONO · EXCEPCION.
+   - Limpia una sola vez caches GAR/VTR anteriores para recuperar
+     evaluaciones ya guardadas en VTR_GAR_BONO_JEFATURA.
 ============================================================ */
 (function(){
   "use strict";
@@ -10,11 +14,30 @@
   const API=window.MI_VISUAL_API_URL||"https://script.google.com/macros/s/AKfycbwugGpuEMcJYFsDNS1hkcdZXJ92PUvXNv5ttpktyhZWv2fWB7ceCZNkfIFYxAs5wsgN/exec";
   let DATA=null, timer=null, gestionParcheada=false;
   const FETCH_BASE=window.fetch.bind(window);
+  const CACHE_SCHEMA="V517C18-NO-BONO-SIN-REGISTRO-20260828-1";
+  const CACHE_MARKER="MV517C18|SCHEMA|NO_BONO";
 
   function txt(v){return String(v==null?"":v).trim();}
   function norm(v){return txt(v).toUpperCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"").replace(/\s+/g," ").trim();}
   function esc(v){return txt(v).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));}
   function usuario(){return txt(localStorage.getItem("usuario")||localStorage.getItem("correo")||"");}
+
+  function limpiarCachesUnaVez(){
+    let limpio=false;
+    try{
+      if(localStorage.getItem(CACHE_MARKER)===CACHE_SCHEMA)return false;
+      Object.keys(localStorage)
+        .filter(k=>k.startsWith("MV517C7|LISTA|")||k.startsWith("MV517C6|LISTA|"))
+        .forEach(k=>localStorage.removeItem(k));
+      Object.keys(sessionStorage)
+        .filter(k=>k.startsWith("MV517C3|LISTA|"))
+        .forEach(k=>sessionStorage.removeItem(k));
+      localStorage.setItem(CACHE_MARKER,CACHE_SCHEMA);
+      limpio=true;
+    }catch(_){}
+    return limpio;
+  }
+  const CACHE_LIMPIADA=limpiarCachesUnaVez();
 
   window.fetch=function(input,init){
     const p=FETCH_BASE(input,init);
@@ -37,6 +60,16 @@
   function casoTicket(ticket){
     const d=DATA||window.MV517C5_DATA||{};
     return (d.incidencias||[]).find(x=>norm(x.ticket)===norm(ticket))||null;
+  }
+
+  function resultadoSinRegistro(x){
+    if(!x||txt(x.validacionId))return "";
+    const fuente=norm(x.bonoFuente||"");
+    const evaluada=x.evaluacionJefaturaSinRegistro===true||fuente==="JEFATURA_SIN_REGISTRO"||x.bonoExcepcional===true;
+    if(!evaluada)return "";
+    const r=norm(x.bono||x.estadoRegistroTecnico||"");
+    if(r==="NO_BONO")return "NO BONO";
+    return r==="BONO"||r==="NO BONO"?r:"";
   }
 
   function motivoOrden(o){
@@ -67,17 +100,27 @@
   }
 
   function enriquecerBonoExcepcion(card,x){
-    if(!x||!x.bonoExcepcional)return;
-    const resultado=norm(x.bono||x.estadoRegistroTecnico||"");
+    const resultado=resultadoSinRegistro(x);
+    if(!resultado)return;
     const esBono=resultado==="BONO";
     const badges=card.querySelector(".mv517c1-badges");
     if(badges){
-      Array.from(badges.querySelectorAll(".mv517c1-badge")).forEach(b=>{
+      const candidatos=Array.from(badges.querySelectorAll(".mv517c1-badge")).filter(b=>{
         const n=norm(b.textContent);
-        if(!n.includes("BONO")||n.includes("PENDIENTE"))return;
-        b.textContent=esBono?"🟣 BONO · EXCEPCIÓN":"🔵 NO BONO";
-        b.classList.add("info");
+        return n.includes("BONO")&&!n.includes("PENDIENTE");
       });
+      if(candidatos.length){
+        candidatos.forEach(b=>{
+          b.textContent=esBono?"🟣 BONO · EXCEPCIÓN":"🔵 NO BONO";
+          b.classList.remove("ok","warn","bad","obs","dark");
+          b.classList.add(esBono?"ok":"info");
+        });
+      }else{
+        const b=document.createElement("span");
+        b.className="mv517c1-badge "+(esBono?"ok":"info");
+        b.textContent=esBono?"🟣 BONO · EXCEPCIÓN":"🔵 NO BONO";
+        badges.appendChild(b);
+      }
     }
     Array.from(card.querySelectorAll(".mv517c1-field")).forEach(f=>{
       if(norm(f.querySelector("small")?.textContent)==="BONO"){
@@ -111,6 +154,7 @@
 
   function limpiarCache(){
     try{Object.keys(sessionStorage).filter(k=>k.startsWith("MV517C3|LISTA|")).forEach(k=>sessionStorage.removeItem(k));}catch(_){}
+    try{Object.keys(localStorage).filter(k=>k.startsWith("MV517C7|LISTA|")||k.startsWith("MV517C6|LISTA|")).forEach(k=>localStorage.removeItem(k));}catch(_){}
   }
 
   async function guardarExcepcion(ticket,modal){
@@ -139,7 +183,7 @@
 
   function inyectarExcepcion(kind,id,validacionId,noEstandar){
     if(kind!=="TICKET"||noEstandar||txt(validacionId))return;
-    const x=casoTicket(id);if(!x||norm(x.estadoWin)!==="FINALIZADA")return;
+    const x=casoTicket(id);if(!x||norm(x.estadoWin)!=="FINALIZADA")return;
     const er=norm(x.estadoResponsabilidad||x.estadoDecision||"");
     if(er==="NO_ES_GAR_VTR"||er==="ANULADO")return;
     const bg=Array.from(document.querySelectorAll(".mv517c1-modalbg")).pop();
@@ -147,15 +191,15 @@
     const footer=modal.querySelector(".mv517c1-footer");
     const nota=Array.from(modal.querySelectorAll(".mv517c1-note")).find(n=>norm(n.textContent).includes("NO TIENE REGISTRO TECNICO"));
     if(nota) nota.innerHTML="<b>Sin registro técnico.</b> Jefatura puede registrar NO BONO o, de forma excepcional, autorizar BONO sin crear un registro técnico ficticio.";
-    const actual=norm(x.bonoExcepcional?x.bono:"");
-    const puntos=x.bonoExcepcional&&x.puntajeVtrGar!=null?Number(x.puntajeVtrGar):"";
+    const actual=resultadoSinRegistro(x);
+    const puntos=actual==="BONO"&&x.puntajeVtrGar!=null?Number(x.puntajeVtrGar):"";
     const sec=document.createElement("div");sec.id="mv517c5Excepcion";sec.className="mv517c1-section";sec.style.background="#eee8ff";
     sec.innerHTML=`<h4>2. Evaluación de Jefatura · sin registro técnico</h4>
       <div class="mv517c1-note"><b>NO BONO</b> se registra como evaluación normal por ausencia de registro. <b>BONO</b> sí se considera una excepción autorizada por Jefatura. Ninguna opción convierte el caso en CON REGISTRO.</div>
-      ${x.bonoExcepcional?`<div class="mv517c1-box hist"><b>Evaluación actual:</b> ${esc(actual)}${actual==="BONO"&&puntos!==""?` · ${esc(puntos)} pts`:""}<br><b>Sustento:</b> ${esc(x.comentarioJefatura||"")}</div>`:""}
+      ${actual?`<div class="mv517c1-box hist"><b>Evaluación actual:</b> ${esc(actual)}${actual==="BONO"&&puntos!==""?` · ${esc(puntos)} pts`:""}<br><b>Sustento:</b> ${esc(x.comentarioJefatura||"")}</div>`:""}
       <label>Resultado</label><select id="mv517c5Resultado"><option value="">Seleccione...</option><option value="BONO" ${actual==="BONO"?"selected":""}>BONO excepcional</option><option value="NO BONO" ${actual==="NO BONO"?"selected":""}>NO BONO</option></select>
       <div id="mv517c5PuntosWrap" style="display:${actual==="BONO"?"block":"none"}"><label>Puntaje VTR/GAR</label><input id="mv517c5Puntos" type="number" min="0" step="0.1" value="${esc(puntos)}"></div>
-      <label>Comentario / sustento de Jefatura</label><textarea id="mv517c5Comentario" placeholder="Indique el sustento de la evaluación">${esc(x.bonoExcepcional?x.comentarioJefatura||"":"")}</textarea>
+      <label>Comentario / sustento de Jefatura</label><textarea id="mv517c5Comentario" placeholder="Indique el sustento de la evaluación">${esc(actual?x.comentarioJefatura||"":"")}</textarea>
       <div class="mv517c1-actions"><button type="button" class="mv517c1-btn" id="mv517c5Guardar">Guardar evaluación</button></div>`;
     (footer||modal).insertAdjacentElement(footer?"beforebegin":"beforeend",sec);
     sec.querySelector("#mv517c5Resultado").addEventListener("change",e=>{sec.querySelector("#mv517c5PuntosWrap").style.display=e.target.value==="BONO"?"block":"none";});
@@ -175,4 +219,14 @@
   obs.observe(document.documentElement,{subtree:true,childList:true,attributes:true,attributeFilter:["open"]});
   const it=setInterval(()=>{if(parchearGestion())clearInterval(it);},100);
   setTimeout(()=>clearInterval(it),15000);
+
+  if(CACHE_LIMPIADA){
+    setTimeout(()=>{
+      const sel=document.getElementById("mv517c1Periodo");
+      const periodo=txt(sel?.value||(DATA||{}).periodo||"");
+      if(document.getElementById("mv517c1Contenido")&&typeof window.mv517c1CambiarPeriodo==="function"){
+        window.mv517c1CambiarPeriodo(periodo);
+      }
+    },900);
+  }
 })();
