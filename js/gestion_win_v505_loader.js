@@ -1,5 +1,5 @@
 /* ============================================================
-   MI VISUAL V516 - LOADER COMPLEMENTOS INCREMENTALES
+   MI VISUAL V516A - LOADER COMPLEMENTOS INCREMENTALES
 
    Carga incremental:
    - Sincronizador WIN -> indicadores automatico optimizado.
@@ -13,7 +13,7 @@
    - Partidas + herramientas solo para Jefatura/Administrador.
    - VTR/GAR conserva una sola barra Registro / Validacion.
    - V515 agrega puntaje/bono Jefatura y detalle VTR/GAR en Mi Desempeno.
-   - V516 corrige barra duplicada heredada y desplegables de Validacion VTR/GAR.
+   - V516A controla desplegables con clase propia, independiente de <details open>.
    - Dashboard no se modifica.
 ============================================================ */
 (function(){
@@ -32,6 +32,7 @@
   window.MV514A_GESTION_WIN_LOADER_OK=true;
   window.MV515_GESTION_WIN_LOADER_OK=true;
   window.MV516_GESTION_WIN_LOADER_OK=true;
+  window.MV516A_GESTION_WIN_LOADER_OK=true;
 
   const cargados=new Set();
   const promesas=new Map();
@@ -79,43 +80,44 @@
       }
     }catch(e){
       dashboardPreparado=false;
-      console.warn("V516 Complementos: complemento Dashboard pendiente",e);
+      console.warn("V516A Complementos: complemento Dashboard pendiente",e);
     }
   }
 
   cargar("./js/vtr_gar_validacion_restaurar_v514.js?v=V514A-TABS-UNICA-20260828")
     .then(()=>cargar("./js/vtr_gar_v515.js?v=V515-VTRGAR-BONO-DESEMPENO-20260828"))
     .then(()=>cargar("./js/vtr_gar_ui_fix_v516.js?v=V516-TABS-DESPLEGABLES-20260828"))
-    .catch(e=>console.warn("V516 Complementos: VTR/GAR pendiente",e));
+    .then(()=>cargar("./js/vtr_gar_ui_fix_v516a.js?v=V516A-CLASE-PROPIA-20260828"))
+    .catch(e=>console.warn("V516A Complementos: VTR/GAR pendiente",e));
 
   cargar("./js/dashboard_actualizacion_indicadores_v512b.js?v=V512E-DASHBOARD-PIE-20260827").catch(e=>
-    console.warn("V516 Complementos: sello Dashboard pendiente",e)
+    console.warn("V516A Complementos: sello Dashboard pendiente",e)
   );
 
   cargar("./js/actualizacion_win_v507.js?v=V512A-SELLO-DASHBOARD").catch(e=>
-    console.warn("V516 Complementos: sello compatible pendiente",e)
+    console.warn("V516A Complementos: sello compatible pendiente",e)
   );
 
   cargar("./js/indicadores_win_sync_v4879.js?v=V512-SYNC-UNICA-PUBLICACION").then(()=>
     cargar("./js/partidas_snapshot_auto_v513d.js?v=V513D-SNAPSHOT-AUTO-20260827")
   ).catch(e=>
-    console.warn("V516 Complementos: sincronizador WIN / snapshot Partidas pendiente",e)
+    console.warn("V516A Complementos: sincronizador WIN / snapshot Partidas pendiente",e)
   );
 
   cargar("./js/checklist_rapido_v508.js?v=V508-CHECKLIST-RAPIDO").catch(e=>
-    console.warn("V516 Complementos: optimizacion Checklist pendiente",e)
+    console.warn("V516A Complementos: optimizacion Checklist pendiente",e)
   );
 
   cargar("./js/actas_tecnico_sin_descarga_v508.js?v=V508-ACTAS-TECNICO").catch(e=>
-    console.warn("V516 Complementos: restriccion descarga Actas pendiente",e)
+    console.warn("V516A Complementos: restriccion descarga Actas pendiente",e)
   );
 
   cargar("./js/actas_guardar_sync_v510.js?v=V511-GUARDAR-ACTA").catch(e=>
-    console.warn("V516 Complementos: sincronizacion Guardar Acta pendiente",e)
+    console.warn("V516A Complementos: sincronizacion Guardar Acta pendiente",e)
   );
 
   cargar("./js/actas_multiples_trabajos_v511.js?v=V511-MULTIPLES-TRABAJOS").catch(e=>
-    console.warn("V516 Complementos: multiples trabajos por pedido pendiente",e)
+    console.warn("V516A Complementos: multiples trabajos por pedido pendiente",e)
   );
 
   const objetivo=document.getElementById("pantalla")||document.body;
