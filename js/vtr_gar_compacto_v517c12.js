@@ -8,6 +8,7 @@
    - Mantener antecedentes como informacion separada de responsabilidad.
    - Mover Ver ficha y Gestionar caso al inicio derecho del caso abierto.
    - Si existen varias ordenes, conservar el bloque como historial.
+   - V517C.14B: garantiza carga del fix de correccion desde esta capa estable.
 
    No modifica backend, Sheets, Ranking, Dashboard ni Produccion.
 ============================================================ */
@@ -155,16 +156,28 @@
     }
   }
 
+  function cargarFixCorreccion(){
+    if(window.MV517C14A_FIX_OK) return;
+    const existe=Array.from(document.scripts).some(s=>String(s.src||"").includes("vtr_gar_correccion_fix_v517c14a.js"));
+    if(existe) return;
+    const s=document.createElement("script");
+    s.src="./js/vtr_gar_correccion_fix_v517c14a.js?v=V517C14B-CARGA-DIRECTA-20260828-1";
+    s.async=false;
+    document.head.appendChild(s);
+  }
+
   function ejecutar(){
     css();
     document.querySelectorAll(".mv517c1-case").forEach(card=>{
       moverAcciones(card);
       compactarOrdenes(card);
     });
+    cargarFixCorreccion();
   }
 
   function schedule(){clearTimeout(timer);timer=setTimeout(ejecutar,50);}
   const obs=new MutationObserver(schedule);
   obs.observe(document.documentElement,{subtree:true,childList:true,attributes:true,attributeFilter:["open"]});
   setTimeout(ejecutar,250);
+  setTimeout(cargarFixCorreccion,600);
 })();
