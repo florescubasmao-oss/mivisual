@@ -1,5 +1,5 @@
 /* ============================================================
-   MI VISUAL V517C.16B - PUENTE UNICO GAR/VTR
+   MI VISUAL V517C.17 - PUENTE UNICO GAR/VTR + CACHE SINCRONIZADA
    Orden de carga controlado:
    1) UX/rendimiento V517C.3
    2) compatibilidad historica VALIDACION_TECNICA
@@ -7,18 +7,17 @@
    4) dias entre antecedente y GAR/VTR
    5) motivo WIN + evaluacion Jefatura sin registro
    6) usabilidad + ficha por GET
-   7) estabilidad post-guardado + snapshot local
+   7) estabilidad V517C.17 + snapshot sincronizado
    8) restaurador FINALIZADA + SIN REGISTRO
    9) guardado unico
    10) partida de la orden actual bajo demanda
    11) manejador unico de correccion V517C.16
    12) vista compacta V517C.12 como unica capa de acciones
 
-   Regla V517C16B:
+   Regla vigente:
    - SIN REGISTRO + NO BONO = NO BONO.
    - SIN REGISTRO + BONO = BONO · EXCEPCION.
 
-   NO carga V517C.14 / V517C.14A / V517C.15.
    NO modifica Ranking, Dashboard, Produccion ni Recableado.
 ============================================================ */
 (function(){
@@ -49,7 +48,7 @@
     .then(()=>cargar("./js/vtr_gar_antecedente_dias_v517c4.js?v=V517C4-ANTECEDENTE-DIAS-20260828-1","MV517C4_ANTECEDENTE_DIAS_OK"))
     .then(()=>cargar("./js/vtr_gar_bono_excepcion_v517c5.js?v=V517C16-1-EVAL-SIN-REGISTRO-20260828-1","MV517C5_BONO_EXCEPCION_OK"))
     .then(()=>cargar("./js/vtr_gar_usabilidad_v517c6.js?v=V517C6-USABILIDAD-20260828-1","MV517C6_USABILIDAD_OK"))
-    .then(()=>cargar("./js/vtr_gar_estabilidad_v517c7.js?v=V517C7-ESTABILIDAD-20260828-1","MV517C7_ESTABILIDAD_OK"))
+    .then(()=>cargar("./js/vtr_gar_estabilidad_v517c7.js?v=V517C17-SYNC-CACHE-20260828-1","MV517C7_ESTABILIDAD_OK"))
     .then(()=>cargar("./js/vtr_gar_sin_registro_v517c16b.js?v=V517C16B-SIN-REGISTRO-20260828-1","MV517C16B_SIN_REGISTRO_OK"))
     .then(()=>cargar("./js/vtr_gar_guardado_unico_v517c8.js?v=V517C16-1-GUARDADO-REGLA-20260828-1","MV517C8_GUARDADO_UNICO_OK"))
     .then(()=>cargar("./js/vtr_gar_partida_actual_v517c9.js?v=V517C9-PARTIDA-ORDEN-ACTUAL-20260828-2","MV517C9_PARTIDA_ACTUAL_OK"))
@@ -57,7 +56,7 @@
     .then(()=>cargar("./js/vtr_gar_compacto_v517c12.js?v=V517C16-COMPACTO-ACCIONES-20260828-1","MV517C12_COMPACTO_OK"))
     .then(()=>{
       if(typeof window.mv517c12Ejecutar==="function")window.mv517c12Ejecutar();
-      console.log("MI VISUAL V517C.16B: GAR/VTR cadena unica cargada.");
+      console.log("MI VISUAL V517C.17: GAR/VTR cache sincronizada.");
     })
-    .catch(e=>console.error("MI VISUAL V517C.16B: error de carga",e));
+    .catch(e=>console.error("MI VISUAL V517C.17: error de carga",e));
 })();
