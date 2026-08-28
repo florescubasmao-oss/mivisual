@@ -13,7 +13,8 @@
    - Partidas + herramientas solo para Jefatura/Administrador.
    - VTR/GAR conserva una sola barra Registro / Validacion.
    - V515 agrega puntaje/bono Jefatura y detalle VTR/GAR en Mi Desempeno.
-   - V516A controla desplegables con clase propia, independiente de <details open>.
+   - V516/V516A corrigen barra duplicada y desplegables de Validacion VTR/GAR.
+   - V516B se carga directamente desde index.html como control preemptivo.
    - Dashboard no se modifica.
 ============================================================ */
 (function(){
@@ -87,7 +88,7 @@
   cargar("./js/vtr_gar_validacion_restaurar_v514.js?v=V514A-TABS-UNICA-20260828")
     .then(()=>cargar("./js/vtr_gar_v515.js?v=V515-VTRGAR-BONO-DESEMPENO-20260828"))
     .then(()=>cargar("./js/vtr_gar_ui_fix_v516.js?v=V516-TABS-DESPLEGABLES-20260828"))
-    .then(()=>cargar("./js/vtr_gar_ui_fix_v516a.js?v=V516A-CLASE-PROPIA-20260828"))
+    .then(()=>cargar("./js/vtr_gar_ui_fix_v516a.js?v=V516A-ROBUSTA-20260828"))
     .catch(e=>console.warn("V516A Complementos: VTR/GAR pendiente",e));
 
   cargar("./js/dashboard_actualizacion_indicadores_v512b.js?v=V512E-DASHBOARD-PIE-20260827").catch(e=>
