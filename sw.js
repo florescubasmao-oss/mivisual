@@ -1,5 +1,5 @@
-/* MI VISUAL V517C.16.1 - GAR/VTR CADENA UNICA · CACHE CONTROLADO */
-const MV339_CACHE = "mivisual-v517c16-1-garvtr-eval-sin-registro-20260828-1";
+/* MI VISUAL V517C.16B - GAR/VTR CADENA UNICA · CACHE CONTROLADO */
+const MV339_CACHE = "mivisual-v517c16b-garvtr-sin-registro-20260828-1";
 const MV339_CORE = [
   "./",
   "./index.html",
@@ -19,7 +19,7 @@ const MV339_CORE = [
   "./js/vtr_gar_ui_fix_v516a.js?v=V516A-ROBUSTA-20260828",
   "./js/vtr_gar_ui_fix_v516b.js?v=V516B-PREEMPTIVA-20260828",
   "./js/vtr_gar_tabs_guard_v516c.js?v=V516C-TABS-20260828",
-  "./js/vtr_gar_ux_v517b.js?v=V517C16-1-EVAL-SIN-REGISTRO-20260828-1",
+  "./js/vtr_gar_ux_v517b.js?v=V517C16B-SIN-REGISTRO-20260828-1",
   "./js/vtr_gar_ux_v517c3.js?v=V517C3-UX-RAPIDA-20260828-1",
   "./js/vtr_gar_legacy_assoc_v517c2a.js?v=V517C2A-LEGACY-20260828-1",
   "./js/vtr_gar_gestion_v517c2.js?v=V517C2-HISTORICO-OBSERVADO-20260828-1",
@@ -27,6 +27,7 @@ const MV339_CORE = [
   "./js/vtr_gar_bono_excepcion_v517c5.js?v=V517C16-1-EVAL-SIN-REGISTRO-20260828-1",
   "./js/vtr_gar_usabilidad_v517c6.js?v=V517C6-USABILIDAD-20260828-1",
   "./js/vtr_gar_estabilidad_v517c7.js?v=V517C7-ESTABILIDAD-20260828-1",
+  "./js/vtr_gar_sin_registro_v517c16b.js?v=V517C16B-SIN-REGISTRO-20260828-1",
   "./js/vtr_gar_guardado_unico_v517c8.js?v=V517C16-1-GUARDADO-REGLA-20260828-1",
   "./js/vtr_gar_partida_actual_v517c9.js?v=V517C9-PARTIDA-ORDEN-ACTUAL-20260828-2",
   "./js/vtr_gar_correccion_handler_v517c16.js?v=V517C16-CORRECCION-HANDLER-20260828-1",
