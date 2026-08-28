@@ -1,5 +1,5 @@
-/* MI VISUAL V517C.10 - GAR/VTR DETALLE OPERATIVO · CACHE CONTROLADO */
-const MV339_CACHE = "mivisual-v517c10-garvtr-detalle-operativo-20260828-1";
+/* MI VISUAL V517C.11 - GAR/VTR VISTA COMPACTA · CACHE CONTROLADO */
+const MV339_CACHE = "mivisual-v517c11-garvtr-vista-compacta-20260828-1";
 const MV339_CORE = [
   "./",
   "./index.html",
@@ -19,7 +19,7 @@ const MV339_CORE = [
   "./js/vtr_gar_ui_fix_v516a.js?v=V516A-ROBUSTA-20260828",
   "./js/vtr_gar_ui_fix_v516b.js?v=V516B-PREEMPTIVA-20260828",
   "./js/vtr_gar_tabs_guard_v516c.js?v=V516C-TABS-20260828",
-  "./js/vtr_gar_ux_v517b.js?v=V517C10-DETALLE-OPERATIVO-20260828-1",
+  "./js/vtr_gar_ux_v517b.js?v=V517C11-VISTA-COMPACTA-20260828-1",
   "./js/vtr_gar_ux_v517c3.js?v=V517C3-UX-RAPIDA-20260828-1",
   "./js/vtr_gar_legacy_assoc_v517c2a.js?v=V517C2A-LEGACY-20260828-1",
   "./js/vtr_gar_gestion_v517c2.js?v=V517C2-HISTORICO-OBSERVADO-20260828-1",
@@ -30,6 +30,7 @@ const MV339_CORE = [
   "./js/vtr_gar_guardado_unico_v517c8.js?v=V517C8-GUARDADO-UNICO-20260828-1",
   "./js/vtr_gar_partida_actual_v517c9.js?v=V517C9-PARTIDA-ORDEN-ACTUAL-20260828-2",
   "./js/vtr_gar_detalle_operativo_v517c10.js?v=V517C10-DETALLE-OPERATIVO-20260828-1",
+  "./js/vtr_gar_vista_compacta_v517c11.js?v=V517C11-VISTA-COMPACTA-20260828-1",
   "./js/partidas_win_v505.js?v=V506-PARTIDAS-BASE",
   "./js/partidas_lote_v506.js?v=V506-LOTE",
   "./js/partidas_win_v513.js?v=V513-PARTIDAS-20260827",
