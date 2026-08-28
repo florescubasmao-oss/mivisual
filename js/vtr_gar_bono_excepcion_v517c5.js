@@ -68,28 +68,34 @@
 
   function enriquecerBonoExcepcion(card,x){
     if(!x||!x.bonoExcepcional)return;
+    const resultado=norm(x.bono||x.estadoRegistroTecnico||"");
+    const esBono=resultado==="BONO";
     const badges=card.querySelector(".mv517c1-badges");
     if(badges){
       Array.from(badges.querySelectorAll(".mv517c1-badge")).forEach(b=>{
         const n=norm(b.textContent);
-        if(n.includes("BONO")&&!n.includes("PENDIENTE")&&!n.includes("EXCEPCION")){
-          b.textContent=n.includes("NO BONO")?"🔵 NO BONO · EXCEPCIÓN":"🟣 BONO · EXCEPCIÓN";
-          b.classList.add("info");
-        }
+        if(!n.includes("BONO")||n.includes("PENDIENTE"))return;
+        b.textContent=esBono?"🟣 BONO · EXCEPCIÓN":"🔵 NO BONO";
+        b.classList.add("info");
       });
     }
     Array.from(card.querySelectorAll(".mv517c1-field")).forEach(f=>{
       if(norm(f.querySelector("small")?.textContent)==="BONO"){
         const b=f.querySelector("b");
-        if(b&&!norm(b.textContent).includes("EXCEPCION")) b.textContent += " · EXCEPCIÓN JEFATURA";
+        if(b)b.textContent=esBono?"BONO · EXCEPCIÓN JEFATURA":"NO BONO";
       }
     });
     const reg=Array.from(card.querySelectorAll(".mv517c1-regbox"))[0];
-    if(reg&&!reg.querySelector(".mv517c5-ex-note")){
-      const d=document.createElement("div");d.className="mv517c5-ex-note";
-      d.style.cssText="width:100%;margin-top:4px;font-size:8px;color:#5b21b6;font-weight:800";
-      d.textContent="Bono definido por Jefatura como excepción, sin convertir el caso en registro técnico.";
-      reg.appendChild(d);
+    const nota=reg&&reg.querySelector(".mv517c5-ex-note");
+    if(esBono){
+      if(reg&&!nota){
+        const d=document.createElement("div");d.className="mv517c5-ex-note";
+        d.style.cssText="width:100%;margin-top:4px;font-size:8px;color:#5b21b6;font-weight:800";
+        d.textContent="BONO autorizado por Jefatura como excepción, sin convertir el caso en registro técnico.";
+        reg.appendChild(d);
+      }
+    }else if(nota){
+      nota.remove();
     }
   }
 
@@ -112,7 +118,7 @@
     const comentario=txt(modal.querySelector("#mv517c5Comentario")?.value);
     let puntos=0;
     if(!res){alert("Seleccione BONO o NO BONO.");return;}
-    if(!comentario){alert("Ingrese el sustento de la excepción.");return;}
+    if(!comentario){alert("Ingrese el sustento de la evaluación.");return;}
     if(res==="BONO"){
       puntos=Number(modal.querySelector("#mv517c5Puntos")?.value);
       if(!isFinite(puntos)||puntos<=0){alert("Ingrese un puntaje mayor a 0.");return;}
@@ -124,33 +130,33 @@
         accion:"validarBonoExcepcionalVtrGarV517C5",usuario:usuario(),periodo:(DATA||{}).periodo,
         ticket:ticket,resultado:res,puntajeVtrGar:puntos,motivo:comentario
       })});
-      const j=JSON.parse(await r.text());if(!j||!j.ok)throw new Error(j&&j.error||"No se pudo guardar la evaluación excepcional.");
+      const j=JSON.parse(await r.text());if(!j||!j.ok)throw new Error(j&&j.error||"No se pudo guardar la evaluación.");
       limpiarCache();
       modal.closest(".mv517c1-modalbg")?.remove();
       if(typeof window.mv517c1CambiarPeriodo==="function") window.mv517c1CambiarPeriodo((DATA||{}).periodo||"");
-    }catch(e){alert(e.message||String(e));if(btn){btn.disabled=false;btn.textContent="Guardar evaluación excepcional";}}
+    }catch(e){alert(e.message||String(e));if(btn){btn.disabled=false;btn.textContent="Guardar evaluación";}}
   }
 
   function inyectarExcepcion(kind,id,validacionId,noEstandar){
     if(kind!=="TICKET"||noEstandar||txt(validacionId))return;
-    const x=casoTicket(id);if(!x||norm(x.estadoWin)!=="FINALIZADA")return;
+    const x=casoTicket(id);if(!x||norm(x.estadoWin)!==="FINALIZADA")return;
     const er=norm(x.estadoResponsabilidad||x.estadoDecision||"");
     if(er==="NO_ES_GAR_VTR"||er==="ANULADO")return;
     const bg=Array.from(document.querySelectorAll(".mv517c1-modalbg")).pop();
     const modal=bg&&bg.querySelector(".mv517c1-modal");if(!modal||modal.querySelector("#mv517c5Excepcion"))return;
     const footer=modal.querySelector(".mv517c1-footer");
     const nota=Array.from(modal.querySelectorAll(".mv517c1-note")).find(n=>norm(n.textContent).includes("NO TIENE REGISTRO TECNICO"));
-    if(nota) nota.innerHTML="<b>Sin registro técnico.</b> La clasificación de responsabilidad se mantiene disponible. Jefatura puede otorgar un bono excepcional sin crear un registro técnico ficticio.";
+    if(nota) nota.innerHTML="<b>Sin registro técnico.</b> Jefatura puede registrar NO BONO o, de forma excepcional, autorizar BONO sin crear un registro técnico ficticio.";
     const actual=norm(x.bonoExcepcional?x.bono:"");
     const puntos=x.bonoExcepcional&&x.puntajeVtrGar!=null?Number(x.puntajeVtrGar):"";
     const sec=document.createElement("div");sec.id="mv517c5Excepcion";sec.className="mv517c1-section";sec.style.background="#eee8ff";
-    sec.innerHTML=`<h4>2. Evaluación excepcional de Jefatura · sin registro técnico</h4>
-      <div class="mv517c1-note">Uso excepcional, principalmente para casos asignados u otras situaciones justificadas. <b>No cambia SIN REGISTRO a CON REGISTRO.</b></div>
-      ${x.bonoExcepcional?`<div class="mv517c1-box hist"><b>Evaluación actual:</b> ${esc(actual)}${puntos!==""?` · ${esc(puntos)} pts`:""}<br><b>Sustento:</b> ${esc(x.comentarioJefatura||"")}</div>`:""}
-      <label>Resultado excepcional</label><select id="mv517c5Resultado"><option value="">Seleccione...</option><option value="BONO" ${actual==="BONO"?"selected":""}>BONO excepcional</option><option value="NO BONO" ${actual==="NO BONO"?"selected":""}>NO BONO</option></select>
+    sec.innerHTML=`<h4>2. Evaluación de Jefatura · sin registro técnico</h4>
+      <div class="mv517c1-note"><b>NO BONO</b> se registra como evaluación normal por ausencia de registro. <b>BONO</b> sí se considera una excepción autorizada por Jefatura. Ninguna opción convierte el caso en CON REGISTRO.</div>
+      ${x.bonoExcepcional?`<div class="mv517c1-box hist"><b>Evaluación actual:</b> ${esc(actual)}${actual==="BONO"&&puntos!==""?` · ${esc(puntos)} pts`:""}<br><b>Sustento:</b> ${esc(x.comentarioJefatura||"")}</div>`:""}
+      <label>Resultado</label><select id="mv517c5Resultado"><option value="">Seleccione...</option><option value="BONO" ${actual==="BONO"?"selected":""}>BONO excepcional</option><option value="NO BONO" ${actual==="NO BONO"?"selected":""}>NO BONO</option></select>
       <div id="mv517c5PuntosWrap" style="display:${actual==="BONO"?"block":"none"}"><label>Puntaje VTR/GAR</label><input id="mv517c5Puntos" type="number" min="0" step="0.1" value="${esc(puntos)}"></div>
-      <label>Comentario / sustento de Jefatura</label><textarea id="mv517c5Comentario" placeholder="Indique por qué se autoriza o rechaza la excepción">${esc(x.bonoExcepcional?x.comentarioJefatura||"":"")}</textarea>
-      <div class="mv517c1-actions"><button type="button" class="mv517c1-btn" id="mv517c5Guardar">Guardar evaluación excepcional</button></div>`;
+      <label>Comentario / sustento de Jefatura</label><textarea id="mv517c5Comentario" placeholder="Indique el sustento de la evaluación">${esc(x.bonoExcepcional?x.comentarioJefatura||"":"")}</textarea>
+      <div class="mv517c1-actions"><button type="button" class="mv517c1-btn" id="mv517c5Guardar">Guardar evaluación</button></div>`;
     (footer||modal).insertAdjacentElement(footer?"beforebegin":"beforeend",sec);
     sec.querySelector("#mv517c5Resultado").addEventListener("change",e=>{sec.querySelector("#mv517c5PuntosWrap").style.display=e.target.value==="BONO"?"block":"none";});
     sec.querySelector("#mv517c5Guardar").addEventListener("click",()=>guardarExcepcion(id,modal));
