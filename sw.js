@@ -46,7 +46,7 @@ const MV339_CORE = [
   "./js/actividad_campo_fix_v346.js?v=V452-CHECKLIST-ACTUAL",
   "./js/menu_desempeno_v363.js?v=V408-RESTAURA-V403",
   "./js/gerencia_general_v379.js?v=V408-RESTAURA-V403",
-  "./js/facturas_menu_v382.js?v=V408-RESTAURA-V403",
+  "./js/facturas_menu_v382.js?v=V408-FACTURAS-USUARIOS",
   "./img/logo.png",
   "./img/logo-192.png",
   "./img/splash.png"
