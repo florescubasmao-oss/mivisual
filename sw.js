@@ -1,6 +1,6 @@
-/* MI VISUAL V518.2 + V517C.19 - MAPA ESTABLE + ACCIONES GAR/VTR */
-const MV339_CACHE = "mivisual-v5182-v517c19-acciones-garvtr-20260828-1";
-const MV517C19_BRIDGE = "./js/vtr_gar_ux_v517b.js?v=V517C19-ACTIONS-20260828-1";
+/* MI VISUAL V518.2 + V517D - MAPA ESTABLE + ETIQUETAS GAR/VTR CLARAS */
+const MV339_CACHE = "mivisual-v5182-v517d-etiquetas-garvtr-20260829-1";
+const MV517C19_BRIDGE = "./js/vtr_gar_ux_v517b.js?v=V517D-ETIQUETAS-GARVTR-20260829-1";
 const MV339_CORE = [
   "./",
   "./index.html",
@@ -96,8 +96,8 @@ self.addEventListener("fetch", event => {
     return;
   }
 
-  /* index.html todavía usa la URL histórica del puente. Siempre entregamos
-     la versión V517C19 cacheada para impedir que una copia vieja bloquee C12. */
+  /* El puente conserva su URL histórica en index.html. El service worker
+     entrega la copia V517D con etiquetas claras y la misma lógica V517C.19. */
   if(url.pathname.endsWith("/js/vtr_gar_ux_v517b.js")){
     event.respondWith(
       caches.match(MV517C19_BRIDGE).then(r => r || fetch(MV517C19_BRIDGE))
