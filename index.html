@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- REDEPLOY GITHUB PAGES V517D F4T 29-08-2026 -->
+<!-- REDEPLOY GITHUB PAGES V517D F4T2 29-08-2026 -->
 <html lang="es">
 
 <head>
@@ -102,12 +102,12 @@
 if ("serviceWorker" in navigator) {
   window.addEventListener("load", function(){
     navigator.serviceWorker
-      .register("./sw.js?v=V517D-F4S2-TECNICO-FILTROS-20260829-1")
+      .register("./sw.js?v=V517D-F4T2-TECNICO-PRODUCCION-20260829-1")
       .then(function(registro){
         registro.update().catch(function(){});
-        console.log("SW V517D F4S2 OK");
+        console.log("SW V517D F4T2 OK");
       })
-      .catch(function(error){ console.warn("SW V517D F4S2", error); });
+      .catch(function(error){ console.warn("SW V517D F4T2", error); });
   });
 }
 </script>
@@ -159,6 +159,8 @@ if ("serviceWorker" in navigator) {
 <script src="./js/mi_desempeno_rapido_v456.js?v=V456-CARGA-PRELOAD"></script>
 <!-- F4T: precarga Mi Desempeno del Tecnico e integra GAR/VTR dentro del dia de Produccion. -->
 <script src="./js/mi_desempeno_tecnico_v517d_f4t.js?v=V517D-F4T-MI-DESEMPENO-20260829-1"></script>
+<!-- F4T.2: consulta GAR/VTR en paralelo al pintar Produccion del Tecnico. -->
+<script src="./js/mi_desempeno_tecnico_v517d_f4t2.js?v=V517D-F4T2-GARVTR-RAPIDO-20260829-1"></script>
 <script src="./js/ajustes_perfiles_v345.js?v=V345-PERFILES"></script>
 <script src="./js/actividad_campo_fix_v346.js?v=V452-CHECKLIST-ACTUAL"></script>
 <script src="./js/menu_desempeno_v363.js?v=V408-RESTAURA-V403"></script>
