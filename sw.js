@@ -1,6 +1,6 @@
-/* MI VISUAL V518.2 + V517D F4L - MAPA ESTABLE + GAR/VTR FINALIZADAS NORMALES */
-const MV339_CACHE = "mivisual-v5182-v517d-f4l-finalizadas-garvtr-20260829-1";
-const MV517C19_BRIDGE = "./js/vtr_gar_ux_v517b.js?v=V517D-F4L-BRIDGE-20260829-1";
+/* MI VISUAL V518.2 + V517D F4M - MAPA ESTABLE + GAR/VTR RENDIMIENTO */
+const MV339_CACHE = "mivisual-v5182-v517d-f4m-rendimiento-garvtr-20260829-1";
+const MV517C19_BRIDGE = "./js/vtr_gar_ux_v517b.js?v=V517D-F4M-BRIDGE-20260829-1";
 const MV339_CORE = [
   "./",
   "./index.html",
@@ -34,6 +34,7 @@ const MV339_CORE = [
   "./js/vtr_gar_correccion_handler_v517c16.js?v=V517C16-CORRECCION-HANDLER-20260828-1",
   "./js/vtr_gar_compacto_v517c12.js?v=V517C19-COMPACTO-ACCIONES-20260828-1",
   "./js/vtr_gar_regla_puntos_v517d.js?v=V517D-F4G-FRONT-20260829-1",
+  "./js/vtr_gar_rendimiento_v517d_f4m.js?v=V517D-F4M-RENDIMIENTO-20260829-1",
   "./js/vtr_gar_bono_correccion_v517d_f4h.js?v=V517D-F4H-BONO-CORRECCION-20260829-1",
   "./js/vtr_gar_motivo_partida_visible_v517d_f4i.js?v=V517D-F4I-MOTIVO-PARTIDA-20260829-1",
   "./js/vtr_gar_dedup_atribucion_v517d_f4j.js?v=V517D-F4J-DEDUP-ATRIBUCION-20260829-1",
@@ -102,7 +103,7 @@ self.addEventListener("fetch", event => {
   }
 
   /* El puente conserva su URL historica en index.html. El service worker
-     entrega la copia F4L con la revision de FINALIZADAS normales. */
+     entrega la copia F4M con rendimiento GAR/VTR y F4L vigente. */
   if(url.pathname.endsWith("/js/vtr_gar_ux_v517b.js")){
     event.respondWith(
       caches.match(MV517C19_BRIDGE).then(r => r || fetch(MV517C19_BRIDGE))
