@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- REDEPLOY GITHUB PAGES V517D F4Q 29-08-2026 -->
+<!-- REDEPLOY GITHUB PAGES V517D F4R 29-08-2026 -->
 <html lang="es">
 
 <head>
@@ -102,12 +102,12 @@
 if ("serviceWorker" in navigator) {
   window.addEventListener("load", function(){
     navigator.serviceWorker
-      .register("./sw.js?v=V517D-F4Q-TECNICO-DIRECTO-20260829-1")
+      .register("./sw.js?v=V517D-F4R-TECNICO-INTEGRADO-20260829-1")
       .then(function(registro){
         registro.update().catch(function(){});
-        console.log("SW V517D F4Q OK");
+        console.log("SW V517D F4R OK");
       })
-      .catch(function(error){ console.warn("SW V517D F4Q", error); });
+      .catch(function(error){ console.warn("SW V517D F4R", error); });
   });
 }
 </script>
@@ -125,9 +125,9 @@ if ("serviceWorker" in navigator) {
 <script src="./js/vtr_gar_ui_fix_v516a.js?v=V516A-ROBUSTA-20260828"></script>
 <script src="./js/vtr_gar_ui_fix_v516b.js?v=V516B-PREEMPTIVA-20260828"></script>
 <script src="./js/vtr_gar_tabs_guard_v516c.js?v=V516C-TABS-20260828"></script>
-<!-- F4Q: Tecnico entra directo al flujo Recableado; otros perfiles conservan selector. -->
-<script src="./js/vtr_gar_tecnico_menu_v517d_f4p.js?v=V517D-F4Q-TECNICO-DIRECTO-20260829-1"></script>
-<script src="./js/vtr_gar_ux_v517b.js?v=V517D-F4Q-BRIDGE-20260829-1"></script>
+<!-- F4R: Tecnico entra directo y ve Recableados GAR-VTR integrados con estados. -->
+<script src="./js/vtr_gar_tecnico_menu_v517d_f4p.js?v=V517D-F4R-TECNICO-INTEGRADO-20260829-1"></script>
+<script src="./js/vtr_gar_ux_v517b.js?v=V517D-F4R-BRIDGE-20260829-1"></script>
 <script src="./js/base_operativa_conciliacion_v483_loader.js?v=V486-FUENTE-PERIODO"></script>
 <script src="./js/mapa_estado_reciente_v484_loader.js?v=V484-LAZY-ESTADO-RECIENTE"></script>
 <script src="./js/observaciones_edicion_jefatura_v482_loader.js?v=V482-LAZY-JEFATURA"></script>
