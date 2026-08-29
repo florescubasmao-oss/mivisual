@@ -62,19 +62,20 @@
   document.head.appendChild(s);
 })();
 
-/* V517D F4W.2: solo presentacion para Tecnico.
+/* V517D F4W.3: solo presentacion para Tecnico.
    - Reevalua el semaforo del dia usando total visible con BONO GAR/VTR.
+   - Reconstruye solo el bloque derecho del encabezado del dia.
    - Oculta el bloque V515 duplicado.
    - No modifica datos ni calculos. */
 (function(){
   "use strict";
-  if(window.MV517D_F4W2_LOADER_OK) return;
-  window.MV517D_F4W2_LOADER_OK=true;
-  if(window.MV517D_F4W2_TECNICO_OK) return;
+  if(window.MV517D_F4W3_LOADER_OK) return;
+  window.MV517D_F4W3_LOADER_OK=true;
+  if(window.MV517D_F4W3_TECNICO_OK) return;
   if(document.querySelector('script[src*="mi_desempeno_tecnico_v517d_f4w.js"]')) return;
   const s=document.createElement("script");
-  s.src="./js/mi_desempeno_tecnico_v517d_f4w.js?v=V517D-F4W2-SEMAFORO-ROBUSTO-20260829-1";
+  s.src="./js/mi_desempeno_tecnico_v517d_f4w.js?v=V517D-F4W3-SEMAFORO-BLOQUE-DERECHO-20260829-1";
   s.async=true;
-  s.dataset.mv517dF4w2="1";
+  s.dataset.mv517dF4w3="1";
   document.head.appendChild(s);
 })();
