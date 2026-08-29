@@ -1,6 +1,6 @@
-/* MI VISUAL V518.2 + V517D - MAPA ESTABLE + ETIQUETAS GAR/VTR CLARAS */
-const MV339_CACHE = "mivisual-v5182-v517d-etiquetas-garvtr-20260829-1";
-const MV517C19_BRIDGE = "./js/vtr_gar_ux_v517b.js?v=V517D-ETIQUETAS-GARVTR-20260829-1";
+/* MI VISUAL V518.2 + V517D F4G - MAPA ESTABLE + REGLA GAR/VTR BONO/PUNTOS */
+const MV339_CACHE = "mivisual-v5182-v517d-f4g-garvtr-puntos-20260829-1";
+const MV517C19_BRIDGE = "./js/vtr_gar_ux_v517b.js?v=V517D-F4G-BRIDGE-20260829-1";
 const MV339_CORE = [
   "./",
   "./index.html",
@@ -33,6 +33,7 @@ const MV339_CORE = [
   "./js/vtr_gar_partida_actual_v517c9.js?v=V517C9-PARTIDA-ORDEN-ACTUAL-20260828-2",
   "./js/vtr_gar_correccion_handler_v517c16.js?v=V517C16-CORRECCION-HANDLER-20260828-1",
   "./js/vtr_gar_compacto_v517c12.js?v=V517C19-COMPACTO-ACCIONES-20260828-1",
+  "./js/vtr_gar_regla_puntos_v517d.js?v=V517D-F4G-FRONT-20260829-1",
   "./js/partidas_win_v505.js?v=V506-PARTIDAS-BASE",
   "./js/partidas_lote_v506.js?v=V506-LOTE",
   "./js/partidas_win_v513.js?v=V513-PARTIDAS-20260827",
@@ -97,7 +98,7 @@ self.addEventListener("fetch", event => {
   }
 
   /* El puente conserva su URL histórica en index.html. El service worker
-     entrega la copia V517D con etiquetas claras y la misma lógica V517C.19. */
+     entrega la copia V517D F4G con la regla GAR/VTR + Bono/Puntos. */
   if(url.pathname.endsWith("/js/vtr_gar_ux_v517b.js")){
     event.respondWith(
       caches.match(MV517C19_BRIDGE).then(r => r || fetch(MV517C19_BRIDGE))
