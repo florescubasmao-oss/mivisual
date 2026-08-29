@@ -1,6 +1,6 @@
-/* MI VISUAL V518.2 + V517D F4O - MAPA ESTABLE + TECNICO ORIGINAL */
-const MV339_CACHE = "mivisual-v5182-v517d-f4o-tecnico-original-20260829-1";
-const MV517C19_BRIDGE = "./js/vtr_gar_ux_v517b.js?v=V517D-F4O-BRIDGE-20260829-1";
+/* MI VISUAL V518.2 + V517D F4P - MAPA ESTABLE + MENU TECNICO */
+const MV339_CACHE = "mivisual-v5182-v517d-f4p-tecnico-menu-20260829-1";
+const MV517C19_BRIDGE = "./js/vtr_gar_ux_v517b.js?v=V517D-F4P-BRIDGE-20260829-1";
 const MV339_CORE = [
   "./",
   "./index.html",
@@ -20,6 +20,7 @@ const MV339_CORE = [
   "./js/vtr_gar_ui_fix_v516a.js?v=V516A-ROBUSTA-20260828",
   "./js/vtr_gar_ui_fix_v516b.js?v=V516B-PREEMPTIVA-20260828",
   "./js/vtr_gar_tabs_guard_v516c.js?v=V516C-TABS-20260828",
+  "./js/vtr_gar_tecnico_menu_v517d_f4p.js?v=V517D-F4P-TECNICO-MENU-20260829-1",
   MV517C19_BRIDGE,
   "./js/vtr_gar_ux_v517c3.js?v=V517C3-UX-RAPIDA-20260828-1",
   "./js/vtr_gar_legacy_assoc_v517c2a.js?v=V517C2A-LEGACY-20260828-1",
@@ -39,7 +40,6 @@ const MV339_CORE = [
   "./js/vtr_gar_motivo_partida_visible_v517d_f4i.js?v=V517D-F4I-MOTIVO-PARTIDA-20260829-1",
   "./js/vtr_gar_dedup_atribucion_v517d_f4j.js?v=V517D-F4J-DEDUP-ATRIBUCION-20260829-1",
   "./js/vtr_gar_finalizadas_normales_v517d_f4l.js?v=V517D-F4L-FINALIZADAS-20260829-1",
-  "./js/vtr_gar_tecnico_restaurar_v517d_f4o.js?v=V517D-F4O-TECNICO-ORIGINAL-20260829-1",
   "./js/partidas_win_v505.js?v=V506-PARTIDAS-BASE",
   "./js/partidas_lote_v506.js?v=V506-LOTE",
   "./js/partidas_win_v513.js?v=V513-PARTIDAS-20260827",
@@ -104,7 +104,7 @@ self.addEventListener("fetch", event => {
   }
 
   /* El puente conserva su URL historica en index.html. El service worker
-     entrega la copia F4O: Jefatura GAR/VTR nueva y Tecnico original. */
+     entrega la copia F4P. El Tecnico mantiene Recableado como unica entrada. */
   if(url.pathname.endsWith("/js/vtr_gar_ux_v517b.js")){
     event.respondWith(
       caches.match(MV517C19_BRIDGE).then(r => r || fetch(MV517C19_BRIDGE))
