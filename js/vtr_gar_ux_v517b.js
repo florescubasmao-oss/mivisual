@@ -82,10 +82,11 @@
     .then(()=>cargar("./js/vtr_gar_regla_puntos_v517d.js?v=V517D-F4G-FRONT-20260829-1","MV517D_F4G_FRONT_OK"))
     .then(()=>cargar("./js/vtr_gar_bono_correccion_v517d_f4h.js?v=V517D-F4H-BONO-CORRECCION-20260829-1","MV517D_F4H_BONO_CORRECCION_OK"))
     .then(()=>cargar("./js/vtr_gar_motivo_partida_visible_v517d_f4i.js?v=V517D-F4I-MOTIVO-PARTIDA-20260829-1","MV517D_F4I_MOTIVO_PARTIDA_OK"))
+    .then(()=>cargar("./js/vtr_gar_dedup_atribucion_v517d_f4j.js?v=V517D-F4J-DEDUP-ATRIBUCION-20260829-1","MV517D_F4J_DEDUP_ATRIBUCION_OK"))
     .then(()=>{
       if(typeof window.mv517c12Ejecutar==="function")window.mv517c12Ejecutar();
       programarEtiquetasClaras_();
-      console.log("MI VISUAL V517D F4I: GAR/VTR estable + Bono/Puntos + motivo/partida visibles.");
+      console.log("MI VISUAL V517D F4J: GAR/VTR estable + Bono/Puntos + motivo/partida + atribucion clara.");
     })
-    .catch(e=>console.error("MI VISUAL V517D F4I: error de carga",e));
+    .catch(e=>console.error("MI VISUAL V517D F4J: error de carga",e));
 })();
