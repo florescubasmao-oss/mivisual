@@ -1,5 +1,5 @@
-/* MI VISUAL V518.2 + V517D F4T3 - MAPA ESTABLE + MI DESEMPENO TECNICO */
-const MV339_CACHE = "mivisual-v5182-v517d-f4t3-desempeno-tecnico-20260829-1";
+/* MI VISUAL V518.2 + V517D F4V1 - MAPA ESTABLE + MI DESEMPENO TECNICO RAPIDO */
+const MV339_CACHE = "mivisual-v5182-v517d-f4v1-desempeno-tecnico-20260829-1";
 const MV517C19_BRIDGE = "./js/vtr_gar_ux_v517b.js?v=V517D-F4S-BRIDGE-20260829-1";
 const MV339_CORE = [
   "./",
@@ -41,6 +41,8 @@ const MV339_CORE = [
   "./js/vtr_gar_dedup_atribucion_v517d_f4j.js?v=V517D-F4J-DEDUP-ATRIBUCION-20260829-1",
   "./js/vtr_gar_finalizadas_normales_v517d_f4l.js?v=V517D-F4L-FINALIZADAS-20260829-1",
   "./js/mi_desempeno_tecnico_v517d_f4t2.js?v=V517D-F4T2-GARVTR-RAPIDO-20260829-1",
+  "./js/mi_desempeno_tecnico_v517d_f4v.js?v=V517D-F4V-DESEMPENO-RAPIDO-20260829-1",
+  "./js/mi_desempeno_ocultar_ranking_v457.js?v=V457-OCULTA-RANKING-TECNICO",
   "./js/partidas_win_v505.js?v=V506-PARTIDAS-BASE",
   "./js/partidas_lote_v506.js?v=V506-LOTE",
   "./js/partidas_win_v513.js?v=V513-PARTIDAS-20260827",
