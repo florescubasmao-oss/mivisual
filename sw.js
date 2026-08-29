@@ -1,6 +1,6 @@
-/* MI VISUAL V518.2 + V517D F4P - MAPA ESTABLE + MENU TECNICO */
-const MV339_CACHE = "mivisual-v5182-v517d-f4p-tecnico-menu-20260829-1";
-const MV517C19_BRIDGE = "./js/vtr_gar_ux_v517b.js?v=V517D-F4P-BRIDGE-20260829-1";
+/* MI VISUAL V518.2 + V517D F4Q - MAPA ESTABLE + TECNICO DIRECTO */
+const MV339_CACHE = "mivisual-v5182-v517d-f4q-tecnico-directo-20260829-1";
+const MV517C19_BRIDGE = "./js/vtr_gar_ux_v517b.js?v=V517D-F4Q-BRIDGE-20260829-1";
 const MV339_CORE = [
   "./",
   "./index.html",
@@ -20,7 +20,7 @@ const MV339_CORE = [
   "./js/vtr_gar_ui_fix_v516a.js?v=V516A-ROBUSTA-20260828",
   "./js/vtr_gar_ui_fix_v516b.js?v=V516B-PREEMPTIVA-20260828",
   "./js/vtr_gar_tabs_guard_v516c.js?v=V516C-TABS-20260828",
-  "./js/vtr_gar_tecnico_menu_v517d_f4p.js?v=V517D-F4P-TECNICO-MENU-20260829-1",
+  "./js/vtr_gar_tecnico_menu_v517d_f4p.js?v=V517D-F4Q-TECNICO-DIRECTO-20260829-1",
   MV517C19_BRIDGE,
   "./js/vtr_gar_ux_v517c3.js?v=V517C3-UX-RAPIDA-20260828-1",
   "./js/vtr_gar_legacy_assoc_v517c2a.js?v=V517C2A-LEGACY-20260828-1",
@@ -103,8 +103,8 @@ self.addEventListener("fetch", event => {
     return;
   }
 
-  /* El puente conserva su URL historica en index.html. El service worker
-     entrega la copia F4P. El Tecnico mantiene Recableado como unica entrada. */
+  /* El puente conserva su URL historica. F4Q se carga aparte y hace que el
+     Tecnico entre directo al flujo Recableado desde Validacion Tecnica. */
   if(url.pathname.endsWith("/js/vtr_gar_ux_v517b.js")){
     event.respondWith(
       caches.match(MV517C19_BRIDGE).then(r => r || fetch(MV517C19_BRIDGE))
