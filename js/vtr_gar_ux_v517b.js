@@ -1,25 +1,9 @@
 /* ============================================================
-   MI VISUAL V517C.19 - PUENTE UNICO GAR/VTR + ACCIONES ESTABLES
-   Orden de carga controlado:
-   1) UX/rendimiento V517C.3
-   2) compatibilidad historica VALIDACION_TECNICA
-   3) gestion V517C.2 con historico + OBSERVADO
-   4) dias entre antecedente y GAR/VTR
-   5) motivo WIN + evaluacion Jefatura sin registro V517C.18
-   6) usabilidad + ficha por GET
-   7) estabilidad V517C.17 + snapshot sincronizado
-   8) restaurador FINALIZADA + SIN REGISTRO V517C.18
-   9) guardado unico
-   10) partida de la orden actual bajo demanda
-   11) manejador unico de correccion V517C.16
-   12) vista compacta V517C.19 como unica capa de acciones
-
-   Regla vigente:
-   - SIN REGISTRO + NO BONO = NO BONO.
-   - SIN REGISTRO + BONO = BONO · EXCEPCION.
-   - Acciones arriba: Ver ficha | Corregir validacion | Gestionar caso.
-
-   NO modifica Ranking, Dashboard, Produccion ni Recableado.
+   MI VISUAL V517D - PUENTE GAR/VTR + ETIQUETAS CLARAS
+   Base intacta: V517C.19.
+   Ajuste visual únicamente:
+   - NO cambia valores internos ni acciones GAR/VTR.
+   - NO modifica backend, Produccion, Ranking, Dashboard ni Recableado.
 ============================================================ */
 (function(){
   "use strict";
@@ -43,6 +27,46 @@
     });
   }
 
+  function claveEtiqueta_(valor){
+    return String(valor==null?"":valor).trim().toUpperCase()
+      .normalize("NFD").replace(/[\u0300-\u036f]/g,"")
+      .replace(/\s+/g," ");
+  }
+
+  function aplicarEtiquetasClarasGarVtr_(){
+    const cambios={
+      "MANTENER RESPONSABILIDAD ACTUAL":"Sin cambios",
+      "SIN CAMBIAR RESPONSABILIDAD":"Sin cambios",
+      "CUADRILLA EJECUTORA / PROPIA":"SÍ ES GAR/VTR — Responsable: cuadrilla ejecutora",
+      "CONFIRMAR RESPONSABILIDAD EN LA CUADRILLA EJECUTORA":"SÍ ES GAR/VTR — Responsable: cuadrilla ejecutora",
+      "OTRA CUADRILLA / REASIGNADA":"SÍ ES GAR/VTR — Responsable: otra cuadrilla",
+      "ASIGNAR RESPONSABILIDAD A OTRA CUADRILLA":"SÍ ES GAR/VTR — Responsable: otra cuadrilla",
+      "NO CORRESPONDE A GAR/VTR":"NO ES GAR/VTR — Contar como producción normal"
+    };
+    document.querySelectorAll("select option").forEach(function(op){
+      const nuevo=cambios[claveEtiqueta_(op.textContent)];
+      if(nuevo) op.textContent=nuevo;
+    });
+  }
+
+  function programarEtiquetasClaras_(){
+    setTimeout(aplicarEtiquetasClarasGarVtr_,0);
+    setTimeout(aplicarEtiquetasClarasGarVtr_,80);
+    setTimeout(aplicarEtiquetasClarasGarVtr_,220);
+  }
+
+  if(!window.MV517D_ETIQUETAS_GARVTR_OK){
+    window.MV517D_ETIQUETAS_GARVTR_OK=true;
+    document.addEventListener("click",function(ev){
+      const boton=ev.target&&ev.target.closest?ev.target.closest("button"):null;
+      if(!boton) return;
+      const texto=claveEtiqueta_(boton.textContent);
+      if(texto.indexOf("CORREGIR VALIDACION")>=0 || texto.indexOf("GESTIONAR CASO")>=0){
+        programarEtiquetasClaras_();
+      }
+    },false);
+  }
+
   cargar("./js/vtr_gar_ux_v517c3.js?v=V517C3-UX-RAPIDA-20260828-1","MV517C3_UX_RAPIDA_OK")
     .then(()=>cargar("./js/vtr_gar_legacy_assoc_v517c2a.js?v=V517C2A-LEGACY-20260828-1","MV517C2A_LEGACY_ASSOC_OK"))
     .then(()=>cargar("./js/vtr_gar_gestion_v517c2.js?v=V517C2-HISTORICO-OBSERVADO-20260828-1","MV517C2_GARVTR_GESTION_OK"))
@@ -57,7 +81,8 @@
     .then(()=>cargar("./js/vtr_gar_compacto_v517c12.js?v=V517C19-COMPACTO-ACCIONES-20260828-1","MV517C19_COMPACTO_OK"))
     .then(()=>{
       if(typeof window.mv517c12Ejecutar==="function")window.mv517c12Ejecutar();
-      console.log("MI VISUAL V517C.19: vista compacta y acciones restauradas.");
+      programarEtiquetasClaras_();
+      console.log("MI VISUAL V517D: etiquetas GAR/VTR claras activas; lógica V517C.19 conservada.");
     })
-    .catch(e=>console.error("MI VISUAL V517C.19: error de carga",e));
+    .catch(e=>console.error("MI VISUAL V517D: error de carga",e));
 })();
