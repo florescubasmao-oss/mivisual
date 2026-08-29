@@ -79,10 +79,11 @@
     .then(()=>cargar("./js/vtr_gar_partida_actual_v517c9.js?v=V517C9-PARTIDA-ORDEN-ACTUAL-20260828-2","MV517C9_PARTIDA_ACTUAL_OK"))
     .then(()=>cargar("./js/vtr_gar_correccion_handler_v517c16.js?v=V517C16-CORRECCION-HANDLER-20260828-1","MV517C16_CORRECCION_HANDLER_OK"))
     .then(()=>cargar("./js/vtr_gar_compacto_v517c12.js?v=V517C19-COMPACTO-ACCIONES-20260828-1","MV517C19_COMPACTO_OK"))
+    .then(()=>cargar("./js/vtr_gar_regla_puntos_v517d.js?v=V517D-F4G-FRONT-20260829-1","MV517D_F4G_FRONT_OK"))
     .then(()=>{
       if(typeof window.mv517c12Ejecutar==="function")window.mv517c12Ejecutar();
       programarEtiquetasClaras_();
-      console.log("MI VISUAL V517D: etiquetas GAR/VTR claras activas; lógica V517C.19 conservada.");
+      console.log("MI VISUAL V517D F4G: GAR/VTR + Bono/Puntos condicionados activos; lógica V517C.19 conservada.");
     })
-    .catch(e=>console.error("MI VISUAL V517D: error de carga",e));
+    .catch(e=>console.error("MI VISUAL V517D F4G: error de carga",e));
 })();
