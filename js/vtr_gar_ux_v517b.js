@@ -1,9 +1,9 @@
 /* ============================================================
    MI VISUAL V517D - PUENTE GAR/VTR + ETIQUETAS CLARAS
    Base intacta: V517C.19.
-   Ajuste incremental F4O:
+   Ajuste incremental F4P:
    - Mantiene F4G/F4H/F4I/F4J/F4L/F4M.
-   - Restaura Validacion Tecnica original para perfil TECNICO.
+   - Tecnico conserva la entrada Recableado y no ve tarjeta VTR/GAR separada.
    - Jefatura conserva Gestion GAR/VTR nueva.
    - NO modifica otros modulos.
 ============================================================ */
@@ -87,11 +87,11 @@
     .then(()=>cargar("./js/vtr_gar_motivo_partida_visible_v517d_f4i.js?v=V517D-F4I-MOTIVO-PARTIDA-20260829-1","MV517D_F4I_MOTIVO_PARTIDA_OK"))
     .then(()=>cargar("./js/vtr_gar_dedup_atribucion_v517d_f4j.js?v=V517D-F4J-DEDUP-ATRIBUCION-20260829-1","MV517D_F4J_DEDUP_ATRIBUCION_OK"))
     .then(()=>cargar("./js/vtr_gar_finalizadas_normales_v517d_f4l.js?v=V517D-F4L-FINALIZADAS-20260829-1","MV517D_F4L_FINALIZADAS_OK"))
-    .then(()=>cargar("./js/vtr_gar_tecnico_restaurar_v517d_f4o.js?v=V517D-F4O-TECNICO-ORIGINAL-20260829-1","MV517D_F4O_TECNICO_RESTAURADO_OK"))
+    .then(()=>cargar("./js/vtr_gar_tecnico_menu_v517d_f4p.js?v=V517D-F4P-TECNICO-MENU-20260829-1","MV517D_F4P_TECNICO_MENU_OK"))
     .then(()=>{
       if(typeof window.mv517c12Ejecutar==="function")window.mv517c12Ejecutar();
       programarEtiquetasClaras_();
-      console.log("MI VISUAL V517D F4O: GAR/VTR Jefatura estable + Tecnico restaurado a Validacion Tecnica original.");
+      console.log("MI VISUAL V517D F4P: GAR/VTR Jefatura estable + menu Tecnico corregido.");
     })
-    .catch(e=>console.error("MI VISUAL V517D F4O: error de carga",e));
+    .catch(e=>console.error("MI VISUAL V517D F4P: error de carga",e));
 })();
