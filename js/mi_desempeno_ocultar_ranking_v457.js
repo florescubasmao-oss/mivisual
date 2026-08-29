@@ -63,3 +63,19 @@
   s.dataset.mv517dF4v="1";
   document.head.appendChild(s);
 })();
+
+/* V517D F4W: solo presentacion para Tecnico.
+   - Reevalua el semaforo del dia usando el total ya visible con BONO GAR/VTR.
+   - Oculta el bloque V515 duplicado porque el detalle ya esta dentro del dia.
+   - No modifica ningun dato ni calculo. */
+(function(){
+  "use strict";
+  if(window.MV517D_F4W_LOADER_OK) return;
+  window.MV517D_F4W_LOADER_OK=true;
+  if(document.querySelector('script[data-mv517d-f4w="1"]')) return;
+  const s=document.createElement("script");
+  s.src="./js/mi_desempeno_tecnico_v517d_f4w.js?v=V517D-F4W-SEMAFORO-BONO-20260829-1";
+  s.async=true;
+  s.dataset.mv517dF4w="1";
+  document.head.appendChild(s);
+})();
