@@ -1,19 +1,23 @@
 /* ============================================================
-   MI VISUAL V517D F4R - TECNICO INTEGRADO RECABLEADOS GAR-VTR
+   MI VISUAL V517D F4S - TECNICO INTEGRADO + ALCANCE RESTRINGIDO
    29/08/2026
 
    Alcance ESTRICTO / SOLO FRONTEND:
    - Perfil TECNICO: Validacion Tecnica entra directo al flujo actual.
    - Encabezado tecnico: RECABLEADOS GAR-VTR.
    - Historial tecnico: Recableado + GAR + VTR + Otro en una sola vista.
-   - Cada registro muestra su estado real de validacion y detalle.
-   - Usa exclusivamente window.vtValidacionesActuales ya entregado al tecnico.
-   - No agrega consultas API ni modifica formulario, guardado, Sheets,
-     Produccion, Ranking, permisos o vistas de otros perfiles.
+   - El filtro de sede NO se muestra al Tecnico.
+   - Los registros se restringen adicionalmente a su usuario/cuadrilla local.
+   - Muestra conteos visibles de Recableado, GAR y VTR para evitar confusiones.
+   - Cada registro muestra estado/resultado actualizado del registro tecnico.
+   - Al pulsar Actualizar se vuelve a leer el origen vigente y se refleja lo
+     validado/corregido por Supervisor o Jefatura en VALIDACION_TECNICA.
+   - No modifica API, Sheets, Produccion, Ranking, permisos ni vistas de otros perfiles.
 ============================================================ */
 (function(){
   "use strict";
-  if(window.MV517D_F4R_TECNICO_INTEGRADO_OK) return;
+  if(window.MV517D_F4S_TECNICO_ALCANCE_OK) return;
+  window.MV517D_F4S_TECNICO_ALCANCE_OK = true;
   window.MV517D_F4R_TECNICO_INTEGRADO_OK = true;
   window.MV517D_F4Q_TECNICO_DIRECTO_OK = true;
   window.MV517D_F4P_TECNICO_MENU_OK = true;
@@ -37,6 +41,9 @@
     });
   }
   function esTecnico(){ return norm(localStorage.getItem("perfil")||"")==="TECNICO"; }
+  function usuarioTecnico(){ return norm(localStorage.getItem("usuario")||""); }
+  function cuadrillaTecnico(){ return norm(localStorage.getItem("cuadrilla")||""); }
+  function sedeTecnico(){ return txt(localStorage.getItem("sede")||""); }
 
   function esSelectorValidacion(root){
     if(!root) return false;
@@ -92,24 +99,26 @@
   }
 
   function instalarCss(){
-    if(document.getElementById("mv517d-f4r-tech-css")) return;
+    if(document.getElementById("mv517d-f4s-tech-css")) return;
     const s=document.createElement("style");
-    s.id="mv517d-f4r-tech-css";
+    s.id="mv517d-f4s-tech-css";
     s.textContent=`
-      .mv517d-tech-kpis{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:8px;margin:10px 0 12px}
+      .mv517d-tech-kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(105px,1fr));gap:8px;margin:10px 0 12px}
       .mv517d-tech-kpi{background:#f8fafc;border:1px solid #dbe3ee;border-radius:14px;padding:10px;text-align:center}
-      .mv517d-tech-kpi b{display:block;font-size:19px;color:#0f172a}.mv517d-tech-kpi span{font-size:10px;color:#64748b;font-weight:900;text-transform:uppercase}
+      .mv517d-tech-kpi b{display:block;font-size:19px;color:#0f172a}.mv517d-tech-kpi span{font-size:9px;color:#64748b;font-weight:900;text-transform:uppercase}
       .mv517d-tech-month{border:1px solid #cbd5e1;border-radius:14px;overflow:hidden;background:#fff;margin:10px 0}
-      .mv517d-tech-month>summary{cursor:pointer;list-style:none;padding:12px 14px;background:linear-gradient(90deg,#1e3a8a,#2563eb);color:#fff;font-weight:900;display:flex;justify-content:space-between;gap:8px}
+      .mv517d-tech-month>summary{cursor:pointer;list-style:none;padding:12px 14px;background:linear-gradient(90deg,#1e3a8a,#2563eb);color:#fff;font-weight:900;display:flex;justify-content:space-between;gap:8px;align-items:center}
       .mv517d-tech-month>summary::-webkit-details-marker{display:none}.mv517d-tech-month-body{padding:10px;display:grid;gap:9px;background:#f8fafc}
+      .mv517d-tech-month-count{font-size:11px;text-align:right;line-height:1.35}
       .mv517d-tech-item{border:1px solid #dbe3ee;border-radius:13px;background:#fff;overflow:hidden}.mv517d-tech-item>summary{cursor:pointer;list-style:none;padding:11px 12px;display:grid;grid-template-columns:1fr 1.2fr auto;gap:9px;align-items:center}
       .mv517d-tech-item>summary::-webkit-details-marker{display:none}.mv517d-tech-id{font-size:13px;font-weight:900;color:#0f172a}.mv517d-tech-sub{font-size:11px;color:#64748b;margin-top:3px;line-height:1.4}
       .mv517d-tech-type{display:inline-flex;padding:3px 7px;border-radius:999px;background:#e0f2fe;color:#075985;font-size:9px;font-weight:900;margin-right:4px}
+      .mv517d-tech-type.gar{background:#ede9fe;color:#5b21b6}.mv517d-tech-type.vtr{background:#fce7f3;color:#9d174d}
       .mv517d-tech-state{display:inline-flex;padding:5px 8px;border-radius:999px;font-size:10px;font-weight:900;white-space:nowrap;background:#e2e8f0;color:#334155}
       .mv517d-tech-state.pending{background:#fef3c7;color:#92400e}.mv517d-tech-state.ok{background:#dcfce7;color:#166534}.mv517d-tech-state.info{background:#dbeafe;color:#1d4ed8}.mv517d-tech-state.warn{background:#ffedd5;color:#9a3412}.mv517d-tech-state.bad{background:#fee2e2;color:#991b1b}
       .mv517d-tech-detail{border-top:1px solid #e2e8f0;background:#f8fafc;padding:11px;font-size:12px;line-height:1.6;color:#334155}.mv517d-tech-detail b{color:#0f172a}
-      .mv517d-tech-note{background:#eff6ff;border:1px solid #bfdbfe;color:#1e40af;border-radius:11px;padding:9px 11px;font-size:11px;margin:8px 0 10px}
-      @media(max-width:700px){.mv517d-tech-kpis{grid-template-columns:repeat(2,1fr)}.mv517d-tech-item>summary{grid-template-columns:1fr}.mv517d-tech-state{justify-self:start}}
+      .mv517d-tech-note{background:#eff6ff;border:1px solid #bfdbfe;color:#1e40af;border-radius:11px;padding:9px 11px;font-size:11px;margin:8px 0 10px;line-height:1.45}
+      @media(max-width:700px){.mv517d-tech-kpis{grid-template-columns:repeat(2,1fr)}.mv517d-tech-item>summary{grid-template-columns:1fr}.mv517d-tech-state{justify-self:start}.mv517d-tech-month>summary{align-items:flex-start}.mv517d-tech-month-count{max-width:45%}}
     `;
     document.head.appendChild(s);
   }
@@ -160,15 +169,25 @@
     return "info";
   }
 
+  function estaEnAlcanceTecnico(item){
+    const u=usuarioTecnico();
+    const c=cuadrillaTecnico();
+    if(!u && !c) return true;
+    const iu=norm(item && item.tecnico);
+    const ic=norm(item && item.cuadrilla);
+    if(u && iu===u) return true;
+    if(c && ic===c) return true;
+    return false;
+  }
+
   function filtrosTecnico(lista){
     const tipo=norm(document.getElementById("vtFiltroTipo")?.value||"");
-    const sede=norm(document.getElementById("vtFiltroSede")?.value||"");
     const estado=norm(document.getElementById("vtFiltroEstado")?.value||"");
     const q=norm(document.getElementById("vtBuscarCodigo")?.value||"");
     return (lista||[]).filter(function(x){
+      if(!estaEnAlcanceTecnico(x)) return false;
       const t=norm(x && x.tipoValidacion||"OTRO");
       if(tipo && t!==tipo) return false;
-      if(sede && norm(x && x.sede)!==sede) return false;
       if(estado){
         const e=norm(x && x.estado);
         const ev=norm(x && x.estadoVisibleTecnico);
@@ -186,8 +205,21 @@
     });
   }
 
+  function contarTipos(lista){
+    const c={rec:0,gar:0,vtr:0,otro:0};
+    (lista||[]).forEach(function(x){
+      const t=norm(x && x.tipoValidacion||"OTRO");
+      if(t==="RECABLEADO") c.rec++;
+      else if(t==="GAR") c.gar++;
+      else if(t==="VTR") c.vtr++;
+      else c.otro++;
+    });
+    return c;
+  }
+
   function resumenHtml(lista){
     const c={pend:0,ok:0,obs:0,bono:0,noBono:0};
+    const tipos=contarTipos(lista);
     (lista||[]).forEach(function(x){
       const e=estadoVisible(x);
       if(e.indexOf("PENDIENTE")>=0) c.pend++;
@@ -197,9 +229,13 @@
       else if(e.indexOf("BONO")>=0) c.bono++;
     });
     return `<div class="mv517d-tech-kpis">
-      <div class="mv517d-tech-kpi"><b>${lista.length}</b><span>Total registros</span></div>
+      <div class="mv517d-tech-kpi"><b>${lista.length}</b><span>Total</span></div>
+      <div class="mv517d-tech-kpi"><b>${tipos.rec}</b><span>Recableados</span></div>
+      <div class="mv517d-tech-kpi"><b>${tipos.gar}</b><span>GAR</span></div>
+      <div class="mv517d-tech-kpi"><b>${tipos.vtr}</b><span>VTR</span></div>
       <div class="mv517d-tech-kpi"><b>${c.pend}</b><span>Pendientes</span></div>
       <div class="mv517d-tech-kpi"><b>${c.ok}</b><span>Validados</span></div>
+      <div class="mv517d-tech-kpi"><b>${c.obs}</b><span>Observados</span></div>
       <div class="mv517d-tech-kpi"><b>${c.bono}</b><span>Bono</span></div>
       <div class="mv517d-tech-kpi"><b>${c.noBono}</b><span>No bono</span></div>
     </div>`;
@@ -213,9 +249,10 @@
     const validadoPor=txt(x && x.validadoPor)||"-";
     const fechaVal=txt(x && x.fechaValidacion);
     const horaVal=txt(x && x.horaValidacion);
+    const tipoClase=tipo==="GAR"?"gar":tipo==="VTR"?"vtr":"";
     return `<details class="mv517d-tech-item">
       <summary>
-        <div><span class="mv517d-tech-type">${esc(tipo)}</span><span class="mv517d-tech-id">${esc(x && x.id||"REGISTRO")}</span>
+        <div><span class="mv517d-tech-type ${tipoClase}">${esc(tipo)}</span><span class="mv517d-tech-id">${esc(x && x.id||"REGISTRO")}</span>
           <div class="mv517d-tech-sub">${esc(fechaVisible(x))}${hora?` · ${esc(hora)}`:""} · ${esc(x && x.cuadrilla||"")}</div></div>
         <div class="mv517d-tech-sub"><b>Código:</b> ${esc(x && x.codigo||"-")}<br><b>Ticket:</b> ${esc(x && x.ticketFinal||"-")}</div>
         <span class="mv517d-tech-state ${claseEstado(x)}">${esc(estado)}</span>
@@ -236,13 +273,25 @@
     </details>`;
   }
 
+  function resumenMes(items){
+    const t=contarTipos(items);
+    const partes=[`${items.length} registro${items.length===1?"":"s"}`];
+    if(t.rec) partes.push(`REC ${t.rec}`);
+    if(t.gar) partes.push(`GAR ${t.gar}`);
+    if(t.vtr) partes.push(`VTR ${t.vtr}`);
+    if(t.otro) partes.push(`OTRO ${t.otro}`);
+    return partes.join(" · ");
+  }
+
   function renderHistorialTecnico(){
     if(!esTecnico() || renderizando) return;
     const hist=document.getElementById("vtHistorial");
     if(!hist) return;
-    const todas=Array.isArray(window.vtValidacionesActuales)?window.vtValidacionesActuales.slice():[];
+    const base=Array.isArray(window.vtValidacionesActuales)?window.vtValidacionesActuales.slice():[];
+    const todas=base.filter(estaEnAlcanceTecnico);
     if(!todas.length){
-      hist.innerHTML='<div class="vt-sub">Sin registros.</div>';
+      hist.innerHTML='<div class="vt-sub">Sin registros dentro de tu alcance.</div>';
+      hist.dataset.mv517dF4s="1";
       return;
     }
     renderizando=true;
@@ -251,20 +300,22 @@
       const grupos={};
       lista.forEach(function(x){ const p=periodoItem(x); (grupos[p]||(grupos[p]=[])).push(x); });
       const periodos=Object.keys(grupos).sort().reverse();
-      let html=resumenHtml(todas)+`<div class="mv517d-tech-note"><b>Mis registros:</b> Recableados, GAR y VTR se muestran juntos. El estado indica si Jefatura/Supervisor ya validó el registro o si continúa pendiente.</div>`;
+      const tipos=contarTipos(todas);
+      const sede=sedeTecnico();
+      let html=resumenHtml(todas)+`<div class="mv517d-tech-note"><b>Mis registros:</b> ${tipos.rec} Recableado(s) · ${tipos.gar} GAR · ${tipos.vtr} VTR${tipos.otro?` · ${tipos.otro} Otro`:""}. ${sede?`Alcance: ${esc(sede)} · `:""}solo se muestran registros de tu usuario/cuadrilla. Los cambios de validación realizados por Supervisor o Jefatura se reflejan al pulsar <b>Actualizar</b>.</div>`;
       if(!lista.length){
         html+='<div class="vt-sub">No hay registros para los filtros seleccionados.</div>';
       }else{
         html+=periodos.map(function(p,i){
           const items=grupos[p];
           return `<details class="mv517d-tech-month" ${i===0?"open":""}>
-            <summary><span>📅 ${esc(periodoVisible(p))}</span><span>${items.length} registro${items.length===1?"":"s"}</span></summary>
+            <summary><span>📅 ${esc(periodoVisible(p))}</span><span class="mv517d-tech-month-count">${esc(resumenMes(items))}</span></summary>
             <div class="mv517d-tech-month-body">${items.map(itemHtml).join("")}</div>
           </details>`;
         }).join("");
       }
       hist.innerHTML=html;
-      hist.dataset.mv517dF4r="1";
+      hist.dataset.mv517dF4s="1";
     }finally{
       renderizando=false;
     }
@@ -272,14 +323,19 @@
 
   function configurarFiltros(){
     if(!esTecnico()) return;
+
+    const sede=document.getElementById("vtFiltroSede");
+    if(sede) sede.remove();
+
     const tipo=document.getElementById("vtFiltroTipo");
-    if(tipo && tipo.dataset.mv517dF4r!=="1"){
+    if(tipo && tipo.dataset.mv517dF4s!=="1"){
       const actual=tipo.value||"";
-      tipo.innerHTML=`<option value="">Recableados GAR-VTR</option><option value="RECABLEADO">Recableado</option><option value="GAR">GAR</option><option value="VTR">VTR</option><option value="OTRO">Otro</option>`;
+      tipo.innerHTML=`<option value="">Todos mis registros</option><option value="RECABLEADO">Recableado</option><option value="GAR">GAR</option><option value="VTR">VTR</option><option value="OTRO">Otro</option>`;
       if(["","RECABLEADO","GAR","VTR","OTRO"].includes(actual)) tipo.value=actual;
       else tipo.value="";
-      tipo.dataset.mv517dF4r="1";
+      tipo.dataset.mv517dF4s="1";
     }
+
     const buscar=document.getElementById("vtBuscarCodigo");
     if(buscar) buscar.placeholder="🔍 Buscar por código, DNI o ticket";
   }
@@ -308,13 +364,14 @@
     });
 
     configurarFiltros();
-    renderHistorialTecnico();
+    const hist=document.getElementById("vtHistorial");
+    if(hist && hist.dataset.mv517dF4s!=="1") renderHistorialTecnico();
   }
 
   function instalarHookHistorial(){
     if(!esTecnico()) return;
     const actual=window.renderHistorialValidacionLocal;
-    if(typeof actual!=="function" || actual.__mv517dF4r) return;
+    if(typeof actual!=="function" || actual.__mv517dF4s) return;
     const base=actual;
     const fn=function(){
       if(esTecnico()){
@@ -323,16 +380,36 @@
       }
       return base.apply(this,arguments);
     };
-    fn.__mv517dF4r=true;
-    fn.__mv517dF4rBase=base;
+    fn.__mv517dF4s=true;
+    fn.__mv517dF4sBase=base;
     window.renderHistorialValidacionLocal=fn;
     try{ renderHistorialValidacionLocal=fn; }catch(_){}
+  }
+
+  function instalarHookCarga(){
+    if(!esTecnico()) return;
+    const actual=window.cargarValidacionesTecnicas;
+    if(typeof actual!=="function" || actual.__mv517dF4s) return;
+    const base=actual;
+    const fn=async function(){
+      const r=await base.apply(this,arguments);
+      if(esTecnico()){
+        configurarFiltros();
+        renderHistorialTecnico();
+      }
+      return r;
+    };
+    fn.__mv517dF4s=true;
+    fn.__mv517dF4sBase=base;
+    window.cargarValidacionesTecnicas=fn;
+    try{ cargarValidacionesTecnicas=fn; }catch(_){}
   }
 
   function programarVista(ms){
     clearTimeout(timerVista);
     timerVista=setTimeout(function(){
       instalarHookHistorial();
+      instalarHookCarga();
       decorarVistaTecnico();
     },ms==null?0:ms);
   }
@@ -361,7 +438,7 @@
 
   document.addEventListener("change",function(ev){
     if(!esTecnico()) return;
-    if(ev.target && ["vtFiltroTipo","vtFiltroSede","vtFiltroEstado"].includes(ev.target.id)){
+    if(ev.target && ["vtFiltroTipo","vtFiltroEstado"].includes(ev.target.id)){
       setTimeout(renderHistorialTecnico,0);
     }
   },true);
@@ -371,9 +448,15 @@
   },true);
 
   [0,80,220,500,1000,1600,2500].forEach(function(ms){
-    setTimeout(function(){entrarDirecto(); instalarHookHistorial(); decorarVistaTecnico();},ms);
+    setTimeout(function(){entrarDirecto(); instalarHookHistorial(); instalarHookCarga(); decorarVistaTecnico();},ms);
   });
-  setInterval(function(){ if(esTecnico()){ instalarHookHistorial(); decorarVistaTecnico(); } },1200);
+  setInterval(function(){
+    if(esTecnico()){
+      instalarHookHistorial();
+      instalarHookCarga();
+      configurarFiltros();
+    }
+  },1800);
 
-  console.log("MI VISUAL V517D F4R: Tecnico integrado Recableados GAR-VTR con estado de sus registros.");
+  console.log("MI VISUAL V517D F4S: Tecnico integrado con alcance restringido y GAR/VTR visibles por periodo.");
 })();
