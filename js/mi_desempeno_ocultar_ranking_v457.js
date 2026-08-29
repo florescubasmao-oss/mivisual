@@ -49,9 +49,7 @@
   setTimeout(ocultarBotonRankingTecnico, 0);
 })();
 
-/* V517D F4V: carga segura de la optimizacion de Mi Desempeno Tecnico.
-   Si el backend F4V aun no esta publicado, el archivo usa fallback automatico
-   al flujo existente y no rompe la aplicacion. */
+/* V517D F4V: carga segura de la optimizacion de Mi Desempeno Tecnico. */
 (function(){
   "use strict";
   if(window.MV517D_F4V_LOADER_OK) return;
@@ -64,18 +62,19 @@
   document.head.appendChild(s);
 })();
 
-/* V517D F4W: solo presentacion para Tecnico.
-   - Reevalua el semaforo del dia usando el total ya visible con BONO GAR/VTR.
-   - Oculta el bloque V515 duplicado porque el detalle ya esta dentro del dia.
-   - No modifica ningun dato ni calculo. */
+/* V517D F4W.2: solo presentacion para Tecnico.
+   - Reevalua el semaforo del dia usando total visible con BONO GAR/VTR.
+   - Oculta el bloque V515 duplicado.
+   - No modifica datos ni calculos. */
 (function(){
   "use strict";
-  if(window.MV517D_F4W_LOADER_OK) return;
-  window.MV517D_F4W_LOADER_OK=true;
-  if(document.querySelector('script[data-mv517d-f4w="1"]')) return;
+  if(window.MV517D_F4W2_LOADER_OK) return;
+  window.MV517D_F4W2_LOADER_OK=true;
+  if(window.MV517D_F4W2_TECNICO_OK) return;
+  if(document.querySelector('script[src*="mi_desempeno_tecnico_v517d_f4w.js"]')) return;
   const s=document.createElement("script");
-  s.src="./js/mi_desempeno_tecnico_v517d_f4w.js?v=V517D-F4W-SEMAFORO-BONO-20260829-1";
+  s.src="./js/mi_desempeno_tecnico_v517d_f4w.js?v=V517D-F4W2-SEMAFORO-ROBUSTO-20260829-1";
   s.async=true;
-  s.dataset.mv517dF4w="1";
+  s.dataset.mv517dF4w2="1";
   document.head.appendChild(s);
 })();
