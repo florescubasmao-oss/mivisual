@@ -1,5 +1,5 @@
-/* MI VISUAL V518.2 + V517D F4S - MAPA ESTABLE + TECNICO ALCANCE */
-const MV339_CACHE = "mivisual-v5182-v517d-f4s-tecnico-alcance-20260829-1";
+/* MI VISUAL V518.2 + V517D F4T3 - MAPA ESTABLE + MI DESEMPENO TECNICO */
+const MV339_CACHE = "mivisual-v5182-v517d-f4t3-desempeno-tecnico-20260829-1";
 const MV517C19_BRIDGE = "./js/vtr_gar_ux_v517b.js?v=V517D-F4S-BRIDGE-20260829-1";
 const MV339_CORE = [
   "./",
@@ -40,6 +40,7 @@ const MV339_CORE = [
   "./js/vtr_gar_motivo_partida_visible_v517d_f4i.js?v=V517D-F4I-MOTIVO-PARTIDA-20260829-1",
   "./js/vtr_gar_dedup_atribucion_v517d_f4j.js?v=V517D-F4J-DEDUP-ATRIBUCION-20260829-1",
   "./js/vtr_gar_finalizadas_normales_v517d_f4l.js?v=V517D-F4L-FINALIZADAS-20260829-1",
+  "./js/mi_desempeno_tecnico_v517d_f4t2.js?v=V517D-F4T2-GARVTR-RAPIDO-20260829-1",
   "./js/partidas_win_v505.js?v=V506-PARTIDAS-BASE",
   "./js/partidas_lote_v506.js?v=V506-LOTE",
   "./js/partidas_win_v513.js?v=V513-PARTIDAS-20260827",
@@ -103,8 +104,6 @@ self.addEventListener("fetch", event => {
     return;
   }
 
-  /* El puente conserva su ruta historica; F4S se carga antes y protege
-     exclusivamente la vista integrada y el alcance del perfil Tecnico. */
   if(url.pathname.endsWith("/js/vtr_gar_ux_v517b.js")){
     event.respondWith(
       caches.match(MV517C19_BRIDGE).then(r => r || fetch(MV517C19_BRIDGE))
