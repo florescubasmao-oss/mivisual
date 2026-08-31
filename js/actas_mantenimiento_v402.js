@@ -1,4 +1,4 @@
-/* MI VISUAL V453 - ACTAS: CORRECCIÓN INTEGRAL + CÓDIGOS JEFATURA ALMACÉN */
+/* MI VISUAL V517D F4AD - ACTAS ALMACEN: N. ACTA + CONTINUIDAD */
 (function(){
 "use strict";
 if(window.MV402_ACTAS_CORRECCION_OK)return;
@@ -103,6 +103,10 @@ function mv402AbrirEditarActa(id){
             <option value="VISITA TECNICA" ${tipo==="VISITA TECNICA"?"selected":""}>VISITA TÉCNICA</option>
           </select>
         </div>
+        <div class="mv402-field">
+          <label>N.º DE ACTA</label>
+          <input id="mv402NumeroActa" type="text" inputmode="numeric" value="${esc(a.numeroActa||"")}" autocomplete="off">
+        </div>
         ${editarCodigos?`
         <div class="mv402-field">
           <label>CÓDIGO DE ORDEN</label>
@@ -113,10 +117,15 @@ function mv402AbrirEditarActa(id){
           <input id="mv402CodigoPedido" type="text" value="${esc(a.codigoPedido||"")}" autocomplete="off">
         </div>`:""}
       </div>
-      ${editarCodigos?`<div class="mv402-status" style="margin-top:10px;background:#fff7ed;border-color:#fdba74;color:#9a3412">Jefatura de Almacén puede corregir Orden y Pedido. El ID interno, N.º de Acta, validaciones y estados se conservan.</div>`:""}
+      <div class="mv402-status" style="margin-top:10px;background:#fff7ed;border-color:#fdba74;color:#9a3412">
+        ${editarCodigos
+          ?"Jefatura de Almacén puede corregir N.º de Acta, Orden y Pedido."
+          :"Responsable de Almacén puede corregir el N.º de Acta."}
+        El ID interno, validaciones y estados se conservan.
+      </div>
       <div class="mv402-field" style="margin-top:10px">
         <label>MOTIVO DE LA CORRECCIÓN</label>
-        <textarea id="mv402Motivo" placeholder="Indique por qué se corrige la fecha, el tipo de ejecución o los códigos."></textarea>
+        <textarea id="mv402Motivo" placeholder="Indique por qué se corrige la fecha, el tipo de ejecución, el N.º de Acta o los códigos."></textarea>
       </div>
       <div id="mv402Estado" class="mv402-status" style="display:none"></div>
       <div class="mv402-actions">
@@ -132,6 +141,7 @@ async function mv402GuardarEdicion(id){
   const a=actaPorId(id);
   const fecha=document.getElementById("mv402Fecha")?.value||"";
   const tipo=document.getElementById("mv402Tipo")?.value||"";
+  const numeroActa=(document.getElementById("mv402NumeroActa")?.value||"").trim();
   const motivo=document.getElementById("mv402Motivo")?.value?.trim()||"";
   const estado=document.getElementById("mv402Estado");
   const btn=document.getElementById("mv402Guardar");
@@ -144,6 +154,7 @@ async function mv402GuardarEdicion(id){
     : String(a?.codigoPedido||"").trim();
 
   if(!motivo){alert("Debe indicar el motivo de la corrección.");return;}
+  if(!numeroActa){alert("Debe ingresar el N.º de Acta.");return;}
   if(editarCodigos&&!codigoOrden){alert("Debe ingresar el Código de Orden.");return;}
   if(editarCodigos&&!codigoPedido){alert("Debe ingresar el Código de Pedido.");return;}
 
@@ -157,11 +168,10 @@ async function mv402GuardarEdicion(id){
       id:id,
       fechaGestion:fecha,
       tipoEjecucion:tipo,
+      numeroActa:numeroActa,
       motivo:motivo
     };
 
-    // Seguridad doble: el backend también exige Jefatura de Almacén para
-    // aceptar cambios en Código de Orden o Código de Pedido.
     if(editarCodigos){
       payload.codigoOrden=codigoOrden;
       payload.codigoPedido=codigoPedido;
@@ -170,7 +180,8 @@ async function mv402GuardarEdicion(id){
     const respuesta=await apiActas(payload);
 
     if(estado){
-      estado.innerHTML=`✅ Corrección guardada.${editarCodigos
+      const numeroFinal=respuesta.numeroActa||numeroActa;
+      estado.innerHTML=`✅ Corrección guardada.<br>N.º Acta: ${esc(numeroFinal)}${editarCodigos
         ? `<br>Orden: ${esc(respuesta.codigoOrden||codigoOrden)} · Pedido: ${esc(respuesta.codigoPedido||codigoPedido)}`
         : ""}`;
     }
