@@ -1,5 +1,5 @@
-/* MI VISUAL V518.2 + V517D F4W3 - MAPA ESTABLE + SEMAFORO BONO TECNICO */
-const MV339_CACHE = "mivisual-v5182-v517d-f4w3-semaforo-bono-tecnico-20260829-1";
+/* MI VISUAL V518.2 + V517D F4X - MAPA ESTABLE + ACTAS WIN MAPA */
+const MV339_CACHE = "mivisual-v5182-v517d-f4x-actas-mapa-20260831-1";
 const MV517C19_BRIDGE = "./js/vtr_gar_ux_v517b.js?v=V517D-F4S-BRIDGE-20260829-1";
 const MV339_CORE = [
   "./",
@@ -44,6 +44,7 @@ const MV339_CORE = [
   "./js/mi_desempeno_tecnico_v517d_f4v.js?v=V517D-F4V-DESEMPENO-RAPIDO-20260829-1",
   "./js/mi_desempeno_tecnico_v517d_f4w.js?v=V517D-F4W3-SEMAFORO-BLOQUE-DERECHO-20260829-1",
   "./js/mi_desempeno_ocultar_ranking_v457.js?v=V457-OCULTA-RANKING-TECNICO",
+  "./js/actas_mapa_fallback_v517d_f4x.js?v=V517D-F4X-ACTAS-MAPA-20260831-1",
   "./js/partidas_win_v505.js?v=V506-PARTIDAS-BASE",
   "./js/partidas_lote_v506.js?v=V506-LOTE",
   "./js/partidas_win_v513.js?v=V513-PARTIDAS-20260827",
