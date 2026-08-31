@@ -110,3 +110,106 @@
   },400);
   instalar();
 })();
+
+/* ============================================================
+   MI VISUAL V517D F4AE - ESTABILIDAD RANKING
+   - Corrige porcentajes menores a 1% sin multiplicarlos indebidamente.
+   - Recupera SLA directamente de las columnas oficiales del Ranking.
+   - Evita reutilizar un Dashboard viejo al abrir Ranking.
+   - No modifica hojas, Apps Script, Produccion, Efectividad, Recableado ni GAR/VTR.
+============================================================ */
+(function(){
+  "use strict";
+  if(window.MV517D_F4AE_RANKING_ESTABILIDAD_OK) return;
+  window.MV517D_F4AE_RANKING_ESTABILIDAD_OK=true;
+
+  function numeroFlexible(valor){
+    if(typeof valor==="number") return Number.isFinite(valor)?valor:0;
+    const s=String(valor??"")
+      .replace(/S\//gi,"")
+      .replace(/%/g,"")
+      .replace(/\s+/g,"")
+      .replace(/,/g,".");
+    const n=Number(s);
+    return Number.isFinite(n)?n:0;
+  }
+
+  function porcentajeFraccion(valor){
+    const texto=String(valor??"").trim();
+    const n=numeroFlexible(valor);
+    if(texto.includes("%")) return n/100;
+    return Math.abs(n)>1 ? n/100 : n;
+  }
+
+  function instalarFilaF4AE(){
+    if(window.MV517D_F4AE_FILA_OK) return true;
+    if(!window.MV459_RANKING_OBS_INSTALADO || typeof window.filaRanking!=="function") return false;
+
+    const baseFila=window.filaRanking;
+    window.filaRanking=function(datos){
+      const r=baseFila(datos);
+      if(!Array.isArray(datos)) return r;
+
+      // Columnas porcentuales oficiales del Ranking se normalizan a fraccion.
+      // Así 0.96% => 0.0096 y se visualiza como 0.96%, no como 96%.
+      r.efectividad=porcentajeFraccion(datos[7]);
+      r.recableado=porcentajeFraccion(datos[8]);
+      r.vtrgar=porcentajeFraccion(datos[9]);
+
+      // Columnas U:Z del Ranking: SLA Bruto, Ajustado, Evaluables, Fuera,
+      // Excepciones aprobadas y Aporte SLA.
+      if(datos.length>=26){
+        r.slaBruto=numeroFlexible(datos[20]);
+        r.slaAjustado=numeroFlexible(datos[21]);
+        r.slaEvaluables=numeroFlexible(datos[22]);
+        r.slaFuera=numeroFlexible(datos[23]);
+        r.slaExcepcionesAprobadas=numeroFlexible(datos[24]);
+        r.aporteSla=numeroFlexible(datos[25]);
+        r.detSla={
+          slaBruto:r.slaBruto,
+          slaAjustado:r.slaAjustado,
+          evaluables:r.slaEvaluables,
+          fueraBruto:r.slaFuera,
+          fueraAjustado:r.slaFuera,
+          excepcionesAprobadas:r.slaExcepcionesAprobadas,
+          excepcionesPendientes:0
+        };
+      }
+      return r;
+    };
+
+    window.MV517D_F4AE_FILA_OK=true;
+    return true;
+  }
+
+  function instalarRankingFrescoF4AE(){
+    if(window.MV517D_F4AE_FRESCO_OK) return true;
+    if(!window.MV358_RANKING_DETALLADO_OK || typeof window.mostrarRanking!=="function") return false;
+
+    const baseMostrar=window.mostrarRanking;
+    window.mostrarRanking=async function(){
+      // V415 reutilizaba datos del Dashboard aunque fueran de un corte anterior.
+      // Invalidamos solo esa reutilizacion; mv4ObtenerRanking vuelve a fijar
+      // inmediatamente el periodo correcto con el CSV oficial y cache-busting.
+      try{
+        if(typeof MV276_DASH_PERIODO!=="undefined"){
+          MV276_DASH_PERIODO="__F4AE_RANKING_FRESCO__";
+        }
+      }catch(_){}
+      return baseMostrar.apply(window,arguments);
+    };
+
+    window.MV517D_F4AE_FRESCO_OK=true;
+    return true;
+  }
+
+  const reloj=setInterval(()=>{
+    const filaOk=instalarFilaF4AE();
+    const frescoOk=instalarRankingFrescoF4AE();
+    if(filaOk && frescoOk) clearInterval(reloj);
+  },150);
+
+  instalarFilaF4AE();
+  instalarRankingFrescoF4AE();
+  console.log("MI VISUAL V517D F4AE: Ranking fresco, VTR/GAR y SLA estabilizados.");
+})();
