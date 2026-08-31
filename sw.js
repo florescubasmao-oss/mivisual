@@ -1,5 +1,5 @@
-/* MI VISUAL V518.2 + V517D F4AF - VALIDACION TECNICA RESILIENTE */
-const MV339_CACHE = "mivisual-v5182-v517d-f4af-validacion-tecnica-20260831-1";
+/* MI VISUAL V518A + V518.2 - RANKING/DASHBOARD/VT ESTABLE */
+const MV339_CACHE = "mivisual-v518a-ranking-dashboard-vt-20260831-1";
 const MV517C19_BRIDGE = "./js/vtr_gar_ux_v517b.js?v=V517D-F4S-BRIDGE-20260829-1";
 const MV339_CORE = [
   "./",
@@ -52,6 +52,7 @@ const MV339_CORE = [
   "./js/partidas_lote_manual_v513c.js?v=V513C-LOTE-MANUAL-20260827",
   "./js/partidas_snapshot_auto_v513d.js?v=V513D-SNAPSHOT-AUTO-20260827",
   "./js/dashboard_actualizacion_indicadores_v512b.js?v=V512E-DASHBOARD-PIE-20260827",
+  "./js/estabilidad_ranking_validacion_v518a.js?v=V518A-20260831-1",
   "./js/actualizacion_win_v507.js?v=V512A-SELLO-DASHBOARD",
   "./js/indicadores_win_sync_v4879.js?v=V512-SYNC-UNICA-PUBLICACION",
   "./js/dashboard_herramientas_final_v512d.js?v=V512D-HERRAMIENTAS-FINAL",
