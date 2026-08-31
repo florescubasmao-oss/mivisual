@@ -1,5 +1,5 @@
-/* MI VISUAL V518.2 + V517D F4X - MAPA ESTABLE + ACTAS WIN MAPA */
-const MV339_CACHE = "mivisual-v5182-v517d-f4x-actas-mapa-20260831-1";
+/* MI VISUAL V518.2 + V517D F4AD - ACTAS ALMACEN CONTINUIDAD */
+const MV339_CACHE = "mivisual-v5182-v517d-f4ad-actas-almacen-20260831-1";
 const MV517C19_BRIDGE = "./js/vtr_gar_ux_v517b.js?v=V517D-F4S-BRIDGE-20260829-1";
 const MV339_CORE = [
   "./",
