@@ -80,18 +80,19 @@
   document.head.appendChild(s);
 })();
 
-/* V517D F4X: respaldo de busqueda de Actas recientes.
-   V455/V396 siguen siendo la primera fuente; solo si no encuentran la orden,
-   el Tecnico consulta WIN/MAPA de su misma cuadrilla. */
+/* V517D F4X.2: respaldo de Actas para órdenes WIN recientes.
+   V455/V396 siguen siendo la primera fuente. Solo si no encuentran la orden,
+   el Técnico consulta el endpoint exclusivo de Actas con alcance de su cuadrilla.
+   No utiliza permisos de Mapa Operativo. */
 (function(){
   "use strict";
-  if(window.MV517D_F4X_ACTAS_LOADER_OK) return;
-  window.MV517D_F4X_ACTAS_LOADER_OK=true;
-  if(window.MV517D_F4X_ACTAS_MAPA_OK) return;
+  if(window.MV517D_F4X2_ACTAS_LOADER_OK) return;
+  window.MV517D_F4X2_ACTAS_LOADER_OK=true;
+  if(window.MV517D_F4X2_ACTAS_WIN_OK) return;
   if(document.querySelector('script[src*="actas_mapa_fallback_v517d_f4x.js"]')) return;
   const s=document.createElement("script");
-  s.src="./js/actas_mapa_fallback_v517d_f4x.js?v=V517D-F4X-ACTAS-MAPA-20260831-1";
+  s.src="./js/actas_mapa_fallback_v517d_f4x.js?v=V517D-F4X2-ACTAS-WIN-RECIENTE-20260831-1";
   s.async=true;
-  s.dataset.mv517dF4xActas="1";
+  s.dataset.mv517dF4x2Actas="1";
   document.head.appendChild(s);
 })();
