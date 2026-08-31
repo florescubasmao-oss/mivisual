@@ -1,49 +1,37 @@
 /* ============================================================
-   MI VISUAL V517D F4AB - PLANTILLAS / PRIVACIDAD TECNICO
+   MI VISUAL V517D F4AB2 - PLANTILLAS
    31/08/2026
 
-   SOLO FRONTEND / SOLO PERFIL TECNICO.
-
-   - No modifica plantilla_orden.js ni su comportamiento base.
-   - Supervisor / Jefatura / Gerencia conservan la vista completa.
-   - Tecnico NO visualiza datos de orden, cliente, servicio, red ni gestion.
-   - Tecnico NO dispone de Copiar plantilla completa ni del texto copiable.
-   - Tecnico NO puede cargar la ubicacion del cliente desde este modulo.
-   - CTO cercanas sigue disponible con GPS propio, coordenadas manuales
-     o punto marcado en mapa.
-   - No modifica Apps Script, MAPA_ORDENES, permisos, Produccion,
-     Mi Desempeno, GAR/VTR, Actas ni optimizaciones.
+   - Todos los perfiles conservan la ficha completa y Copiar plantilla.
+   - Solo TECNICO: oculta CUADRILLA en ficha y texto copiable.
+   - Si la API entrega varias opciones, muestra selector para todos.
+   - No modifica permisos, datos, Produccion, Mi Desempeno ni GAR/VTR.
 ============================================================ */
 (function(){
   "use strict";
 
-  if(window.MV517D_F4AB_PLANTILLA_TECNICO_OK) return;
-  window.MV517D_F4AB_PLANTILLA_TECNICO_OK = true;
+  if(window.MV517D_F4AB2_PLANTILLAS_OK) return;
+  window.MV517D_F4AB2_PLANTILLAS_OK = true;
 
   let instalado = false;
-  let originalRender = null;
-  let originalCopiar = null;
-  let originalCopiarSeleccion = null;
   let observador = null;
   let temporizador = null;
+  let originalRender = null;
+  let originalConsultar = null;
+  let originalNuevaBusqueda = null;
+  let opcionesActuales = [];
+  let indiceActual = 0;
 
-  function texto(v){
+  function txt(v){
     return String(v == null ? "" : v).trim();
   }
 
-  function perfilNormalizado(){
-    return texto(localStorage.getItem("perfil") || "")
-      .toUpperCase()
-      .normalize("NFD")
-      .replace(/[\u0300-\u036f]/g, "");
+  function normalizar(v){
+    return txt(v).toUpperCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
   }
 
-  function esTecnico(){
-    return perfilNormalizado() === "TECNICO";
-  }
-
-  function escapar(v){
-    return texto(v)
+  function esc(v){
+    return txt(v)
       .replace(/&/g,"&amp;")
       .replace(/</g,"&lt;")
       .replace(/>/g,"&gt;")
@@ -51,129 +39,206 @@
       .replace(/'/g,"&#039;");
   }
 
-  function renderTecnico(orden){
-    const resultado = document.getElementById("poResultado");
-    if(!resultado) return;
+  function esTecnico(){
+    return normalizar(localStorage.getItem("perfil") || "") === "TECNICO";
+  }
 
-    /* Se conserva la orden internamente solo para que las funciones base
-       del modulo sigan operativas. No se imprime ningun dato de la orden. */
-    try { poOrdenActual = orden || {}; } catch(_) {}
+  function sanitizarPlantillaTecnico(valor){
+    return String(valor == null ? "" : valor)
+      .split(/\r?\n/)
+      .filter(function(linea){
+        return !/^\s*(?:\*\*)?CUADRILLA(?:\*\*)?\s*:/i.test(linea);
+      })
+      .join("\n")
+      .replace(/\n{3,}/g,"\n\n")
+      .trim();
+  }
 
-    let panelCto = "";
-    try {
-      if(typeof poPanelCtoCercanasHtml === "function"){
-        /* false impide precargar/mostrar coordenadas y elimina el boton
-           Ubicacion del cliente. */
-        panelCto = poPanelCtoCercanasHtml(orden || {}, false) || "";
-      }
-    } catch(_) {}
+  function protegerDomTecnico(){
+    if(!esTecnico()) return;
 
-    resultado.innerHTML = `
-      <section class="po-result-card mv517d-f4ab-tecnico">
-        <div class="po-result-top po-result-top-v404">
-          <div>
-            <b>Plantilla disponible</b>
-            <small>Vista habilitada para perfil Técnico</small>
-          </div>
-        </div>
-        <div class="po-actions">
-          <button class="po-primary" type="button" onclick="nuevaBusquedaPlantilla()">Nueva búsqueda</button>
-        </div>
-        <div style="margin:12px 0;padding:13px 15px;border-radius:12px;background:#eff6ff;border:1px solid #bfdbfe;color:#1e3a8a;font-size:13px;line-height:1.45">
-          La información detallada de la orden y la opción de copiar plantilla no se muestran para el perfil Técnico.
-        </div>
-        ${panelCto}
-      </section>`;
+    document.querySelectorAll("#poResultado .po-field").forEach(function(campo){
+      const etiqueta = campo.querySelector("span");
+      if(etiqueta && normalizar(etiqueta.textContent) === "CUADRILLA") campo.remove();
+    });
 
-    const estadoCto = document.getElementById("poCtoEstado");
-    if(estadoCto){
-      estadoCto.textContent = "Puede usar GPS, ingresar coordenadas manualmente o marcar un punto en el mapa.";
+    const area = document.getElementById("poTextoPlantilla");
+    if(area) area.value = sanitizarPlantillaTecnico(area.value);
+  }
+
+  function renderProtegido(orden, plantilla){
+    if(typeof originalRender !== "function") return;
+
+    if(!esTecnico()){
+      return originalRender.call(this, orden || {}, plantilla || "");
     }
 
-    /* Defensa visual adicional: nunca dejar campos prellenados con la
-       ubicacion del cliente en el perfil Tecnico. */
-    const lat = document.getElementById("poCtoLat");
-    const lng = document.getElementById("poCtoLng");
-    if(lat) lat.value = "";
-    if(lng) lng.value = "";
+    const ordenTecnico = Object.assign({}, orden || {}, {cuadrilla:""});
+    const salida = originalRender.call(this, ordenTecnico, sanitizarPlantillaTecnico(plantilla));
+    protegerDomTecnico();
+    return salida;
+  }
+
+  function obtenerContenedorSelector(){
+    const resultado = document.getElementById("poResultado");
+    if(!resultado || !resultado.parentNode) return null;
+
+    let contenedor = document.getElementById("poSelectorOrdenesF4AB");
+    if(!contenedor){
+      contenedor = document.createElement("div");
+      contenedor.id = "poSelectorOrdenesF4AB";
+      resultado.parentNode.insertBefore(contenedor, resultado);
+    }
+    return contenedor;
+  }
+
+  function limpiarSelector(){
+    opcionesActuales = [];
+    indiceActual = 0;
+    const contenedor = document.getElementById("poSelectorOrdenesF4AB");
+    if(contenedor) contenedor.remove();
+  }
+
+  function pintarSelector(){
+    const contenedor = obtenerContenedorSelector();
+    if(!contenedor) return;
+
+    if(opcionesActuales.length <= 1){
+      contenedor.innerHTML = "";
+      contenedor.style.display = "none";
+      return;
+    }
+
+    contenedor.style.display = "";
+    contenedor.innerHTML = `
+      <section class="mv517d-f4ab-selector" style="margin:14px 0;background:#fff;border:1px solid #cbd5e1;border-radius:16px;padding:14px">
+        <div style="font-weight:900;color:#0f172a;margin-bottom:10px">Seleccione la orden</div>
+        <div style="display:grid;gap:8px">
+          ${opcionesActuales.map(function(opcion, i){
+            const orden = opcion.orden || {};
+            const activo = i === indiceActual;
+            const meta = [txt(orden.fechaSolicitud), txt(orden.horaSolicitud), txt(orden.estado)].filter(Boolean).join(" · ");
+            const tipo = txt(orden.tipoTrabajo || orden.productoOrigen || "");
+            return `<button type="button" onclick="seleccionarPlantillaOrdenF4AB(${i})" style="text-align:left;width:100%;border:${activo?"2px solid #0ea5e9":"1px solid #cbd5e1"};background:${activo?"#eff6ff":"#fff"};border-radius:12px;padding:11px 13px;cursor:pointer">
+              <b style="display:block;color:#0f172a">Orden ${esc(orden.ordenId || "Sin código")}</b>
+              ${meta?`<span style="display:block;margin-top:3px;color:#475569;font-size:12px">${esc(meta)}</span>`:""}
+              ${tipo?`<small style="display:block;margin-top:3px;color:#64748b">${esc(tipo)}</small>`:""}
+            </button>`;
+          }).join("")}
+        </div>
+      </section>`;
+  }
+
+  function seleccionarPlantilla(indice){
+    const i = Number(indice);
+    if(!Number.isInteger(i) || i < 0 || i >= opcionesActuales.length) return;
+
+    indiceActual = i;
+    const opcion = opcionesActuales[i] || {};
+    renderProtegido(opcion.orden || {}, opcion.plantilla || "");
+    pintarSelector();
+  }
+
+  async function consultarProtegido(){
+    const input = document.getElementById("poConsulta");
+    const estado = document.getElementById("poEstado");
+    const resultado = document.getElementById("poResultado");
+    const consulta = String(input?.value || "").replace(/\s+/g,"").trim();
+
+    if(!consulta){
+      if(estado) estado.textContent = "Ingrese cualquiera de los datos indicados para consultar.";
+      if(input) input.focus();
+      return;
+    }
+
+    limpiarSelector();
+    if(estado){
+      estado.className = "po-status loading";
+      estado.textContent = "Buscando coincidencias...";
+    }
+    if(resultado) resultado.innerHTML = "";
+
+    try{
+      const api = (typeof poApi === "function") ? poApi : null;
+      const usuario = (typeof poUsuario === "function") ? poUsuario() : (localStorage.getItem("usuario") || localStorage.getItem("correo") || "");
+
+      if(!api && typeof originalConsultar === "function"){
+        return originalConsultar.apply(this, arguments);
+      }
+
+      const data = await api({accion:"consultarPlantillaOrden",usuario,consulta,codigoCliente:consulta});
+      const criterio = txt(data.criterioBusqueda || "");
+      const recibidas = Array.isArray(data.opciones) ? data.opciones.filter(function(x){ return x && x.orden; }) : [];
+
+      opcionesActuales = recibidas.length
+        ? recibidas
+        : [{orden:data.orden || {}, plantilla:data.plantilla || "", criterioBusqueda:criterio}];
+      indiceActual = 0;
+
+      if(estado){
+        estado.className = "po-status ok";
+        if(opcionesActuales.length > 1){
+          estado.textContent = `Se encontraron ${Number(data.coincidencias || opcionesActuales.length)} órdenes permitidas${criterio?` por ${criterio}`:""}. Seleccione una orden.`;
+        }else{
+          estado.textContent = `Orden encontrada${criterio?` por ${criterio}`:""}.`;
+        }
+      }
+
+      const opcion = opcionesActuales[0] || {};
+      renderProtegido(opcion.orden || {}, opcion.plantilla || "");
+      pintarSelector();
+    }catch(error){
+      if(estado){
+        estado.className = "po-status error";
+        estado.textContent = error?.message || String(error || "No se pudo realizar la consulta");
+      }
+    }
+  }
+
+  function nuevaBusquedaProtegida(){
+    limpiarSelector();
+    if(typeof originalNuevaBusqueda === "function"){
+      return originalNuevaBusqueda.apply(this, arguments);
+    }
   }
 
   function instalar(){
     if(instalado) return true;
-    if(typeof window.renderPlantillaOrden !== "function") return false;
+    if(typeof window.renderPlantillaOrden !== "function" || typeof window.consultarPlantillaOrden !== "function") return false;
 
     originalRender = window.renderPlantillaOrden;
-    originalCopiar = window.copiarPlantillaCompleta;
-    originalCopiarSeleccion = window.copiarSeleccionPlantilla;
-
-    const renderProtegido = function(orden, plantilla){
-      if(!esTecnico()){
-        return originalRender.apply(this, arguments);
-      }
-      return renderTecnico(orden || {});
-    };
-
-    const copiarProtegido = function(){
-      if(esTecnico()){
-        alert("La opción de copiar plantilla no está disponible para el perfil Técnico.");
-        return;
-      }
-      if(typeof originalCopiar === "function"){
-        return originalCopiar.apply(this, arguments);
-      }
-    };
-
-    const copiarSeleccionProtegido = function(){
-      if(esTecnico()){
-        alert("La opción de copiar plantilla no está disponible para el perfil Técnico.");
-        return;
-      }
-      if(typeof originalCopiarSeleccion === "function"){
-        return originalCopiarSeleccion.apply(this, arguments);
-      }
-    };
+    originalConsultar = window.consultarPlantillaOrden;
+    originalNuevaBusqueda = window.nuevaBusquedaPlantilla;
 
     window.renderPlantillaOrden = renderProtegido;
-    window.copiarPlantillaCompleta = copiarProtegido;
-    window.copiarSeleccionPlantilla = copiarSeleccionProtegido;
+    window.consultarPlantillaOrden = consultarProtegido;
+    window.seleccionarPlantillaOrdenF4AB = seleccionarPlantilla;
+    if(typeof originalNuevaBusqueda === "function") window.nuevaBusquedaPlantilla = nuevaBusquedaProtegida;
 
-    /* Las llamadas internas de plantilla_orden.js usan los identificadores
-       globales. Reasignarlos garantiza que consultarPlantillaOrden use la
-       misma proteccion y no solo los onclick del DOM. */
     try { renderPlantillaOrden = renderProtegido; } catch(_) {}
-    try { copiarPlantillaCompleta = copiarProtegido; } catch(_) {}
-    try { copiarSeleccionPlantilla = copiarSeleccionProtegido; } catch(_) {}
+    try { consultarPlantillaOrden = consultarProtegido; } catch(_) {}
+    try { if(typeof originalNuevaBusqueda === "function") nuevaBusquedaPlantilla = nuevaBusquedaProtegida; } catch(_) {}
 
     instalado = true;
     if(observador){ observador.disconnect(); observador = null; }
     if(temporizador){ clearInterval(temporizador); temporizador = null; }
 
-    console.log("MI VISUAL V517D F4AB: privacidad de Plantillas activa solo para Tecnico.");
+    console.log("MI VISUAL V517D F4AB2: selector multiple y Tecnico sin Cuadrilla.");
     return true;
   }
 
-  /* plantilla_orden.js se carga de forma lazy. Se observa su insercion para
-     envolverlo antes de que el usuario haga la primera consulta. */
   observador = new MutationObserver(function(cambios){
     cambios.forEach(function(cambio){
       Array.from(cambio.addedNodes || []).forEach(function(nodo){
         if(!nodo || nodo.tagName !== "SCRIPT") return;
-        const src = String(nodo.src || "");
-        if(!src.includes("/js/plantilla_orden.js")) return;
-        nodo.addEventListener("load", function(){
-          instalar();
-          if(typeof queueMicrotask === "function") queueMicrotask(instalar);
-          else setTimeout(instalar,0);
-        }, {once:true});
+        if(!String(nodo.src || "").includes("/js/plantilla_orden.js")) return;
+        nodo.addEventListener("load", function(){ setTimeout(instalar,0); }, {once:true});
       });
     });
   });
 
-  try {
-    observador.observe(document.documentElement, {childList:true, subtree:true});
-  } catch(_) {}
+  try { observador.observe(document.documentElement,{childList:true,subtree:true}); } catch(_) {}
 
-  /* Respaldo para sesiones donde el modulo ya estuviera cargado. */
   instalar();
   let intentos = 0;
   temporizador = setInterval(function(){
@@ -182,5 +247,5 @@
       clearInterval(temporizador);
       temporizador = null;
     }
-  }, 250);
+  },250);
 })();
