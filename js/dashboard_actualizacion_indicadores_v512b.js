@@ -253,3 +253,22 @@
   setTimeout(programar,1000);
   console.log("MI VISUAL V512E: sello Dashboard inferior izquierdo habilitado.");
 })();
+
+/* ============================================================
+   V518A - CARGA INCREMENTAL DE ESTABILIDAD
+   Archivo separado para no reemplazar Ranking, Dashboard ni VT.
+============================================================ */
+(function(){
+  "use strict";
+  if(window.MV518A_LOADER_OK) return;
+  window.MV518A_LOADER_OK=true;
+  const ruta="./js/estabilidad_ranking_validacion_v518a.js?v=V518A-20260831-1";
+  const existente=Array.from(document.scripts).find(s=>String(s.src||"").includes("estabilidad_ranking_validacion_v518a.js"));
+  if(existente) return;
+  const s=document.createElement("script");
+  s.src=ruta;
+  s.async=true;
+  s.onload=function(){console.log("MI VISUAL V518A: parche incremental cargado.");};
+  s.onerror=function(){console.warn("MI VISUAL V518A: no se pudo cargar el parche incremental.");};
+  document.head.appendChild(s);
+})();
