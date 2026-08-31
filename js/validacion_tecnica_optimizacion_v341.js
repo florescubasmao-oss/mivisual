@@ -1,4 +1,4 @@
-/* MI VISUAL V341 - Validación Técnica rápida, caché breve y solicitud única */
+/* MI VISUAL V341 + F4AF - Validación Técnica rápida, caché breve y registro resiliente */
 (function(){
   "use strict";
 
@@ -6,6 +6,14 @@
   const cacheLecturas = new Map();
   const peticionesEnCurso = new Map();
   const apiOriginal = window.apiValidacionTecnica;
+
+  /* F4AF:
+     El backend V309 protege VALIDACION_TECNICA con ScriptLock para evitar
+     registros simultáneos sobre la misma fila. Conservamos esa protección.
+     Si el backend responde únicamente con el bloqueo temporal conocido,
+     reintentamos el MISMO registro de forma secuencial. No se reintentan
+     errores de red ni otros errores funcionales, evitando duplicados. */
+  const ESPERAS_REGISTRO_F4AF = [1200, 2200];
 
   function escaparV341(valor){
     return String(valor == null ? "" : valor)
@@ -27,6 +35,47 @@
 
   function limpiarCacheValidacionTecnicaV341(){
     cacheLecturas.clear();
+  }
+
+  function esBloqueoTemporalRegistroF4AF(respuesta){
+    const mensaje = String(respuesta && respuesta.error || "").toLowerCase();
+    return mensaje.includes("el sistema está registrando otra solicitud") ||
+           mensaje.includes("el sistema esta registrando otra solicitud");
+  }
+
+  function esperarF4AF(ms){
+    return new Promise(resolve => setTimeout(resolve, ms));
+  }
+
+  async function registrarConReintentoF4AF(solicitud){
+    let respuesta = null;
+
+    for(let intento = 0; intento <= ESPERAS_REGISTRO_F4AF.length; intento++){
+      /* apiOriginal puede lanzar por red/timeout. Ese caso NO se reintenta aquí,
+         porque no podemos asegurar si el servidor alcanzó a escribir. */
+      respuesta = await apiOriginal(solicitud);
+
+      if(respuesta && respuesta.ok){
+        limpiarCacheValidacionTecnicaV341();
+        return respuesta;
+      }
+
+      if(!esBloqueoTemporalRegistroF4AF(respuesta) || intento >= ESPERAS_REGISTRO_F4AF.length){
+        return respuesta;
+      }
+
+      if(typeof window.mostrarCargandoValidacion === "function"){
+        window.mostrarCargandoValidacion(
+          intento === 0
+            ? "Validación ocupada. Esperando turno para registrar..."
+            : "Registrando solicitud, un momento..."
+        );
+      }
+
+      await esperarF4AF(ESPERAS_REGISTRO_F4AF[intento]);
+    }
+
+    return respuesta;
   }
 
   async function leerValidacionTecnicaV341(payload){
@@ -138,6 +187,10 @@
       throw new Error("La función principal de Validación Técnica no está disponible.");
     }
 
+    if(solicitud.accion === "registrarValidacionTecnica"){
+      return registrarConReintentoF4AF(solicitud);
+    }
+
     const respuesta = await apiOriginal(solicitud);
     if(respuesta && respuesta.ok) limpiarCacheValidacionTecnicaV341();
     return respuesta;
@@ -211,4 +264,5 @@
   };
 
   window.vtLimpiarCacheValidacionTecnica = limpiarCacheValidacionTecnicaV341;
+  window.MV517D_F4AF_VALIDACION_REGISTRO_RESILIENTE_OK = true;
 })();
