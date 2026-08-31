@@ -79,3 +79,19 @@
   s.dataset.mv517dF4w3="1";
   document.head.appendChild(s);
 })();
+
+/* V517D F4X: respaldo de busqueda de Actas recientes.
+   V455/V396 siguen siendo la primera fuente; solo si no encuentran la orden,
+   el Tecnico consulta WIN/MAPA de su misma cuadrilla. */
+(function(){
+  "use strict";
+  if(window.MV517D_F4X_ACTAS_LOADER_OK) return;
+  window.MV517D_F4X_ACTAS_LOADER_OK=true;
+  if(window.MV517D_F4X_ACTAS_MAPA_OK) return;
+  if(document.querySelector('script[src*="actas_mapa_fallback_v517d_f4x.js"]')) return;
+  const s=document.createElement("script");
+  s.src="./js/actas_mapa_fallback_v517d_f4x.js?v=V517D-F4X-ACTAS-MAPA-20260831-1";
+  s.async=true;
+  s.dataset.mv517dF4xActas="1";
+  document.head.appendChild(s);
+})();
