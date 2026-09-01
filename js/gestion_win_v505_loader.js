@@ -91,7 +91,7 @@
     .then(()=>cargar("./js/vtr_gar_v515.js?v=V515-VTRGAR-BONO-DESEMPENO-20260828"))
     .then(()=>cargar("./js/vtr_gar_ui_fix_v516.js?v=V516-TABS-DESPLEGABLES-20260828"))
     .then(()=>cargar("./js/vtr_gar_ui_fix_v516a.js?v=V516A-ROBUSTA-20260828"))
-    .then(()=>cargar("./js/vtr_gar_v517a.js?v=V517A-CONSOLIDADO-20260828"))
+    .then(()=>cargar("./js/vtr_gar_v517a.js?v=V517A1-PENDIENTES-NO-ESTANDAR-20260901-1"))
     .catch(e=>console.warn("V517A Complementos: VTR/GAR pendiente",e));
 
   cargar("./js/dashboard_actualizacion_indicadores_v512b.js?v=V512E-DASHBOARD-PIE-20260827").catch(e=>
