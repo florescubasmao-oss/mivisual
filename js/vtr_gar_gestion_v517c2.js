@@ -150,6 +150,14 @@
     return norm(x.registroTecnico)==="REGISTRADA" && estadoBono(x)==="PENDIENTE";
   }
 
+  function noEstandarActivos(){
+    return (EST.data?.noEstandar||[]).filter(x=>{
+      const decision=norm(x.estadoResponsabilidad||x.estadoDecision||"PENDIENTE");
+      const estadoWin=norm(x.estadoWin||"POR_REVISAR");
+      return estadoWin==="FINALIZADA" && !["CONFIRMADO","REASIGNADO","NO_ES_GAR_VTR","ANULADO"].includes(decision);
+    });
+  }
+
   function conteosRapidos(){
     const arr=(EST.data&&EST.data.incidencias)||[];
     return {
@@ -279,7 +287,7 @@
       return `<details class="mv517c1-sede"><summary><span>${esc(s)}</span><span>${total} casos</span></summary><div class="mv517c1-sede-body">${grupos}</div></details>`;
     }).join("");
 
-    const ne=(EST.data.noEstandar||[]);
+    const ne=noEstandarActivos();
     if(ne.length){
       html+=`<details class="mv517c1-sede"><summary><span>⚠️ NO ESTÁNDAR / REVISIÓN MANUAL</span><span>${ne.length}</span></summary><div class="mv517c1-sede-body"><div class="mv517c1-estado-body">${ne.map(x=>caso(x,true)).join("")}</div></div></details>`;
     }
@@ -299,18 +307,20 @@
   function pantalla(){
     const d=EST.data||{}, r=d.resumen||{}, q=conteosRapidos(), ps=d.periodosDisponibles||[];
     const n=d.notificacionJefatura||{}, nd=n.detalle||{};
+    const totalNoEstandar=noEstandarActivos().length;
+    const totalPendientes=Math.max(0,Number(n.totalPendientes||0)-Number(nd.noEstandar||0)+totalNoEstandar);
     return `${css()}<div class="mv517c1">
       <button class="mv517c1-back" onclick="mostrarValidacionTecnica()">⬅ Volver a Validación Técnica</button>
       <div class="mv517c1-head"><h2>📡 GAR / VTR · Gestión Consolidada</h2><p>Fuente operativa consolidada desde WIN. El registro del técnico se asocia al ticket real y no genera un caso adicional.</p></div>
       ${d.periodoCerrado?`<div class="mv517c1-note"><b>Período cerrado:</b> ${esc(d.periodo)}. Solo lectura.</div>`:""}
-      ${esValidador()&&Number(n.totalPendientes||0)?`<div class="mv517c1-alert"><b>🔔 Pendientes de Jefatura: ${Number(n.totalPendientes||0)}</b><br>Clasificación: ${nd.clasificacion||0} · Bono: ${nd.bono||0} · Sin antecedente: ${nd.sinAntecedente||0} · No estándar: ${nd.noEstandar||0}</div>`:""}
+      ${esValidador()&&totalPendientes?`<div class="mv517c1-alert"><b>🔔 Pendientes de Jefatura: ${totalPendientes}</b><br>Clasificación: ${nd.clasificacion||0} · Bono: ${nd.bono||0} · Sin antecedente: ${nd.sinAntecedente||0} · No estándar: ${totalNoEstandar}</div>`:""}
       <div class="mv517c1-kpis">
         <div class="mv517c1-kpi"><b>${r.total||0}</b><span>Tickets reales</span></div>
         <div class="mv517c1-kpi"><b>${r.finalizadas||0}</b><span>Finalizadas</span></div>
         <div class="mv517c1-kpi"><b>${r.reprogramadas||0}</b><span>Reprogramadas</span></div>
         <div class="mv517c1-kpi"><b>${r.canceladas||0}</b><span>Canceladas</span></div>
         <div class="mv517c1-kpi"><b>${r.anuladas||0}</b><span>Anuladas</span></div>
-        <div class="mv517c1-kpi"><b>${r.noEstandar||0}</b><span>No estándar</span></div>
+        <div class="mv517c1-kpi"><b>${totalNoEstandar}</b><span>No estándar</span></div>
       </div>
       <div class="mv517c1-quick">
         <button id="mv517c1QCon" class="mv517c1-q" onclick="mv517c1FiltroRegistro('CON_REGISTRO')"><span>📝 Con registro</span><b>${q.conRegistro}</b></button>
