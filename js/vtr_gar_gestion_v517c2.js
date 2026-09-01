@@ -130,6 +130,8 @@
     return badge("RESP. PENDIENTE","warn");
   }
   function estadoBono(x){
+    const decision=norm(x.estadoResponsabilidad||x.estadoDecision||"PENDIENTE");
+    if(decision==="NO_ES_GAR_VTR"||decision==="ANULADO") return "NO_APLICA";
     const b=norm(x.bono);
     if(b==="BONO") return "BONO";
     if(b==="NO BONO"||b==="NO_BONO") return "NO_BONO";
@@ -223,7 +225,7 @@
       return `<div class="mv517c1-box mv517c1-regbox neutral"><div><b>⚪ Registro técnico</b><br>El técnico no ha registrado este ticket.</div></div>`;
     }
     const eb=estadoBono(x);
-    const estadoTxt=eb==="NO_BONO"?"NO BONO":eb;
+    const estadoTxt=eb==="NO_BONO"?"NO BONO":(eb==="NO_APLICA"?"NO APLICA":eb);
     const clase=eb==="OBSERVADO"?"obs":(eb==="BONO"?"ok":"hist");
     const comentario=txt(x.comentarioJefatura);
     return `<div class="mv517c1-box mv517c1-regbox ${clase}"><div><b>📝 Registro técnico · ${esc(estadoTxt||"PENDIENTE")}</b><br>ID: ${esc(x.validacionId)}${comentario?`<br><span style="font-weight:700">${esc(comentario.length>120?comentario.slice(0,120)+"…":comentario)}</span>`:""}</div><button class="mv517c1-btn detail" onclick="mv517c1VerRegistro('${esc(x.validacionId)}','${esc(x.ticket)}')">📋 Ver ficha</button></div>`;
@@ -401,7 +403,7 @@
     const estadoReg=caso?estadoBono(caso):"SIN_REGISTRO";
     const pendienteRegistro=tieneRegistro && estadoReg==="PENDIENTE";
     const comentarioPrevio=txt(caso&&caso.comentarioJefatura);
-    const estadoVisible=estadoReg==="NO_BONO"?"NO BONO":estadoReg;
+    const estadoVisible=estadoReg==="NO_BONO"?"NO BONO":(estadoReg==="NO_APLICA"?"NO APLICA":estadoReg);
     bg.innerHTML=`<div class="mv517c1-modal"><h3>⚙ Gestionar caso · ${esc(id)}</h3><div class="mv517c1-note">La clasificación y la validación del registro están integradas, pero cada dato histórico se conserva en su fuente original.</div>
       <div class="mv517c1-section"><h4>1. Clasificación GAR/VTR</h4><label>Decisión</label><select id="mv517c1Decision"><option value="SIN_CAMBIO">Sin cambios</option><option value="CORRESPONDE">Confirmar GAR/VTR</option><option value="REASIGNAR">Reasignar responsable</option><option value="NO_ES_GAR_VTR">NO ES GAR/VTR</option><option value="ANULAR">Anular clasificación</option></select><div id="mv517c1CuadWrap" style="display:none"><label>Cuadrilla responsable</label><select id="mv517c1Cuad"><option value="">Seleccione...</option>${opciones}</select></div><label>Comentario / sustento</label><textarea id="mv517c1ComClas" placeholder="Detalle de la decisión"></textarea><div id="mv517c1NoGar" class="mv517c1-alert" style="display:none">NO ES GAR/VTR no recupera Producción todavía. Esa conexión se realizará en una etapa posterior y controlada.</div></div>
       ${tieneRegistro?`<div class="mv517c1-section ${estadoReg==="OBSERVADO"?"observacion":"registro"}"><h4>2. Validación del registro técnico</h4>
