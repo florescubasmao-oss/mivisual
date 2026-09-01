@@ -366,6 +366,20 @@
     }
   }
 
+  function cambiarPeriodoActasTecnico(valor){
+    periodoActas = txt(valor) || periodoActualLima();
+    const fecha = document.getElementById("filtroActaFecha");
+    if(fecha) fecha.value = "";
+    ejecutarFiltroActas();
+  }
+
+  function htmlSelectorActasTecnico(){
+    if(!esTecnico() || !Array.isArray(window._actasTodas)) return "";
+    const periodos = periodosActasDisponibles();
+    if(!periodos.includes(periodoActas)) periodoActas = periodoActualLima();
+    return `<div id="mv519aActasPeriodoBar" class="mv519a-periodo-actas"><label>📅 Período de gestión<select id="mv519aActasPeriodo" onchange="mv519aCambiarPeriodoActasTecnico(this.value)">${periodos.map(p=>`<option value="${esc(p)}" ${p===periodoActas?"selected":""}>${esc(etiquetaPeriodo(p))}</option>`).join("")}</select></label><span>Selecciona el mes que deseas consultar.</span></div>`;
+  }
+
   function prepararSelectorActasTecnico(){
     if(!esTecnico()) return false;
     const cont = document.getElementById("actasFiltros");
@@ -387,12 +401,7 @@
       bar.innerHTML = `<label>📅 Período de gestión<select id="mv519aActasPeriodo">${periodos.map(p=>`<option value="${esc(p)}" ${p===periodoActas?"selected":""}>${esc(etiquetaPeriodo(p))}</option>`).join("")}</select></label><span>Las actas se muestran por su mes de gestión.</span>`;
       bar.dataset.mv519aFirma = firma;
       const sel = bar.querySelector("#mv519aActasPeriodo");
-      if(sel) sel.addEventListener("change",function(){
-        periodoActas = txt(sel.value) || periodoActualLima();
-        const fecha = document.getElementById("filtroActaFecha");
-        if(fecha) fecha.value = "";
-        ejecutarFiltroActas();
-      });
+      if(sel) sel.onchange = function(){ cambiarPeriodoActasTecnico(sel.value); };
       ejecutarFiltroActas();
     }
     return true;
@@ -472,5 +481,10 @@
   else iniciar();
 
   window.MV519A_PERIODO_ACTUAL = periodoActualLima;
+  window.mv519aSelectorActasTecnicoHtml = htmlSelectorActasTecnico;
+  window.mv519aCambiarPeriodoActasTecnico = cambiarPeriodoActasTecnico;
+  window.mv519aPrepararIngresoActasTecnico = function(){
+    if(esTecnico()) periodoActas = periodoActualLima();
+  };
   console.log("MI VISUAL V519A: apertura mensual segura activa.");
 })();
