@@ -82,7 +82,7 @@
     },
     validacion: {
       archivos: [
-        `./js/validacion_tecnica_v173.js?v=${VERSION}`,
+        `./js/validacion_tecnica_v173.js?v=V520E-NOTIFICACION-VT-REAL-20260901-1`,
         `./js/validacion_tecnica_optimizacion_v341.js?v=${VERSION}`,
         `./js/validacion_tecnica_datos_v430.js?v=V430-DATOS-CORRECTOS`,
         `./js/validacion_tecnica_observacion_v454.js?v=V454-GAR-VTR-OBSERVAR-REENVIAR`
