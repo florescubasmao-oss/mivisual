@@ -134,6 +134,14 @@
     </div>`;
   }
 
+  function noEstandarActivos(){
+    return (EST.data?.noEstandar||[]).filter(x=>{
+      const decision=norm(x.estadoDecision||x.estadoResponsabilidad||"PENDIENTE");
+      const estadoWin=norm(x.estadoWin||"POR_REVISAR");
+      return estadoWin==="FINALIZADA" && !["CONFIRMADO","REASIGNADO","NO_ES_GAR_VTR","ANULADO"].includes(decision);
+    });
+  }
+
   function kpis(r){
     r=r||{};
     return `<div class="mv517a-kpis">
@@ -142,7 +150,7 @@
       <div class="mv517a-kpi"><b>${r.reprogramadas||0}</b><span>Reprogramadas</span></div>
       <div class="mv517a-kpi"><b>${r.canceladas||0}</b><span>Canceladas</span></div>
       <div class="mv517a-kpi"><b>${r.anuladas||0}</b><span>Anuladas</span></div>
-      <div class="mv517a-kpi"><b>${r.noEstandar||0}</b><span>No estándar</span></div>
+      <div class="mv517a-kpi"><b>${noEstandarActivos().length}</b><span>No estándar</span></div>
     </div>`;
   }
 
@@ -266,10 +274,7 @@
       return `<details class="mv517a-sede"><summary><span>${esc(s)}</span><span>${Object.values(sedes[s]).reduce((n,a)=>n+a.length,0)} casos</span></summary><div class="mv517a-sede-body">${dentro}</div></details>`;
     }).join("");
 
-    const ne=(EST.data.noEstandar||[]).filter(x=>{
-      const decision=norm(x.estadoDecision||x.estadoResponsabilidad||"PENDIENTE");
-      return !["CONFIRMADO","REASIGNADO","NO_ES_GAR_VTR","ANULADO"].includes(decision);
-    });
+    const ne=noEstandarActivos();
     if(ne.length){
       html+=`<details class="mv517a-sede"><summary><span>⚠️ NO ESTÁNDAR / REVISIÓN MANUAL</span><span>${ne.length}</span></summary><div class="mv517a-sede-body"><div class="mv517a-estado-body">${ne.map(x=>caso(x,true)).join("")}</div></div></details>`;
     }
