@@ -378,6 +378,9 @@ function estiloActas(){
 
 function mostrarGestionActas(){
     const u = usuarioActualActas();
+    if(u.perfil === "TECNICO" && typeof window.mv519aPrepararIngresoActasTecnico === "function"){
+        window.mv519aPrepararIngresoActasTecnico();
+    }
     let subtitulo = "Registro y control documental de actas escaneadas.";
     if(u.perfil === "TECNICO") subtitulo = "Sube tus actas en PDF. Si son observadas, podrás reemplazar el archivo corregido.";
     if(u.perfil === "ALMACEN") subtitulo = "Primera validación documental de actas de tu sede.";
@@ -439,7 +442,11 @@ function construirFiltrosActas(actas){
         estado:document.getElementById("filtroActaEstado")?.value || ""
     };
     if(u.perfil === "TECNICO"){
+        const selectorPeriodo = typeof window.mv519aSelectorActasTecnicoHtml === "function"
+            ? window.mv519aSelectorActasTecnicoHtml()
+            : "";
         cont.innerHTML = `<div class="actas-filters">
+            ${selectorPeriodo}
             <div class="actas-filters-title">🔎 Filtros de mis actas</div>
             <div class="actas-filters-grid tech">
                 <div class="actas-filter-field"><label>Código de pedido / cliente</label><input id="filtroActaCodigoPedido" value="${limpiarHtmlActas(prev.codigoPedido)}" placeholder="Buscar código" oninput="aplicarFiltrosActas()"></div>
