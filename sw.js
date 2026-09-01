@@ -1,6 +1,6 @@
 /* MI VISUAL V520B - REVISION MANUAL SOLO PENDIENTES */
-const MV339_CACHE = "mivisual-v520b2-solo-finalizadas-pendientes-20260901-1";
-const MV517C19_BRIDGE = "./js/vtr_gar_ux_v517b.js?v=V517D-F4S-BRIDGE-20260829-1";
+const MV339_CACHE = "mivisual-v520c-v517c2-pendientes-20260901-1";
+const MV517C19_BRIDGE = "./js/vtr_gar_ux_v517b.js?v=V520C-V517C2-PENDIENTES-20260901-1";
 const MV339_CORE = [
   "./",
   "./index.html",
@@ -24,7 +24,7 @@ const MV339_CORE = [
   MV517C19_BRIDGE,
   "./js/vtr_gar_ux_v517c3.js?v=V517C3-UX-RAPIDA-20260828-1",
   "./js/vtr_gar_legacy_assoc_v517c2a.js?v=V517C2A-LEGACY-20260828-1",
-  "./js/vtr_gar_gestion_v517c2.js?v=V517C2-HISTORICO-OBSERVADO-20260828-1",
+  "./js/vtr_gar_gestion_v517c2.js?v=V517C2A-SOLO-PENDIENTES-20260901-1",
   "./js/vtr_gar_antecedente_dias_v517c4.js?v=V517C4-ANTECEDENTE-DIAS-20260828-1",
   "./js/vtr_gar_bono_excepcion_v517c5.js?v=V517C18-NO-BONO-SIN-REGISTRO-20260828-1",
   "./js/vtr_gar_usabilidad_v517c6.js?v=V517C6-USABILIDAD-20260828-1",
