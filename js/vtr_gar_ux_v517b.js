@@ -71,7 +71,7 @@
 
   cargar("./js/vtr_gar_ux_v517c3.js?v=V517C3-UX-RAPIDA-20260828-1","MV517C3_UX_RAPIDA_OK")
     .then(()=>cargar("./js/vtr_gar_legacy_assoc_v517c2a.js?v=V517C2A-LEGACY-20260828-1","MV517C2A_LEGACY_ASSOC_OK"))
-    .then(()=>cargar("./js/vtr_gar_gestion_v517c2.js?v=V517C2-HISTORICO-OBSERVADO-20260828-1","MV517C2_GARVTR_GESTION_OK"))
+    .then(()=>cargar("./js/vtr_gar_gestion_v517c2.js?v=V517C2A-SOLO-PENDIENTES-20260901-1","MV517C2_GARVTR_GESTION_OK"))
     .then(()=>cargar("./js/vtr_gar_antecedente_dias_v517c4.js?v=V517C4-ANTECEDENTE-DIAS-20260828-1","MV517C4_ANTECEDENTE_DIAS_OK"))
     .then(()=>cargar("./js/vtr_gar_bono_excepcion_v517c5.js?v=V517C18-NO-BONO-SIN-REGISTRO-20260828-1","MV517C5_BONO_EXCEPCION_OK"))
     .then(()=>cargar("./js/vtr_gar_usabilidad_v517c6.js?v=V517C6-USABILIDAD-20260828-1","MV517C6_USABILIDAD_OK"))
