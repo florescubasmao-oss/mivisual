@@ -91,7 +91,7 @@
     },
     actas: {
       archivos: [
-        `./js/actas.js?v=V416-ACTAS-RESUMEN-FILTRO-PEDIDO`,
+        `./js/actas.js?v=V520F-ACTAS-PERIODO-TECNICO-20260901-1`,
         `./js/actas_pdf_movil_v373.js?v=V408-RESTAURA-V403`,
         `./js/actas_correccion_v387.js?v=V408-RESTAURA-V403`,
         `./js/actas_api_resiliente_v392.js?v=V408-RESTAURA-V403`,
