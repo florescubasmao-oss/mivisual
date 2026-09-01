@@ -81,6 +81,8 @@
     return badge("RESP. PENDIENTE","warn");
   }
   function badgeBono(x){
+    const e=norm(x.estadoResponsabilidad||x.estadoDecision||"PENDIENTE");
+    if(e==="NO_ES_GAR_VTR"||e==="ANULADO") return "";
     const b=norm(x.bono);
     if(b==="BONO") return badge("BONO","ok");
     if(b==="NO BONO") return badge("NO BONO","info");
