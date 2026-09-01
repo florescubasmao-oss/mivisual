@@ -1520,6 +1520,63 @@ async function generarInformeValidacionTecnicaExcel(btn){
         return [];
     }
 
+    function periodoRegistroNotificacionVT(item){
+        const valor = String(item && item.fechaRegistro || "").trim();
+        let m = valor.match(/^(\d{4})-(\d{2})/);
+        if(m) return `${m[1]}-${m[2]}`;
+        m = valor.match(/^(\d{1,2})[\/-](\d{1,2})[\/-](\d{4})/);
+        return m ? `${m[3]}-${String(m[2]).padStart(2,"0")}` : "";
+    }
+
+    async function depurarPendientesGarVtrVT(validaciones, usuario){
+        const lista = Array.isArray(validaciones) ? validaciones : [];
+        const garVtrPendientes = lista.filter(v =>
+            normalizarVTNotificacion(v.estado) === "PENDIENTE" &&
+            ["GAR","VTR"].includes(normalizarVTNotificacion(v.tipoValidacion))
+        );
+        if(!garVtrPendientes.length) return lista;
+
+        const periodos = Array.from(new Set(
+            garVtrPendientes.map(periodoRegistroNotificacionVT).filter(Boolean)
+        ));
+        if(!periodos.length) periodos.push("");
+
+        const vistas = (await Promise.all(periodos.map(async periodo => {
+            try{
+                const payload = {accion:"listarVtrGarV517A", usuario:usuario.usuario};
+                if(periodo) payload.periodo = periodo;
+                const res = await fetch(API_VALIDACION_TECNICA, {
+                    method:"POST",
+                    body:JSON.stringify(payload)
+                });
+                const data = await res.json();
+                return data && data.ok ? data : null;
+            }catch(_){
+                return null;
+            }
+        }))).filter(Boolean);
+
+        if(!vistas.length) return lista;
+
+        const idsCerrados = new Set();
+        const ticketsCerrados = new Set();
+        vistas.forEach(vista => (vista.incidencias || []).forEach(caso => {
+            const decision = normalizarVTNotificacion(caso.estadoResponsabilidad || caso.estadoDecision);
+            if(decision !== "NO_ES_GAR_VTR" && decision !== "ANULADO") return;
+            const id = String(caso.validacionId || "").trim();
+            const ticket = normalizarVTNotificacion(caso.ticket);
+            if(id) idsCerrados.add(id);
+            if(ticket) ticketsCerrados.add(ticket);
+        }));
+
+        return lista.filter(v => {
+            if(!["GAR","VTR"].includes(normalizarVTNotificacion(v.tipoValidacion))) return true;
+            const id = String(v.id || "").trim();
+            const ticket = normalizarVTNotificacion(v.ticketFinal || v.numeroTicket);
+            return !(idsCerrados.has(id) || (ticket && ticketsCerrados.has(ticket)));
+        });
+    }
+
     function procesarNotificacionesGestionVT(validaciones, usuario){
         const pendientes = obtenerPendientesPermitidosVT(validaciones, usuario.perfil, usuario.sede);
         actualizarBadgeMenuVT(pendientes.length);
@@ -1613,10 +1670,11 @@ async function generarInformeValidacionTecnicaExcel(btn){
                 usuario:usuario.usuario
             });
             if(!respuesta || !respuesta.ok) return;
-            const lista = respuesta.validaciones || [];
+            let lista = respuesta.validaciones || [];
             const perfil = normalizarVTNotificacion(usuario.perfil);
 
             if(perfil === "SUPERVISOR" || ["JEFATURA", "ADMIN", "ADMINISTRADOR"].includes(perfil)){
+                lista = await depurarPendientesGarVtrVT(lista, usuario);
                 procesarNotificacionesGestionVT(lista, usuario);
             }else if(perfil === "TECNICO"){
                 procesarNotificacionesTecnicoVT(lista, usuario);
