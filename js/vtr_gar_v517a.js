@@ -266,7 +266,10 @@
       return `<details class="mv517a-sede"><summary><span>${esc(s)}</span><span>${Object.values(sedes[s]).reduce((n,a)=>n+a.length,0)} casos</span></summary><div class="mv517a-sede-body">${dentro}</div></details>`;
     }).join("");
 
-    const ne=(EST.data.noEstandar||[]);
+    const ne=(EST.data.noEstandar||[]).filter(x=>{
+      const decision=norm(x.estadoDecision||x.estadoResponsabilidad||"PENDIENTE");
+      return !["CONFIRMADO","REASIGNADO","NO_ES_GAR_VTR","ANULADO"].includes(decision);
+    });
     if(ne.length){
       html+=`<details class="mv517a-sede"><summary><span>⚠️ NO ESTÁNDAR / REVISIÓN MANUAL</span><span>${ne.length}</span></summary><div class="mv517a-sede-body"><div class="mv517a-estado-body">${ne.map(x=>caso(x,true)).join("")}</div></div></details>`;
     }
