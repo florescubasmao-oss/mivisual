@@ -264,6 +264,43 @@
     return lista;
   }
 
+  function parsearCsvResumen(texto){
+    const filas=[];
+    let fila=[];
+    let celda="";
+    let dentroComillas=false;
+
+    for(let i=0;i<texto.length;i++){
+      const caracter=texto[i];
+      const siguiente=texto[i+1];
+      if(caracter==='"'){
+        if(dentroComillas && siguiente==='"'){
+          celda+='"';
+          i++;
+        }else{
+          dentroComillas=!dentroComillas;
+        }
+      }else if(caracter===',' && !dentroComillas){
+        fila.push(celda.trim());
+        celda="";
+      }else if((caracter==='\n' || caracter==='\r') && !dentroComillas){
+        if(caracter==='\r' && siguiente==='\n') i++;
+        fila.push(celda.trim());
+        if(fila.some(x=>x!=="")) filas.push(fila);
+        fila=[];
+        celda="";
+      }else{
+        celda+=caracter;
+      }
+    }
+
+    if(celda || fila.length){
+      fila.push(celda.trim());
+      if(fila.some(x=>x!=="")) filas.push(fila);
+    }
+    return filas;
+  }
+
   async function consultarResumenPublicado(periodo){
     const controlador = typeof AbortController==="function"
       ? new AbortController()
@@ -288,7 +325,7 @@
       }
 
       const texto = await respuesta.text();
-      const filas = typeof mv4CSV==="function" ? mv4CSV(texto) : [];
+      const filas = parsearCsvResumen(texto);
       const registros=[];
       const periodos={};
 
