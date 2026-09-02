@@ -1,5 +1,5 @@
-/* MI VISUAL V522A - VALIDACION TECNICA V430 ESTABLE */
-const MV339_CACHE = "mivisual-v522a-validacion-tecnica-v430-estable-20260902-1";
+/* MI VISUAL V522B - VALIDACION TECNICA TECNICO INTEGRADO ESTABLE */
+const MV339_CACHE = "mivisual-v522b-validacion-tecnico-integrado-20260902-1";
 const MV517C19_BRIDGE = "./js/vtr_gar_ux_v517b.js?v=V520D-BONO-NO-APLICA-20260901-1";
 const MV339_CORE = [
   "./",
@@ -117,10 +117,13 @@ self.addEventListener("fetch", event => {
     return;
   }
 
-  // V522A: Validación Técnica V430 debe reflejar la última corrección real.
-  // Se mantiene fallback a caché para conectividad deficiente, pero la red
-  // tiene prioridad exclusivamente para este archivo. No altera otros módulos.
-  if(url.pathname.endsWith("/js/validacion_tecnica_datos_v430.js")){
+  // V522B: estas dos piezas de Validacion Tecnica deben reflejar siempre
+  // la correccion vigente. Red primero, cache solo como respaldo offline.
+  const rutaValidacionCritica =
+    url.pathname.endsWith("/js/validacion_tecnica_datos_v430.js") ||
+    url.pathname.endsWith("/js/vtr_gar_tecnico_filtros_v517d_f4s2.js");
+
+  if(rutaValidacionCritica){
     event.respondWith(
       fetch(req,{cache:"no-store"})
         .then(res => {
