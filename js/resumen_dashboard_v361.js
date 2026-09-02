@@ -20,6 +20,7 @@
   const TTL_LOCAL_ACTUAL = 3 * 60 * 1000;
   const TTL_LOCAL_HISTORICO = 30 * 60 * 1000;
   const TTL_RESPALDO = 24 * 60 * 60 * 1000;
+  const URL_RESUMEN_PUBLICADO = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRpVkCmSvopgPByWsEX6nkuAT6mf3yD2_Cywpl9pFSZEqYpxmprDePPeV0KNgT14YpEP6gkVlvOAtZy/pub?gid=1235020456&single=true&output=csv";
   const obtenerRankingAnterior = window.mv4ObtenerRanking;
 
   function normalizar(valor){
@@ -263,6 +264,80 @@
     return lista;
   }
 
+  async function consultarResumenPublicado(periodo){
+    const controlador = typeof AbortController==="function"
+      ? new AbortController()
+      : null;
+    const temporizador = controlador
+      ? setTimeout(()=>controlador.abort(),45000)
+      : null;
+
+    try{
+      const respuesta = await fetch(
+        `${URL_RESUMEN_PUBLICADO}&_mv380=${Date.now()}`,
+        {
+          method:"GET",
+          cache:"no-store",
+          redirect:"follow",
+          signal:controlador ? controlador.signal : undefined
+        }
+      );
+
+      if(!respuesta.ok){
+        throw new Error(`No se pudo leer el resumen publicado (${respuesta.status}).`);
+      }
+
+      const texto = await respuesta.text();
+      const filas = typeof mv4CSV==="function" ? mv4CSV(texto) : [];
+      const registros=[];
+      const periodos={};
+
+      filas.slice(1).forEach(fila=>{
+        const clave=String(fila?.[0]||"").trim();
+        if(!/^\d{4}-\d{2}$/.test(clave)) return;
+        periodos[clave]=true;
+        try{
+          const item=JSON.parse(String(fila?.[8]||"{}"));
+          if(item?.cuadrilla) registros.push({periodo:clave,item,fila});
+        }catch(_){}
+      });
+
+      const disponibles=Object.keys(periodos).sort().reverse();
+      const solicitado=periodoClave(periodo);
+      const elegido=periodos[solicitado] ? solicitado : (disponibles[0]||solicitado);
+      const seleccion=registros.filter(x=>x.periodo===elegido);
+      const lista=seleccion.map(x=>x.item);
+      const sedes=Array.from(new Set(lista.map(x=>normalizar(x.sede)).filter(Boolean))).sort();
+
+      const data={
+        ok:true,
+        modulo:"RESUMEN_DASHBOARD_RANKING",
+        accion:"OBTENER_PUBLICADO",
+        periodo:elegido,
+        periodos:disponibles.map(clave=>({clave})),
+        lista,
+        totalGeneral:lista.length,
+        cuadrillasEsperadas:lista.length,
+        sedesGeneral:sedes,
+        version:String(seleccion[0]?.fila?.[1]||""),
+        desdeCache:false,
+        fuente:"HOJA_RESUMEN_DASHBOARD_RANKING_PUBLICADA",
+        calculadoEn:String(seleccion[0]?.fila?.[2]||""),
+        _mv380DesdeResumenPublicado:true
+      };
+
+      const calidad=validarCalidad(data);
+      if(!validarCobertura(data,false) || !calidad.ok){
+        throw new Error(`El resumen publicado está incompleto: ${calidad.motivo||"cobertura"}.`);
+      }
+
+      prepararLista(data);
+      return data;
+    }finally{
+      if(temporizador) clearTimeout(temporizador);
+    }
+  }
+
   async function consultarRed(periodo,forzar=false){
     const solicitado = String(periodo || "");
     const clave = `${claveMemoria(solicitado)}|${forzar?"F":"N"}`;
@@ -426,12 +501,26 @@
 
           prepararLista(data);
           guardarMemoria(solicitado,data);
-          actualizarEnSegundoPlano(
-            data.periodo || solicitado
-          );
+          if(!data._mv380DesdeResumenPublicado){
+            actualizarEnSegundoPlano(
+              data.periodo || solicitado
+            );
+          }
 
           return data;
         }
+      }
+
+      // La hoja consolidada ya contiene una fila JSON por cuadrilla. Leerla
+      // directamente evita ejecutar de nuevo todos los cruces del backend.
+      try{
+        const publicado=await consultarResumenPublicado(solicitado);
+        guardarMemoria(solicitado,publicado);
+        guardarLocal(solicitado,publicado);
+        emitirActualizacion(publicado);
+        return publicado;
+      }catch(error){
+        console.warn("V380: resumen publicado no disponible; se consulta la API.",error);
       }
     }
 
@@ -524,6 +613,6 @@
   window.MV366_RESUMEN_RAPIDO_OK = true;
 
   console.log(
-    "MI VISUAL V367: carga rápida y sincronización de indicadores habilitadas."
+    "MI VISUAL V380: carga rápida y sincronización de indicadores habilitadas."
   );
 })();
