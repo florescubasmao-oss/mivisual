@@ -1,12 +1,13 @@
 /* ============================================================
-   MI VISUAL V430 - Datos correctos en Validación Técnica
-   CAPA INCREMENTAL:
+   MI VISUAL V430A - Datos correctos en Validación Técnica
+   ESTABILIZACIÓN INCREMENTAL 02/09/2026:
+   - Conserva íntegro el flujo V430 de búsqueda DNI/Código.
+   - Conserva Ingreso manual y Cliente/Código validado + ticket manual.
+   - Evita reiniciar el estado si la interfaz ya estaba instalada.
+   - Descarta respuestas tardías de búsqueda si el técnico cambia a Manual.
    - No modifica validacion_tecnica_v173.js.
    - No modifica validacion_tecnica_optimizacion_v341.js.
-   - La búsqueda ocurre SOLO al pulsar Buscar.
-   - DNI/Código pueden devolver uno o varios tickets.
-   - El técnico elige la atención correcta.
-   - El flujo posterior de Validación Técnica permanece intacto.
+   - No modifica API, permisos, perfiles, historial, bonos ni otros módulos.
 ============================================================ */
 (function(){
   "use strict";
@@ -16,6 +17,7 @@
 
   const CACHE_MS = 60 * 1000;
   const cacheBusqueda = new Map();
+  let secuenciaBusqueda = 0;
 
   let estado = {
     modo: "VALIDADO",
@@ -153,6 +155,8 @@
   }
 
   function limpiarEstado(){
+    // Invalida cualquier búsqueda pendiente de una pantalla anterior.
+    secuenciaBusqueda++;
     estado={
       modo:"VALIDADO",
       consulta:"",
@@ -319,9 +323,15 @@
       return;
     }
 
+    const secuencia=++secuenciaBusqueda;
+
     try{
       if(cont)cont.innerHTML=`<div class="vt430-info">⏳ Buscando coincidencias exactas...</div>`;
       const d=await apiGet430(q);
+
+      // Si el técnico pasó a Manual, cambió de atención o abrió otra pantalla,
+      // una respuesta tardía ya no puede sobrescribir el estado actual.
+      if(secuencia!==secuenciaBusqueda) return;
 
       estado.consulta=q;
       estado.candidatos=Array.isArray(d.candidatos)?d.candidatos:[];
@@ -333,11 +343,13 @@
       bloquearDatos(true);
       renderResultados();
     }catch(e){
+      if(secuencia!==secuenciaBusqueda) return;
       if(cont)cont.innerHTML=`<div class="vt430-warn">❌ ${esc(e.message)}</div>`;
     }
   }
 
   function cambiarAtencion(){
+    secuenciaBusqueda++;
     estado.candidato=null;
     estado.modo="VALIDADO";
     limpiarCampos();
@@ -355,6 +367,9 @@
   }
 
   function activarManual(){
+    // Cancela lógicamente cualquier búsqueda aún en curso para que no reactive
+    // el modo validado después de que el técnico ya eligió Ingreso manual.
+    secuenciaBusqueda++;
     estado.modo="MANUAL";
     estado.candidato=null;
     estado.identidad=null;
@@ -377,6 +392,7 @@
     const i=estado.identidad;
     if(!i)return;
 
+    secuenciaBusqueda++;
     estado.modo="MANUAL_TICKET";
     estado.candidato=null;
 
@@ -406,14 +422,20 @@
 
   function instalarInterfaz(){
     asegurarEstilos();
-    limpiarEstado();
 
     const codigo=campo("vtCodigo");
     const dni=campo("vtDniCliente");
     if(!codigo || !dni)return;
 
     const cardNueva=codigo.closest(".vt-card");
-    if(!cardNueva || document.getElementById("vt430Busqueda"))return;
+    if(!cardNueva)return;
+
+    // V430A: si la interfaz ya existe NO se reinicia el estado interno.
+    // Esto conserva MANUAL, MANUAL_TICKET o la atención seleccionada frente
+    // a hooks/observadores de las optimizaciones actuales del módulo Técnico.
+    if(document.getElementById("vt430Busqueda"))return;
+
+    limpiarEstado();
 
     const titulo=cardNueva.querySelector("h3");
     if(titulo){
@@ -524,4 +546,6 @@
   window.vt430CambiarAtencion=cambiarAtencion;
   window.vt430ActivarManual=activarManual;
   window.vt430UsarIdentidadManual=usarIdentidadManual;
+
+  console.log("MI VISUAL V430A: búsqueda DNI/Código y modo manual estabilizados.");
 })();
