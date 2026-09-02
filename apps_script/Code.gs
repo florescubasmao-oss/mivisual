@@ -15964,16 +15964,27 @@ function asegurarHojaConfiguracionRankingV363_() {
   hoja.setFrozenRows(1);
   try { hoja.setTabColor("#8b5cf6"); } catch (error) {}
 
+  // Mantener PERIODO como texto. Si Sheets lo convierte a fecha, la
+  // comparación literal falla y cada consulta vuelve a insertar JUL/AGO.
+  hoja.getRange(1,1,Math.max(hoja.getLastRow(),3),1).setNumberFormat("@");
+
   const datos = hoja.getLastRow() > 1
     ? hoja.getRange(2,1,hoja.getLastRow()-1,encabezados.length).getValues()
     : [];
   const periodos = {};
-  datos.forEach(function(fila){ periodos[String(fila[0] || "").trim()] = true; });
+  datos.forEach(function(fila){
+    const periodo = periodoTecnicoV367_(fila[0]) || String(fila[0] || "").trim();
+    if (periodo) periodos[periodo] = true;
+  });
   const nuevas = [];
   // Julio se conserva como período cerrado con los pesos que ejecutaba la base anterior.
   if (!periodos["2026-07"]) nuevas.push(["2026-07",35,30,0,10,12.5,12.5,100,"CERRADO","SISTEMA",new Date()]);
   if (!periodos["2026-08"]) nuevas.push(["2026-08",30,20,15,15,10,10,100,"ACTIVO","SISTEMA",new Date()]);
-  if (nuevas.length) hoja.getRange(hoja.getLastRow()+1,1,nuevas.length,encabezados.length).setValues(nuevas);
+  if (nuevas.length) {
+    const destino = hoja.getRange(hoja.getLastRow()+1,1,nuevas.length,encabezados.length);
+    destino.offset(0,0,nuevas.length,1).setNumberFormat("@");
+    destino.setValues(nuevas);
+  }
   return hoja;
 }
 
@@ -16011,7 +16022,7 @@ function configuracionRankingV363_(periodoEntrada) {
   const datos = hoja.getLastRow() > 1 ? hoja.getRange(2,1,hoja.getLastRow()-1,11).getValues() : [];
   for (let i=0;i<datos.length;i++) {
     const fila = datos[i];
-    if (String(fila[0] || "").trim() !== periodo) continue;
+    if (periodoTecnicoV367_(fila[0]) !== periodo) continue;
     const validada = pesosRankingV363_({
       PRODUCCION:fila[1],EFECTIVIDAD:fila[2],SLA:fila[3],OBSERVACIONES:fila[4],RECABLEADO:fila[5],VTRGAR:fila[6]
     });
@@ -16050,9 +16061,9 @@ function guardarConfiguracionRankingV363(data) {
   const hoja = asegurarHojaConfiguracionRankingV363_();
   const datos = hoja.getLastRow() > 1 ? hoja.getRange(2,1,hoja.getLastRow()-1,11).getValues() : [];
   let filaDestino = 0;
-  for (let i=0;i<datos.length;i++) if (String(datos[i][0] || "").trim() === periodo) { filaDestino=i+2; break; }
+  for (let i=0;i<datos.length;i++) if (periodoTecnicoV367_(datos[i][0]) === periodo) { filaDestino=i+2; break; }
   if (!filaDestino) filaDestino = hoja.getLastRow()+1;
-  hoja.getRange(filaDestino,1,1,11).setValues([[
+  hoja.getRange(filaDestino,1,1,11).setNumberFormat("@").setValues([[
     periodo,validada.pesos.PRODUCCION,validada.pesos.EFECTIVIDAD,validada.pesos.SLA,
     validada.pesos.OBSERVACIONES,validada.pesos.RECABLEADO,validada.pesos.VTRGAR,
     validada.total,estado,usuario.usuario,new Date()
@@ -17084,6 +17095,12 @@ function asegurarResumenDashboardRankingV361_(periodo,forzar) {
   if (!forzar) {
     const existente = leerResumenDashboardRankingV361_(periodo,version);
     if (resumenCompletoV365_(existente,periodo)) return existente;
+
+    // Una validación auxiliar puede cambiar la versión global aunque el
+    // consolidado del período siga completo. Reutilizarlo evita reconstruir
+    // SLA y todas las fuentes durante una lectura normal del Dashboard.
+    const vigente = leerResumenPeriodoCualquieraV369_(periodo);
+    if (resumenCompletoV365_(vigente,periodo)) return vigente;
   }
 
   const lock = LockService.getScriptLock();
@@ -17092,8 +17109,13 @@ function asegurarResumenDashboardRankingV361_(periodo,forzar) {
     if (!forzar) {
       const existente = leerResumenDashboardRankingV361_(periodo,version);
       if (resumenCompletoV365_(existente,periodo)) return existente;
+
+      const vigente = leerResumenPeriodoCualquieraV369_(periodo);
+      if (resumenCompletoV365_(vigente,periodo)) return vigente;
     }
-    return construirResumenDashboardRankingV361_(periodo,version);
+    return leerResumenPeriodoCualquieraV369_(periodo).length
+      ? construirResumenDashboardRankingRapidoBaseV369_(periodo,version)
+      : construirResumenDashboardRankingV361_(periodo,version);
   } finally {
     lock.releaseLock();
   }
