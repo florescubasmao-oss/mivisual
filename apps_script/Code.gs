@@ -4463,12 +4463,27 @@ function reconstruirControlActasPeriodoV396_(periodo) {
 
   // V397: solo trae desde la histórica las FINALIZADAS del período solicitado.
   const historica = leerFinalizadasHistoricasPeriodoV397_(p);
+  let registros = historica.registros;
+  let fuente = "BASE_OPERATIVA_HISTORICA";
+  let filasMapaEvaluadas = 0;
+  let filasMapaCompletasLeidas = 0;
+
+  // V521: al abrir un período nuevo, el Mapa puede estar actualizado antes
+  // que BASE_OPERATIVA_HISTORICA. En ese caso reconstruimos el control desde
+  // las órdenes FINALIZADAS del Mapa, sin reemplazar los demás períodos.
+  if (!registros.length) {
+    const mapa = leerFinalizadasMapaPeriodoV521_(p);
+    registros = mapa.registros;
+    filasMapaEvaluadas = Number(mapa.filasEvaluadas || 0);
+    filasMapaCompletasLeidas = Number(mapa.filasCompletasLeidas || 0);
+    if (registros.length) fuente = "MAPA_ORDENES";
+  }
 
   const resultado = sincronizarControlActasFinalizadasV396_(
-    historica.registros,
+    registros,
     p,
     "SISTEMA",
-    "BASE_OPERATIVA_HISTORICA"
+    fuente
   );
 
   resultado.filasHistoricasEvaluadas =
@@ -4477,7 +4492,94 @@ function reconstruirControlActasPeriodoV396_(periodo) {
   resultado.filasHistoricasCompletasLeidas =
     Number(historica.filasCompletasLeidas || 0);
 
+  resultado.fuenteReconstruccion = fuente;
+  resultado.filasMapaEvaluadas = filasMapaEvaluadas;
+  resultado.filasMapaCompletasLeidas = filasMapaCompletasLeidas;
+
   return resultado;
+}
+
+function leerFinalizadasMapaPeriodoV521_(periodo) {
+  const p = periodoControlActasV396_(periodo);
+  if (!p) throw new Error("Período no válido");
+
+  const hoja = asegurarHojaMapaOperativo();
+  const ultimaFila = hoja.getLastRow();
+
+  if (ultimaFila <= 1) {
+    return {
+      hoja:hoja,
+      registros:[],
+      filasEvaluadas:0,
+      filasCompletasLeidas:0
+    };
+  }
+
+  const cantidad = ultimaFila - 1;
+  const columnas = mv395ColumnasFiltroMapa_(hoja, cantidad);
+  const filas = [];
+
+  for (let i = 0; i < cantidad; i++) {
+    const orden = textoMapa(columnas.abc[i][0]);
+    const fecha = fechaMapaISO(columnas.abc[i][2]);
+    const estado = normalizarTexto(columnas.hi[i][1]);
+
+    if (
+      orden &&
+      fecha.substring(0,7) === p &&
+      estado === "FINALIZADA"
+    ) {
+      filas.push(i + 2);
+    }
+  }
+
+  const completas = mv395LeerFilasCompletasMapa_(
+    hoja,
+    filas,
+    ultimaFila
+  );
+
+  const registros = completas.map(function(fila){
+    const item = filaMapaOperativoAObjeto(fila);
+    const fechaIso = fechaMapaISO(
+      item.fechaFinVisita || item.fechaSolicitud
+    );
+    const fecha = fechaBaseOperativa(fechaIso);
+
+    if (!item.ordenId || !fecha || clavePeriodoBaseOperativa(fecha) !== p) {
+      return null;
+    }
+
+    return {
+      claveHistorica:"MAPA|" + item.ordenId,
+      periodoHistorico:p,
+      fecha:fecha,
+      cuadrilla:item.cuadrilla,
+      estado:"FINALIZADA",
+      tipoTrabajo:item.tipoTrabajo,
+      numeroDocumento:item.numeroDocumento,
+      cliente:item.cliente,
+      sede:sedeMapaOperativo(item.region),
+      codigoPedido:item.codigoCliente,
+      ticket:item.codigoSeguimiento,
+      codigoLiquidacion:item.ordenId,
+      tipoAtencion:item.tipoTrabajo,
+      tipoPartida:item.motivoFinalizacion || item.productoOrigen,
+      tipoPartidaAlterna:item.productoOrigen,
+      archivoUltimaCarga:"MAPA_ORDENES",
+      usuarioUltimaCarga:"SISTEMA",
+      fechaUltimaActualizacion:new Date()
+    };
+  }).filter(function(x){
+    return x && x.cuadrilla && x.sede;
+  });
+
+  return {
+    hoja:hoja,
+    registros:registros,
+    filasEvaluadas:cantidad,
+    filasCompletasLeidas:completas.length
+  };
 }
 
 function leerControlActasV396_() {
@@ -4616,6 +4718,18 @@ function indiceActasEscaneadasV396_(alcance, controles) {
   const lista = [];
 
   const ultimaFila = hoja.getLastRow();
+
+  // V521: sin órdenes objetivo no existe nada que cruzar. Evita leer las
+  // 48 columnas de todas las actas cuando un período todavía no tiene corte.
+  if (!Array.isArray(controles) || !controles.length) {
+    return {
+      lista:lista,
+      porOrden:porOrden,
+      porPareja:porPareja,
+      filasEvaluadas:Math.max(ultimaFila - 1, 0),
+      filasCompletasLeidas:0
+    };
+  }
 
   if (ultimaFila <= 1) {
     return {
