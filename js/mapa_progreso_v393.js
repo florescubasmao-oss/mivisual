@@ -1,11 +1,15 @@
 /* ============================================================
-   MI VISUAL V393 / V518.2 - Mapa Operativo: avance de registro
+   MI VISUAL V393 / V523 - Mapa Operativo: avance de registro
    - No cambia importarMapaOperativo ni la estructura enviada.
    - Muestra etapas reales: preparación -> servidor -> filtros.
    - Cronómetro visible durante el registro.
    - Conserva validación V386 de cuadrillas P#.
-   - V518.2 reconoce la confirmación real del backend sin esperar
+   - Conserva V518.2: reconoce la confirmación real del backend sin esperar
      la recarga posterior de catálogos/filtros.
+   - V523: si Google/Apps Script devuelve HTML o texto anómalo, nunca lo
+     muestra completo. Conserva el Excel leído, consulta la última
+     actualización por GET seguro y permite reintentar sin hacer un segundo
+     POST automático.
 ============================================================ */
 (function(){
   "use strict";
@@ -115,6 +119,48 @@
     );
   }
 
+  function texto(v){ return String(v==null?"":v).trim(); }
+
+  function pareceHtml(v){
+    const t=texto(v).slice(0,1200).toLowerCase();
+    return t.startsWith("<!doctype") || t.startsWith("<html") ||
+      t.includes("<head") || t.includes("<body") ||
+      t.includes("script nonce=") || t.includes("window['_ppconfig']") ||
+      t.includes("window[\"_ppconfig\"]");
+  }
+
+  function mensajeBreveError(error){
+    const t=texto(error&&error.message?error.message:error);
+    if(!t) return "Revise la conexión e intente nuevamente.";
+    if(pareceHtml(t)) return "Google devolvió una respuesta temporal en lugar de la confirmación de MI VISUAL.";
+    if(t.length>500) return t.slice(0,500)+"…";
+    return t;
+  }
+
+  async function ultimaActualizacionSegura(){
+    try{
+      if(typeof moApiLectura!=="function") return "";
+      const d=await moApiLectura({
+        accion:"catalogosMapaOperativo",
+        usuario:typeof moUsuario==="function"?moUsuario():""
+      });
+      const sello=texto(d&&d.ultimaActualizacionTexto);
+      if(sello && typeof moPintarUltimaActualizacion==="function"){
+        moPintarUltimaActualizacion(sello);
+      }
+      return sello;
+    }catch(_){
+      return "";
+    }
+  }
+
+  function pintarMensajeSeguro(detalle){
+    const msg=document.getElementById("moImportMsg");
+    if(!msg) return;
+    msg.className="mo-msg mo-error";
+    msg.textContent=detalle;
+  }
+
   async function registrarV393(){
     const total=cantidad();
     if(!total) return await registrarBase.apply(this,arguments);
@@ -181,11 +227,9 @@
         if(p)p.classList.add("is-ok");
       }else{
         const mensaje=document.getElementById("moImportMsg");
-        estado(
-          "Registro no completado",
-          (mensaje?.textContent||"Revise el mensaje mostrado y vuelva a intentar."),
-          "100%"
-        );
+        const detalle=mensajeBreveError(mensaje?.textContent||"Revise el mensaje mostrado y vuelva a intentar.");
+        if(mensaje && pareceHtml(mensaje.textContent||"")) pintarMensajeSeguro(detalle);
+        estado("Registro no completado",detalle,"100%");
         if(p)p.classList.add("is-error");
       }
 
@@ -203,13 +247,30 @@
         return;
       }
 
+      const original=texto(error&&error.message?error.message:error);
+      let detalle=mensajeBreveError(error);
+
+      // V523: una página HTML de Google no debe aparecer en pantalla. Además,
+      // como el POST pudo haberse ejecutado aunque la respuesta se haya perdido,
+      // NO se repite automáticamente la escritura. Se consulta únicamente el
+      // sello del mapa por GET seguro y se conserva moImportacion para reintento.
+      if(pareceHtml(original)){
+        const sello=await ultimaActualizacionSegura();
+        detalle="Google no confirmó la respuesta del registro. MI VISUAL no repetirá la carga automáticamente para evitar duplicar una escritura que pudo haberse completado."+
+          (sello?` Última actualización detectada: ${sello}.`:"")+
+          " Vuelva al mapa para verificar. Si la fecha no corresponde a esta carga, presione Registrar información nuevamente; el Excel leído se conserva.";
+      }
+
+      pintarMensajeSeguro(detalle);
       estado(
-        "No se pudo completar el registro",
-        error?.message||"Revise la conexión e intente nuevamente.",
+        pareceHtml(original)?"Registro pendiente de confirmación":"No se pudo completar el registro",
+        detalle,
         "100%"
       );
       if(p)p.classList.add("is-error");
-      throw error;
+      const seguro=new Error(detalle);
+      seguro.name="MapaOperativoRespuestaSegura";
+      throw seguro;
     }finally{
       if(observador)observador.disconnect();
       if(timer)clearInterval(timer);
@@ -220,9 +281,11 @@
 
   registrarV393.__mv393=true;
   registrarV393.__mv5182=true;
+  registrarV393.__mv523=true;
   registrarV393.__original=registrarBase;
   window.moRegistrarImportacion=registrarV393;
   try{moRegistrarImportacion=registrarV393}catch(_){}
 
   window.MV393_MAPA_PROGRESO_OK=true;
+  window.MV523_MAPA_RESPUESTA_SEGURA_OK=true;
 })();
