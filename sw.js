@@ -1,5 +1,5 @@
-/* MI VISUAL V520B - REVISION MANUAL SOLO PENDIENTES */
-const MV339_CACHE = "mivisual-v520h-dashboard-sincronizado-20260902-3";
+/* MI VISUAL V522A - VALIDACION TECNICA V430 ESTABLE */
+const MV339_CACHE = "mivisual-v522a-validacion-tecnica-v430-estable-20260902-1";
 const MV517C19_BRIDGE = "./js/vtr_gar_ux_v517b.js?v=V520D-BONO-NO-APLICA-20260901-1";
 const MV339_CORE = [
   "./",
@@ -113,6 +113,24 @@ self.addEventListener("fetch", event => {
   if(url.pathname.endsWith("/js/vtr_gar_ux_v517b.js")){
     event.respondWith(
       caches.match(MV517C19_BRIDGE).then(r => r || fetch(MV517C19_BRIDGE))
+    );
+    return;
+  }
+
+  // V522A: Validación Técnica V430 debe reflejar la última corrección real.
+  // Se mantiene fallback a caché para conectividad deficiente, pero la red
+  // tiene prioridad exclusivamente para este archivo. No altera otros módulos.
+  if(url.pathname.endsWith("/js/validacion_tecnica_datos_v430.js")){
+    event.respondWith(
+      fetch(req,{cache:"no-store"})
+        .then(res => {
+          if(res && res.ok){
+            const copia = res.clone();
+            caches.open(MV339_CACHE).then(cache => cache.put(req, copia)).catch(() => {});
+          }
+          return res;
+        })
+        .catch(() => caches.match(req))
     );
     return;
   }
