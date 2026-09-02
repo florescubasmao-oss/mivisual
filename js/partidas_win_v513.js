@@ -1,5 +1,6 @@
 /* ============================================================
-   MI VISUAL V513 - PARTIDAS WIN / REGLAS / BUSCADOR
+   MI VISUAL V513E - PARTIDAS WIN / REGLAS / BUSCADOR
+   ESTABILIZACION EDITOR MANUAL 02/09/2026
 
    - Reemplaza visualmente V505 al abrir Partidas.
    - Carga liviana: no ejecuta previsualizacion mensual pesada.
@@ -7,6 +8,8 @@
    - Validacion por lote con UNA sola publicacion por periodo.
    - Busqueda por OrdenId, Codigo cliente/pedido o DNI.
    - Edicion auditada de Partida efectiva y Cuadrilla efectiva.
+   - El buscador reutiliza catalogo/cuadrillas devueltos por su propia respuesta.
+   - Si la carga inicial optimizada no trae catalogo, el editor manual no queda vacio.
    - Partner es evidencia auxiliar; WIN original se conserva.
    - SLA usa la partida efectiva y PARAMETROS_SLA_WIN vigente.
 ============================================================ */
@@ -16,7 +19,7 @@
   if(window.MV513_PARTIDAS_WIN_OK) return;
   window.MV513_PARTIDAS_WIN_OK = true;
 
-  const VERSION="V513-PARTIDAS-20260827";
+  const VERSION="V513E-EDITOR-CATALOGO-20260902";
   const estado={periodo:"",tab:"pendientes",cargando:false,error:"",data:null,filtro:"",seleccion:new Set(),busqueda:"",resultados:[],seleccionada:null,guardando:false};
 
   const norm=v=>String(v==null?"":v).toUpperCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"").replace(/\s+/g," ").trim();
@@ -44,6 +47,21 @@
     try{j=JSON.parse(t);}catch(_){throw new Error("La API no devolvio una respuesta valida para Partidas V513.");}
     if(!j||j.ok===false) throw new Error(j&&j.error?j.error:"No se pudo completar la operacion V513.");
     return j;
+  }
+
+  // V513E: buscarOrdenPartidasV513 ya devuelve catalogo y cuadrillas. Antes el
+  // frontend ignoraba esos datos y dependia exclusivamente de listarPartidasV513.
+  // Con cargas/snapshots optimizados eso podia dejar el select de Partida vacio.
+  // Se reutiliza la misma respuesta del buscador, sin agregar consultas ni tocar backend.
+  function integrarCatalogosBusqueda(r){
+    if(!r||typeof r!=="object") return;
+    if(!estado.data||typeof estado.data!=="object") estado.data={};
+    if(Array.isArray(r.catalogo)&&r.catalogo.length){
+      estado.data.catalogo=r.catalogo;
+    }
+    if(Array.isArray(r.cuadrillas)&&r.cuadrillas.length){
+      estado.data.cuadrillas=r.cuadrillas;
+    }
   }
 
   function cerrar(){document.getElementById("mv505PartidasModal")?.remove();estado.seleccion.clear();}
@@ -139,15 +157,18 @@
     const crews=Array.isArray(estado.data?.cuadrillas)?estado.data.cuadrillas:[];
     const partidaActual=x.ajustePartida?.partidaPropuesta||x.partidaWin||"";
     const cuadrillaActual=x.ajusteCuadrilla?.cuadrillaEfectiva||x.cuadrillaWin||"";
+    const opcionesPartida=cat.length
+      ? cat.map(c=>`<option value="${esc(c.codigo)}" ${norm(c.codigo)===norm(partidaActual)?"selected":""}>${esc(c.codigo)} · ${esc(c.tipoOrden||c.descripcion||"")} · ${fmt(c.puntaje)} pts</option>`).join("")
+      : `<option value="">Catálogo de partidas no disponible · pulse ↻</option>`;
     return `<div style="margin-top:10px;background:#fff;border:2px solid #93c5fd;border-radius:13px;padding:11px">
       <div style="display:flex;justify-content:space-between;gap:8px;align-items:flex-start"><div><div style="font-size:9px;color:#64748b;font-weight:900">ORDEN SELECCIONADA</div><div style="font-size:19px;font-weight:950">${esc(x.ordenId)}</div></div><span style="padding:5px 8px;border-radius:999px;background:#f1f5f9;font-size:10px;font-weight:900">${esc(x.estado||"")}</span></div>
       <div style="margin-top:8px;padding:9px;background:#f8fafc;border-radius:9px;font-size:10px;line-height:1.45"><b>Cliente:</b> ${esc(x.cliente||"-")} · <b>DNI:</b> ${esc(x.dni||"-")} · <b>Código:</b> ${esc(x.codigoCliente||"-")}<br><b>WIN:</b> ${esc(x.tipoWin||"-")} · ${esc(x.motivoFinalizacion||"-")}<br><b>Dirección:</b> ${esc(x.direccion||"-")}<br><b>Partner:</b> ${esc(x.partidaPartner||"Sin referencia")} · ${esc(x.cuadrillaPartner||"-")}</div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:9px">
-        <div><label style="font-size:10px;font-weight:900;color:#334155">Partida efectiva</label><select data-mv513-partida style="width:100%;margin-top:4px;border:1px solid #94a3b8;border-radius:8px;padding:9px">${cat.map(c=>`<option value="${esc(c.codigo)}" ${norm(c.codigo)===norm(partidaActual)?"selected":""}>${esc(c.codigo)} · ${esc(c.tipoOrden||c.descripcion||"")} · ${fmt(c.puntaje)} pts</option>`).join("")}</select></div>
+        <div><label style="font-size:10px;font-weight:900;color:#334155">Partida efectiva</label><select data-mv513-partida ${cat.length?"":"disabled"} style="width:100%;margin-top:4px;border:1px solid #94a3b8;border-radius:8px;padding:9px">${opcionesPartida}</select></div>
         <div><label style="font-size:10px;font-weight:900;color:#334155">Cuadrilla efectiva</label><select data-mv513-cuadrilla style="width:100%;margin-top:4px;border:1px solid #94a3b8;border-radius:8px;padding:9px"><option value="${esc(cuadrillaActual)}">${esc(cuadrillaActual)}</option>${crews.filter(c=>norm(c)!==norm(cuadrillaActual)).map(c=>`<option value="${esc(c)}">${esc(c)}</option>`).join("")}</select></div>
       </div>
       <label style="display:block;font-size:10px;font-weight:900;color:#334155;margin-top:9px">Motivo / sustento obligatorio</label><textarea data-mv513-motivo rows="3" placeholder="Ej.: validado con dirección, evidencia de campo o Base Partner..." style="width:100%;box-sizing:border-box;margin-top:4px;border:1px solid #94a3b8;border-radius:8px;padding:9px;resize:vertical"></textarea>
-      <div style="display:flex;gap:7px;margin-top:8px;flex-wrap:wrap"><button type="button" onclick="mv513GuardarPartida()" style="flex:1;min-width:160px;border:0;border-radius:9px;padding:9px;background:#16a34a;color:#fff;font-weight:900">🎯 Guardar Partida</button><button type="button" onclick="mv513GuardarCuadrilla()" style="flex:1;min-width:160px;border:0;border-radius:9px;padding:9px;background:#7c3aed;color:#fff;font-weight:900">👷 Guardar Cuadrilla</button></div>
+      <div style="display:flex;gap:7px;margin-top:8px;flex-wrap:wrap"><button type="button" onclick="mv513GuardarPartida()" ${cat.length?"":"disabled"} style="flex:1;min-width:160px;border:0;border-radius:9px;padding:9px;background:#16a34a;color:#fff;font-weight:900;opacity:${cat.length?1:.5}">🎯 Guardar Partida</button><button type="button" onclick="mv513GuardarCuadrilla()" style="flex:1;min-width:160px;border:0;border-radius:9px;padding:9px;background:#7c3aed;color:#fff;font-weight:900">👷 Guardar Cuadrilla</button></div>
       <div style="font-size:9px;color:#64748b;margin-top:7px">Partida puede afectar Producción/Valorizada y el tipo SLA aplicable. Cuadrilla efectiva afecta Producción/Efectividad/Recableado/SLA; no reasigna automáticamente responsabilidad VTR/GAR.</div>
     </div>`;
   }
@@ -220,11 +241,26 @@
 
   window.mv513BuscarOrden=async function(){
     const input=document.querySelector("[data-mv513-busqueda]");estado.busqueda=(input?.value||estado.busqueda||"").trim();if(!estado.busqueda){alert("Ingresa OrderId, código cliente/pedido o DNI.");return;}
-    try{const r=await apiPost({accion:"buscarOrdenPartidasV513",usuario:usuario(),periodo:estado.periodo,busqueda:estado.busqueda});estado.resultados=r.resultados||[];estado.seleccionada=null;render();}
+    try{
+      const r=await apiPost({accion:"buscarOrdenPartidasV513",usuario:usuario(),periodo:estado.periodo,busqueda:estado.busqueda});
+      integrarCatalogosBusqueda(r);
+      estado.resultados=r.resultados||[];
+      estado.seleccionada=null;
+      render();
+    }
     catch(e){alert("No se pudo buscar: "+(e?.message||String(e)));}
   };
   window.mv513SeleccionarResultado=function(id){estado.seleccionada=(estado.resultados||[]).find(x=>String(x.ordenId)===String(id))||null;render();setTimeout(()=>document.querySelector("[data-mv513-motivo]")?.scrollIntoView({behavior:"smooth",block:"center"}),50);};
-  window.mv513AbrirOrden=async function(id){estado.tab="buscar";estado.busqueda=String(id);try{const r=await apiPost({accion:"buscarOrdenPartidasV513",usuario:usuario(),periodo:estado.periodo,busqueda:String(id)});estado.resultados=r.resultados||[];estado.seleccionada=estado.resultados.find(x=>String(x.ordenId)===String(id))||estado.resultados[0]||null;render();}catch(e){alert("No se pudo abrir la orden: "+(e?.message||String(e)));}};
+  window.mv513AbrirOrden=async function(id){
+    estado.tab="buscar";estado.busqueda=String(id);
+    try{
+      const r=await apiPost({accion:"buscarOrdenPartidasV513",usuario:usuario(),periodo:estado.periodo,busqueda:String(id)});
+      integrarCatalogosBusqueda(r);
+      estado.resultados=r.resultados||[];
+      estado.seleccionada=estado.resultados.find(x=>String(x.ordenId)===String(id))||estado.resultados[0]||null;
+      render();
+    }catch(e){alert("No se pudo abrir la orden: "+(e?.message||String(e)));}
+  };
 
   window.mv513GuardarPartida=async function(){
     const x=estado.seleccionada;if(!x)return;const p=document.querySelector("[data-mv513-partida]")?.value||"",m=(document.querySelector("[data-mv513-motivo]")?.value||"").trim();if(!p){alert("Selecciona una partida.");return;}if(!m){alert("El motivo/sustento es obligatorio.");return;}if(!confirm(`Orden ${x.ordenId}\n\nGuardar Partida efectiva: ${p}?`))return;
