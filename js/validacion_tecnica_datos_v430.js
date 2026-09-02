@@ -1,10 +1,11 @@
 /* ============================================================
-   MI VISUAL V430A - Datos correctos en Validación Técnica
+   MI VISUAL V430B - Datos correctos en Validación Técnica
    ESTABILIZACIÓN INCREMENTAL 02/09/2026:
    - Conserva íntegro el flujo V430 de búsqueda DNI/Código.
    - Conserva Ingreso manual y Cliente/Código validado + ticket manual.
    - Evita reiniciar el estado si la interfaz ya estaba instalada.
    - Descarta respuestas tardías de búsqueda si el técnico cambia a Manual.
+   - Oculta la cuadrilla únicamente en resultados visibles del perfil TÉCNICO.
    - No modifica validacion_tecnica_v173.js.
    - No modifica validacion_tecnica_optimizacion_v341.js.
    - No modifica API, permisos, perfiles, historial, bonos ni otros módulos.
@@ -50,6 +51,10 @@
 
   function usuario(){
     return localStorage.getItem("usuario") || "";
+  }
+
+  function esTecnico(){
+    return normal(localStorage.getItem("perfil") || "") === "TECNICO";
   }
 
   function asegurarEstilos(){
@@ -224,7 +229,7 @@
         ${c.codigoOrden?` · Orden: ${esc(c.codigoOrden)}`:""}
         · Fecha: ${esc(c.fecha||"-")}<br>
         ${esc(c.cliente||"Cliente no informado")} · DNI ${esc(c.dni||"-")}
-        ${c.cuadrilla?` · ${esc(c.cuadrilla)}`:""}
+        ${!esTecnico() && c.cuadrilla?` · ${esc(c.cuadrilla)}`:""}
       </small>
       <span class="vt430-pill">${esc((c.fuentes||[]).join(" + ")||"Base operativa")}</span>
     `;
@@ -303,7 +308,7 @@
           ✅ <b>Atención validada por MI VISUAL</b><br>
           ${esc(c.ticketFinal)} · Código ${esc(c.codigo)} · DNI ${esc(c.dni)}
           ${c.cliente?`<br>Cliente: <b>${esc(c.cliente)}</b>`:""}
-          ${c.cuadrilla?` · Cuadrilla: ${esc(c.cuadrilla)}`:""}
+          ${!esTecnico() && c.cuadrilla?` · Cuadrilla: ${esc(c.cuadrilla)}`:""}
           <br><button class="vt-btn secondary" type="button" onclick="vt430CambiarAtencion()" style="margin-top:8px">🔄 Cambiar atención</button>
         </div>`;
     }
@@ -547,5 +552,5 @@
   window.vt430ActivarManual=activarManual;
   window.vt430UsarIdentidadManual=usarIdentidadManual;
 
-  console.log("MI VISUAL V430A: búsqueda DNI/Código y modo manual estabilizados.");
+  console.log("MI VISUAL V430B: búsqueda DNI/Código estable y cuadrilla oculta para Técnico.");
 })();
