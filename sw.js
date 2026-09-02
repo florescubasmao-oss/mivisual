@@ -1,5 +1,5 @@
-/* MI VISUAL V522B - VALIDACION TECNICA TECNICO INTEGRADO ESTABLE */
-const MV339_CACHE = "mivisual-v522b-validacion-tecnico-integrado-20260902-1";
+/* MI VISUAL V522C - PARTIDAS V513E + VALIDACION TECNICA ESTABLE */
+const MV339_CACHE = "mivisual-v522c-partidas-v513e-20260902-1";
 const MV517C19_BRIDGE = "./js/vtr_gar_ux_v517b.js?v=V520D-BONO-NO-APLICA-20260901-1";
 const MV339_CORE = [
   "./",
@@ -48,7 +48,7 @@ const MV339_CORE = [
   "./js/actas_mapa_fallback_v517d_f4x.js?v=V517D-F4X-ACTAS-MAPA-20260831-1",
   "./js/partidas_win_v505.js?v=V506-PARTIDAS-BASE",
   "./js/partidas_lote_v506.js?v=V506-LOTE",
-  "./js/partidas_win_v513.js?v=V513-PARTIDAS-20260827",
+  "./js/partidas_win_v513.js?v=V513E-EDITOR-CATALOGO-20260902",
   "./js/partidas_lote_manual_v513c.js?v=V513C-LOTE-MANUAL-20260827",
   "./js/partidas_snapshot_auto_v513d.js?v=V513D-SNAPSHOT-AUTO-20260827",
   "./js/dashboard_actualizacion_indicadores_v512b.js?v=V512E-DASHBOARD-PIE-20260827",
@@ -117,13 +117,14 @@ self.addEventListener("fetch", event => {
     return;
   }
 
-  // V522B: estas dos piezas de Validacion Tecnica deben reflejar siempre
-  // la correccion vigente. Red primero, cache solo como respaldo offline.
-  const rutaValidacionCritica =
+  // V522C: piezas operativas donde una version antigua en cache puede dejar
+  // la UI en un estado incoherente. Red primero; cache solo como respaldo.
+  const rutaCritica =
     url.pathname.endsWith("/js/validacion_tecnica_datos_v430.js") ||
-    url.pathname.endsWith("/js/vtr_gar_tecnico_filtros_v517d_f4s2.js");
+    url.pathname.endsWith("/js/vtr_gar_tecnico_filtros_v517d_f4s2.js") ||
+    url.pathname.endsWith("/js/partidas_win_v513.js");
 
-  if(rutaValidacionCritica){
+  if(rutaCritica){
     event.respondWith(
       fetch(req,{cache:"no-store"})
         .then(res => {
