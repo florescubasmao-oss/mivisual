@@ -34,7 +34,7 @@
     dashboard: {
       depende: ["dashboards_core"],
       archivos: [
-        `./js/bono_supervisores.js?v=V408-RESTAURA-V403`,
+        `./js/bono_supervisores.js?v=V520G-BONO-SUPERVISOR-ESPERA-20260902-1`,
         `./js/bono_supervisores_habilitados_v450.js?v=V450-HABILITACION-BONO`,
         `./js/bono_supervisores_layout_v452.js?v=V452-BOTONES-FILA`
       ],
