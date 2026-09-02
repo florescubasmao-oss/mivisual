@@ -57,7 +57,7 @@ async function mv351GetBonos(periodo, forzarActualizacion){
         : null;
 
     const temporizador = controlador
-        ? setTimeout(()=>controlador.abort(),90000)
+        ? setTimeout(()=>controlador.abort(),330000)
         : null;
 
     try{
@@ -118,7 +118,7 @@ async function mv351GetBonos(periodo, forzarActualizacion){
     }catch(error){
         if(error && error.name === "AbortError"){
             throw new Error(
-                "El cálculo superó el tiempo de espera. No repita varias veces; revise la versión publicada y vuelva a intentar una sola vez."
+                "El cálculo no terminó dentro de 5 minutos. Pulsa Reintentar una sola vez para consultar el resultado que Apps Script pudo dejar preparado."
             );
         }
         throw error;
@@ -724,8 +724,8 @@ function mv321TarjetaBono(bono, compacta){
 
 function mv321RenderEstadoBase(){
     if(!MV321_BONO_SUPERVISORES.periodo) return `<section class="mv321-panel"><div class="mv321-vacio"><b>Seleccione un período</b><span>El cálculo comenzará únicamente después de elegir el mes.</span></div></section>`;
-    if(MV321_BONO_SUPERVISORES.cargando) return `<section class="mv321-panel"><div class="mv321-cargando">Leyendo y calculando la información del período...</div></section>`;
-    if(MV321_BONO_SUPERVISORES.error) return `<section class="mv321-panel"><div class="mv321-error"><b>No se pudo calcular el bono</b><span>${mv321Esc(MV321_BONO_SUPERVISORES.error)}</span><button class="mv321-accion" onclick="mv334ActualizarCalculo()">↻ Reintentar</button></div></section>`;
+    if(MV321_BONO_SUPERVISORES.cargando) return `<section class="mv321-panel"><div class="mv321-cargando">Leyendo y calculando la información del período. La primera carga puede tardar varios minutos; no pulses nuevamente.</div></section>`;
+    if(MV321_BONO_SUPERVISORES.error) return `<section class="mv321-panel"><div class="mv321-error"><b>No se pudo calcular el bono</b><span>${mv321Esc(MV321_BONO_SUPERVISORES.error)}</span><button class="mv321-accion" onclick="mv321ReintentarCalculo()">↻ Reintentar</button></div></section>`;
     if(!MV321_BONO_SUPERVISORES.bonos.length) return `<section class="mv321-panel"><div class="mv321-vacio">No existe una asignación de supervisor para este período.</div></section>`;
     return "";
 }
@@ -848,6 +848,15 @@ async function mv334ActualizarCalculo(){
     mv321PrepararCarga(periodo);
     mv325RenderPaginaBonos();
     await mv321CargarBonos(periodo,true);
+    mv325RenderPaginaBonos();
+}
+
+async function mv321ReintentarCalculo(){
+    const periodo = MV321_BONO_SUPERVISORES.periodo;
+    if(!periodo || MV321_BONO_SUPERVISORES.cargando) return;
+    mv321PrepararCarga(periodo);
+    mv325RenderPaginaBonos();
+    await mv321CargarBonos(periodo,false);
     mv325RenderPaginaBonos();
 }
 
