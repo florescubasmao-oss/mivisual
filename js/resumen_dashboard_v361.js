@@ -1,7 +1,7 @@
 /* ============================================================
-   MI VISUAL V378 - Resumen rápido y sincronizado para Dashboard y Mi Desempeño
+   MI VISUAL V380 - Resumen rápido y sincronizado para Dashboard y Mi Desempeño
    - Memoria de sesión: 2 minutos.
-   - Último resumen local: 15 minutos.
+   - Período actual: 3 minutos; períodos históricos: 30 minutos.
    - Actualización silenciosa en segundo plano.
    - Una sola solicitud simultánea por usuario y período.
    - Conserva el proceso anterior como respaldo.
@@ -13,9 +13,12 @@
 
   const CACHE = new Map();
   const PENDIENTES = new Map();
-  const PREFIJO_LOCAL = "mv367ResumenDashboard:";
+  // Prefijo nuevo: descarta respaldos antiguos que pudieron guardar un
+  // resumen con cobertura completa pero indicadores todavía en cero.
+  const PREFIJO_LOCAL = "mv380ResumenDashboard:";
   const TTL_MEMORIA = 2 * 60 * 1000;
-  const TTL_LOCAL = 30 * 60 * 1000;
+  const TTL_LOCAL_ACTUAL = 3 * 60 * 1000;
+  const TTL_LOCAL_HISTORICO = 30 * 60 * 1000;
   const TTL_RESPALDO = 24 * 60 * 60 * 1000;
   const obtenerRankingAnterior = window.mv4ObtenerRanking;
 
@@ -214,6 +217,37 @@
     return !(esperadas>0 && recibidas<esperadas);
   }
 
+  function validarCalidad(data){
+    const lista = Array.isArray(data?.lista) ? data.lista : [];
+    if(!lista.length) return {ok:false,motivo:"sin cuadrillas"};
+
+    let produccion=0;
+    let efectividadTotal=0;
+    let efectividadFinalizadas=0;
+    let vtrFinalizadas=0;
+
+    lista.forEach(item=>{
+      produccion += Number(item?.produccion)||0;
+      efectividadTotal += Number(item?.detEfectividad?.total)||0;
+      efectividadFinalizadas += Number(item?.detEfectividad?.finalizadas)||0;
+      vtrFinalizadas += Number(item?.detVtrGar?.finalizadas)||0;
+    });
+
+    if(produccion>0 && efectividadTotal===0){
+      return {ok:false,motivo:"efectividad sin sincronizar"};
+    }
+    if(efectividadFinalizadas>0 && vtrFinalizadas===0){
+      return {ok:false,motivo:"VTR/GAR sin sincronizar"};
+    }
+    return {ok:true};
+  }
+
+  function ttlLocal(periodo){
+    return periodoClave(periodo)===periodoActualLima()
+      ? TTL_LOCAL_ACTUAL
+      : TTL_LOCAL_HISTORICO;
+  }
+
   function prepararLista(data){
     const lista = Array.isArray(data?.lista)
       ? data.lista
@@ -305,21 +339,30 @@
           );
         }
 
-        if(!validarCobertura(data,forzar)){
+        const calidad = validarCalidad(data);
+
+        if((!validarCobertura(data,forzar) || !calidad.ok) && !forzar){
           console.warn(
-            "V366: se reconstruye un resumen ejecutivo incompleto.",
+            "V380: se reconstruye un resumen ejecutivo incompleto.",
             {
               esperadas:data.cuadrillasEsperadas,
               recibidas:Array.isArray(data.lista)
                 ? data.lista.length
                 : 0,
-              periodo:data.periodo
+              periodo:data.periodo,
+              motivo:calidad.motivo || "cobertura incompleta"
             }
           );
 
           return await consultarRed(
             data.periodo || solicitado,
             true
+          );
+        }
+
+        if(!validarCalidad(data).ok){
+          throw new Error(
+            `El resumen recibido está pendiente de sincronización: ${validarCalidad(data).motivo}.`
           );
         }
 
@@ -371,20 +414,24 @@
       const memoria = leerMemoria(solicitado);
       if(memoria) return memoria;
 
-      const local = leerLocal(solicitado,TTL_LOCAL);
+      const local = leerLocal(solicitado,ttlLocal(solicitado));
       if(local){
-        const data = {
-          ...local.data,
-          _mv366DesdeCacheLocal:true
-        };
+        if(!validarCalidad(local.data).ok){
+          try{ localStorage.removeItem(claveLocal(solicitado)); }catch(_){}
+        }else{
+          const data = {
+            ...local.data,
+            _mv366DesdeCacheLocal:true
+          };
 
-        prepararLista(data);
-        guardarMemoria(solicitado,data);
-        actualizarEnSegundoPlano(
-          data.periodo || solicitado
-        );
+          prepararLista(data);
+          guardarMemoria(solicitado,data);
+          actualizarEnSegundoPlano(
+            data.periodo || solicitado
+          );
 
-        return data;
+          return data;
+        }
       }
     }
 
@@ -393,7 +440,7 @@
     }catch(error){
       const respaldo = leerLocal(solicitado,TTL_RESPALDO);
 
-      if(respaldo){
+      if(respaldo && validarCalidad(respaldo.data).ok){
         console.warn(
           "V366: se utiliza el último resumen disponible",
           error
