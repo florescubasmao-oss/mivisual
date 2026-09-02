@@ -1,5 +1,5 @@
 /* MI VISUAL V520B - REVISION MANUAL SOLO PENDIENTES */
-const MV339_CACHE = "mivisual-v520h-dashboard-sincronizado-20260902-2";
+const MV339_CACHE = "mivisual-v520h-dashboard-sincronizado-20260902-3";
 const MV517C19_BRIDGE = "./js/vtr_gar_ux_v517b.js?v=V520D-BONO-NO-APLICA-20260901-1";
 const MV339_CORE = [
   "./",
@@ -12,7 +12,7 @@ const MV339_CORE = [
   "./js/login.js?v=V339-CACHE",
   "./js/permisos.js?v=V339-CORE",
   "./js/app.js?v=V408-RESTAURA-V377",
-  "./js/modulos_loader.js?v=V520H-DASHBOARD-SINCRONIZADO-20260902-2",
+  "./js/modulos_loader.js?v=V520H-DASHBOARD-SINCRONIZADO-20260902-3",
   "./js/gestion_win_v505_loader.js?v=V517A2-SOLO-FINALIZADAS-PENDIENTES-20260901-1",
   "./js/vtr_gar_validacion_restaurar_v514.js?v=V514A-TABS-UNICA-20260828",
   "./js/vtr_gar_v515.js?v=V515-VTRGAR-BONO-DESEMPENO-20260828",
