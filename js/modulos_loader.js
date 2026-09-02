@@ -12,7 +12,7 @@
     dashboards_core: {
       archivos: [
         `./js/dashboards.js?v=V449-SIN-ACTIVIDAD-META`,
-        `./js/resumen_dashboard_v361.js?v=V520H-DASHBOARD-SINCRONIZADO-20260902-1`,
+        `./js/resumen_dashboard_v361.js?v=V520H-DASHBOARD-SINCRONIZADO-20260902-2`,
         `./js/sla_gestion_v363.js?v=V408-RESTAURA-V403`,
         `./js/sla_excepciones_v411.js?v=V411-SLA-EXCEPCIONES`,
         `./js/dashboard_consolidado_v365.js?v=V408-RESTAURA-V403`,
