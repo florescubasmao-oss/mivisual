@@ -1,5 +1,5 @@
 /* ============================================================
-   MI VISUAL V393 / V527 - Mapa Operativo: avance de registro
+   MI VISUAL V393 / V527A - Mapa Operativo: avance de registro
    - No cambia importarMapaOperativo ni la estructura enviada.
    - Muestra etapas reales: preparación -> servidor -> filtros.
    - Cronómetro visible durante el registro.
@@ -7,17 +7,18 @@
    - Conserva V518.2: reconoce la confirmación real del backend sin esperar
      la recarga posterior de catálogos/filtros.
    - Conserva V523: HTML/texto anómalo nunca se muestra completo.
-   - V527: "Failed to fetch" y fallas de transporte se consideran respuesta
-     incierta de una ESCRITURA. MI VISUAL NO repite el POST. Consulta por GET
-     la última actualización y, si el sello corresponde temporalmente a la
-     carga actual, confirma el registro y permite continuar V512. Si no puede
-     demostrarlo, conserva el Excel y deja la carga pendiente de verificación.
+   - Conserva V527: "Failed to fetch" y fallas de transporte se consideran
+     respuesta incierta de una ESCRITURA. MI VISUAL NO repite el POST.
+   - V527A: al abrir una nueva importación o elegir otro archivo se limpia
+     únicamente el panel visual anterior; no toca datos, backend ni cachés.
 ============================================================ */
 (function(){
   "use strict";
   if(window.MV393_MAPA_PROGRESO_OK) return;
 
   const registrarBase = window.moRegistrarImportacion;
+  const mostrarImportacionBase = window.moMostrarImportacion;
+  const seleccionarArchivoBase = window.moSeleccionarArchivoMapa;
   if(typeof registrarBase !== "function") return;
 
   function estilos(){
@@ -96,6 +97,30 @@
     `;
     msg.parentElement.insertBefore(p,msg);
     return p;
+  }
+
+  function limpiarPanelAnterior(){
+    const p=document.getElementById("mv393MapaProgreso");
+    if(!p) return;
+    p.className="mv393-map-progress";
+    const e=document.getElementById("mv393MapaEtapa");
+    const t=document.getElementById("mv393MapaTiempo");
+    const d=document.getElementById("mv393MapaDetalle");
+    const f=document.getElementById("mv393MapaFill");
+    if(e)e.textContent="Preparando registro...";
+    if(t)t.textContent="0 s";
+    if(d)d.textContent="";
+    if(f)f.style.width="28%";
+  }
+
+  function mostrarImportacionV527A(){
+    limpiarPanelAnterior();
+    return mostrarImportacionBase.apply(this,arguments);
+  }
+
+  function seleccionarArchivoV527A(){
+    limpiarPanelAnterior();
+    return seleccionarArchivoBase.apply(this,arguments);
   }
 
   function cantidad(){
@@ -378,10 +403,25 @@
     }
   }
 
+  if(typeof mostrarImportacionBase==="function"){
+    mostrarImportacionV527A.__mv527a=true;
+    mostrarImportacionV527A.__original=mostrarImportacionBase;
+    window.moMostrarImportacion=mostrarImportacionV527A;
+    try{moMostrarImportacion=mostrarImportacionV527A}catch(_){}
+  }
+
+  if(typeof seleccionarArchivoBase==="function"){
+    seleccionarArchivoV527A.__mv527a=true;
+    seleccionarArchivoV527A.__original=seleccionarArchivoBase;
+    window.moSeleccionarArchivoMapa=seleccionarArchivoV527A;
+    try{moSeleccionarArchivoMapa=seleccionarArchivoV527A}catch(_){}
+  }
+
   registrarV393.__mv393=true;
   registrarV393.__mv5182=true;
   registrarV393.__mv523=true;
   registrarV393.__mv527=true;
+  registrarV393.__mv527a=true;
   registrarV393.__original=registrarBase;
   window.moRegistrarImportacion=registrarV393;
   try{moRegistrarImportacion=registrarV393}catch(_){}
@@ -389,4 +429,5 @@
   window.MV393_MAPA_PROGRESO_OK=true;
   window.MV523_MAPA_RESPUESTA_SEGURA_OK=true;
   window.MV527_MAPA_FAILED_FETCH_OK=true;
+  window.MV527A_MAPA_PANEL_RESET_OK=true;
 })();
