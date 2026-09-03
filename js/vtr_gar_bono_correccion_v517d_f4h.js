@@ -1,6 +1,6 @@
 /* ============================================================
-   MI VISUAL V517D F4H - BONO/NO BONO EN CORRECCION GAR/VTR
-   29/08/2026
+   MI VISUAL V517D F4H2 - BONO/NO BONO EN CORRECCION GAR/VTR
+   03/09/2026
 
    Objetivo:
    - Si NO ES GAR/VTR: Produccion normal; Bono/No Bono no aplica.
@@ -9,6 +9,14 @@
    - Reutiliza backend existente; no modifica PRODUCCION_APP.
    - En una correccion NO_ES -> SI_ES, guarda primero clasificacion
      y luego la evaluacion Bono/No Bono sin crear registro ficticio.
+
+   F4H2 SEGURIDAD:
+   - Un caso CON registro tecnico nunca recibe la seccion excepcional F4H.
+   - La decision no depende solo del snapshot/cache: se valida tambien el DOM
+     real del formulario abierto.
+   - F4H solo interviene cuando el propio formulario confirma SIN REGISTRO.
+   - Si el estado es dudoso, falla cerrado: no inyecta ni intercepta guardado.
+   - Conserva V517C8 como guardado unico para registros tecnicos reales.
 ============================================================ */
 (function(){
   "use strict";
@@ -87,6 +95,45 @@
     return !!txt(x&&x.validacionId);
   }
 
+  /*
+    F4H2: la fuente principal para decidir si F4H puede actuar es el formulario
+    REAL abierto, no un snapshot que puede estar desfasado.
+
+    CON_REGISTRO:
+      - Gestionar caso normal: #mv517c1Bono / sección Validación del registro técnico.
+      - Corregir validación: #mv16Reg / sección Corregir evaluación del registro técnico.
+
+    SIN_REGISTRO:
+      - El formulario base declara expresamente que no existe registro técnico.
+      - El modal de corrección declara Registro: SIN REGISTRO TÉCNICO.
+
+    DESCONOCIDO:
+      - F4H no actúa. Esto protege el histórico y evita crear una evaluación
+        excepcional sobre un registro técnico real.
+  */
+  function estadoRegistroModal(modal){
+    if(!modal) return "DESCONOCIDO";
+
+    if(modal.querySelector("#mv517c1Bono,#mv16Reg")) return "CON_REGISTRO";
+
+    const secciones=Array.from(modal.querySelectorAll("h4,.mv517c16-current,.mv517c1-note,.mv517c1-box"))
+      .map(el=>norm(el.textContent||""));
+    const todo=secciones.join(" | ");
+
+    if(
+      todo.includes("VALIDACION DEL REGISTRO TECNICO") ||
+      todo.includes("CORREGIR EVALUACION DEL REGISTRO TECNICO") ||
+      todo.includes("RESULTADO ACTUAL") && !todo.includes("SIN REGISTRO TECNICO")
+    ) return "CON_REGISTRO";
+
+    if(
+      todo.includes("ESTE CASO NO TIENE REGISTRO TECNICO ASOCIADO") ||
+      todo.includes("SIN REGISTRO TECNICO")
+    ) return "SIN_REGISTRO";
+
+    return "DESCONOCIDO";
+  }
+
   function resultadoActual(ticket){
     const x=caso(ticket);
     if(!x) return "";
@@ -138,10 +185,16 @@
     const dec=modal.querySelector("#mv16Resp")||modal.querySelector("#mv517c1Decision");
     if(!dec) return;
     const ticket=ticketModal(modal);
-    if(!ticket||tieneRegistro(ticket)){
+    const estadoRegistro=estadoRegistroModal(modal);
+
+    // F4H2: solo se habilita con evidencia positiva de SIN REGISTRO.
+    // Si el DOM indica registro real, o no permite determinarlo con certeza,
+    // la sección excepcional se retira y el flujo normal V517C8 conserva control.
+    if(!ticket||estadoRegistro!=="SIN_REGISTRO"||tieneRegistro(ticket)){
       modal.querySelector("#mv517dF4HSinRegistro")?.remove();
       return;
     }
+
     const efectivo=estadoPorDecision(dec.value,estadoActual(ticket,modal));
     let sec=modal.querySelector("#mv517dF4HSinRegistro");
     if(esSiGar(efectivo)){
@@ -165,7 +218,11 @@
 
   async function guardarSinRegistro(modal,btn,ev){
     const ticket=ticketModal(modal);
-    if(!ticket||tieneRegistro(ticket)) return false;
+
+    // F4H2: nunca interceptar un guardado si el propio formulario muestra
+    // un registro técnico real o si no existe confirmación explícita de SIN REGISTRO.
+    if(!ticket||estadoRegistroModal(modal)!=="SIN_REGISTRO"||tieneRegistro(ticket)) return false;
+
     const dec=modal.querySelector("#mv16Resp")||modal.querySelector("#mv517c1Decision");
     if(!dec) return false;
     const efectivo=estadoPorDecision(dec.value,estadoActual(ticket,modal));
@@ -260,10 +317,10 @@
     const modal=btn.closest(".mv517c1-modal");
     if(!modal) return;
     guardarSinRegistro(modal,btn,ev).catch(e=>{
-      console.error("V517D F4H",e);
+      console.error("V517D F4H2",e);
       try{btn.disabled=false;}catch(_){}
     });
   },true);
 
-  console.log("MI VISUAL V517D F4H: Bono/No Bono habilitado al corregir a SÍ ES GAR/VTR sin registro técnico.");
+  console.log("MI VISUAL V517D F4H2: BONO excepcional solo con SIN REGISTRO confirmado por el formulario.");
 })();
