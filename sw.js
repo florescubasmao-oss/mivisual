@@ -1,10 +1,39 @@
-/* MI VISUAL V527B - GAR/VTR F4H2 SEGURO + V527/V526/V525/V524/V523/V522C */
-const MV339_CACHE = "mivisual-v527b-garvtr-f4h2-20260903-1";
+/* MI VISUAL V528 - RESILIENCIA CENTRAL DE LECTURAS API + V527B/V527/V526/V525/V524/V523/V522C */
+const MV339_CACHE = "mivisual-v528-api-lecturas-resilientes-20260903-1";
 const MV517C19_BRIDGE = "./js/vtr_gar_ux_v517b.js?v=V520D-BONO-NO-APLICA-20260901-1";
-const MV525_PARTIDAS_LECTURAS = new Set([
+
+/*
+  V528: SOLO acciones de lectura confirmadas.
+  Regla de seguridad: ninguna escritura, guardado, validacion, importacion,
+  publicacion ni ajuste entra en este conjunto. Por eso un reintento nunca
+  puede duplicar datos.
+*/
+const MV528_LECTURAS_APPS_SCRIPT = new Set([
+  // Partidas V513
   "listarPartidasV513",
-  "buscarOrdenPartidasV513"
+  "buscarOrdenPartidasV513",
+
+  // Analisis Economico / consultas
+  "obtenerAnalisisEconomico",
+  "obtenerResumenMateriales",
+  "obtenerUtilidadCuadrillas",
+  "obtenerInformeMensualEjecutivo",
+
+  // Bonos: solo lectura PEXT
+  "listarBonosPextConjunta",
+
+  // Equipos Averiados: solo consultas
+  "catalogosEquiposAveriados",
+  "listarEquiposAveriados",
+  "listarCargosEquiposAveriados",
+  "verificarRecepcionEquiposAveriadosV399",
+
+  // Validacion Tecnica: listado/historial
+  "listarValidacionTecnica"
 ]);
+
+const MV528_RESPALDO_TTL_MS = 10 * 60 * 1000;
+
 const MV339_CORE = [
   "./",
   "./index.html",
@@ -79,38 +108,118 @@ const MV339_CORE = [
 
 const mv525Dormir = ms => new Promise(resolve => setTimeout(resolve, ms));
 
-async function mv525RespuestaJsonValida(res){
+function mv528Hash(texto){
+  let h=2166136261;
+  const s=String(texto||"");
+  for(let i=0;i<s.length;i++){
+    h^=s.charCodeAt(i);
+    h=Math.imul(h,16777619);
+  }
+  return (h>>>0).toString(16);
+}
+
+async function mv528RespuestaJsonValida(res){
   try{
+    if(!res || !res.ok) return false;
     const texto=(await res.clone().text()).trim();
     if(!texto || /^MI VISUAL API OK$/i.test(texto)) return false;
     if(/<!doctype|<html|accounts\.google|google drive/i.test(texto)) return false;
-    JSON.parse(texto);
-    return true;
+    const json=JSON.parse(texto);
+    return !!json && json.ok !== false;
   }catch(_){
     return false;
   }
 }
 
-async function mv525FetchPartidas(req){
-  let payload=null;
+function mv528FirmaGet(url){
+  const u=new URL(url.toString());
+  // Solo quitamos parametros usados exclusivamente para romper cache.
+  ["_","mv299","mvretry"].forEach(k=>u.searchParams.delete(k));
+  return "GET|"+u.toString();
+}
+
+function mv528CacheKeys(firma){
+  const h=mv528Hash(firma);
+  return {
+    data:new Request(`${self.location.origin}/__mv528_api_cache__/data/${h}`),
+    meta:new Request(`${self.location.origin}/__mv528_api_cache__/meta/${h}`)
+  };
+}
+
+async function mv528GuardarRespaldo(firma,res){
   try{
-    payload=JSON.parse(await req.clone().text());
+    const keys=mv528CacheKeys(firma);
+    const cache=await caches.open(MV339_CACHE);
+    await cache.put(keys.data,res.clone());
+    await cache.put(keys.meta,new Response(String(Date.now()),{status:200,headers:{"Content-Type":"text/plain"}}));
+  }catch(_){ }
+}
+
+async function mv528LeerRespaldo(firma){
+  try{
+    const keys=mv528CacheKeys(firma);
+    const cache=await caches.open(MV339_CACHE);
+    const meta=await cache.match(keys.meta);
+    const data=await cache.match(keys.data);
+    if(!meta||!data) return null;
+    const ts=Number(await meta.text());
+    if(!ts || Date.now()-ts>MV528_RESPALDO_TTL_MS) return null;
+    return data;
   }catch(_){
-    return fetch(req);
+    return null;
+  }
+}
+
+async function mv528IdentificarLectura(req,url){
+  if(req.method==="GET"){
+    const accion=String(url.searchParams.get("accion")||"").trim();
+    if(!MV528_LECTURAS_APPS_SCRIPT.has(accion)) return null;
+    return {accion,firma:mv528FirmaGet(url)};
+  }
+  if(req.method==="POST"){
+    try{
+      const texto=await req.clone().text();
+      const payload=JSON.parse(texto||"{}");
+      const accion=String(payload&&payload.accion||"").trim();
+      if(!MV528_LECTURAS_APPS_SCRIPT.has(accion)) return null;
+      return {accion,firma:"POST|"+texto};
+    }catch(_){
+      return null;
+    }
+  }
+  return null;
+}
+
+async function mv528FetchLecturaAppsScript(req,url){
+  const lectura=await mv528IdentificarLectura(req,url);
+  if(!lectura) return fetch(req);
+
+  let ultimaRespuesta=null;
+  let ultimoError=null;
+
+  // Un solo reintento. Son operaciones de lectura expresamente permitidas.
+  for(let intento=0;intento<2;intento++){
+    try{
+      const res=await fetch(req.clone());
+      ultimaRespuesta=res;
+      if(await mv528RespuestaJsonValida(res)){
+        await mv528GuardarRespaldo(lectura.firma,res);
+        return res;
+      }
+    }catch(e){
+      ultimoError=e;
+    }
+    if(intento===0) await mv525Dormir(750);
   }
 
-  const accion=String(payload&&payload.accion||"").trim();
-  if(!MV525_PARTIDAS_LECTURAS.has(accion)) return fetch(req);
+  // Si Google falla temporalmente, se conserva como maximo 10 minutos la
+  // ultima respuesta valida de ESA MISMA consulta (firma incluye usuario,
+  // periodo y filtros). Nunca se comparte una respuesta de otra consulta.
+  const respaldo=await mv528LeerRespaldo(lectura.firma);
+  if(respaldo) return respaldo;
 
-  try{
-    const primera=await fetch(req.clone());
-    if(await mv525RespuestaJsonValida(primera)) return primera;
-  }catch(_){
-    // Solo lecturas idempotentes V513: se permite un unico reintento.
-  }
-
-  await mv525Dormir(850);
-  return fetch(req.clone());
+  if(ultimaRespuesta) return ultimaRespuesta;
+  throw ultimoError || new Error("No se pudo conectar temporalmente con MI VISUAL.");
 }
 
 self.addEventListener("install", event => {
@@ -135,11 +244,13 @@ self.addEventListener("fetch", event => {
   const req = event.request;
   const url = new URL(req.url);
 
-  // V525/V526/V527/V527B: Partidas V513 puede recibir ocasionalmente una pagina/texto
-  // externo desde Apps Script. Solo las dos lecturas confirmadas se reintentan
-  // una vez. Guardados, ajustes, lotes y publicaciones NUNCA se repiten.
-  if(req.method === "POST" && url.hostname === "script.google.com"){
-    event.respondWith(mv525FetchPartidas(req));
+  /*
+    V528: resiliencia central SOLO para lecturas de Apps Script.
+    Incluye GET y POST que semanticamente son consultas. Una accion que no
+    esta en la lista pasa exactamente por fetch normal, sin reintentos.
+  */
+  if(url.hostname === "script.google.com" && (req.method === "GET" || req.method === "POST")){
+    event.respondWith(mv528FetchLecturaAppsScript(req,url));
     return;
   }
 
@@ -166,9 +277,7 @@ self.addEventListener("fetch", event => {
     return;
   }
 
-  // V527B conserva todas las rutas criticas previas y agrega F4H2 como
-  // red-primero. Esto evita que una copia cacheada vuelva a inyectar BONO
-  // excepcional sobre un caso que sí tiene registro técnico real.
+  // V528 conserva todas las rutas criticas V527B/V527 y F4H2 red-primero.
   const rutaCritica =
     url.pathname.endsWith("/js/validacion_tecnica_datos_v430.js") ||
     url.pathname.endsWith("/js/vtr_gar_tecnico_filtros_v517d_f4s2.js") ||
