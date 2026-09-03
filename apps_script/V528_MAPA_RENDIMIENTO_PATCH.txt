@@ -1,0 +1,160 @@
+MI VISUAL V528 - MAPA OPERATIVO / OPTIMIZACION DE PERSISTENCIA
+==============================================================
+ESTADO: PATCH DE BACKEND PARA APLICAR EN EL APPS SCRIPT PUBLICADO.
+NO ES UNA CAPA DE FRONTEND Y ESTE ARCHIVO .txt NO SE EJECUTA EN GITHUB PAGES.
+
+OBJETIVO
+- Conservar exactamente la logica actual de importarMapaOperativo().
+- Conservar bloqueo V394, validacion de permisos, historial por ORDEN+FECHA,
+  consolidacion de duplicados, CTO, ultima actualizacion, caches y V512.
+- Reducir solo I/O de Google Sheets: no reescribir ~5 mil filas de MAPA_ORDENES
+  ni ~5.5 mil filas de CATALOGO_CTO cuando cambian pocas filas.
+
+NO CAMBIAR
+- crearIndicesCoincidenciaMapa / registrarFilaEnIndicesMapa.
+- reglas para misma orden y mismo dia vs historial de otros dias.
+- COLUMNAS_MAPA_OPERATIVO ni encabezados.
+- alimentarCatalogoCtoMapaOperativo_ en su logica de consolidacion.
+- adquirir/renovar/liberarBloqueoMapaOperativoV394_.
+- invalidarCacheBonosSupervisores_ / invalidarResumenDashboardRankingV361_.
+- respuesta y contadores nuevos/actualizados/omitidos/repetidos.
+- sincronizador frontend V512 ni el criterio de Registro confirmado.
+
+HELPERS V528
+-------------
+function mv528ValorComparable_(valor) {
+  if (valor instanceof Date) return "D:" + valor.getTime();
+  if (valor === null || valor === undefined) return "";
+  if (typeof valor === "number") return "N:" + String(valor);
+  if (typeof valor === "boolean") return "B:" + (valor ? "1" : "0");
+  return "S:" + String(valor);
+}
+
+function mv528FilaIgual_(a,b,columnas) {
+  for (let c=0;c<columnas;c++) {
+    if (mv528ValorComparable_(a && a[c]) !== mv528ValorComparable_(b && b[c])) return false;
+  }
+  return true;
+}
+
+function mv528TramosCambiados_(anteriores,nuevas,columnas,maxHueco) {
+  const limite=Math.min(anteriores.length,nuevas.length);
+  const indices=[];
+  for (let i=0;i<limite;i++) {
+    if (!mv528FilaIgual_(anteriores[i],nuevas[i],columnas)) indices.push(i);
+  }
+  for (let i=limite;i<nuevas.length;i++) indices.push(i);
+  if (!indices.length) return [];
+
+  const hueco=Math.max(0,Number(maxHueco)||0);
+  const tramos=[];
+  let inicio=indices[0], fin=indices[0];
+  for (let k=1;k<indices.length;k++) {
+    const actual=indices[k];
+    if (actual-fin-1<=hueco) fin=actual;
+    else { tramos.push([inicio,fin]); inicio=fin=actual; }
+  }
+  tramos.push([inicio,fin]);
+  return tramos;
+}
+
+function mv528PersistirDiferencias_(hoja,anteriores,nuevas,columnas,opciones) {
+  opciones=opciones||{};
+  const tramos=mv528TramosCambiados_(anteriores,nuevas,columnas,opciones.maxHueco==null?3:opciones.maxHueco);
+  let filasEscritas=0;
+
+  tramos.forEach(function(tramo){
+    const inicio=tramo[0], fin=tramo[1];
+    const cantidad=fin-inicio+1;
+    hoja.getRange(inicio+2,1,cantidad,columnas).setValues(nuevas.slice(inicio,fin+1));
+    filasEscritas+=cantidad;
+    if (typeof opciones.formatearTramo === "function") {
+      opciones.formatearTramo(hoja,inicio+2,cantidad);
+    }
+  });
+
+  if (anteriores.length>nuevas.length) {
+    hoja.getRange(nuevas.length+2,1,anteriores.length-nuevas.length,columnas).clearContent();
+  }
+  return {tramos:tramos.length,filasEscritas:filasEscritas,filasEliminadas:Math.max(0,anteriores.length-nuevas.length)};
+}
+
+REEMPLAZO 1 - importarMapaOperativo()
+-------------------------------------
+En el bloque ACTUAL que hoy hace:
+
+  if (resultado.length) hoja.getRange(2,1,resultado.length,COLUMNAS_MAPA_OPERATIVO).setValues(resultado);
+  const filasAnteriores = Math.max(ultimaFila - 1, 0);
+  if (filasAnteriores > resultado.length) {
+    hoja.getRange(resultado.length + 2, 1, filasAnteriores - resultado.length, COLUMNAS_MAPA_OPERATIVO).clearContent();
+  }
+  if (resultado.length) hoja.getRange(2,27,resultado.length,1).setNumberFormat("dd/mm/yyyy hh:mm");
+
+usar:
+
+  const persistenciaMapaV528 = mv528PersistirDiferencias_(
+    hoja,
+    filasExistentes,
+    resultado,
+    COLUMNAS_MAPA_OPERATIVO,
+    {
+      maxHueco:3,
+      formatearTramo:function(h,filaInicio,cantidad){
+        h.getRange(filaInicio,27,cantidad,1).setNumberFormat("dd/mm/yyyy hh:mm");
+      }
+    }
+  );
+
+No cambiar ninguna linea anterior o posterior de importarMapaOperativo().
+Opcionalmente agregar persistenciaMapaV528 a la respuesta solo para diagnostico,
+pero no es necesario para la funcionalidad.
+
+REEMPLAZO 2 - alimentarCatalogoCtoMapaOperativo_()
+--------------------------------------------------
+En el bloque ACTUAL que hoy hace:
+
+  if (resultado.length) {
+    hoja.getRange(2,1,resultado.length,COLUMNAS_CATALOGO_CTO_MAPA_OPERATIVO).setValues(resultado);
+    hoja.getRange(2,6,resultado.length,2).setNumberFormat("dd/mm/yyyy hh:mm");
+  }
+  const filasAnteriores = Math.max(ultimaFila - 1, 0);
+  if (filasAnteriores > resultado.length) {
+    hoja.getRange(resultado.length + 2,1,filasAnteriores - resultado.length,COLUMNAS_CATALOGO_CTO_MAPA_OPERATIVO).clearContent();
+  }
+
+usar:
+
+  const persistenciaCtoV528 = mv528PersistirDiferencias_(
+    hoja,
+    existentes,
+    resultado,
+    COLUMNAS_CATALOGO_CTO_MAPA_OPERATIVO,
+    {
+      maxHueco:3,
+      formatearTramo:function(h,filaInicio,cantidad){
+        h.getRange(filaInicio,6,cantidad,2).setNumberFormat("dd/mm/yyyy hh:mm");
+      }
+    }
+  );
+
+No cambiar la construccion de resultado, posiciones, tocados, firstSeen/lastSeen,
+latitud/longitud/direccion, orden fuente ni codigo cliente fuente.
+
+VALIDACION ANTES DE PRODUCCION
+-----------------------------
+1. Carga pequena con solo actualizaciones del mismo dia: mismos contadores que V527.
+2. Carga con orden nueva: debe anexar la nueva fila y mantener historial.
+3. Misma ORDEN en otra FECHA: debe crear historial nuevo, nunca reemplazar el dia anterior.
+4. Archivo repetido: no debe duplicar una misma clave ORDEN+FECHA.
+5. Base con duplicado historico preexistente: el resultado final debe ser igual al algoritmo actual y limpiar solo cola sobrante si aplica.
+6. CTO nuevo y CTO existente: conservar primera deteccion y actualizar ultima deteccion.
+7. Comparar antes/despues: cantidad de filas y valores de MAPA_ORDENES/CATALOGO_CTO deben ser equivalentes a la version actual para el mismo input.
+8. Confirmar que V512 se dispara solo con Registro confirmado y que Produccion/Efectividad/Recableado/VTR-GAR no cambian de reglas.
+
+ROLLBACK
+--------
+Restaurar los dos bloques de escritura completa actuales. Los helpers V528 pueden quedar sin uso o eliminarse.
+
+NOTA DE RENDIMIENTO
+-------------------
+La version actual lee toda la base para conservar la semantica e indices; V528 mantiene esa lectura por seguridad. La ganancia viene de eliminar la reescritura completa de MAPA_ORDENES y CATALOGO_CTO en cada carga normal. Una fase posterior podria optimizar lecturas solo despues de medir V528, sin mezclar cambios.
