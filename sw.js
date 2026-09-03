@@ -1,6 +1,10 @@
-/* MI VISUAL V524 - ACTAS RESILIENTE + V523 MAPA + V522C */
-const MV339_CACHE = "mivisual-v524-actas-resiliente-20260902-1";
+/* MI VISUAL V525 - PARTIDAS RESILIENTE + V524 ACTAS + V523 MAPA + V522C */
+const MV339_CACHE = "mivisual-v525-partidas-resiliente-20260903-1";
 const MV517C19_BRIDGE = "./js/vtr_gar_ux_v517b.js?v=V520D-BONO-NO-APLICA-20260901-1";
+const MV525_PARTIDAS_LECTURAS = new Set([
+  "listarPartidasV513",
+  "buscarOrdenPartidasV513"
+]);
 const MV339_CORE = [
   "./",
   "./index.html",
@@ -73,6 +77,42 @@ const MV339_CORE = [
   "./img/splash.png"
 ];
 
+const mv525Dormir = ms => new Promise(resolve => setTimeout(resolve, ms));
+
+async function mv525RespuestaJsonValida(res){
+  try{
+    const texto=(await res.clone().text()).trim();
+    if(!texto || /^MI VISUAL API OK$/i.test(texto)) return false;
+    if(/<!doctype|<html|accounts\.google|google drive/i.test(texto)) return false;
+    JSON.parse(texto);
+    return true;
+  }catch(_){
+    return false;
+  }
+}
+
+async function mv525FetchPartidas(req){
+  let payload=null;
+  try{
+    payload=JSON.parse(await req.clone().text());
+  }catch(_){
+    return fetch(req);
+  }
+
+  const accion=String(payload&&payload.accion||"").trim();
+  if(!MV525_PARTIDAS_LECTURAS.has(accion)) return fetch(req);
+
+  try{
+    const primera=await fetch(req.clone());
+    if(await mv525RespuestaJsonValida(primera)) return primera;
+  }catch(_){
+    // Solo lecturas idempotentes V513: se permite un unico reintento.
+  }
+
+  await mv525Dormir(850);
+  return fetch(req.clone());
+}
+
 self.addEventListener("install", event => {
   event.waitUntil(
     caches.open(MV339_CACHE)
@@ -93,8 +133,17 @@ self.addEventListener("activate", event => {
 
 self.addEventListener("fetch", event => {
   const req = event.request;
-  if(req.method !== "GET") return;
   const url = new URL(req.url);
+
+  // V525: Partidas V513 puede recibir ocasionalmente una pagina/texto externo
+  // desde Apps Script. Solo las dos lecturas confirmadas se reintentan una vez.
+  // Guardados, ajustes, lotes y publicaciones nunca se repiten automaticamente.
+  if(req.method === "POST" && url.hostname === "script.google.com"){
+    event.respondWith(mv525FetchPartidas(req));
+    return;
+  }
+
+  if(req.method !== "GET") return;
   if(url.origin !== self.location.origin) return;
 
   if(req.mode === "navigate"){
@@ -117,8 +166,7 @@ self.addEventListener("fetch", event => {
     return;
   }
 
-  // V524: mantiene todas las rutas críticas de V523/V522C y añade solamente
-  // la resiliencia de Gestión de Actas. Red primero; caché como respaldo.
+  // V525 mantiene todas las rutas criticas de V524/V523/V522C.
   const rutaCritica =
     url.pathname.endsWith("/js/validacion_tecnica_datos_v430.js") ||
     url.pathname.endsWith("/js/vtr_gar_tecnico_filtros_v517d_f4s2.js") ||
