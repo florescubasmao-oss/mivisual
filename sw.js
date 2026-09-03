@@ -1,5 +1,5 @@
-/* MI VISUAL V527 - MAPA FAILED FETCH SEGURO + V526/V525/V524/V523/V522C */
-const MV339_CACHE = "mivisual-v527-mapa-failed-fetch-20260903-1";
+/* MI VISUAL V527B - GAR/VTR F4H2 SEGURO + V527/V526/V525/V524/V523/V522C */
+const MV339_CACHE = "mivisual-v527b-garvtr-f4h2-20260903-1";
 const MV517C19_BRIDGE = "./js/vtr_gar_ux_v517b.js?v=V520D-BONO-NO-APLICA-20260901-1";
 const MV525_PARTIDAS_LECTURAS = new Set([
   "listarPartidasV513",
@@ -40,7 +40,7 @@ const MV339_CORE = [
   "./js/vtr_gar_compacto_v517c12.js?v=V517C19-COMPACTO-ACCIONES-20260828-1",
   "./js/vtr_gar_regla_puntos_v517d.js?v=V517D-F4G-FRONT-20260829-1",
   "./js/vtr_gar_rendimiento_v517d_f4m.js?v=V517D-F4M-RENDIMIENTO-20260829-1",
-  "./js/vtr_gar_bono_correccion_v517d_f4h.js?v=V517D-F4H-BONO-CORRECCION-20260829-1",
+  "./js/vtr_gar_bono_correccion_v517d_f4h.js?v=V517D-F4H2-REGISTRO-REAL-20260903-1",
   "./js/vtr_gar_motivo_partida_visible_v517d_f4i.js?v=V517D-F4I-MOTIVO-PARTIDA-20260829-1",
   "./js/vtr_gar_dedup_atribucion_v517d_f4j.js?v=V517D-F4J-DEDUP-ATRIBUCION-20260829-1",
   "./js/vtr_gar_finalizadas_normales_v517d_f4l.js?v=V517D-F4L-FINALIZADAS-20260829-1",
@@ -135,7 +135,7 @@ self.addEventListener("fetch", event => {
   const req = event.request;
   const url = new URL(req.url);
 
-  // V525/V526/V527: Partidas V513 puede recibir ocasionalmente una pagina/texto
+  // V525/V526/V527/V527B: Partidas V513 puede recibir ocasionalmente una pagina/texto
   // externo desde Apps Script. Solo las dos lecturas confirmadas se reintentan
   // una vez. Guardados, ajustes, lotes y publicaciones NUNCA se repiten.
   if(req.method === "POST" && url.hostname === "script.google.com"){
@@ -166,11 +166,13 @@ self.addEventListener("fetch", event => {
     return;
   }
 
-  // V527 conserva todas las rutas criticas previas. mapa_progreso_v393.js
-  // permanece red-primero para que la proteccion Failed to fetch se refleje.
+  // V527B conserva todas las rutas criticas previas y agrega F4H2 como
+  // red-primero. Esto evita que una copia cacheada vuelva a inyectar BONO
+  // excepcional sobre un caso que sí tiene registro técnico real.
   const rutaCritica =
     url.pathname.endsWith("/js/validacion_tecnica_datos_v430.js") ||
     url.pathname.endsWith("/js/vtr_gar_tecnico_filtros_v517d_f4s2.js") ||
+    url.pathname.endsWith("/js/vtr_gar_bono_correccion_v517d_f4h.js") ||
     url.pathname.endsWith("/js/partidas_win_v513.js") ||
     url.pathname.endsWith("/js/partidas_lote_manual_v513c.js") ||
     url.pathname.endsWith("/js/mapa_operativo.js") ||
