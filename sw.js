@@ -1,5 +1,5 @@
-/* MI VISUAL V525 - PARTIDAS RESILIENTE + V524 ACTAS + V523 MAPA + V522C */
-const MV339_CACHE = "mivisual-v525-partidas-resiliente-20260903-1";
+/* MI VISUAL V526 - GUARDADO VISIBLE PARTIDAS + V525/V524/V523/V522C */
+const MV339_CACHE = "mivisual-v526-partidas-guardado-visible-20260903-1";
 const MV517C19_BRIDGE = "./js/vtr_gar_ux_v517b.js?v=V520D-BONO-NO-APLICA-20260901-1";
 const MV525_PARTIDAS_LECTURAS = new Set([
   "listarPartidasV513",
@@ -53,7 +53,7 @@ const MV339_CORE = [
   "./js/partidas_win_v505.js?v=V506-PARTIDAS-BASE",
   "./js/partidas_lote_v506.js?v=V506-LOTE",
   "./js/partidas_win_v513.js?v=V513E-EDITOR-CATALOGO-20260902",
-  "./js/partidas_lote_manual_v513c.js?v=V513C-LOTE-MANUAL-20260827",
+  "./js/partidas_lote_manual_v513c.js?v=V513C2-GUARDADO-SEGURO-20260903",
   "./js/partidas_snapshot_auto_v513d.js?v=V513D-SNAPSHOT-AUTO-20260827",
   "./js/dashboard_actualizacion_indicadores_v512b.js?v=V512E-DASHBOARD-PIE-20260827",
   "./js/estabilidad_ranking_validacion_v518a.js?v=V518B-20260831-1",
@@ -135,9 +135,9 @@ self.addEventListener("fetch", event => {
   const req = event.request;
   const url = new URL(req.url);
 
-  // V525: Partidas V513 puede recibir ocasionalmente una pagina/texto externo
-  // desde Apps Script. Solo las dos lecturas confirmadas se reintentan una vez.
-  // Guardados, ajustes, lotes y publicaciones nunca se repiten automaticamente.
+  // V525/V526: Partidas V513 puede recibir ocasionalmente una pagina/texto
+  // externo desde Apps Script. Solo las dos lecturas confirmadas se reintentan
+  // una vez. Guardados, ajustes, lotes y publicaciones NUNCA se repiten.
   if(req.method === "POST" && url.hostname === "script.google.com"){
     event.respondWith(mv525FetchPartidas(req));
     return;
@@ -166,11 +166,13 @@ self.addEventListener("fetch", event => {
     return;
   }
 
-  // V525 mantiene todas las rutas criticas de V524/V523/V522C.
+  // V526 mantiene todas las rutas criticas de V525/V524/V523/V522C y añade
+  // V513C2 para que el estado visible de guardado no quede atrapado en cache.
   const rutaCritica =
     url.pathname.endsWith("/js/validacion_tecnica_datos_v430.js") ||
     url.pathname.endsWith("/js/vtr_gar_tecnico_filtros_v517d_f4s2.js") ||
     url.pathname.endsWith("/js/partidas_win_v513.js") ||
+    url.pathname.endsWith("/js/partidas_lote_manual_v513c.js") ||
     url.pathname.endsWith("/js/mapa_operativo.js") ||
     url.pathname.endsWith("/js/mapa_progreso_v393.js") ||
     url.pathname.endsWith("/js/mapa_rapido_v395.js") ||
