@@ -1,9 +1,13 @@
 /* ============================================================
-   MI VISUAL V513C - LOTE MANUAL PARTIDAS
+   MI VISUAL V513C2 - LOTE MANUAL + GUARDADO SEGURO DEL EDITOR
    - Todas las propuestas IR/IC pueden marcarse manualmente.
    - Seleccionar todas solo toma CANDIDATA ALTA.
    - Ambigua / Partner / Observacion requieren seleccion expresa.
    - Una sola publicacion al finalizar el lote.
+   - Guardar Partida/Cuadrilla muestra estado de proceso y bloquea doble clic.
+   - Tras un guardado confirmado NO ejecuta una lectura adicional obligatoria.
+   - Si Apps Script pierde la respuesta de un guardado, verifica por lectura;
+     nunca repite automaticamente la escritura.
 ============================================================ */
 (function(){
   "use strict";
@@ -14,6 +18,8 @@
   let observador=null;
   let timer=null;
   let procesando=false;
+  let guardandoEditor=false;
+  let guardadoEditorInstalado=false;
 
   const norm=v=>String(v==null?"":v).toUpperCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"").replace(/\s+/g," ").trim();
   const esc=v=>String(v==null?"":v).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/\"/g,"&quot;").replace(/'/g,"&#039;");
@@ -32,6 +38,206 @@
     catch(_){ throw new Error("La API no devolvio una respuesta valida."); }
     if(!j||j.ok===false) throw new Error(j&&j.error?j.error:"No se pudo completar el lote.");
     return j;
+  }
+
+  /* ============================================================
+     V526 - ESTADO VISIBLE Y CONFIRMACION SEGURA DEL EDITOR
+     No cambia backend ni reglas V513. Solo controla la experiencia del
+     guardado manual y evita que una lectura posterior haga parecer fallido
+     un ajuste que el servidor ya confirmo.
+  ============================================================ */
+  function botonesEditor(){
+    const m=modal();
+    return {
+      partida:m?.querySelector('button[onclick="mv513GuardarPartida()"]')||null,
+      cuadrilla:m?.querySelector('button[onclick="mv513GuardarCuadrilla()"]')||null
+    };
+  }
+
+  function cajaEstadoEditor(){
+    const m=modal(); if(!m) return null;
+    let box=m.querySelector("[data-mv513c-estado-editor]");
+    if(box) return box;
+    const b=botonesEditor();
+    const fila=b.partida?.parentElement||b.cuadrilla?.parentElement;
+    if(!fila) return null;
+    box=document.createElement("div");
+    box.setAttribute("data-mv513c-estado-editor","");
+    box.style.cssText="display:none;margin-top:8px;padding:9px 10px;border-radius:9px;font-size:10px;font-weight:900;line-height:1.4";
+    fila.insertAdjacentElement("afterend",box);
+    return box;
+  }
+
+  function bloquearEditor(tipo,activo){
+    const bs=botonesEditor();
+    [bs.partida,bs.cuadrilla].forEach(b=>{
+      if(!b) return;
+      if(activo){
+        if(!b.dataset.mv513cTexto) b.dataset.mv513cTexto=b.textContent||"";
+        if(!b.dataset.mv513cDisabled) b.dataset.mv513cDisabled=b.disabled?"1":"0";
+        b.disabled=true;
+        b.style.opacity=".62";
+        b.style.cursor="wait";
+      }else{
+        b.disabled=b.dataset.mv513cDisabled==="1";
+        if(b.dataset.mv513cTexto) b.textContent=b.dataset.mv513cTexto;
+        b.style.opacity=b.disabled?".5":"1";
+        b.style.cursor=b.disabled?"not-allowed":"pointer";
+        delete b.dataset.mv513cTexto;
+        delete b.dataset.mv513cDisabled;
+      }
+    });
+    if(activo){
+      const objetivo=tipo==="cuadrilla"?bs.cuadrilla:bs.partida;
+      if(objetivo) objetivo.textContent=tipo==="cuadrilla"?"⏳ Guardando Cuadrilla...":"⏳ Guardando Partida...";
+    }
+  }
+
+  function mostrarEstadoEditor(tipo,mensaje){
+    const box=cajaEstadoEditor(); if(!box) return;
+    const estilos={
+      cargando:["#eff6ff","#1d4ed8","#93c5fd"],
+      verificando:["#fff7ed","#9a3412","#fdba74"],
+      ok:["#f0fdf4","#166534","#86efac"],
+      aviso:["#fffbeb","#92400e","#fcd34d"],
+      error:["#fef2f2","#991b1b","#fca5a5"]
+    }[tipo]||["#f8fafc","#475569","#cbd5e1"];
+    box.style.display="block";
+    box.style.background=estilos[0];
+    box.style.color=estilos[1];
+    box.style.border=`1px solid ${estilos[2]}`;
+    box.textContent=mensaje;
+  }
+
+  function respuestaIncierta(msg){
+    const t=norm(msg);
+    return t.includes("RESPUESTA VALIDA") || t.includes("NO DEVOLVIO") ||
+      t.includes("FAILED TO FETCH") || t.includes("NETWORK") ||
+      t.includes("LOAD FAILED") || t.includes("HTML");
+  }
+
+  function valorAjusteResultado(x,tipo){
+    if(!x) return "";
+    if(tipo==="cuadrilla") return x.ajusteCuadrilla?.cuadrillaEfectiva||x.cuadrillaEfectiva||x.cuadrillaWin||"";
+    return x.ajustePartida?.partidaPropuesta||x.partidaEfectiva||x.partidaWin||"";
+  }
+
+  async function verificarGuardado(tipo,ordenId,esperado){
+    const r=await apiPost({accion:"buscarOrdenPartidasV513",usuario:usuario(),periodo:periodo(),busqueda:String(ordenId)});
+    const lista=Array.isArray(r?.resultados)?r.resultados:[];
+    const x=lista.find(v=>String(v.ordenId)===String(ordenId))||lista[0]||null;
+    return norm(valorAjusteResultado(x,tipo))===norm(esperado);
+  }
+
+  function envolverGuardado(base,tipo){
+    if(typeof base!=="function") return base;
+    if(base.__mv513cGuardadoSeguro) return base;
+    const f=async function(){
+      if(guardandoEditor) return;
+
+      const esperado=tipo==="cuadrilla"
+        ? (document.querySelector("[data-mv513-cuadrilla]")?.value||"")
+        : (document.querySelector("[data-mv513-partida]")?.value||"");
+      let ordenId="";
+      let aceptado=false;
+      let exito="";
+      let errorGuardado="";
+
+      const alertBase=window.alert;
+      const confirmBase=window.confirm;
+      const buscarBase=window.mv513BuscarOrden;
+
+      window.confirm=function(msg){
+        const texto=String(msg||"");
+        const m=texto.match(/Orden\s+([^\s\n]+)/i);
+        if(m) ordenId=String(m[1]||"").trim();
+        const ok=confirmBase.call(window,msg);
+        if(ok){
+          aceptado=true;
+          guardandoEditor=true;
+          bloquearEditor(tipo,true);
+          mostrarEstadoEditor("cargando",tipo==="cuadrilla"?"⏳ Guardando cuadrilla efectiva. No cierre esta ventana...":"⏳ Guardando partida efectiva y actualizando los indicadores relacionados. No cierre esta ventana...");
+        }
+        return ok;
+      };
+
+      window.alert=function(msg){
+        const texto=String(msg||"");
+        if(tipo==="partida" && texto.startsWith("✅ Partida guardada")){exito=texto;return;}
+        if(tipo==="cuadrilla" && texto.startsWith("✅ Cuadrilla efectiva guardada")){exito=texto;return;}
+        if(tipo==="partida" && texto.startsWith("No se pudo guardar Partida:")){errorGuardado=texto;return;}
+        if(tipo==="cuadrilla" && texto.startsWith("No se pudo guardar Cuadrilla:")){errorGuardado=texto;return;}
+        return alertBase.call(window,msg);
+      };
+
+      // El guardado base ya fue confirmado por el backend. Evitamos que su
+      // lectura inmediata posterior convierta un guardado exitoso en un falso error.
+      if(typeof buscarBase==="function") window.mv513BuscarOrden=async function(){ return null; };
+
+      try{
+        await base.apply(this,arguments);
+      }finally{
+        window.alert=alertBase;
+        window.confirm=confirmBase;
+        if(typeof buscarBase==="function") window.mv513BuscarOrden=buscarBase;
+      }
+
+      if(!aceptado){
+        guardandoEditor=false;
+        bloquearEditor(tipo,false);
+        return;
+      }
+
+      if(exito){
+        guardandoEditor=false;
+        bloquearEditor(tipo,false);
+        const detalle=tipo==="cuadrilla"?"Cuadrilla efectiva guardada correctamente.":"Partida efectiva guardada correctamente.";
+        mostrarEstadoEditor("ok",`✅ ${detalle} Orden ${ordenId||"confirmada"}. El historial quedó registrado.`);
+        alertBase.call(window,exito+"\n\n✅ Registro confirmado.");
+        return;
+      }
+
+      if(errorGuardado && respuestaIncierta(errorGuardado) && ordenId && esperado){
+        mostrarEstadoEditor("verificando","🔎 Google no confirmó la respuesta. MI VISUAL está verificando si el ajuste quedó registrado; no se repetirá el guardado.");
+        try{
+          const confirmado=await verificarGuardado(tipo,ordenId,esperado);
+          guardandoEditor=false;
+          bloquearEditor(tipo,false);
+          if(confirmado){
+            mostrarEstadoEditor("ok",`✅ Ajuste verificado. Orden ${ordenId}: ${tipo==="cuadrilla"?"cuadrilla":"partida"} guardada correctamente.`);
+            alertBase.call(window,`✅ ${tipo==="cuadrilla"?"Cuadrilla":"Partida"} guardada y verificada\n\nOrden ${ordenId}\nEl ajuste ya está registrado. No vuelva a guardarlo.`);
+          }else{
+            mostrarEstadoEditor("aviso","⚠️ No se pudo confirmar automáticamente el ajuste. MI VISUAL no volvió a enviar el guardado para evitar duplicados. Pulse Buscar y verifique la orden antes de intentar nuevamente.");
+            alertBase.call(window,"⚠️ No se pudo confirmar si el ajuste quedó registrado.\n\nNo se repitió el guardado. Busque nuevamente la orden y verifique antes de volver a guardar.");
+          }
+          return;
+        }catch(_){
+          guardandoEditor=false;
+          bloquearEditor(tipo,false);
+          mostrarEstadoEditor("aviso","⚠️ No se pudo verificar el resultado del guardado por una falla temporal de Google. No se repitió la escritura. Busque nuevamente la orden antes de guardar otra vez.");
+          alertBase.call(window,"⚠️ Google no permitió verificar el guardado.\n\nNo se repitió la escritura. Busque nuevamente la orden antes de volver a guardar.");
+          return;
+        }
+      }
+
+      guardandoEditor=false;
+      bloquearEditor(tipo,false);
+      if(errorGuardado){
+        mostrarEstadoEditor("error",errorGuardado);
+        alertBase.call(window,errorGuardado);
+      }
+    };
+    f.__mv513cGuardadoSeguro=true;
+    f.__base=base;
+    return f;
+  }
+
+  function instalarGuardadoEditor(){
+    if(guardadoEditorInstalado) return;
+    if(typeof window.mv513GuardarPartida!=="function" || typeof window.mv513GuardarCuadrilla!=="function") return;
+    window.mv513GuardarPartida=envolverGuardado(window.mv513GuardarPartida,"partida");
+    window.mv513GuardarCuadrilla=envolverGuardado(window.mv513GuardarCuadrilla,"cuadrilla");
+    guardadoEditorInstalado=true;
   }
 
   function categoria(card){
@@ -125,6 +331,7 @@
   }
 
   function instalar(){
+    instalarGuardadoEditor();
     if(!modal()){ seleccion.clear(); return; }
     ocultarLoteNativo();
     insertarToolbar();
@@ -190,6 +397,7 @@
 
   function iniciar(){
     if(observador) return;
+    instalarGuardadoEditor();
     observador=new MutationObserver(()=>{
       clearTimeout(timer);timer=setTimeout(instalar,80);
     });
