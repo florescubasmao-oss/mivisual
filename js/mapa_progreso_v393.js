@@ -1,15 +1,17 @@
 /* ============================================================
-   MI VISUAL V393 / V523 - Mapa Operativo: avance de registro
+   MI VISUAL V393 / V527 - Mapa Operativo: avance de registro
    - No cambia importarMapaOperativo ni la estructura enviada.
    - Muestra etapas reales: preparación -> servidor -> filtros.
    - Cronómetro visible durante el registro.
    - Conserva validación V386 de cuadrillas P#.
    - Conserva V518.2: reconoce la confirmación real del backend sin esperar
      la recarga posterior de catálogos/filtros.
-   - V523: si Google/Apps Script devuelve HTML o texto anómalo, nunca lo
-     muestra completo. Conserva el Excel leído, consulta la última
-     actualización por GET seguro y permite reintentar sin hacer un segundo
-     POST automático.
+   - Conserva V523: HTML/texto anómalo nunca se muestra completo.
+   - V527: "Failed to fetch" y fallas de transporte se consideran respuesta
+     incierta de una ESCRITURA. MI VISUAL NO repite el POST. Consulta por GET
+     la última actualización y, si el sello corresponde temporalmente a la
+     carga actual, confirma el registro y permite continuar V512. Si no puede
+     demostrarlo, conserva el Excel y deja la carga pendiente de verificación.
 ============================================================ */
 (function(){
   "use strict";
@@ -34,6 +36,7 @@
       }
       .mv393-map-progress.is-visible{display:block}
       .mv393-map-progress.is-ok{border-color:#86efac;background:#f0fdf4}
+      .mv393-map-progress.is-warning{border-color:#fcd34d;background:#fffbeb}
       .mv393-map-progress.is-error{border-color:#fca5a5;background:#fef2f2}
       .mv393-map-progress-head{
         display:flex;justify-content:space-between;gap:10px;align-items:center;
@@ -53,6 +56,9 @@
       }
       .mv393-map-progress.is-ok .mv393-map-progress-fill{
         width:100%!important;background:#16a34a;animation:none;
+      }
+      .mv393-map-progress.is-warning .mv393-map-progress-fill{
+        width:100%!important;background:#d97706;animation:none;
       }
       .mv393-map-progress.is-error .mv393-map-progress-fill{
         width:100%!important;background:#dc2626;animation:none;
@@ -101,7 +107,7 @@
   function estado(etapa,detalle,ancho){
     const p=panel(); if(!p) return;
     p.classList.add("is-visible");
-    p.classList.remove("is-ok","is-error");
+    p.classList.remove("is-ok","is-warning","is-error");
 
     const e=document.getElementById("mv393MapaEtapa");
     const d=document.getElementById("mv393MapaDetalle");
@@ -120,6 +126,7 @@
   }
 
   function texto(v){ return String(v==null?"":v).trim(); }
+  function dormir(ms){ return new Promise(r=>setTimeout(r,ms)); }
 
   function pareceHtml(v){
     const t=texto(v).slice(0,1200).toLowerCase();
@@ -129,12 +136,47 @@
       t.includes("window[\"_ppconfig\"]");
   }
 
+  function esFalloTransporte(v){
+    const t=texto(v).toLowerCase();
+    return t.includes("failed to fetch") ||
+      t.includes("networkerror") ||
+      t.includes("network error") ||
+      t.includes("load failed") ||
+      t.includes("fetch failed") ||
+      t.includes("the network connection was lost") ||
+      t.includes("connection reset") ||
+      t.includes("err_network") ||
+      t.includes("err_connection");
+  }
+
+  function respuestaIncierta(v){
+    return pareceHtml(v) || esFalloTransporte(v) ||
+      /no se recibi[oó] la confirmaci[oó]n/i.test(texto(v));
+  }
+
   function mensajeBreveError(error){
     const t=texto(error&&error.message?error.message:error);
     if(!t) return "Revise la conexión e intente nuevamente.";
     if(pareceHtml(t)) return "Google devolvió una respuesta temporal en lugar de la confirmación de MI VISUAL.";
+    if(esFalloTransporte(t)) return "La conexión con Google se interrumpió después de enviar la información.";
     if(t.length>500) return t.slice(0,500)+"…";
     return t;
+  }
+
+  function fechaSelloMs(sello){
+    const t=texto(sello);
+    if(!t) return 0;
+    let m=t.match(/(\d{1,2})\/(\d{1,2})\/(\d{4})[^\d]+(\d{1,2}):(\d{2})(?::(\d{2}))?/);
+    if(m){
+      const d=new Date(Number(m[3]),Number(m[2])-1,Number(m[1]),Number(m[4]),Number(m[5]),Number(m[6]||0));
+      return Number.isNaN(d.getTime())?0:d.getTime();
+    }
+    m=t.match(/(\d{4})-(\d{2})-(\d{2})[^\d]+(\d{1,2}):(\d{2})(?::(\d{2}))?/);
+    if(m){
+      const d=new Date(Number(m[1]),Number(m[2])-1,Number(m[3]),Number(m[4]),Number(m[5]),Number(m[6]||0));
+      return Number.isNaN(d.getTime())?0:d.getTime();
+    }
+    return 0;
   }
 
   async function ultimaActualizacionSegura(){
@@ -154,11 +196,61 @@
     }
   }
 
+  async function ultimaActualizacionConReintento(){
+    let sello=await ultimaActualizacionSegura();
+    if(sello) return sello;
+    await dormir(900);
+    return ultimaActualizacionSegura();
+  }
+
   function pintarMensajeSeguro(detalle){
     const msg=document.getElementById("moImportMsg");
     if(!msg) return;
     msg.className="mo-msg mo-error";
     msg.textContent=detalle;
+  }
+
+  function pintarMensajeAviso(detalle){
+    const msg=document.getElementById("moImportMsg");
+    if(!msg) return;
+    msg.className="mo-msg";
+    msg.textContent=detalle;
+  }
+
+  function pintarMensajeOk(detalle){
+    const msg=document.getElementById("moImportMsg");
+    if(!msg) return;
+    msg.className="mo-msg mo-ok";
+    msg.textContent=detalle;
+  }
+
+  async function resolverRespuestaIncierta(inicio,total,p){
+    estado(
+      "Verificando confirmación del registro",
+      `La conexión se interrumpió después de enviar ${total} registros. MI VISUAL verificará la última actualización sin repetir la escritura.`,
+      "86%"
+    );
+
+    const sello=await ultimaActualizacionConReintento();
+    const selloMs=fechaSelloMs(sello);
+    const correspondeCarga=!!selloMs && selloMs >= (inicio-5000);
+
+    if(correspondeCarga){
+      const detalle=`✅ Registro confirmado por última actualización (${sello}). Los ${total} registros fueron recibidos; los indicadores pueden continuar su sincronización normal.`;
+      pintarMensajeOk(detalle);
+      estado("3 de 3 · Registro confirmado",detalle,"100%");
+      if(p){p.classList.remove("is-warning","is-error");p.classList.add("is-ok");}
+      return {confirmado:true,sello:sello};
+    }
+
+    const detalle="La comunicación con Google se interrumpió después de enviar la información. MI VISUAL no repetirá automáticamente el registro para evitar duplicidades."+
+      (sello?` Última actualización detectada: ${sello}.`:" No fue posible consultar la última actualización en este momento.")+
+      " Vuelva al mapa y verifique la fecha. Si no corresponde a esta carga, puede presionar Registrar información nuevamente; el Excel leído se conserva.";
+
+    pintarMensajeAviso(detalle);
+    estado("Registro pendiente de confirmación",detalle,"100%");
+    if(p){p.classList.remove("is-ok","is-error");p.classList.add("is-warning");}
+    return {confirmado:false,sello:sello};
   }
 
   async function registrarV393(){
@@ -227,8 +319,20 @@
         if(p)p.classList.add("is-ok");
       }else{
         const mensaje=document.getElementById("moImportMsg");
-        const detalle=mensajeBreveError(mensaje?.textContent||"Revise el mensaje mostrado y vuelva a intentar.");
-        if(mensaje && pareceHtml(mensaje.textContent||"")) pintarMensajeSeguro(detalle);
+        const original=texto(mensaje?.textContent||"");
+
+        // V527: el flujo base puede capturar Failed to fetch y dejarlo solamente
+        // en moImportMsg, sin lanzar excepción. También se verifica este camino.
+        if(respuestaIncierta(original)){
+          const verificacion=await resolverRespuestaIncierta(inicio,total,p);
+          if(verificacion.confirmado){
+            return resultado || {ok:true,confirmadoPorSello:true,ultimaActualizacionTexto:verificacion.sello};
+          }
+          return resultado;
+        }
+
+        const detalle=mensajeBreveError(original||"Revise el mensaje mostrado y vuelva a intentar.");
+        if(mensaje && pareceHtml(original)) pintarMensajeSeguro(detalle);
         estado("Registro no completado",detalle,"100%");
         if(p)p.classList.add("is-error");
       }
@@ -248,25 +352,20 @@
       }
 
       const original=texto(error&&error.message?error.message:error);
-      let detalle=mensajeBreveError(error);
 
-      // V523: una página HTML de Google no debe aparecer en pantalla. Además,
-      // como el POST pudo haberse ejecutado aunque la respuesta se haya perdido,
-      // NO se repite automáticamente la escritura. Se consulta únicamente el
-      // sello del mapa por GET seguro y se conserva moImportacion para reintento.
-      if(pareceHtml(original)){
-        const sello=await ultimaActualizacionSegura();
-        detalle="Google no confirmó la respuesta del registro. MI VISUAL no repetirá la carga automáticamente para evitar duplicar una escritura que pudo haberse completado."+
-          (sello?` Última actualización detectada: ${sello}.`:"")+
-          " Vuelva al mapa para verificar. Si la fecha no corresponde a esta carga, presione Registrar información nuevamente; el Excel leído se conserva.";
+      // V527: Failed to fetch / HTML / pérdida de confirmación son estados
+      // inciertos de escritura. Nunca se hace un segundo POST automático.
+      if(respuestaIncierta(original)){
+        const verificacion=await resolverRespuestaIncierta(inicio,total,p);
+        if(verificacion.confirmado){
+          return {ok:true,confirmadoPorSello:true,ultimaActualizacionTexto:verificacion.sello};
+        }
+        return;
       }
 
+      const detalle=mensajeBreveError(error);
       pintarMensajeSeguro(detalle);
-      estado(
-        pareceHtml(original)?"Registro pendiente de confirmación":"No se pudo completar el registro",
-        detalle,
-        "100%"
-      );
+      estado("No se pudo completar el registro",detalle,"100%");
       if(p)p.classList.add("is-error");
       const seguro=new Error(detalle);
       seguro.name="MapaOperativoRespuestaSegura";
@@ -282,10 +381,12 @@
   registrarV393.__mv393=true;
   registrarV393.__mv5182=true;
   registrarV393.__mv523=true;
+  registrarV393.__mv527=true;
   registrarV393.__original=registrarBase;
   window.moRegistrarImportacion=registrarV393;
   try{moRegistrarImportacion=registrarV393}catch(_){}
 
   window.MV393_MAPA_PROGRESO_OK=true;
   window.MV523_MAPA_RESPUESTA_SEGURA_OK=true;
+  window.MV527_MAPA_FAILED_FETCH_OK=true;
 })();
