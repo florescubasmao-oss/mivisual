@@ -1,5 +1,5 @@
-/* MI VISUAL V523 - MAPA RESPUESTA SEGURA + V522C */
-const MV339_CACHE = "mivisual-v523-mapa-respuesta-segura-20260902-1";
+/* MI VISUAL V524 - ACTAS RESILIENTE + V523 MAPA + V522C */
+const MV339_CACHE = "mivisual-v524-actas-resiliente-20260902-1";
 const MV517C19_BRIDGE = "./js/vtr_gar_ux_v517b.js?v=V520D-BONO-NO-APLICA-20260901-1";
 const MV339_CORE = [
   "./",
@@ -117,17 +117,16 @@ self.addEventListener("fetch", event => {
     return;
   }
 
-  // V523: piezas operativas donde una versión antigua en caché puede dejar
-  // la UI en un estado incoherente. Red primero; caché solo como respaldo.
-  // Se mantienen las rutas críticas V522C y se añaden únicamente las tres
-  // capas del Mapa Operativo que controlan importación, progreso y caché.
+  // V524: mantiene todas las rutas críticas de V523/V522C y añade solamente
+  // la resiliencia de Gestión de Actas. Red primero; caché como respaldo.
   const rutaCritica =
     url.pathname.endsWith("/js/validacion_tecnica_datos_v430.js") ||
     url.pathname.endsWith("/js/vtr_gar_tecnico_filtros_v517d_f4s2.js") ||
     url.pathname.endsWith("/js/partidas_win_v513.js") ||
     url.pathname.endsWith("/js/mapa_operativo.js") ||
     url.pathname.endsWith("/js/mapa_progreso_v393.js") ||
-    url.pathname.endsWith("/js/mapa_rapido_v395.js");
+    url.pathname.endsWith("/js/mapa_rapido_v395.js") ||
+    url.pathname.endsWith("/js/actas_api_resiliente_v392.js");
 
   if(rutaCritica){
     event.respondWith(
