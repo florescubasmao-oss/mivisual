@@ -1,6 +1,6 @@
 /* ============================================================
-   MI VISUAL V522B - TECNICO INTEGRADO ESTABLE
-   02/09/2026
+   MI VISUAL V529 - TECNICO INTEGRADO ESTABLE + SELECCION V430
+   04/09/2026
 
    SOLO FRONTEND / SOLO PERFIL TECNICO
    - Conserva filtros: Todos / Recableado / GAR / VTR / Otro.
@@ -10,6 +10,8 @@
    - Respeta los tres estados V430: VALIDADO, MANUAL y MANUAL_TICKET.
    - Si una capa anterior intenta volver a restringir el formulario a
      RECABLEADO, esta estabilizacion recupera el estado visible de V430.
+   - V529: refuerza la seleccion de resultados V430 en movil/desktop mediante
+     listener delegado; evita depender solo del onclick inline de cada tarjeta.
    - No toca backend, permisos, Sheets, Produccion, Ranking ni otros perfiles.
 ============================================================ */
 (function(){
@@ -149,6 +151,48 @@
     }
   }
 
+  /*
+    V529 - selección robusta de una atención V430 para TECNICO.
+
+    El buscador V430 sí devuelve correctamente los candidatos. El problema
+    reportado ocurre al tocar una tarjeta: en algunos navegadores móviles el
+    onclick inline del DIV puede quedar absorbido por las capas/observadores
+    de la vista integrada. Este delegado actúa en fase de captura, llama a la
+    misma función oficial V430 y no duplica ninguna regla ni dato.
+  */
+  function seleccionarCandidatoV430Tecnico(ev){
+    if(!esTecnico()) return false;
+    const target=ev&&ev.target;
+    const candidato=target&&target.closest?target.closest("#vt430Resultados .vt430-candidato"):null;
+    if(!candidato) return false;
+    if(typeof window.vt430SeleccionarCandidato!=="function") return false;
+
+    const lista=Array.from(document.querySelectorAll("#vt430Resultados .vt430-candidato"));
+    const indice=lista.indexOf(candidato);
+    if(indice<0) return false;
+
+    // Impide que el onclick inline vuelva a ejecutar la misma selección.
+    if(ev){
+      try{ev.preventDefault();}catch(_){}
+      try{ev.stopPropagation();}catch(_){}
+    }
+
+    try{
+      window.vt430SeleccionarCandidato(indice);
+      setTimeout(function(){
+        fijarFormularioTecnico();
+        const tipo=document.getElementById("vtTipoTicket");
+        if(tipo && typeof tipo.scrollIntoView==="function"){
+          try{tipo.scrollIntoView({behavior:"smooth",block:"center"});}catch(_){try{tipo.scrollIntoView();}catch(__){}}
+        }
+      },35);
+      return true;
+    }catch(error){
+      console.error("MI VISUAL V529 - selección V430",error);
+      return false;
+    }
+  }
+
   let timer=null;
   function programar(){
     clearTimeout(timer);
@@ -160,7 +204,12 @@
     obs.observe(document.body,{childList:true,subtree:true});
   }
 
-  document.addEventListener("click",function(){ if(esTecnico()) setTimeout(fijar,40); },true);
+  document.addEventListener("click",function(ev){
+    if(!esTecnico()) return;
+    if(seleccionarCandidatoV430Tecnico(ev)) return;
+    setTimeout(fijar,40);
+  },true);
+
   document.addEventListener("change",function(ev){
     if(!esTecnico()) return;
     if(ev.target && ev.target.id==="vtTipoTicket") setTimeout(fijarFormularioTecnico,0);
@@ -169,5 +218,5 @@
   [0,100,300,700,1400,2500].forEach(function(ms){setTimeout(fijar,ms);});
   setInterval(fijar,1500);
 
-  console.log("MI VISUAL V522B: filtros y formulario integrado del Tecnico estabilizados.");
+  console.log("MI VISUAL V529: filtros, formulario y selección V430 del Técnico estabilizados.");
 })();
