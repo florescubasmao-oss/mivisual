@@ -1,16 +1,17 @@
 /* ============================================================
-   MI VISUAL V522B - TECNICO INTEGRADO ESTABLE
-   02/09/2026
+   MI VISUAL V529A - TECNICO INTEGRADO ESTABLE / EVENTOS MOVIL
+   04/09/2026
 
-   SOLO FRONTEND / SOLO PERFIL TECNICO
-   - Conserva filtros: Todos / Recableado / GAR / VTR / Otro.
-   - Conserva el alcance por usuario/cuadrilla de F4S.
-   - En la vista integrada RECABLEADOS GAR-VTR mantiene disponibles
-     AT-, VTEXT-, GAR-, VTR- y NO APLICA para el registro del Tecnico.
-   - Respeta los tres estados V430: VALIDADO, MANUAL y MANUAL_TICKET.
-   - Si una capa anterior intenta volver a restringir el formulario a
-     RECABLEADO, esta estabilizacion recupera el estado visible de V430.
-   - No toca backend, permisos, Sheets, Produccion, Ranking ni otros perfiles.
+   ALCANCE: SOLO PERFIL TECNICO / SOLO FRONTEND.
+   - Conserva los filtros Todos / Recableado / GAR / VTR / Otro.
+   - Conserva AT-, VTEXT-, GAR-, VTR- y NO APLICA.
+   - Respeta VALIDADO, MANUAL y MANUAL_TICKET de V430.
+   - Evita el toque fantasma que puede activar Ingreso manual al cerrar
+     el teclado movil despues de Buscar/Enter.
+   - Refuerza la seleccion de un candidato usando la funcion oficial V430.
+   - Reduce interferencia: sin setInterval y sin observar todo document.body;
+     solo observa cambios dentro de #pantalla y no reconstruye el formulario.
+   - No toca API, backend, permisos, Sheets, Produccion, Ranking ni otros perfiles.
 ============================================================ */
 (function(){
   "use strict";
@@ -18,6 +19,8 @@
   window.MV517D_F4S2_FILTROS_TECNICO_OK=true;
 
   const TIPOS_TICKET=["AT-","VTEXT-","GAR-","VTR-","NO APLICA"];
+  let timer=null;
+  let ultimaAccion={tipo:"",ts:0};
 
   function norm(v){
     return String(v==null?"":v).toUpperCase().normalize("NFD")
@@ -27,25 +30,25 @@
   function esTecnico(){
     return norm(localStorage.getItem("perfil")||"")==="TECNICO";
   }
+  function marcar(tipo){
+    ultimaAccion={tipo:String(tipo||""),ts:Date.now()};
+  }
 
   function desbloquearSelect(el){
     if(!el) return;
     el.disabled=false;
     el.classList.remove("vt430-locked");
   }
-
   function desbloquearInput(el){
     if(!el) return;
     el.readOnly=false;
     el.classList.remove("vt430-locked");
   }
-
   function bloquearSelect(el){
     if(!el) return;
     el.disabled=true;
     el.classList.add("vt430-locked");
   }
-
   function bloquearInput(el){
     if(!el) return;
     el.readOnly=true;
@@ -54,14 +57,10 @@
 
   function fijarFormularioTecnico(){
     if(!esTecnico()) return;
-
     const buscador=document.getElementById("vt430Busqueda");
     const select=document.getElementById("vtTipoTicket");
     if(!buscador || !select) return;
 
-    // F4S integra Recableado + GAR + VTR para el Tecnico. V488 conserva
-    // rutas separadas para otros perfiles, por eso aqui se corrige solo
-    // la vista del Tecnico y no se modifica la regla general del portal.
     Array.from(select.options||[]).forEach(function(op){
       if(TIPOS_TICKET.includes(String(op.value||""))){
         op.hidden=false;
@@ -70,13 +69,12 @@
     });
 
     const resultado=document.getElementById("vt430Resultados");
-    const estadoVisible=norm(resultado && resultado.textContent || "");
+    const estadoVisible=norm(resultado&&resultado.textContent||"");
     const numero=document.getElementById("vtNumeroTicket");
     const codigo=document.getElementById("vtCodigo");
     const dni=document.getElementById("vtDniCliente");
 
-    // MANUAL: todos los campos originales del registro quedan editables.
-    if(estadoVisible.indexOf("INGRESO MANUAL HABILITADO")>=0){
+    if(estadoVisible.includes("INGRESO MANUAL HABILITADO")){
       desbloquearSelect(select);
       desbloquearInput(numero);
       desbloquearInput(codigo);
@@ -84,8 +82,7 @@
       return;
     }
 
-    // MANUAL_TICKET: identidad validada; solo Tipo/Nro. ticket se editan.
-    if(estadoVisible.indexOf("CLIENTE Y CODIGO VALIDADOS")>=0){
+    if(estadoVisible.includes("CLIENTE Y CODIGO VALIDADOS")){
       desbloquearSelect(select);
       desbloquearInput(numero);
       bloquearInput(codigo);
@@ -93,16 +90,14 @@
       return;
     }
 
-    // VALIDADO: si V488 intento devolver el selector a AT-, recupera el
-    // prefijo realmente elegido por V430 y mantiene los datos bloqueados.
-    if(estadoVisible.indexOf("ATENCION VALIDADA POR MI VISUAL")>=0){
+    if(estadoVisible.includes("ATENCION VALIDADA POR MI VISUAL")){
       const match=estadoVisible.match(/\b(VTEXT|GAR|VTR|AT)-/);
       if(match){
         const valor=match[1]+"-";
-        if(TIPOS_TICKET.includes(valor) && select.value!==valor){
+        if(TIPOS_TICKET.includes(valor)&&select.value!==valor){
           select.value=valor;
           if(typeof window.actualizarTipoValidacionPorTicket==="function"){
-            try{ window.actualizarTipoValidacionPorTicket(); }catch(_){}
+            try{window.actualizarTipoValidacionPorTicket();}catch(_){}
           }
         }
       }
@@ -113,22 +108,18 @@
     }
   }
 
-  function fijar(){
+  function fijarFiltros(){
     if(!esTecnico()) return;
-    const hist=document.getElementById("vtHistorial");
-    const tipo=document.getElementById("vtFiltroTipo");
     const sede=document.getElementById("vtFiltroSede");
-
     if(sede) sede.remove();
 
+    const tipo=document.getElementById("vtFiltroTipo");
     if(tipo){
       const actual=tipo.value||"";
-      const valores=Array.from(tipo.options||[]).map(function(o){return String(o.value||"");});
-      const textoPrimero=tipo.options&&tipo.options.length?norm(tipo.options[0].textContent||""):"";
-      const correcto=valores.length===5 &&
-        valores[0]==="" && valores[1]==="RECABLEADO" && valores[2]==="GAR" &&
-        valores[3]==="VTR" && valores[4]==="OTRO" && textoPrimero==="TODOS MIS REGISTROS";
-
+      const valores=Array.from(tipo.options||[]).map(o=>String(o.value||""));
+      const correcto=valores.length===5&&
+        valores[0]===""&&valores[1]==="RECABLEADO"&&valores[2]==="GAR"&&
+        valores[3]==="VTR"&&valores[4]==="OTRO";
       if(!correcto){
         tipo.innerHTML='<option value="">Todos mis registros</option>'+
           '<option value="RECABLEADO">Recableado</option>'+
@@ -141,33 +132,100 @@
 
     const buscar=document.getElementById("vtBuscarCodigo");
     if(buscar) buscar.placeholder="🔍 Buscar por código, DNI o ticket";
-
     fijarFormularioTecnico();
-
-    if(hist && hist.dataset.mv517dF4s!=="1" && typeof window.renderHistorialValidacionLocal==="function"){
-      try{ window.renderHistorialValidacionLocal(); }catch(_){}
-    }
   }
 
-  let timer=null;
-  function programar(){
+  function programar(ms){
     clearTimeout(timer);
-    timer=setTimeout(fijar,20);
+    timer=setTimeout(fijarFiltros,ms==null?25:ms);
   }
 
-  if(document.body){
-    const obs=new MutationObserver(function(){ if(esTecnico()) programar(); });
-    obs.observe(document.body,{childList:true,subtree:true});
+  function cancelarEvento(ev){
+    try{ev.preventDefault();}catch(_){}
+    try{ev.stopPropagation();}catch(_){}
+    try{ev.stopImmediatePropagation();}catch(_){}
   }
 
-  document.addEventListener("click",function(){ if(esTecnico()) setTimeout(fijar,40); },true);
-  document.addEventListener("change",function(ev){
+  function esBotonBuscar(el){
+    return !!(el&&el.closest&&el.closest("#vt430Busqueda button[onclick*='vt430BuscarDatos']"));
+  }
+  function esBotonManual(el){
+    return !!(el&&el.closest&&el.closest("#vt430Busqueda button[onclick*='vt430ActivarManual']"));
+  }
+
+  document.addEventListener("pointerdown",function(ev){
     if(!esTecnico()) return;
-    if(ev.target && ev.target.id==="vtTipoTicket") setTimeout(fijarFormularioTecnico,0);
+    if(esBotonBuscar(ev.target)) marcar("BUSCAR");
+    else if(esBotonManual(ev.target)) marcar("MANUAL");
+    else if(ev.target&&ev.target.closest&&ev.target.closest("#vt430Resultados .vt430-candidato")) marcar("CANDIDATO");
   },true);
 
-  [0,100,300,700,1400,2500].forEach(function(ms){setTimeout(fijar,ms);});
-  setInterval(fijar,1500);
+  document.addEventListener("keydown",function(ev){
+    if(!esTecnico()) return;
+    if(ev.key==="Enter"&&ev.target&&ev.target.id==="vt430Consulta"){
+      marcar("BUSCAR");
+    }
+  },true);
 
-  console.log("MI VISUAL V522B: filtros y formulario integrado del Tecnico estabilizados.");
+  document.addEventListener("click",function(ev){
+    if(!esTecnico()) return;
+
+    const manual=ev.target&&ev.target.closest?ev.target.closest("#vt430Busqueda button[onclick*='vt430ActivarManual']"):null;
+    if(manual){
+      const reciente=Date.now()-Number(ultimaAccion.ts||0)<1200;
+      // Si el ultimo gesto real fue Buscar/Enter, un click sintetico que cae
+      // sobre Manual al cerrarse el teclado no puede cambiar el estado V430.
+      if(reciente&&ultimaAccion.tipo!=="MANUAL"){
+        cancelarEvento(ev);
+        return;
+      }
+      // Toque real sobre Manual: se deja pasar al onclick oficial de V430.
+      programar(50);
+      return;
+    }
+
+    const candidato=ev.target&&ev.target.closest?ev.target.closest("#vt430Resultados .vt430-candidato"):null;
+    if(candidato&&typeof window.vt430SeleccionarCandidato==="function"){
+      const lista=Array.from(document.querySelectorAll("#vt430Resultados .vt430-candidato"));
+      const indice=lista.indexOf(candidato);
+      if(indice>=0){
+        cancelarEvento(ev);
+        try{window.vt430SeleccionarCandidato(indice);}catch(error){console.error("V529A seleccionar V430",error);}
+        setTimeout(function(){
+          fijarFormularioTecnico();
+          const tipo=document.getElementById("vtTipoTicket");
+          if(tipo&&typeof tipo.scrollIntoView==="function"){
+            try{tipo.scrollIntoView({behavior:"smooth",block:"center"});}catch(_){}
+          }
+        },40);
+        return;
+      }
+    }
+
+    programar(45);
+  },true);
+
+  document.addEventListener("change",function(ev){
+    if(!esTecnico()) return;
+    if(ev.target&&ev.target.id==="vtTipoTicket") programar(0);
+  },true);
+
+  function observarPantalla(){
+    const raiz=document.getElementById("pantalla");
+    if(!raiz||raiz.dataset.mv529aObs==="1") return;
+    raiz.dataset.mv529aObs="1";
+    const obs=new MutationObserver(function(){
+      if(esTecnico()) programar(30);
+    });
+    obs.observe(raiz,{childList:true,subtree:true});
+  }
+
+  if(document.readyState==="loading"){
+    document.addEventListener("DOMContentLoaded",function(){observarPantalla();programar(0);},{once:true});
+  }else{
+    observarPantalla();
+    programar(0);
+  }
+
+  console.log("MI VISUAL V529A: eventos moviles V430 estabilizados sin capas repetitivas.");
 })();
