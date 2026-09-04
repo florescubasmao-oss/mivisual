@@ -1,13 +1,13 @@
 /* ============================================================
-   MI VISUAL V529A - TECNICO INTEGRADO ESTABLE / EVENTOS MOVIL
+   MI VISUAL V529B - TECNICO INTEGRADO ESTABLE / EVENTOS MOVIL
    04/09/2026
 
    ALCANCE: SOLO PERFIL TECNICO / SOLO FRONTEND.
    - Conserva los filtros Todos / Recableado / GAR / VTR / Otro.
    - Conserva AT-, VTEXT-, GAR-, VTR- y NO APLICA.
    - Respeta VALIDADO, MANUAL y MANUAL_TICKET de V430.
-   - Evita el toque fantasma que puede activar Ingreso manual al cerrar
-     el teclado movil despues de Buscar/Enter.
+   - V529B: Ingreso manual solo se ejecuta cuando hubo gesto real sobre
+     ese boton (pointerdown o teclado). Se bloquean clicks sinteticos/tap-through.
    - Refuerza la seleccion de un candidato usando la funcion oficial V430.
    - Reduce interferencia: sin setInterval y sin observar todo document.body;
      solo observa cambios dentro de #pantalla y no reconstruye el formulario.
@@ -121,10 +121,10 @@
         valores[0]===""&&valores[1]==="RECABLEADO"&&valores[2]==="GAR"&&
         valores[3]==="VTR"&&valores[4]==="OTRO";
       if(!correcto){
-        tipo.innerHTML='<option value="">Todos mis registros</option>'+
-          '<option value="RECABLEADO">Recableado</option>'+
-          '<option value="GAR">GAR</option>'+
-          '<option value="VTR">VTR</option>'+
+        tipo.innerHTML='<option value="">Todos mis registros</option>'+ 
+          '<option value="RECABLEADO">Recableado</option>'+ 
+          '<option value="GAR">GAR</option>'+ 
+          '<option value="VTR">VTR</option>'+ 
           '<option value="OTRO">Otro</option>';
         tipo.value=["","RECABLEADO","GAR","VTR","OTRO"].includes(actual)?actual:"";
       }
@@ -164,6 +164,10 @@
     if(!esTecnico()) return;
     if(ev.key==="Enter"&&ev.target&&ev.target.id==="vt430Consulta"){
       marcar("BUSCAR");
+      return;
+    }
+    if((ev.key==="Enter"||ev.key===" ")&&esBotonManual(ev.target)){
+      marcar("MANUAL");
     }
   },true);
 
@@ -173,13 +177,13 @@
     const manual=ev.target&&ev.target.closest?ev.target.closest("#vt430Busqueda button[onclick*='vt430ActivarManual']"):null;
     if(manual){
       const reciente=Date.now()-Number(ultimaAccion.ts||0)<1200;
-      // Si el ultimo gesto real fue Buscar/Enter, un click sintetico que cae
-      // sobre Manual al cerrarse el teclado no puede cambiar el estado V430.
-      if(reciente&&ultimaAccion.tipo!=="MANUAL"){
+      // V529B: si no hubo un gesto REAL sobre Manual, se trata como click
+      // sintetico/tap-through y NO puede cambiar el estado del formulario.
+      if(!reciente||ultimaAccion.tipo!=="MANUAL"){
         cancelarEvento(ev);
         return;
       }
-      // Toque real sobre Manual: se deja pasar al onclick oficial de V430.
+      marcar("");
       programar(50);
       return;
     }
@@ -190,7 +194,7 @@
       const indice=lista.indexOf(candidato);
       if(indice>=0){
         cancelarEvento(ev);
-        try{window.vt430SeleccionarCandidato(indice);}catch(error){console.error("V529A seleccionar V430",error);}
+        try{window.vt430SeleccionarCandidato(indice);}catch(error){console.error("V529B seleccionar V430",error);}
         setTimeout(function(){
           fijarFormularioTecnico();
           const tipo=document.getElementById("vtTipoTicket");
@@ -212,8 +216,8 @@
 
   function observarPantalla(){
     const raiz=document.getElementById("pantalla");
-    if(!raiz||raiz.dataset.mv529aObs==="1") return;
-    raiz.dataset.mv529aObs="1";
+    if(!raiz||raiz.dataset.mv529bObs==="1") return;
+    raiz.dataset.mv529bObs="1";
     const obs=new MutationObserver(function(){
       if(esTecnico()) programar(30);
     });
@@ -227,5 +231,5 @@
     programar(0);
   }
 
-  console.log("MI VISUAL V529A: eventos moviles V430 estabilizados sin capas repetitivas.");
+  console.log("MI VISUAL V529B: ingreso manual protegido por gesto real y seleccion V430 estable.");
 })();
