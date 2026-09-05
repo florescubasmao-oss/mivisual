@@ -1,22 +1,23 @@
 /* ============================================================
-   MI VISUAL V530 - TECNICO INTEGRADO / V430 COMO CONTROLADOR
+   MI VISUAL V530B - TECNICO INTEGRADO / TOQUE V430 ROBUSTO
    05/09/2026
 
    ALCANCE ESTRICTO: SOLO PERFIL TECNICO / SOLO FRONTEND.
 
    OBJETIVO
-   - V430 queda como responsable de Buscar, seleccionar candidato,
+   - V430 sigue siendo la unica fuente de verdad para seleccionar candidato,
      autocompletar, bloquear/desbloquear campos e Ingreso manual.
-   - Esta capa conserva SOLO la compatibilidad de la vista integrada:
+   - Esta capa conserva SOLO compatibilidad de la vista integrada:
        * AT-, VTEXT-, GAR-, VTR- y NO APLICA disponibles.
-       * Protege unicamente el TIPO de ticket ya elegido por V430 frente al
-         ajuste tardio de V488 mientras termina de cargar el historial.
+       * Protege el TIPO ya confirmado por V430 frente al ajuste tardio V488.
        * Filtros Todos / Recableado / GAR / VTR / Otro.
-       * Sin filtro de sede para el Tecnico.
+       * Sin filtro de sede para Tecnico.
        * Busqueda de historial por codigo, DNI o ticket.
-   - No intercepta click, pointer, teclado ni tarjetas .vt430-candidato.
-   - No llama vt430SeleccionarCandidato ni repite una seleccion.
-   - No modifica vtNumeroTicket, vtCodigo ni vtDniCliente.
+   - V530B agrega un puente de gesto MOVIL en window/capture SOLO sobre
+     .vt430-candidato. No reconstruye datos ni replica reglas: llama a la
+     funcion oficial window.vt430SeleccionarCandidato(indice).
+   - No bloquea propagacion, no hace preventDefault y no repite consultas API.
+   - No modifica vtNumeroTicket, vtCodigo ni vtDniCliente directamente.
    - No toca API, backend, Sheets, permisos, Produccion, Ranking, Bonos,
      Efectividad, Recableado, Actas, Mapa ni vistas de otros perfiles.
 ============================================================ */
@@ -26,10 +27,13 @@
   if(window.MV517D_F4S2_FILTROS_TECNICO_OK) return;
   window.MV517D_F4S2_FILTROS_TECNICO_OK = true;
   window.MV530_V430_CONTROL_UNICO_OK = true;
+  window.MV530B_V430_TOUCH_BRIDGE_OK = true;
 
   const TIPOS_TICKET = ["AT-","VTEXT-","GAR-","VTR-","NO APLICA"];
   const TIPOS_HISTORIAL = ["","RECABLEADO","GAR","VTR","OTRO"];
   let timer = null;
+  let gestoV430 = null;
+  let ultimaSeleccionV430 = 0;
 
   function norm(v){
     return String(v == null ? "" : v).toUpperCase().normalize("NFD")
@@ -40,6 +44,81 @@
   function esTecnico(){
     return norm(localStorage.getItem("perfil") || "") === "TECNICO";
   }
+
+  function candidatoEvento(ev){
+    if(!esTecnico()) return null;
+    const target = ev && ev.target;
+    const card = target && target.closest ? target.closest(".vt430-candidato") : null;
+    if(!card) return null;
+    const cont = card.closest("#vt430Resultados");
+    if(!cont) return null;
+    return {card,cont};
+  }
+
+  function seleccionarCardV430(card,cont){
+    if(!card || !cont || typeof window.vt430SeleccionarCandidato !== "function") return false;
+    if(!document.documentElement.contains(cont)) return false;
+
+    const cards = Array.from(cont.querySelectorAll(".vt430-candidato"));
+    const indice = cards.indexOf(card);
+    if(indice < 0) return false;
+
+    try{
+      window.vt430SeleccionarCandidato(indice);
+      ultimaSeleccionV430 = Date.now();
+      setTimeout(protegerTipoConfirmadoPorV430,0);
+      return true;
+    }catch(error){
+      console.warn("MI VISUAL V530B: no se pudo aplicar candidato V430",error);
+      return false;
+    }
+  }
+
+  /*
+    El video del Tecnico confirma que la tarjeta visible recibe el toque pero
+    el onclick inline puede no llegar al target en algunos moviles. Capturamos
+    el gesto antes de listeners de document, sin detenerlo. Solo se acepta un
+    toque corto; un desplazamiento vertical no selecciona accidentalmente.
+  */
+  window.addEventListener("pointerdown",function(ev){
+    const r = candidatoEvento(ev);
+    if(!r){ gestoV430 = null; return; }
+    gestoV430 = {
+      card:r.card,
+      cont:r.cont,
+      pointerId:ev.pointerId,
+      x:Number(ev.clientX || 0),
+      y:Number(ev.clientY || 0),
+      ts:Date.now()
+    };
+  },true);
+
+  window.addEventListener("pointerup",function(ev){
+    const g = gestoV430;
+    gestoV430 = null;
+    if(!g || !esTecnico()) return;
+    if(g.pointerId != null && ev.pointerId != null && g.pointerId !== ev.pointerId) return;
+
+    const dx = Number(ev.clientX || 0) - g.x;
+    const dy = Number(ev.clientY || 0) - g.y;
+    if(Math.sqrt(dx*dx + dy*dy) > 18) return;
+    if(Date.now() - g.ts > 1600) return;
+
+    const r = candidatoEvento(ev);
+    if(!r || r.card !== g.card || r.cont !== g.cont) return;
+    seleccionarCardV430(g.card,g.cont);
+  },true);
+
+  window.addEventListener("pointercancel",function(){ gestoV430 = null; },true);
+
+  // Fallback para navegadores donde PointerEvent no se emite correctamente.
+  // Va en window/capture para ejecutarse antes de posibles listeners antiguos.
+  window.addEventListener("click",function(ev){
+    if(Date.now() - ultimaSeleccionV430 < 700) return;
+    const r = candidatoEvento(ev);
+    if(!r) return;
+    seleccionarCardV430(r.card,r.cont);
+  },true);
 
   /*
     V488 mantiene el modo RECABLEADO para la entrada directa del Tecnico y,
@@ -65,8 +144,7 @@
     mostrar la pantalla inicia en paralelo la carga del historial. V430 puede
     validar un candidato GAR/VTR antes de que esa lectura termine. Cuando V488
     finaliza la lectura, su modo RECABLEADO historico puede volver a seleccionar
-    AT-. V530 NO vuelve a seleccionar el candidato ni reconstruye campos: solo
-    restaura el prefijo que V430 ya dejo confirmado en su mensaje de validacion.
+    AT-. V530B no reconstruye campos: solo restaura el prefijo confirmado.
   */
   function protegerTipoConfirmadoPorV430(){
     if(!esTecnico()) return;
@@ -163,11 +241,6 @@
         if(m.type === "childList"){
           const t = m.target && m.target.nodeType === 1 ? m.target : m.target?.parentElement;
 
-          /*
-            Mostrar candidatos, confirmar seleccion o habilitar Manual no debe
-            activar ningun segundo manejador de seleccion. Si cambia V430 solo
-            comprobamos el tipo confirmado, sin tocar sus demas campos.
-          */
           if(estaDentroV430(t)){
             setTimeout(protegerTipoConfirmadoPorV430,0);
             continue;
@@ -189,11 +262,6 @@
     });
   }
 
-  /*
-    No existen listeners globales de click/pointer/keydown en V530.
-    Buscar -> elegir -> autocompletar y Manual permanecen en las funciones
-    oficiales de validacion_tecnica_datos_v430.js.
-  */
   if(document.readyState === "loading"){
     document.addEventListener("DOMContentLoaded",function(){
       observarPantalla();
@@ -204,5 +272,5 @@
     [0,80,280,650].forEach(function(ms){ setTimeout(aplicar,ms); });
   }
 
-  console.log("MI VISUAL V530: V430 controla seleccion/autocompletado; F4S2 queda como compatibilidad visual del Tecnico.");
+  console.log("MI VISUAL V530B: toque movil V430 capturado antes de capas globales; seleccion oficial conservada.");
 })();
