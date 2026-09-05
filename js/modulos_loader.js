@@ -440,13 +440,16 @@
 
 
 /* ============================================================
-   MI VISUAL V448 - SESIÓN RECUPERABLE + BORRADOR VALIDACIÓN TÉCNICA
+   MI VISUAL V448 / V531A - SESIÓN RECUPERABLE + BORRADOR VALIDACIÓN TÉCNICA
    Capa incremental. No modifica autenticación, permisos ni el flujo VT.
    - Si Android/iOS recarga la pestaña, recupera la sesión desde localStorage.
    - Si el usuario estaba en Validación Técnica, reabre ese módulo.
    - Guarda temporalmente el borrador del formulario durante 4 horas.
    - Un ticket previamente validado se vuelve a consultar al recuperar la
      pantalla; no se conserva como "validado" sin comprobarlo de nuevo.
+   - V531A: el borrador se restaura una sola vez por instancia real del
+     formulario. Cambios internos de resultados/selección ya no vuelven a
+     ejecutar la búsqueda ni pueden deshacer un ticket seleccionado.
 ============================================================ */
 (function(){
   "use strict";
@@ -552,22 +555,47 @@
   }
 
   let restauracionProgramada=false;
+  let formularioRestaurado=null;
+
   function observarPantalla(){
     const pantalla=document.getElementById("pantalla");
     if(!pantalla) return;
+
     const obs=new MutationObserver(function(){
       if(document.querySelector(".vt-confirm")){
         limpiarBorrador();
+        formularioRestaurado=null;
+        restauracionProgramada=false;
         return;
       }
-      if(!restauracionProgramada && document.getElementById("vtCodigo")){
-        restauracionProgramada=true;
-        setTimeout(async function(){
-          try{ await restaurarBorradorEnFormulario(); }
-          finally{ restauracionProgramada=false; }
-        },140);
+
+      const codigo=document.getElementById("vtCodigo");
+      if(!codigo){
+        formularioRestaurado=null;
+        restauracionProgramada=false;
+        return;
       }
+
+      // Espera a que V430 esté realmente instalado. Así la restauración se
+      // hace una sola vez sobre el formulario completo, no sobre una etapa
+      // parcial del renderizado.
+      const consulta=document.getElementById("vt430Consulta");
+      if(!consulta || typeof window.vt430BuscarDatos !== "function") return;
+
+      // La identidad del elemento vtCodigo representa esta instancia real del
+      // formulario. Mientras sea el mismo elemento, mutaciones de resultados,
+      // selección de ticket, filtros o mensajes no vuelven a restaurar borrador.
+      if(restauracionProgramada || formularioRestaurado===codigo) return;
+
+      restauracionProgramada=true;
+      formularioRestaurado=codigo;
+
+      setTimeout(async function(){
+        try{ await restaurarBorradorEnFormulario(); }
+        finally{ restauracionProgramada=false; }
+      },140);
     });
+
     obs.observe(pantalla,{childList:true,subtree:true});
   }
 
