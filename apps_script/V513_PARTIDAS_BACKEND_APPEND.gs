@@ -1,6 +1,6 @@
 /* =====================================================================
    MI VISUAL V513 - PARTIDAS WIN / REGLAS / BUSCADOR / CUADRILLA EFECTIVA
-   Fecha: 27/08/2026
+   Fecha: 05/09/2026
 
    PRINCIPIOS
    - WIN/MAPA_ORDENES conserva OrdenId, estado, fecha y registro original.
@@ -9,15 +9,17 @@
    - AJUSTES_ORDEN_WIN conserva historial de cuadrilla efectiva.
    - REGLAS_PARTIDA_WIN se usa para proponer/explicar, no para auto-publicar.
    - Partida efectiva consulta CATALOGO_ORDENES y SLA sigue PARAMETROS_SLA_WIN.
+   - Desde agosto, SLA usa la misma Partida efectiva V513 que Producción.
    - Cuadrilla efectiva puede afectar Producción/Efectividad/Recableado/SLA,
      pero NO reasigna automáticamente la responsabilidad/origen VTR/GAR.
    - Julio 2026 y anteriores permanecen congelados.
 ===================================================================== */
-var MV513_VERSION_ = "V513-PARTIDAS-REGLAS-BUSCADOR-20260827";
+var MV513_VERSION_ = "V513-SLA-SYNC-20260905";
 var MV513_HOJA_REGLAS_ = "REGLAS_PARTIDA_WIN";
 var MV513_HOJA_SIM_ = "SIM_PARTIDAS_V513";
 var MV513_HOJA_AJUSTE_CUADRILLA_ = "AJUSTES_ORDEN_WIN";
 var MV513_PERIODO_MINIMO_ = "2026-08";
+var MV513_SLA_SYNC_VERSION_ = "V513-SLA-SYNC-20260905-1";
 var MV513_WRAPPERS_OK_ = false;
 
 function mv513Norm_(v){ return mv487pNorm_(v); }
@@ -233,6 +235,47 @@ function mv513AjustarMatrizVtrDenominador_(matriz,efOriginal,vtrgar,periodo,usua
   if(!matriz||!matriz.vtrgar)return matriz;var cuad={};Object.keys(efOriginal.mapa||{}).forEach(function(c){cuad[c]=true;});Object.keys(vtrgar.porCuadrilla||{}).forEach(function(c){cuad[c]=true;});var lista=Object.keys(cuad).filter(Boolean).sort(function(a,b){return a.localeCompare(b,"es");}),m=[["ID","Usuario","Cuadrilla","ACTUALIZACION","Total Ordenes FINALIZADAS","GAR","VTR","TOTAL GAR/VTR","% VTR/GAR"]];lista.forEach(function(c,i){var e=efOriginal.mapa[c]||{finalizadas:0},vg=vtrgar.porCuadrilla[c]||{gar:0,vtr:0},tv=Number(vg.gar||0)+Number(vg.vtr||0);m.push([c+"|"+periodo+"|"+(i+1),usuarioCarga||"ADMIN",c,corte,e.finalizadas,vg.gar||0,vg.vtr||0,tv,e.finalizadas?tv/e.finalizadas:0]);});matriz.vtrgar=m;return matriz;
 }
 
+function mv513PartidasSlaEfectivas_(datosBase,periodo,baseTipos){
+  var mapa=(typeof baseTipos==="function"?baseTipos(datosBase,periodo):{})||{};
+  periodo=String(periodo||"");
+  if(periodo<MV513_PERIODO_MINIMO_)return mapa;
+
+  var cat=mv513Catalogo_().mapa;
+  var ajustes=(mv502LeerAjustesPartida_(periodo).validados)||{};
+  mv513LeerWinCompleto_().forEach(function(o){
+    if(!o||o.periodo!==periodo||o.estado!=="FINALIZADA")return;
+    var id=mv513Id_(o.ordenId);if(!id)return;
+    var codigo="",aj=ajustes[id];
+    if(aj&&aj.partidaPropuesta)codigo=mv513Txt_(aj.partidaPropuesta);
+    if(!codigo){
+      var directa=mv502ClasificacionWinDirecta_(o,cat);
+      codigo=directa&&directa.regla?mv513Txt_(directa.regla.codigo):"";
+    }
+    var c=cat[codigo]||{},tipo=c&&(c.tipoOrden||c.tipoPartida||c.descripcion);
+    if(tipo)mapa[id]=normalizarTexto(tipo);
+  });
+  return mapa;
+}
+
+function mv513ClaveSlaSync_(periodo,version){
+  return [MV513_SLA_SYNC_VERSION_,String(periodo||""),String(version||"")].join("|");
+}
+function mv513MarcarSlaSync_(periodo,version){
+  try{PropertiesService.getScriptProperties().setProperty(mv513ClaveSlaSync_(periodo,version),"OK");}catch(_){}
+}
+function mv513SlaSyncOk_(periodo,version){
+  try{return PropertiesService.getScriptProperties().getProperty(mv513ClaveSlaSync_(periodo,version))==="OK";}catch(_){return false;}
+}
+function mv513MarcarResumenSla_(r,periodo,version){
+  if(!r||String(periodo||"")<MV513_PERIODO_MINIMO_)return r;
+  Object.keys(r.mapaCuadrillas||{}).forEach(function(c){
+    if(r.mapaCuadrillas[c])r.mapaCuadrillas[c].mv513PartidasEfectivas=true;
+  });
+  r.mv513PartidasEfectivas=true;
+  mv513MarcarSlaSync_(periodo,version);
+  return r;
+}
+
 function mv513InstalarWrappers_(){
   if(MV513_WRAPPERS_OK_)return;MV513_WRAPPERS_OK_=true;
   if(typeof mv487pCalcularEfRec_==="function"){
@@ -245,10 +288,60 @@ function mv513InstalarWrappers_(){
     var baseProd=mv487pPrepararProduccion_;mv487pPrepararProduccion_=function(base,usuarioSesion){return baseProd(mv513AplicarCuadrillasBase_(base),usuarioSesion);};
   }
   if(typeof tiposPartidaSlaV363_==="function"){
-    var baseTipos=tiposPartidaSlaV363_;tiposPartidaSlaV363_=function(datosBase,periodo){var mapa=baseTipos(datosBase,periodo)||{};if(String(periodo||"")<MV513_PERIODO_MINIMO_)return mapa;var aj=mv502LeerAjustesPartida_(periodo).validados,cat=mv513Catalogo_().mapa;Object.keys(aj).forEach(function(id){var c=cat[mv513Txt_(aj[id].partidaPropuesta)],tipo=c&&(c.tipoOrden||c.tipoPartida||c.descripcion);if(tipo)mapa[id]=normalizarTexto(tipo);});return mapa;};
+    var baseTipos=tiposPartidaSlaV363_;
+    tiposPartidaSlaV363_=function(datosBase,periodo){return mv513PartidasSlaEfectivas_(datosBase,periodo,baseTipos);};
   }
   if(typeof construirSlaOrdenesResumenV363_==="function"){
-    var baseSla=construirSlaOrdenesResumenV363_;construirSlaOrdenesResumenV363_=function(periodo,version){var r=baseSla(periodo,version);if(String(periodo||"")<MV513_PERIODO_MINIMO_||!r||!Array.isArray(r.ordenes))return r;var aj=mv513LeerAjustesCuadrilla_(periodo).validados;if(!Object.keys(aj).length)return r;r.ordenes=r.ordenes.map(function(o){var a=aj[mv513Id_(o.codigo||o.ordenId)];if(!a||!a.cuadrillaEfectiva)return o;var n=Object.assign({},o);n.cuadrilla=a.cuadrillaEfectiva;try{var ud=obtenerDatosCuadrillaApp(n.cuadrilla);if(ud){n.sede=normalizarTexto(ud.sede||n.sede);n.supervisor=normalizarUsuario(ud.usuarioSupervisor||n.supervisor);}}catch(_){}return n;});r.mapaCuadrillas=resumenSlaOrdenesV363_(r.ordenes);return r;};
+    var baseSla=construirSlaOrdenesResumenV363_;
+    construirSlaOrdenesResumenV363_=function(periodo,version){
+      var r=baseSla(periodo,version);
+      if(String(periodo||"")<MV513_PERIODO_MINIMO_||!r||!Array.isArray(r.ordenes))return r;
+      var aj=mv513LeerAjustesCuadrilla_(periodo).validados;
+      if(Object.keys(aj).length){
+        r.ordenes=r.ordenes.map(function(o){
+          var a=aj[mv513Id_(o.codigo||o.ordenId)];if(!a||!a.cuadrillaEfectiva)return o;
+          var n=Object.assign({},o);n.cuadrilla=a.cuadrillaEfectiva;
+          try{var ud=obtenerDatosCuadrillaApp(n.cuadrilla);if(ud){n.sede=normalizarTexto(ud.sede||n.sede);n.supervisor=normalizarUsuario(ud.usuarioSupervisor||n.supervisor);}}catch(_){}
+          return n;
+        });
+        r.mapaCuadrillas=resumenSlaOrdenesV363_(r.ordenes);
+      }
+      return mv513MarcarResumenSla_(r,periodo,version);
+    };
+  }
+  if(typeof asegurarSlaOrdenesResumenV363_==="function"){
+    var baseAsegurarSla=asegurarSlaOrdenesResumenV363_;
+    asegurarSlaOrdenesResumenV363_=function(periodo,forzar){
+      periodo=String(periodo||"");
+      if(periodo<MV513_PERIODO_MINIMO_)return baseAsegurarSla(periodo,forzar);
+      var version=versionResumenDashboardRankingV361_();
+      if(forzar||!mv513SlaSyncOk_(periodo,version))return construirSlaOrdenesResumenV363_(periodo,version);
+      return baseAsegurarSla(periodo,forzar);
+    };
+  }
+  if(typeof jsonSeguroResumenDashboardRankingV361_==="function"){
+    var baseJsonResumen=jsonSeguroResumenDashboardRankingV361_;
+    jsonSeguroResumenDashboardRankingV361_=function(item){
+      if(item&&String(item.periodo||"")>=MV513_PERIODO_MINIMO_)item.mv513SlaSincronizado=true;
+      return baseJsonResumen(item);
+    };
+  }
+  if(typeof resumenCompletoV365_==="function"){
+    var baseResumenCompleto=resumenCompletoV365_;
+    resumenCompletoV365_=function(lista,periodo){
+      if(!baseResumenCompleto(lista,periodo))return false;
+      if(String(periodo||"")<MV513_PERIODO_MINIMO_)return true;
+      return !(lista||[]).some(function(item){
+        return !item||item.mv513SlaSincronizado!==true||item.mv369SlaPendienteSincronizacion===true;
+      });
+    };
+  }
+  if(typeof construirResumenDashboardRankingRapidoBaseV369_==="function"&&typeof construirResumenDashboardRankingV361_==="function"){
+    var baseResumenRapido=construirResumenDashboardRankingRapidoBaseV369_;
+    construirResumenDashboardRankingRapidoBaseV369_=function(periodo,version){
+      if(String(periodo||"")>=MV513_PERIODO_MINIMO_)return construirResumenDashboardRankingV361_(periodo,version);
+      return baseResumenRapido(periodo,version);
+    };
   }
 }
 
@@ -258,8 +351,14 @@ function mv513SincronizarCuadrillaSlaHoja_(ordenId,cuadrilla){
 
 /* Router V513: encadenado sobre el router vigente V503/V512. */
 function mv513PostData_(e){var data={};try{data=JSON.parse(e&&e.postData&&e.postData.contents||"{}");}catch(_){data=Object.assign({},e&&e.parameter?e.parameter:{});}return data||{};}
+var MV513_doGetBase_=doGet;
+doGet=function(e){
+  mv513InstalarWrappers_();
+  return MV513_doGetBase_(e);
+};
 var MV513_doPostBase_=doPost;
 doPost=function(e){
+  mv513InstalarWrappers_();
   var data=mv513PostData_(e),accion=String(data&&data.accion||"");
   try{
     if(accion==="listarPartidasV513")return respuestaJson(listarPartidasV513(data));
