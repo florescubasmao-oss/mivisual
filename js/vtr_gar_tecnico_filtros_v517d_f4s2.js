@@ -1,14 +1,16 @@
 /* ============================================================
-   MI VISUAL V530 - TECNICO INTEGRADO / V430 COMO UNICO CONTROLADOR
+   MI VISUAL V530 - TECNICO INTEGRADO / V430 COMO CONTROLADOR
    05/09/2026
 
    ALCANCE ESTRICTO: SOLO PERFIL TECNICO / SOLO FRONTEND.
 
    OBJETIVO
-   - V430 queda como unico responsable de Buscar, seleccionar candidato,
+   - V430 queda como responsable de Buscar, seleccionar candidato,
      autocompletar, bloquear/desbloquear campos e Ingreso manual.
-   - Esta capa conserva SOLO la integracion visual necesaria del Tecnico:
-       * AT-, VTEXT-, GAR-, VTR- y NO APLICA disponibles en la vista integrada.
+   - Esta capa conserva SOLO la compatibilidad de la vista integrada:
+       * AT-, VTEXT-, GAR-, VTR- y NO APLICA disponibles.
+       * Protege unicamente el TIPO de ticket ya elegido por V430 frente al
+         ajuste tardio de V488 mientras termina de cargar el historial.
        * Filtros Todos / Recableado / GAR / VTR / Otro.
        * Sin filtro de sede para el Tecnico.
        * Busqueda de historial por codigo, DNI o ticket.
@@ -42,8 +44,7 @@
   /*
     V488 mantiene el modo RECABLEADO para la entrada directa del Tecnico y,
     por diseño historico, oculta GAR/VTR en ese modo. La vista F4S integra los
-    tres tipos en una sola pantalla. Aqui SOLO hacemos visibles las opciones;
-    no cambiamos el valor seleccionado ni los datos elegidos por V430.
+    tres tipos en una sola pantalla. Aqui solo hacemos visibles las opciones.
   */
   function habilitarTiposTicketTecnico(){
     if(!esTecnico()) return;
@@ -57,6 +58,36 @@
       if(op.hidden) op.hidden = false;
       if(op.disabled) op.disabled = false;
     });
+  }
+
+  /*
+    Carrera asincrona protegida:
+    mostrar la pantalla inicia en paralelo la carga del historial. V430 puede
+    validar un candidato GAR/VTR antes de que esa lectura termine. Cuando V488
+    finaliza la lectura, su modo RECABLEADO historico puede volver a seleccionar
+    AT-. V530 NO vuelve a seleccionar el candidato ni reconstruye campos: solo
+    restaura el prefijo que V430 ya dejo confirmado en su mensaje de validacion.
+  */
+  function protegerTipoConfirmadoPorV430(){
+    if(!esTecnico()) return;
+
+    const resultado = document.getElementById("vt430Resultados");
+    const select = document.getElementById("vtTipoTicket");
+    if(!resultado || !select) return;
+
+    const visible = norm(resultado.textContent || "");
+    if(!visible.includes("ATENCION VALIDADA POR MI VISUAL")) return;
+
+    const match = visible.match(/\b(VTEXT|GAR|VTR|AT)-/);
+    if(!match) return;
+
+    const valor = match[1] + "-";
+    if(!TIPOS_TICKET.includes(valor) || select.value === valor) return;
+
+    select.value = valor;
+    if(typeof window.actualizarTipoValidacionPorTicket === "function"){
+      try{ window.actualizarTipoValidacionPorTicket(); }catch(_){}
+    }
   }
 
   function fijarFiltrosTecnico(){
@@ -97,6 +128,7 @@
   function aplicar(){
     if(!esTecnico()) return;
     habilitarTiposTicketTecnico();
+    protegerTipoConfirmadoPorV430();
     fijarFiltrosTecnico();
   }
 
@@ -132,11 +164,14 @@
           const t = m.target && m.target.nodeType === 1 ? m.target : m.target?.parentElement;
 
           /*
-            Un cambio de resultados de V430 (mostrar candidatos, confirmar
-            seleccion o habilitar Manual) NO dispara reprocesamiento del
-            formulario. V430 conserva el control completo de esa interaccion.
+            Mostrar candidatos, confirmar seleccion o habilitar Manual no debe
+            activar ningun segundo manejador de seleccion. Si cambia V430 solo
+            comprobamos el tipo confirmado, sin tocar sus demas campos.
           */
-          if(estaDentroV430(t)) continue;
+          if(estaDentroV430(t)){
+            setTimeout(protegerTipoConfirmadoPorV430,0);
+            continue;
+          }
 
           requiere = true;
           break;
@@ -156,8 +191,8 @@
 
   /*
     No existen listeners globales de click/pointer/keydown en V530.
-    El flujo Buscar -> elegir -> autocompletar y Manual queda exactamente en
-    las funciones oficiales de validacion_tecnica_datos_v430.js.
+    Buscar -> elegir -> autocompletar y Manual permanecen en las funciones
+    oficiales de validacion_tecnica_datos_v430.js.
   */
   if(document.readyState === "loading"){
     document.addEventListener("DOMContentLoaded",function(){
@@ -169,5 +204,5 @@
     [0,80,280,650].forEach(function(ms){ setTimeout(aplicar,ms); });
   }
 
-  console.log("MI VISUAL V530: V430 controla seleccion/autocompletado; F4S2 queda solo como integracion visual del Tecnico.");
+  console.log("MI VISUAL V530: V430 controla seleccion/autocompletado; F4S2 queda como compatibilidad visual del Tecnico.");
 })();
