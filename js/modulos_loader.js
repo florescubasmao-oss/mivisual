@@ -84,7 +84,7 @@
       archivos: [
         `./js/validacion_tecnica_v173.js?v=V520E-NOTIFICACION-VT-REAL-20260901-1`,
         `./js/validacion_tecnica_optimizacion_v341.js?v=${VERSION}`,
-        `./js/validacion_tecnica_datos_v430.js?v=V430-DATOS-CORRECTOS`,
+        `./js/validacion_tecnica_datos_v430.js?v=V531-MULTITICKET-DIRECTO-20260905-1`,
         `./js/validacion_tecnica_observacion_v454.js?v=V454-GAR-VTR-OBSERVAR-REENVIAR`
       ],
       entradas: ["mostrarValidacionTecnica"]
@@ -203,7 +203,6 @@
   const wrappers = Object.create(null);
   const metricas = [];
 
-  // V420: evita que un script deje el módulo atrapado indefinidamente.
   const MV420_SCRIPT_TIMEOUT_MS = 12000;
   const fallosScript = new Map();
 
@@ -526,7 +525,6 @@
     const origen=b.valores.vtOrigenOrden || "";
     const consulta=b.valores.vt430Consulta || b.valores.vtDniCliente || b.valores.vtCodigo || "";
 
-    // Si el registro era manual, se restaura como manual.
     if(b.modo === "MANUAL" && typeof window.vt430ActivarManual === "function"){
       try{ window.vt430ActivarManual(); }catch(_){ }
       IDS.forEach(id=>{
@@ -539,9 +537,6 @@
       return;
     }
 
-    // Para datos previamente validados, nunca confiamos solo en localStorage:
-    // se vuelve a ejecutar la búsqueda. Si hay varias atenciones, el técnico
-    // selecciona nuevamente el ticket correcto.
     const q=document.getElementById("vt430Consulta");
     if(q && consulta){
       q.value=consulta;
@@ -550,7 +545,6 @@
       }
     }
 
-    // Motivo y origen no alteran la identidad validada; se restauran al final.
     const motivoEl=document.getElementById("vtMotivo");
     if(motivoEl) motivoEl.value=motivo;
     const origenEl=document.getElementById("vtOrigenOrden");
@@ -611,7 +605,6 @@
     }
   }
 
-  // Evita que una recarga posterior en el menú vuelva a abrir VT.
   const volverOriginal=window.volverInicio;
   if(typeof volverOriginal === "function"){
     window.volverInicio=function(){
