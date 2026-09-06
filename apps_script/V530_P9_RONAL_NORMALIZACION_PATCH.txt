@@ -1,0 +1,48 @@
+/* ================================================================
+   MI VISUAL V530 - Normalizacion puntual P9 septiembre 2026
+
+   OBJETIVO
+   Corregir el cruce del Dashboard/Ranking cuando WIN entrega:
+     P9 VISUAL SGA RONALD ENRIQUE TESEN CALDERON
+   y USUARIOS / nombre oficial usa:
+     P9 VISUAL SGA RONAL ENRIQUE TESEN CALDERON
+
+   ALCANCE
+   - NO cambia formulas.
+   - NO cambia julio ni agosto.
+   - NO mueve produccion entre cuadrillas.
+   - NO agrega otra capa al Dashboard.
+   - Solo corrige el identificador canonico dentro de la funcion existente
+     normalizarCuadrilla(), que ya es usada por los consolidadores.
+
+   CAMBIO EN apps_script/Code.gs
+   Reemplazar SOLO la funcion existente normalizarCuadrilla(nombre)
+   por esta version:
+================================================================ */
+
+function normalizarCuadrilla(nombre) {
+  return (nombre || "")
+    .toString()
+    .replace(/^P\s+(\d+)/i, "P$1")
+    .replace(/P9\s+VISUAL\s+SGA\s+RONALD\s+ENRIQUE\s+TESEN\s+CALDERON/gi,
+             "P9 VISUAL SGA RONAL ENRIQUE TESEN CALDERON")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+/*
+   DESPUES DE PUBLICAR EL WEB APP:
+   1. Ejecutar una sola reconstruccion/publicacion de 2026-09.
+   2. Verificar RESUMEN_DASHBOARD_RANKING para P9 RONAL.
+   3. Esperado con la base del 06/09/2026 ~18:06:
+      - Produccion: 25 pts
+      - Efectividad: 16/18 = 88.89%
+      - Recableado: 8/11 = 72.73%
+      - VTR/GAR: 0/16 = 0.00%
+      - SLA: 8/16 = 50.00%
+      - Cumplimiento al dia: 25/25 = 100%
+      - Observaciones: 0
+
+   Agosto permanece con PEDRO PABLO ZAPATA YOVERA porque esta regla
+   solo homologa RONALD -> RONAL y no toca el nombre de Pedro.
+*/
