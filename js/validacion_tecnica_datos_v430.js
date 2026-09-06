@@ -1,12 +1,14 @@
 /* ============================================================
-   MI VISUAL V531 - Datos correctos en Validación Técnica
-   ESTABILIZACIÓN MULTITICKET 05/09/2026:
+   MI VISUAL V532 - Datos correctos en Validación Técnica
+   ESTABILIZACIÓN MULTITICKET 06/09/2026:
    - Conserva íntegro el flujo V430B de búsqueda DNI/Código.
    - Conserva Ingreso manual y Cliente/Código validado + ticket manual.
    - Cuando existe UNA coincidencia mantiene la selección automática vigente.
-   - Cuando existen DOS O MÁS coincidencias, las opciones ya no dependen de
-     onclick inline ni de capas externas: cada opción es un botón real y llama
-     directamente a seleccionarCandidato() dentro de esta misma capa V430.
+   - Cuando existen DOS O MÁS coincidencias, cada opción usa el mismo mecanismo
+     inline ya probado por Buscar e Ingreso manual y llama directamente a la
+     función oficial vt430SeleccionarCandidato() de esta misma capa V430.
+   - No depende de listeners programáticos que puedan perderse si otra capa
+     vuelve a pintar el bloque visible entre la búsqueda y el toque del técnico.
    - Evita reiniciar el estado si la interfaz ya estaba instalada.
    - Descarta respuestas tardías de búsqueda si el técnico cambia a Manual.
    - Oculta la cuadrilla únicamente en resultados visibles del perfil TÉCNICO.
@@ -177,7 +179,6 @@
       identidad:null
     };
   }
-
   function campo(id){ return document.getElementById(id); }
 
   function bloquearDatos(bloquear){
@@ -242,21 +243,6 @@
     `;
   }
 
-  function enlazarCandidatos(){
-    const cont=campo("vt430Resultados");
-    if(!cont)return;
-
-    cont.querySelectorAll(".vt430-candidato[data-vt430-index]").forEach(function(card){
-      if(card.dataset.vt430Bound==="1") return;
-      card.dataset.vt430Bound="1";
-      card.addEventListener("click",function(){
-        const indice=Number(card.dataset.vt430Index);
-        if(!Number.isInteger(indice) || indice<0) return;
-        seleccionarCandidato(indice);
-      });
-    });
-  }
-
   function renderResultados(){
     const cont=campo("vt430Resultados");
     if(!cont)return;
@@ -293,11 +279,10 @@
         Seleccione el ticket exacto que corresponde al trabajo que está validando.
       </div>
       ${estado.candidatos.map((c,i)=>`
-        <button type="button" class="vt430-candidato" data-vt430-index="${i}">
+        <button type="button" class="vt430-candidato" data-vt430-index="${i}"
+          onclick="vt430SeleccionarCandidato(${i})">
           ${resumenCandidato(c)}
         </button>`).join("")}`;
-
-    enlazarCandidatos();
   }
 
   function seleccionarCandidato(indice){
@@ -357,7 +342,6 @@
     try{
       if(cont)cont.innerHTML=`<div class="vt430-info">⏳ Buscando coincidencias exactas...</div>`;
       const d=await apiGet430(q);
-
       if(secuencia!==secuenciaBusqueda) return;
 
       estado.consulta=q;
@@ -385,11 +369,11 @@
     if(cont){
       if(estado.candidatos.length>1){
         cont.innerHTML=estado.candidatos.map((c,i)=>`
-          <button type="button" class="vt430-candidato" data-vt430-index="${i}">
+          <button type="button" class="vt430-candidato" data-vt430-index="${i}"
+            onclick="vt430SeleccionarCandidato(${i})">
             ${resumenCandidato(c)}
           </button>
         `).join("");
-        enlazarCandidatos();
       }else{
         cont.innerHTML=`<div class="vt430-info">Pulse Buscar para seleccionar nuevamente la atención.</div>`;
       }
@@ -572,5 +556,5 @@
   window.vt430ActivarManual=activarManual;
   window.vt430UsarIdentidadManual=usarIdentidadManual;
 
-  console.log("MI VISUAL V531: selección multiticket directa dentro de V430; sin onclick inline en candidatos.");
+  console.log("MI VISUAL V532: selección multiticket inline dentro de V430; sin listener programático candidato.");
 })();
