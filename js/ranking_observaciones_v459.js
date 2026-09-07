@@ -112,11 +112,10 @@
 })();
 
 /* ============================================================
-   MI VISUAL V517D F4AE - ESTABILIDAD RANKING
-   - Corrige porcentajes menores a 1% sin multiplicarlos indebidamente.
-   - Recupera SLA directamente de las columnas oficiales del Ranking.
-   - Evita reutilizar un Dashboard viejo al abrir Ranking.
-   - No modifica hojas, Apps Script, Produccion, Efectividad, Recableado ni GAR/VTR.
+   MI VISUAL V532 / F4AE - ESTABILIDAD RANKING + SLA EN INFORME
+   - Conserva la estabilización actual de porcentajes y SLA del Ranking.
+   - Añade SLA exclusivamente al Excel descargado desde Ranking.
+   - No recalcula ni modifica Ranking, Dashboard, Apps Script ni indicadores.
 ============================================================ */
 (function(){
   "use strict";
@@ -139,6 +138,20 @@
     const n=numeroFlexible(valor);
     if(texto.includes("%")) return n/100;
     return Math.abs(n)>1 ? n/100 : n;
+  }
+
+  function porcentajeNumero(valor){
+    const n=numeroFlexible(valor);
+    return Math.abs(n)<=1 ? n*100 : n;
+  }
+
+  function normalizarClave(valor){
+    return String(valor||"")
+      .toUpperCase()
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g,"")
+      .replace(/\s+/g," ")
+      .trim();
   }
 
   function instalarFilaF4AE(){
@@ -203,13 +216,260 @@
     return true;
   }
 
+  function datosSla(item){
+    const r=item||{};
+    const d=r.detSla||{};
+    const evaluables=numeroFlexible(d.evaluables ?? r.slaEvaluables);
+    const bruto=porcentajeNumero(r.slaBruto ?? d.slaBruto);
+    const ajustado=porcentajeNumero(r.slaAjustado ?? r.sla ?? d.slaAjustado);
+    const fuera=numeroFlexible(d.fueraAjustado ?? d.fueraBruto ?? r.slaFuera);
+    const dentro=(d.cumplenAjustado!==undefined && d.cumplenAjustado!==null)
+      ? numeroFlexible(d.cumplenAjustado)
+      : Math.max(0,evaluables-fuera);
+    const cumplenBruto=(d.cumplenBruto!==undefined && d.cumplenBruto!==null)
+      ? numeroFlexible(d.cumplenBruto)
+      : Math.max(0,Math.round(evaluables*bruto/100));
+    const aprobadas=numeroFlexible(d.excepcionesAprobadas ?? r.slaExcepcionesAprobadas);
+    const pendientes=numeroFlexible(d.excepcionesPendientes);
+    const aporte=numeroFlexible(r.aporteSla ?? d.aporteSla);
+    return {bruto,ajustado,evaluables,dentro,cumplenBruto,fuera,aprobadas,pendientes,aporte};
+  }
+
+  function resumenSlaInforme(lista){
+    const total={evaluables:0,dentro:0,cumplenBruto:0,fuera:0,aprobadas:0,pendientes:0};
+    (lista||[]).forEach(item=>{
+      const s=datosSla(item);
+      total.evaluables+=s.evaluables;
+      total.dentro+=s.dentro;
+      total.cumplenBruto+=s.cumplenBruto;
+      total.fuera+=s.fuera;
+      total.aprobadas+=s.aprobadas;
+      total.pendientes+=s.pendientes;
+    });
+    total.ajustado=total.evaluables ? total.dentro/total.evaluables*100 : 0;
+    total.bruto=total.evaluables ? total.cumplenBruto/total.evaluables*100 : 0;
+    return total;
+  }
+
+  function alcanceInforme(){
+    const alcance=document.querySelector('input[name="mv358Alcance"]:checked')?.value||"zona";
+    const sede=window.MV239_RANKING_JEFATURA_SEDE||"TODAS";
+    let lista=(window.MV239_RANKING_JEFATURA_LISTA||[]).slice();
+    if(alcance==="filtro" && sede!=="TODAS"){
+      lista=lista.filter(x=>normalizarClave(x.sede)===normalizarClave(sede));
+    }
+    return lista;
+  }
+
+  function ampliarAutofiltro(ws){
+    if(!ws || !ws["!ref"]) return;
+    const rango=window.XLSX.utils.decode_range(ws["!ref"]);
+    ws["!autofilter"]={ref:window.XLSX.utils.encode_range({s:{r:0,c:0},e:{r:rango.e.r,c:rango.e.c}})};
+  }
+
+  function agregarColumnasSla(ws,lista){
+    if(!ws) return;
+    const XLSX=window.XLSX;
+    const filas=XLSX.utils.sheet_to_json(ws,{header:1,defval:""});
+    if(!filas.length) return;
+    const inicio=filas[0].length;
+    const headers=[
+      "SLA BRUTO %","SLA AJUSTADO %","SLA EVALUABLES","DENTRO SLA",
+      "FUERA SLA","EXCEPCIONES APROBADAS","EXCEPCIONES PENDIENTES","APORTE SLA"
+    ];
+    XLSX.utils.sheet_add_aoa(ws,[headers],{origin:{r:0,c:inicio}});
+
+    const mapa=new Map();
+    (lista||[]).forEach(item=>{
+      const clave=normalizarClave(item.sede)+"|"+normalizarClave(item.cuadrilla);
+      mapa.set(clave,item);
+    });
+
+    for(let i=1;i<filas.length;i++){
+      const clave=normalizarClave(filas[i][3])+"|"+normalizarClave(filas[i][4]);
+      const item=mapa.get(clave);
+      const s=datosSla(item);
+      XLSX.utils.sheet_add_aoa(ws,[item ? [
+        Number(s.bruto.toFixed(2)),Number(s.ajustado.toFixed(2)),s.evaluables,s.dentro,
+        s.fuera,s.aprobadas,s.pendientes,Number(s.aporte.toFixed(2))
+      ] : ["","","","","","","",""]],{origin:{r:i,c:inicio}});
+    }
+    ws["!cols"]=(ws["!cols"]||[]).concat([
+      {wch:14},{wch:16},{wch:15},{wch:13},{wch:12},{wch:21},{wch:22},{wch:12}
+    ]);
+    ampliarAutofiltro(ws);
+  }
+
+  function agregarResumenSla(ws,lista){
+    if(!ws) return;
+    const XLSX=window.XLSX;
+    const filas=XLSX.utils.sheet_to_json(ws,{header:1,defval:""});
+    const inicio=filas.length+1;
+    const s=resumenSlaInforme(lista);
+    XLSX.utils.sheet_add_aoa(ws,[
+      [],
+      ["TIEMPO DE GESTIÓN - SLA","RESULTADO"],
+      ["SLA ajustado %",Number(s.ajustado.toFixed(2))],
+      ["SLA bruto %",Number(s.bruto.toFixed(2))],
+      ["Evaluables",s.evaluables],
+      ["Dentro SLA",s.dentro],
+      ["Fuera SLA",s.fuera],
+      ["Excepciones aprobadas",s.aprobadas],
+      ["Excepciones pendientes",s.pendientes]
+    ],{origin:{r:inicio,c:0}});
+  }
+
+  function agregarSlaPorSede(ws,lista){
+    if(!ws) return;
+    const XLSX=window.XLSX;
+    const filas=XLSX.utils.sheet_to_json(ws,{header:1,defval:""});
+    if(!filas.length) return;
+    const inicio=filas[0].length;
+    XLSX.utils.sheet_add_aoa(ws,[
+      ["SLA AJUSTADO %","SLA BRUTO %","SLA EVALUABLES","DENTRO SLA","FUERA SLA","EXC. APROBADAS"]
+    ],{origin:{r:0,c:inicio}});
+    for(let i=1;i<filas.length;i++){
+      const sede=normalizarClave(filas[i][0]);
+      const grupo=(lista||[]).filter(x=>normalizarClave(x.sede)===sede);
+      const s=resumenSlaInforme(grupo);
+      XLSX.utils.sheet_add_aoa(ws,[grupo.length ? [
+        Number(s.ajustado.toFixed(2)),Number(s.bruto.toFixed(2)),s.evaluables,s.dentro,s.fuera,s.aprobadas
+      ] : ["","","","","",""]],{origin:{r:i,c:inicio}});
+    }
+    ws["!cols"]=(ws["!cols"]||[]).concat([
+      {wch:16},{wch:14},{wch:15},{wch:13},{wch:12},{wch:16}
+    ]);
+    ampliarAutofiltro(ws);
+  }
+
+  function agregarHojaSla(wb,lista){
+    const XLSX=window.XLSX;
+    if(wb.Sheets.SLA_POR_CUADRILLA) return;
+    const filas=[[
+      "PUESTO ZONA NORTE","SEDE","CUADRILLA","PLATAFORMA",
+      "SLA BRUTO %","SLA AJUSTADO %","EVALUABLES","DENTRO SLA","FUERA SLA",
+      "EXCEPCIONES APROBADAS","EXCEPCIONES PENDIENTES","APORTE SLA"
+    ]];
+    (lista||[]).slice().sort((a,b)=>numeroFlexible(a.puestoRegion)-numeroFlexible(b.puestoRegion)).forEach(r=>{
+      const s=datosSla(r);
+      filas.push([
+        r.puestoRegion||"",r.sede||"",r.cuadrilla||"",r.plataforma||"",
+        Number(s.bruto.toFixed(2)),Number(s.ajustado.toFixed(2)),s.evaluables,s.dentro,s.fuera,
+        s.aprobadas,s.pendientes,Number(s.aporte.toFixed(2))
+      ]);
+    });
+    const ws=XLSX.utils.aoa_to_sheet(filas);
+    ws["!cols"]=[
+      {wch:18},{wch:16},{wch:44},{wch:18},{wch:14},{wch:16},{wch:12},{wch:13},{wch:12},{wch:21},{wch:22},{wch:12}
+    ];
+    if(filas.length>1) ws["!autofilter"]={ref:XLSX.utils.encode_range({s:{r:0,c:0},e:{r:filas.length-1,c:11}})};
+    XLSX.utils.book_append_sheet(wb,ws,"SLA_POR_CUADRILLA");
+  }
+
+  function agregarMetodologiaSla(ws){
+    if(!ws) return;
+    const XLSX=window.XLSX;
+    const filas=XLSX.utils.sheet_to_json(ws,{header:1,defval:""});
+    const yaExiste=filas.some(f=>normalizarClave(f[0])==="TIEMPO DE GESTION - SLA");
+    if(yaExiste) return;
+    XLSX.utils.sheet_add_aoa(ws,[[
+      "Tiempo de Gestión - SLA",
+      "Se reportan SLA bruto y ajustado, códigos evaluables, dentro/fuera de SLA y excepciones aprobadas. Meta: ≥ 90% en SLA ajustado."
+    ]],{origin:{r:filas.length,c:0}});
+  }
+
+  function enriquecerLibroConSla(wb){
+    if(!wb || !window.XLSX?.utils) return wb;
+    const lista=alcanceInforme();
+    agregarResumenSla(wb.Sheets.RESUMEN_EJECUTIVO,lista);
+    agregarSlaPorSede(wb.Sheets.RESUMEN_POR_SEDE,lista);
+    agregarColumnasSla(wb.Sheets.RANKING_GENERAL,lista);
+    Object.keys(wb.Sheets).filter(n=>n.startsWith("SEDE_")).forEach(nombre=>{
+      agregarColumnasSla(wb.Sheets[nombre],lista);
+    });
+    agregarHojaSla(wb,lista);
+    agregarMetodologiaSla(wb.Sheets.METODOLOGIA);
+    return wb;
+  }
+
+  async function asegurarXlsxInforme(){
+    if(window.XLSX?.utils) return true;
+    const urls=[
+      "https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js",
+      "https://unpkg.com/xlsx@0.18.5/dist/xlsx.full.min.js"
+    ];
+    for(const url of urls){
+      try{
+        await new Promise((resolve,reject)=>{
+          const existente=Array.from(document.scripts).find(s=>s.src===url);
+          if(existente){
+            if(window.XLSX?.utils) return resolve();
+            existente.addEventListener("load",resolve,{once:true});
+            existente.addEventListener("error",reject,{once:true});
+            return;
+          }
+          const script=document.createElement("script");
+          script.src=url;
+          script.async=true;
+          script.crossOrigin="anonymous";
+          script.onload=resolve;
+          script.onerror=reject;
+          document.head.appendChild(script);
+        });
+        if(window.XLSX?.utils) return true;
+      }catch(_){ }
+    }
+    return false;
+  }
+
+  function instalarInformeSlaF4AE(){
+    if(window.MV532_RANKING_INFORME_SLA_OK) return true;
+    if(!window.MV358_RANKING_DETALLADO_OK || typeof window.mv358GenerarInformeRanking!=="function") return false;
+
+    const baseGenerar=window.mv358GenerarInformeRanking;
+    window.mv358GenerarInformeRanking=async function(){
+      const listo=await asegurarXlsxInforme();
+      if(!listo || !window.XLSX?.writeFile){
+        return baseGenerar.apply(window,arguments);
+      }
+
+      const XLSX=window.XLSX;
+      const writeFileBase=XLSX.writeFile;
+      let interceptado=false;
+      XLSX.writeFile=function(wb,nombre,opciones){
+        try{
+          enriquecerLibroConSla(wb);
+        }catch(error){
+          console.warn("V532 SLA informe",error);
+        }finally{
+          XLSX.writeFile=writeFileBase;
+        }
+        interceptado=true;
+        return writeFileBase.call(XLSX,wb,nombre,opciones);
+      };
+
+      try{
+        return await baseGenerar.apply(window,arguments);
+      }finally{
+        if(!interceptado && XLSX.writeFile!==writeFileBase){
+          XLSX.writeFile=writeFileBase;
+        }
+      }
+    };
+
+    window.MV532_RANKING_INFORME_SLA_OK=true;
+    return true;
+  }
+
   const reloj=setInterval(()=>{
     const filaOk=instalarFilaF4AE();
     const frescoOk=instalarRankingFrescoF4AE();
-    if(filaOk && frescoOk) clearInterval(reloj);
+    const informeOk=instalarInformeSlaF4AE();
+    if(filaOk && frescoOk && informeOk) clearInterval(reloj);
   },150);
 
   instalarFilaF4AE();
   instalarRankingFrescoF4AE();
-  console.log("MI VISUAL V517D F4AE: Ranking fresco, VTR/GAR y SLA estabilizados.");
+  instalarInformeSlaF4AE();
+  console.log("MI VISUAL V532/F4AE: Ranking estable y SLA incorporado solo al informe Excel.");
 })();
