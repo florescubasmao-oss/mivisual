@@ -39,7 +39,8 @@ async function apiValidacionTecnica(payload){
 
     for(let intento = 0; intento < intentos; intento++){
         const controlador = typeof AbortController === "function" ? new AbortController() : null;
-        const temporizador = controlador ? setTimeout(() => controlador.abort(), 20000) : null;
+        const tiempoMs = payload && payload.accion === "registrarValidacionTecnica" ? 60000 : 20000;
+        const temporizador = controlador ? setTimeout(() => controlador.abort(), tiempoMs) : null;
         try{
             const res = await fetch(url, {...opciones, signal: controlador ? controlador.signal : undefined});
             const txt = await res.text();
@@ -60,7 +61,9 @@ async function apiValidacionTecnica(payload){
             }
         }catch(error){
             ultimoError = error && error.name === "AbortError"
-                ? new Error("La consulta tardó demasiado. Pulse Actualizar para volver a intentar.")
+                ? new Error(payload && payload.accion === "registrarValidacionTecnica"
+                    ? "No se recibió confirmación a tiempo. La solicitud puede haberse guardado. Actualice el historial y busque el código antes de volver a enviarla."
+                    : "La consulta tardó demasiado. Pulse Actualizar para volver a intentar.")
                 : error;
             if(intento + 1 < intentos){
                 await new Promise(resolve => setTimeout(resolve, 500));
@@ -428,7 +431,11 @@ async function guardarValidacionTecnica(btn){
         });
         if(!r.ok) throw new Error(r.error || "No se pudo registrar");
         if(!r.registroConfirmado) throw new Error("La API respondió, pero no confirmó la fila en VALIDACION_TECNICA.");
-        await confirmarRegistroValidacionTecnica(r.id, u.usuario);
+        try {
+            await confirmarRegistroValidacionTecnica(r.id, u.usuario);
+        } catch (error) {
+            throw new Error("El servidor confirmó el registro " + r.id + ", pero no se pudo verificar en el historial. Actualice el historial antes de volver a enviarlo.");
+        }
         mostrarConfirmacionValidacionTecnica(r);
     }catch(e){
         alert("❌ " + e.message);
@@ -453,7 +460,7 @@ async function confirmarRegistroValidacionTecnica(id, usuario){
             return true;
         }
     }
-    throw new Error("La solicitud no pudo verificarse en la hoja. No se mostrará una confirmación falsa; pulse Guardar nuevamente.");
+    throw new Error("La solicitud no pudo verificarse en el historial. Actualice y busque el código antes de volver a enviarla.");
 }
 
 function safeValidacion(v){
@@ -1752,3 +1759,4 @@ async function generarInformeValidacionTecnicaExcel(btn){
         }
     });
 })();
+
