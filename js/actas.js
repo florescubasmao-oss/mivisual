@@ -169,7 +169,16 @@ async function apiActas(payload){
         try{
             let data;
             if(typeof mv336ApiGet === "function"){
-                data = await mv336ApiGet(API_ACTAS, solicitud, {intentos:2, tiempoMs:30000});
+                try{
+                    data = await mv336ApiGet(API_ACTAS, solicitud, {intentos:2, tiempoMs:30000});
+                }catch(error){
+                    // Solo Actas: ultimo intento GET ante 404 con URL nueva.
+                    if(!/\(404\)/.test(String(error && error.message || "")))throw error;
+                    const nuevaConsulta=Object.assign({},solicitud,{
+                        _actasConsulta:Date.now()+"-"+Math.random().toString(36).slice(2)
+                    });
+                    data = await mv336ApiGet(API_ACTAS, nuevaConsulta, {intentos:1, tiempoMs:30000});
+                }
             }else{
                 const parametros = new URLSearchParams();
                 Object.entries(solicitud).forEach(([k,v])=>{
@@ -1471,3 +1480,4 @@ function renderListaCargosActas(lista){
     if(!lista.length){cont.innerHTML=`<div class="actas-empty">No hay cargos para los filtros seleccionados.</div>`;return;}
     cont.innerHTML=lista.map(x=>`<div class="actas-cargo-card"><div><b>${limpiarHtmlActas(x.idCargo||"")}</b><br><small>${fechaVisibleActas(x.fechaEntrega)} ${limpiarHtmlActas(formatearHoraPeruApp(x.horaEntrega||"",false))} — Hora Perú</small></div><div><b>${limpiarHtmlActas(x.cuadrilla||"")}</b><br><small>${limpiarHtmlActas(x.sede||"")} · ${limpiarHtmlActas(x.plataforma||"")}</small></div><div><b>${x.totalActas||0} actas</b><br><small>${limpiarHtmlActas(x.usuarioRecibe||"")}</small></div><div><a class="actas-btn blue" href="${limpiarHtmlActas(x.linkPdf||"")}" target="_blank" rel="noopener">Ver / descargar PDF</a></div></div>`).join("");
 }
+
