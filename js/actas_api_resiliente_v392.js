@@ -226,6 +226,34 @@ async function comprobarExecV392(){
   }
 }
 
+// REV1: comprueba el estado real sin snapshots antes de recuperar una validacion.
+async function comprobarValidacionActaRev1(s){
+  if(s.accion!=="validarActaEscaneada" || normV524(s.resultado)!=="CORRECTO")return null;
+  if(typeof mv336ApiGet!=="function")return null;
+  try{
+    const r=await mv336ApiGet(API_ACTAS,{
+      accion:"listarActasEscaneadas",usuario:s.usuario,
+      _actasConsulta:Date.now()+"-"+Math.random().toString(36).slice(2)
+    },{intentos:1,tiempoMs:30000});
+    if(!r || r.ok!==true || r.__cacheVencida || r.__snapshotV524 || !Array.isArray(r.actas))return null;
+    const coincidencias=r.actas.filter(a=>txtV524(a.id)===txtV524(s.id));
+    if(coincidencias.length!==1)return null;
+    const a=coincidencias[0], perfil=normV524(r.perfil);
+    const jefatura=perfil==="JEFATURA ALMACEN";
+    if(!jefatura && perfil!=="ALMACEN")return null;
+    const resultado=normV524(jefatura?a.resultadoJefatura:a.resultadoAlmacen);
+    const validador=txtV524(jefatura?a.validadoJefaturaPor:a.validadoAlmacenPor);
+    if(resultado==="CORRECTO" && (!jefatura || normV524(a.estado)==="FINALIZADO")){
+      return {confirmado:true,estado:a.estado};
+    }
+    // No sobrescribe observaciones ni validaciones realizadas por otra persona.
+    const pendiente=(!resultado || resultado==="PENDIENTE") && !validador &&
+      normV524(a.estado)!=="FINALIZADO" && !!a.linkActa &&
+      (jefatura || !normV524(a.resultadoJefatura));
+    return pendiente?{pendiente:true}:null;
+  }catch(_){return null;}
+}
+
 async function postUnaVez(s){
   const c=typeof AbortController==="function"?new AbortController():null;
   const timer=c?setTimeout(()=>c.abort(),105000):null;
@@ -256,6 +284,7 @@ async function postUnaVez(s){
       const e=new Error(
         "No se recibió confirmación de la operación. Actualice la vista antes de repetirla."
       );
+      e.sinConfirmacionActa=true;
       e.transitorio=false;
       throw e;
     }
@@ -321,6 +350,17 @@ async function escribirV392(s){
 
     }catch(error){
       const accion=s?.accion||"";
+      if(error.sinConfirmacionActa && accion==="validarActaEscaneada" && normV524(s.resultado)==="CORRECTO"){
+        const verificacion=await comprobarValidacionActaRev1(s);
+        if(verificacion && verificacion.confirmado){
+          try{if(typeof limpiarCacheActas==="function")limpiarCacheActas();}catch(_){}
+          limpiarSnapshotsV524();
+          return {ok:true,modulo:"ACTAS",id:s.id,resultado:"CORRECTO",estado:verificacion.estado,estadoVerificado:true};
+        }
+        if(verificacion && verificacion.pendiente && intento===0){
+          error.transitorio=true;
+        }
+      }
       const segura=REINTENTABLES.has(accion);
       const transitorio=!!error.transitorio;
       const puedeReintentar=intento===0 && segura && transitorio;
@@ -339,7 +379,7 @@ async function escribirV392(s){
 
       // Caso reportado: HTTP 404 intermitente en POST.
       // Antes de repetir la operación segura comprobamos que /exec siga activo.
-      if(error.httpStatus===404){
+      if(error.httpStatus===404 || error.sinConfirmacionActa){
         await dormir(900);
         const apiActiva=await comprobarExecV392();
 
