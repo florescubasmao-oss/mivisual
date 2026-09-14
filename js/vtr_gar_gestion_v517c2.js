@@ -152,8 +152,8 @@
     return norm(x.registroTecnico)==="REGISTRADA" && estadoBono(x)==="PENDIENTE";
   }
 
-  function noEstandarActivos(){
-    return (EST.data?.noEstandar||[]).filter(x=>{
+  function noEstandarActivos(datosInforme){
+    return ((datosInforme||EST.data)?.noEstandar||[]).filter(x=>{
       const decision=norm(x.estadoResponsabilidad||x.estadoDecision||"PENDIENTE");
       const estadoWin=norm(x.estadoWin||"POR_REVISAR");
       return estadoWin==="FINALIZADA" && !["CONFIRMADO","REASIGNADO","NO_ES_GAR_VTR","ANULADO"].includes(decision);
@@ -184,13 +184,14 @@
   window.mv517c1FiltroRegistro=setFiltroRegistro;
   window.mv517c1FiltroGestion=setFiltroGestion;
 
-  function filtros(){
-    const arr=(EST.data&&EST.data.incidencias)||[];
-    const q=norm(document.getElementById("mv517c1Buscar")?.value);
-    const tipo=norm(document.getElementById("mv517c1Tipo")?.value);
-    const estado=norm(document.getElementById("mv517c1Estado")?.value);
-    const reg=norm(document.getElementById("mv517c1Registro")?.value);
-    const gestion=norm(document.getElementById("mv517c1Gestion")?.value);
+  function filtros(datosInforme,seleccionInforme){
+    const fuente=datosInforme||EST.data;
+    const arr=(fuente&&fuente.incidencias)||[];
+    const q=seleccionInforme ? seleccionInforme.q : norm(document.getElementById("mv517c1Buscar")?.value);
+    const tipo=seleccionInforme ? seleccionInforme.tipo : norm(document.getElementById("mv517c1Tipo")?.value);
+    const estado=seleccionInforme ? seleccionInforme.estado : norm(document.getElementById("mv517c1Estado")?.value);
+    const reg=seleccionInforme ? seleccionInforme.reg : norm(document.getElementById("mv517c1Registro")?.value);
+    const gestion=seleccionInforme ? seleccionInforme.gestion : norm(document.getElementById("mv517c1Gestion")?.value);
 
     return arr.filter(x=>{
       if(tipo&&norm(x.tipo)!==tipo) return false;
@@ -306,6 +307,159 @@
   }
   window.mv517c1Render=render;
 
+
+  /* Informe GAR/VTR: solo consulta y archivo local, sin acciones de escritura. */
+  let informeGarVtrEnCurso=false;
+
+  function puedeDescargarInformeGarVtr(){
+    return !esTecnico() &&
+      typeof window.pmPuede==="function" &&
+      typeof window.pmPuedeVer==="function" &&
+      window.pmPuedeVer("VALIDACION TECNICA") &&
+      window.pmPuede("VALIDACION TECNICA","DESCARGAR");
+  }
+
+  function seleccionInformeGarVtr(){
+    const valor=id=>norm(document.getElementById(id)?.value);
+    return {
+      q:valor("mv517c1Buscar"),tipo:valor("mv517c1Tipo"),
+      estado:valor("mv517c1Estado"),reg:valor("mv517c1Registro"),
+      gestion:valor("mv517c1Gestion")
+    };
+  }
+
+  function esperarInformeGarVtr(promesa,ms){
+    let timer;
+    const limite=new Promise((_,reject)=>{
+      timer=setTimeout(()=>reject(new Error("La consulta del informe tardó demasiado. Intenta descargarlo nuevamente.")),ms);
+    });
+    return Promise.race([promesa,limite]).finally(()=>clearTimeout(timer));
+  }
+
+  function hojasInformeGarVtr(data,seleccion,generado){
+    const lista=filtros(data,seleccion);
+    const manual=noEstandarActivos(data);
+    const fecha=v=>typeof window.formatearFechaExcelVT==="function"
+      ? window.formatearFechaExcelVT(v) : txt(v);
+    const numero=v=>v!==null && v!==undefined && v!=="" && Number.isFinite(Number(v)) ? Number(v) : "";
+    const detalle=[[
+      "PERIODO","FECHA INCIDENCIA","TIPO","TICKET","CODIGO / PEDIDO","DNI",
+      "SEDE EJECUTORA","CUADRILLA EJECUTORA","SEDE RESPONSABLE","CUADRILLA RESPONSABLE",
+      "ESTADO WIN","DECISION RESPONSABILIDAD","REGISTRO TECNICO","ID VALIDACION",
+      "TECNICO REGISTRO","CUADRILLA REGISTRO","RESULTADO BONO","PUNTOS REGISTRADOS",
+      "PUNTOS ACTIVOS","VALIDADO POR","COMENTARIO JEFATURA",
+      "CLASIFICACION PENDIENTE","BONO PENDIENTE"
+    ]];
+    const ordenes=[["TICKET","ORDEN WIN","ESTADO WIN","FECHA SOLICITUD","CUADRILLA"]];
+    const antecedentes=[["TICKET","ESTADO DETECCION","FECHA","ORDEN ANTECEDENTE","ESTADO","TIPO TRABAJO","CUADRILLA"]];
+    const porSede=new Map();
+    lista.forEach(x=>{
+      detalle.push([
+        txt(data.periodo),fecha(x.fechaIncidencia),txt(x.tipo),txt(x.ticket),txt(x.codigoPedido),txt(x.dni),
+        txt(x.sedeEjecutora),txt(x.cuadrillaEjecutora),txt(x.sedeResponsable),txt(x.cuadrillaResponsable),
+        txt(x.estadoWin),txt(x.estadoResponsabilidad||x.estadoDecision||"PENDIENTE"),
+        txt(x.registroTecnico),txt(x.validacionId),txt(x.tecnicoRegistro),txt(x.cuadrillaRegistro),
+        estadoBono(x).replace(/_/g," "),numero(x.puntajeVtrGar),numero(x.puntajeVtrGarActivo),
+        txt(x.validadoPor),txt(x.comentarioJefatura),x.requiereClasificacion?"SI":"NO",x.requiereBono?"SI":"NO"
+      ]);
+      (Array.isArray(x.ordenesWin)?x.ordenesWin:[]).forEach(o=>{
+        ordenes.push([txt(x.ticket),txt(o.ordenId),txt(o.estado),fecha(o.fechaSolicitud),txt(o.cuadrilla)]);
+      });
+      const a=x.antecedente||{};
+      (Array.isArray(a.antecedentes)?a.antecedentes:[]).forEach(z=>{
+        antecedentes.push([txt(x.ticket),txt(a.estado),fecha(z.fecha),txt(z.ordenId),txt(z.estado),txt(z.tipoTrabajo),txt(z.cuadrilla)]);
+      });
+      const sede=txt(x.sedeEjecutora)||"SIN SEDE";
+      porSede.set(sede,(porSede.get(sede)||0)+1);
+    });
+    const resumen=[
+      ["INFORME GAR / VTR","GESTION CONSOLIDADA"],
+      ["Periodo",txt(data.periodo)],
+      ["Generado (hora de Lima)",generado],
+      ["Fuente","Consulta de Gestión GAR/VTR; conserva el alcance y la actualización del panel."],
+      ["Búsqueda",seleccion.q||"Todas"],["Tipo",seleccion.tipo||"GAR y VTR"],
+      ["Estado WIN",seleccion.estado||"Todos"],["Registro / bono",seleccion.reg||"Todos"],
+      ["Gestión",seleccion.gestion||"Toda"],["Tickets incluidos",lista.length],
+      ["GAR",lista.filter(x=>norm(x.tipo)==="GAR").length],
+      ["VTR",lista.filter(x=>norm(x.tipo)==="VTR").length],
+      ["Con registro técnico",lista.filter(x=>norm(x.registroTecnico)==="REGISTRADA").length],
+      ["Sin registro técnico",lista.filter(x=>norm(x.registroTecnico)!=="REGISTRADA").length],
+      ["Bono",lista.filter(x=>estadoBono(x)==="BONO").length],
+      ["No bono",lista.filter(x=>estadoBono(x)==="NO_BONO").length],
+      ["Observados",lista.filter(x=>estadoBono(x)==="OBSERVADO").length],
+      ["Bono pendiente",lista.filter(x=>estadoBono(x)==="PENDIENTE").length],
+      ["No estándar / revisión manual del periodo",manual.length],
+      ["Alcance de REVISION MANUAL","Como en el panel, muestra los casos no estándar pendientes del periodo, sin los filtros del listado GAR/VTR."],
+      ["Puntos","Los puntos se copian del resultado consultado; una celda vacía significa dato no disponible."],
+      [],["SEDE EJECUTORA","TICKETS INCLUIDOS"],
+      ...Array.from(porSede.entries()).sort((a,b)=>a[0].localeCompare(b[0]))
+    ];
+    const revision=[["PERIODO","FECHA INCIDENCIA","CLAVE","TICKET MOSTRADO","ORDEN WIN","CODIGO / PEDIDO","DNI","SEDE","CUADRILLA","ESTADO WIN","TIPO BASE","DECISION","MOTIVO WIN","OBSERVACION"]];
+    manual.forEach(x=>revision.push([
+      txt(data.periodo),fecha(x.fechaIncidencia),txt(x.clave),txt(x.ticketMostrar),
+      txt(x.ordenId),txt(x.codigoPedido),txt(x.dni),txt(x.sedeEjecutora),txt(x.cuadrillaEjecutora),
+      txt(x.estadoWin),txt(x.tipoBase),txt(x.estadoResponsabilidad||x.estadoDecision||"PENDIENTE"),
+      txt(x.motivoWin),txt(x.observacion)
+    ]));
+    return [
+      {nombre:"RESUMEN",filas:resumen,anchos:[44,90],filtro:false},
+      {nombre:"GAR VTR",filas:detalle,anchos:[12,16,9,23,20,14,18,48,18,48,19,26,22,25,35,48,20,20,16,22,65,25,20],filtro:true},
+      {nombre:"ORDENES WIN",filas:ordenes,anchos:[23,18,19,19,48],filtro:true},
+      {nombre:"ANTECEDENTES",filas:antecedentes,anchos:[23,22,18,22,20,35,48],filtro:true},
+      {nombre:"REVISION MANUAL",filas:revision,anchos:[12,18,32,24,18,20,14,18,48,20,20,26,65,65],filtro:true}
+    ];
+  }
+
+  window.mv517c2DescargarExcel=async function(btn){
+    if(informeGarVtrEnCurso)return;
+    if(!puedeDescargarInformeGarVtr()){
+      alert("No tienes permiso para descargar este informe.");return;
+    }
+    if(!EST.data || !document.getElementById("mv517c1Periodo")){
+      alert("Abre Gestión GAR/VTR y selecciona el periodo.");return;
+    }
+    const periodo=txt(EST.data.periodo), solicitante=usuario();
+    const seleccion=seleccionInformeGarVtr();
+    informeGarVtrEnCurso=true;
+    if(btn){btn.disabled=true;btn.textContent="Generando Excel...";}
+    try{
+      // Usa la misma lectura y las mismas capas de asociación/caché del panel.
+      // No reemplaza EST.data, no renderiza ni altera filtros o decisiones.
+      const data=await esperarInformeGarVtr(apiPost({
+        accion:"listarVtrGarV517A",usuario:solicitante,periodo:periodo
+      }),60000);
+      if(!Array.isArray(data.incidencias)||txt(data.periodo)!==periodo||
+        (data.usuario && norm(data.usuario)!==norm(solicitante))){
+        throw new Error("No se pudo confirmar el periodo y los datos del informe. Vuelve a abrir GAR/VTR.");
+      }
+      if(!filtros(data,seleccion).length && !noEstandarActivos(data).length){
+        throw new Error("No hay datos para el informe con esta selección.");
+      }
+      if(!window.XLSX && typeof window.cargarLibreriaExcelVT!=="function"){
+        throw new Error("El generador de Excel aún no está listo. Abre Validación Técnica y vuelve a GAR/VTR.");
+      }
+      const XLSX=window.XLSX||await esperarInformeGarVtr(window.cargarLibreriaExcelVT(),30000);
+      if(usuario()!==solicitante || !puedeDescargarInformeGarVtr()){
+        throw new Error("La sesión o los permisos cambiaron. Vuelve a abrir GAR/VTR.");
+      }
+      const generado=new Date().toLocaleString("es-PE",{timeZone:"America/Lima",hour12:true});
+      const hojas=hojasInformeGarVtr(data,seleccion,generado);
+      const wb=XLSX.utils.book_new();
+      hojas.forEach(h=>{
+        const ws=XLSX.utils.aoa_to_sheet(h.filas);
+        ws["!cols"]=h.anchos.map(wch=>({wch}));
+        if(h.filtro)ws["!autofilter"]={ref:"A1:"+XLSX.utils.encode_col(h.filas[0].length-1)+h.filas.length};
+        XLSX.utils.book_append_sheet(wb,ws,h.nombre);
+      });
+      XLSX.writeFile(wb,"GAR_VTR_"+periodo.replace(/[^0-9-]/g,"")+".xlsx",{compression:true});
+    }catch(e){
+      alert("No se pudo generar el informe: "+(e&&e.message||String(e)));
+    }finally{
+      informeGarVtrEnCurso=false;
+      if(btn){btn.disabled=false;btn.textContent="📥 Descargar Excel";}
+    }
+  };
+
   function pantalla(){
     const d=EST.data||{}, r=d.resumen||{}, q=conteosRapidos(), ps=d.periodosDisponibles||[];
     const n=d.notificacionJefatura||{}, nd=n.detalle||{};
@@ -338,7 +492,7 @@
         <select id="mv517c1Registro" onchange="mv517c1Render()"><option value="">Todos los registros</option><option value="CON_REGISTRO">Con registro</option><option value="SIN_REGISTRO">Sin registro</option><option value="BONO_PENDIENTE">Bono pendiente</option><option value="BONO">Bono</option><option value="NO_BONO">No bono</option><option value="OBSERVADO">Observado</option></select>
         <select id="mv517c1Gestion" onchange="mv517c1Render()"><option value="">Toda la gestión</option><option value="POR_VALIDAR">Por validar</option><option value="CLASIFICACION_PENDIENTE">Clasificación pendiente</option><option value="RESUELTOS">Resueltos</option></select>
       </div>
-      <div class="mv517c1-period-row"><select class="mv517c1-periodo" id="mv517c1Periodo" onchange="mv517c1CambiarPeriodo(this.value)">${ps.map(p=>`<option value="${esc(p)}" ${p===d.periodo?"selected":""}>${esc(p)}</option>`).join("")}</select></div>
+      <div class="mv517c1-period-row"><select class="mv517c1-periodo" id="mv517c1Periodo" onchange="mv517c1CambiarPeriodo(this.value)">${ps.map(p=>`<option value="${esc(p)}" ${p===d.periodo?"selected":""}>${esc(p)}</option>`).join("")}</select>${puedeDescargarInformeGarVtr()?`<button type="button" class="mv517c1-btn" style="margin-left:8px" onclick="mv517c2DescargarExcel(this)">📥 Descargar Excel</button>`:""}</div>
       <div id="mv517c1Contenido"></div>
     </div>`;
   }

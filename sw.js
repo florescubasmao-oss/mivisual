@@ -1,6 +1,6 @@
 /* MI VISUAL V528 - RESILIENCIA CENTRAL DE LECTURAS API + V527B/V527/V526/V525/V524/V523/V522C */
 const MV339_CACHE = "mivisual-v528-api-lecturas-resilientes-20260903-1";
-const MV517C19_BRIDGE = "./js/vtr_gar_ux_v517b.js?v=V520D-BONO-NO-APLICA-20260901-1";
+const MV517C19_BRIDGE = "./js/vtr_gar_ux_v517b.js?v=GARVTR-EXCEL-20260914-1";
 
 /*
   V528: SOLO acciones de lectura confirmadas.
@@ -57,7 +57,7 @@ const MV339_CORE = [
   MV517C19_BRIDGE,
   "./js/vtr_gar_ux_v517c3.js?v=V517C3-UX-RAPIDA-20260828-1",
   "./js/vtr_gar_legacy_assoc_v517c2a.js?v=V517C2A-LEGACY-20260828-1",
-  "./js/vtr_gar_gestion_v517c2.js?v=V517C2B-BONO-NO-APLICA-20260901-1",
+  "./js/vtr_gar_gestion_v517c2.js?v=GARVTR-EXCEL-20260914-1",
   "./js/vtr_gar_antecedente_dias_v517c4.js?v=V517C4-ANTECEDENTE-DIAS-20260828-1",
   "./js/vtr_gar_bono_excepcion_v517c5.js?v=V517C18-NO-BONO-SIN-REGISTRO-20260828-1",
   "./js/vtr_gar_usabilidad_v517c6.js?v=V517C6-USABILIDAD-20260828-1",
