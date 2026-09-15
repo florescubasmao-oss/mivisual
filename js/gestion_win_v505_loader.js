@@ -87,6 +87,7 @@
 
   cargar("./js/indicadores_win_sync_v4879.js?v=V544-MAPA-SYNC-INTEGRAL-20260915-1")
     .then(()=>cargar("./js/mapa_indicadores_estado_v544.js?v=V544-MAPA-ESTADO-20260915-1"))
+    .then(()=>cargar("./js/mapa_indicadores_watchdog_v545.js?v=V545-MAPA-WATCHDOG-20260915-1"))
     .then(()=>cargar("./js/partidas_snapshot_auto_v513d.js?v=V513D-SNAPSHOT-AUTO-20260827"))
     .catch(e=>
       console.warn("V517A Complementos: sincronizador WIN / estado Mapa / snapshot Partidas pendiente",e)
