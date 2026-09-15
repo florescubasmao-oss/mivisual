@@ -1,22 +1,5 @@
 /* ============================================================
    MI VISUAL V517A - LOADER COMPLEMENTOS INCREMENTALES
-
-   Carga incremental:
-   - Sincronizador WIN -> indicadores automatico optimizado.
-   - Snapshot Partidas se actualiza tras carga WIN, sin ralentizar apertura.
-   - Sello Dashboard inferior izquierdo, igual al Ranking.
-   - Mantiene sello compatible en Ranking/Mi Desempeno.
-   - Checklist rapido: precarga/cache + render por sede bajo demanda.
-   - Gestion de Actas V508/V511 intacta.
-   - Continuidad al abrir dashboards.
-   - Partidas V505/V506 conservadas + interfaz V513 + lote manual V513C.
-   - Partidas + herramientas solo para Jefatura/Administrador.
-   - VTR/GAR conserva una sola barra Registro / Validacion.
-   - V515 agrega puntaje/bono Jefatura y detalle VTR/GAR en Mi Desempeno.
-   - V516/V516A corrigen barra duplicada y desplegables de Validacion VTR/GAR.
-   - V516B se carga directamente desde index.html como control preemptivo.
-   - V517A activa vista consolidada WIN + estados + registro tecnico + decision Jefatura.
-   - Dashboard, Ranking y Produccion normal no se modifican en esta etapa.
 ============================================================ */
 (function(){
   "use strict";
@@ -102,7 +85,7 @@
     console.warn("V517A Complementos: sello compatible pendiente",e)
   );
 
-  cargar("./js/indicadores_win_sync_v4879.js?v=V512-SYNC-UNICA-PUBLICACION").then(()=>
+  cargar("./js/indicadores_win_sync_v4879.js?v=V543-MAPA-SIN-BLOQUEO-20260915-1").then(()=>
     cargar("./js/partidas_snapshot_auto_v513d.js?v=V513D-SNAPSHOT-AUTO-20260827")
   ).catch(e=>
     console.warn("V517A Complementos: sincronizador WIN / snapshot Partidas pendiente",e)
