@@ -1,5 +1,5 @@
 /* ============================================================
-   MI VISUAL V535 - VALIDACION DE DESCANSOS RESILIENTE
+   MI VISUAL V536 - VALIDACION DE DESCANSOS RESILIENTE
    15/09/2026
 
    Objetivo:
@@ -7,15 +7,17 @@
      Aprobar / Observar / Rechazar sí fue registrado.
    - NO repetir automáticamente ninguna escritura.
    - Ante una respuesta incierta, verificar por lectura el estado real.
-   - Si el estado ya quedó aplicado, devolver éxito recuperado.
-   - Si no se puede confirmar, pedir actualizar antes de volver a actuar.
+   - Si el servidor confirma la operación, reflejar el cambio de inmediato
+     en pantalla antes de refrescar desde red.
+   - Limpiar snapshots de Descansos para no volver a pintar PENDIENTE
+     después de una aprobación correcta.
 
-   No modifica reglas, permisos ni backend.
+   No modifica reglas ni permisos.
 ============================================================ */
 (function(){
   "use strict";
-  if(window.MV535_DESCANSOS_VALIDACION_OK) return;
-  window.MV535_DESCANSOS_VALIDACION_OK = true;
+  if(window.MV536_DESCANSOS_VALIDACION_OK) return;
+  window.MV536_DESCANSOS_VALIDACION_OK = true;
 
   const ACCIONES_VALIDACION = new Set([
     "aprobarProgramacionDescansos",
@@ -58,11 +60,73 @@
     return "";
   }
 
+  function limpiarCachesDescansos(){
+    const prefijos = ["MI_VISUAL_PD_","MV534_DESCANSOS|"];
+    [sessionStorage,localStorage].forEach(function(storage){
+      try{
+        for(let i=storage.length-1;i>=0;i--){
+          const k=storage.key(i) || "";
+          if(prefijos.some(p=>k.startsWith(p))) storage.removeItem(k);
+        }
+      }catch(_){}
+    });
+  }
+
+  function aplicarResultadoLocal(payload,respuesta){
+    const ids = idsPayload(payload);
+    const esperado = estadoEsperado(payload);
+    if(!ids.length || !esperado) return false;
+
+    const actualizados = Number(respuesta && respuesta.actualizados || 0);
+    const confirmado = !!(respuesta && (respuesta.recuperadoV535 || respuesta.verificadoDespuesDeError || respuesta.estado));
+    if(actualizados <= 0 && !confirmado) return false;
+
+    let tocados = 0;
+
+    function aplicarLista(lista){
+      if(!Array.isArray(lista)) return;
+      lista.forEach(function(item){
+        if(!item || !ids.includes(txt(item.id))) return;
+        item.estadoValidacion = esperado;
+        item.estadoProgramacion = esperado;
+        item.resultadoJefatura = esperado;
+        item.motivoJefatura = txt(payload && payload.motivo);
+        item.comentarioJefatura = txt(payload && payload.motivo);
+        item.validadoJefaturaPor = txt(payload && payload.usuario);
+
+        if(esperado === "APROBADO" && norm(item.tipoRegistro) !== "SOLICITUD TECNICO"){
+          item.estadoDia = norm(item.estadoNuevo || item.solicitudCambio || item.estadoDia || "EN CAMPO");
+          item.solicitudCambio = "";
+        }
+        tocados++;
+      });
+    }
+
+    try{
+      aplicarLista(PD_DATA && PD_DATA.programacion);
+      aplicarLista(PD_DATA && PD_DATA.historial);
+    }catch(_){}
+
+    try{
+      if(typeof PD_PENDIENTES_SELECCIONADOS !== "undefined" && PD_PENDIENTES_SELECCIONADOS){
+        ids.forEach(id=>PD_PENDIENTES_SELECCIONADOS.delete(id));
+      }
+    }catch(_){}
+
+    limpiarCachesDescansos();
+
+    if(tocados && typeof window.pdRenderGestion === "function"){
+      try{ window.pdRenderGestion(); }catch(_){}
+    }
+
+    return tocados > 0;
+  }
+
   function periodoVisible(){
     const sel = document.getElementById("pdPeriodo");
     if(sel && /^\d{4}-\d{2}$/.test(txt(sel.value))) return txt(sel.value);
     try{
-      if(window.PD_DATA && /^\d{4}-\d{2}$/.test(txt(PD_DATA.periodo))) return txt(PD_DATA.periodo);
+      if(typeof PD_DATA !== "undefined" && PD_DATA && /^\d{4}-\d{2}$/.test(txt(PD_DATA.periodo))) return txt(PD_DATA.periodo);
     }catch(_){}
     try{
       if(typeof window.pdPeriodoActual === "function") return window.pdPeriodoActual();
@@ -129,7 +193,7 @@
       usuario:payload.usuario,
       periodo:per,
       periodos:periodosConsulta(per),
-      _v535:Date.now()+"-"+Math.random().toString(36).slice(2)
+      _v536:Date.now()+"-"+Math.random().toString(36).slice(2)
     };
 
     let data = null;
@@ -158,18 +222,20 @@
 
   function instalar(){
     if(typeof window.pdApi !== "function") return false;
-    if(window.pdApi.__mv535) return true;
+    if(window.pdApi.__mv536) return true;
 
     const baseApi = window.pdApi;
 
-    const apiV535 = async function(payload){
+    const apiV536 = async function(payload){
       const p = Object.assign({},payload || {});
       if(!ACCIONES_VALIDACION.has(p.accion)){
         return await baseApi(p);
       }
 
       try{
-        return await baseApi(p);
+        const r = await baseApi(p);
+        aplicarResultadoLocal(p,r);
+        return r;
       }catch(error){
         if(!esTransitorio(error)) throw error;
 
@@ -178,16 +244,10 @@
           await dormir(intento === 0 ? 900 : 1700);
           const verificado = await verificar(baseApi,p);
           if(verificado){
-            console.warn("V535: validación recuperada después de respuesta transitoria",p.accion,idsPayload(p));
+            aplicarResultadoLocal(p,verificado);
+            console.warn("V536: validación recuperada después de respuesta transitoria",p.accion,idsPayload(p));
             return verificado;
           }
-        }
-
-        const ids = idsPayload(p);
-        if(!ids.length){
-          throw new Error(
-            "La respuesta del servidor se perdió durante la validación. No vuelva a ejecutar la aprobación masiva. Actualice la vista para confirmar el estado antes de repetir."
-          );
         }
 
         throw new Error(
@@ -196,12 +256,12 @@
       }
     };
 
-    apiV535.__mv535 = true;
-    apiV535.__base = baseApi;
-    window.pdApi = apiV535;
-    try{ pdApi = apiV535; }catch(_){}
+    apiV536.__mv536 = true;
+    apiV536.__base = baseApi;
+    window.pdApi = apiV536;
+    try{ pdApi = apiV536; }catch(_){}
 
-    console.log("MI VISUAL V535: validaciones de Descansos protegidas ante 404 transitorio.");
+    console.log("MI VISUAL V536: validación de Descansos + actualización inmediata de UI habilitadas.");
     return true;
   }
 
