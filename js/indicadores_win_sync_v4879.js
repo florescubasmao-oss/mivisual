@@ -1,24 +1,29 @@
 /* ================================================================
-   MI VISUAL V542 - MAPA OPERATIVO -> INDICADORES SINCRONIZADOS
+   MI VISUAL V543 - MAPA OPERATIVO -> INDICADORES SIN BLOQUEAR MAPA
 
    OBJETIVO
-   - Una carga confirmada en Mapa Operativo debe impactar automáticamente
+   - Una carga confirmada en Mapa Operativo impacta automáticamente
      Producción, Efectividad, Recableado, VTR/GAR, Ranking y Dashboard.
    - Recupera cargas que sí llegaron a MAPA_ORDENES aunque el navegador haya
      perdido la confirmación HTTP.
-   - Al abrir Mapa, Jefatura/Admin compara el sello del Mapa contra el sello
-     de publicación V512 y repara el periodo actual si quedó desfasado.
+   - NO ejecuta reconstrucciones pesadas al abrir Mapa Operativo ni al cambiar
+     filtros. Esto evita competir con listarMapaOperativo y dejar el mapa en
+     "Consultando órdenes...".
+   - Durante la sincronización posterior a una importación, bloquea solo el
+     botón "Volver al mapa" de la vista de importación hasta terminar.
+   - Mantiene una revisión manual de desfase para Jefatura/Admin.
    - Nunca reintenta la importación del Mapa.
    - Julio 2026 y anteriores permanecen congelados.
 ================================================================ */
 (function(){
   "use strict";
-  if(window.MV542_MAPA_INDICADORES_SYNC_OK)return;
+  if(window.MV543_MAPA_INDICADORES_SYNC_OK)return;
 
   window.MV505_INDICADORES_WIN_SYNC_OK=true;
   window.MV4879_INDICADORES_WIN_SYNC_OK=true;
   window.MV512_INDICADORES_WIN_SYNC_OK=true;
   window.MV542_MAPA_INDICADORES_SYNC_OK=true;
+  window.MV543_MAPA_INDICADORES_SYNC_OK=true;
 
   const API=window.MI_VISUAL_API_URL||"";
   const PERIODO_MINIMO="2026-08";
@@ -94,7 +99,7 @@
     Object.entries(payload||{}).forEach(([k,v])=>{
       if(v!==undefined&&v!==null&&v!=="")url.searchParams.set(k,String(v));
     });
-    url.searchParams.set("_v542",Date.now()+"-"+Math.random().toString(36).slice(2));
+    url.searchParams.set("_v543",Date.now()+"-"+Math.random().toString(36).slice(2));
     const c=typeof AbortController==="function"?new AbortController():null;
     const t=c?setTimeout(()=>c.abort(),tiempoMs):null;
     try{
@@ -166,6 +171,17 @@
     msg.textContent=(previo?previo+"\n":"")+texto;
   }
 
+  function bloquearVolverMapa(bloquear){
+    try{
+      const boton=document.querySelector("#moVistaImportacion .mo-head button[onclick*='moVolverFiltros']");
+      if(!boton)return;
+      boton.disabled=!!bloquear;
+      boton.style.opacity=bloquear?".55":"";
+      boton.style.cursor=bloquear?"wait":"";
+      boton.title=bloquear?"Espere a que termine la sincronización de indicadores":"";
+    }catch(_){}
+  }
+
   function invalidarCachesCliente(periodo){
     try{
       ["MV395_MAPA_CAT","MV395_MAPA_LIST"].forEach(k=>sessionStorage.removeItem(k));
@@ -174,7 +190,7 @@
       if(typeof window.mv366InvalidarResumenDashboard==="function")window.mv366InvalidarResumenDashboard(periodo||"");
     }catch(_){}
     try{
-      window.dispatchEvent(new CustomEvent("mv505CachesIndicadoresInvalidadas",{detail:{periodo:periodo||"",version:"V542"}}));
+      window.dispatchEvent(new CustomEvent("mv505CachesIndicadoresInvalidadas",{detail:{periodo:periodo||"",version:"V543"}}));
     }catch(_){}
   }
   window.mv4879InvalidarCachesCliente=invalidarCachesCliente;
@@ -191,7 +207,7 @@
           fechaPublicacionTexto:s.visible,
           actualizadoPor:s.usuario,
           publicacionConfirmadaPorSello:true,
-          sincronizador:"V542"
+          sincronizador:"V543"
         };
       }
     }
@@ -201,7 +217,7 @@
   async function publicarPeriodo(periodo,origen="AUTOMATICO"){
     const p=periodoValido(periodo)?periodo:periodoActual();
     if(!p)throw new Error("No se pudo determinar el periodo WIN.");
-    if(p<PERIODO_MINIMO)return {ok:true,periodo:p,omitidoPorCierre:true,julioCongelado:true,version:"V542"};
+    if(p<PERIODO_MINIMO)return {ok:true,periodo:p,omitidoPorCierre:true,julioCongelado:true,version:"V543"};
     if(!puedePublicar())throw new Error("La publicación requiere perfil Jefatura/Administrador.");
     if(publicacionesEnCurso.has(p))return publicacionesEnCurso.get(p);
 
@@ -221,7 +237,7 @@
         publicado=confirmado;
       }
 
-      publicado.sincronizador="V542";
+      publicado.sincronizador="V543";
       publicado.origenSincronizacion=origen;
       ultima=publicado;
       invalidarCachesCliente(p);
@@ -245,7 +261,7 @@
   async function previsualizarPeriodo(periodo){
     const p=periodoValido(periodo)?periodo:periodoActual();
     if(!p)throw new Error("No se pudo determinar el periodo WIN.");
-    if(p<PERIODO_MINIMO)return {ok:true,periodo:p,omitidoPorCierre:true,julioCongelado:true,version:"V542"};
+    if(p<PERIODO_MINIMO)return {ok:true,periodo:p,omitidoPorCierre:true,julioCongelado:true,version:"V543"};
     return apiPost({accion:"previsualizarPublicacionIndicadoresWinV487",usuario:usuario(),periodo:p},120000);
   }
 
@@ -325,13 +341,13 @@
       if(!mapMs)return null;
       if(indMs && indMs>=mapMs)return {ok:true,periodo:p,alDia:true,mapa:m,indicadores:i};
 
-      const llave=`MV542_CATCHUP|${p}|${m.iso}`;
+      const llave=`MV543_CATCHUP|${p}|${m.iso}`;
       try{
         if(sessionStorage.getItem(llave)==="OK")return null;
         sessionStorage.setItem(llave,"OK");
       }catch(_){}
 
-      if(mostrarAviso)anexarEstado(`⏳ Detecté que ${p} está desfasado. Actualizando Producción, Efectividad, Ranking y demás módulos...`,"warn");
+      if(mostrarAviso)anexarEstado(`⏳ ${p} está desfasado. Sincronizando indicadores...`,"warn");
       try{
         return await publicarPeriodo(p,"RECUPERACION_MAPA_DESFASADO");
       }catch(e){
@@ -346,9 +362,14 @@
   }
 
   function instalarHookImportacion(){
-    const original=window.moRegistrarImportacion;
-    if(typeof original!=="function")return false;
-    if(original.__mv542MapaSync)return true;
+    const actual=window.moRegistrarImportacion;
+    if(typeof actual!=="function")return false;
+    if(actual.__mv543MapaSync)return true;
+
+    let original=actual;
+    if(original.__mv542MapaSync && typeof original.__original==="function"){
+      original=original.__original;
+    }
 
     const ajustada=async function(){
       const periodos=periodosImportacion();
@@ -358,76 +379,50 @@
 
       if(!guardada)return r;
       if(!puedePublicar()){
-        anexarEstado("ℹ Mapa actualizado. Los indicadores quedarán pendientes hasta que Jefatura/Administrador abra el Mapa Operativo.","warn");
+        anexarEstado("ℹ Mapa actualizado. La sincronización de indicadores requiere Jefatura/Administrador.","warn");
         return r;
       }
 
+      bloquearVolverMapa(true);
       try{
-        anexarEstado("⏳ Mapa actualizado. Sincronizando Producción, Efectividad, Recableado, VTR/GAR, Ranking y Dashboard...","warn");
+        anexarEstado("⏳ Mapa guardado. Sincronizando indicadores; espere antes de volver al mapa...","warn");
         await sincronizar(periodos);
       }catch(e){
-        console.warn("V542 Mapa -> indicadores",e);
+        console.warn("V543 Mapa -> indicadores",e);
+      }finally{
+        bloquearVolverMapa(false);
       }
       return r;
     };
 
+    ajustada.__mv543MapaSync=true;
     ajustada.__mv542MapaSync=true;
     ajustada.__mv505WinHook=true;
     ajustada.__mv512WinHook=true;
     ajustada.__original=original;
     window.moRegistrarImportacion=ajustada;
     try{moRegistrarImportacion=ajustada;}catch(_){}
-    console.log("MI VISUAL V542: hook de importación Mapa -> indicadores activo.");
+    console.log("MI VISUAL V543: sincronización de importación activa sin catch-up al abrir Mapa.");
     return true;
   }
 
-  function instalarHookApertura(){
-    const original=window.mostrarMapaOperativo;
-    if(typeof original!=="function")return false;
-    if(original.__mv542Catchup)return true;
-
-    const ajustada=async function(){
-      const r=await original.apply(this,arguments);
-      if(puedePublicar()){
-        setTimeout(()=>{
-          catchupPeriodo(periodoActual(),true).catch(e=>console.warn("V542 catch-up Mapa",e));
-        },900);
-      }
-      return r;
-    };
-
-    ajustada.__mv542Catchup=true;
-    ajustada.__original=original;
-    window.mostrarMapaOperativo=ajustada;
-    try{mostrarMapaOperativo=ajustada;}catch(_){}
-    return true;
-  }
-
-  function vigilarHooks(){
+  function vigilarHookImportacion(){
     let intentos=0;
     const t=setInterval(()=>{
       intentos++;
       instalarHookImportacion();
-      instalarHookApertura();
       if(intentos>240)clearInterval(t);
     },500);
 
     const head=document.head||document.documentElement;
     if(head){
       const obs=new MutationObserver(()=>{
-        setTimeout(()=>{instalarHookImportacion();instalarHookApertura();},50);
+        setTimeout(()=>instalarHookImportacion(),50);
       });
       obs.observe(head,{childList:true,subtree:true});
       setTimeout(()=>obs.disconnect(),180000);
     }
   }
-
-  document.addEventListener("change",e=>{
-    if(e&&e.target&&e.target.id==="moFiltroPeriodo"&&puedePublicar()){
-      const p=txt(e.target.value);
-      if(p===periodoActual())setTimeout(()=>catchupPeriodo(p,true).catch(()=>{}),500);
-    }
-  },true);
 
   window.mv4879CalcularIndicadoresWin=calcularPeriodo;
   window.mv4879PublicarIndicadoresWin=publicarPeriodo;
@@ -436,6 +431,7 @@
   window.mv505InstalarHookWin=instalarHookImportacion;
   window.mv512PublicacionesEnCurso=()=>Array.from(publicacionesEnCurso.keys());
   window.mv542RevisarSincronizacionMapa=()=>catchupPeriodo(periodoActual(),true);
+  window.mv543RevisarSincronizacionMapa=()=>catchupPeriodo(periodoActual(),true);
 
-  vigilarHooks();
+  vigilarHookImportacion();
 })();
