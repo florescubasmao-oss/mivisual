@@ -1,34 +1,25 @@
-/* MI VISUAL V528 - RESILIENCIA CENTRAL DE LECTURAS API + V527B/V527/V526/V525/V524/V523/V522C */
-const MV339_CACHE = "mivisual-v528-api-lecturas-resilientes-20260903-1";
+/* MI VISUAL V543 - MAPA SIN BLOQUEO + RESILIENCIA CENTRAL V528 */
+const MV339_CACHE = "mivisual-v543-mapa-sync-sin-bloqueo-20260915-1";
 const MV517C19_BRIDGE = "./js/vtr_gar_ux_v517b.js?v=GARVTR-EXCEL-20260914-1";
 
 /*
-  V528: SOLO acciones de lectura confirmadas.
+  V528/V543: SOLO acciones de lectura confirmadas.
   Regla de seguridad: ninguna escritura, guardado, validacion, importacion,
   publicacion ni ajuste entra en este conjunto. Por eso un reintento nunca
   puede duplicar datos.
 */
 const MV528_LECTURAS_APPS_SCRIPT = new Set([
-  // Partidas V513
   "listarPartidasV513",
   "buscarOrdenPartidasV513",
-
-  // Analisis Economico / consultas
   "obtenerAnalisisEconomico",
   "obtenerResumenMateriales",
   "obtenerUtilidadCuadrillas",
   "obtenerInformeMensualEjecutivo",
-
-  // Bonos: solo lectura PEXT
   "listarBonosPextConjunta",
-
-  // Equipos Averiados: solo consultas
   "catalogosEquiposAveriados",
   "listarEquiposAveriados",
   "listarCargosEquiposAveriados",
   "verificarRecepcionEquiposAveriadosV399",
-
-  // Validacion Tecnica: listado/historial
   "listarValidacionTecnica"
 ]);
 
@@ -46,7 +37,7 @@ const MV339_CORE = [
   "./js/permisos.js?v=V339-CORE",
   "./js/app.js?v=V408-RESTAURA-V377",
   "./js/modulos_loader.js?v=V520H-DASHBOARD-SINCRONIZADO-20260902-3",
-  "./js/gestion_win_v505_loader.js?v=V517A2-SOLO-FINALIZADAS-PENDIENTES-20260901-1",
+  "./js/gestion_win_v505_loader.js?v=V543-MAPA-SIN-BLOQUEO-20260915-1",
   "./js/vtr_gar_validacion_restaurar_v514.js?v=V514A-TABS-UNICA-20260828",
   "./js/vtr_gar_v515.js?v=V515-VTRGAR-BONO-DESEMPENO-20260828",
   "./js/vtr_gar_ui_fix_v516.js?v=V516-TABS-DESPLEGABLES-20260828",
@@ -87,7 +78,7 @@ const MV339_CORE = [
   "./js/dashboard_actualizacion_indicadores_v512b.js?v=V512E-DASHBOARD-PIE-20260827",
   "./js/estabilidad_ranking_validacion_v518a.js?v=V518B-20260831-1",
   "./js/actualizacion_win_v507.js?v=V512A-SELLO-DASHBOARD",
-  "./js/indicadores_win_sync_v4879.js?v=V512-SYNC-UNICA-PUBLICACION",
+  "./js/indicadores_win_sync_v4879.js?v=V543-MAPA-SIN-BLOQUEO-20260915-1",
   "./js/dashboard_herramientas_final_v512d.js?v=V512D-HERRAMIENTAS-FINAL",
   "./js/checklist_rapido_v508.js?v=V508-CHECKLIST-RAPIDO",
   "./js/actas_tecnico_sin_descarga_v508.js?v=V508-ACTAS-TECNICO",
@@ -133,7 +124,6 @@ async function mv528RespuestaJsonValida(res){
 
 function mv528FirmaGet(url){
   const u=new URL(url.toString());
-  // Solo quitamos parametros usados exclusivamente para romper cache.
   ["_","mv299","mvretry"].forEach(k=>u.searchParams.delete(k));
   return "GET|"+u.toString();
 }
@@ -197,7 +187,6 @@ async function mv528FetchLecturaAppsScript(req,url){
   let ultimaRespuesta=null;
   let ultimoError=null;
 
-  // Un solo reintento. Son operaciones de lectura expresamente permitidas.
   for(let intento=0;intento<2;intento++){
     try{
       const res=await fetch(req.clone());
@@ -212,12 +201,8 @@ async function mv528FetchLecturaAppsScript(req,url){
     if(intento===0) await mv525Dormir(750);
   }
 
-  // Si Google falla temporalmente, se conserva como maximo 10 minutos la
-  // ultima respuesta valida de ESA MISMA consulta (firma incluye usuario,
-  // periodo y filtros). Nunca se comparte una respuesta de otra consulta.
   const respaldo=await mv528LeerRespaldo(lectura.firma);
   if(respaldo) return respaldo;
-
   if(ultimaRespuesta) return ultimaRespuesta;
   throw ultimoError || new Error("No se pudo conectar temporalmente con MI VISUAL.");
 }
@@ -244,11 +229,6 @@ self.addEventListener("fetch", event => {
   const req = event.request;
   const url = new URL(req.url);
 
-  /*
-    V528: resiliencia central SOLO para lecturas de Apps Script.
-    Incluye GET y POST que semanticamente son consultas. Una accion que no
-    esta en la lista pasa exactamente por fetch normal, sin reintentos.
-  */
   if(url.hostname === "script.google.com" && (req.method === "GET" || req.method === "POST")){
     event.respondWith(mv528FetchLecturaAppsScript(req,url));
     return;
@@ -277,7 +257,6 @@ self.addEventListener("fetch", event => {
     return;
   }
 
-  // V528 conserva todas las rutas criticas V527B/V527 y F4H2 red-primero.
   const rutaCritica =
     url.pathname.endsWith("/js/validacion_tecnica_datos_v430.js") ||
     url.pathname.endsWith("/js/vtr_gar_tecnico_filtros_v517d_f4s2.js") ||
@@ -287,6 +266,8 @@ self.addEventListener("fetch", event => {
     url.pathname.endsWith("/js/mapa_operativo.js") ||
     url.pathname.endsWith("/js/mapa_progreso_v393.js") ||
     url.pathname.endsWith("/js/mapa_rapido_v395.js") ||
+    url.pathname.endsWith("/js/gestion_win_v505_loader.js") ||
+    url.pathname.endsWith("/js/indicadores_win_sync_v4879.js") ||
     url.pathname.endsWith("/js/actas_api_resiliente_v392.js");
 
   if(rutaCritica){
