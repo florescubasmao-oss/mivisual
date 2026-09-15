@@ -277,3 +277,187 @@
   setTimeout(instalar,6000);
   window.addEventListener("load",function(){ setTimeout(instalar,1800); });
 })();
+
+/* ============================================================
+   MI VISUAL V538 - EQUIPOS AVERIADOS / TECNICO RESILIENTE
+   15/09/2026
+
+   Objetivo:
+   - La pantalla del Técnico no debe bloquearse porque Catálogo o Cargos
+     demoren. Esas dos consultas pasan a segundo plano.
+   - El listado principal usa lectura POST directa sobre Apps Script para
+     evitar la ruta GET que estaba agotando el timeout del navegador.
+   - Conserva una última lectura útil por usuario como respaldo.
+   - NUNCA reintenta automáticamente escrituras.
+============================================================ */
+(function(){
+  "use strict";
+  if(window.MV538_EQUIPOS_TECNICO_OK) return;
+  window.MV538_EQUIPOS_TECNICO_OK = true;
+
+  const CACHE_PREF = "MV538_EQUIPOS|";
+  const TTL_LISTA = 24 * 60 * 60 * 1000;
+  const TTL_CATALOGO = 7 * 24 * 60 * 60 * 1000;
+  const TTL_CARGOS = 24 * 60 * 60 * 1000;
+  const EN_CURSO = new Map();
+
+  function txt(v){ return String(v == null ? "" : v).trim(); }
+  function norm(v){
+    return txt(v).toUpperCase().normalize("NFD")
+      .replace(/[\u0300-\u036f]/g,"")
+      .replace(/\s+/g," ")
+      .trim();
+  }
+  function usuario(){ return txt(localStorage.getItem("usuario")); }
+  function esTecnico(){ return norm(localStorage.getItem("perfil")) === "TECNICO"; }
+  function clave(accion){ return CACHE_PREF + norm(usuario()) + "|" + accion; }
+
+  function guardar(accion,data){
+    try{
+      if(!data || data.ok === false) return;
+      localStorage.setItem(clave(accion),JSON.stringify({t:Date.now(),data:data}));
+    }catch(_){}
+  }
+
+  function leer(accion,ttl){
+    try{
+      const x=JSON.parse(localStorage.getItem(clave(accion))||"null");
+      if(!x || !x.t || !x.data) return null;
+      if(Date.now()-Number(x.t)>ttl) return null;
+      return x.data;
+    }catch(_){ return null; }
+  }
+
+  async function postLectura(payload,tiempoMs){
+    const api = window.MI_VISUAL_API_URL;
+    const c = typeof AbortController === "function" ? new AbortController() : null;
+    const timer = c ? setTimeout(()=>c.abort(),tiempoMs || 22000) : null;
+    try{
+      const r = await fetch(api,{
+        method:"POST",
+        headers:{"Content-Type":"text/plain;charset=UTF-8","Accept":"application/json"},
+        body:JSON.stringify(payload||{}),
+        cache:"no-store",
+        redirect:"follow",
+        signal:c ? c.signal : undefined
+      });
+      const t=(await r.text()).trim();
+      if(!r.ok) throw new Error(`Equipos Averiados respondió HTTP ${r.status}.`);
+      if(!t || /<!doctype|<html/i.test(t)) throw new Error("Equipos Averiados no devolvió JSON válido.");
+      const d=JSON.parse(t);
+      if(!d || d.ok===false) throw new Error((d&&d.error)||"No se pudo leer Equipos Averiados.");
+      return d;
+    }finally{
+      if(timer) clearTimeout(timer);
+    }
+  }
+
+  function actualizarFondo(accion,payload){
+    const k=accion+"|"+norm(usuario());
+    if(EN_CURSO.has(k)) return;
+    const tarea=(async function(){
+      try{
+        const d=await postLectura(payload,22000);
+        guardar(accion,d);
+        try{
+          if(typeof EA_STATE !== "undefined" && EA_STATE){
+            if(accion==="catalogosEquiposAveriados") EA_STATE.catalogos=d;
+            if(accion==="listarCargosEquiposAveriados") EA_STATE.cargos=Array.isArray(d.cargos)?d.cargos:[];
+          }
+          if(typeof window.eaRender === "function" && document.getElementById("eaLista")) window.eaRender();
+        }catch(_){}
+      }catch(error){
+        console.warn("V538: lectura secundaria de Equipos Averiados sigue pendiente",accion,error);
+      }
+    })().finally(()=>EN_CURSO.delete(k));
+    EN_CURSO.set(k,tarea);
+  }
+
+  function instalar(){
+    if(typeof window.eaApi !== "function") return false;
+    if(window.eaApi.__mv538) return true;
+
+    const baseApi=window.eaApi;
+
+    const apiV538=async function(payload){
+      const p=Object.assign({},payload||{});
+      const accion=txt(p.accion);
+
+      if(!esTecnico()) return await baseApi(p);
+
+      if(accion==="catalogosEquiposAveriados"){
+        const cache=leer(accion,TTL_CATALOGO);
+        actualizarFondo(accion,p);
+        return cache || {ok:true,modulo:"EQUIPOS_AVERIADOS",accion:"CATALOGOS",tipos:[]};
+      }
+
+      if(accion==="listarCargosEquiposAveriados"){
+        const cache=leer(accion,TTL_CARGOS);
+        actualizarFondo(accion,p);
+        return cache || {ok:true,modulo:"EQUIPOS_AVERIADOS",accion:"LISTAR_CARGOS",cargos:[],registros:0};
+      }
+
+      if(accion==="listarEquiposAveriados"){
+        try{
+          const d=await postLectura(p,22000);
+          guardar(accion,d);
+          return d;
+        }catch(error){
+          const cache=leer(accion,TTL_LISTA);
+          if(cache){
+            cache.__mv538Cache=true;
+            cache.__mv538Error=String(error&&error.message||error||"");
+            return cache;
+          }
+          throw new Error("Equipos Averiados sigue demorando en el servidor. Vuelva al menú y reintente en unos segundos.");
+        }
+      }
+
+      return await baseApi(p);
+    };
+
+    apiV538.__mv538=true;
+    apiV538.__base=baseApi;
+    window.eaApi=apiV538;
+    try{ eaApi=apiV538; }catch(_){}
+
+    if(typeof window.eaAbrirFormularioTecnico === "function" && !window.eaAbrirFormularioTecnico.__mv538){
+      const abrirBase=window.eaAbrirFormularioTecnico;
+      const abrirV538=async function(id){
+        try{
+          let tieneTipos=false;
+          try{ tieneTipos=!!(EA_STATE && EA_STATE.catalogos && Array.isArray(EA_STATE.catalogos.tipos) && EA_STATE.catalogos.tipos.length); }catch(_){}
+          if(!tieneTipos){
+            const p={accion:"catalogosEquiposAveriados",usuario:usuario()};
+            const cat=await postLectura(p,18000);
+            guardar("catalogosEquiposAveriados",cat);
+            try{ EA_STATE.catalogos=cat; }catch(_){}
+          }
+        }catch(error){
+          alert("No se pudo cargar el catálogo de equipos. Intente nuevamente en unos segundos.");
+          return;
+        }
+        return abrirBase.apply(this,arguments);
+      };
+      abrirV538.__mv538=true;
+      abrirV538.__base=abrirBase;
+      window.eaAbrirFormularioTecnico=abrirV538;
+      try{ eaAbrirFormularioTecnico=abrirV538; }catch(_){}
+    }
+
+    console.log("MI VISUAL V538: Equipos Averiados del Técnico en modo resiliente.");
+    return true;
+  }
+
+  const previo=window.mv339Antes_mostrarEquiposAveriados;
+  window.mv339Antes_mostrarEquiposAveriados=function(){
+    if(typeof previo==="function"){
+      try{ previo(); }catch(_){}
+    }
+    instalar();
+  };
+
+  setTimeout(instalar,3000);
+  setTimeout(instalar,7000);
+  window.addEventListener("load",function(){ setTimeout(instalar,2000); });
+})();
