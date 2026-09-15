@@ -1,4 +1,4 @@
-// MI VISUAL V399 - Equipos Averiados: concurrencia segura, lecturas GET y recuperación de cargos.
+// MI VISUAL V539 - Equipos Averiados: carga progresiva para técnico + caché de lectura + concurrencia reducida.
 const API_EQUIPOS_AVERIADOS = "https://script.google.com/macros/s/AKfycbwugGpuEMcJYFsDNS1hkcdZXJ92PUvXNv5ttpktyhZWv2fWB7ceCZNkfIFYxAs5wsgN/exec";
 
 const EA_STATE = {catalogos:null, solicitudes:[], cargos:[], resumen:{}, formularioId:""};
@@ -11,6 +11,39 @@ function eaEsAlmacen(p){return ["ALMACEN","RESPONSABLE ALMACEN","RESPONSABLE DE 
 function eaEsJefAlmacen(p){return eaNorm(p)==="JEFATURA ALMACEN";}
 function eaEsJefGeneral(p){return ["JEFATURA","JEFATURA GENERAL","ADMIN","ADMINISTRADOR"].includes(eaNorm(p));}
 function eaPuedeGestionar(p){return eaEsAlmacen(p)||eaEsJefAlmacen(p);}
+
+const EA_CACHE_V539_PREFIX="MI_VISUAL_EA_V539|";
+const EA_CACHE_V539_MAX_MS=12*60*60*1000;
+function eaCacheClaveV539(){return EA_CACHE_V539_PREFIX+(eaUsuario().usuario||"");}
+function eaCacheLeerV539(){
+  try{
+    const x=JSON.parse(localStorage.getItem(eaCacheClaveV539())||"null");
+    if(!x||!x.t||Date.now()-Number(x.t)>EA_CACHE_V539_MAX_MS)return null;
+    if(!Array.isArray(x.solicitudes)||!x.resumen)return null;
+    return x;
+  }catch(_){return null;}
+}
+function eaCacheGuardarV539(){
+  try{
+    localStorage.setItem(eaCacheClaveV539(),JSON.stringify({
+      t:Date.now(),
+      solicitudes:EA_STATE.solicitudes||[],
+      resumen:EA_STATE.resumen||{}
+    }));
+  }catch(_){ }
+}
+function eaCacheLimpiarV539(){try{localStorage.removeItem(eaCacheClaveV539());}catch(_){ }}
+function eaAvisoV539(texto,tipo="ok"){
+  const wrap=document.querySelector("#pantalla .ea-wrap");
+  if(!wrap)return;
+  document.getElementById("eaAvisoV539")?.remove();
+  const d=document.createElement("div");
+  d.id="eaAvisoV539";
+  d.className=`ea-alert ${tipo}`;
+  d.textContent=texto;
+  const head=wrap.querySelector(".ea-head");
+  if(head)head.insertAdjacentElement("afterend",d);else wrap.prepend(d);
+}
 
 const EA_LECTURAS_GET_V399 = new Set([
   "catalogosEquiposAveriados",
@@ -152,6 +185,48 @@ function eaFechaCortaSolicitud(item){
 async function mostrarEquiposAveriados(){
   const p=document.getElementById("pantalla");
   if(!p)return;
+  const u=eaUsuario();
+
+  if(eaEsTecnico(u.perfil)){
+    const cache=eaCacheLeerV539();
+    if(cache){
+      EA_STATE.solicitudes=cache.solicitudes||[];
+      EA_STATE.resumen=cache.resumen||{};
+      eaRender();
+      eaAvisoV539("Mostrando la última información disponible. Actualizando en segundo plano...","ok");
+    }else{
+      const carga=eaStyles()+`<div class="ea-wrap"><div class="ea-head"><h2>🔧 Equipos Averiados</h2><p>Registro técnico, recepción física de almacén y cargos.</p></div><div class="ea-card">⏳ Cargando sus equipos...</div></div>`;
+      if(typeof mostrarPantalla==="function")mostrarPantalla(carga);else p.innerHTML=carga;
+    }
+
+    try{
+      const lis=await eaApi({accion:"listarEquiposAveriados",usuario:u.usuario});
+      EA_STATE.solicitudes=lis.solicitudes||[];
+      EA_STATE.resumen=lis.resumen||{};
+      eaCacheGuardarV539();
+      eaRender();
+    }catch(e){
+      if(cache){
+        eaAvisoV539("No se pudo actualizar ahora. Se mantiene la última información disponible.","warn");
+      }else{
+        p.innerHTML=eaStyles()+`<div class="ea-wrap"><div class="ea-head"><h2>🔧 Equipos Averiados</h2></div><div class="ea-alert warn">❌ ${eaEsc(e.message)}</div></div>`;
+        return;
+      }
+    }
+
+    setTimeout(async function(){
+      try{EA_STATE.catalogos=await eaApi({accion:"catalogosEquiposAveriados",usuario:u.usuario});}
+      catch(_){ }
+      setTimeout(async function(){
+        try{
+          const c=await eaApi({accion:"listarCargosEquiposAveriados",usuario:u.usuario});
+          EA_STATE.cargos=c.cargos||[];
+        }catch(_){ }
+      },300);
+    },250);
+    return;
+  }
+
   const carga=eaStyles()+`<div class="ea-wrap"><div class="ea-head"><h2>🔧 Equipos Averiados</h2><p>Registro técnico, recepción física de almacén y cargos.</p></div><div class="ea-card">⏳ Cargando información...</div></div>`;
   if(typeof mostrarPantalla==="function") mostrarPantalla(carga);
   else {
@@ -161,7 +236,6 @@ async function mostrarEquiposAveriados(){
     if(typeof setBotonNavegacion==="function")setBotonNavegacion("modulo");
   }
   try{
-    const u=eaUsuario();
     const [cat,lis,cargos]=await Promise.all([
       eaApi({accion:"catalogosEquiposAveriados",usuario:u.usuario}),
       eaApi({accion:"listarEquiposAveriados",usuario:u.usuario}),
@@ -263,12 +337,20 @@ function eaFilaFormulario(e={}){
 function eaAgregarFila(){const c=document.getElementById("eaFilasEquipos");if(!c)return;if(c.children.length>=8){alert("Máximo 8 equipos por solicitud");return;}c.insertAdjacentHTML("beforeend",eaFilaFormulario());}
 function eaRecolectarEquipos(){return [...document.querySelectorAll("#eaFilasEquipos .ea-equipo-form")].map(x=>({tipo:x.querySelector(".ea-tipo").value,serie:x.querySelector(".ea-serie").value,codigoCliente:x.querySelector(".ea-codigo").value}));}
 
-function eaAbrirFormularioTecnico(id){
+async function eaAbrirFormularioTecnico(id){
+  const u=eaUsuario();
+  if(!EA_STATE.catalogos?.tipos?.length){
+    try{
+      EA_STATE.catalogos=await eaApi({accion:"catalogosEquiposAveriados",usuario:u.usuario});
+    }catch(e){
+      alert("No se pudo cargar el catálogo de tipos de equipo. Intente nuevamente en unos segundos.");
+      return;
+    }
+  }
   const item=id?EA_STATE.solicitudes.find(x=>x.id===id):null;
   const cantidad=item?(item.equipos?.length||item.cantidadReferencial||1):1;
   const existentes=item?.equipos?.length?item.equipos:Array.from({length:cantidad},()=>({}));
   EA_STATE.formularioId=id||"";
-  const u=eaUsuario();
   eaModal(`<h3>${id?"Completar solicitud":"Registrar equipos averiados"}</h3><div class="ea-auto"><b>Datos automáticos</b><br>Técnico: ${eaEsc(u.nombres)}<br>Cuadrilla: ${eaEsc(u.cuadrilla)} · Sede: ${eaEsc(u.sede)} · Plataforma: ${eaEsc(u.plataforma)}<br>La fecha y hora se registran automáticamente en horario de Perú.</div><div id="eaFilasEquipos" style="margin-top:10px">${existentes.map(eaFilaFormulario).join("")}</div><div class="ea-actions"><button class="ea-btn light" onclick="eaAgregarFila()">➕ Agregar equipo</button><button class="ea-btn blue" onclick="eaGuardarTecnico()">Guardar solicitud</button></div>`);
 }
 
@@ -277,6 +359,7 @@ async function eaGuardarTecnico(){
   try{
     const b=document.querySelector("#eaModal .ea-btn.blue");if(b){b.disabled=true;b.textContent="Guardando...";}
     await eaApi({accion:id?"completarSolicitudEquiposAveriadosTecnico":"registrarEquiposAveriadosTecnico",usuario:u.usuario,id,equipos});
+    eaCacheLimpiarV539();
     eaCerrarModal();await mostrarEquiposAveriados();
   }catch(e){alert(e.message);const b=document.querySelector("#eaModal .ea-btn.blue");if(b){b.disabled=false;b.textContent="Guardar solicitud";}}
 }
