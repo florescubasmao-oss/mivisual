@@ -102,12 +102,12 @@
 if ("serviceWorker" in navigator) {
   window.addEventListener("load", function(){
     navigator.serviceWorker
-      .register("./sw.js?v=GARVTR-EXCEL-20260914-1")
+      .register("./sw.js?v=V532-ACTAS-ID-20260915-1")
       .then(function(registro){
         registro.update().catch(function(){});
-        console.log("SW V517D F4T2 OK");
+        console.log("SW V532 ACTAS ID OK");
       })
-      .catch(function(error){ console.warn("SW V517D F4T2", error); });
+      .catch(function(error){ console.warn("SW V532 ACTAS ID", error); });
   });
 }
 </script>
@@ -120,6 +120,7 @@ if ("serviceWorker" in navigator) {
 <script src="./js/permisos.js?v=V339-CORE"></script>
 <script src="./js/app.js?v=V408-RESTAURA-V377"></script>
 <script src="./js/modulos_loader.js?v=V531A-VT-BORRADOR-UNA-VEZ-20260905-1"></script>
+<script src="./js/actas_confirmacion_id_v532.js?v=V532-ACTAS-ID-20260915-1"></script>
 <!-- F4AB2: Plantillas con selector multiple; Tecnico conserva todo excepto Cuadrilla. -->
 <script src="./js/plantilla_tecnico_privacidad_v517d_f4ab.js?v=V517D-F4AB2-CUADRILLA-SELECTOR-20260831-1"></script>
 <script src="./js/dashboard_trabajos_detalle_win_v504.js?v=V504-DETALLE-WIN"></script>
