@@ -86,12 +86,13 @@
   );
 
   /*
-     V548: el Mapa conserva V547 para lecturas resilientes y añade feedback
-     inmediato antes de la validación temporal V487.8. No modifica escrituras.
+     V548B: el Mapa conserva V547 para lecturas resilientes y añade feedback
+     inmediato antes de la validación temporal V487.8. Detecta la capa V487.8
+     incluso cuando V393/V395 ya envolvieron el registrador.
   */
   cargar("./js/indicadores_win_sync_v4879.js?v=V544-MAPA-SYNC-INTEGRAL-20260915-1")
     .then(()=>cargar("./js/mapa_resiliencia_v547.js?v=V547-MAPA-LECTURA-RESILIENTE-20260915-1"))
-    .then(()=>cargar("./js/mapa_importacion_feedback_v548.js?v=V548-MAPA-FEEDBACK-20260915-1"))
+    .then(()=>cargar("./js/mapa_importacion_feedback_v548.js?v=V548B-MAPA-FEEDBACK-20260915-2"))
     .then(()=>cargar("./js/partidas_snapshot_auto_v513d.js?v=V513D-SNAPSHOT-AUTO-20260827"))
     .catch(e=>
       console.warn("V517A Complementos: sincronizador WIN / resiliencia Mapa / feedback importación / snapshot Partidas pendiente",e)
