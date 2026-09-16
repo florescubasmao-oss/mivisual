@@ -1,20 +1,20 @@
 /* ================================================================
-   MI VISUAL V548B - FEEDBACK INMEDIATO AL REGISTRAR MAPA
+   MI VISUAL V549 - FEEDBACK GARANTIZADO AL REGISTRAR MAPA
 
    OBJETIVO
-   - Mostrar actividad visible desde el primer clic en "Registrar información".
-   - Cubrir la validación previa V487.8, que puede tardar antes de que el
-     registrador base cambie el mensaje o desactive el botón.
-   - Detectar V487.8 aunque existan wrappers posteriores V393/V395.
-   - No modifica datos, no repite POST y no altera importarMapaOperativo.
-   - Cuando la barra V393 aparece, este aviso cede el control para no duplicar UI.
+   - Mostrar avance visible desde el clic en "Registrar información".
+   - No depender del orden interno V386/V393/V395 para mostrar actividad.
+   - No modificar datos, no repetir POST y no alterar importarMapaOperativo.
+   - Si V393 muestra su barra, este panel cede el control automáticamente.
 ================================================================ */
 (function(){
   "use strict";
-  if(window.MV548B_MAPA_FEEDBACK_OK)return;
-  window.MV548B_MAPA_FEEDBACK_OK=true;
+  if(window.MV549_MAPA_FEEDBACK_OK)return;
+  window.MV549_MAPA_FEEDBACK_OK=true;
 
-  let instalado=false;
+  let relojDirecto=null;
+  let obsDirecto=null;
+  let inicioDirecto=0;
 
   function texto(v){return String(v==null?"":v).trim();}
 
@@ -54,9 +54,14 @@
         <span class="mv548-mapa-feedback-time" data-mv548-tiempo>0 s</span>
       </div>
       <div class="mv548-mapa-feedback-track"><div class="mv548-mapa-feedback-fill"></div></div>
-      <div class="mv548-mapa-feedback-copy" data-mv548-copy>Comparando estados WIN existentes. No cierre esta pantalla ni vuelva a pulsar Registrar información.</div>`;
+      <div class="mv548-mapa-feedback-copy" data-mv548-copy>Comparando los estados WIN existentes. No cierre esta pantalla ni vuelva a pulsar Registrar información.</div>`;
     msg.parentElement.insertBefore(p,msg);
     return p;
+  }
+
+  function limpiarSeguimiento(){
+    if(relojDirecto){clearInterval(relojDirecto);relojDirecto=null;}
+    if(obsDirecto){obsDirecto.disconnect();obsDirecto=null;}
   }
 
   function actualizarDesdeMensaje(p){
@@ -67,20 +72,26 @@
     const copy=p.querySelector("[data-mv548-copy]");
 
     if(/Registro confirmado|No hay estados mas recientes|No hay estados más recientes/i.test(t)){
-      p.classList.remove("is-error");p.classList.add("is-ok","is-visible");
+      p.classList.remove("is-error");
+      p.classList.add("is-ok","is-visible");
       if(titulo)titulo.textContent="Registro completado";
       if(copy)copy.textContent=t;
+      limpiarSeguimiento();
       return true;
     }
+
     if(msg.classList.contains("mo-error")){
-      p.classList.remove("is-ok");p.classList.add("is-error","is-visible");
-      if(titulo)titulo.textContent="El registro no pudo confirmarse";
+      p.classList.remove("is-ok");
+      p.classList.add("is-error","is-visible");
+      if(titulo)titulo.textContent="El registro no pudo completarse";
       if(copy)copy.textContent=t||"Revise el mensaje mostrado por MI VISUAL.";
+      limpiarSeguimiento();
       return true;
     }
+
     if(/Registrando información/i.test(t)){
       if(titulo)titulo.textContent="Registrando información en MI VISUAL...";
-      if(copy)copy.textContent="La carga ya fue enviada al servidor. Espere la confirmación antes de salir.";
+      if(copy)copy.textContent="La validación terminó y la carga ya fue enviada al servidor. Espere la confirmación antes de salir.";
     }else if(/Control WIN/i.test(t)){
       if(titulo)titulo.textContent="Validación WIN completada. Preparando registro...";
       if(copy)copy.textContent=t;
@@ -88,89 +99,67 @@
     return false;
   }
 
-  function tieneMarcaEnCadena(fn,marca){
-    let actual=fn;
-    const vistos=new Set();
-    for(let i=0;i<16&&typeof actual==="function"&&!vistos.has(actual);i++){
-      if(actual[marca])return true;
-      vistos.add(actual);
-      actual=actual.__original;
-    }
-    return false;
-  }
-
-  async function registrarConFeedback(){
-    const original=registrarConFeedback.__original;
-    if(typeof original!=="function")return;
-
+  function iniciarFeedbackDirecto(){
     const p=panel();
-    const inicio=Date.now();
-    let reloj=null,obs=null;
-    if(p){
-      p.className="mv548-mapa-feedback is-visible";
-      const titulo=p.querySelector("[data-mv548-titulo]");
-      const copy=p.querySelector("[data-mv548-copy]");
-      const tiempo=p.querySelector("[data-mv548-tiempo]");
-      if(titulo)titulo.textContent="Validando la carga antes de registrar...";
-      if(copy)copy.textContent="Comparando estados WIN existentes. No cierre esta pantalla ni vuelva a pulsar Registrar información.";
-      if(tiempo)tiempo.textContent="0 s";
-      reloj=setInterval(()=>{
-        const t=p.querySelector("[data-mv548-tiempo]");
-        if(t)t.textContent=Math.floor((Date.now()-inicio)/1000)+" s";
-        const v393=document.getElementById("mv393MapaProgreso");
-        if(v393&&v393.classList.contains("is-visible"))p.classList.remove("is-visible");
-      },400);
-      const msg=document.getElementById("moImportMsg");
-      if(msg&&typeof MutationObserver!=="undefined"){
-        obs=new MutationObserver(()=>{
-          const v393=document.getElementById("mv393MapaProgreso");
-          if(v393&&v393.classList.contains("is-visible")){p.classList.remove("is-visible");return;}
-          actualizarDesdeMensaje(p);
-        });
-        obs.observe(msg,{childList:true,subtree:true,characterData:true,attributes:true,attributeFilter:["class"]});
-      }
-    }
+    if(!p)return;
 
-    try{
-      return await original.apply(this,arguments);
-    }finally{
-      if(obs)obs.disconnect();
-      if(reloj)clearInterval(reloj);
-      const v393=document.getElementById("mv393MapaProgreso");
-      if(p&&!(v393&&v393.classList.contains("is-visible"))){
-        actualizarDesdeMensaje(p);
-        const t=p.querySelector("[data-mv548-tiempo]");
-        if(t)t.textContent=Math.floor((Date.now()-inicio)/1000)+" s";
-      }
-    }
-  }
+    limpiarSeguimiento();
+    inicioDirecto=Date.now();
+    p.className="mv548-mapa-feedback is-visible";
 
-  function instalar(){
-    if(instalado)return true;
-    const actual=window.moRegistrarImportacion;
-    if(typeof actual!=="function")return false;
-
-    if(actual.__mv548Feedback||actual.__mv548bFeedback){instalado=true;return true;}
+    const titulo=p.querySelector("[data-mv548-titulo]");
+    const copy=p.querySelector("[data-mv548-copy]");
+    const tiempo=p.querySelector("[data-mv548-tiempo]");
+    if(titulo)titulo.textContent="Validando la carga antes de registrar...";
+    if(copy)copy.textContent="Comparando los estados WIN existentes. No cierre esta pantalla ni vuelva a pulsar Registrar información.";
+    if(tiempo)tiempo.textContent="0 s";
 
     /*
-      V393 y V395 envuelven al registrador V487.8 y no copian su marca al
-      wrapper exterior. V548 original esperaba la marca solo arriba y por eso
-      nunca se instalaba. V548B recorre __original hasta encontrar V487.8.
+      Este reloj nace desde el evento click, antes de ejecutar el onclick del
+      botón. Por eso el usuario siempre ve actividad aunque una validación
+      previa tarde varios segundos.
     */
-    if(!tieneMarcaEnCadena(actual,"__mv386SoloP"))return false;
+    relojDirecto=setInterval(()=>{
+      const t=p.querySelector("[data-mv548-tiempo]");
+      if(t)t.textContent=Math.floor((Date.now()-inicioDirecto)/1000)+" s";
 
-    registrarConFeedback.__mv548Feedback=true;
-    registrarConFeedback.__mv548bFeedback=true;
-    registrarConFeedback.__original=actual;
-    window.moRegistrarImportacion=registrarConFeedback;
-    try{moRegistrarImportacion=registrarConFeedback;}catch(_){}
-    instalado=true;
-    window.MV548_MAPA_FEEDBACK_OK=true;
-    console.log("MI VISUAL V548B: feedback inmediato de importación Mapa activo");
-    return true;
+      const v393=document.getElementById("mv393MapaProgreso");
+      if(v393&&v393.classList.contains("is-visible")){
+        p.classList.remove("is-visible");
+      }else{
+        actualizarDesdeMensaje(p);
+      }
+    },400);
+
+    const msg=document.getElementById("moImportMsg");
+    if(msg&&typeof MutationObserver!=="undefined"){
+      obsDirecto=new MutationObserver(()=>{
+        const v393=document.getElementById("mv393MapaProgreso");
+        if(v393&&v393.classList.contains("is-visible")){
+          p.classList.remove("is-visible");
+          return;
+        }
+        actualizarDesdeMensaje(p);
+      });
+      obsDirecto.observe(msg,{childList:true,subtree:true,characterData:true,attributes:true,attributeFilter:["class"]});
+    }
   }
 
-  const timer=setInterval(()=>{if(instalar())clearInterval(timer);},200);
-  document.addEventListener("click",()=>setTimeout(instalar,60),true);
-  setTimeout(instalar,250);
+  /*
+    Captura el clic ANTES del onclick="moRegistrarImportacion()" del botón.
+    Es únicamente visual: no cancela, no sustituye ni repite la función real.
+  */
+  document.addEventListener("click",function(e){
+    const btn=e.target&&e.target.closest?e.target.closest("#moBtnImportar"):null;
+    if(!btn||btn.disabled)return;
+    iniciarFeedbackDirecto();
+  },true);
+
+  /* Respaldo: cuando se abra la vista de importación, prepara el panel oculto. */
+  const vigilar=setInterval(()=>{
+    if(document.getElementById("moImportMsg"))panel();
+  },1000);
+  setTimeout(()=>clearInterval(vigilar),30000);
+
+  console.log("MI VISUAL V549: feedback de importación desde el clic activo");
 })();
