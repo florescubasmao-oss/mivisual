@@ -1,17 +1,18 @@
 /* ================================================================
-   MI VISUAL V548 - FEEDBACK INMEDIATO AL REGISTRAR MAPA
+   MI VISUAL V548B - FEEDBACK INMEDIATO AL REGISTRAR MAPA
 
    OBJETIVO
    - Mostrar actividad visible desde el primer clic en "Registrar información".
    - Cubrir la validación previa V487.8, que puede tardar antes de que el
      registrador base cambie el mensaje o desactive el botón.
+   - Detectar V487.8 aunque existan wrappers posteriores V393/V395.
    - No modifica datos, no repite POST y no altera importarMapaOperativo.
    - Cuando la barra V393 aparece, este aviso cede el control para no duplicar UI.
 ================================================================ */
 (function(){
   "use strict";
-  if(window.MV548_MAPA_FEEDBACK_OK)return;
-  window.MV548_MAPA_FEEDBACK_OK=true;
+  if(window.MV548B_MAPA_FEEDBACK_OK)return;
+  window.MV548B_MAPA_FEEDBACK_OK=true;
 
   let instalado=false;
 
@@ -87,6 +88,17 @@
     return false;
   }
 
+  function tieneMarcaEnCadena(fn,marca){
+    let actual=fn;
+    const vistos=new Set();
+    for(let i=0;i<16&&typeof actual==="function"&&!vistos.has(actual);i++){
+      if(actual[marca])return true;
+      vistos.add(actual);
+      actual=actual.__original;
+    }
+    return false;
+  }
+
   async function registrarConFeedback(){
     const original=registrarConFeedback.__original;
     if(typeof original!=="function")return;
@@ -138,17 +150,23 @@
     const actual=window.moRegistrarImportacion;
     if(typeof actual!=="function")return false;
 
-    /* Espera a que V487.8 quede como capa externa; así V548 será la última capa
-       y mostrará feedback ANTES de la comparación temporal. */
-    if(!actual.__mv386SoloP)return false;
-    if(actual.__mv548Feedback){instalado=true;return true;}
+    if(actual.__mv548Feedback||actual.__mv548bFeedback){instalado=true;return true;}
+
+    /*
+      V393 y V395 envuelven al registrador V487.8 y no copian su marca al
+      wrapper exterior. V548 original esperaba la marca solo arriba y por eso
+      nunca se instalaba. V548B recorre __original hasta encontrar V487.8.
+    */
+    if(!tieneMarcaEnCadena(actual,"__mv386SoloP"))return false;
 
     registrarConFeedback.__mv548Feedback=true;
+    registrarConFeedback.__mv548bFeedback=true;
     registrarConFeedback.__original=actual;
     window.moRegistrarImportacion=registrarConFeedback;
     try{moRegistrarImportacion=registrarConFeedback;}catch(_){}
     instalado=true;
-    console.log("MI VISUAL V548: feedback inmediato de importación Mapa activo");
+    window.MV548_MAPA_FEEDBACK_OK=true;
+    console.log("MI VISUAL V548B: feedback inmediato de importación Mapa activo");
     return true;
   }
 
