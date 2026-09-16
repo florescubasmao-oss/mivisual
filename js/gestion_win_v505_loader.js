@@ -85,12 +85,16 @@
     console.warn("V517A Complementos: sello compatible pendiente",e)
   );
 
+  /*
+     V547: el Mapa ya no carga los diagnósticos temporales V544/V545.
+     Se conserva el sincronizador oficial post-importación y se añade una
+     capa de resiliencia SOLO para las lecturas del Mapa Operativo.
+  */
   cargar("./js/indicadores_win_sync_v4879.js?v=V544-MAPA-SYNC-INTEGRAL-20260915-1")
-    .then(()=>cargar("./js/mapa_indicadores_estado_v544.js?v=V544-MAPA-ESTADO-20260915-1"))
-    .then(()=>cargar("./js/mapa_indicadores_watchdog_v545.js?v=V545-MAPA-WATCHDOG-20260915-1"))
+    .then(()=>cargar("./js/mapa_resiliencia_v547.js?v=V547-MAPA-LECTURA-RESILIENTE-20260915-1"))
     .then(()=>cargar("./js/partidas_snapshot_auto_v513d.js?v=V513D-SNAPSHOT-AUTO-20260827"))
     .catch(e=>
-      console.warn("V517A Complementos: sincronizador WIN / estado Mapa / snapshot Partidas pendiente",e)
+      console.warn("V517A Complementos: sincronizador WIN / resiliencia Mapa / snapshot Partidas pendiente",e)
     );
 
   cargar("./js/checklist_rapido_v508.js?v=V508-CHECKLIST-RAPIDO").catch(e=>
