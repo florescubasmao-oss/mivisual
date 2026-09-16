@@ -157,7 +157,7 @@
 })();
 
 /* =====================================================
-   MI VISUAL V552 - CTO CERCANAS EN INSTALACIONES
+   MI VISUAL V552B - CTO CERCANAS EN INSTALACIONES
    - Restaura la visualización automática de CTO cercanas
      al abrir una orden de instalación en el mapa.
    - Reutiliza el catálogo y la función de lectura existentes.
@@ -171,6 +171,14 @@
 
   let instalado = false;
   let temporizador = null;
+
+  function obtenerMarcadores(){
+    try{
+      return (typeof moMarcadores !== "undefined" && moMarcadores) ? moMarcadores : {};
+    }catch(_){
+      return {};
+    }
+  }
 
   function esInstalacion(registro){
     if(!registro) return false;
@@ -192,7 +200,7 @@
     clearTimeout(temporizador);
     temporizador = setTimeout(function(){
       Promise.resolve(window.moCargarCtosCercanas()).catch(function(error){
-        console.warn("V552 CTO cercanas: lectura temporalmente no disponible", error);
+        console.warn("V552B CTO cercanas: lectura temporalmente no disponible", error);
       });
     }, 180);
   }
@@ -205,6 +213,13 @@
     });
   }
 
+  function enlazarMarcadores(){
+    const marcadores = obtenerMarcadores();
+    Object.keys(marcadores).forEach(function(clave){
+      prepararMarcador(marcadores[clave]);
+    });
+  }
+
   function instalar(){
     if(instalado) return true;
     if(typeof window.moRenderMarcadores !== "function") return false;
@@ -213,23 +228,17 @@
     window.moRenderMarcadores = function(lista){
       const resultado = renderOriginal.apply(this, arguments);
       try{
-        Object.keys(window.moMarcadores || {}).forEach(function(clave){
-          prepararMarcador(window.moMarcadores[clave]);
-        });
+        enlazarMarcadores();
       }catch(error){
-        console.warn("V552 CTO cercanas: no se pudo enlazar marcador", error);
+        console.warn("V552B CTO cercanas: no se pudo enlazar marcador", error);
       }
       return resultado;
     };
 
-    try{
-      Object.keys(window.moMarcadores || {}).forEach(function(clave){
-        prepararMarcador(window.moMarcadores[clave]);
-      });
-    }catch(_){ }
+    try{ enlazarMarcadores(); }catch(_){ }
 
     instalado = true;
-    console.log("MI VISUAL V552: CTO cercanas restauradas para instalaciones.");
+    console.log("MI VISUAL V552B: CTO cercanas restauradas para instalaciones.");
     return true;
   }
 
