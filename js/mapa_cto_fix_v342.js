@@ -155,3 +155,89 @@
     }
   }, 400);
 })();
+
+/* =====================================================
+   MI VISUAL V552 - CTO CERCANAS EN INSTALACIONES
+   - Restaura la visualización automática de CTO cercanas
+     al abrir una orden de instalación en el mapa.
+   - Reutiliza el catálogo y la función de lectura existentes.
+   - No altera importación, indicadores, filtros ni escrituras.
+===================================================== */
+(function(){
+  "use strict";
+
+  if(window.MV552_MAPA_CTO_CERCANAS_OK) return;
+  window.MV552_MAPA_CTO_CERCANAS_OK = true;
+
+  let instalado = false;
+  let temporizador = null;
+
+  function esInstalacion(registro){
+    if(!registro) return false;
+    if(typeof window.moEsInstalacionCto === "function"){
+      return !!window.moEsInstalacionCto(registro.tipoTrabajo);
+    }
+    const t = String(registro.tipoTrabajo || "")
+      .toUpperCase()
+      .normalize("NFD").replace(/[\u0300-\u036f]/g, "")
+      .replace(/[^A-Z0-9]/g, "");
+    return t.indexOf("INSTALACION") === 0;
+  }
+
+  function cargarCtoCercanas(){
+    const check = document.getElementById("moMostrarCtosCercanas");
+    if(!check || typeof window.moCargarCtosCercanas !== "function") return;
+
+    check.checked = true;
+    clearTimeout(temporizador);
+    temporizador = setTimeout(function(){
+      Promise.resolve(window.moCargarCtosCercanas()).catch(function(error){
+        console.warn("V552 CTO cercanas: lectura temporalmente no disponible", error);
+      });
+    }, 180);
+  }
+
+  function prepararMarcador(marcador){
+    if(!marcador || marcador.__mv552CtoCercanas) return;
+    marcador.__mv552CtoCercanas = true;
+    marcador.on("click", function(){
+      if(esInstalacion(marcador._moRegistro)) cargarCtoCercanas();
+    });
+  }
+
+  function instalar(){
+    if(instalado) return true;
+    if(typeof window.moRenderMarcadores !== "function") return false;
+
+    const renderOriginal = window.moRenderMarcadores;
+    window.moRenderMarcadores = function(lista){
+      const resultado = renderOriginal.apply(this, arguments);
+      try{
+        Object.keys(window.moMarcadores || {}).forEach(function(clave){
+          prepararMarcador(window.moMarcadores[clave]);
+        });
+      }catch(error){
+        console.warn("V552 CTO cercanas: no se pudo enlazar marcador", error);
+      }
+      return resultado;
+    };
+
+    try{
+      Object.keys(window.moMarcadores || {}).forEach(function(clave){
+        prepararMarcador(window.moMarcadores[clave]);
+      });
+    }catch(_){ }
+
+    instalado = true;
+    console.log("MI VISUAL V552: CTO cercanas restauradas para instalaciones.");
+    return true;
+  }
+
+  const verificador = setInterval(function(){
+    if(instalar()) clearInterval(verificador);
+  }, 500);
+
+  document.addEventListener("click", function(){
+    if(!instalado) setTimeout(instalar, 80);
+  }, true);
+})();
