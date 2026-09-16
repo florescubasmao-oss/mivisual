@@ -86,16 +86,15 @@
   );
 
   /*
-     V548B: el Mapa conserva V547 para lecturas resilientes y añade feedback
-     inmediato antes de la validación temporal V487.8. Detecta la capa V487.8
-     incluso cuando V393/V395 ya envolvieron el registrador.
+     V550: el avance de importacion vuelve a quedar a cargo de V393, que ahora
+     queda correctamente por fuera de V386 gracias a la instalacion sincrona.
+     Se conserva el sincronizador de indicadores y V547 para lecturas 404.
   */
   cargar("./js/indicadores_win_sync_v4879.js?v=V544-MAPA-SYNC-INTEGRAL-20260915-1")
     .then(()=>cargar("./js/mapa_resiliencia_v547.js?v=V547-MAPA-LECTURA-RESILIENTE-20260915-1"))
-    .then(()=>cargar("./js/mapa_importacion_feedback_v548.js?v=V548B-MAPA-FEEDBACK-20260915-2"))
     .then(()=>cargar("./js/partidas_snapshot_auto_v513d.js?v=V513D-SNAPSHOT-AUTO-20260827"))
     .catch(e=>
-      console.warn("V517A Complementos: sincronizador WIN / resiliencia Mapa / feedback importación / snapshot Partidas pendiente",e)
+      console.warn("V517A Complementos: sincronizador WIN / resiliencia Mapa / snapshot Partidas pendiente",e)
     );
 
   cargar("./js/checklist_rapido_v508.js?v=V508-CHECKLIST-RAPIDO").catch(e=>
