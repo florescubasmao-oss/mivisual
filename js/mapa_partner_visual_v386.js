@@ -1,5 +1,5 @@
 /* ============================================================
-   MI VISUAL V487.8 - Mapa Operativo: Visual P# + estado WIN reciente
+   MI VISUAL V550 - Mapa Operativo: Visual P# + estado WIN reciente
 
    OBJETIVO
    - Mantener la validacion existente: solo cuadrillas Visual P#.
@@ -15,6 +15,14 @@
    - Despues de una importacion valida emite mv487WinImportado para que el
      motor de indicadores pueda actualizar Produccion, Efectividad,
      Recableado y VTR/GAR sin tocar las pantallas consumidoras.
+
+   V550
+   - Instala esta proteccion de forma sincrona cuando el modulo base ya existe,
+     para que V393/V395 queden por fuera y la barra de avance aparezca desde
+     el primer clic en Registrar informacion.
+   - Precarga en segundo plano el periodo del MAPA despues de Leer archivo.
+     Al registrar reutiliza esa lectura para el control anti-retroceso, sin
+     eliminar ninguna validacion ni reducir la seguridad de la carga.
 ============================================================ */
 (function(){
   "use strict";
@@ -22,7 +30,9 @@
   if(window.MV386_MAPA_SOLO_P_OK) return;
 
   const MOTOR_ESTADO="./js/win_estado_historico_v4877.js?v=V4878-ESTADO-RECIENTE";
+  const CACHE_PERIODO_MS=60000;
   let promesaMotor=null;
+  const cachePeriodos=new Map();
 
   function norm(v){
     return String(v||"")
@@ -128,10 +138,45 @@
       periodoDesdeValor(valor(o,"fechaUltimoEstado","FECHA_ULTIMO_ESTADO","FechaUltiEsta"));
   }
 
+  function periodosLista(lista){
+    return [...new Set((lista||[]).map(periodoOrden).filter(Boolean))];
+  }
+
   function listaRespuestaMapa(d){
     if(Array.isArray(d&&d.ordenes)) return d.ordenes;
     if(Array.isArray(d&&d.registros)) return d.registros;
     return [];
+  }
+
+  function cargarPeriodoMapa(periodo){
+    const ahora=Date.now();
+    const previo=cachePeriodos.get(periodo);
+    if(previo && (ahora-previo.ts)<CACHE_PERIODO_MS) return previo.promesa;
+
+    const promesa=Promise.resolve().then(()=>moApiLectura({
+      accion:"listarMapaOperativo",
+      usuario:moUsuario(),
+      periodo
+    })).catch(error=>{
+      const actual=cachePeriodos.get(periodo);
+      if(actual && actual.promesa===promesa) cachePeriodos.delete(periodo);
+      throw error;
+    });
+
+    cachePeriodos.set(periodo,{ts:ahora,promesa});
+    return promesa;
+  }
+
+  function precargarPeriodos(lista){
+    periodosLista(lista).forEach(periodo=>{
+      cargarPeriodoMapa(periodo).catch(error=>{
+        console.warn("V550: precarga de control WIN pendiente",periodo,error);
+      });
+    });
+  }
+
+  function invalidarPeriodos(periodos){
+    (periodos||[]).forEach(periodo=>cachePeriodos.delete(periodo));
   }
 
   function deduplicarNuevaCarga(lista,motor){
@@ -150,18 +195,18 @@
   }
 
   async function protegerContraRetroceso(lista,motor){
-    const periodos=[...new Set((lista||[]).map(periodoOrden).filter(Boolean))];
+    const periodos=periodosLista(lista);
     const existentes=new Map();
     for(const periodo of periodos){
       try{
-        const d=await moApiLectura({accion:"listarMapaOperativo",usuario:moUsuario(),periodo});
+        const d=await cargarPeriodoMapa(periodo);
         listaRespuestaMapa(d).forEach(o=>{
           const k=motor.ordenId(o);if(!k)return;
           const previo=existentes.get(k);
           if(!previo || motor.fechaEstadoMs(o)>=motor.fechaEstadoMs(previo)) existentes.set(k,o);
         });
       }catch(error){
-        console.warn("V487.8: no se pudo comparar el periodo antes de importar",periodo,error);
+        console.warn("V550: no se pudo comparar el periodo antes de importar",periodo,error);
       }
     }
 
@@ -208,7 +253,13 @@
       const ajustadaLeer=async function(){
         const resultado=await originalLeer.apply(this,arguments);
         const control=validarImportacion();
-        if(!control.ok) bloquearCarga(control); else mensajeCargaValida(control);
+        if(!control.ok){
+          bloquearCarga(control);
+        }else{
+          mensajeCargaValida(control);
+          /* V550: adelanta la lectura necesaria para el control anti-retroceso. */
+          precargarPeriodos(registrosImportacion());
+        }
         return resultado;
       };
       ajustadaLeer.__mv386SoloP=true;
@@ -234,18 +285,24 @@
           if(!protegido.lista.length){
             const msg=document.getElementById("moImportMsg");
             if(msg){msg.className="mo-msg mo-ok";msg.textContent=String(msg.textContent||"")+"\n✅ No hay estados mas recientes para registrar.";}
+            invalidarPeriodos(controlTemporal.periodos);
             return {ok:true,sinCambios:true,control:controlTemporal};
           }
         }catch(error){
-          console.warn("V487.8: se continua con la carga normal porque el control temporal no pudo completarse",error);
+          console.warn("V550: se continua con la carga normal porque el control temporal no pudo completarse",error);
         }
 
-        const resultado=await originalRegistrar.apply(this,arguments);
-        notificarImportacion(controlTemporal.periodos,controlTemporal);
-        return resultado;
+        try{
+          const resultado=await originalRegistrar.apply(this,arguments);
+          notificarImportacion(controlTemporal.periodos,controlTemporal);
+          return resultado;
+        }finally{
+          invalidarPeriodos(controlTemporal.periodos);
+        }
       };
       ajustadaRegistrar.__mv386SoloP=true;
       ajustadaRegistrar.__mv4878EstadoReciente=true;
+      ajustadaRegistrar.__mv550Precarga=true;
       ajustadaRegistrar.__original=originalRegistrar;
       window.moRegistrarImportacion=ajustadaRegistrar;
       try{moRegistrarImportacion=ajustadaRegistrar;}catch(_){}
@@ -253,8 +310,16 @@
     return true;
   }
 
-  let intentos=0;
-  const timer=setInterval(()=>{intentos++;if(instalar()||intentos>80)clearInterval(timer);},100);
+  /*
+    V550: mapa_operativo.js ya fue cargado antes de este archivo por el loader.
+    Instalamos inmediatamente para que los wrappers posteriores V393 y V395
+    queden por fuera. Solo si el navegador aun no expuso las funciones usamos
+    el mismo sondeo anterior como respaldo.
+  */
+  if(!instalar()){
+    let intentos=0;
+    const timer=setInterval(()=>{intentos++;if(instalar()||intentos>80)clearInterval(timer);},100);
+  }
 
   window.mv386EsCuadrillaVisualP=esCuadrillaVisualP;
   window.mv4878ProtegerCargaWin=async function(lista){
@@ -265,4 +330,5 @@
   };
   window.MV386_MAPA_SOLO_P_OK=true;
   window.MV4878_MAPA_ESTADO_RECIENTE_OK=true;
+  window.MV550_MAPA_ORDEN_WRAPPERS_OK=true;
 })();
