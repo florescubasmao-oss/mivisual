@@ -135,7 +135,7 @@
     if(typeof window.mv4879SincronizarIndicadoresWin==="function"){ejecutar();return;}
     const existente=Array.from(document.scripts).find(function(s){return s.src&&s.src.includes("indicadores_win_sync_v4879.js");});
     if(existente){existente.addEventListener("load",ejecutar,{once:true});return;}
-    const s=document.createElement("script");s.src="./js/indicadores_win_sync_v4879.js?v=V48710-4-INDICADORES";s.async=true;s.onload=ejecutar;s.onerror=function(){console.warn("V487.10: no se pudo cargar el sincronizador de indicadores.");};document.head.appendChild(s);
+    const s=document.createElement("script");s.src="./js/indicadores_win_sync_v4879.js?v=V551-MAPA-REGISTRO";s.async=true;s.onload=ejecutar;s.onerror=function(){console.warn("V487.10: no se pudo cargar el sincronizador de indicadores.");};document.head.appendChild(s);
   }
 
   const api={fechaMs,ordenId,estado,tipoTrabajo,cuadrilla,fechaEstadoMs,compararVersion,fusionarHistorico,esReservaPendiente,clasificarEfectividad,clasificarRecableado,partnerOpcional,homologarCuadrilla};
@@ -145,6 +145,8 @@
   if(typeof window!=="undefined"&&!window.MV4879_WIN_IMPORT_HOOK_OK){
     window.MV4879_WIN_IMPORT_HOOK_OK=true;
     window.addEventListener("mv487WinImportado",function(e){
+      // V551: el Mapa ya coordina la cola/compatibilidad en su propio hook.
+      if(e && e.detail && e.detail.origen==="MAPA_OPERATIVO")return;
       const periodos=e&&e.detail&&Array.isArray(e.detail.periodos)?e.detail.periodos:[];
       cargarSincronizador(periodos);
     });

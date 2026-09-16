@@ -12,9 +12,8 @@
      otros campos; FECHA_IMPORTACION la asigna el backend al registrar.
    - Las ordenes ausentes en una carga nueva no se eliminan: esa proteccion
      ya la conserva importarMapaOperativo en Apps Script.
-   - Despues de una importacion valida emite mv487WinImportado para que el
-     motor de indicadores pueda actualizar Produccion, Efectividad,
-     Recableado y VTR/GAR sin tocar las pantallas consumidoras.
+   - V551: notifica solo una escritura confirmada; el hook de importacion
+     decide entre la cola backend y la publicacion compatible anterior.
 
    V550
    - Instala esta proteccion de forma sincrona cuando el modulo base ya existe,
@@ -29,7 +28,7 @@
 
   if(window.MV386_MAPA_SOLO_P_OK) return;
 
-  const MOTOR_ESTADO="./js/win_estado_historico_v4877.js?v=V4878-ESTADO-RECIENTE";
+  const MOTOR_ESTADO="./js/win_estado_historico_v4877.js?v=V551-MAPA-REGISTRO";
   const CACHE_PERIODO_MS=60000;
   let promesaMotor=null;
   const cachePeriodos=new Map();
@@ -232,14 +231,15 @@
     msg.textContent=String(msg.textContent||"")+`\n🕒 Control WIN: ${partes.join(" · ")}. Quedan ${totalFinal} registro(s) para actualizar.`;
   }
 
-  function notificarImportacion(periodos,control){
+  function notificarImportacion(periodos,control,resultado){
+    // V551: solo notificar un POST confirmado; el hook del Mapa es el único
+    // responsable de publicar o respetar la cola devuelta por el backend.
+    if(!resultado || resultado.ok!==true || resultado.sinCambios)return;
     try{
-      window.dispatchEvent(new CustomEvent("mv487WinImportado",{detail:{periodos:periodos||[],control:control||{},fecha:Date.now()}}));
-    }catch(_){}
-    try{
-      if(typeof window.mv4879SincronizarIndicadoresWin==="function"){
-        window.mv4879SincronizarIndicadoresWin(periodos||[]).catch(error=>console.warn("V487: sincronizacion de indicadores pendiente",error));
-      }
+      window.dispatchEvent(new CustomEvent("mv487WinImportado",{detail:{
+        origen:"MAPA_OPERATIVO", periodos:periodos||[], control:control||{},
+        sincronizacionIndicadores:resultado.sincronizacionIndicadores||null, fecha:Date.now()
+      }}));
     }catch(_){}
   }
 
@@ -294,7 +294,7 @@
 
         try{
           const resultado=await originalRegistrar.apply(this,arguments);
-          notificarImportacion(controlTemporal.periodos,controlTemporal);
+          notificarImportacion(controlTemporal.periodos,controlTemporal,resultado);
           return resultado;
         }finally{
           invalidarPeriodos(controlTemporal.periodos);

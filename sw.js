@@ -1,5 +1,5 @@
 /* MI VISUAL V550 - MAPA: ORDEN DE WRAPPERS + RESILIENCIA CENTRAL V528 */
-const MV339_CACHE = "mivisual-v550-mapa-orden-wrappers-20260915-1";
+const MV339_CACHE = "mivisual-v551-mapa-registro-20260916-1";
 const MV517C19_BRIDGE = "./js/vtr_gar_ux_v517b.js?v=GARVTR-EXCEL-20260914-1";
 
 /*
@@ -263,6 +263,8 @@ self.addEventListener("fetch", event => {
     url.pathname.endsWith("/js/vtr_gar_bono_correccion_v517d_f4h.js") ||
     url.pathname.endsWith("/js/partidas_win_v513.js") ||
     url.pathname.endsWith("/js/partidas_lote_manual_v513c.js") ||
+    url.pathname.endsWith("/js/modulos_loader.js") ||
+    url.pathname.endsWith("/js/win_estado_historico_v4877.js") ||
     url.pathname.endsWith("/js/mapa_operativo.js") ||
     url.pathname.endsWith("/js/mapa_partner_visual_v386.js") ||
     url.pathname.endsWith("/js/mapa_progreso_v393.js") ||

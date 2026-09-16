@@ -434,7 +434,8 @@ async function moRegistrarImportacion(){
       msg.className='mo-msg mo-ok';
       msg.textContent=confirmacion+' Los filtros se actualizarán al volver al mapa.';
     }
-  }catch(e){msg.className='mo-msg mo-error';msg.textContent=e.message;btn.disabled=false}
+    return d; // V551: confirmación explícita para las capas de indicadores.
+  }catch(e){msg.className='mo-msg mo-error';msg.textContent=e.message;btn.disabled=false;return {ok:false,error:e.message};}
 }
 function moMotivo(x){return x.motivoCancelacion||x.motivoFinalizacion||x.motivoAnulacion||''}
 function moEsInstalacionCto(tipoTrabajo){return ['INSTALACION','INSTALACIONPOSIBLEFRAUDE'].includes(moNormCab(tipoTrabajo))}

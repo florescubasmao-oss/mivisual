@@ -1,15 +1,15 @@
 /* ================================================================
-   MI VISUAL V543 - MAPA OPERATIVO -> INDICADORES SIN BLOQUEAR MAPA
+   MI VISUAL V551 - MAPA OPERATIVO -> INDICADORES SIN DUPLICAR COLA
 
    OBJETIVO
    - Una carga confirmada en Mapa Operativo impacta automáticamente
      Producción, Efectividad, Recableado, VTR/GAR, Ranking y Dashboard.
-   - Recupera cargas que sí llegaron a MAPA_ORDENES aunque el navegador haya
-     perdido la confirmación HTTP.
+   - Respeta la cola del backend cuando el POST devuelve su confirmación.
+   - Una respuesta incierta no dispara publicaciones ni repite escrituras.
    - NO ejecuta reconstrucciones pesadas al abrir Mapa Operativo ni al cambiar
      filtros. Esto evita competir con listarMapaOperativo y dejar el mapa en
      "Consultando órdenes...".
-   - Durante la sincronización posterior a una importación, bloquea solo el
+   - Solo en backend anterior sin cola, durante la sincronización bloquea el
      botón "Volver al mapa" de la vista de importación hasta terminar.
    - Mantiene una revisión manual de desfase para Jefatura/Admin.
    - Nunca reintenta la importación del Mapa.
@@ -309,27 +309,6 @@
     return salida;
   }
 
-  function cargaMapaConfirmada(){
-    const msg=document.getElementById("moImportMsg");
-    if(!msg)return false;
-    const s=norm(msg.textContent||"");
-    return msg.classList.contains("mo-ok")||s.includes("REGISTRO CONFIRMADO")||s.includes("CARGA REGISTRADA");
-  }
-
-  function mapaAvanzo(antes,despues){
-    const a=fechaMs(antes&&antes.iso), b=fechaMs(despues&&despues.iso);
-    if(b&&a)return b>a;
-    if(b&&!a)return Date.now()-b<10*60*1000;
-    return false;
-  }
-
-  async function importacionFueGuardada(antes){
-    if(cargaMapaConfirmada())return true;
-    await dormir(900);
-    const despues=await selloMapa();
-    return mapaAvanzo(antes,despues);
-  }
-
   async function catchupPeriodo(periodo,mostrarAviso){
     const p=periodoValido(periodo)?periodo:periodoActual();
     if(!p||p<PERIODO_MINIMO||!puedePublicar())return null;
@@ -371,28 +350,36 @@
       original=original.__original;
     }
 
+    let registrando=false;
     const ajustada=async function(){
-      const periodos=periodosImportacion();
-      const antes=await selloMapa();
-      const r=await original.apply(this,arguments);
-      const guardada=await importacionFueGuardada(antes);
-
-      if(!guardada)return r;
-      if(!puedePublicar()){
-        anexarEstado("ℹ Mapa actualizado. La sincronización de indicadores requiere Jefatura/Administrador.","warn");
-        return r;
-      }
-
-      bloquearVolverMapa(true);
+      if(registrando)return {ok:false,enCurso:true};
+      registrando=true;
       try{
-        anexarEstado("⏳ Mapa guardado. Sincronizando indicadores; espere antes de volver al mapa...","warn");
-        await sincronizar(periodos);
-      }catch(e){
-        console.warn("V543 Mapa -> indicadores",e);
-      }finally{
-        bloquearVolverMapa(false);
-      }
-      return r;
+        const periodos=periodosImportacion();
+        // V551: ninguna consulta remota antes de la barra y el bloqueo del botón.
+        const r=await original.apply(this,arguments);
+        // Un sello global o un mensaje verde de "Archivo leído" no confirman este POST.
+        if(!r || r.ok!==true || r.sinCambios || r.confirmadoPorSello)return r;
+        const cola=r.sincronizacionIndicadores;
+        if(cola && (cola.programada || cola.estado==="SIN_CAMBIOS_PUBLICABLES")){
+          anexarEstado(cola.programada
+            ? "ℹ Mapa guardado. Indicadores pendientes de actualización automática; puede volver al mapa."
+            : "ℹ Mapa guardado. No hay cambios publicables en indicadores.","warn");
+          return r;
+        }
+        if(!puedePublicar()){
+          anexarEstado("ℹ Mapa actualizado. La sincronización de indicadores requiere Jefatura/Administrador.","warn");
+          return r;
+        }
+        // Compatibilidad con servidores anteriores que todavía no devuelven cola V547.
+        bloquearVolverMapa(true);
+        try{
+          anexarEstado("⏳ Mapa guardado. Sincronizando indicadores...","warn");
+          await sincronizar(periodos);
+        }catch(e){console.warn("V551 Mapa -> indicadores",e);}
+        finally{bloquearVolverMapa(false);}
+        return r;
+      }finally{registrando=false;}
     };
 
     ajustada.__mv543MapaSync=true;

@@ -257,16 +257,7 @@
     );
 
     const sello=await ultimaActualizacionConReintento();
-    const selloMs=fechaSelloMs(sello);
-    const correspondeCarga=!!selloMs && selloMs >= (inicio-5000);
-
-    if(correspondeCarga){
-      const detalle=`✅ Registro confirmado por última actualización (${sello}). Los ${total} registros fueron recibidos; los indicadores pueden continuar su sincronización normal.`;
-      pintarMensajeOk(detalle);
-      estado("3 de 3 · Registro confirmado",detalle,"100%");
-      if(p){p.classList.remove("is-warning","is-error");p.classList.add("is-ok");}
-      return {confirmado:true,sello:sello};
-    }
+    // V551: un sello global puede pertenecer a otra carga; no prueba este POST.
 
     const detalle="La comunicación con Google se interrumpió después de enviar la información. MI VISUAL no repetirá automáticamente el registro para evitar duplicidades."+
       (sello?` Última actualización detectada: ${sello}.`:" No fue posible consultar la última actualización en este momento.")+
@@ -278,10 +269,19 @@
     return {confirmado:false,sello:sello};
   }
 
+  let registroEnCurso=false;
   async function registrarV393(){
+    if(registroEnCurso)return {ok:false,enCurso:true};
     const total=cantidad();
     if(!total) return await registrarBase.apply(this,arguments);
 
+    registroEnCurso=true;
+    const controles=Array.from(document.querySelectorAll(".mo-upload-actions button, #moArchivo"));
+    const estadoControles=controles.map(el=>({el,disabled:el.disabled}));
+    controles.forEach(el=>{el.disabled=true;});
+    const boton=document.getElementById("moBtnImportar");
+    const textoBoton=boton?boton.textContent:"Registrar información";
+    if(boton)boton.textContent="Cargando…";
     const p=panel();
     const inicio=Date.now();
     let timer=null;
@@ -294,18 +294,20 @@
       "18%"
     );
 
-    await new Promise(r=>requestAnimationFrame(()=>setTimeout(r,40)));
+    await new Promise(r=>setTimeout(r,0));
 
     timer=setInterval(()=>{
       const e=document.getElementById("mv393MapaTiempo");
       if(e)e.textContent=`${Math.floor((Date.now()-inicio)/1000)} s`;
     },500);
 
-    estado(
-      "2 de 3 · Registrando información",
-      `Enviando ${total} registros a MI VISUAL. No cierre esta pantalla.`,
-      "52%"
-    );
+    const marcarEnvio=()=>{
+      const mensaje=document.getElementById("moImportMsg");
+      if(mensaje && /^Registrando información/.test(texto(mensaje.textContent))){
+        estado("2 de 3 · Registrando información",
+          `Enviando ${total} registros a MI VISUAL. No cierre esta pantalla.`,"52%");
+      }
+    };
 
     const marcarConfirmado=()=>{
       if(confirmadoAnticipado || !mensajeConfirmado()) return false;
@@ -324,7 +326,7 @@
 
     const msg=document.getElementById("moImportMsg");
     if(msg && typeof MutationObserver!=="undefined"){
-      observador=new MutationObserver(()=>marcarConfirmado());
+      observador=new MutationObserver(()=>{marcarEnvio();marcarConfirmado();});
       observador.observe(msg,{childList:true,subtree:true,characterData:true,attributes:true,attributeFilter:["class"]});
     }
 
@@ -333,6 +335,11 @@
       // esa función bloquea la carga antes de llegar al servidor.
       const resultado=await registrarBase.apply(this,arguments);
 
+      if(resultado && resultado.sinCambios){
+        estado("Revisión completada", "No hay estados más recientes para registrar.", "100%");
+        if(p)p.classList.add("is-ok");
+        return resultado;
+      }
       const correcto=mensajeConfirmado();
 
       if(correcto){
@@ -396,6 +403,9 @@
       seguro.name="MapaOperativoRespuestaSegura";
       throw seguro;
     }finally{
+      registroEnCurso=false;
+      estadoControles.forEach(({el,disabled})=>{el.disabled=disabled;});
+      if(boton){boton.textContent=textoBoton;boton.disabled=cantidad()===0;}
       if(observador)observador.disconnect();
       if(timer)clearInterval(timer);
       const e=document.getElementById("mv393MapaTiempo");

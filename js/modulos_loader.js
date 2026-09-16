@@ -131,9 +131,9 @@
     },
     mapa: {
       archivos: [
-        `./js/mapa_operativo.js?v=V419-MAPA-MULTIFILTRO-FIX`,
-        `./js/mapa_partner_visual_v386.js?v=V408-RESTAURA-V403`,
-        `./js/mapa_progreso_v393.js?v=V408-RESTAURA-V403`,
+        `./js/mapa_operativo.js?v=V551-MAPA-REGISTRO`,
+        `./js/mapa_partner_visual_v386.js?v=V551-MAPA-REGISTRO`,
+        `./js/mapa_progreso_v393.js?v=V551-MAPA-REGISTRO`,
         `./js/mapa_rapido_v395.js?v=V408-RESTAURA-V403`,
         `./js/mapa_campo_v408.js?v=V408-MAPA-CAMPO`,
         `./js/mapa_auditoria_v421.js?v=V426-GENERAR-AUDITORIA`
