@@ -1,9 +1,9 @@
-/* MI VISUAL V543 - MAPA SIN BLOQUEO + RESILIENCIA CENTRAL V528 */
-const MV339_CACHE = "mivisual-v543-mapa-sync-sin-bloqueo-20260915-1";
+/* MI VISUAL V550 - MAPA: ORDEN DE WRAPPERS + RESILIENCIA CENTRAL V528 */
+const MV339_CACHE = "mivisual-v550-mapa-orden-wrappers-20260915-1";
 const MV517C19_BRIDGE = "./js/vtr_gar_ux_v517b.js?v=GARVTR-EXCEL-20260914-1";
 
 /*
-  V528/V543: SOLO acciones de lectura confirmadas.
+  V528/V550: SOLO acciones de lectura confirmadas.
   Regla de seguridad: ninguna escritura, guardado, validacion, importacion,
   publicacion ni ajuste entra en este conjunto. Por eso un reintento nunca
   puede duplicar datos.
@@ -264,6 +264,7 @@ self.addEventListener("fetch", event => {
     url.pathname.endsWith("/js/partidas_win_v513.js") ||
     url.pathname.endsWith("/js/partidas_lote_manual_v513c.js") ||
     url.pathname.endsWith("/js/mapa_operativo.js") ||
+    url.pathname.endsWith("/js/mapa_partner_visual_v386.js") ||
     url.pathname.endsWith("/js/mapa_progreso_v393.js") ||
     url.pathname.endsWith("/js/mapa_rapido_v395.js") ||
     url.pathname.endsWith("/js/gestion_win_v505_loader.js") ||
