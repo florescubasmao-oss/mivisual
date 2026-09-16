@@ -1,27 +1,27 @@
 /* ============================================================
-   MI VISUAL V532 / V542 - CONFIRMACION PUNTUAL DE ACTAS
+   MI VISUAL V532 / V545 - CONFIRMACION PUNTUAL DE ACTAS
+   16/09/2026
 
-   Conserva V532/V541:
-   - Si una validacion CORRECTO se guarda en Apps Script pero la respuesta
-     de red se pierde, verifica SOLO esa acta por ID.
+   Conserva V532/V541/V542:
+   - Si una operación se registra en Apps Script pero se pierde la respuesta,
+     verifica SOLO esa acta por ID.
    - NUNCA vuelve a ejecutar registrarActaEscaneada automaticamente.
-   - Calcula exactamente el mismo ID deterministico que usa el backend:
+   - Mantiene el ID deterministico del backend:
      ACTA-{CODIGO_ORDEN}-{NUMERO_ACTA_NORMALIZADO}.
-   - Si existe idActaOriginal (faltante/observada), usa ese ID estable.
+   - Si existe idActaOriginal, conserva ese ID estable.
 
-   V542:
-   - Instala la proteccion inmediatamente al abrir Gestion de Actas; elimina
-     la ventana de tiempo en la que el tecnico podia guardar antes del wrapper.
-   - Amplia la verificacion de una subida incierta hasta ~20 s sin repetir
-     la escritura.
-   - Si la consulta puntual por ID tambien recibe 404, usa como respaldo una
-     lectura real de listarActasEscaneadas y busca exactamente el mismo ID.
-   - Limpia caches solo cuando la escritura queda realmente confirmada.
-   - No modifica permisos, Drive, estados, reglas ni historico.
+   V545:
+   - Reduce la espera excesiva cuando Google devuelve HTTP 404/timeout.
+   - Las verificaciones son SOLO LECTURA y tienen tiempo acotado.
+   - Consulta puntual por ID primero; después usa listado real como respaldo.
+   - Las lecturas de respaldo se hacen en paralelo para no acumular minutos.
+   - Informa al tecnico que MI VISUAL esta verificando el registro.
+   - No modifica permisos, Drive, estados, reglas, historico ni guardado.
 ============================================================ */
 (function(){
 "use strict";
-if(window.MV542_ACTAS_CONFIRMACION_ID_CARGADA)return;
+if(window.MV545_ACTAS_CONFIRMACION_ID_CARGADA)return;
+window.MV545_ACTAS_CONFIRMACION_ID_CARGADA=true;
 window.MV542_ACTAS_CONFIRMACION_ID_CARGADA=true;
 window.MV541_ACTAS_CONFIRMACION_ID_CARGADA=true;
 window.MV540_ACTAS_CONFIRMACION_ID_CARGADA=true;
@@ -33,7 +33,6 @@ function norm(v){
     .replace(/[\u0300-\u036f]/g,"").replace(/\s+/g," ").trim();
 }
 function clave(v){return norm(v).replace(/[^A-Z0-9]/g,"");}
-function limpiarNombre(v){return clave(v);}
 function claveNumeroActa(v){
   let k=clave(v);
   if(/^\d+$/.test(k))k=k.replace(/^0+(?=\d)/,"");
@@ -47,62 +46,88 @@ function esErrorIncierto(error){
 function idEsperadoSubida(s){
   const original=txt(s.idActaOriginal||s.id_acta_original||"");
   if(original)return original;
-  const orden=limpiarNombre(s.codigoOrden||s.codigo_orden||"");
+  const orden=clave(s.codigoOrden||s.codigo_orden||"");
   const acta=claveNumeroActa(s.numeroActa||s.numero_acta||"");
   if(!orden)return "";
   return "ACTA-"+orden+(acta?"-"+acta:"");
 }
+function apiBase(){return window.API_ACTAS||window.MI_VISUAL_API_URL||"";}
+
 async function consultarActaPorId(s,idOverride){
   const payload={
     accion:"obtenerActaPorIdV532",
     usuario:s.usuario,
     id:txt(idOverride||s.id),
-    _v542:Date.now()+"-"+Math.random().toString(36).slice(2)
+    _v545:Date.now()+"-"+Math.random().toString(36).slice(2)
   };
   if(!payload.id)throw new Error("ID de acta no disponible");
+  const base=apiBase();
+  if(!base)throw new Error("API de Gestión de Actas no disponible");
+
   if(typeof window.mv336ApiGet==="function"){
-    return await window.mv336ApiGet(window.API_ACTAS||window.MI_VISUAL_API_URL,payload,{intentos:1,tiempoMs:15000});
+    return await window.mv336ApiGet(base,payload,{intentos:1,tiempoMs:5500});
   }
-  const base=window.API_ACTAS||window.MI_VISUAL_API_URL;
+
   const url=new URL(base);
   Object.keys(payload).forEach(k=>url.searchParams.set(k,String(payload[k])));
   const c=typeof AbortController==="function"?new AbortController():null;
-  const timer=c?setTimeout(()=>c.abort(),15000):null;
+  const timer=c?setTimeout(()=>c.abort(),5500):null;
   try{
     const r=await fetch(url.toString(),{method:"GET",cache:"no-store",redirect:"follow",headers:{"Accept":"application/json"},signal:c?c.signal:undefined});
     if(!r.ok)throw new Error("HTTP "+r.status);
     const t=(await r.text()).trim();
+    if(!t||/<!doctype|<html/i.test(t))throw new Error("Respuesta inválida");
     const j=JSON.parse(t);
     if(!j||j.ok===false)throw new Error((j&&j.error)||"Consulta no disponible");
     return j;
   }finally{if(timer)clearTimeout(timer);}
 }
-async function consultarActaEnListadoV542(s,id){
-  if(typeof window.mv336ApiGet!=="function")return null;
+
+async function consultarActaEnListadoV545(s,id){
+  const base=apiBase();
+  if(!base)return null;
+  const payload={
+    accion:"listarActasEscaneadas",
+    usuario:s.usuario,
+    _v545lista:Date.now()+"-"+Math.random().toString(36).slice(2)
+  };
   try{
-    const r=await window.mv336ApiGet(window.API_ACTAS||window.MI_VISUAL_API_URL,{
-      accion:"listarActasEscaneadas",
-      usuario:s.usuario,
-      _v542lista:Date.now()+"-"+Math.random().toString(36).slice(2)
-    },{intentos:1,tiempoMs:20000});
+    let r;
+    if(typeof window.mv336ApiGet==="function"){
+      r=await window.mv336ApiGet(base,payload,{intentos:1,tiempoMs:6500});
+    }else{
+      const u=new URL(base);
+      Object.entries(payload).forEach(([k,v])=>u.searchParams.set(k,String(v)));
+      const c=typeof AbortController==="function"?new AbortController():null;
+      const timer=c?setTimeout(()=>c.abort(),6500):null;
+      try{
+        const res=await fetch(u.toString(),{method:"GET",cache:"no-store",redirect:"follow",headers:{"Accept":"application/json"},signal:c?c.signal:undefined});
+        if(!res.ok)throw new Error("HTTP "+res.status);
+        const raw=(await res.text()).trim();
+        if(!raw||/<!doctype|<html/i.test(raw))throw new Error("Respuesta inválida");
+        r=JSON.parse(raw);
+      }finally{if(timer)clearTimeout(timer);}
+    }
     if(!r||r.ok!==true||!Array.isArray(r.actas))return null;
     const a=r.actas.find(x=>txt(x&&x.id)===txt(id));
     return a?{ok:true,acta:a,perfil:r.perfil||""}:null;
   }catch(_){return null;}
 }
+
 function validacionConfirmada(s,r){
   if(!r||r.ok!==true||!r.acta)return false;
   const a=r.acta;
   const perfil=norm(r.perfil||localStorage.getItem("perfil"));
   if(perfil==="ALMACEN"){
-    return norm(a.resultadoAlmacen)==="CORRECTO" && !!txt(a.validadoAlmacenPor);
+    return norm(a.resultadoAlmacen)==="CORRECTO"&&!!txt(a.validadoAlmacenPor);
   }
   if(perfil==="JEFATURA ALMACEN"){
-    return norm(a.resultadoJefatura)==="CORRECTO" && norm(a.estado)==="FINALIZADO" && !!txt(a.validadoJefaturaPor);
+    return norm(a.resultadoJefatura)==="CORRECTO"&&norm(a.estado)==="FINALIZADO"&&!!txt(a.validadoJefaturaPor);
   }
   return false;
 }
-function fechaRegistroRecienteV542(a){
+
+function fechaRegistroRecienteV545(a){
   const pares=[
     [a&&a.fechaActualizacion,a&&a.horaActualizacion],
     [a&&a.fechaRegistro,a&&a.horaRegistro],
@@ -126,7 +151,8 @@ function fechaRegistroRecienteV542(a){
   }
   return true;
 }
-function subidaConfirmadaV542(s,r){
+
+function subidaConfirmadaV545(s,r){
   if(!r||r.ok!==true||!r.acta)return false;
   const a=r.acta;
   if(!txt(a.linkActa))return false;
@@ -136,9 +162,10 @@ function subidaConfirmadaV542(s,r){
   const actaA=claveNumeroActa(a.numeroActa||"");
   if(ordenS&&ordenA&&ordenS!==ordenA)return false;
   if(actaS&&actaA&&actaS!==actaA)return false;
-  return fechaRegistroRecienteV542(a);
+  return fechaRegistroRecienteV545(a);
 }
-function limpiarCachesActasV542(){
+
+function limpiarCachesActasV545(){
   try{if(typeof window.limpiarCacheActas==="function")window.limpiarCacheActas();}catch(_){}
   try{if(typeof window.mv524LimpiarSnapshotActas==="function")window.mv524LimpiarSnapshotActas();}catch(_){}
   try{
@@ -148,49 +175,65 @@ function limpiarCachesActasV542(){
     }
   }catch(_){}
 }
-async function confirmarConEsperaV542(s,id,modo){
-  const esperas=modo==="SUBIDA" ? [0,1200,2200,3200,4800,6500] : [0,1200,2200,3500];
-  for(let i=0;i<esperas.length;i++){
-    if(esperas[i])await dormir(esperas[i]);
-    let r=null;
-    try{r=await consultarActaPorId(s,id);}catch(_){}
-    if(r && (modo==="SUBIDA" ? subidaConfirmadaV542(s,r) : validacionConfirmada(s,r)))return r;
 
-    // Respaldo de solo lectura. Se usa tarde para no sobrecargar la API.
-    if(i>=2 && (i===2 || i===4 || i===esperas.length-1)){
-      r=await consultarActaEnListadoV542(s,id);
-      if(r && (modo==="SUBIDA" ? subidaConfirmadaV542(s,r) : validacionConfirmada(s,r)))return r;
-    }
+function mostrarVerificacionV545(){
+  const msg=document.getElementById("actaMsg");
+  if(msg){
+    msg.innerHTML='<div class="actas-msg" style="background:#eff6ff;color:#1e3a8a">⏳ Google demoró en responder. MI VISUAL está verificando si el acta ya quedó registrada. No vuelva a pulsar Guardar.</div>';
+  }
+  const btn=document.querySelector("#formActa [data-guardar]");
+  if(btn){btn.disabled=true;btn.innerHTML="Verificando registro...";}
+}
+
+function coincide(modo,s,r){
+  return modo==="SUBIDA"?subidaConfirmadaV545(s,r):validacionConfirmada(s,r);
+}
+
+async function etapaVerificacionV545(s,id,modo,usarListado){
+  const tareas=[consultarActaPorId(s,id)];
+  if(usarListado)tareas.push(consultarActaEnListadoV545(s,id));
+  const resultados=await Promise.allSettled(tareas);
+  for(const x of resultados){
+    if(x.status==="fulfilled"&&x.value&&coincide(modo,s,x.value))return x.value;
   }
   return null;
 }
+
+async function confirmarConEsperaV545(s,id,modo){
+  const etapas=modo==="SUBIDA"
+    ? [{espera:0,lista:false},{espera:1100,lista:true},{espera:2200,lista:true}]
+    : [{espera:0,lista:false},{espera:1000,lista:true}];
+
+  for(const e of etapas){
+    if(e.espera)await dormir(e.espera);
+    const r=await etapaVerificacionV545(s,id,modo,e.lista);
+    if(r)return r;
+  }
+  return null;
+}
+
 function instalar(){
-  if(window.MV542_ACTAS_CONFIRMACION_ID_OK)return true;
+  if(window.MV545_ACTAS_CONFIRMACION_ID_OK)return true;
   if(typeof window.apiActas!=="function")return false;
-  if(!window.MV524_ACTAS_SNAPSHOT_OK && !window.MV392_ACTAS_REINTENTO_404_OK)return false;
+  if(!window.MV524_ACTAS_SNAPSHOT_OK&&!window.MV392_ACTAS_REINTENTO_404_OK)return false;
 
   const original=window.apiActas;
-  async function apiV542(payload){
+  async function apiV545(payload){
     const s=Object.assign({},payload||{});
     try{
       return await original(s);
     }catch(error){
       if(!esErrorIncierto(error))throw error;
 
-      const esValidacion=s.accion==="validarActaEscaneada" && norm(s.resultado)==="CORRECTO" && txt(s.id);
+      const esValidacion=s.accion==="validarActaEscaneada"&&norm(s.resultado)==="CORRECTO"&&txt(s.id);
       if(esValidacion){
-        const r=await confirmarConEsperaV542(s,s.id,"VALIDACION");
+        const r=await confirmarConEsperaV545(s,s.id,"VALIDACION");
         if(r){
-          limpiarCachesActasV542();
+          limpiarCachesActasV545();
           return {
-            ok:true,
-            modulo:"ACTAS",
-            accion:"VALIDACION_CONFIRMADA_V542",
-            id:s.id,
-            resultado:"CORRECTO",
-            estado:r.acta.estado||"",
-            estadoVerificado:true,
-            verificacionPorId:true
+            ok:true,modulo:"ACTAS",accion:"VALIDACION_CONFIRMADA_V545",
+            id:s.id,resultado:"CORRECTO",estado:r.acta.estado||"",
+            estadoVerificado:true,verificacionPorId:true
           };
         }
         throw error;
@@ -198,16 +241,17 @@ function instalar(){
 
       const esSubida=s.accion==="registrarActaEscaneada";
       if(esSubida){
+        mostrarVerificacionV545();
         const id=idEsperadoSubida(s);
         if(id){
-          const r=await confirmarConEsperaV542(s,id,"SUBIDA");
+          const r=await confirmarConEsperaV545(s,id,"SUBIDA");
           if(r){
-            limpiarCachesActasV542();
+            limpiarCachesActasV545();
             const a=r.acta||{};
             return {
               ok:true,
               modulo:"ACTAS",
-              accion:"SUBIDA_CONFIRMADA_V542",
+              accion:"SUBIDA_CONFIRMADA_V545",
               id:a.id||id,
               nombreArchivo:a.nombreArchivo||"PDF registrado",
               linkActa:a.linkActa||"",
@@ -230,30 +274,31 @@ function instalar(){
           }
         }
         throw new Error(
-          "No se pudo confirmar todavía la subida del acta. El PDF NO se reenviará automáticamente. Espere unos segundos y pulse Actualizar vista para verificar el registro antes de volver a Guardar Acta."
+          "Google no confirmó todavía la subida. El PDF NO se reenviará automáticamente. Pulse Actualizar vista antes de volver a Guardar Acta."
         );
       }
 
       throw error;
     }
   }
-  apiV542.__mv542=true;
-  apiV542.__mv541=true;
-  apiV542.__mv540=true;
-  apiV542.__mv532=true;
-  apiV542.__original=original;
-  window.apiActas=apiV542;
-  try{apiActas=apiV542;}catch(_){}
+
+  apiV545.__mv545=true;
+  apiV545.__mv542=true;
+  apiV545.__mv541=true;
+  apiV545.__mv540=true;
+  apiV545.__mv532=true;
+  apiV545.__original=original;
+  window.apiActas=apiV545;
+  try{apiActas=apiV545;}catch(_){}
   window.MV532_ACTAS_CONFIRMACION_ID_OK=true;
   window.MV540_ACTAS_CONFIRMACION_ID_OK=true;
   window.MV541_ACTAS_CONFIRMACION_ID_OK=true;
   window.MV542_ACTAS_CONFIRMACION_ID_OK=true;
-  console.log("MI VISUAL V542: confirmacion robusta de validacion y subida de Actas habilitada.");
+  window.MV545_ACTAS_CONFIRMACION_ID_OK=true;
+  console.log("MI VISUAL V545: confirmacion de Actas acotada, resiliente y sin repetir escrituras.");
   return true;
 }
 
-// El loader llama este hook justo despues de cargar todos los archivos del
-// modulo Actas. Asi V542 queda instalado antes de que el usuario pueda guardar.
 const previoAntes=window.mv339Antes_mostrarGestionActas;
 window.mv339Antes_mostrarGestionActas=function(){
   if(typeof previoAntes==="function"){
@@ -263,8 +308,7 @@ window.mv339Antes_mostrarGestionActas=function(){
 };
 
 if(!instalar()){
-  const timer=setInterval(function(){
-    if(instalar())clearInterval(timer);
-  },700);
+  const timer=setInterval(function(){if(instalar())clearInterval(timer);},700);
+  setTimeout(function(){try{clearInterval(timer);}catch(_){}},15000);
 }
 })();
