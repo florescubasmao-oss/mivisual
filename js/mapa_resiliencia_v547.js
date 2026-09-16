@@ -1,13 +1,13 @@
 /* ================================================================
-   MI VISUAL V547 - MAPA OPERATIVO / LECTURAS RESILIENTES
+   MI VISUAL V549 - MAPA OPERATIVO / LECTURAS RESILIENTES SIN ROMPER CACHÉ
 
    OBJETIVO
-   - Evitar que un HTTP 404 temporal de Apps Script destruya el mapa.
+   - Mantener intacta la optimización V395 (caché corta de catálogo/listado).
+   - Usar V547 como respaldo SOLO si la lectura optimizada falla o demora.
+   - Evitar que un HTTP 404 temporal destruya el mapa.
    - Nunca mostrar HTML crudo de Google dentro de MI VISUAL.
    - Reintentar SOLO lecturas del Mapa Operativo.
-   - Usar POST como respaldo SOLO para acciones de lectura ya soportadas
-     por el backend; nunca reintenta importaciones ni escrituras.
-   - Mantener Leaflet visible aunque falle temporalmente el catálogo.
+   - Nunca reintentar importaciones ni escrituras.
 ================================================================ */
 (function(){
   "use strict";
@@ -58,7 +58,7 @@
     Object.entries(payload||{}).forEach(([k,v])=>{
       if(v!==undefined&&v!==null&&v!=="")url.searchParams.set(k,String(v).trim());
     });
-    url.searchParams.set("_v547",Date.now()+"-"+Math.random().toString(36).slice(2));
+    url.searchParams.set("_v549",Date.now()+"-"+Math.random().toString(36).slice(2));
     const res=await fetchConTimeout(url.toString(),{
       method:"GET",
       cache:"no-store",
@@ -82,7 +82,7 @@
   async function lecturaResiliente(payload){
     const accion=texto(payload&&payload.accion);
     if(!ACCIONES_LECTURA.has(accion)){
-      throw new Error("V547: acción no autorizada para reintento de lectura.");
+      throw new Error("V549: acción no autorizada para reintento de lectura.");
     }
 
     let ultimoError=null;
@@ -95,34 +95,59 @@
       }
     }
 
-    /*
-      Respaldo seguro: estas tres acciones son exclusivamente de lectura.
-      No se usa para registrar Excel, validar, editar ni publicar.
-    */
+    /* Respaldo seguro: estas acciones son exclusivamente de lectura. */
     try{
       return await lecturaPost(payload);
     }catch(e){
       ultimoError=e;
     }
 
-    console.warn("V547 Mapa: lectura temporalmente no disponible",accion,ultimoError);
+    console.warn("V549 Mapa: lectura temporalmente no disponible",accion,ultimoError);
     throw new Error(mensajeAmigable());
+  }
+
+  function conLimite(promesa,ms){
+    let timer=null;
+    return Promise.race([
+      Promise.resolve(promesa),
+      new Promise((_,reject)=>{timer=setTimeout(()=>reject(new Error("LECTURA_BASE_DEMORADA")),ms);})
+    ]).finally(()=>{if(timer)clearTimeout(timer);});
   }
 
   function instalar(){
     if(window.MV547_MAPA_FUNCIONES_PARCHEADAS)return true;
     if(typeof window.moApiLectura!=="function"||typeof window.moCargarCatalogos!=="function"||typeof window.moConsultarMapa!=="function")return false;
 
+    const lecturaOriginal=window.moApiLectura;
     const catalogosOriginal=window.moCargarCatalogos;
     const consultarOriginal=window.moConsultarMapa;
 
-    window.moApiLectura=lecturaResiliente;
+    /*
+      V549: NO sustituye de frente la lectura V395. Primero usa la cadena ya
+      optimizada (incluida su caché de sesión). Solo si falla o supera 12 s
+      activa la ruta resiliente V547. Así la validación previa de una carga
+      puede reutilizar el listado reciente en vez de volver a consultar todo.
+    */
+    const lecturaV549=async function(payload){
+      const accion=texto(payload&&payload.accion);
+      if(!ACCIONES_LECTURA.has(accion))return await lecturaOriginal.apply(this,arguments);
+      try{
+        return await conLimite(lecturaOriginal.apply(this,arguments),12000);
+      }catch(error){
+        console.warn("V549 Mapa: lectura optimizada no respondió; usando respaldo resiliente",accion,error);
+        return await lecturaResiliente(payload);
+      }
+    };
+    lecturaV549.__mv549Resiliente=true;
+    lecturaV549.__original=lecturaOriginal;
+    window.moApiLectura=lecturaV549;
+    try{moApiLectura=lecturaV549;}catch(_){}
 
     window.moCargarCatalogos=async function(){
       try{
         return await catalogosOriginal.apply(this,arguments);
       }catch(e){
-        console.warn("V547 Mapa: catálogo temporalmente no disponible",e);
+        console.warn("V549 Mapa: catálogo temporalmente no disponible",e);
         try{
           if(typeof window.moCargarPeriodos==="function")window.moCargarPeriodos([]);
         }catch(_){}
@@ -137,30 +162,28 @@
       try{
         return await consultarOriginal.apply(this,arguments);
       }catch(e){
-        console.warn("V547 Mapa: consulta temporalmente no disponible",e);
+        console.warn("V549 Mapa: consulta temporalmente no disponible",e);
         if(contador)contador.textContent=mensajeAmigable();
         return null;
       }
     };
 
     window.MV547_MAPA_FUNCIONES_PARCHEADAS=true;
-    console.log("MI VISUAL V547: Mapa Operativo resiliente activo");
+    window.MV549_MAPA_RESILIENCIA_OK=true;
+    console.log("MI VISUAL V549: caché V395 preservada + respaldo resiliente activo");
     return true;
   }
 
-  /*
-    mapa_operativo.js es lazy-load: V547 puede cargarse antes.
-    Se mantiene una vigilancia muy liviana hasta que el módulo exista.
-  */
+  /* mapa_operativo.js es lazy-load: se espera hasta que el módulo exista. */
   const timer=setInterval(()=>{
     if(instalar())clearInterval(timer);
-  },1200);
+  },700);
 
   document.addEventListener("click",()=>{
-    setTimeout(instalar,80);
-    setTimeout(instalar,500);
-    setTimeout(instalar,1400);
+    setTimeout(instalar,60);
+    setTimeout(instalar,350);
+    setTimeout(instalar,900);
   },true);
 
-  setTimeout(instalar,200);
+  setTimeout(instalar,150);
 })();
