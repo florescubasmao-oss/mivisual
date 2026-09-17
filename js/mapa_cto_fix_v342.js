@@ -250,3 +250,73 @@
     if(!instalado) setTimeout(instalar, 80);
   }, true);
 })();
+
+/* =====================================================
+   MI VISUAL V553 - LIMITE DE ESPERA EN REGISTRO DEL MAPA
+   - SOLO afecta importarMapaOperativo.
+   - NO repite la escritura.
+   - Si Google no confirma en 150 s, libera la interfaz y deja
+     que V393/V551 verifique la última actualización.
+   - La petición ya enviada puede terminar en servidor; por eso
+     se conserva la regla de no reenviar automáticamente.
+===================================================== */
+(function(){
+  "use strict";
+
+  if(window.MV553_MAPA_TIMEOUT_OK) return;
+  window.MV553_MAPA_TIMEOUT_OK = true;
+
+  const LIMITE_MS = 150000;
+  let instalado = false;
+
+  function instalar(){
+    if(instalado) return true;
+    if(typeof window.moApi !== "function") return false;
+    if(window.moApi.__mv553Timeout) return true;
+
+    const apiBase = window.moApi;
+
+    const apiV553 = async function(payload){
+      if(!payload || String(payload.accion || "") !== "importarMapaOperativo"){
+        return apiBase.apply(this, arguments);
+      }
+
+      let timer = null;
+      const limite = new Promise(function(_, reject){
+        timer = setTimeout(function(){
+          reject(new Error(
+            "No se recibió la confirmación del registro dentro del tiempo de seguridad. " +
+            "MI VISUAL no repetirá la escritura y verificará la última actualización antes de permitir otro intento."
+          ));
+        }, LIMITE_MS);
+      });
+
+      try{
+        return await Promise.race([
+          apiBase.apply(this, arguments),
+          limite
+        ]);
+      } finally {
+        if(timer) clearTimeout(timer);
+      }
+    };
+
+    apiV553.__mv553Timeout = true;
+    apiV553.__mv553Base = apiBase;
+    window.moApi = apiV553;
+
+    instalado = true;
+    console.log("MI VISUAL V553: límite seguro de registro del mapa activo (150 s).");
+    return true;
+  }
+
+  const verificador = setInterval(function(){
+    if(instalar()) clearInterval(verificador);
+  }, 350);
+
+  document.addEventListener("click", function(){
+    if(!instalado) setTimeout(instalar, 60);
+  }, true);
+
+  setTimeout(instalar, 120);
+})();
