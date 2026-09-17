@@ -1,11 +1,11 @@
 /* ============================================================
-   MI VISUAL V345 / V534
+   MI VISUAL V345 / V557
    1. Supervisor puede ver "Ingresar datos" en Mapa Operativo.
    2. Técnico recupera el indicador EN CAMPO / DESCANSO y su
       acceso a programación y solicitud de cambio.
-   3. V534: Programación de Descansos muestra la última vista útil
-      de inmediato y refresca en segundo plano; ante 404 transitorio
-      conserva la vista disponible y usa POST seguro como respaldo.
+   3. V557: Programación de Descansos conserva la última vista útil,
+      usa una sola lectura GET y un único POST de respaldo, sin volver
+      a entrar al cargador anterior si ambas lecturas fallan.
    Mantiene la carga dinámica V339.
 ============================================================ */
 (function(){
@@ -103,12 +103,14 @@
   }
 
   /* ============================================================
-     V534 - DESCANSOS RESILIENTE / STALE-WHILE-REVALIDATE
+     V557 - DESCANSOS RESILIENTE / CARGA CONSOLIDADA
      ------------------------------------------------------------
      Objetivo:
      - Si ya existe una carga útil, mostrarla inmediatamente.
      - Actualizar en segundo plano sin dejar la pantalla en Cargando.
-     - Si GET recibe 404/timeout transitorio, probar una lectura POST segura.
+     - Hacer una sola lectura GET.
+     - Si GET falla por un error transitorio, hacer un solo POST seguro.
+     - Si ambas lecturas fallan y no existe snapshot, devolver el error real.
      - Nunca repetir automáticamente escrituras.
      - No modifica reglas, permisos, descansos ni Apps Script.
   ============================================================ */
@@ -166,7 +168,7 @@
     delete limpio.__mv534Cache;
     delete limpio.__mv534Error;
     delete limpio.__mv534GuardadoEn;
-    const item = {version:"V534", guardadoEn:Date.now(), data:limpio};
+    const item = {version:"V557", guardadoEn:Date.now(), data:limpio};
     try{ localStorage.setItem(mv534Clave(per,periodos), JSON.stringify(item)); }catch(_){}
     try{ sessionStorage.setItem(mv534ClaveSesion(per,periodos), JSON.stringify(item)); }catch(_){}
   }
@@ -180,7 +182,7 @@
     if(sesion && sesion.edad >= 0 && sesion.edad <= maxEdad){
       try{
         localStorage.setItem(mv534Clave(per,periodos), JSON.stringify({
-          version:"V534-MIGRADA", guardadoEn:sesion.guardadoEn, data:sesion.data
+          version:"V557-MIGRADA", guardadoEn:sesion.guardadoEn, data:sesion.data
         }));
       }catch(_){}
       return sesion;
@@ -202,14 +204,14 @@
       PD_MOTIVO_CAMBIO = "";
       return true;
     }catch(error){
-      console.warn("V534: no se pudo aplicar snapshot de Descansos", error);
+      console.warn("V557: no se pudo aplicar snapshot de Descansos", error);
       return false;
     }
   }
 
   async function mv534PostLectura(payload){
     const controlador = typeof AbortController === "function" ? new AbortController() : null;
-    const timer = controlador ? setTimeout(function(){ controlador.abort(); }, 35000) : null;
+    const timer = controlador ? setTimeout(function(){ controlador.abort(); }, 25000) : null;
     try{
       const respuesta = await fetch(window.API_DESCANSOS || window.MI_VISUAL_API_URL, {
         method:"POST",
@@ -225,6 +227,11 @@
       const data = JSON.parse(texto);
       if(!data || data.ok === false) throw new Error((data && data.error) || "No se pudo leer Programación de Descansos.");
       return data;
+    }catch(error){
+      if(error && error.name === "AbortError"){
+        throw new Error("Programación de Descansos tardó demasiado en responder.");
+      }
+      throw error;
     }finally{
       if(timer) clearTimeout(timer);
     }
@@ -237,10 +244,16 @@
 
   async function mv534LeerRed(payload){
     try{
+      if(typeof window.mv336ApiGet === "function"){
+        return await window.mv336ApiGet(
+          window.API_DESCANSOS || window.MI_VISUAL_API_URL,
+          payload,
+          {intentos:1, tiempoMs:20000}
+        );
+      }
       return await window.pdApi(payload);
     }catch(error){
       if(!mv534EsTransitorio(error)) throw error;
-      await new Promise(r=>setTimeout(r,700));
       return await mv534PostLectura(payload);
     }
   }
@@ -346,7 +359,7 @@
           mv534Aplicar(cache.data, per, true, "", cache.guardadoEn);
           setTimeout(function(){
             refrescar(per, periodos, key, true).catch(function(error){
-              console.warn("V534: Descansos sigue usando snapshot por falla transitoria", error);
+              console.warn("V557: Descansos sigue usando snapshot por falla transitoria", error);
               if(mv534PeriodoVisible(per)){
                 try{ PD_DATA.__mv534Cache = true; PD_DATA.__mv534Error = String(error && error.message || error || ""); }catch(_){}
                 mv534PintarEstado();
@@ -367,9 +380,9 @@
           mv534Aplicar(respaldo.data, per, true, String(error && error.message || error || ""), respaldo.guardadoEn);
           return;
         }
-        // Sin ninguna vista previa, conserva el comportamiento original para
-        // que el usuario reciba el error real del módulo.
-        return await cargarBase.apply(this, arguments);
+        // V557: no vuelve a ejecutar el cargador base. Eso evitaba el ciclo
+        // GET -> POST -> cargador anterior -> GET/POST y la pantalla congelada.
+        throw error;
       }
     };
 
@@ -379,7 +392,8 @@
     try{ pdCargar = cargarNuevo; }catch(_){}
 
     window.MV534_DESCANSOS_RESILIENTE = true;
-    console.log("MI VISUAL V534: Programación de Descansos resiliente habilitada.");
+    window.MV557_DESCANSOS_CARGA_CONSOLIDADA = true;
+    console.log("MI VISUAL V557: Programación de Descansos con carga consolidada habilitada.");
     return true;
   }
 
@@ -414,5 +428,6 @@
 
   window.MV345_AJUSTES_PERFILES_OK = true;
   window.MV534_DESCANSOS_FRONTEND_OK = true;
-  console.log("MI VISUAL V345/V534: Supervisor Mapa + Descansos resiliente habilitados.");
+  window.MV557_DESCANSOS_FRONTEND_OK = true;
+  console.log("MI VISUAL V345/V557: Supervisor Mapa + Descansos carga consolidada habilitados.");
 })();
