@@ -1,26 +1,20 @@
 /* ============================================================
-   MI VISUAL V532 / V545 - CONFIRMACION PUNTUAL DE ACTAS
-   16/09/2026
+   MI VISUAL V555 - CONFIRMACION RESILIENTE DE ACTAS
+   17/09/2026
 
-   Conserva V532/V541/V542:
-   - Si una operación se registra en Apps Script pero se pierde la respuesta,
-     verifica SOLO esa acta por ID.
-   - NUNCA vuelve a ejecutar registrarActaEscaneada automaticamente.
-   - Mantiene el ID deterministico del backend:
-     ACTA-{CODIGO_ORDEN}-{NUMERO_ACTA_NORMALIZADO}.
-   - Si existe idActaOriginal, conserva ese ID estable.
-
-   V545:
-   - Reduce la espera excesiva cuando Google devuelve HTTP 404/timeout.
-   - Las verificaciones son SOLO LECTURA y tienen tiempo acotado.
-   - Consulta puntual por ID primero; después usa listado real como respaldo.
-   - Las lecturas de respaldo se hacen en paralelo para no acumular minutos.
-   - Informa al tecnico que MI VISUAL esta verificando el registro.
-   - No modifica permisos, Drive, estados, reglas, historico ni guardado.
+   Objetivo:
+   - Conservar V545 para subida de PDF sin repetir escrituras.
+   - Corregir validaciones de ALMACEN / JEFATURA ALMACEN cuando
+     Google pierde la respuesta del POST.
+   - Confirmar tanto CORRECTO como OBSERVADO por lectura puntual.
+   - NUNCA repetir automaticamente validarActaEscaneada.
+   - No modifica backend, Drive, permisos, estados ni historico.
 ============================================================ */
 (function(){
 "use strict";
-if(window.MV545_ACTAS_CONFIRMACION_ID_CARGADA)return;
+
+if(window.MV555_ACTAS_CONFIRMACION_CARGADA)return;
+window.MV555_ACTAS_CONFIRMACION_CARGADA=true;
 window.MV545_ACTAS_CONFIRMACION_ID_CARGADA=true;
 window.MV542_ACTAS_CONFIRMACION_ID_CARGADA=true;
 window.MV541_ACTAS_CONFIRMACION_ID_CARGADA=true;
@@ -30,7 +24,8 @@ window.MV532_ACTAS_CONFIRMACION_ID_CARGADA=true;
 function txt(v){return String(v==null?"":v).trim();}
 function norm(v){
   return txt(v).toUpperCase().normalize("NFD")
-    .replace(/[\u0300-\u036f]/g,"").replace(/\s+/g," ").trim();
+    .replace(/[\u0300-\u036f]/g,"")
+    .replace(/\s+/g," ").trim();
 }
 function clave(v){return norm(v).replace(/[^A-Z0-9]/g,"");}
 function claveNumeroActa(v){
@@ -38,11 +33,14 @@ function claveNumeroActa(v){
   if(/^\d+$/.test(k))k=k.replace(/^0+(?=\d)/,"");
   return k;
 }
-function dormir(ms){return new Promise(r=>setTimeout(r,ms));}
+function dormir(ms){return new Promise(function(r){setTimeout(r,ms);});}
+function apiBase(){return window.API_ACTAS||window.MI_VISUAL_API_URL||"";}
+
 function esErrorIncierto(error){
   const m=norm(error&&error.message||error||"");
-  return /NO RESPONDIO EN LA VERIFICACION|NO SE RECIBIO CONFIRMACION|NO SE PUDO CONFIRMAR LA SUBIDA|TARDO DEMASIADO|RESPUESTA INVALIDA|PAGINA EXTERNA|HTTP 404|HTTP 408|HTTP 429|HTTP 500|HTTP 502|HTTP 503|HTTP 504|FAILED TO FETCH|NO ESTA DISPONIBLE TEMPORALMENTE|PODRIA HABERSE REGISTRADO/.test(m);
+  return /NO RESPONDIO EN LA VERIFICACION|NO SE RECIBIO CONFIRMACION|NO SE PUDO CONFIRMAR LA SUBIDA|TARDO DEMASIADO|RESPUESTA INVALIDA|PAGINA EXTERNA|HTTP 404|HTTP 408|HTTP 429|HTTP 500|HTTP 502|HTTP 503|HTTP 504|FAILED TO FETCH|NO ESTA DISPONIBLE TEMPORALMENTE|PODRIA HABERSE REGISTRADO|ACTUALICE LA VISTA ANTES DE REPETIR/.test(m);
 }
+
 function idEsperadoSubida(s){
   const original=txt(s.idActaOriginal||s.id_acta_original||"");
   if(original)return original;
@@ -51,45 +49,50 @@ function idEsperadoSubida(s){
   if(!orden)return "";
   return "ACTA-"+orden+(acta?"-"+acta:"");
 }
-function apiBase(){return window.API_ACTAS||window.MI_VISUAL_API_URL||"";}
 
-async function consultarActaPorId(s,idOverride){
+async function consultarActaPorIdV555(s,idOverride){
+  const id=txt(idOverride||s.id);
+  if(!id)throw new Error("ID de acta no disponible");
+  const base=apiBase();
+  if(!base)throw new Error("API de Gestión de Actas no disponible");
   const payload={
     accion:"obtenerActaPorIdV532",
     usuario:s.usuario,
-    id:txt(idOverride||s.id),
-    _v545:Date.now()+"-"+Math.random().toString(36).slice(2)
+    id:id,
+    _v555:Date.now()+"-"+Math.random().toString(36).slice(2)
   };
-  if(!payload.id)throw new Error("ID de acta no disponible");
-  const base=apiBase();
-  if(!base)throw new Error("API de Gestión de Actas no disponible");
 
   if(typeof window.mv336ApiGet==="function"){
     return await window.mv336ApiGet(base,payload,{intentos:1,tiempoMs:5500});
   }
 
   const url=new URL(base);
-  Object.keys(payload).forEach(k=>url.searchParams.set(k,String(payload[k])));
+  Object.keys(payload).forEach(function(k){url.searchParams.set(k,String(payload[k]));});
   const c=typeof AbortController==="function"?new AbortController():null;
-  const timer=c?setTimeout(()=>c.abort(),5500):null;
+  const timer=c?setTimeout(function(){c.abort();},5500):null;
   try{
-    const r=await fetch(url.toString(),{method:"GET",cache:"no-store",redirect:"follow",headers:{"Accept":"application/json"},signal:c?c.signal:undefined});
+    const r=await fetch(url.toString(),{
+      method:"GET",cache:"no-store",redirect:"follow",
+      headers:{"Accept":"application/json"},signal:c?c.signal:undefined
+    });
     if(!r.ok)throw new Error("HTTP "+r.status);
     const t=(await r.text()).trim();
     if(!t||/<!doctype|<html/i.test(t))throw new Error("Respuesta inválida");
     const j=JSON.parse(t);
     if(!j||j.ok===false)throw new Error((j&&j.error)||"Consulta no disponible");
     return j;
-  }finally{if(timer)clearTimeout(timer);}
+  }finally{
+    if(timer)clearTimeout(timer);
+  }
 }
 
-async function consultarActaEnListadoV545(s,id){
+async function consultarActaEnListadoV555(s,id){
   const base=apiBase();
   if(!base)return null;
   const payload={
     accion:"listarActasEscaneadas",
     usuario:s.usuario,
-    _v545lista:Date.now()+"-"+Math.random().toString(36).slice(2)
+    _v555lista:Date.now()+"-"+Math.random().toString(36).slice(2)
   };
   try{
     let r;
@@ -97,37 +100,53 @@ async function consultarActaEnListadoV545(s,id){
       r=await window.mv336ApiGet(base,payload,{intentos:1,tiempoMs:6500});
     }else{
       const u=new URL(base);
-      Object.entries(payload).forEach(([k,v])=>u.searchParams.set(k,String(v)));
+      Object.keys(payload).forEach(function(k){u.searchParams.set(k,String(payload[k]));});
       const c=typeof AbortController==="function"?new AbortController():null;
-      const timer=c?setTimeout(()=>c.abort(),6500):null;
+      const timer=c?setTimeout(function(){c.abort();},6500):null;
       try{
-        const res=await fetch(u.toString(),{method:"GET",cache:"no-store",redirect:"follow",headers:{"Accept":"application/json"},signal:c?c.signal:undefined});
+        const res=await fetch(u.toString(),{
+          method:"GET",cache:"no-store",redirect:"follow",
+          headers:{"Accept":"application/json"},signal:c?c.signal:undefined
+        });
         if(!res.ok)throw new Error("HTTP "+res.status);
         const raw=(await res.text()).trim();
         if(!raw||/<!doctype|<html/i.test(raw))throw new Error("Respuesta inválida");
         r=JSON.parse(raw);
-      }finally{if(timer)clearTimeout(timer);}
+      }finally{
+        if(timer)clearTimeout(timer);
+      }
     }
     if(!r||r.ok!==true||!Array.isArray(r.actas))return null;
-    const a=r.actas.find(x=>txt(x&&x.id)===txt(id));
+    const a=r.actas.find(function(x){return txt(x&&x.id)===txt(id);});
     return a?{ok:true,acta:a,perfil:r.perfil||""}:null;
-  }catch(_){return null;}
+  }catch(_){
+    return null;
+  }
 }
 
-function validacionConfirmada(s,r){
+function validacionConfirmadaV555(s,r){
   if(!r||r.ok!==true||!r.acta)return false;
+  const esperado=norm(s.resultado||"");
+  if(["CORRECTO","OBSERVADO"].indexOf(esperado)<0)return false;
+
   const a=r.acta;
-  const perfil=norm(r.perfil||localStorage.getItem("perfil"));
+  const perfil=norm(r.perfil||localStorage.getItem("perfil")||"");
+
   if(perfil==="ALMACEN"){
-    return norm(a.resultadoAlmacen)==="CORRECTO"&&!!txt(a.validadoAlmacenPor);
+    return norm(a.resultadoAlmacen)===esperado && !!txt(a.validadoAlmacenPor);
   }
+
   if(perfil==="JEFATURA ALMACEN"){
-    return norm(a.resultadoJefatura)==="CORRECTO"&&norm(a.estado)==="FINALIZADO"&&!!txt(a.validadoJefaturaPor);
+    const estadoEsperado=esperado==="CORRECTO"?"FINALIZADO":"PENDIENTE";
+    return norm(a.resultadoJefatura)===esperado &&
+      norm(a.estado)===estadoEsperado &&
+      !!txt(a.validadoJefaturaPor);
   }
+
   return false;
 }
 
-function fechaRegistroRecienteV545(a){
+function fechaRegistroRecienteV555(a){
   const pares=[
     [a&&a.fechaActualizacion,a&&a.horaActualizacion],
     [a&&a.fechaRegistro,a&&a.horaRegistro],
@@ -152,7 +171,7 @@ function fechaRegistroRecienteV545(a){
   return true;
 }
 
-function subidaConfirmadaV545(s,r){
+function subidaConfirmadaV555(s,r){
   if(!r||r.ok!==true||!r.acta)return false;
   const a=r.acta;
   if(!txt(a.linkActa))return false;
@@ -162,21 +181,48 @@ function subidaConfirmadaV545(s,r){
   const actaA=claveNumeroActa(a.numeroActa||"");
   if(ordenS&&ordenA&&ordenS!==ordenA)return false;
   if(actaS&&actaA&&actaS!==actaA)return false;
-  return fechaRegistroRecienteV545(a);
+  return fechaRegistroRecienteV555(a);
 }
 
-function limpiarCachesActasV545(){
+function limpiarCachesActasV555(){
   try{if(typeof window.limpiarCacheActas==="function")window.limpiarCacheActas();}catch(_){}
   try{if(typeof window.mv524LimpiarSnapshotActas==="function")window.mv524LimpiarSnapshotActas();}catch(_){}
   try{
     for(let i=sessionStorage.length-1;i>=0;i--){
       const k=sessionStorage.key(i)||"";
-      if(k.startsWith("MV524_ACTAS_CARGA|"))sessionStorage.removeItem(k);
+      if(k.indexOf("MV524_ACTAS_CARGA|")===0)sessionStorage.removeItem(k);
     }
   }catch(_){}
 }
 
-function mostrarVerificacionV545(){
+function coincideV555(modo,s,r){
+  return modo==="SUBIDA"?subidaConfirmadaV555(s,r):validacionConfirmadaV555(s,r);
+}
+
+async function etapaVerificacionV555(s,id,modo,usarListado){
+  const tareas=[consultarActaPorIdV555(s,id)];
+  if(usarListado)tareas.push(consultarActaEnListadoV555(s,id));
+  const resultados=await Promise.allSettled(tareas);
+  for(const x of resultados){
+    if(x.status==="fulfilled"&&x.value&&coincideV555(modo,s,x.value))return x.value;
+  }
+  return null;
+}
+
+async function confirmarConEsperaV555(s,id,modo){
+  const etapas=modo==="SUBIDA"
+    ? [{espera:0,lista:false},{espera:1100,lista:true},{espera:2200,lista:true}]
+    : [{espera:0,lista:false},{espera:800,lista:true},{espera:1600,lista:true}];
+
+  for(const e of etapas){
+    if(e.espera)await dormir(e.espera);
+    const r=await etapaVerificacionV555(s,id,modo,e.lista);
+    if(r)return r;
+  }
+  return null;
+}
+
+function mostrarVerificacionSubidaV555(){
   const msg=document.getElementById("actaMsg");
   if(msg){
     msg.innerHTML='<div class="actas-msg" style="background:#eff6ff;color:#1e3a8a">⏳ Google demoró en responder. MI VISUAL está verificando si el acta ya quedó registrada. No vuelva a pulsar Guardar.</div>';
@@ -185,73 +231,58 @@ function mostrarVerificacionV545(){
   if(btn){btn.disabled=true;btn.innerHTML="Verificando registro...";}
 }
 
-function coincide(modo,s,r){
-  return modo==="SUBIDA"?subidaConfirmadaV545(s,r):validacionConfirmada(s,r);
-}
-
-async function etapaVerificacionV545(s,id,modo,usarListado){
-  const tareas=[consultarActaPorId(s,id)];
-  if(usarListado)tareas.push(consultarActaEnListadoV545(s,id));
-  const resultados=await Promise.allSettled(tareas);
-  for(const x of resultados){
-    if(x.status==="fulfilled"&&x.value&&coincide(modo,s,x.value))return x.value;
-  }
-  return null;
-}
-
-async function confirmarConEsperaV545(s,id,modo){
-  const etapas=modo==="SUBIDA"
-    ? [{espera:0,lista:false},{espera:1100,lista:true},{espera:2200,lista:true}]
-    : [{espera:0,lista:false},{espera:1000,lista:true}];
-
-  for(const e of etapas){
-    if(e.espera)await dormir(e.espera);
-    const r=await etapaVerificacionV545(s,id,modo,e.lista);
-    if(r)return r;
-  }
-  return null;
-}
-
 function instalar(){
-  if(window.MV545_ACTAS_CONFIRMACION_ID_OK)return true;
+  if(window.MV555_ACTAS_CONFIRMACION_OK)return true;
   if(typeof window.apiActas!=="function")return false;
   if(!window.MV524_ACTAS_SNAPSHOT_OK&&!window.MV392_ACTAS_REINTENTO_404_OK)return false;
 
   const original=window.apiActas;
-  async function apiV545(payload){
+
+  async function apiV555(payload){
     const s=Object.assign({},payload||{});
     try{
       return await original(s);
     }catch(error){
       if(!esErrorIncierto(error))throw error;
 
-      const esValidacion=s.accion==="validarActaEscaneada"&&norm(s.resultado)==="CORRECTO"&&txt(s.id);
+      const resultado=norm(s.resultado||"");
+      const esValidacion=s.accion==="validarActaEscaneada" &&
+        ["CORRECTO","OBSERVADO"].indexOf(resultado)>=0 && !!txt(s.id);
+
       if(esValidacion){
-        const r=await confirmarConEsperaV545(s,s.id,"VALIDACION");
+        const r=await confirmarConEsperaV555(s,s.id,"VALIDACION");
         if(r){
-          limpiarCachesActasV545();
+          limpiarCachesActasV555();
           return {
-            ok:true,modulo:"ACTAS",accion:"VALIDACION_CONFIRMADA_V545",
-            id:s.id,resultado:"CORRECTO",estado:r.acta.estado||"",
-            estadoVerificado:true,verificacionPorId:true
+            ok:true,
+            modulo:"ACTAS",
+            accion:"VALIDACION_CONFIRMADA_V555",
+            id:s.id,
+            resultado:resultado,
+            estado:r.acta&&r.acta.estado?r.acta.estado:"",
+            estadoVerificado:true,
+            verificacionPorId:true,
+            noRepetida:true
           };
         }
-        throw error;
+        limpiarCachesActasV555();
+        throw new Error(
+          "Google no confirmó todavía la validación. MI VISUAL no la repetirá automáticamente. Pulse Actualizar vista y revise el estado del acta antes de volver a validar."
+        );
       }
 
-      const esSubida=s.accion==="registrarActaEscaneada";
-      if(esSubida){
-        mostrarVerificacionV545();
+      if(s.accion==="registrarActaEscaneada"){
+        mostrarVerificacionSubidaV555();
         const id=idEsperadoSubida(s);
         if(id){
-          const r=await confirmarConEsperaV545(s,id,"SUBIDA");
+          const r=await confirmarConEsperaV555(s,id,"SUBIDA");
           if(r){
-            limpiarCachesActasV545();
+            limpiarCachesActasV555();
             const a=r.acta||{};
             return {
               ok:true,
               modulo:"ACTAS",
-              accion:"SUBIDA_CONFIRMADA_V545",
+              accion:"SUBIDA_CONFIRMADA_V555",
               id:a.id||id,
               nombreArchivo:a.nombreArchivo||"PDF registrado",
               linkActa:a.linkActa||"",
@@ -282,20 +313,25 @@ function instalar(){
     }
   }
 
-  apiV545.__mv545=true;
-  apiV545.__mv542=true;
-  apiV545.__mv541=true;
-  apiV545.__mv540=true;
-  apiV545.__mv532=true;
-  apiV545.__original=original;
-  window.apiActas=apiV545;
-  try{apiActas=apiV545;}catch(_){}
+  apiV555.__mv555=true;
+  apiV555.__mv545=true;
+  apiV555.__mv542=true;
+  apiV555.__mv541=true;
+  apiV555.__mv540=true;
+  apiV555.__mv532=true;
+  apiV555.__original=original;
+
+  window.apiActas=apiV555;
+  try{apiActas=apiV555;}catch(_){}
+
   window.MV532_ACTAS_CONFIRMACION_ID_OK=true;
   window.MV540_ACTAS_CONFIRMACION_ID_OK=true;
   window.MV541_ACTAS_CONFIRMACION_ID_OK=true;
   window.MV542_ACTAS_CONFIRMACION_ID_OK=true;
   window.MV545_ACTAS_CONFIRMACION_ID_OK=true;
-  console.log("MI VISUAL V545: confirmacion de Actas acotada, resiliente y sin repetir escrituras.");
+  window.MV555_ACTAS_CONFIRMACION_OK=true;
+
+  console.log("MI VISUAL V555: validación Actas CORRECTO/OBSERVADO verificada sin repetir escrituras.");
   return true;
 }
 
@@ -311,4 +347,5 @@ if(!instalar()){
   const timer=setInterval(function(){if(instalar())clearInterval(timer);},700);
   setTimeout(function(){try{clearInterval(timer);}catch(_){}},15000);
 }
+
 })();
