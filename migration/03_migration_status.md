@@ -86,3 +86,24 @@ Resumen inicial:
 - Consultas del piloto ya usan índices PostgreSQL y funciones RPC restringidas a service_role.
 - Validación puntual: SETIEMBRE 2026 / CHICLAYO = 887 filas tanto en Google Sheets como en PostgreSQL.
 - La búsqueda relacional de pedido que depende de otras fuentes legacy aún está marcada como pendiente antes de cualquier corte productivo.
+
+
+## Actualización 18/09/2026 — Piloto Mapa Operativo
+
+Validado con Auth real JEFZNORTE:
+- login Supabase Auth: OK
+- vínculo Auth -> app_users: OK
+- perfil/permisos JEFATURA: OK
+- catálogos PostgreSQL: OK
+- búsqueda por ORDEN: OK
+- búsqueda por PEDIDO: OK
+- búsqueda por DNI: OK
+- filtro 2026-09 + CHICLAYO: 887 / 887
+- CTO cercanas: OK
+- main / Apps Script productivo: SIN CAMBIOS
+
+Pendiente para cierre total del piloto:
+- validar alcance real de SUPERVISOR por cuadrillas
+- prueba móvil
+- definir tratamiento de calidad de datos CTO con sufijo `Latitud`
+- resolver relación secundaria legacy de pedido antes del corte definitivo
