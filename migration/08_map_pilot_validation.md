@@ -82,3 +82,18 @@ En PostgreSQL se detectaron:
 - 248 de ellos también tienen una variante de código limpio existente
 
 No corregir automáticamente durante la migración. Tratar como incidencia de calidad de datos de origen y definir una regla de saneamiento separada, con comparación previa contra la fuente.
+
+
+### Cierre de búsquedas principales — 18/09/2026
+
+Validado con la misma orden de referencia:
+- búsqueda por ORDEN: `3448347` -> 1 resultado correcto
+- búsqueda por PEDIDO: `2111725` -> orden `3448347`
+- búsqueda por DNI: `47791563` -> orden `3448347`
+- criterio de búsqueda identificado correctamente por la API en cada caso
+- motor confirmado: PostgreSQL
+- sesión real: JEFZNORTE / JEFATURA
+
+Estado:
+- búsquedas principales Orden / Pedido / DNI: APROBADAS
+- relación secundaria con fuentes legacy: permanece pendiente y se conserva señalizada como `pedidoRelacionLegacyPendiente=true`
