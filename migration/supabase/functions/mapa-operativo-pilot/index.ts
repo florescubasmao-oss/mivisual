@@ -266,10 +266,11 @@ Deno.serve(async (req: Request) => {
         registros:rows.length,
         ordenes:rows.map(mapOrden),
         ultimaActualizacion:ultima,
-        ultimaActualizacionTexto:ultima ? new Intl.DateTimeFormat("es-PE", {
-          timeZone:"America/Lima", day:"2-digit", month:"2-digit", year:"numeric",
-          hour:"2-digit", minute:"2-digit", hour12:false
-        }).format(new Date(ultima)).replace(",", "") : "",
+        ultimaActualizacionTexto:ultima ? (() => {
+          const raw = String(ultima);
+          const m = raw.match(/^(\\d{4})-(\\d{2})-(\\d{2})T(\\d{2}):(\\d{2})/);
+          return m ? `${m[3]}/${m[2]}/${m[1]} ${m[4]}:${m[5]}` : raw;
+        })() : "",
         motor:"POSTGRESQL",
         busquedaV408:true,
         multifiltroV418:true,
