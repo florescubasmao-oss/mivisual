@@ -40,7 +40,6 @@ th,td{padding:7px;border-bottom:1px solid #e2e8f0;text-align:left;vertical-align
 <div class="row" style="margin-top:12px">
   <button onclick="login()">Iniciar sesión</button>
   <button class="sec" onclick="signup()">Crear acceso de prueba</button>
-  <button class="sec" onclick="resendConfirmation()">Reenviar confirmación</button>
   <button class="danger" onclick="logout()">Cerrar sesión</button>
 </div>
 <div id="authmsg" style="margin-top:10px"></div>
@@ -100,30 +99,18 @@ async function signup(){
   const email=document.getElementById("email").value.trim();
   const password=document.getElementById("password").value;
   if(!email||!password)return msg("Ingrese correo y contraseña.",false);
-  const {data,error}=await sb.auth.signUp({email,password,options:{emailRedirectTo:window.location.origin+"/"}});
+  const {data,error}=await sb.auth.signUp({email,password});
   if(error)return msg(error.message,false);
   if(data.session){
     msg("Acceso creado y sesión iniciada.");
     await contexto();
     await catalogos();
   }else{
-    msg("Acceso creado. Revise su correo para confirmar si Supabase lo solicita.");
+    msg("Acceso creado. Si la confirmación de correo está desactivada en Supabase, ya puede iniciar sesión.");
   }
   dbg({signup:true,user:data.user?.id||null,session:!!data.session});
 }
 
-async function resendConfirmation(){
-  const email=document.getElementById("email").value.trim();
-  if(!email)return msg("Ingrese su correo.",false);
-  const {error}=await sb.auth.resend({
-    type:"signup",
-    email,
-    options:{emailRedirectTo:window.location.origin+"/"}
-  });
-  if(error)return msg(error.message,false);
-  msg("Correo de confirmación reenviado. Abra el mensaje más reciente.");
-  dbg({resendConfirmation:true,redirectTo:window.location.origin+"/"});
-}
 
 async function login(){
   const email=document.getElementById("email").value.trim();
