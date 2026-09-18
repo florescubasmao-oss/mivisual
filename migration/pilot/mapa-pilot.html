@@ -39,11 +39,21 @@ th,td{padding:7px;border-bottom:1px solid #e2e8f0;text-align:left;vertical-align
 </div>
 <div class="row" style="margin-top:12px">
   <button onclick="login()">Iniciar sesión</button>
-  <button class="sec" onclick="signup()">Crear acceso de prueba</button>
   <button class="danger" onclick="logout()">Cerrar sesión</button>
 </div>
 <div id="authmsg" style="margin-top:10px"></div>
 <div id="perfil" style="margin-top:10px"></div>
+<div id="adminProvision" style="display:none;margin-top:16px;padding-top:14px;border-top:1px solid #e2e8f0">
+  <div class="section-title">Crear acceso controlado (Jefatura/Admin)</div>
+  <div class="grid">
+    <input id="targetEmail" type="email" placeholder="Correo del usuario autorizado">
+    <input id="targetPassword" type="password" placeholder="Contraseña temporal (mín. 8)">
+  </div>
+  <div class="row" style="margin-top:10px">
+    <button class="sec" onclick="crearAccesoControlado()">Crear acceso Auth</button>
+  </div>
+  <div id="adminMsg" style="margin-top:8px"></div>
+</div>
 </div>
 
 <div class="card">
@@ -128,6 +138,7 @@ async function logout(){
   await sb.auth.signOut();
   msg("Sesión cerrada.");
   document.getElementById("perfil").innerHTML="";
+  document.getElementById("adminProvision").style.display="none";
   document.getElementById("tabla").innerHTML="";
   document.getElementById("resumen").innerHTML="";
   lastRows=[];
@@ -153,6 +164,50 @@ async function api(params){
   return d;
 }
 
+async function apiPost(body){
+  const t=await token();
+  if(!t)throw new Error("Primero inicie sesión.");
+  const r=await fetch(API,{
+    method:"POST",
+    headers:{
+      Authorization:"Bearer "+t,
+      apikey:PUBLISHABLE_KEY,
+      "Content-Type":"application/json"
+    },
+    body:JSON.stringify(body)
+  });
+  const text=await r.text();
+  let d;
+  try{d=JSON.parse(text)}catch(_){throw new Error(text||"Respuesta inválida")}
+  if(!r.ok||!d.ok)throw new Error(d.error||"Error de consulta");
+  return d;
+}
+
+async function crearAccesoControlado(){
+  const email=document.getElementById("targetEmail").value.trim();
+  const password=document.getElementById("targetPassword").value;
+  const box=document.getElementById("adminMsg");
+  box.className="";
+  if(!email||!password){box.className="err";box.textContent="Ingrese correo y contraseña temporal.";return}
+  try{
+    const d=await apiPost({
+      accion:"crearAccesoControlado",
+      correoObjetivo:email,
+      passwordTemporal:password
+    });
+    box.className="ok";
+    box.textContent=d.yaExistia
+      ? "El usuario ya tenía acceso Auth vinculado."
+      : "Acceso Auth creado y vinculado correctamente.";
+    document.getElementById("targetPassword").value="";
+    dbg(d);
+  }catch(e){
+    box.className="err";
+    box.textContent=e.message;
+    dbg(String(e));
+  }
+}
+
 async function contexto(){
   try{
     const d=await api({accion:"contextoMapaOperativo"});
@@ -164,6 +219,8 @@ async function contexto(){
       '<span class="badge">Nivel: '+esc(d.nivelAcceso)+'</span>'+
       '<span class="badge">Alcance: '+esc(p.alcanceDatos)+'</span>'+
       '<span class="badge">VER: '+(p.ver?"Sí":"No")+'</span>';
+    const admins=["JEFATURA","ADMIN","ADMINISTRADOR","JEFATURA GENERAL","JEFATURA OPERACIONES"];
+    document.getElementById("adminProvision").style.display=admins.includes(String(d.perfil||"").toUpperCase())?"block":"none";
     state("Perfil, permisos y alcance validados.");
     dbg(d);
     return d;
