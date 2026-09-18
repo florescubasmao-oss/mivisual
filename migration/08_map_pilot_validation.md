@@ -97,3 +97,17 @@ Validado con la misma orden de referencia:
 Estado:
 - búsquedas principales Orden / Pedido / DNI: APROBADAS
 - relación secundaria con fuentes legacy: permanece pendiente y se conserva señalizada como `pedidoRelacionLegacyPendiente=true`
+
+
+### Cierre de filtro principal — Setiembre 2026 / Chiclayo
+
+Prueba funcional con sesión Auth real:
+- período: `2026-09`
+- sede: `CHICLAYO`
+- resultado piloto PostgreSQL: **887**
+- resultado de referencia validado previamente: **887**
+- coincidencia: **100%**
+
+Estado:
+- filtro período + sede: APROBADO
+- `ultimaActualizacionTexto`: corregido y validado como `18/09/2026 07:05`
