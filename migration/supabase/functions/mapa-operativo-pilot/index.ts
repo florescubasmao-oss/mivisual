@@ -187,6 +187,82 @@ Deno.serve(async (req: Request) => {
 
     const accion = norm(payload.accion);
 
+    if (accion === "crearAccesoControlado") {
+      const perfilCaller = normUpper(ctx.appUser.perfil);
+      const perfilesAdmin = new Set(["JEFATURA","ADMIN","ADMINISTRADOR","JEFATURA GENERAL","JEFATURA OPERACIONES"]);
+      if (!perfilesAdmin.has(perfilCaller)) {
+        return json({ok:false,error:"No tiene permisos para crear accesos Auth."},403);
+      }
+
+      const correoObjetivo = norm(payload.correoObjetivo).toLowerCase();
+      const passwordTemporal = String(payload.passwordTemporal ?? "");
+      if (!correoObjetivo || !correoObjetivo.includes("@")) {
+        return json({ok:false,error:"Correo objetivo inválido."},400);
+      }
+      if (passwordTemporal.length < 8) {
+        return json({ok:false,error:"La contraseña temporal debe tener al menos 8 caracteres."},400);
+      }
+
+      const { data: objetivo, error: objetivoError } = await admin
+        .from("app_users")
+        .select("id,usuario,correo,perfil,nivel_acceso,sede,estado,auth_user_id")
+        .ilike("correo", correoObjetivo)
+        .maybeSingle();
+
+      if (objetivoError) throw objetivoError;
+      if (!objetivo) return json({ok:false,error:"El correo no existe en app_users."},404);
+      if (normUpper(objetivo.estado) !== "ACTIVO") return json({ok:false,error:"El usuario objetivo está inactivo."},400);
+      if (objetivo.auth_user_id) {
+        return json({
+          ok:true,
+          accion:"CREAR_ACCESO_CONTROLADO",
+          yaExistia:true,
+          usuario:objetivo.usuario,
+          correo:objetivo.correo,
+          perfil:objetivo.perfil,
+          sede:objetivo.sede
+        });
+      }
+
+      const { data: creado, error: crearError } = await admin.auth.admin.createUser({
+        email: objetivo.correo,
+        password: passwordTemporal,
+        email_confirm: true,
+        user_metadata: {
+          source: "MI_VISUAL_MIGRATION_PILOT",
+          usuario: objetivo.usuario
+        }
+      });
+
+      if (crearError || !creado?.user) {
+        return json({ok:false,error:crearError?.message || "No se pudo crear el acceso Auth."},400);
+      }
+
+      const { data: vinculado, error: vinculoError } = await admin
+        .from("app_users")
+        .select("usuario,correo,perfil,nivel_acceso,sede,estado,auth_user_id")
+        .eq("id", objetivo.id)
+        .maybeSingle();
+
+      if (vinculoError) throw vinculoError;
+      if (!vinculado?.auth_user_id || String(vinculado.auth_user_id) !== String(creado.user.id)) {
+        await admin.auth.admin.deleteUser(creado.user.id).catch(()=>{});
+        return json({ok:false,error:"Auth fue creado pero no se vinculó a app_users; se revirtió el alta."},500);
+      }
+
+      return json({
+        ok:true,
+        accion:"CREAR_ACCESO_CONTROLADO",
+        yaExistia:false,
+        usuario:vinculado.usuario,
+        correo:vinculado.correo,
+        perfil:vinculado.perfil,
+        nivelAcceso:vinculado.nivel_acceso,
+        sede:vinculado.sede,
+        authVinculado:true
+      });
+    }
+
     if (accion === "contextoMapaOperativo") {
       return json({
         ok:true,
