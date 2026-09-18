@@ -1,0 +1,252 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>MI VISUAL · Piloto Supabase</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+:root{color-scheme:light}
+*{box-sizing:border-box}
+body{font-family:Arial,sans-serif;background:#0b2340;color:#102033;margin:0;padding:24px}
+.wrap{max-width:1100px;margin:auto}
+h1{color:#fff;margin:0 0 18px}
+.card{background:#fff;border-radius:18px;padding:20px;margin-bottom:18px;box-shadow:0 12px 35px #0003}
+.muted{color:#64748b}.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:12px}
+input,select,button{width:100%;padding:11px;border-radius:10px;border:1px solid #cbd5e1;font-size:14px}
+button{background:#0f6fff;color:#fff;border:0;font-weight:700;cursor:pointer}
+button.sec{background:#475569}button.danger{background:#b91c1c}button:disabled{opacity:.55;cursor:not-allowed}
+.row{display:flex;gap:10px;flex-wrap:wrap}.row button{width:auto}
+.ok{color:#15803d}.err{color:#b91c1c}.warn{color:#b45309}
+pre{white-space:pre-wrap;background:#f8fafc;padding:12px;border-radius:10px;max-height:300px;overflow:auto}
+table{width:100%;border-collapse:collapse;font-size:12px}
+th,td{padding:7px;border-bottom:1px solid #e2e8f0;text-align:left;vertical-align:top}
+.badge{display:inline-block;padding:4px 8px;border-radius:999px;background:#e2e8f0;margin:3px 6px 3px 0}
+.section-title{margin:16px 0 8px;font-size:14px;font-weight:700}
+</style>
+</head>
+<body>
+<div class="wrap">
+<h1>MI VISUAL · Piloto Supabase/PostgreSQL</h1>
+
+<div class="card">
+<h2>1. Acceso de prueba</h2>
+<p class="muted">Piloto aislado. No reemplaza el login productivo ni modifica Google Sheets.</p>
+<div class="grid">
+  <input id="email" type="email" autocomplete="username" placeholder="Correo">
+  <input id="password" type="password" autocomplete="current-password" placeholder="Contraseña de prueba">
+</div>
+<div class="row" style="margin-top:12px">
+  <button onclick="login()">Iniciar sesión</button>
+  <button class="sec" onclick="signup()">Crear acceso de prueba</button>
+  <button class="danger" onclick="logout()">Cerrar sesión</button>
+</div>
+<div id="authmsg" style="margin-top:10px"></div>
+<div id="perfil" style="margin-top:10px"></div>
+</div>
+
+<div class="card">
+<h2>2. Mapa Operativo · validación funcional</h2>
+<div class="grid">
+  <select id="periodo"><option value="2026-09">2026-09</option></select>
+  <select id="sede"><option value="">Todas las sedes</option><option>CHICLAYO</option><option>PIURA</option><option>TRUJILLO</option></select>
+  <input id="fecha" type="date">
+  <select id="grupo"><option value="">Todos los grupos</option></select>
+  <select id="estadoFiltro"><option value="">Todos los estados</option></select>
+  <select id="cuadrilla"><option value="">Todas las cuadrillas</option></select>
+  <input id="codigo" placeholder="Orden / pedido / DNI">
+</div>
+<div class="row" style="margin-top:12px">
+  <button onclick="contexto()">Validar perfil y permisos</button>
+  <button onclick="catalogos()">Cargar catálogos</button>
+  <button onclick="consultar()">Consultar órdenes</button>
+  <button class="sec" onclick="probarCto()">Probar CTO cercanas</button>
+</div>
+<div id="estado" style="margin-top:10px"></div>
+<div id="resumen" style="margin-top:10px"></div>
+<div style="overflow:auto"><table id="tabla"></table></div>
+<div class="section-title">Resultado CTO</div>
+<pre id="ctos">Primero consulte una orden con coordenadas y luego pulse “Probar CTO cercanas”.</pre>
+</div>
+
+<div class="card">
+<h2>Diagnóstico</h2>
+<p class="muted">Las consultas de esta pantalla usan Supabase Auth + Edge Function + PostgreSQL.</p>
+<pre id="debug">Sin consultas.</pre>
+</div>
+</div>
+
+<script>
+const PROJECT_URL="https://uudvodiaizfarodjpetb.supabase.co";
+const PUBLISHABLE_KEY="sb_publishable_2hiwePKtqoo3_c_D5B9JuA_p38dPe3D";
+const API=PROJECT_URL+"/functions/v1/mapa-operativo-pilot";
+const sb=supabase.createClient(PROJECT_URL,PUBLISHABLE_KEY);
+let lastRows=[];
+
+function msg(t,ok=true){const e=document.getElementById("authmsg");e.className=ok?"ok":"err";e.textContent=t}
+function state(t,ok=true){const e=document.getElementById("estado");e.className=ok?"ok":"err";e.textContent=t}
+function dbg(x){document.getElementById("debug").textContent=typeof x==="string"?x:JSON.stringify(x,null,2)}
+function esc(v){return String(v??"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]))}
+function optionFill(id,values,emptyLabel){
+  const el=document.getElementById(id);
+  el.innerHTML="";
+  if(emptyLabel){const o=document.createElement("option");o.value="";o.textContent=emptyLabel;el.appendChild(o)}
+  (values||[]).forEach(v=>{const o=document.createElement("option");o.value=String(v);o.textContent=String(v);el.appendChild(o)});
+}
+
+async function signup(){
+  const email=document.getElementById("email").value.trim();
+  const password=document.getElementById("password").value;
+  if(!email||!password)return msg("Ingrese correo y contraseña.",false);
+  const {data,error}=await sb.auth.signUp({email,password});
+  if(error)return msg(error.message,false);
+  if(data.session){
+    msg("Acceso creado y sesión iniciada.");
+    await contexto();
+    await catalogos();
+  }else{
+    msg("Acceso creado. Revise su correo para confirmar si Supabase lo solicita.");
+  }
+  dbg({signup:true,user:data.user?.id||null,session:!!data.session});
+}
+
+async function login(){
+  const email=document.getElementById("email").value.trim();
+  const password=document.getElementById("password").value;
+  if(!email||!password)return msg("Ingrese correo y contraseña.",false);
+  const {data,error}=await sb.auth.signInWithPassword({email,password});
+  if(error)return msg(error.message,false);
+  msg("Sesión iniciada correctamente.");
+  await contexto();
+  await catalogos();
+  dbg({login:true,user:data.user?.id||null});
+}
+
+async function logout(){
+  await sb.auth.signOut();
+  msg("Sesión cerrada.");
+  document.getElementById("perfil").innerHTML="";
+  document.getElementById("tabla").innerHTML="";
+  document.getElementById("resumen").innerHTML="";
+  lastRows=[];
+}
+
+async function token(){
+  const {data}=await sb.auth.getSession();
+  return data.session?.access_token||"";
+}
+
+async function api(params){
+  const t=await token();
+  if(!t)throw new Error("Primero inicie sesión.");
+  const u=new URL(API);
+  Object.entries(params).forEach(([k,v])=>{
+    if(v!==null&&v!==undefined&&String(v)!=="")u.searchParams.set(k,String(v));
+  });
+  const r=await fetch(u,{headers:{Authorization:"Bearer "+t,apikey:PUBLISHABLE_KEY}});
+  const text=await r.text();
+  let d;
+  try{d=JSON.parse(text)}catch(_){throw new Error(text||"Respuesta inválida")}
+  if(!r.ok||!d.ok)throw new Error(d.error||"Error de consulta");
+  return d;
+}
+
+async function contexto(){
+  try{
+    const d=await api({accion:"contextoMapaOperativo"});
+    const p=d.permiso||{};
+    document.getElementById("perfil").innerHTML=
+      '<span class="badge">Usuario: '+esc(d.usuario)+'</span>'+
+      '<span class="badge">Perfil: '+esc(d.perfil)+'</span>'+
+      '<span class="badge">Sede: '+esc(d.sede)+'</span>'+
+      '<span class="badge">Nivel: '+esc(d.nivelAcceso)+'</span>'+
+      '<span class="badge">Alcance: '+esc(p.alcanceDatos)+'</span>'+
+      '<span class="badge">VER: '+(p.ver?"Sí":"No")+'</span>';
+    state("Perfil, permisos y alcance validados.");
+    dbg(d);
+    return d;
+  }catch(e){
+    state(e.message,false);dbg(String(e));throw e;
+  }
+}
+
+async function catalogos(){
+  state("Consultando catálogos...");
+  try{
+    const d=await api({accion:"catalogosMapaOperativo"});
+    optionFill("periodo",d.periodos||[],null);
+    optionFill("sede",d.sedes||[],"Todas las sedes");
+    optionFill("grupo",d.gruposTrabajo||[],"Todos los grupos");
+    optionFill("estadoFiltro",d.estados||[],"Todos los estados");
+    optionFill("cuadrilla",d.cuadrillas||[],"Todas las cuadrillas");
+    if((d.periodos||[]).includes("2026-09")) document.getElementById("periodo").value="2026-09";
+    state("Catálogos cargados desde PostgreSQL. Última actualización: "+(d.ultimaActualizacionTexto||""));
+    dbg(d);
+  }catch(e){state(e.message,false);dbg(String(e))}
+}
+
+async function consultar(){
+  state("Consultando PostgreSQL...");
+  try{
+    const d=await api({
+      accion:"listarMapaOperativo",
+      periodo:document.getElementById("periodo").value,
+      sede:document.getElementById("sede").value,
+      fecha:document.getElementById("fecha").value,
+      grupoTrabajo:document.getElementById("grupo").value,
+      estado:document.getElementById("estadoFiltro").value,
+      cuadrilla:document.getElementById("cuadrilla").value,
+      codigo:document.getElementById("codigo").value.trim()
+    });
+    lastRows=d.ordenes||[];
+    state("Consulta completada.");
+    document.getElementById("resumen").innerHTML=
+      '<span class="badge">'+d.registros+' órdenes</span>'+
+      '<span class="badge">'+esc(d.motor||"")+'</span>'+
+      (d.criterioBusqueda?'<span class="badge">Búsqueda: '+esc(d.criterioBusqueda)+'</span>':'');
+    const rows=lastRows.slice(0,200);
+    document.getElementById("tabla").innerHTML=
+      '<tr><th>Orden</th><th>Pedido</th><th>DNI</th><th>Fecha</th><th>Sede</th><th>Estado</th><th>Cuadrilla</th></tr>'+
+      rows.map(x=>'<tr><td>'+esc(x.ordenId)+'</td><td>'+esc(x.codigoCliente)+'</td><td>'+esc(x.numeroDocumento)+'</td><td>'+esc(x.fechaSolicitud)+'</td><td>'+esc(x.region)+'</td><td>'+esc(x.estado)+'</td><td>'+esc(x.cuadrilla)+'</td></tr>').join("");
+    dbg({...d,ordenes:'['+lastRows.length+' registros]'});
+  }catch(e){state(e.message,false);dbg(String(e))}
+}
+
+async function probarCto(){
+  try{
+    const base=lastRows.find(x=>Number.isFinite(Number(x.latitud))&&Number.isFinite(Number(x.longitud)));
+    if(!base)throw new Error("La consulta actual no contiene una orden con coordenadas.");
+    const lat=Number(base.latitud), lon=Number(base.longitud), delta=0.01;
+    state("Consultando CTO cercanas...");
+    const d=await api({
+      accion:"listarCtosCercanasMapaOperativo",
+      sur:lat-delta,
+      norte:lat+delta,
+      oeste:lon-delta,
+      este:lon+delta,
+      sede:base.region||"",
+      limite:100
+    });
+    document.getElementById("ctos").textContent=JSON.stringify({
+      ordenReferencia:base.ordenId,
+      coordenadaOrden:[lat,lon],
+      totalCoincidencias:d.totalCoincidencias,
+      mostradas:d.mostradas,
+      truncado:d.truncado,
+      primerasCto:(d.ctos||[]).slice(0,20)
+    },null,2);
+    state("CTO cercanas consultadas correctamente.");
+    dbg(d);
+  }catch(e){state(e.message,false);document.getElementById("ctos").textContent=String(e);dbg(String(e))}
+}
+
+sb.auth.getSession().then(async({data})=>{
+  if(data.session){
+    msg("Sesión de prueba activa.");
+    try{await contexto();await catalogos();}catch(_){}
+  }
+});
+</script>
+</body>
+</html>
