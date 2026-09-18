@@ -268,7 +268,7 @@ Deno.serve(async (req: Request) => {
         ultimaActualizacion:ultima,
         ultimaActualizacionTexto:ultima ? (() => {
           const raw = String(ultima);
-          const m = raw.match(/^(\\d{4})-(\\d{2})-(\\d{2})T(\\d{2}):(\\d{2})/);
+          const m = raw.match(/^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})/);
           return m ? `${m[3]}/${m[2]}/${m[1]} ${m[4]}:${m[5]}` : raw;
         })() : "",
         motor:"POSTGRESQL",
