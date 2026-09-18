@@ -70,3 +70,19 @@ Resumen inicial:
 - 80 perfiles migrados
 - 79 marcados como activos en la fuente actual
 - 65 registros con correo disponible
+
+## Avance de autenticación, permisos y API del piloto
+
+- PERMISOS_MODULOS migrado: 267 reglas.
+- CONFIG_MODULOS migrado: 2 configuraciones.
+- ACCESOS migrado: 42 enlaces.
+- app_users conserva metadatos, sin copiar contraseñas.
+- Se detectaron 80 usuarios: 65 con correo informado, 15 sin correo; 13 de los correos informados no tienen formato válido para Auth.
+- Se creó vínculo automático auth.users -> app_users por correo cuando exista coincidencia válida.
+- app_users solo permite lectura del propio perfil mediante RLS.
+- ordenes, catalogo_cto, permisos, configuraciones y enlaces permanecen bloqueados para acceso directo de anon/authenticated.
+- Se desplegó Edge Function protegida: mapa-operativo-pilot (JWT obligatorio).
+- Se desplegó pantalla aislada de prueba: mapa-pilot-web. No modifica producción.
+- Consultas del piloto ya usan índices PostgreSQL y funciones RPC restringidas a service_role.
+- Validación puntual: SETIEMBRE 2026 / CHICLAYO = 887 filas tanto en Google Sheets como en PostgreSQL.
+- La búsqueda relacional de pedido que depende de otras fuentes legacy aún está marcada como pendiente antes de cualquier corte productivo.
