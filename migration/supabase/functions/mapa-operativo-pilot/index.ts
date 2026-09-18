@@ -187,6 +187,29 @@ Deno.serve(async (req: Request) => {
 
     const accion = norm(payload.accion);
 
+    if (accion === "contextoMapaOperativo") {
+      return json({
+        ok:true,
+        modulo:"MAPA_OPERATIVO",
+        accion:"CONTEXTO",
+        motor:"POSTGRESQL",
+        usuario:ctx.appUser.usuario || "",
+        nombresApellidos:ctx.appUser.nombres_apellidos || "",
+        correo:ctx.appUser.correo || "",
+        perfil:ctx.appUser.perfil || "",
+        nivelAcceso:ctx.appUser.nivel_acceso || "",
+        sede:ctx.appUser.sede || "",
+        permiso:{
+          activo:!!ctx.permiso.activo,
+          ver:!!ctx.permiso.ver,
+          registrar:!!ctx.permiso.registrar,
+          alcanceDatos:ctx.permiso.alcance_datos || ""
+        },
+        cuadrillasPermitidas:Array.isArray(ctx.permitidas) ? ctx.permitidas : null,
+        totalCuadrillasPermitidas:Array.isArray(ctx.permitidas) ? ctx.permitidas.length : null
+      });
+    }
+
     if (accion === "catalogosMapaOperativo") {
       const { data, error } = await admin.rpc("mv_mapa_catalogos", { p_permitidas: ctx.permitidas });
       if (error) throw error;
