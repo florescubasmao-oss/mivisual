@@ -105,23 +105,6 @@ function optionFill(id,values,emptyLabel){
   (values||[]).forEach(v=>{const o=document.createElement("option");o.value=String(v);o.textContent=String(v);el.appendChild(o)});
 }
 
-async function signup(){
-  const email=document.getElementById("email").value.trim();
-  const password=document.getElementById("password").value;
-  if(!email||!password)return msg("Ingrese correo y contraseña.",false);
-  const {data,error}=await sb.auth.signUp({email,password});
-  if(error)return msg(error.message,false);
-  if(data.session){
-    msg("Acceso creado y sesión iniciada.");
-    await contexto();
-    await catalogos();
-  }else{
-    msg("Acceso creado. Si la confirmación de correo está desactivada en Supabase, ya puede iniciar sesión.");
-  }
-  dbg({signup:true,user:data.user?.id||null,session:!!data.session});
-}
-
-
 async function login(){
   const email=document.getElementById("email").value.trim();
   const password=document.getElementById("password").value;
