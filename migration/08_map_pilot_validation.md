@@ -41,3 +41,44 @@ Destino piloto: Supabase / public.ordenes
 - validación de Supervisor por cuadrillas con sesión Auth real
 - pruebas móviles
 - prueba funcional del usuario
+
+
+## Validación funcional con Auth real — 18/09/2026
+
+Usuario de prueba:
+- usuario: JEFZNORTE
+- perfil: JEFATURA
+- nivel de acceso: ZONA NORTE
+- sede: TODAS
+- Auth Supabase: vinculado
+- permiso MAPA OPERATIVO: activo, VER=true, alcance TODOS
+
+Pruebas aprobadas:
+- carga de catálogos desde PostgreSQL
+- búsqueda por código de orden
+- orden de prueba 3448347 encontrada correctamente
+- pedido relacionado: 2111725
+- DNI relacionado: 47791563
+- sede: TRUJILLO
+- estado: Agendada
+- cuadrilla: P2 TRASLADO VISUAL LUIS FRANCISCO ESPIRE CHIQUEZ
+- CTO cercanas: consulta correcta
+- CTO coincidencias en área: 151
+- CTO mostradas por límite piloto: 100
+- respuesta truncada: true
+
+Corrección aplicada:
+- se corrigió solo en el piloto el formato de ultimaActualizacionTexto para preservar la hora local almacenada y evitar una segunda conversión UTC (-5).
+
+### Hallazgo de calidad de datos CTO
+
+Se detectaron códigos CTO con sufijo literal `Latitud`, por ejemplo:
+- `WN-440-248730Latitud`
+
+Este valor NO fue introducido por PostgreSQL. Se confirmó que existe así en la hoja fuente `CATALOGO_CTO` del libro maestro, fila 6506.
+
+En PostgreSQL se detectaron:
+- 362 códigos CTO con sufijo `Latitud`
+- 248 de ellos también tienen una variante de código limpio existente
+
+No corregir automáticamente durante la migración. Tratar como incidencia de calidad de datos de origen y definir una regla de saneamiento separada, con comparación previa contra la fuente.
