@@ -59,3 +59,14 @@ migracion-supabase
 4. Comparar filtros y búsquedas contra el Mapa actual.
 5. Implementar sincronización temporal Sheets -> PostgreSQL mientras dure la transición.
 6. Solo después de validar, planificar el cambio de producción.
+
+## Usuarios — preparación de autenticación
+
+Se creó public.app_users y se migraron 80 registros de metadatos de USUARIOS.
+
+Importante: la columna Clave del Google Sheet NO fue copiada a PostgreSQL. Las contraseñas actuales no se migrarán como texto. La autenticación nueva se diseñará usando Supabase Auth y asociación mediante auth_user_id.
+
+Resumen inicial:
+- 80 perfiles migrados
+- 79 marcados como activos en la fuente actual
+- 65 registros con correo disponible
