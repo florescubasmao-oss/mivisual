@@ -195,3 +195,25 @@ Pendiente para la fase de módulo/frontend:
 - exportación Excel;
 - visualización;
 - cutover final.
+
+
+## 10. Seguridad por rol V490 — incorporada
+
+Se revisó el parche productivo `V490-SEGURIDAD-VTRGAR-JEFATURA-20260826`.
+
+Regla vigente trasladada al piloto PostgreSQL:
+
+- VTR/GAR: solo `JEFATURA` / `JEFATURA GENERAL` puede modificar o validar.
+- Supervisor: conserva lectura por sede y no puede escribir VTR/GAR.
+- Gerencia y demás perfiles con `VER`: consulta según `app_permissions`, sin escritura VTR/GAR.
+- Técnico: conserva registro/historial operativo; la validación GAR/VTR no se habilita para su perfil.
+- Recableado/Otro: Supervisor conserva el flujo de validación vigente.
+- `ADMIN` / `ADMINISTRADOR` ya no se aceptan como validador GAR/VTR solo por poseer permiso `VALIDAR`; V490 exige además el perfil Jefatura.
+
+Edge Function:
+- `validacion-tecnica-pilot` versión 2.
+- JWT obligatorio.
+- Rama: `migracion-supabase`.
+- Commit: `2fd3c1747f8e6bc687a89eb8b358cabffd2a8bb3`.
+
+La capa de responsabilidad GAR/VTR en PostgreSQL continúa de solo lectura en el piloto; por tanto no existe una ruta alternativa que permita CONFIRMAR / REASIGNAR / ANULAR fuera de Jefatura.
