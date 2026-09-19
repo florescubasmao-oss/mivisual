@@ -45,6 +45,7 @@ pre{white-space:pre-wrap;background:#f8fafc;padding:10px;border-radius:9px;max-h
 <h2>2. Contexto de Seguridad</h2>
 <div class="row">
 <button onclick="cargarContexto()">Actualizar contexto</button>
+<button class="good" onclick="generarAtsDia()">Generar ATS del día</button>
 <button class="sec" onclick="abrirHistorico()">Abrir ATS histórico de prueba</button>
 </div>
 <div id="ctxmsg"></div>
@@ -120,7 +121,7 @@ function firmaHtml(f){if(!f?.activa)return '<span class="badge">SIN FIRMA</span>
 function renderContexto(d){
  CTX=d;const u=d.usuario||{},f=d.firma||{};
  document.getElementById("perfil").innerHTML='<span class="badge">'+esc(u.usuario)+'</span><span class="badge">'+esc(u.perfil)+'</span><span class="badge">'+esc(u.sede)+'</span><span class="badge">Alcance: '+esc(u.alcanceDatos)+'</span>';
- document.getElementById("estadoCreacion").innerHTML=d.crearHabilitado?'<div class="goodbox">Creación ATS habilitada.</div>':'<div class="warnbox"><b>Generar ATS diario aún bloqueado en piloto.</b><br>'+esc(d.crearBloqueadoMotivo||"")+'</div>';
+ document.getElementById("estadoCreacion").innerHTML='<div class="goodbox"><b>Creación ATS/PETAR V437 habilitada en el piloto.</b><br>Correlativo global, 7:45 a. m., EPP por defecto y catálogo productivo.</div>';
  const hoy=d.hoy?.ats;
  document.getElementById("contexto").innerHTML='<div><b>Firma:</b> '+firmaHtml(f)+'</div>'+
    '<div style="margin-top:8px"><b>ATS de hoy:</b> '+(hoy?esc(hoy.numero+" · "+hoy.estado):"Sin ATS hoy")+'</div>'+
@@ -132,6 +133,7 @@ function renderContexto(d){
  document.getElementById("solicitudes").innerHTML=sols.map(s=>'<div class="doc"><b>'+esc(s.nombre)+'</b> · '+esc(s.usuario)+'<br><small>'+esc(s.motivo)+'</small><div class="row" style="margin-top:6px"><button class="good" onclick="resolverFirma(\''+esc(s.id)+'\',\'APROBADO\')">Aprobar</button><button class="danger" onclick="resolverFirma(\''+esc(s.id)+'\',\'RECHAZADO\')">Rechazar</button></div></div>').join("");
 }
 async function cargarContexto(){try{msg("ctxmsg","Cargando...");const d=await api({accion:"obtenerContextoSeguridadV432"},"GET");renderContexto(d);msg("ctxmsg","Contexto cargado desde PostgreSQL.");dbg(d)}catch(e){msg("ctxmsg",e.message,false);dbg(String(e))}}
+async function generarAtsDia(){try{msg("ctxmsg","Generando ATS/PETAR V437...");const gps=await geo();const d=await api({accion:"crearAtsDiaSeguridadV432",gps});msg("ctxmsg",d.existente?"Ya existía el ATS del día.":"ATS/PETAR generado en piloto.");dbg(d);await cargarContexto();if(d.id){document.getElementById("atsId").value=d.id;await abrirDocumento()}}catch(e){msg("ctxmsg",e.message,false);dbg(String(e))}}
 function abrirHistorico(){document.getElementById("atsId").value="ATS-0CE1CE77-DAE";abrirDocumento()}
 async function abrirDocumento(){try{const d=await api({accion:"obtenerDocumentoSeguridadV432",id:document.getElementById("atsId").value.trim()},"GET");DOC=d;renderDocumento(d);dbg(d)}catch(e){document.getElementById("documento").innerHTML='<div class="err">'+esc(e.message)+'</div>';dbg(String(e))}}
 function renderDocumento(d){
