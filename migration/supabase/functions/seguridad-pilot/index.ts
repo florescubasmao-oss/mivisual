@@ -1,6 +1,6 @@
 import { createClient } from "npm:@supabase/supabase-js@2";
 
-const VERSION = "V1-SEGURIDAD-PILOT-20260919";
+const VERSION = "V2-SEGURIDAD-V437-PILOT-20260919";
 const BUCKET = "mi-visual-evidencias";
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -160,11 +160,10 @@ Deno.serve(async(req:Request)=>{
     }
 
     if(accion==="crearAtsDiaSeguridadV432") {
-      return json({
-        ok:false,version:VERSION,modulo:"SEGURIDAD",
-        accion:"CREAR_ATS_DIA",
-        error:"Creación deshabilitada en el piloto hasta recuperar y validar el catálogo completo de tareas del backend V432. No se generará un ATS incompleto."
-      },409);
+      const d=await rpc(ctx.admin,"mv_seguridad_crear_ats_dia",{
+        p_usuario:usuario,p_gps:txt(data.gps)
+      });
+      return json({...d,version:VERSION,fuente:"POSTGRESQL PILOTO",sourceLogic:"V437/V432"});
     }
 
     if(accion==="guardarAtsSeguridadV432") {
@@ -193,6 +192,11 @@ Deno.serve(async(req:Request)=>{
     }
 
     if(accion==="revisarAtsSupervisorV432") {
+      if(norm(data.resultado)==="AUTORIZAR") {
+        return json({ok:false,version:VERSION,modulo:"SEGURIDAD",accion:"REVISAR_SUPERVISOR",
+          error:"Autorización final protegida en el piloto hasta portar el PDF V442/V439. La app productiva continúa realizando este cierre."
+        },409);
+      }
       const d=await rpc(ctx.admin,"mv_seguridad_revisar_supervisor",{
         p_usuario:usuario,p_id:txt(data.id),
         p_resultado:txt(data.resultado),p_motivo:txt(data.motivo),p_gps:txt(data.gps)
@@ -204,6 +208,11 @@ Deno.serve(async(req:Request)=>{
     }
 
     if(accion==="validarAtsFinalV432") {
+      if(norm(data.resultado)==="VALIDAR") {
+        return json({ok:false,version:VERSION,modulo:"SEGURIDAD",accion:"VALIDAR_FINAL",
+          error:"Validación final protegida en el piloto hasta portar el PDF V442/V439. La app productiva continúa realizando este cierre."
+        },409);
+      }
       const d=await rpc(ctx.admin,"mv_seguridad_validar_final",{
         p_usuario:usuario,p_id:txt(data.id),
         p_resultado:txt(data.resultado),p_motivo:txt(data.motivo),p_gps:txt(data.gps)
@@ -221,7 +230,9 @@ Deno.serve(async(req:Request)=>{
         uploaded=await uploadFirma(ctx.admin,usuario,b64);
         const d=await rpc(ctx.admin,"mv_seguridad_registrar_firma",{
           p_usuario:usuario,p_dni:txt(data.dni),p_gps:txt(data.gps),
-          p_url:uploaded.storageRef,p_archivo_id:uploaded.path
+          p_url:uploaded.storageRef,p_archivo_id:uploaded.path,
+          p_autorizacion_cambio_id:txt(data.autorizacionCambioId),
+          p_reintento:norm(data.reintento)==="SI"
         });
         return json({
           ...await hydrateSignatures(ctx.admin,d),
@@ -249,7 +260,7 @@ Deno.serve(async(req:Request)=>{
 
     if(accion==="reiniciarFirmaSeguridadV433") {
       const d=await rpc(ctx.admin,"mv_seguridad_reiniciar_firma_pruebas",{
-        p_usuario:usuario,p_usuario_objetivo:txt(data.usuarioObjetivo),p_confirmacion:"REINICIAR"
+        p_usuario:usuario,p_usuario_objetivo:txt(data.usuarioObjetivo)||null
       });
       return json({...d,version:VERSION,fuente:"POSTGRESQL PILOTO"});
     }
