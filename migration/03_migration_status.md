@@ -191,3 +191,19 @@ Estado: **MOTOR CERRADO / COSTOS OPERATIVOS PENDIENTES DE CARGA**
 - P7 PDG solo hasta julio; desde agosto es regular con tarifa especial.
 - Julio/agosto permanecen protegidos y no se reescriben.
 - Documento: migration/10_economic_validation.md.
+
+
+## Efectividad — BACKEND VALIDADO
+
+Estado: **CERRADO EN MIGRACIÓN / SIN CUTOVER PRODUCTIVO**
+
+- Snapshot EFECTIVIDAD: 83 / 83 filas.
+- Lógica V487 recuperada y portada a PostgreSQL.
+- Julio: 2,258 evaluables / 64.57%, protegido.
+- Agosto: 2,423 evaluables / 64.59%, protegido.
+- Setiembre snapshot 17/09: 1,735 / 63.80%.
+- Setiembre Mapa actual: 1,738 / 63.81%.
+- Diferencia: +2 Finalizadas, +1 Cancelada; corresponde a estados posteriores al corte 17/09 20:34.
+- Reprogramadas: 240 / 240.
+- Partner solo excluye reservas pendientes.
+- Documento: migration/11_efectividad_validation.md.
