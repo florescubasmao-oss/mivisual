@@ -130,3 +130,19 @@ Pendientes no bloqueantes:
 - integración productiva futura cuando corresponda al plan de migración
 
 `main`, Apps Script y Google Sheets productivos permanecen sin cambios.
+
+
+## Producción — migración iniciada 18/09/2026
+
+Estado: EN CONCILIACIÓN, sin cambios en producción.
+
+- PRODUCCION_APP copiado: 2,742 / 2,742.
+- BASE_OPERATIVA_HISTORICA: 4,144 / 4,144.
+- Catálogo: 33 filas preservando duplicados.
+- Ajustes Partida V513: 33.
+- Reglas V513: 80.
+- Clasificación GAR/VTR mínima para dependencia de Producción: 160.
+- Julio y agosto protegidos como snapshots.
+- Setiembre usa elegibilidad por orden y regla GAR/VTR bidireccional.
+- Diferencia controlada detectada: orden 3404829 debe recuperar Producción por NO_ES_GAR_VTR; snapshot actual aún no la contiene.
+- Siguiente paso: Partida efectiva y puntos por orden, en diagnóstico.
