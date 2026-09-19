@@ -1,0 +1,136 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>MI VISUAL · Publicador WIN V497 · Piloto</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+:root{--navy:#0b2340;--blue:#0f6fff;--green:#15803d;--red:#b91c1c;--orange:#b45309;--line:#dbe3ec;--bg:#f4f7fb;--muted:#64748b}
+*{box-sizing:border-box}body{font-family:Arial,sans-serif;margin:0;padding:18px;background:var(--navy);color:#102033}
+.wrap{max-width:1120px;margin:auto}h1{color:#fff;margin:0 0 5px}.lead{color:#cbd5e1;margin:0 0 16px}
+.card{background:#fff;border-radius:15px;padding:16px;margin-bottom:14px;box-shadow:0 10px 28px #0003}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:10px}.row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+input,button{padding:10px;border-radius:9px;border:1px solid #cbd5e1;font-size:14px}input{width:100%}
+button{border:0;background:var(--blue);color:#fff;font-weight:700;cursor:pointer}.good{background:var(--green)}.danger{background:var(--red)}.sec{background:#475569}
+button:disabled{opacity:.5;cursor:not-allowed}.metric{padding:12px;border:1px solid var(--line);border-radius:12px;background:#f8fafc}.metric b{display:block;font-size:19px;margin-top:4px}
+.ok{color:var(--green)}.err{color:var(--red)}.warn{color:var(--orange)}.muted{color:var(--muted)}
+.goodbox,.warnbox{padding:10px;border-radius:10px;margin:8px 0}.goodbox{background:#ecfdf5;color:#166534}.warnbox{background:#fff7ed;color:#9a3412}
+.badge{display:inline-block;padding:4px 8px;border-radius:999px;background:#e2e8f0;margin:3px;font-size:12px}
+table{width:100%;border-collapse:collapse;font-size:12px}th,td{padding:7px;border-bottom:1px solid var(--line);text-align:left}
+pre{white-space:pre-wrap;background:#f8fafc;padding:10px;border-radius:9px;max-height:320px;overflow:auto}
+@media(max-width:650px){body{padding:8px}}
+</style>
+</head>
+<body>
+<div class="wrap">
+<h1>MI VISUAL · Publicador WIN V497</h1>
+<p class="lead">Piloto PostgreSQL · Producción legacy permanece intacta</p>
+
+<div class="card">
+<h2>1. Acceso</h2>
+<div class="grid">
+<input id="email" type="email" placeholder="Correo">
+<input id="password" type="password" placeholder="Contraseña piloto">
+</div>
+<div class="row" style="margin-top:8px">
+<button onclick="login()">Iniciar sesión</button>
+<button class="danger" onclick="logout()">Cerrar sesión</button>
+<button class="sec" onclick="estado()">Estado V497</button>
+</div>
+<div id="authmsg"></div><div id="perfil"></div>
+</div>
+
+<div class="card">
+<h2>2. Previsualización</h2>
+<div class="row">
+<input id="periodo" value="2026-09" placeholder="YYYY-MM" style="max-width:180px">
+<button onclick="preview()">Previsualizar</button>
+</div>
+<div id="previewMsg"></div>
+<div id="resumen" class="grid" style="margin-top:10px"></div>
+<div id="control"></div>
+</div>
+
+<div class="card">
+<h2>3. Publicación piloto</h2>
+<div class="warnbox"><b>No toca Google Sheets ni Apps Script.</b> Crea snapshots PostgreSQL V497 y refresca caches del piloto. Julio 2026 y anteriores permanecen bloqueados.</div>
+<label><input id="check" type="checkbox" style="width:auto"> Confirmo que revisé la previsualización.</label>
+<div class="row" style="margin-top:8px">
+<input id="confirmar" placeholder='Escriba PUBLICAR' style="max-width:220px">
+<button class="good" onclick="publicar()">Publicar período en piloto</button>
+</div>
+<div id="publishMsg"></div>
+</div>
+
+<div class="card">
+<h2>4. Publicaciones PostgreSQL</h2>
+<div id="publicaciones" class="muted">Sin consultar.</div>
+</div>
+
+<div class="card">
+<h2>Diagnóstico</h2>
+<pre id="debug">Sin consultas.</pre>
+</div>
+</div>
+
+<script>
+const PROJECT_URL="https://uudvodiaizfarodjpetb.supabase.co";
+const PUBLISHABLE_KEY="sb_publishable_2hiwePKtqoo3_c_D5B9JuA_p38dPe3D";
+const API=PROJECT_URL+"/functions/v1/publicador-win-pilot";
+const sb=supabase.createClient(PROJECT_URL,PUBLISHABLE_KEY);
+let PREVIEW=null;
+
+function esc(v){return String(v??"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]))}
+function msg(id,t,ok=true){const e=document.getElementById(id);e.className=ok?"ok":"err";e.textContent=t}
+function dbg(v){document.getElementById("debug").textContent=typeof v==="string"?v:JSON.stringify(v,null,2)}
+async function token(){const {data}=await sb.auth.getSession();return data.session?.access_token||""}
+async function api(data,method="POST"){
+ const tk=await token();if(!tk)throw Error("Primero inicie sesión.");
+ let r;
+ if(method==="GET"){const u=new URL(API);Object.entries(data||{}).forEach(([k,v])=>u.searchParams.set(k,String(v??"")));r=await fetch(u,{headers:{Authorization:"Bearer "+tk,apikey:PUBLISHABLE_KEY}})}
+ else r=await fetch(API,{method:"POST",headers:{Authorization:"Bearer "+tk,apikey:PUBLISHABLE_KEY,"Content-Type":"application/json"},body:JSON.stringify(data||{})});
+ const tx=await r.text();let d;try{d=JSON.parse(tx)}catch(_){throw Error(tx||"Respuesta inválida")}
+ if(!r.ok||!d.ok)throw Error(d.error||"Error V497");return d;
+}
+async function login(){
+ const email=document.getElementById("email").value.trim(),password=document.getElementById("password").value;
+ const {error}=await sb.auth.signInWithPassword({email,password});if(error)return msg("authmsg",error.message,false);
+ msg("authmsg","Sesión iniciada.");await estado();
+}
+async function logout(){await sb.auth.signOut();PREVIEW=null;msg("authmsg","Sesión cerrada.");document.getElementById("perfil").innerHTML="";document.getElementById("publicaciones").innerHTML="Sin consultar."}
+function pct(v){return (Number(v||0)*100).toFixed(2)+"%"}
+function renderPreview(d){
+ PREVIEW=d;
+ const p=d.produccion||{},e=d.efectividad||{},r=d.recableado||{},v=d.vtrGar||{},w=d.win||{};
+ document.getElementById("resumen").innerHTML=
+  '<div class="metric">Órdenes WIN<b>'+esc(w.ordenesUnicas||0)+'</b></div>'+
+  '<div class="metric">Producción elegible<b>'+esc(p.ordenes||0)+'</b><small>'+esc(p.puntos||0)+' pts</small></div>'+
+  '<div class="metric">Efectividad<b>'+pct(e.efectividad)+'</b><small>'+esc(e.finalizadas||0)+' / '+esc(e.total_general||0)+'</small></div>'+
+  '<div class="metric">Recableado<b>'+pct(r.porcentaje)+'</b><small>'+esc(r.recableados||0)+' / '+esc(r.los_rojo_finalizadas||0)+'</small></div>'+
+  '<div class="metric">VTR/GAR<b>'+pct(v.porcentaje)+'</b><small>'+esc(v.total_gar_vtr||0)+' casos</small></div>'+
+  '<div class="metric">Pendientes WIN nuevos<b>'+esc(v.nuevosPendientesWin||0)+'</b></div>';
+ document.getElementById("control").innerHTML=d.puedePublicar
+  ?'<div class="goodbox"><b>Prevalidación correcta.</b> Sin partidas pendientes. Corte WIN: '+esc(w.corteEstado||"")+' · Importación: '+esc(w.ultimaImportacion||"")+'</div>'
+  :'<div class="warnbox"><b>Publicación bloqueada.</b> '+esc(d.bloqueo||"")+'</div>';
+}
+async function preview(){
+ try{msg("previewMsg","Calculando V497...");const d=await api({accion:"previsualizarPublicacionIndicadoresWinV487",periodo:document.getElementById("periodo").value.trim()});renderPreview(d);msg("previewMsg","Previsualización lista.");dbg(d)}catch(e){msg("previewMsg",e.message,false);dbg(String(e))}
+}
+async function estado(){
+ try{const d=await api({accion:"estadoPublicadorIndicadoresWinV487"},"GET");document.getElementById("perfil").innerHTML='<span class="badge">'+esc(d.usuario?.usuario)+'</span><span class="badge">'+esc(d.usuario?.perfil)+'</span><span class="badge">'+(d.puedePublicar?"PUEDE PUBLICAR":"SOLO CONSULTA")+'</span>';document.getElementById("publicaciones").innerHTML=(d.publicaciones||[]).length?'<table><tr><th>Periodo</th><th>Publicó</th><th>Fecha</th><th>Corte WIN</th></tr>'+(d.publicaciones||[]).map(x=>'<tr><td>'+esc(x.periodo)+'</td><td>'+esc(x.publicado_por)+'</td><td>'+esc(x.publicado_at)+'</td><td>'+esc(x.corte_estado||"")+'</td></tr>').join("")+'</table>':'Aún no hay publicaciones piloto.';dbg(d)}catch(e){msg("authmsg",e.message,false);dbg(String(e))}
+}
+async function publicar(){
+ try{
+  if(!PREVIEW||PREVIEW.periodo!==document.getElementById("periodo").value.trim())throw Error("Previsualice primero el período actual.");
+  if(!PREVIEW.puedePublicar)throw Error(PREVIEW.bloqueo||"La previsualización no autoriza publicar.");
+  if(!document.getElementById("check").checked)throw Error("Debe confirmar que revisó la previsualización.");
+  if(document.getElementById("confirmar").value.trim().toUpperCase()!=="PUBLICAR")throw Error('Escriba PUBLICAR para confirmar.');
+  msg("publishMsg","Publicando V497 en PostgreSQL...");
+  const d=await api({accion:"publicarIndicadoresWinV487",periodo:PREVIEW.periodo,confirmacion:"PUBLICAR_V487_CONFIRMADO"});
+  msg("publishMsg","Publicación piloto completada: "+d.periodo+".");dbg(d);await estado();await preview();
+ }catch(e){msg("publishMsg",e.message,false);dbg(String(e))}
+}
+</script>
+</body>
+</html>
