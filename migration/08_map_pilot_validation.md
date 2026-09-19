@@ -133,3 +133,22 @@ Conclusión:
 - la restricción por supervisor funciona en backend aunque la UI solicite "Todas las sedes"
 - el supervisor no recibe el universo completo de Zona Norte
 - control de alcance por cuadrillas: APROBADO
+
+
+### Validación móvil — SUPCHICLAYO
+
+Prueba realizada desde navegador móvil:
+- sesión Auth: OK
+- perfil y alcance visibles: OK
+- filtros responsive: OK
+- consulta período `2026-09` con "Todas las sedes": **841**
+- resultado esperado por alcance backend: **841**
+- coincidencia: **100%**
+- motor: PostgreSQL
+- última actualización mostrada: `18/09/2026 07:05`
+
+Estado:
+- prueba funcional móvil: APROBADA
+
+Observación UI:
+- la tabla de resultados requiere desplazamiento horizontal en pantallas angostas; no afecta exactitud ni seguridad y queda como mejora visual posterior.
