@@ -1,6 +1,6 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
-const VERSION="V1-PLANTILLA-ORDEN-V301-V404-PILOT-20260919";
+const VERSION="V2-PLANTILLA-ORDEN-PERMISOS-PROPIOS-20260919";
 const corsHeaders={
   "Access-Control-Allow-Origin":"*",
   "Access-Control-Allow-Headers":"authorization, x-client-info, apikey, content-type",
@@ -81,8 +81,8 @@ async function context(req:Request){
   if(!permitidoPerfil(u.perfil))throw new Error("No tienes permiso para consultar plantillas de órdenes.");
 
   const {data:p,error:pe}=await admin.from("app_permissions")
-    .select("activo,ver,alcance_datos").eq("perfil",u.perfil).eq("modulo","MAPA OPERATIVO").maybeSingle();
-  if(pe||!p||!p.activo||!p.ver||norm(p.alcance_datos)==="SIN ACCESO")throw new Error("Sin acceso a Mapa Operativo.");
+    .select("activo,ver,alcance_datos").eq("perfil",u.perfil).eq("modulo","PLANTILLA ORDEN").maybeSingle();
+  if(pe||!p||!p.activo||!p.ver||norm(p.alcance_datos)==="SIN ACCESO")throw new Error("Sin acceso a Plantilla de Orden.");
 
   let cuadrillas:string[]|null=null;
   if(norm(u.perfil)==="TECNICO"){
