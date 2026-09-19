@@ -106,4 +106,27 @@ Pendiente para cierre total del piloto:
 - validar alcance real de SUPERVISOR por cuadrillas: APROBADO (SUPCHICLAYO 841/841)
 - prueba móvil
 - definir tratamiento de calidad de datos CTO con sufijo `Latitud`
-- resolver relación secundaria legacy de pedido antes del corte definitivo
+- relación Pedido -> Orden del Mapa: CERRADA en PostgreSQL; fallbacks de Actas/Actividad se migran con esos módulos
+
+
+## Cierre funcional del piloto Mapa Operativo — 18/09/2026
+
+Estado: **FUNCIONALMENTE CERRADO**
+
+Aprobado:
+- Auth JEFATURA
+- Auth SUPERVISOR
+- permisos y alcance por cuadrillas
+- catálogos PostgreSQL
+- búsqueda Orden / Pedido / DNI
+- filtros período / sede / grupo / estado / cuadrilla
+- CTO cercanas
+- prueba móvil
+- relación Pedido -> Orden sin dependencia legacy del módulo Mapa
+
+Pendientes no bloqueantes:
+- mejora visual de tabla móvil
+- saneamiento controlado de códigos CTO con sufijo `Latitud`
+- integración productiva futura cuando corresponda al plan de migración
+
+`main`, Apps Script y Google Sheets productivos permanecen sin cambios.
