@@ -1,6 +1,6 @@
 import { createClient } from "npm:@supabase/supabase-js@2";
 
-const VERSION = "V2-SEGURIDAD-V437-PILOT-20260919";
+const VERSION = "V3-SEGURIDAD-V442-PILOT-20260919";
 const BUCKET = "mi-visual-evidencias";
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -139,6 +139,31 @@ async function readInput(req:Request) {
   try { return await req.json(); } catch(_) { return {}; }
 }
 
+async function callSeguridadPdf(req:Request,accionPdf:string,data:any) {
+  const url=(Deno.env.get("SUPABASE_URL")||"")+"/functions/v1/seguridad-pdf";
+  const auth=req.headers.get("Authorization")||"";
+  const r=await fetch(url,{
+    method:"POST",
+    headers:{
+      "Authorization":auth,
+      "apikey":publicKey(),
+      "Content-Type":"application/json"
+    },
+    body:JSON.stringify({
+      accion:accionPdf,
+      id:txt(data.id),
+      gps:txt(data.gps),
+      motivo:txt(data.motivo)
+    })
+  });
+  const tx=await r.text();
+  let d:any;
+  try { d=JSON.parse(tx); } catch(_) { throw new Error(tx||"Respuesta PDF inválida"); }
+  if(!r.ok || !d.ok) throw new Error(d.error||"No se pudo generar el PDF de Seguridad");
+  return d;
+}
+
+
 Deno.serve(async(req:Request)=>{
   if(req.method==="OPTIONS") return new Response("ok",{headers:corsHeaders});
   if(!["GET","POST"].includes(req.method)) return json({ok:false,version:VERSION,error:"Método no permitido."},405);
@@ -193,9 +218,8 @@ Deno.serve(async(req:Request)=>{
 
     if(accion==="revisarAtsSupervisorV432") {
       if(norm(data.resultado)==="AUTORIZAR") {
-        return json({ok:false,version:VERSION,modulo:"SEGURIDAD",accion:"REVISAR_SUPERVISOR",
-          error:"Autorización final protegida en el piloto hasta portar el PDF V442/V439. La app productiva continúa realizando este cierre."
-        },409);
+        const d=await callSeguridadPdf(req,"AUTORIZAR_SUPERVISOR",data);
+        return json({...d,version:VERSION,fuente:"POSTGRESQL PILOTO",pdfPiloto:"V442"});
       }
       const d=await rpc(ctx.admin,"mv_seguridad_revisar_supervisor",{
         p_usuario:usuario,p_id:txt(data.id),
@@ -209,9 +233,8 @@ Deno.serve(async(req:Request)=>{
 
     if(accion==="validarAtsFinalV432") {
       if(norm(data.resultado)==="VALIDAR") {
-        return json({ok:false,version:VERSION,modulo:"SEGURIDAD",accion:"VALIDAR_FINAL",
-          error:"Validación final protegida en el piloto hasta portar el PDF V442/V439. La app productiva continúa realizando este cierre."
-        },409);
+        const d=await callSeguridadPdf(req,"VALIDAR_FINAL",data);
+        return json({...d,version:VERSION,fuente:"POSTGRESQL PILOTO",pdfPiloto:"V442"});
       }
       const d=await rpc(ctx.admin,"mv_seguridad_validar_final",{
         p_usuario:usuario,p_id:txt(data.id),
