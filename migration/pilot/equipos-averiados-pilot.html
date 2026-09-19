@@ -1,0 +1,82 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>MI VISUAL · Equipos Averiados · Piloto</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+body{font-family:Arial,sans-serif;margin:0;background:#0b2340;padding:16px;color:#102033}.wrap{max-width:1180px;margin:auto}
+h1{color:#fff;margin:0 0 4px}.lead{color:#cbd5e1;margin:0 0 14px}.card{background:#fff;border-radius:14px;padding:15px;margin-bottom:12px}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:8px}.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+input,select,textarea,button{padding:9px;border-radius:8px;border:1px solid #cbd5e1;font-size:13px}input,select,textarea{width:100%}
+button{border:0;background:#0f6fff;color:#fff;font-weight:700;cursor:pointer}.green{background:#15803d}.red{background:#b91c1c}.sec{background:#475569}
+.ok{color:#15803d}.err{color:#b91c1c}.badge{display:inline-block;background:#e2e8f0;border-radius:999px;padding:4px 8px;margin:2px;font-size:12px}
+table{width:100%;border-collapse:collapse;font-size:11px}th,td{padding:6px;border-bottom:1px solid #e2e8f0;text-align:left;vertical-align:top}
+pre{white-space:pre-wrap;background:#f8fafc;padding:9px;border-radius:8px;max-height:280px;overflow:auto}.metric{border:1px solid #dbe3ec;border-radius:10px;padding:10px;background:#f8fafc}.metric b{display:block;font-size:18px}
+</style>
+</head>
+<body><div class="wrap">
+<h1>MI VISUAL · Equipos Averiados</h1><p class="lead">Piloto PostgreSQL V399/V537 · Legacy continúa operativo</p>
+
+<div class="card">
+<h2>1. Acceso</h2>
+<div class="grid"><input id="email" placeholder="Correo"><input id="password" type="password" placeholder="Contraseña"></div>
+<div class="row" style="margin-top:8px"><button onclick="login()">Ingresar</button><button class="red" onclick="logout()">Salir</button><button class="sec" onclick="catalogos()">Catálogos</button></div>
+<div id="auth"></div><div id="perfil"></div>
+</div>
+
+<div class="card">
+<h2>2. Consulta</h2>
+<div class="grid">
+<select id="fSede"><option value="">Todas las sedes</option><option>CHICLAYO</option><option>PIURA</option><option>TRUJILLO</option></select>
+<input id="fEstado" placeholder="Estado"><input id="fSerie" placeholder="Serie / SN"><input id="fMac" placeholder="MAC">
+</div>
+<div class="row" style="margin-top:8px"><button onclick="listar()">Listar solicitudes</button><button class="sec" onclick="cargos()">Listar cargos</button></div>
+<div id="resumen" class="grid" style="margin-top:10px"></div><div style="overflow:auto"><table id="tabla"></table></div>
+</div>
+
+<div class="card">
+<h2>3. Registro técnico</h2>
+<p>Prueba simple de hasta 2 equipos. La API admite hasta 8.</p>
+<div class="grid">
+<select id="tipo1"><option>ONT HUAWEI</option><option>ONT ZTE</option><option>MESH HUAWEI</option><option>MESH ZTE</option><option>WINBOX</option><option>TELEFONO</option></select>
+<input id="serie1" placeholder="Serie / SN equipo 1"><input id="mac1" placeholder="MAC equipo 1">
+<select id="tipo2"><option value="">Sin equipo 2</option><option>ONT HUAWEI</option><option>ONT ZTE</option><option>MESH HUAWEI</option><option>MESH ZTE</option><option>WINBOX</option><option>TELEFONO</option></select>
+<input id="serie2" placeholder="Serie equipo 2"><input id="mac2" placeholder="MAC equipo 2">
+</div>
+<button class="green" style="margin-top:8px" onclick="registrarTecnico()">Registrar</button><div id="regmsg"></div>
+</div>
+
+<div class="card">
+<h2>4. Recepción Almacén · V399</h2>
+<div class="grid"><input id="rid" placeholder="ID solicitud EA-..."><input id="rsid" placeholder="SolicitudId EAREQ-... (opcional)"></div>
+<textarea id="decisiones" rows="5" placeholder='[{"serie":"SN...","estado":"RECIBIDO","observacion":"OK"}]'></textarea>
+<textarea id="obs" rows="2" placeholder="Observación general"></textarea>
+<div class="row"><button class="green" onclick="recibir()">Validar recepción</button><button class="sec" onclick="verificar()">Verificar V399</button><button class="red" onclick="volver()">Volver pendiente (Jefatura Almacén)</button></div>
+<div id="recmsg"></div>
+</div>
+
+<div class="card"><h2>Diagnóstico</h2><pre id="debug">Sin consultas.</pre></div>
+</div>
+<script>
+const URL="https://uudvodiaizfarodjpetb.supabase.co";
+const KEY="sb_publishable_2hiwePKtqoo3_c_D5B9JuA_p38dPe3D";
+const API=URL+"/functions/v1/equipos-averiados-pilot";
+const sb=supabase.createClient(URL,KEY);
+function esc(v){return String(v??"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]))}
+function dbg(v){document.getElementById("debug").textContent=typeof v==="string"?v:JSON.stringify(v,null,2)}
+function msg(id,t,ok=true){const e=document.getElementById(id);e.className=ok?"ok":"err";e.textContent=t}
+async function tok(){const {data}=await sb.auth.getSession();return data.session?.access_token||""}
+async function api(data,method="POST"){const t=await tok();if(!t)throw Error("Inicie sesión.");let r;if(method==="GET"){const u=new URL(API);Object.entries(data).forEach(([k,v])=>u.searchParams.set(k,String(v??"")));r=await fetch(u,{headers:{Authorization:"Bearer "+t,apikey:KEY}})}else r=await fetch(API,{method:"POST",headers:{Authorization:"Bearer "+t,apikey:KEY,"Content-Type":"application/json"},body:JSON.stringify(data)});const tx=await r.text();let d;try{d=JSON.parse(tx)}catch{throw Error(tx)}if(!r.ok||!d.ok)throw Error(d.error||"Error");return d}
+async function login(){const {error}=await sb.auth.signInWithPassword({email:email.value.trim(),password:password.value});if(error)return msg("auth",error.message,false);msg("auth","Sesión iniciada.");await catalogos();await listar()}
+async function logout(){await sb.auth.signOut();msg("auth","Sesión cerrada.");perfil.innerHTML="";tabla.innerHTML=""}
+async function catalogos(){try{const d=await api({accion:"catalogosEquiposAveriados"},"GET");perfil.innerHTML='<span class="badge">'+esc(d.perfil)+'</span><span class="badge">'+esc(d.fuente||"POSTGRESQL")+'</span>';dbg(d)}catch(e){msg("auth",e.message,false)}}
+function renderResumen(r){resumen.innerHTML=['total','pendienteRegistro','pendienteEntrega','parcial','recibido','observado','rechazado','totalEquipos'].map(k=>'<div class="metric">'+esc(k)+'<b>'+esc(r?.[k]||0)+'</b></div>').join("")}
+async function listar(){try{const d=await api({accion:"listarEquiposAveriados",sede:fSede.value,estado:fEstado.value,serie:fSerie.value,codigoCliente:fMac.value},"GET");renderResumen(d.resumen);tabla.innerHTML='<tr><th>ID</th><th>Fecha</th><th>Sede</th><th>Cuadrilla</th><th>Técnico</th><th>Estado</th><th>Equipos</th></tr>'+d.solicitudes.map(x=>'<tr><td>'+esc(x.id)+'</td><td>'+esc(x.fechaRegistroVisible)+'</td><td>'+esc(x.sede)+'</td><td>'+esc(x.cuadrilla)+'</td><td>'+esc(x.tecnico)+'</td><td>'+esc(x.estado)+'</td><td>'+x.equipos.map(e=>esc(e.tipo)+' · '+esc(e.serie)).join('<br>')+'</td></tr>').join("");dbg(d)}catch(e){dbg(String(e))}}
+async function cargos(){try{const d=await api({accion:"listarCargosEquiposAveriados"},"GET");tabla.innerHTML='<tr><th>Cargo</th><th>Solicitud</th><th>Fecha</th><th>Sede</th><th>Técnico</th><th>Equipos</th><th>PDF</th></tr>'+d.cargos.map(x=>'<tr><td>'+esc(x.idCargo)+'</td><td>'+esc(x.idSolicitud)+'</td><td>'+esc(x.fechaCargoVisible)+'</td><td>'+esc(x.sede)+'</td><td>'+esc(x.tecnico)+'</td><td>'+esc(x.totalEquipos)+'</td><td>'+(x.linkPdf?'<a target="_blank" href="'+esc(x.linkPdf)+'">Abrir</a>':'')+'</td></tr>').join("");dbg(d)}catch(e){dbg(String(e))}}
+async function registrarTecnico(){try{const eq=[];if(serie1.value.trim())eq.push({tipo:tipo1.value,serie:serie1.value,codigoCliente:mac1.value});if(tipo2.value&&serie2.value.trim())eq.push({tipo:tipo2.value,serie:serie2.value,codigoCliente:mac2.value});const d=await api({accion:"registrarEquiposAveriadosTecnico",equipos:eq});msg("regmsg","Registrado: "+d.id);dbg(d);await listar()}catch(e){msg("regmsg",e.message,false)}}
+function decisionesJson(){try{return JSON.parse(decisiones.value||"[]")}catch{throw Error("JSON de decisiones inválido.")}}
+async function recibir(){try{const d=await api({accion:"validarRecepcionEquiposAveriados",id:rid.value.trim(),solicitudId:rsid.value.trim(),equipos:decisionesJson(),observacionGeneral:obs.value});if(d.solicitudId)rsid.value=d.solicitudId;msg("recmsg","Recepción procesada: "+d.estado);dbg(d);await listar()}catch(e){msg("recmsg",e.message,false)}}
+async function verificar(){try{const d=await api({accion:"verificarRecepcionEquiposAveriadosV399",id:rid.value.trim(),solicitudId:rsid.value.trim()},"GET");msg("recmsg",d.confirmado?"Recepción confirmada.":"Aún no confirmada.",d.confirmado);dbg(d)}catch(e){msg("recmsg",e.message,false)}}
+async function volver(){try{const d=await api({accion:"volverPendienteEquiposAveriados",id:rid.value.trim()});msg("recmsg","Solicitud vuelta a pendiente.");dbg(d);await listar()}catch(e){msg("recmsg",e.message,false)}}
+</script></body></html>
