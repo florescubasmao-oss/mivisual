@@ -1,6 +1,6 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
-const VERSION = "V1-VALIDACION-TECNICA-PILOT-20260918";
+const VERSION = "V2-VALIDACION-TECNICA-V490-PILOT-20260919";
 const MODULO = "VALIDACION TECNICA";
 const TZ = "America/Lima";
 
@@ -99,7 +99,10 @@ function pilotId(codigo: string, tipo: string, ticketFinal: string) {
   return `${codigo}-${tipo}-${tk}`;
 }
 function isJefaturaPerfil(perfil: unknown) {
-  return ["JEFATURA","ADMIN","ADMINISTRADOR"].includes(norm(perfil));
+  // V490: GAR/VTR solo puede ser modificado por JEFATURA / JEFATURA GENERAL.
+  // ADMIN, SUPERVISOR y GERENCIA pueden conservar VER según app_permissions,
+  // pero no escriben decisiones GAR/VTR.
+  return ["JEFATURA","JEFATURA GENERAL"].includes(norm(perfil));
 }
 function scopeKind(alcance: unknown) {
   const a = norm(alcance);
@@ -169,7 +172,7 @@ async function contextoAccion(ctx:any) {
     reglas:{
       recableadoAutoMinutos:15,
       garVtrAuto:false,
-      garVtrValidador:"JEFATURA/ADMIN",
+      garVtrValidador:"JEFATURA",
       garVtrResultados:["BONO","NO BONO"],
       registro:"TECNICO",
       duplicado:"CODIGO + TIPO + TICKET"
@@ -288,7 +291,7 @@ async function validar(ctx:any,data:any) {
   const tipo=norm(row.tipo_validacion), perfil=norm(ctx.appUser.perfil);
   let puntaje=0;
   if(["GAR","VTR"].includes(tipo)) {
-    if(!isJefaturaPerfil(perfil)) throw new Error("Solo Jefatura/Admin puede validar GAR/VTR.");
+    if(!isJefaturaPerfil(perfil)) throw new Error("Solo Jefatura puede validar o modificar casos VTR/GAR.");
     if(!["BONO","NO BONO"].includes(resultado)) throw new Error("GAR/VTR solo permite BONO o NO BONO.");
     if(!motivo) throw new Error("El comentario de Jefatura es obligatorio.");
     const ticket=ticketCanonGarVtr(row.ticket_final,tipo);
