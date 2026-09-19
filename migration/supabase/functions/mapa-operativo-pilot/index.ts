@@ -353,7 +353,7 @@ Deno.serve(async (req: Request) => {
         criterioBusqueda,
         filasEvaluadas:rows.length,
         filasCompletasLeidas:rows.length,
-        pedidoRelacionLegacyPendiente:true
+        busquedaPedidoPostgresql:true
       });
     }
 
