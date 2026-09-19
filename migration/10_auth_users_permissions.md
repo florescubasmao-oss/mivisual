@@ -111,3 +111,24 @@ Pantalla piloto v5 validada con sesión real JEFZNORTE:
 - correo inválido: 14
 
 Resultado: APROBADO.
+
+
+## Validación de seguridad SUPCHICLAYO — 18/09/2026
+
+Prueba con sesión real SUPCHICLAYO:
+- perfil: SUPERVISOR
+- sede: CHICLAYO
+- el bloque `Administración de accesos Auth` no se muestra en UI: OK
+- el servicio `auth-admin-pilot` exige permiso real `ADMINISTRACION.administrar=true`
+- SUPERVISOR no dispone de permiso de administración de usuarios
+
+Resultado: APROBADO.
+
+## Estado de etapa
+
+Auth / Usuarios / Permisos: **FUNCIONALMENTE CERRADO PARA EL PILOTO**
+
+Pendientes de despliegue general, no bloqueantes para continuar migración:
+- corregir/definir correos faltantes o inválidos antes de crear Auth masivamente;
+- definir recuperación/cambio inicial de contraseña para usuarios finales;
+- no crear cuentas para usuarios sin correo válido.
