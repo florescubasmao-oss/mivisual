@@ -44,7 +44,11 @@ th,td{padding:7px;border-bottom:1px solid #e2e8f0;text-align:left;vertical-align
 <div id="authmsg" style="margin-top:10px"></div>
 <div id="perfil" style="margin-top:10px"></div>
 <div id="adminProvision" style="display:none;margin-top:16px;padding-top:14px;border-top:1px solid #e2e8f0">
-  <div class="section-title">Crear acceso controlado (Jefatura/Admin)</div>
+  <div class="section-title">Administración de accesos Auth</div>
+  <div id="authSummary" style="margin:8px 0 12px"></div>
+  <div class="row" style="margin-bottom:10px">
+    <button class="sec" onclick="cargarResumenAuth()">Actualizar estado Auth</button>
+  </div>
   <div class="grid">
     <input id="targetEmail" type="email" placeholder="Correo del usuario autorizado">
     <input id="targetPassword" type="password" placeholder="Contraseña temporal (mín. 8)">
@@ -91,6 +95,7 @@ th,td{padding:7px;border-bottom:1px solid #e2e8f0;text-align:left;vertical-align
 const PROJECT_URL="https://uudvodiaizfarodjpetb.supabase.co";
 const PUBLISHABLE_KEY="sb_publishable_2hiwePKtqoo3_c_D5B9JuA_p38dPe3D";
 const API=PROJECT_URL+"/functions/v1/mapa-operativo-pilot";
+const AUTH_API=PROJECT_URL+"/functions/v1/auth-admin-pilot";
 const sb=supabase.createClient(PROJECT_URL,PUBLISHABLE_KEY);
 let lastRows=[];
 
@@ -166,6 +171,60 @@ async function apiPost(body){
   return d;
 }
 
+async function authApiGet(params){
+  const t=await token();
+  if(!t)throw new Error("Primero inicie sesión.");
+  const u=new URL(AUTH_API);
+  Object.entries(params).forEach(([k,v])=>{
+    if(v!==null&&v!==undefined&&String(v)!=="")u.searchParams.set(k,String(v));
+  });
+  const r=await fetch(u,{headers:{Authorization:"Bearer "+t,apikey:PUBLISHABLE_KEY}});
+  const text=await r.text();
+  let d;
+  try{d=JSON.parse(text)}catch(_){throw new Error(text||"Respuesta inválida")}
+  if(!r.ok||!d.ok)throw new Error(d.error||"Error de administración Auth");
+  return d;
+}
+
+async function authApiPost(body){
+  const t=await token();
+  if(!t)throw new Error("Primero inicie sesión.");
+  const r=await fetch(AUTH_API,{
+    method:"POST",
+    headers:{
+      Authorization:"Bearer "+t,
+      apikey:PUBLISHABLE_KEY,
+      "Content-Type":"application/json"
+    },
+    body:JSON.stringify(body)
+  });
+  const text=await r.text();
+  let d;
+  try{d=JSON.parse(text)}catch(_){throw new Error(text||"Respuesta inválida")}
+  if(!r.ok||!d.ok)throw new Error(d.error||"Error de administración Auth");
+  return d;
+}
+
+async function cargarResumenAuth(){
+  const box=document.getElementById("authSummary");
+  if(!box)return;
+  box.textContent="Consultando estado Auth...";
+  try{
+    const d=await authApiGet({accion:"resumenAuthMigracion"});
+    const r=d.resumen||{};
+    box.innerHTML=
+      '<span class="badge">Usuarios: '+esc(r.total)+'</span>'+
+      '<span class="badge">Activos: '+esc(r.activos)+'</span>'+
+      '<span class="badge">Auth vinculados: '+esc(r.authVinculados)+'</span>'+
+      '<span class="badge">Elegibles pendientes: '+esc(r.elegiblesPendientes)+'</span>'+
+      '<span class="badge">Sin correo: '+esc(r.sinCorreo)+'</span>'+
+      '<span class="badge">Correo inválido: '+esc(r.correoInvalido)+'</span>';
+  }catch(e){
+    box.className="err";
+    box.textContent=e.message;
+  }
+}
+
 async function crearAccesoControlado(){
   const email=document.getElementById("targetEmail").value.trim();
   const password=document.getElementById("targetPassword").value;
@@ -173,8 +232,8 @@ async function crearAccesoControlado(){
   box.className="";
   if(!email||!password){box.className="err";box.textContent="Ingrese correo y contraseña temporal.";return}
   try{
-    const d=await apiPost({
-      accion:"crearAccesoControlado",
+    const d=await authApiPost({
+      accion:"crearAccesoAuth",
       correoObjetivo:email,
       passwordTemporal:password
     });
@@ -203,7 +262,9 @@ async function contexto(){
       '<span class="badge">Alcance: '+esc(p.alcanceDatos)+'</span>'+
       '<span class="badge">VER: '+(p.ver?"Sí":"No")+'</span>';
     const admins=["JEFATURA","ADMIN","ADMINISTRADOR","JEFATURA GENERAL","JEFATURA OPERACIONES"];
-    document.getElementById("adminProvision").style.display=admins.includes(String(d.perfil||"").toUpperCase())?"block":"none";
+    const esAdmin=admins.includes(String(d.perfil||"").toUpperCase());
+    document.getElementById("adminProvision").style.display=esAdmin?"block":"none";
+    if(esAdmin) await cargarResumenAuth();
     state("Perfil, permisos y alcance validados.");
     dbg(d);
     return d;
