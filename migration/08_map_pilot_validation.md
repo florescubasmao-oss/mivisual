@@ -152,3 +152,23 @@ Estado:
 
 Observación UI:
 - la tabla de resultados requiere desplazamiento horizontal en pantallas angostas; no afecta exactitud ni seguridad y queda como mejora visual posterior.
+
+
+### Cierre de relación Pedido -> Orden para Mapa Operativo
+
+Revisión del código productivo `main`:
+- `MAPA_ORDENES` almacena el pedido en el campo `CODIGO_CLIENTE`.
+- `buscarRegistroMapaParaActa()` confirma que el vínculo del mapa usa `ordenId` y `codigoCliente` de la propia fila del Mapa.
+- Los respaldos hacia otras bases existentes corresponden a módulos como Actas/Actividad en Campo, no a la consulta base de Mapa Operativo.
+- El piloto PostgreSQL ya indexa y consulta `orden_id_norm`, `codigo_cliente_norm` y `numero_documento_norm`.
+
+Pruebas funcionales aprobadas:
+- Orden `3448347`
+- Pedido `2111725`
+- DNI `47791563`
+- los tres identificadores devolvieron la misma orden.
+
+Conclusión:
+- relación Pedido -> Orden del Mapa: CERRADA en PostgreSQL.
+- no se requiere dependencia legacy adicional para el módulo Mapa Operativo.
+- los fallback específicos de Actas/Actividad se migrarán con sus respectivos módulos.
