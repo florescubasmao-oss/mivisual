@@ -4,16 +4,16 @@ Fecha: 19/09/2026
 Rama: `migracion-supabase`  
 Estado: **LIVE_VALIDAR / SIN CUTOVER PRODUCTIVO**
 
-## Fuente productiva
+## Fuente productiva y reconciliación
 
-Hojas auditadas:
+Hojas productivas auditadas:
 
 - `SEGURIDAD_ATS`: 1 registro / 32 columnas.
 - `SEGURIDAD_PETAR`: 1 registro / 18 columnas.
 - `SEGURIDAD_FIRMAS`: 5 registros / 12 columnas.
 - `SEGURIDAD_FIRMA_SOLICITUDES`: 0 registros / 9 columnas.
 
-Reconciliación viva:
+Última reconciliación posterior al puerto PDF:
 
 - ATS: 1/1, 0 diferencias.
 - PETAR: 1/1, 0 diferencias.
@@ -22,14 +22,17 @@ Reconciliación viva:
 
 La app legacy continúa activa en Apps Script + Sheets + Drive.
 
-## Frontend vigente identificado
+## Código productivo recuperado
 
-La app productiva carga Seguridad mediante:
+El 19/09/2026 se recibió el `Código.gs` productivo completo.
 
-- `js/modulos_loader.js`
-- módulo actual: `js/seguridad_v443.js?v=V443-GUIA-SIN-PREMARCADO-FIX`
+Bloque identificado:
 
-Acciones legacy identificadas:
+- V437 Seguridad ATS/PETAR digital sobre V432.
+- frontend vigente: `js/seguridad_v443.js?v=V443-GUIA-SIN-PREMARCADO-FIX`.
+- PDF vigente: diseño compacto V442/V439.
+
+Acciones preservadas:
 
 - `obtenerContextoSeguridadV432`
 - `crearAtsDiaSeguridadV432`
@@ -43,9 +46,9 @@ Acciones legacy identificadas:
 - `resolverCambioFirmaSeguridadV432`
 - `reiniciarFirmaSeguridadV433`
 
-El backend V432 no está versionado en GitHub, respaldos grandes ni archivos Apps Script accesibles por Google Drive.
+El proyecto Apps Script contiene otros archivos `.gs` además de `Código.gs`. Antes del cutover se deben revisar los archivos relacionados que puedan redefinir o complementar Seguridad, especialmente `V490_SEGURIDAD_VTRGAR.gs`.
 
-## PostgreSQL implementado
+## PostgreSQL
 
 Tablas:
 
@@ -55,8 +58,9 @@ Tablas:
 - `seguridad_firmas_migracion`
 - `seguridad_firma_solicitudes_migracion`
 - `seguridad_eventos_migracion`
+- `seguridad_config_migracion`
 
-SQL:
+SQL versionado:
 
 - `091_seguridad_modelo_snapshot.sql`
 - `092_seguridad_import_historico.sql`
@@ -65,136 +69,168 @@ SQL:
 - `095_seguridad_transacciones_documento.sql`
 - `096_seguridad_firmas_transacciones.sql`
 - `097_seguridad_autocompletado_autorizador.sql`
+- `098_seguridad_alineacion_v437.sql`
+- `099_seguridad_contexto_v437_piloto.sql`
+- `100_seguridad_cierre_pdf_v442.sql`
 
-## Acceso preservado
+## Catálogo V437 recuperado
+
+Migrado desde el código productivo, sin inventar reglas:
+
+- 16 tareas ATS.
+- 8 opciones EPP ATS.
+- 11 opciones EPP PETAR.
+- 10 controles PETAR.
+- catálogo dinámico de herramientas desde `catalogo_herramientas_migracion`.
+
+Creación diaria preservada:
+
+- solo Técnico con permiso REGISTRAR.
+- un ATS por cuadrilla/día.
+- correlativo global ATS.
+- correlativo global PETAR.
+- hora inicial `07:45 AM`.
+- EPP por defecto sin `OTROS`.
+- primera tarea: `TRASLADO AL PUNTO DE TRABAJO`.
+- PETAR relacionado creado en la misma operación.
+- bloqueo transaccional de numeración mediante advisory lock.
+
+## Alcances y permisos
 
 - Técnico: su cuadrilla.
 - Supervisor: su sede.
-- Jefatura/Gerencia/Admin: Zona Norte.
-- Permisos derivados desde `app_permissions`.
+- Jefatura/Gerencia/Admin: alcance según `app_permissions`.
+- Guardado ATS usa permiso EDITAR.
+- Creación ATS usa permiso REGISTRAR.
+- Supervisor usa APROBAR.
+- Jefatura/Gerencia usa VALIDAR.
 
-## Lógica ATS/PETAR migrada
+## Flujo ATS/PETAR
 
-- Técnico edita únicamente BORRADOR / OBSERVADO.
-- Trabajo y lugar obligatorios.
-- EPP obligatorio.
-- Al menos una tarea.
-- Cada tarea requiere daño(s) y medida(s) de control.
-- PETAR exige CUMPLE / NO CUMPLE / NO APLICA en cada ítem.
-- Todo NO CUMPLE requiere observación.
-- Un NO CUMPLE crítico bloquea la autorización.
-- Aceptación técnica requiere firma digital activa.
-- Con una aceptación técnica Supervisor/Jefatura puede finalizar según V443.
-- Las aceptaciones faltantes se autocompletan bajo firma/responsabilidad del autorizador y quedan marcadas:
-  - `autocompletada=SI`
-  - `firmaOrigen=AUTORIZADOR`
-  - `autorizadaPor`
-  - `autorizadaNombre`
-  - `autorizadaPerfil`
-- OBSERVAR devuelve a corrección y limpia aceptaciones/firmas de aprobación para evitar firmas obsoletas.
-- RECHAZAR marca el documento como RECHAZADO.
-- AUTORIZAR / VALIDAR finaliza ATS y PETAR.
+Preservado:
 
-## Firma digital
+- BORRADOR / OBSERVADO editables por Técnico.
+- firma digital activa obligatoria para aceptación.
+- una aceptación técnica permite intervención de Supervisor/Jefatura según V443.
+- PETAR con NO CUMPLE crítico bloquea autorización.
+- checklist PETAR completo obligatorio al autorizar.
+- OBSERVAR devuelve a corrección.
+- RECHAZAR cierra como rechazado.
 
-Implementado:
+Autocompletado V437:
 
-- versionado de firma.
-- DNI 8–12 dígitos.
-- registro con GPS.
-- una sola firma activa.
-- V2+ requiere solicitud aprobada.
-- solicitud de cambio.
-- aprobación/rechazo por Jefatura.
-- aprobación desactiva firma anterior.
-- reinicio controlado para pruebas.
-- nuevas firmas se almacenan en bucket privado `mi-visual-evidencias`.
-- DB guarda referencia estable `storage://...`.
-- Edge Function entrega URL firmada temporal para visualizarla.
+1. Si el técnico faltante tiene firma activa, se usa su firma registrada.
+2. Si no tiene firma activa, se usa la firma del autorizador como suplencia.
+3. Se registra trazabilidad:
+   - `autocompletada=SI`
+   - `fuente=FIRMA_TECNICO_REGISTRADA` o `FIRMA_AUTORIZADOR_SUPLENCIA`
+   - `autorizadaPor`
+   - `autorizadaNombre`
+   - `autorizadaPerfil`
+   - `origen`
 
-Firmas históricas de Drive se conservaron sin alterar.
+## PDF V442
 
-## Pruebas con ROLLBACK
+Implementado en:
 
-Flujo completo:
+- `migration/supabase/functions/seguridad-pdf/index.ts`
+- Edge Function `seguridad-pdf`: ACTIVE, versión 2, JWT obligatorio.
 
-1. T1 acepta.
-2. Supervisor autoriza.
-3. T2 faltante se autocompleta con trazabilidad.
-4. ATS → FINALIZADO.
-5. PETAR → FINALIZADO.
+Características portadas:
 
-Resultado:
-- aceptaciones: 2/2.
-- autocompletada: 1.
-- firma Supervisor: presente.
-- registros persistidos de prueba: 0.
+- A4 horizontal.
+- encabezado corporativo.
+- correlativo de 6 dígitos.
+- datos ATS/PETAR.
+- EPP y herramientas.
+- matriz ATS con 11 riesgos.
+- medidas de control.
+- checklist PETAR.
+- firmas de técnicos.
+- trazabilidad de aceptación autocompletada.
+- firma de Supervisor/Jefatura.
+- archivos almacenados en bucket privado `mi-visual-evidencias`.
+- PostgreSQL conserva referencias estables `storage://...`.
+- frontend recibe URLs firmadas temporales.
 
-Cambio de firma:
-- solicitud temporal.
-- aprobación temporal por Jefatura.
-- firma desactivada dentro de transacción.
-- rollback restauró firma activa.
-- solicitudes persistidas: 0.
+Regla transaccional crítica preservada:
+
+1. `PREPARAR CIERRE` construye el snapshot final sin cerrar el registro.
+2. Edge Function genera y almacena ATS/PETAR PDF.
+3. `CONFIRMAR CIERRE` verifica `updated_at`.
+4. Solo entonces ATS/PETAR pasan a `FINALIZADO`.
+5. Si falla PDF o el documento cambia durante la generación, no se finaliza y los archivos nuevos se eliminan.
+
+También se conserva reparación de un `FINALIZADO` histórico sin PDF.
+
+## Pruebas realizadas
+
+Todas las pruebas de escritura SQL se ejecutaron con `ROLLBACK`.
+
+Validado:
+
+- creación ATS/PETAR diaria.
+- idempotencia de un ATS por cuadrilla/día.
+- correlativos.
+- tarea inicial.
+- catálogo completo.
+- aceptación técnica.
+- autorización Supervisor.
+- autocompletado de integrante faltante.
+- cambio de firma.
+- bloqueo de PETAR crítico.
+- cierre en dos fases con PDF obligatorio.
+- ATS y PETAR finalizados únicamente después de recibir referencias PDF.
+
+Residuos después de pruebas:
+
+- ATS PostgreSQL de prueba: 0.
+- PETAR PostgreSQL de prueba: 0.
 - eventos de prueba: 0.
-
-PETAR crítico:
-- caso temporal con NO CUMPLE crítico.
-- no se dejó ATS/PETAR de prueba.
-- regla bloqueante implementada en backend.
+- solicitudes de prueba: 0.
 
 ## Seguridad técnica
 
-- RLS activo en las 6 tablas.
+- RLS activo en las 7 tablas de Seguridad.
 - 0 privilegios directos para `anon` / `authenticated`.
-- funciones con `search_path=public`.
-- mutaciones solo mediante backend `service_role`.
-- Edge Function `seguridad-pilot`: ACTIVE, JWT obligatorio.
+- mutaciones únicamente mediante backend `service_role`.
+- `seguridad-pilot`: ACTIVE, versión 4, JWT obligatorio.
+- `seguridad-pdf`: ACTIVE, versión 2, JWT obligatorio.
 
 ## Piloto
 
 Backend:
 - `migration/supabase/functions/seguridad-pilot/index.ts`
+- `migration/supabase/functions/seguridad-pdf/index.ts`
 
 Frontend:
 - `migration/pilot/seguridad-pilot.html`
-- validación sintáctica JavaScript: OK.
+- JavaScript validado sintácticamente.
 
-La creación ATS diaria está bloqueada intencionalmente en el piloto.
+Funciones disponibles en piloto:
 
-## Pendientes bloqueantes para cierre total
+- generar ATS/PETAR del día.
+- abrir documento.
+- editar checklist PETAR.
+- guardar.
+- aceptar como Técnico.
+- observar/rechazar como Supervisor/Jefatura.
+- autorizar como Supervisor con PDF.
+- validar como Jefatura/Gerencia con PDF.
+- registrar firma.
+- solicitar/resolver cambio de firma.
+- abrir PDFs finalizados mediante URL temporal.
 
-### 1. Catálogo completo V432 para creación ATS diaria
+## Pendientes antes del cutover
 
-La base histórica solo permite recuperar una tarea real:
-- `TRASLADO AL PUNTO DE TRABAJO`.
-
-También se identificó el nombre legacy:
-- `REVISION DE UNIDAD, HERRAMIENTAS Y MATERIALES`.
-
-No se inventarán las demás tareas/riesgos/controles.
-
-Se necesita recuperar del Apps Script productivo el bloque que implementa:
-- `crearAtsDiaSeguridadV432`
-- catálogo de tareas.
-- plantilla inicial ATS/PETAR.
-
-### 2. Generación PDF final
-
-PostgreSQL devuelve `requierePdf=true` al finalizar.
-La generación del PDF ATS/PETAR debe portar exactamente la plantilla productiva V432 antes del cutover.
-
-## Cutover
-
-Antes de producción:
-
-1. Recuperar catálogo/creación V432.
-2. Portar PDF final.
-3. Probar usuario Técnico con Auth real.
-4. Probar Supervisor con Auth real.
-5. Probar Jefatura.
-6. Reconciliar nuevamente las 4 hojas.
-7. Confirmar 0 diferencias.
-8. Solo después cambiar la UI productiva.
+1. Probar flujo real con Auth:
+   - Técnico.
+   - Supervisor.
+   - Jefatura/Gerencia.
+2. Revisar archivos adicionales del mismo proyecto Apps Script que puedan contener redefiniciones o parches de Seguridad; prioridad:
+   - `V490_SEGURIDAD_VTRGAR.gs`.
+3. Reconciliación final de las 4 hojas inmediatamente antes del cambio de fuente.
+4. Confirmar visualmente un PDF generado por la Edge Function con datos reales de piloto.
+5. Solo después sustituir la ruta productiva del frontend.
 
 `main`, Apps Script, Sheets y Drive productivos permanecen sin cambios.
