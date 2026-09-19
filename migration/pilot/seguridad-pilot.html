@@ -1,0 +1,166 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>MI VISUAL · Seguridad ATS/PETAR · Piloto</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+:root{--navy:#0b2340;--blue:#0f6fff;--line:#e2e8f0;--muted:#64748b;--bg:#f3f6fa;--green:#15803d;--red:#b91c1c;--orange:#b45309}
+*{box-sizing:border-box}body{font-family:Arial,sans-serif;background:var(--navy);color:#102033;margin:0;padding:18px}
+.wrap{max-width:1180px;margin:auto}h1{color:#fff;margin:0 0 5px}.lead{color:#cbd5e1;margin:0 0 16px}
+.card{background:#fff;border-radius:16px;padding:16px;margin-bottom:14px;box-shadow:0 10px 30px #0003}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(205px,1fr));gap:10px}.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+input,select,button,textarea{padding:10px;border-radius:9px;border:1px solid #cbd5e1;font-size:14px}input,select,textarea{width:100%}
+button{border:0;background:var(--blue);color:#fff;font-weight:700;cursor:pointer}button.sec{background:#475569}button.good{background:var(--green)}button.warn{background:var(--orange)}button.danger{background:var(--red)}
+button:disabled{opacity:.5;cursor:not-allowed}.ok{color:var(--green)}.err{color:var(--red)}.muted{color:var(--muted)}
+.badge{display:inline-block;padding:4px 8px;border-radius:999px;background:#e2e8f0;margin:3px 4px 3px 0;font-size:12px}
+.warnbox{padding:10px;border-radius:10px;background:#fff7ed;color:#9a3412;margin:8px 0}.goodbox{padding:10px;border-radius:10px;background:#ecfdf5;color:#166534;margin:8px 0}
+.doc{border:1px solid var(--line);border-radius:12px;padding:12px;margin-top:10px}.doc table{width:100%;border-collapse:collapse;font-size:12px}.doc th,.doc td{border-bottom:1px solid var(--line);padding:7px;text-align:left;vertical-align:top}
+.canvas{width:100%;height:180px;border:2px dashed #94a3b8;border-radius:10px;background:#fff;touch-action:none}
+pre{white-space:pre-wrap;background:#f8fafc;padding:10px;border-radius:9px;max-height:300px;overflow:auto}.hidden{display:none!important}
+.sig{max-width:180px;max-height:70px;border:1px solid #e2e8f0;border-radius:6px;background:#fff}.tasks{display:grid;gap:7px}.task{padding:8px;border:1px solid var(--line);border-radius:9px;background:#f8fafc}
+@media(max-width:650px){body{padding:8px}}
+</style>
+</head>
+<body>
+<div class="wrap">
+<h1>MI VISUAL · Seguridad ATS / PETAR</h1>
+<p class="lead">Piloto PostgreSQL/Supabase · producción legacy permanece intacta</p>
+
+<div class="card">
+<h2>1. Acceso</h2>
+<div class="grid">
+<input id="email" type="email" autocomplete="username" placeholder="Correo">
+<input id="password" type="password" autocomplete="current-password" placeholder="Contraseña piloto">
+</div>
+<div class="row" style="margin-top:9px">
+<button onclick="login()">Iniciar sesión</button>
+<button class="danger" onclick="logout()">Cerrar sesión</button>
+</div>
+<div id="authmsg"></div><div id="perfil"></div>
+</div>
+
+<div class="card">
+<h2>2. Contexto de Seguridad</h2>
+<div class="row">
+<button onclick="cargarContexto()">Actualizar contexto</button>
+<button class="sec" onclick="abrirHistorico()">Abrir ATS histórico de prueba</button>
+</div>
+<div id="ctxmsg"></div>
+<div id="estadoCreacion"></div>
+<div id="contexto"></div>
+</div>
+
+<div class="card">
+<h2>3. Documento ATS / PETAR</h2>
+<div class="row">
+<input id="atsId" value="ATS-0CE1CE77-DAE" placeholder="ID ATS" style="max-width:320px">
+<button onclick="abrirDocumento()">Abrir documento</button>
+</div>
+<div id="documento"></div>
+</div>
+
+<div class="card">
+<h2>4. Firma digital</h2>
+<div id="firmaEstado"></div>
+<div id="firmaRegistro" class="hidden">
+<div class="grid"><input id="dniFirma" inputmode="numeric" maxlength="12" placeholder="DNI"></div>
+<canvas id="firmaCanvas" class="canvas" width="900" height="260"></canvas>
+<div class="row" style="margin-top:8px">
+<button class="sec" onclick="limpiarFirma()">Limpiar</button>
+<button class="good" onclick="guardarFirma()">Registrar firma piloto</button>
+</div>
+</div>
+<div id="firmaCambio" class="hidden">
+<textarea id="motivoFirma" rows="2" placeholder="Motivo para solicitar cambio de firma"></textarea>
+<button class="warn" onclick="solicitarCambioFirma()" style="margin-top:8px">Solicitar cambio</button>
+</div>
+<div id="firmamsg"></div>
+</div>
+
+<div class="card hidden" id="solicitudesCard">
+<h2>5. Solicitudes de firma</h2>
+<div id="solicitudes"></div>
+</div>
+
+<div class="card">
+<h2>Diagnóstico</h2>
+<pre id="debug">Sin consultas.</pre>
+</div>
+</div>
+
+<script>
+const PROJECT_URL="https://uudvodiaizfarodjpetb.supabase.co";
+const PUBLISHABLE_KEY="sb_publishable_2hiwePKtqoo3_c_D5B9JuA_p38dPe3D";
+const API=PROJECT_URL+"/functions/v1/seguridad-pilot";
+const sb=supabase.createClient(PROJECT_URL,PUBLISHABLE_KEY);
+let CTX=null,DOC=null,drawing=false,last={x:0,y:0};
+
+function esc(v){return String(v??"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]))}
+function dbg(v){document.getElementById("debug").textContent=typeof v==="string"?v:JSON.stringify(v,null,2)}
+function msg(id,t,ok=true){const e=document.getElementById(id);e.className=ok?"ok":"err";e.textContent=t}
+async function token(){const {data}=await sb.auth.getSession();return data.session?.access_token||""}
+async function api(data,method="POST"){
+ const t=await token();if(!t)throw Error("Primero inicie sesión.");
+ let r;
+ if(method==="GET"){const u=new URL(API);Object.entries(data||{}).forEach(([k,v])=>u.searchParams.set(k,String(v??"")));r=await fetch(u,{headers:{Authorization:"Bearer "+t,apikey:PUBLISHABLE_KEY}})}
+ else r=await fetch(API,{method:"POST",headers:{Authorization:"Bearer "+t,apikey:PUBLISHABLE_KEY,"Content-Type":"application/json"},body:JSON.stringify(data||{})});
+ const tx=await r.text();let d;try{d=JSON.parse(tx)}catch(_){throw Error(tx||"Respuesta inválida")}
+ if(!r.ok||!d.ok)throw Error(d.error||"Error Seguridad");return d;
+}
+async function login(){
+ const email=document.getElementById("email").value.trim(),password=document.getElementById("password").value;
+ const {error}=await sb.auth.signInWithPassword({email,password});if(error)return msg("authmsg",error.message,false);
+ msg("authmsg","Sesión iniciada.");await cargarContexto();
+}
+async function logout(){await sb.auth.signOut();CTX=null;DOC=null;msg("authmsg","Sesión cerrada.");document.getElementById("perfil").innerHTML="";document.getElementById("contexto").innerHTML="";document.getElementById("documento").innerHTML=""}
+
+function firmaHtml(f){if(!f?.activa)return '<span class="badge">SIN FIRMA</span>';return '<span class="badge">FIRMA V'+esc(f.version)+'</span>'+(f.url?'<div><img class="sig" src="'+esc(f.url)+'"></div>':'')}
+function renderContexto(d){
+ CTX=d;const u=d.usuario||{},f=d.firma||{};
+ document.getElementById("perfil").innerHTML='<span class="badge">'+esc(u.usuario)+'</span><span class="badge">'+esc(u.perfil)+'</span><span class="badge">'+esc(u.sede)+'</span><span class="badge">Alcance: '+esc(u.alcanceDatos)+'</span>';
+ document.getElementById("estadoCreacion").innerHTML=d.crearHabilitado?'<div class="goodbox">Creación ATS habilitada.</div>':'<div class="warnbox"><b>Generar ATS diario aún bloqueado en piloto.</b><br>'+esc(d.crearBloqueadoMotivo||"")+'</div>';
+ const hoy=d.hoy?.ats;
+ document.getElementById("contexto").innerHTML='<div><b>Firma:</b> '+firmaHtml(f)+'</div>'+
+   '<div style="margin-top:8px"><b>ATS de hoy:</b> '+(hoy?esc(hoy.numero+" · "+hoy.estado):"Sin ATS hoy")+'</div>'+
+   '<div style="margin-top:8px"><b>Pendientes:</b> '+(d.pendientes?.length||0)+' · <b>Seguimiento:</b> '+(d.seguimiento?.length||0)+'</div>';
+ document.getElementById("firmaEstado").innerHTML=firmaHtml(f);
+ document.getElementById("firmaRegistro").classList.toggle("hidden",!!f.activa);
+ document.getElementById("firmaCambio").classList.toggle("hidden",!f.activa);
+ const sols=d.solicitudesFirma||[];document.getElementById("solicitudesCard").classList.toggle("hidden",!sols.length);
+ document.getElementById("solicitudes").innerHTML=sols.map(s=>'<div class="doc"><b>'+esc(s.nombre)+'</b> · '+esc(s.usuario)+'<br><small>'+esc(s.motivo)+'</small><div class="row" style="margin-top:6px"><button class="good" onclick="resolverFirma(\''+esc(s.id)+'\',\'APROBADO\')">Aprobar</button><button class="danger" onclick="resolverFirma(\''+esc(s.id)+'\',\'RECHAZADO\')">Rechazar</button></div></div>').join("");
+}
+async function cargarContexto(){try{msg("ctxmsg","Cargando...");const d=await api({accion:"obtenerContextoSeguridadV432"},"GET");renderContexto(d);msg("ctxmsg","Contexto cargado desde PostgreSQL.");dbg(d)}catch(e){msg("ctxmsg",e.message,false);dbg(String(e))}}
+function abrirHistorico(){document.getElementById("atsId").value="ATS-0CE1CE77-DAE";abrirDocumento()}
+async function abrirDocumento(){try{const d=await api({accion:"obtenerDocumentoSeguridadV432",id:document.getElementById("atsId").value.trim()},"GET");DOC=d;renderDocumento(d);dbg(d)}catch(e){document.getElementById("documento").innerHTML='<div class="err">'+esc(e.message)+'</div>';dbg(String(e))}}
+function renderDocumento(d){
+ const a=d.ats||{},p=d.petar;
+ const tasks=(a.tareas||[]).map(t=>'<div class="task"><b>'+esc(t.tarea)+'</b><br>Daños: '+esc((t.danos||[]).join(", "))+'<br>Controles: '+esc(t.controles||"")+'</div>').join("");
+ let h='<div class="doc"><h3>ATS N° '+esc(a.numero)+' · '+esc(a.estado)+'</h3><table>'+
+ '<tr><th>Fecha</th><td>'+esc(a.fecha)+'</td><th>Sede</th><td>'+esc(a.sede)+'</td></tr>'+
+ '<tr><th>Cuadrilla</th><td colspan="3">'+esc(a.cuadrilla)+'</td></tr>'+
+ '<tr><th>Trabajo</th><td>'+esc(a.trabajo)+'</td><th>Lugar</th><td>'+esc(a.lugarTrabajo)+'</td></tr>'+
+ '<tr><th>Aceptaciones</th><td>'+esc((a.aceptaciones||[]).length)+' / '+esc((a.integrantes||[]).length)+'</td><th>PETAR</th><td>'+esc(a.petarId||"—")+'</td></tr></table>'+
+ '<h4>Tareas</h4><div class="tasks">'+tasks+'</div></div>';
+ if(p){h+='<div class="doc"><h3>PETAR N° '+esc(p.numero)+' · '+esc(p.estado)+'</h3>'+(p.noCumpleCritico?'<div class="warnbox"><b>NO CUMPLE crítico</b></div>':'')+
+ '<table><tr><th>#</th><th>Verificación</th><th>Estado</th></tr>'+(p.checklist||[]).map((x,i)=>'<tr><td>'+(i+1)+'</td><td>'+esc(x.texto)+(x.critico?' <b>(CRÍTICO)</b>':'')+'</td><td>'+esc(x.estado||"PENDIENTE")+'</td></tr>').join("")+'</table></div>'}
+ document.getElementById("documento").innerHTML=h;
+}
+
+function setupCanvas(){
+ const c=document.getElementById("firmaCanvas"),ctx=c.getContext("2d");ctx.lineWidth=4;ctx.lineCap="round";ctx.strokeStyle="#111";
+ function pos(ev){const r=c.getBoundingClientRect(),p=ev.touches?ev.touches[0]:ev;return{x:(p.clientX-r.left)*(c.width/r.width),y:(p.clientY-r.top)*(c.height/r.height)}}
+ const start=e=>{e.preventDefault();drawing=true;last=pos(e)},move=e=>{if(!drawing)return;e.preventDefault();const p=pos(e);ctx.beginPath();ctx.moveTo(last.x,last.y);ctx.lineTo(p.x,p.y);ctx.stroke();last=p},end=()=>drawing=false;
+ c.addEventListener("mousedown",start);c.addEventListener("mousemove",move);window.addEventListener("mouseup",end);c.addEventListener("touchstart",start,{passive:false});c.addEventListener("touchmove",move,{passive:false});c.addEventListener("touchend",end);
+}
+function limpiarFirma(){const c=document.getElementById("firmaCanvas");c.getContext("2d").clearRect(0,0,c.width,c.height)}
+function geo(){return new Promise(r=>{if(!navigator.geolocation)return r("");navigator.geolocation.getCurrentPosition(p=>r(p.coords.latitude.toFixed(6)+","+p.coords.longitude.toFixed(6)),()=>r(""),{enableHighAccuracy:true,timeout:5000,maximumAge:120000})})}
+async function guardarFirma(){try{const c=document.getElementById("firmaCanvas"),b64=c.toDataURL("image/png").split(",")[1],gps=await geo();const d=await api({accion:"registrarFirmaSeguridadV432",dni:document.getElementById("dniFirma").value,gps,firmaBase64:b64});msg("firmamsg","Firma registrada.");dbg(d);await cargarContexto()}catch(e){msg("firmamsg",e.message,false);dbg(String(e))}}
+async function solicitarCambioFirma(){try{const d=await api({accion:"solicitarCambioFirmaSeguridadV432",motivo:document.getElementById("motivoFirma").value});msg("firmamsg","Solicitud enviada.");dbg(d);await cargarContexto()}catch(e){msg("firmamsg",e.message,false)}}
+async function resolverFirma(id,resultado){try{const d=await api({accion:"resolverCambioFirmaSeguridadV432",id,resultado});dbg(d);await cargarContexto()}catch(e){msg("firmamsg",e.message,false)}}
+
+setupCanvas();
+sb.auth.getSession().then(async({data})=>{if(data.session){msg("authmsg","Sesión piloto activa.");await cargarContexto()}});
+</script>
+</body></html>
