@@ -220,3 +220,25 @@ Estado: CERRADO EN MIGRACIÓN / SIN CUTOVER PRODUCTIVO
 - Setiembre: 244 / 153 = 62.70%.
 - Conciliación setiembre por 33 cuadrillas: diferencia 0.
 - Documento: migration/12_recableado_validation.md.
+
+
+## Bonos Supervisores — BACKEND VALIDADO — 19/09/2026
+
+Estado: **BACKEND CERRADO / API PILOTO DESPLEGADA / SIN CUTOVER PRODUCTIVO**
+
+- 8 asignaciones históricas migradas.
+- 3 evaluaciones de liderazgo migradas.
+- 2 configuraciones históricas migradas.
+- 0 registros de satisfacción legacy.
+- 3 validaciones de actas migradas.
+- 56 filas históricas de SLA preservadas.
+- 28 parámetros SLA vigentes por período Jul–Sep.
+- Capa editable SLA PostgreSQL validada sin alterar históricos.
+- Cache operativo: Jul 24 / Ago 28 / Sep 33 cuadrillas.
+- Lectura Jefatura 4 supervisores: ~55–184 ms.
+- Refresco controlado setiembre: ~4.8 s.
+- Escrituras evaluación/satisfacción/actas/configuración/SLA probadas con ROLLBACK.
+- Datos de prueba persistentes: 0.
+- Edge Function `bonos-supervisores-pilot`: ACTIVE, JWT obligatorio.
+- Documento: `migration/22_bono_supervisores_validation.md`.
+- `main`, Apps Script y Google Sheets productivos: SIN CAMBIOS.
