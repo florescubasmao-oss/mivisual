@@ -242,3 +242,20 @@ Despliegue:
 - No se modificaron grants ni roles, ni módulos ajenos. Avisos globales preexistentes de otros módulos quedan fuera de este cambio.
 
 Límite verificado para Auth real: 64 Técnicos activos, 2 usuarios Almacén y 1 Jefatura Almacén; ninguno tiene auth_user_id vinculado. No se crearon cuentas ni se enviaron invitaciones. Quedan pendientes la vinculación autorizada de cuentas, pruebas Auth reales, PDF real, prueba concurrente con sesiones independientes, integración visual y resync final. LIVE_VALIDAR no significa autorización de cutover.
+
+
+## Continuación — interfaz piloto, 19/09/2026
+
+Commit de interfaz: `2b2670226c7b86261705003c931116a910b8f3ba`.
+
+- Formulario dinámico de 1 a 8 equipos; exige serie y MAC y rechaza series repetidas.
+- Selector de técnico desde catálogo y creación de solicitud por Almacén.
+- Completar solicitud existente como Técnico por ID, usando la acción y permisos existentes del backend.
+- Identificador de recepción creado antes del envío y conservado en sessionStorage por usuario y solicitud. Reintentar tras pérdida de conexión conserva el identificador.
+- Nueva recepción requiere verificar la operación anterior confirmada o su cargo GENERADO; no se rota automáticamente un intento pendiente.
+- Corrección de la constante URL que ocultaba el constructor nativo URL y rompía solicitudes GET (catálogos, consultas y verificación).
+- Bloqueo local de envíos simultáneos para los nuevos flujos y recepción.
+
+Verificación ejecutada: JavaScript cargado en VM Node con DOM/API simulados; cuatro casos aprobados: pérdida de conexión y reintento con mismo ID, rotación tras confirmación, payload de creación por Almacén y payload de completado por Técnico. No se ejecutaron escrituras reales ni pruebas Auth/Storage mediante estas simulaciones. No equivale a validación visual en navegador.
+
+Continúan pendientes: cuentas Auth vinculadas, prueba real por perfiles, generación y revisión de PDF en Storage privado, concurrencia real, integración del menú final y resync antes del cutover. No se modificaron main, Apps Script, Sheets, Drive ni la configuración productiva.
