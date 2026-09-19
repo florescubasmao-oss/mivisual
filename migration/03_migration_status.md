@@ -103,7 +103,7 @@ Validado con Auth real JEFZNORTE:
 - main / Apps Script productivo: SIN CAMBIOS
 
 Pendiente para cierre total del piloto:
-- validar alcance real de SUPERVISOR por cuadrillas
+- validar alcance real de SUPERVISOR por cuadrillas: APROBADO (SUPCHICLAYO 841/841)
 - prueba móvil
 - definir tratamiento de calidad de datos CTO con sufijo `Latitud`
 - resolver relación secundaria legacy de pedido antes del corte definitivo
