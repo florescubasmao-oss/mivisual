@@ -107,12 +107,18 @@ async function hydrateSignatures(admin:any, value:any):Promise<any> {
   }
   if(value && typeof value==="object") {
     const out:any={};
-    for(const [k,v] of Object.entries(value)) out[k]=await hydrateSignatures(admin,v);
-    if(typeof out.url==="string" && out.url.startsWith(`storage://${BUCKET}/`)) {
-      out.storageRef=out.url;
-      out.url=await signOne(admin,out.url);
+    for(const [k,v] of Object.entries(value)) {
+      if(typeof v==="string" && v.startsWith(`storage://${BUCKET}/`)) {
+        out[k+"StorageRef"]=v;
+        out[k]=await signOne(admin,v);
+      } else {
+        out[k]=await hydrateSignatures(admin,v);
+      }
     }
     return out;
+  }
+  if(typeof value==="string" && value.startsWith(`storage://${BUCKET}/`)) {
+    return await signOne(admin,value);
   }
   return value;
 }
