@@ -227,10 +227,15 @@ Funciones disponibles en piloto:
    - Técnico.
    - Supervisor.
    - Jefatura/Gerencia.
-2. Revisar archivos adicionales del mismo proyecto Apps Script que puedan contener redefiniciones o parches de Seguridad; prioridad:
-   - `V490_SEGURIDAD_VTRGAR.gs`.
-3. Reconciliación final de las 4 hojas inmediatamente antes del cambio de fuente.
-4. Confirmar visualmente un PDF generado por la Edge Function con datos reales de piloto.
-5. Solo después sustituir la ruta productiva del frontend.
+2. Reconciliación final de las 4 hojas inmediatamente antes del cambio de fuente.
+3. Confirmar visualmente un PDF generado por la Edge Function con datos reales de piloto.
+4. Solo después sustituir la ruta productiva del frontend.
+
+### Archivos posteriores revisados
+
+- `V490_SEGURIDAD_VTRGAR.gs`: no redefine ATS/PETAR; endurece exclusivamente roles de Validación Técnica GAR/VTR. La regla ya fue trasladada a `validacion-tecnica-pilot` v2.
+- `V493_RANKING_VTRGAR_SOLO_PROPIAS.gs`: no redefine ATS/PETAR; afecta únicamente el componente VTR/GAR usado por Ranking.
+- `V496_CONTINUIDAD_CUADRILLAS.gs`: no reescribe históricos y actúa sobre continuidad de identidad, Ranking y Dashboard.
+- `V497_SINCRONIZACION_WIN_COMPLETA.gs`: no redefine ATS/PETAR; gobierna publicación WIN/Producción/Efectividad/Recableado/VTR-GAR.
 
 `main`, Apps Script, Sheets y Drive productivos permanecen sin cambios.
