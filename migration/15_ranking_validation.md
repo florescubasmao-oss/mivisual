@@ -108,3 +108,33 @@ Después: **33 cuadrillas únicas**.
 - Selector de período.
 - Vista de detalle por indicador.
 - Mantener la configuración de pesos administrable con control de permisos.
+
+
+## Regla V493 — VTR/GAR SOLO PROPIAS en Ranking
+
+Se recuperó y portó el parche productivo `V493-RANKING-VTRGAR-SOLO-PROPIAS-20260826`.
+
+Regla:
+
+- El indicador general POR VTR/GAR y Dashboard NO cambian.
+- Ranking penaliza únicamente incidencias VTR/GAR propias.
+- Propia = cuadrilla responsable/origen igual a cuadrilla ejecutora.
+- CONFIRMADO / REASIGNADO son estados contabilizables.
+- Asignada/Reasignada a otra cuadrilla no penaliza Ranking.
+- BONO / NO BONO no altera esta clasificación.
+- PENDIENTE y ANULADO no penalizan.
+
+Implementación PostgreSQL:
+
+- `101_ranking_vtrgar_solo_propias_v493.sql`
+- nueva vista `mv_ranking_vtr_gar_propias_v493`.
+- `mv_ranking_componentes_migracion` usa esa vista solo para el componente VTR/GAR del Ranking.
+- `mv_vtr_gar_indicador_migracion` permanece intacta para Dashboard/indicador general.
+
+Validación al 19/09/2026:
+
+- Setiembre: 33 cuadrillas.
+- Diferencias entre indicador general y V493 en setiembre: 0, porque las 9 incidencias confirmadas actuales son propias.
+- Histórico detectado: julio tiene 6 incidencias asignadas/reasignadas de 42 confirmadas; agosto 10 de 45. Estos períodos siguen protegidos por snapshot y no se recalculan.
+
+Commit: `ebc49cb478aaeb160cffe365e6abfe2dd6603136`.
