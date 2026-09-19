@@ -111,3 +111,25 @@ Prueba funcional con sesión Auth real:
 Estado:
 - filtro período + sede: APROBADO
 - `ultimaActualizacionTexto`: corregido y validado como `18/09/2026 07:05`
+
+
+### Validación de alcance SUPERVISOR — SUPCHICLAYO
+
+Prueba funcional con sesión Auth real:
+- usuario: `SUPCHICLAYO`
+- perfil: `SUPERVISOR`
+- sede: `CHICLAYO`
+- nivel: `SEDE`
+- alcance: `SUPERVISOR / CUADRILLAS`
+- permiso VER: `true`
+- cuadrillas asignadas esperadas: **15**
+- período probado: `2026-09`
+- sede seleccionada en UI: `Todas las sedes`
+- resultado esperado por restricción backend: **841**
+- resultado devuelto por el piloto: **841**
+- coincidencia: **100%**
+
+Conclusión:
+- la restricción por supervisor funciona en backend aunque la UI solicite "Todas las sedes"
+- el supervisor no recibe el universo completo de Zona Norte
+- control de alcance por cuadrillas: APROBADO
