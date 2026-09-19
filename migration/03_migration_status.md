@@ -207,3 +207,16 @@ Estado: **CERRADO EN MIGRACIÓN / SIN CUTOVER PRODUCTIVO**
 - Reprogramadas: 240 / 240.
 - Partner solo excluye reservas pendientes.
 - Documento: migration/11_efectividad_validation.md.
+
+
+## Recableado — BACKEND VALIDADO
+
+Estado: CERRADO EN MIGRACIÓN / SIN CUTOVER PRODUCTIVO
+
+- Snapshot PORCENTAJE REC: 83 / 83 filas.
+- Regla V487 portada a PostgreSQL.
+- Julio: 453 / 273 = 60.26%, protegido.
+- Agosto: 445 / 290 = 65.17%, protegido.
+- Setiembre: 244 / 153 = 62.70%.
+- Conciliación setiembre por 33 cuadrillas: diferencia 0.
+- Documento: migration/12_recableado_validation.md.
