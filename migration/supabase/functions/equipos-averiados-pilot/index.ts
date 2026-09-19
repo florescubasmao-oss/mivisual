@@ -1,7 +1,7 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { PDFDocument, StandardFonts } from "https://esm.sh/pdf-lib@1.17.1";
 
-const VERSION="V1-EQUIPOS-AVERIADOS-V399-V537-PILOT-20260919";
+const VERSION="V2-EQUIPOS-AVERIADOS-V399-V537-PILOT-20260919";
 const BUCKET="mi-visual-evidencias";
 const TIPOS=["ONT HUAWEI","ONT ZTE","MESH HUAWEI","MESH ZTE","WINBOX","TELEFONO"];
 const corsHeaders={
@@ -242,7 +242,11 @@ Deno.serve(async(req:Request)=>{
     if(a==="verificarRecepcionEquiposAveriadosV399"){
       if(!puedeGestionar(ctx.u.perfil))throw new Error("Solo Responsable o Jefatura de Almacén puede verificar la recepción.");
       const sid=requestId(d.solicitudId||d.solicitud_id);
-      const res=await rpc(ctx.admin,"mv_ea_verificar_recepcion_v399",{p_id:txt(d.id||d.idSolicitud),p_solicitud_id:sid});
+      const id=txt(d.id||d.idSolicitud);
+      const {data:sol,error:solError}=await ctx.admin.from("equipos_averiados_solicitudes_migracion").select("id,sede").eq("id",id).maybeSingle();
+      if(solError||!sol)throw new Error("No se encontró la solicitud de equipos averiados.");
+      if(esResponsable(ctx.u.perfil)&&norm(sol.sede)!==norm(ctx.u.sede))throw new Error("Sin acceso a solicitudes de otra sede.");
+      const res=await rpc(ctx.admin,"mv_ea_verificar_recepcion_v399",{p_id:id,p_solicitud_id:sid});
       if(res?.cargo?.linkPdf)res.cargo.linkPdf=await signed(ctx.admin,res.cargo.linkPdf);
       return json({...res,version:VERSION,fuente:"POSTGRESQL PILOTO"});
     }

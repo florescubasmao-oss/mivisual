@@ -214,3 +214,31 @@ Incluye:
 6. Integración visual final en la nueva app.
 
 Apps Script, Google Sheets, Drive y `main` continúan sin cambios.
+
+## Ampliación de cierre — 19/09/2026, piloto v2
+
+Se reprodujo y corrigió un reintento tardío de finalización que reaplicaba la recepción después de la reversa de Jefatura. Un cargo GENERADO ahora se devuelve sin reescribir solicitud ni historial. El mismo identificador no se puede asociar a otra solicitud. Mientras existe un cargo PENDIENTE_PDF, se exige recuperar esa operación antes de iniciar otra recepción, editar equipos o revertir.
+
+La verificación API valida la sede del Responsable de Almacén antes de consultar el cargo. La RPC vincula cargo e ID de solicitud.
+
+Pruebas ejecutadas sobre las funciones desplegadas, dentro de BEGIN/ROLLBACK:
+- 7/7: Almacén crea; Técnico completa; recepción parcial; recepción total; reintento conserva cargo; reversa conserva cargos; finalización tardía conserva reversa.
+- 6/6: identificador ligado a solicitud; verificación no entrega cargo ajeno; bloqueo de segunda recepción con PDF pendiente; bloqueo de edición durante recepción; recuperación del mismo PDF pendiente; reintento histórico sin finalización.
+- 3/3 pruebas de handler con dependencias simuladas: Almacén de otra sede recibe 403 sin RPC; misma sede y Jefatura reciben 200. Estas pruebas NO sustituyen Auth real.
+- 0 solicitudes de ensayo y 0 cargos de ensayo persistentes.
+- No se cargaron PDFs de ensayo a Storage. Las rutas qa/*.pdf de las pruebas SQL son referencias simuladas y se revierten.
+
+Conciliación nueva, posterior a las pruebas:
+- Solicitudes: 101/101, 32 columnas, 3.232 celdas, 0 diferencias.
+- Cargos: 90/90, 18 columnas, 1.620 celdas, 0 diferencias.
+- JSON comparado por contenido, fechas/horas por valor; se normalizó el cero inicial de la hora.
+- Histórico PostgreSQL íntegro, incluidos metadatos, sin cambios tras las pruebas.
+
+Despliegue:
+- equipos-averiados-pilot ACTIVE v2, verify_jwt=true.
+- Migración equipos_averiados_reintentos_seguros.
+- Helpers EA con search_path explícito.
+- El asesor conserva solo avisos informativos EA de RLS sin políticas: el acceso directo está revocado y el backend service_role es la vía de acceso. [Referencia Supabase](https://supabase.com/docs/guides/database/database-linter?lint=0008_rls_enabled_no_policy).
+- No se modificaron grants ni roles, ni módulos ajenos. Avisos globales preexistentes de otros módulos quedan fuera de este cambio.
+
+Límite verificado para Auth real: 64 Técnicos activos, 2 usuarios Almacén y 1 Jefatura Almacén; ninguno tiene auth_user_id vinculado. No se crearon cuentas ni se enviaron invitaciones. Quedan pendientes la vinculación autorizada de cuentas, pruebas Auth reales, PDF real, prueba concurrente con sesiones independientes, integración visual y resync final. LIVE_VALIDAR no significa autorización de cutover.
