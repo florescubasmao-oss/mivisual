@@ -1,0 +1,410 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>MI VISUAL · Bonos Supervisores · Piloto</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+:root{color-scheme:light;--navy:#0b2340;--blue:#0f6fff;--line:#e2e8f0;--muted:#64748b;--bg:#f3f6fa}
+*{box-sizing:border-box}
+body{font-family:Arial,sans-serif;background:var(--navy);color:#102033;margin:0;padding:22px}
+.wrap{max-width:1280px;margin:auto}
+h1{color:#fff;margin:0 0 6px}.lead{color:#cbd5e1;margin:0 0 18px}
+.card{background:#fff;border-radius:18px;padding:18px;margin-bottom:16px;box-shadow:0 12px 35px #0003}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(205px,1fr));gap:11px}
+.row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+input,select,button,textarea{padding:10px;border-radius:10px;border:1px solid #cbd5e1;font-size:14px}
+input,select,textarea{width:100%;background:#fff}
+button{background:var(--blue);color:#fff;border:0;font-weight:700;cursor:pointer}
+button.sec{background:#475569}button.good{background:#15803d}button.warn{background:#b45309}button.danger{background:#b91c1c}
+button:disabled{opacity:.5;cursor:not-allowed}
+.ok{color:#15803d}.err{color:#b91c1c}.warntext{color:#b45309}.muted{color:var(--muted)}
+.badge{display:inline-block;padding:4px 8px;border-radius:999px;background:#e2e8f0;margin:3px 6px 3px 0;font-size:12px}
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(145px,1fr));gap:10px;margin:12px 0}
+.kpi{padding:12px;background:var(--bg);border-radius:12px}.kpi b{display:block;font-size:20px;margin-top:4px}
+.supervisor{border:1px solid var(--line);border-radius:14px;padding:14px;margin:12px 0}
+.supervisor h3{margin:0 0 8px}
+table{width:100%;border-collapse:collapse;font-size:12px}
+th,td{padding:8px;border-bottom:1px solid var(--line);text-align:left;vertical-align:top}
+th{background:#f8fafc;position:sticky;top:0}
+.status{font-weight:700}.active{color:#15803d}.pending{color:#b45309}.inactive{color:#b91c1c}
+details{margin-top:10px}summary{cursor:pointer;font-weight:700}
+pre{white-space:pre-wrap;background:#f8fafc;padding:12px;border-radius:10px;max-height:320px;overflow:auto}
+.hidden{display:none!important}
+.tabs{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px}.tabs button{background:#e2e8f0;color:#102033}.tabs button.on{background:var(--blue);color:#fff}
+.panel{border-top:1px solid var(--line);padding-top:14px;margin-top:14px}
+.question{display:grid;grid-template-columns:1fr 160px;gap:10px;align-items:center;padding:7px 0;border-bottom:1px solid #f1f5f9}
+.sla-wrap{max-height:430px;overflow:auto;border:1px solid var(--line);border-radius:10px}
+.small{font-size:12px}
+@media(max-width:700px){body{padding:10px}.question{grid-template-columns:1fr}th,td{white-space:nowrap}}
+</style>
+</head>
+<body>
+<div class="wrap">
+<h1>MI VISUAL · Bonos Supervisores</h1>
+<p class="lead">Piloto Supabase/PostgreSQL · aislado de producción</p>
+
+<div class="card">
+  <h2>1. Acceso</h2>
+  <p class="muted">Usa el acceso Auth del piloto. Esta pantalla no modifica Google Sheets ni Apps Script.</p>
+  <div class="grid">
+    <input id="email" type="email" autocomplete="username" placeholder="Correo">
+    <input id="password" type="password" autocomplete="current-password" placeholder="Contraseña de prueba">
+  </div>
+  <div class="row" style="margin-top:10px">
+    <button onclick="login()">Iniciar sesión</button>
+    <button class="danger" onclick="logout()">Cerrar sesión</button>
+  </div>
+  <div id="authmsg" style="margin-top:9px"></div>
+  <div id="perfil"></div>
+</div>
+
+<div class="card">
+  <h2>2. Bonos por período</h2>
+  <div class="row">
+    <select id="periodo" style="max-width:190px">
+      <option value="2026-09">2026-09</option>
+      <option value="2026-08">2026-08</option>
+      <option value="2026-07">2026-07</option>
+    </select>
+    <button onclick="cargarBonos()">Cargar bonos</button>
+    <button class="sec" onclick="estadoCache()">Estado de datos</button>
+    <button class="warn" id="btnRefresh" onclick="refrescarPeriodo()">Forzar actualización</button>
+  </div>
+  <div id="estado" style="margin-top:9px"></div>
+  <div id="cache"></div>
+  <div id="resumen"></div>
+  <div id="bonos"></div>
+</div>
+
+<div class="card hidden" id="jefatura">
+  <h2>3. Controles de Jefatura</h2>
+  <div class="tabs">
+    <button class="on" data-tab="tabEval" onclick="tab(this)">Liderazgo</button>
+    <button data-tab="tabSat" onclick="tab(this)">Satisfacción</button>
+    <button data-tab="tabActas" onclick="tab(this)">Actas</button>
+    <button data-tab="tabConfig" onclick="tab(this)">Configuración</button>
+    <button data-tab="tabSla" onclick="tab(this)">SLA WIN</button>
+  </div>
+
+  <div id="tabEval" class="panel">
+    <div class="grid">
+      <select id="evalSupervisor"></select>
+    </div>
+    <div id="preguntas" style="margin-top:10px"></div>
+    <div class="row" style="margin-top:10px">
+      <button class="good" onclick="guardarEvaluacion()">Guardar evaluación</button>
+    </div>
+    <div id="evalMsg"></div>
+  </div>
+
+  <div id="tabSat" class="panel hidden">
+    <div class="grid">
+      <select id="satSupervisor"></select>
+      <input id="llamados" type="number" min="0" step="1" placeholder="Clientes llamados">
+      <input id="conformes" type="number" min="0" step="1" placeholder="Conformes">
+      <input id="noConformes" type="number" min="0" step="1" placeholder="No conformes">
+    </div>
+    <textarea id="satObs" rows="2" placeholder="Observación opcional" style="margin-top:10px"></textarea>
+    <div class="row" style="margin-top:10px">
+      <button class="good" onclick="guardarSatisfaccion()">Guardar satisfacción</button>
+    </div>
+    <div id="satMsg"></div>
+  </div>
+
+  <div id="tabActas" class="panel hidden">
+    <div class="grid">
+      <select id="actasSupervisor"></select>
+      <select id="actasRespuesta"><option value="SI">Sí, sin pendientes</option><option value="NO">No, tiene pendientes</option></select>
+    </div>
+    <div class="row" style="margin-top:10px">
+      <button class="good" onclick="guardarActas()">Guardar validación de actas</button>
+    </div>
+    <div id="actasMsg"></div>
+  </div>
+
+  <div id="tabConfig" class="panel hidden">
+    <div class="grid">
+      <input id="montoTotal" type="number" min="1" step="0.01" placeholder="Bono máximo">
+    </div>
+    <p class="small muted">Los niveles/porcentajes actuales se conservan si no los modificas. Esta pantalla piloto permite validar el guardado del monto y la configuración vigente.</p>
+    <div id="configActual"></div>
+    <div class="row" style="margin-top:10px">
+      <button class="good" onclick="guardarConfiguracion()">Guardar configuración</button>
+    </div>
+    <div id="configMsg"></div>
+  </div>
+
+  <div id="tabSla" class="panel hidden">
+    <p class="muted small">Edición PostgreSQL. El histórico legacy queda protegido; los cambios se aplican desde el período seleccionado.</p>
+    <div class="sla-wrap"><table id="tablaSla"></table></div>
+    <div class="row" style="margin-top:10px">
+      <button class="good" onclick="guardarSla()">Guardar SLA WIN</button>
+    </div>
+    <div id="slaMsg"></div>
+  </div>
+</div>
+
+<div class="card">
+  <h2>Diagnóstico</h2>
+  <pre id="debug">Sin consultas.</pre>
+</div>
+</div>
+
+<script>
+const PROJECT_URL="https://uudvodiaizfarodjpetb.supabase.co";
+const PUBLISHABLE_KEY="sb_publishable_2hiwePKtqoo3_c_D5B9JuA_p38dPe3D";
+const BONO_API=PROJECT_URL+"/functions/v1/bonos-supervisores-pilot";
+const sb=supabase.createClient(PROJECT_URL,PUBLISHABLE_KEY);
+let lastData=null;
+let currentContext=null;
+let slaRows=[];
+
+function esc(v){return String(v??"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]))}
+function money(v){return "S/ "+Number(v||0).toFixed(2)}
+function pct(v){return v===null||v===undefined||v===""?"—":Number(v).toFixed(2)+"%"}
+function setMsg(id,t,ok=true){const e=document.getElementById(id);e.className=ok?"ok":"err";e.textContent=t}
+function dbg(x){document.getElementById("debug").textContent=typeof x==="string"?x:JSON.stringify(x,null,2)}
+function periodo(){return document.getElementById("periodo").value}
+
+async function token(){
+  const {data}=await sb.auth.getSession();
+  return data.session?.access_token||"";
+}
+async function callApi(body,method="POST"){
+  const t=await token();
+  if(!t)throw new Error("Primero inicie sesión.");
+  let r;
+  if(method==="GET"){
+    const u=new URL(BONO_API);
+    Object.entries(body||{}).forEach(([k,v])=>{if(v!==null&&v!==undefined&&String(v)!=="")u.searchParams.set(k,String(v))});
+    r=await fetch(u,{headers:{Authorization:"Bearer "+t,apikey:PUBLISHABLE_KEY}});
+  }else{
+    r=await fetch(BONO_API,{method:"POST",headers:{Authorization:"Bearer "+t,apikey:PUBLISHABLE_KEY,"Content-Type":"application/json"},body:JSON.stringify(body||{})});
+  }
+  const tx=await r.text();let d;
+  try{d=JSON.parse(tx)}catch(_){throw new Error(tx||"Respuesta inválida")}
+  if(!r.ok||!d.ok)throw new Error(d.error||"Error en Bonos Supervisores");
+  return d;
+}
+
+async function login(){
+  const email=document.getElementById("email").value.trim();
+  const password=document.getElementById("password").value;
+  if(!email||!password)return setMsg("authmsg","Ingrese correo y contraseña.",false);
+  const {data,error}=await sb.auth.signInWithPassword({email,password});
+  if(error)return setMsg("authmsg",error.message,false);
+  setMsg("authmsg","Sesión iniciada.");
+  dbg({login:true,user:data.user?.id||null});
+  await iniciar();
+}
+async function logout(){
+  await sb.auth.signOut();
+  currentContext=null;lastData=null;slaRows=[];
+  setMsg("authmsg","Sesión cerrada.");
+  document.getElementById("perfil").innerHTML="";
+  document.getElementById("bonos").innerHTML="";
+  document.getElementById("resumen").innerHTML="";
+  document.getElementById("jefatura").classList.add("hidden");
+}
+
+async function contexto(){
+  const d=await callApi({accion:"contextoBonoSupervisores"},"GET");
+  currentContext=d;
+  document.getElementById("perfil").innerHTML=
+    '<span class="badge">Usuario: '+esc(d.usuario?.usuario)+'</span>'+
+    '<span class="badge">Perfil: '+esc(d.usuario?.perfil)+'</span>'+
+    '<span class="badge">Sede: '+esc(d.usuario?.sede)+'</span>'+
+    '<span class="badge">Editar: '+(d.puedeEditar?"Sí":"No")+'</span>';
+  document.getElementById("jefatura").classList.toggle("hidden",!d.puedeEditar);
+  document.getElementById("btnRefresh").style.display=d.usuario?.perfil==="SUPERVISOR"?"inline-block":"inline-block";
+  return d;
+}
+
+function statusClass(s){
+  const x=String(s||"").toUpperCase();
+  if(x.includes("ACTIVO"))return "active";
+  if(x.includes("PENDIENTE")||x.includes("SIN DATOS"))return "pending";
+  return "inactive";
+}
+function componenteRow(c){
+  const m=c.metricas||{};
+  const extra=Object.entries(m).slice(0,6).map(([k,v])=>'<span class="badge">'+esc(k)+': '+esc(v)+'</span>').join("");
+  return '<tr>'+
+    '<td><b>'+esc(c.nombre||c.clave)+'</b><div>'+extra+'</div></td>'+
+    '<td>'+money(c.maximo)+'</td>'+
+    '<td>'+pct(c.cumplimiento)+'</td>'+
+    '<td><b>'+money(c.monto)+'</b></td>'+
+    '<td class="status '+statusClass(c.estado)+'">'+esc(c.estado)+'</td>'+
+  '</tr>';
+}
+function renderBonos(d){
+  const bonos=d.bonos||[];
+  document.getElementById("resumen").innerHTML=
+    '<div class="kpis">'+
+      '<div class="kpi">Período<b>'+esc(d.periodo)+'</b></div>'+
+      '<div class="kpi">Supervisores<b>'+bonos.length+'</b></div>'+
+      '<div class="kpi">Puede editar<b>'+(d.puedeEditar?"SÍ":"NO")+'</b></div>'+
+      '<div class="kpi">Fuente<b style="font-size:14px">'+esc(d.fuente||"POSTGRESQL")+'</b></div>'+
+    '</div>';
+
+  document.getElementById("bonos").innerHTML=bonos.map(b=>{
+    const pendientes=(b.pendientes||[]).map(x=>'<span class="badge">'+esc(x)+'</span>').join("");
+    return '<div class="supervisor">'+
+      '<h3>'+esc(b.nombre)+' · '+esc(b.sede)+'</h3>'+
+      '<div><span class="badge">'+esc(b.usuario)+'</span><span class="badge">'+esc(b.totalCuadrillas)+' cuadrillas</span><span class="badge">'+esc(b.estado)+'</span></div>'+
+      '<div class="kpis">'+
+        '<div class="kpi">Bono máximo<b>'+money(b.bonoMaximo)+'</b></div>'+
+        '<div class="kpi">Monto provisional<b>'+money(b.montoProvisional)+'</b></div>'+
+        '<div class="kpi">Evaluado<b>'+pct(b.porcentajeEvaluado)+'</b></div>'+
+      '</div>'+
+      '<div style="overflow:auto"><table><tr><th>Componente</th><th>Máximo</th><th>Cumplimiento</th><th>Monto</th><th>Estado</th></tr>'+
+        (b.componentes||[]).map(componenteRow).join("")+
+      '</table></div>'+
+      (pendientes?'<div style="margin-top:8px"><b>Pendientes:</b> '+pendientes+'</div>':'')+
+    '</div>';
+  }).join("");
+
+  llenarSupervisores(bonos);
+  renderPreguntas(d.preguntasLiderazgo||[]);
+  renderConfig(d.configuracion||{});
+}
+function llenarSupervisores(bonos){
+  const options=(bonos||[]).map(b=>'<option value="'+esc(b.usuario)+'">'+esc(b.nombre)+' · '+esc(b.sede)+'</option>').join("");
+  ["evalSupervisor","satSupervisor","actasSupervisor"].forEach(id=>{const e=document.getElementById(id);if(e)e.innerHTML=options});
+}
+function renderPreguntas(pregs){
+  document.getElementById("preguntas").innerHTML=(pregs||[]).map((q,i)=>
+    '<div class="question"><div><b>'+(i+1)+'.</b> '+esc(q)+'</div>'+
+    '<select class="evalScore" data-i="'+i+'"><option value="">Seleccione</option><option value="3">Cumple · 3</option><option value="1.5">Parcial · 1.5</option><option value="0">No cumple · 0</option></select></div>'
+  ).join("");
+}
+function renderConfig(c){
+  document.getElementById("montoTotal").value=c.montoTotal||1000;
+  const comp=c.componentes||{};
+  const act=c.activadores||{};
+  document.getElementById("configActual").innerHTML=
+    '<div style="margin-top:10px">'+["PRODUCTIVIDAD","CALIDAD","SLA","SATISFACCION","SEGURIDAD"].map(k=>
+      '<span class="badge">'+k+': '+money(comp[k])+' · activa desde '+pct(act[k])+'</span>'
+    ).join("")+'</div>';
+}
+
+async function cargarBonos(){
+  setMsg("estado","Cargando Bonos Supervisores...");
+  try{
+    const d=await callApi({accion:"obtenerBonosSupervisores",periodo:periodo()},"GET");
+    lastData=d;renderBonos(d);
+    setMsg("estado","Bonos cargados desde PostgreSQL.");
+    await cargarSla();
+    dbg(d);
+  }catch(e){setMsg("estado",e.message,false);dbg(String(e))}
+}
+async function estadoCache(){
+  try{
+    const d=await callApi({accion:"estadoBonosSupervisores",periodo:periodo()},"GET");
+    const s=d.estado||{};
+    document.getElementById("cache").innerHTML=
+      '<span class="badge">Cache: '+esc(s.filasCache)+'</span>'+
+      '<span class="badge">Fuente: '+esc(s.filasFuente)+'</span>'+
+      '<span class="badge">Requiere refresco: '+(s.requiereRefresco?"SÍ":"NO")+'</span>'+
+      '<span class="badge">Refrescado: '+esc(s.cacheRefrescadoAl||"")+'</span>';
+    dbg(d);
+  }catch(e){setMsg("estado",e.message,false)}
+}
+async function refrescarPeriodo(){
+  setMsg("estado","Actualizando datos operativos del período...");
+  try{
+    const d=await callApi({accion:"refrescarBonosSupervisores",periodo:periodo()});
+    setMsg("estado","Período actualizado: "+esc(d.supervisoresActualizados)+" supervisores.");
+    dbg(d);
+    await cargarBonos();
+    await estadoCache();
+  }catch(e){setMsg("estado",e.message,false);dbg(String(e))}
+}
+
+function tab(btn){
+  document.querySelectorAll(".tabs button").forEach(x=>x.classList.remove("on"));
+  btn.classList.add("on");
+  ["tabEval","tabSat","tabActas","tabConfig","tabSla"].forEach(id=>document.getElementById(id).classList.add("hidden"));
+  document.getElementById(btn.dataset.tab).classList.remove("hidden");
+}
+
+async function guardarEvaluacion(){
+  const respuestas=[...document.querySelectorAll(".evalScore")].map(x=>x.value===""?null:Number(x.value));
+  if(respuestas.some(x=>x===null))return setMsg("evalMsg","Debe responder las 20 preguntas.",false);
+  try{
+    const d=await callApi({accion:"guardarEvaluacionBonoSupervisor",periodo:periodo(),supervisor:document.getElementById("evalSupervisor").value,respuestas:respuestas.map(puntaje=>({puntaje}))});
+    setMsg("evalMsg","Evaluación guardada. Total: "+d.total);
+    await cargarBonos();dbg(d);
+  }catch(e){setMsg("evalMsg",e.message,false);dbg(String(e))}
+}
+async function guardarSatisfaccion(){
+  try{
+    const d=await callApi({
+      accion:"guardarSatisfaccionBonoSupervisor",periodo:periodo(),supervisor:document.getElementById("satSupervisor").value,
+      clientesLlamados:Number(document.getElementById("llamados").value||0),
+      conformes:Number(document.getElementById("conformes").value||0),
+      noConformes:Number(document.getElementById("noConformes").value||0),
+      observacion:document.getElementById("satObs").value
+    });
+    setMsg("satMsg","Satisfacción guardada.");await cargarBonos();dbg(d);
+  }catch(e){setMsg("satMsg",e.message,false);dbg(String(e))}
+}
+async function guardarActas(){
+  try{
+    const d=await callApi({accion:"guardarActasSinPendientesBonoSupervisor",periodo:periodo(),supervisor:document.getElementById("actasSupervisor").value,respuesta:document.getElementById("actasRespuesta").value});
+    setMsg("actasMsg","Actas actualizadas.");await cargarBonos();dbg(d);
+  }catch(e){setMsg("actasMsg",e.message,false);dbg(String(e))}
+}
+async function guardarConfiguracion(){
+  try{
+    const monto=Number(document.getElementById("montoTotal").value);
+    const d=await callApi({accion:"guardarConfiguracionBonoSupervisores",periodo:periodo(),montoTotal:monto,escalas:lastData?.configuracion?.escalas||null});
+    setMsg("configMsg","Configuración guardada.");await cargarBonos();dbg(d);
+  }catch(e){setMsg("configMsg",e.message,false);dbg(String(e))}
+}
+
+async function cargarSla(){
+  if(!currentContext?.puedeEditar)return;
+  try{
+    const d=await callApi({accion:"listarParametrosSlaWin",periodo:periodo()},"GET");
+    slaRows=d.parametrosConfiguracion||[];
+    document.getElementById("tablaSla").innerHTML=
+      '<tr><th>Partida</th><th>Clasificación</th><th>Minutos</th><th>Estado</th></tr>'+
+      slaRows.map((x,i)=>'<tr><td>'+esc(x.tipoOrden)+'</td><td>'+esc(x.clasificacion)+'</td>'+
+      '<td><input class="slaMin" data-i="'+i+'" type="number" min="1" max="600" value="'+esc(x.minutos)+'" style="width:95px"></td>'+
+      '<td><select class="slaEstado" data-i="'+i+'"><option value="ACTIVO" '+(x.estado==="ACTIVO"?"selected":"")+'>ACTIVO</option><option value="INACTIVO" '+(x.estado==="INACTIVO"?"selected":"")+'>INACTIVO</option></select></td></tr>').join("");
+  }catch(e){setMsg("slaMsg",e.message,false)}
+}
+async function guardarSla(){
+  const mins=[...document.querySelectorAll(".slaMin")];
+  const est=[...document.querySelectorAll(".slaEstado")];
+  const parametros=slaRows.map((x,i)=>({tipoOrden:x.tipoOrden,minutos:Number(mins[i].value),estado:est[i].value}));
+  try{
+    setMsg("slaMsg","Guardando y recalculando SLA...");
+    const d=await callApi({accion:"guardarParametrosSlaWin",periodo:periodo(),parametros});
+    setMsg("slaMsg","SLA guardado y caches actualizados.");
+    await cargarBonos();dbg(d);
+  }catch(e){setMsg("slaMsg",e.message,false);dbg(String(e))}
+}
+
+async function iniciar(){
+  try{
+    await contexto();
+    await cargarBonos();
+    await estadoCache();
+  }catch(e){setMsg("authmsg",e.message,false);dbg(String(e))}
+}
+document.getElementById("periodo").addEventListener("change",()=>{if(awaitingSession())return;cargarBonos().then(estadoCache)});
+function awaitingSession(){return !currentContext}
+
+sb.auth.getSession().then(async({data})=>{
+  if(data.session){
+    setMsg("authmsg","Sesión de prueba activa.");
+    await iniciar();
+  }
+});
+</script>
+</body>
+</html>
