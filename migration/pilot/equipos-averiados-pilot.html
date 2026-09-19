@@ -5,7 +5,7 @@
 <title>MI VISUAL · Equipos Averiados · Piloto</title>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
-body{font-family:Arial,sans-serif;margin:0;background:#0b2340;padding:16px;color:#102033}.wrap{max-width:1180px;margin:auto}
+*{box-sizing:border-box}button:disabled{opacity:.55;cursor:wait}body{font-family:Arial,sans-serif;margin:0;background:#0b2340;padding:16px;color:#102033}.wrap{max-width:1180px;margin:auto}
 h1{color:#fff;margin:0 0 4px}.lead{color:#cbd5e1;margin:0 0 14px}.card{background:#fff;border-radius:14px;padding:15px;margin-bottom:12px}
 .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:8px}.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
 input,select,textarea,button{padding:9px;border-radius:8px;border:1px solid #cbd5e1;font-size:13px}input,select,textarea{width:100%}
@@ -37,32 +37,33 @@ pre{white-space:pre-wrap;background:#f8fafc;padding:9px;border-radius:8px;max-he
 
 <div class="card">
 <h2>3. Registro técnico</h2>
-<p>Prueba simple de hasta 2 equipos. La API admite hasta 8.</p>
-<div class="grid">
-<select id="tipo1"><option>ONT HUAWEI</option><option>ONT ZTE</option><option>MESH HUAWEI</option><option>MESH ZTE</option><option>WINBOX</option><option>TELEFONO</option></select>
-<input id="serie1" placeholder="Serie / SN equipo 1"><input id="mac1" placeholder="MAC equipo 1">
-<select id="tipo2"><option value="">Sin equipo 2</option><option>ONT HUAWEI</option><option>ONT ZTE</option><option>MESH HUAWEI</option><option>MESH ZTE</option><option>WINBOX</option><option>TELEFONO</option></select>
-<input id="serie2" placeholder="Serie equipo 2"><input id="mac2" placeholder="MAC equipo 2">
+<p>Registra de 1 a 8 equipos con serie y MAC. Para completar una solicitud existente, ingresa su ID.</p>
+<div id="equiposForm" class="grid"></div>
+<div class="row" style="margin-top:8px"><button class="sec" onclick="agregarEquipo()">Agregar equipo</button><button class="green" onclick="registrarTecnico()">Registrar nueva solicitud</button></div>
+<div class="row" style="margin-top:8px"><input id="completarId" placeholder="ID de solicitud existente"><button onclick="completarTecnico()">Completar solicitud existente</button></div><div id="regmsg"></div>
 </div>
-<button class="green" style="margin-top:8px" onclick="registrarTecnico()">Registrar</button><div id="regmsg"></div>
+<div class="card">
+<h2>Solicitud creada por Almacén</h2>
+<div class="grid"><select id="tecnicoAlmacen"><option value="">Selecciona un técnico del catálogo</option></select><input id="cantidadAlmacen" type="number" min="1" max="8" value="1" aria-label="Cantidad referencial"><input id="obsAlmacen" placeholder="Observación"></div>
+<button style="margin-top:8px" onclick="crearAlmacen()">Crear solicitud para el técnico</button><div id="almacenmsg"></div>
 </div>
 
 <div class="card">
 <h2>4. Recepción Almacén · V399</h2>
-<div class="grid"><input id="rid" placeholder="ID solicitud EA-..."><input id="rsid" placeholder="SolicitudId EAREQ-... (opcional)"></div>
+<div class="grid"><input id="rid" placeholder="ID solicitud EA-..."><input id="rsid" placeholder="Identificador del intento (automático)"></div>
 <textarea id="decisiones" rows="5" placeholder='[{"serie":"SN...","estado":"RECIBIDO","observacion":"OK"}]'></textarea>
 <textarea id="obs" rows="2" placeholder="Observación general"></textarea>
 <div class="row"><button class="green" onclick="recibir()">Validar recepción</button><button class="sec" onclick="verificar()">Verificar V399</button><button class="red" onclick="volver()">Volver pendiente (Jefatura Almacén)</button></div>
-<div id="recmsg"></div>
+<button class="sec" onclick="nuevaRecepcion()">Nueva recepción tras confirmar la anterior</button><p>Si falla la conexión, vuelve a validar con el mismo identificador. Para recibir más equipos, confirma la recepción anterior y pulsa Nueva recepción.</p><div id="recmsg"></div>
 </div>
 
 <div class="card"><h2>Diagnóstico</h2><pre id="debug">Sin consultas.</pre></div>
 </div>
 <script>
-const URL="https://uudvodiaizfarodjpetb.supabase.co";
+const SUPABASE_URL="https://uudvodiaizfarodjpetb.supabase.co";
 const KEY="sb_publishable_2hiwePKtqoo3_c_D5B9JuA_p38dPe3D";
-const API=URL+"/functions/v1/equipos-averiados-pilot";
-const sb=supabase.createClient(URL,KEY);
+const API=SUPABASE_URL+"/functions/v1/equipos-averiados-pilot";
+const sb=supabase.createClient(SUPABASE_URL,KEY);
 function esc(v){return String(v??"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]))}
 function dbg(v){document.getElementById("debug").textContent=typeof v==="string"?v:JSON.stringify(v,null,2)}
 function msg(id,t,ok=true){const e=document.getElementById(id);e.className=ok?"ok":"err";e.textContent=t}
@@ -70,13 +71,25 @@ async function tok(){const {data}=await sb.auth.getSession();return data.session
 async function api(data,method="POST"){const t=await tok();if(!t)throw Error("Inicie sesión.");let r;if(method==="GET"){const u=new URL(API);Object.entries(data).forEach(([k,v])=>u.searchParams.set(k,String(v??"")));r=await fetch(u,{headers:{Authorization:"Bearer "+t,apikey:KEY}})}else r=await fetch(API,{method:"POST",headers:{Authorization:"Bearer "+t,apikey:KEY,"Content-Type":"application/json"},body:JSON.stringify(data)});const tx=await r.text();let d;try{d=JSON.parse(tx)}catch{throw Error(tx)}if(!r.ok||!d.ok)throw Error(d.error||"Error");return d}
 async function login(){const {error}=await sb.auth.signInWithPassword({email:email.value.trim(),password:password.value});if(error)return msg("auth",error.message,false);msg("auth","Sesión iniciada.");await catalogos();await listar()}
 async function logout(){await sb.auth.signOut();msg("auth","Sesión cerrada.");perfil.innerHTML="";tabla.innerHTML=""}
-async function catalogos(){try{const d=await api({accion:"catalogosEquiposAveriados"},"GET");perfil.innerHTML='<span class="badge">'+esc(d.perfil)+'</span><span class="badge">'+esc(d.fuente||"POSTGRESQL")+'</span>';dbg(d)}catch(e){msg("auth",e.message,false)}}
+async function catalogos(){try{const d=await api({accion:"catalogosEquiposAveriados"},"GET");perfil.innerHTML='<span class="badge">'+esc(d.perfil)+'</span><span class="badge">'+esc(d.fuente||"POSTGRESQL")+'</span>';tecnicoAlmacen.innerHTML='<option value="">Selecciona un técnico</option>'+(d.tecnicos||[]).map(t=>'<option value="'+esc(t.usuario)+'">'+esc(t.sede+" · "+t.cuadrilla+" · "+t.tecnico)+'</option>').join("");dbg(d)}catch(e){msg("auth",e.message,false)}}
 function renderResumen(r){resumen.innerHTML=['total','pendienteRegistro','pendienteEntrega','parcial','recibido','observado','rechazado','totalEquipos'].map(k=>'<div class="metric">'+esc(k)+'<b>'+esc(r?.[k]||0)+'</b></div>').join("")}
 async function listar(){try{const d=await api({accion:"listarEquiposAveriados",sede:fSede.value,estado:fEstado.value,serie:fSerie.value,codigoCliente:fMac.value},"GET");renderResumen(d.resumen);tabla.innerHTML='<tr><th>ID</th><th>Fecha</th><th>Sede</th><th>Cuadrilla</th><th>Técnico</th><th>Estado</th><th>Equipos</th></tr>'+d.solicitudes.map(x=>'<tr><td>'+esc(x.id)+'</td><td>'+esc(x.fechaRegistroVisible)+'</td><td>'+esc(x.sede)+'</td><td>'+esc(x.cuadrilla)+'</td><td>'+esc(x.tecnico)+'</td><td>'+esc(x.estado)+'</td><td>'+x.equipos.map(e=>esc(e.tipo)+' · '+esc(e.serie)).join('<br>')+'</td></tr>').join("");dbg(d)}catch(e){dbg(String(e))}}
 async function cargos(){try{const d=await api({accion:"listarCargosEquiposAveriados"},"GET");tabla.innerHTML='<tr><th>Cargo</th><th>Solicitud</th><th>Fecha</th><th>Sede</th><th>Técnico</th><th>Equipos</th><th>PDF</th></tr>'+d.cargos.map(x=>'<tr><td>'+esc(x.idCargo)+'</td><td>'+esc(x.idSolicitud)+'</td><td>'+esc(x.fechaCargoVisible)+'</td><td>'+esc(x.sede)+'</td><td>'+esc(x.tecnico)+'</td><td>'+esc(x.totalEquipos)+'</td><td>'+(x.linkPdf?'<a target="_blank" href="'+esc(x.linkPdf)+'">Abrir</a>':'')+'</td></tr>').join("");dbg(d)}catch(e){dbg(String(e))}}
-async function registrarTecnico(){try{const eq=[];if(serie1.value.trim())eq.push({tipo:tipo1.value,serie:serie1.value,codigoCliente:mac1.value});if(tipo2.value&&serie2.value.trim())eq.push({tipo:tipo2.value,serie:serie2.value,codigoCliente:mac2.value});const d=await api({accion:"registrarEquiposAveriadosTecnico",equipos:eq});msg("regmsg","Registrado: "+d.id);dbg(d);await listar()}catch(e){msg("regmsg",e.message,false)}}
+const tiposEA=["ONT HUAWEI","ONT ZTE","MESH HUAWEI","MESH ZTE","WINBOX","TELEFONO"];
+function agregarEquipo(){if(equiposForm.children.length>=8)return msg("regmsg","Máximo 8 equipos.",false);const e=document.createElement("div");e.className="metric";e.innerHTML='<label>Tipo<select data-campo="tipo">'+tiposEA.map(t=>'<option>'+t+'</option>').join("")+'</select></label><label>Serie / SN<input data-campo="serie"></label><label>MAC<input data-campo="codigoCliente"></label><button class="sec" type="button">Quitar</button>';e.querySelector('button').onclick=()=>e.remove();equiposForm.appendChild(e)}
+function leerEquipos(){const eq=[...equiposForm.children].map(e=>Object.fromEntries([...e.querySelectorAll('[data-campo]')].map(i=>[i.dataset.campo,i.value.trim()])));if(!eq.length||eq.length>8)throw Error("Registra entre 1 y 8 equipos.");if(eq.some(e=>!e.serie||!e.codigoCliente))throw Error("Cada equipo requiere serie y MAC.");const series=eq.map(e=>e.serie.toUpperCase().replace(/[^A-Z0-9]/g,''));if(new Set(series).size!==series.length)throw Error("Hay series repetidas.");return eq}
+let escribiendo=false;
+async function escribir(panel,fn){if(escribiendo)return;escribiendo=true;try{await fn()}catch(e){msg(panel,e.message,false)}finally{escribiendo=false}}
+async function registrarTecnico(){return escribir("regmsg",async()=>{const d=await api({accion:"registrarEquiposAveriadosTecnico",equipos:leerEquipos()});msg("regmsg","Registrado: "+d.id);dbg(d);await listar()})}
+async function completarTecnico(){return escribir("regmsg",async()=>{const id=completarId.value.trim();if(!id)throw Error("Ingresa el ID de la solicitud existente.");const d=await api({accion:"completarSolicitudEquiposAveriadosTecnico",id,equipos:leerEquipos()});msg("regmsg","Solicitud completada: "+d.id);dbg(d);await listar()})}
+async function crearAlmacen(){return escribir("almacenmsg",async()=>{const usuarioTecnico=tecnicoAlmacen.value,cantidadReferencial=Number(cantidadAlmacen.value);if(!usuarioTecnico)throw Error("Selecciona un técnico del catálogo.");if(!Number.isInteger(cantidadReferencial)||cantidadReferencial<1||cantidadReferencial>8)throw Error("La cantidad debe ser de 1 a 8.");const d=await api({accion:"crearSolicitudEquiposAveriadosAlmacen",usuarioTecnico,cantidadReferencial,observacion:obsAlmacen.value.trim()});msg("almacenmsg","Solicitud creada: "+d.id);dbg(d);await listar()})}
+agregarEquipo();
+async function claveIntento(){const {data}=await sb.auth.getSession();if(!data.session)throw Error("Inicie sesión.");const id=rid.value.trim();if(!id)throw Error("Ingresa el ID de la solicitud.");return 'ea-intento:'+data.session.user.id+':'+id}
+async function intento(crear=false){const key=await claveIntento();let sid=sessionStorage.getItem(key)||rsid.value.trim();if(!sid&&crear)sid='EAREQ-'+crypto.randomUUID().replace(/-/g,'').toUpperCase();if(!sid)throw Error("Indica el identificador de la recepción.");sessionStorage.setItem(key,sid);rsid.value=sid;return sid}
+rid.addEventListener('change',async()=>{rsid.value='';try{rsid.value=sessionStorage.getItem(await claveIntento())||''}catch{}});
+async function nuevaRecepcion(){return escribir("recmsg",async()=>{const solicitudId=await intento();const d=await api({accion:"verificarRecepcionEquiposAveriadosV399",id:rid.value.trim(),solicitudId},"GET");if(!d.confirmado&&d.cargo?.estado!=="GENERADO")throw Error("La recepción anterior sigue pendiente: reintenta con su identificador.");sessionStorage.removeItem(await claveIntento());rsid.value='';msg("recmsg","Listo para una nueva recepción.")})}
 function decisionesJson(){try{return JSON.parse(decisiones.value||"[]")}catch{throw Error("JSON de decisiones inválido.")}}
-async function recibir(){try{const d=await api({accion:"validarRecepcionEquiposAveriados",id:rid.value.trim(),solicitudId:rsid.value.trim(),equipos:decisionesJson(),observacionGeneral:obs.value});if(d.solicitudId)rsid.value=d.solicitudId;msg("recmsg","Recepción procesada: "+d.estado);dbg(d);await listar()}catch(e){msg("recmsg",e.message,false)}}
-async function verificar(){try{const d=await api({accion:"verificarRecepcionEquiposAveriadosV399",id:rid.value.trim(),solicitudId:rsid.value.trim()},"GET");msg("recmsg",d.confirmado?"Recepción confirmada.":"Aún no confirmada.",d.confirmado);dbg(d)}catch(e){msg("recmsg",e.message,false)}}
+async function recibir(){return escribir("recmsg",async()=>{const equipos=decisionesJson();if(!Array.isArray(equipos))throw Error("Las decisiones deben ser una lista.");const solicitudId=await intento(true);const d=await api({accion:"validarRecepcionEquiposAveriados",id:rid.value.trim(),solicitudId,equipos,observacionGeneral:obs.value});msg("recmsg","Recepción procesada: "+d.estado);dbg(d);await listar()})}
+async function verificar(){try{const d=await api({accion:"verificarRecepcionEquiposAveriadosV399",id:rid.value.trim(),solicitudId:await intento()},"GET");msg("recmsg",d.confirmado?"Recepción confirmada.":"Aún no confirmada.",d.confirmado);dbg(d)}catch(e){msg("recmsg",e.message,false)}}
 async function volver(){try{const d=await api({accion:"volverPendienteEquiposAveriados",id:rid.value.trim()});msg("recmsg","Solicitud vuelta a pendiente.");dbg(d);await listar()}catch(e){msg("recmsg",e.message,false)}}
 </script></body></html>
