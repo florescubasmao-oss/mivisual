@@ -90,7 +90,10 @@ where m.elegible_produccion_efectiva
   and m.momento_ejecucion>c.fecha_corte
 group by m.periodo_solicitud,public.mv_norm_key(m.cuadrilla);
 
-create or replace view public.mv_economico_utilidad_migracion as
+drop view if exists public.mv_economico_resumen_periodo;
+drop view if exists public.mv_economico_utilidad_migracion;
+
+create view public.mv_economico_utilidad_migracion as
 with base as (
   select
     u.periodo,u.cuadrilla_key,
