@@ -60,6 +60,11 @@ pre{white-space:pre-wrap;background:#f8fafc;padding:10px;border-radius:9px;max-h
 <button onclick="abrirDocumento()">Abrir documento</button>
 </div>
 <div id="documento"></div>
+<div id="accionesDocumento" class="hidden" style="margin-top:12px">
+<textarea id="motivoRevision" rows="2" placeholder="Motivo / observación (obligatorio para observar o rechazar)"></textarea>
+<div class="row" style="margin-top:8px" id="botonesDocumento"></div>
+<div id="docmsg"></div>
+</div>
 </div>
 
 <div class="card">
@@ -137,17 +142,69 @@ async function generarAtsDia(){try{msg("ctxmsg","Generando ATS/PETAR V437...");c
 function abrirHistorico(){document.getElementById("atsId").value="ATS-0CE1CE77-DAE";abrirDocumento()}
 async function abrirDocumento(){try{const d=await api({accion:"obtenerDocumentoSeguridadV432",id:document.getElementById("atsId").value.trim()},"GET");DOC=d;renderDocumento(d);dbg(d)}catch(e){document.getElementById("documento").innerHTML='<div class="err">'+esc(e.message)+'</div>';dbg(String(e))}}
 function renderDocumento(d){
- const a=d.ats||{},p=d.petar;
+ const a=d.ats||{},p=d.petar,perfil=String(CTX?.usuario?.perfil||"").toUpperCase();
  const tasks=(a.tareas||[]).map(t=>'<div class="task"><b>'+esc(t.tarea)+'</b><br>Daños: '+esc((t.danos||[]).join(", "))+'<br>Controles: '+esc(t.controles||"")+'</div>').join("");
+ const pdfs=(a.pdfUrl?'<a href="'+esc(a.pdfUrl)+'" target="_blank" rel="noopener">Abrir PDF ATS</a>':'')+
+   (p?.pdfUrl?' &nbsp; <a href="'+esc(p.pdfUrl)+'" target="_blank" rel="noopener">Abrir PDF PETAR</a>':'');
  let h='<div class="doc"><h3>ATS N° '+esc(a.numero)+' · '+esc(a.estado)+'</h3><table>'+
  '<tr><th>Fecha</th><td>'+esc(a.fecha)+'</td><th>Sede</th><td>'+esc(a.sede)+'</td></tr>'+
  '<tr><th>Cuadrilla</th><td colspan="3">'+esc(a.cuadrilla)+'</td></tr>'+
  '<tr><th>Trabajo</th><td>'+esc(a.trabajo)+'</td><th>Lugar</th><td>'+esc(a.lugarTrabajo)+'</td></tr>'+
  '<tr><th>Aceptaciones</th><td>'+esc((a.aceptaciones||[]).length)+' / '+esc((a.integrantes||[]).length)+'</td><th>PETAR</th><td>'+esc(a.petarId||"—")+'</td></tr></table>'+
+ (pdfs?'<div class="goodbox">'+pdfs+'</div>':'')+
  '<h4>Tareas</h4><div class="tasks">'+tasks+'</div></div>';
- if(p){h+='<div class="doc"><h3>PETAR N° '+esc(p.numero)+' · '+esc(p.estado)+'</h3>'+(p.noCumpleCritico?'<div class="warnbox"><b>NO CUMPLE crítico</b></div>':'')+
- '<table><tr><th>#</th><th>Verificación</th><th>Estado</th></tr>'+(p.checklist||[]).map((x,i)=>'<tr><td>'+(i+1)+'</td><td>'+esc(x.texto)+(x.critico?' <b>(CRÍTICO)</b>':'')+'</td><td>'+esc(x.estado||"PENDIENTE")+'</td></tr>').join("")+'</table></div>'}
+ if(p){
+   const editable=perfil==="TECNICO"&&["BORRADOR","OBSERVADO"].includes(String(a.estado||"").toUpperCase());
+   h+='<div class="doc"><h3>PETAR N° '+esc(p.numero)+' · '+esc(p.estado)+'</h3>'+(p.noCumpleCritico?'<div class="warnbox"><b>NO CUMPLE crítico</b></div>':'')+
+   '<table><tr><th>#</th><th>Verificación</th><th>Estado</th><th>Observación</th></tr>'+
+   (p.checklist||[]).map((x,i)=>{
+     const estado=String(x.estado||"");
+     const control=editable
+       ? '<select class="petarEstado" data-i="'+i+'"><option value="">PENDIENTE</option><option '+(estado==="CUMPLE"?'selected ':'')+'value="CUMPLE">CUMPLE</option><option '+(estado==="NO CUMPLE"?'selected ':'')+'value="NO CUMPLE">NO CUMPLE</option><option '+(estado==="NO APLICA"?'selected ':'')+'value="NO APLICA">NO APLICA</option></select>'
+       : esc(estado||"PENDIENTE");
+     const obs=editable?'<input class="petarObs" data-i="'+i+'" value="'+esc(x.observacion||"")+'" placeholder="Observación si NO CUMPLE">':esc(x.observacion||"");
+     return '<tr><td>'+(i+1)+'</td><td>'+esc(x.texto)+(x.critico?' <b>(CRÍTICO)</b>':'')+'</td><td>'+control+'</td><td>'+obs+'</td></tr>';
+   }).join("")+'</table></div>';
+ }
  document.getElementById("documento").innerHTML=h;
+ renderAccionesDocumento();
+}
+
+function renderAccionesDocumento(){
+ const panel=document.getElementById("accionesDocumento"),box=document.getElementById("botonesDocumento");
+ if(!DOC?.ats||!CTX?.usuario){panel.classList.add("hidden");return}
+ const perfil=String(CTX.usuario.perfil||"").toUpperCase(),est=String(DOC.ats.estado||"").toUpperCase();
+ let b="";
+ if(perfil==="TECNICO"&&["BORRADOR","OBSERVADO"].includes(est)) b+='<button class="sec" onclick="guardarDocumentoPiloto()">Guardar ATS/PETAR</button><button class="good" onclick="aceptarDocumento()">Aceptar ATS/PETAR</button>';
+ if(perfil==="SUPERVISOR"&&["PENDIENTE ACEPTACION","PENDIENTE SUPERVISOR"].includes(est)) b+='<button class="good" onclick="revisarDocumento(\'AUTORIZAR\')">Autorizar + generar PDF</button><button class="warn" onclick="revisarDocumento(\'OBSERVAR\')">Observar</button><button class="danger" onclick="revisarDocumento(\'RECHAZAR\')">Rechazar</button>';
+ if(!["TECNICO","SUPERVISOR"].includes(perfil)&&["PENDIENTE ACEPTACION","PENDIENTE SUPERVISOR","PENDIENTE VALIDACION"].includes(est)) b+='<button class="good" onclick="validarDocumento(\'VALIDAR\')">Validar + generar PDF</button><button class="warn" onclick="validarDocumento(\'OBSERVAR\')">Observar</button><button class="danger" onclick="validarDocumento(\'RECHAZAR\')">Rechazar</button>';
+ box.innerHTML=b;panel.classList.toggle("hidden",!b);
+}
+function petarEditado(){
+ const base=JSON.parse(JSON.stringify(DOC?.petar||{}));
+ document.querySelectorAll(".petarEstado").forEach(el=>{const i=Number(el.dataset.i);if(base.checklist?.[i])base.checklist[i].estado=el.value});
+ document.querySelectorAll(".petarObs").forEach(el=>{const i=Number(el.dataset.i);if(base.checklist?.[i])base.checklist[i].observacion=el.value.trim()});
+ return base;
+}
+async function guardarDocumentoPiloto(){
+ try{
+   const a=DOC.ats,p=petarEditado();
+   const d=await api({accion:"guardarAtsSeguridadV432",id:a.id,trabajo:a.trabajo,lugarTrabajo:a.lugarTrabajo,horaInicio:a.horaInicio,horaFinal:a.horaFinal,herramientas:a.herramientas||[],epp:a.epp||[],tareas:a.tareas||[],petar:{checklist:p.checklist||[],epp:p.epp||[]}});
+   msg("docmsg","ATS/PETAR guardado.");dbg(d);await abrirDocumento();
+ }catch(e){msg("docmsg",e.message,false);dbg(String(e))}
+}
+async function aceptarDocumento(){
+ try{await guardarDocumentoPiloto();const gps=await geo();const d=await api({accion:"aceptarAtsSeguridadV432",id:DOC.ats.id,gps});msg("docmsg","Aceptación registrada: "+d.estado);dbg(d);await abrirDocumento();await cargarContexto()}catch(e){msg("docmsg",e.message,false);dbg(String(e))}
+}
+async function revisarDocumento(resultado){
+ try{const motivo=document.getElementById("motivoRevision").value.trim();if(["OBSERVAR","RECHAZAR"].includes(resultado)&&!motivo)throw Error("Ingrese el motivo.");const gps=await geo();msg("docmsg",resultado==="AUTORIZAR"?"Generando PDF ATS/PETAR...":"Procesando...");const d=await api({accion:"revisarAtsSupervisorV432",id:DOC.ats.id,resultado,motivo,gps});mostrarResultadoCierre(d);dbg(d);await abrirDocumento();await cargarContexto()}catch(e){msg("docmsg",e.message,false);dbg(String(e))}
+}
+async function validarDocumento(resultado){
+ try{const motivo=document.getElementById("motivoRevision").value.trim();if(["OBSERVAR","RECHAZAR"].includes(resultado)&&!motivo)throw Error("Ingrese el motivo.");const gps=await geo();msg("docmsg",resultado==="VALIDAR"?"Generando PDF ATS/PETAR...":"Procesando...");const d=await api({accion:"validarAtsFinalV432",id:DOC.ats.id,resultado,motivo,gps});mostrarResultadoCierre(d);dbg(d);await abrirDocumento();await cargarContexto()}catch(e){msg("docmsg",e.message,false);dbg(String(e))}
+}
+function mostrarResultadoCierre(d){
+ const links=(d.pdfUrl?'<a href="'+esc(d.pdfUrl)+'" target="_blank" rel="noopener">PDF ATS</a>':'')+(d.petarPdfUrl?' &nbsp; <a href="'+esc(d.petarPdfUrl)+'" target="_blank" rel="noopener">PDF PETAR</a>':'');
+ const el=document.getElementById("docmsg");el.className="goodbox";el.innerHTML='<b>'+esc(d.estado||"Procesado")+'</b>'+(links?'<br>'+links:'');
 }
 
 function setupCanvas(){
