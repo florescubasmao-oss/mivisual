@@ -171,3 +171,23 @@ Estado: EN CONCILIACIÓN, sin cambios en producción.
 - Setiembre usa elegibilidad por orden y regla GAR/VTR bidireccional.
 - Diferencia controlada detectada: orden 3404829 debe recuperar Producción por NO_ES_GAR_VTR; snapshot actual aún no la contiene.
 - Siguiente paso: Partida efectiva y puntos por orden, en diagnóstico.
+
+
+## Análisis Económico — BACKEND VALIDADO
+
+Estado: **MOTOR CERRADO / COSTOS OPERATIVOS PENDIENTES DE CARGA**
+
+- Materiales: 1,392 / 1,392.
+- Gastos directos: 84 registros, solo julio.
+- Tarifario PDG: 32.
+- Observaciones: 78.
+- Setiembre valorizado migración: S/ 238,950.
+- Setiembre legacy: S/ 236,530.
+- Diferencia de ingreso: +S/ 2,420.
+- Bono migración setiembre: S/ 18,877.50.
+- PDG migración setiembre: S/ 4,384.89.
+- Utilidad parcial setiembre: S/ 197,531.07.
+- 32 cuadrillas quedan INCOMPLETO_GASTOS por ausencia de costos directos.
+- P7 PDG solo hasta julio; desde agosto es regular con tarifa especial.
+- Julio/agosto permanecen protegidos y no se reescriben.
+- Documento: migration/10_economic_validation.md.
