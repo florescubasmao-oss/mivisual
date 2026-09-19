@@ -220,3 +220,42 @@ El API usa nombres compatibles con Apps Script para reducir cambios en el fronte
 6. Recién después cambiar la UI productiva.
 
 `main`, Apps Script y Google Sheets productivos permanecen sin cambios.
+
+
+## Frontend piloto
+
+Archivo:
+
+- `migration/pilot/bonos-supervisores-pilot.html`
+
+Integraciones validadas:
+
+- Supabase Auth.
+- `bonos-supervisores-pilot`.
+- selector de período julio/agosto/setiembre.
+- lectura de fichas y 5 componentes.
+- estado/refresco de cache.
+- evaluación de liderazgo.
+- satisfacción opcional.
+- actas sin pendientes.
+- configuración del bono.
+- parámetros SLA WIN.
+- panel de diagnóstico.
+- enlace desde `migration/pilot/index.html`.
+
+Validación sintáctica JavaScript: OK.
+
+Prueba de alcance backend con usuarios Auth vinculados:
+
+- `JEFZNORTE`: Auth vinculado, perfil JEFATURA, 4 bonos visibles, edición habilitada.
+- `SUPCHICLAYO`: Auth vinculado, perfil SUPERVISOR, 1 bono visible, edición deshabilitada.
+- `SUPPIURA`: todavía sin Auth vinculado.
+- `SUPTRUJILLO`: todavía sin Auth vinculado.
+
+Publicación Netlify:
+
+- Proyecto piloto identificado: `mi-visual-piloto`.
+- Es un deploy manual separado de producción.
+- El entorno de terminal disponible durante esta validación no tiene resolución DNS externa, por lo que no fue posible ejecutar el CLI de carga de Netlify desde aquí.
+- No se forzó ningún despliegue incompleto.
+- El código del frontend piloto sí quedó versionado y listo para publicar.
