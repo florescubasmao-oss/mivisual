@@ -130,15 +130,24 @@ with base as (
     coalesce(g.tiene_alquiler,false) as tiene_alquiler
   from public.mv_economico_universo u
   join public.produccion_periodos pp on pp.periodo=u.periodo
-  left join public.mv_economico_ingreso_migracion_cuadrilla im using(periodo,cuadrilla_key)
-  left join public.mv_economico_cuadrillas_activas ca using(cuadrilla_key)
-  left join public.mv_economico_materiales_cuadrilla m using(periodo,cuadrilla_key)
-  left join public.mv_economico_gastos_cuadrilla g using(periodo,cuadrilla_key)
-  left join public.mv_economico_penalidades_win_cuadrilla pen using(periodo,cuadrilla_key)
-  left join public.mv_economico_pago_pdg_legacy pdgl using(periodo,cuadrilla_key)
-  left join public.mv_economico_pago_pdg_migracion pdgm using(periodo,cuadrilla_key)
-  left join public.mv_economico_bono_legacy_utilidad bl using(periodo,cuadrilla_key)
-  left join public.mv_economico_bono_migracion bm using(periodo,cuadrilla_key)
+  left join public.mv_economico_ingreso_migracion_cuadrilla im
+    on im.periodo=u.periodo and im.cuadrilla_key=u.cuadrilla_key
+  left join public.mv_economico_cuadrillas_activas ca
+    on ca.cuadrilla_key=u.cuadrilla_key
+  left join public.mv_economico_materiales_cuadrilla m
+    on m.periodo=u.periodo and m.cuadrilla_key=u.cuadrilla_key
+  left join public.mv_economico_gastos_cuadrilla g
+    on g.periodo=u.periodo and g.cuadrilla_key=u.cuadrilla_key
+  left join public.mv_economico_penalidades_win_cuadrilla pen
+    on pen.periodo=u.periodo and pen.cuadrilla_key=u.cuadrilla_key
+  left join public.mv_economico_pago_pdg_legacy pdgl
+    on pdgl.periodo=u.periodo and pdgl.cuadrilla_key=u.cuadrilla_key
+  left join public.mv_economico_pago_pdg_migracion pdgm
+    on pdgm.periodo=u.periodo and pdgm.cuadrilla_key=u.cuadrilla_key
+  left join public.mv_economico_bono_legacy_utilidad bl
+    on bl.periodo=u.periodo and bl.cuadrilla_key=u.cuadrilla_key
+  left join public.mv_economico_bono_migracion bm
+    on bm.periodo=u.periodo and bm.cuadrilla_key=u.cuadrilla_key
   left join lateral public.mv_bono_regla_cuadrilla(
     coalesce(im.cuadrilla,ca.cuadrilla,m.cuadrilla,g.cuadrilla,pen.cuadrilla,pdgm.cuadrilla,bm.cuadrilla),
     (u.periodo||'-01')::date
