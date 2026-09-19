@@ -1,7 +1,13 @@
 -- MI VISUAL - Validacion Tecnica: unificar periodo GAR/VTR a YYYY-MM
 begin;
 
-create or replace view public.mv_vt_gar_vtr_decisiones_validas as
+drop view if exists public.mv_vt_gar_vtr_contexto_ticket;
+drop view if exists public.mv_vt_gar_vtr_estado_win_ticket;
+drop view if exists public.mv_vt_gar_vtr_ordenes_ticket;
+drop view if exists public.mv_vt_gar_vtr_decision_ticket;
+drop view if exists public.mv_vt_gar_vtr_decisiones_validas;
+
+create view public.mv_vt_gar_vtr_decisiones_validas as
 select
   b.*,
   to_char(b.fecha_incidencia,'YYYY-MM') as periodo_iso,
@@ -15,7 +21,7 @@ where upper(trim(coalesce(b.estado_calificacion,''))) in ('CONFIRMADO','REASIGNA
   and b.fecha_calificacion::date >= b.fecha_incidencia
   and public.mv_vt_ticket_canon(b.ticket,b.tipo) is not null;
 
-create or replace view public.mv_vt_gar_vtr_decision_ticket as
+create view public.mv_vt_gar_vtr_decision_ticket as
 select distinct on (periodo_iso,ticket_canon)
   periodo_iso as periodo,
   ticket_canon as ticket,
@@ -30,7 +36,7 @@ select distinct on (periodo_iso,ticket_canon)
 from public.mv_vt_gar_vtr_decisiones_validas
 order by periodo_iso,ticket_canon,momento_decision desc nulls last,source_row desc;
 
-create or replace view public.mv_vt_gar_vtr_ordenes_ticket as
+create view public.mv_vt_gar_vtr_ordenes_ticket as
 with base as (
   select distinct
     to_char(b.fecha_incidencia,'YYYY-MM') as periodo,
@@ -64,7 +70,7 @@ from llaves l
 join public.ordenes o on o.orden_id=l.orden_id
 where l.ticket is not null;
 
-create or replace view public.mv_vt_gar_vtr_estado_win_ticket as
+create view public.mv_vt_gar_vtr_estado_win_ticket as
 with x as (
   select
     periodo,ticket,
@@ -85,7 +91,7 @@ select
   momento_win,ordenes_win
 from x;
 
-create or replace view public.mv_vt_gar_vtr_contexto_ticket as
+create view public.mv_vt_gar_vtr_contexto_ticket as
 with tickets as (
   select distinct
     to_char(fecha_incidencia,'YYYY-MM') as periodo,
