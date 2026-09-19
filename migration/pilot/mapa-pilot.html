@@ -225,6 +225,19 @@ async function cargarResumenAuth(){
   }
 }
 
+async function validarAdminAuth(){
+  const panel=document.getElementById("adminProvision");
+  try{
+    await authApiGet({accion:"contextoAuthAdmin"});
+    panel.style.display="block";
+    await cargarResumenAuth();
+    return true;
+  }catch(_){
+    panel.style.display="none";
+    return false;
+  }
+}
+
 async function crearAccesoControlado(){
   const email=document.getElementById("targetEmail").value.trim();
   const password=document.getElementById("targetPassword").value;
@@ -261,10 +274,7 @@ async function contexto(){
       '<span class="badge">Nivel: '+esc(d.nivelAcceso)+'</span>'+
       '<span class="badge">Alcance: '+esc(p.alcanceDatos)+'</span>'+
       '<span class="badge">VER: '+(p.ver?"Sí":"No")+'</span>';
-    const admins=["JEFATURA","ADMIN","ADMINISTRADOR","JEFATURA GENERAL","JEFATURA OPERACIONES"];
-    const esAdmin=admins.includes(String(d.perfil||"").toUpperCase());
-    document.getElementById("adminProvision").style.display=esAdmin?"block":"none";
-    if(esAdmin) await cargarResumenAuth();
+    await validarAdminAuth();
     state("Perfil, permisos y alcance validados.");
     dbg(d);
     return d;
