@@ -94,3 +94,20 @@ Tabla: `public.auth_access_audit`
 ## Regla de migración
 
 No crear Auth masivamente para usuarios con correo faltante/inválido y no inventar correos. La metadata operativa se conserva intacta hasta validación del dato.
+
+
+## Validación UI JEFZNORTE — 18/09/2026
+
+Pantalla piloto v5 validada con sesión real JEFZNORTE:
+- acceso Auth: OK
+- perfil: JEFATURA
+- módulo ADMINISTRACION visible: OK
+- resumen Auth cargado desde `auth-admin-pilot`: OK
+- usuarios: 80
+- activos: 79
+- Auth vinculados: 2
+- elegibles pendientes: 49
+- sin correo: 15
+- correo inválido: 14
+
+Resultado: APROBADO.
