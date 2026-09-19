@@ -22,6 +22,7 @@ No se modificó:
 - `064_programacion_descansos_dashboard_source.sql`
 - `065_programacion_descansos_cache_refresh.sql`
 - `066_programacion_descansos_lecturas.sql`
+- `067_programacion_descansos_search_path_hardening.sql`
 
 ## Histórico completo
 Se migraron las 38 columnas productivas de PROGRAMACION_DESCANSOS.
@@ -340,6 +341,12 @@ Ninguno afectó datos reales porque fueron detectados dentro de pruebas con ROLL
   - authenticated execute = false;
   - service_role execute = true.
 
+Hardening final:
+- todas las funciones `mv_descansos_*` tienen `search_path=public`;
+- las vistas del módulo usan `security_invoker=true`;
+- Supabase Security Advisor ya no reporta `function_search_path_mutable` para Descansos;
+- permanece únicamente el aviso informativo `rls_enabled_no_policy` en las tablas bloqueadas del módulo, consistente con el diseño sin acceso directo de `anon`/`authenticated` y operación backend por `service_role`.
+
 La exposición al frontend se realizará posteriormente mediante Edge Function/RPC autenticada.
 
 ## Convivencia con la app antigua
@@ -353,6 +360,11 @@ Estado en:
 - Sheet rows: 705.
 - PostgreSQL rows: 705.
 - requires final resync: true.
+
+Revalidación con la app legacy aún activa (19/09/2026):
+- 705/705 filas comparadas nuevamente;
+- diferencias de contenido: 0;
+- delta a sincronizar: 0.
 
 Antes del cutover:
 1. volver a leer las 38 columnas;
