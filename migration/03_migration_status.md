@@ -44,12 +44,37 @@ Con 6,549 órdenes cargadas:
 
 Estas mediciones corresponden al motor PostgreSQL, no incluyen latencia de red ni renderizado del navegador.
 
-## Producción actual
+## Producción — BACKEND VALIDADO
 
-No se modificó la rama main ni se cambió la aplicación productiva.
-Toda la preparación de código está en:
+Estado: **CERRADO EN MIGRACIÓN / SIN CUTOVER PRODUCTIVO**
 
-migracion-supabase
+Validación al corte `2026-09-17 20:34`:
+
+- Snapshot legacy: **1,077 órdenes / 1,920 puntos**.
+- Corrección validada `3404829`: **+1 orden / +1 punto**.
+- Objetivo migración: **1,078 órdenes / 1,921 puntos**.
+- Motor PostgreSQL: **1,078 órdenes / 1,921 puntos**.
+- Pendientes sin partida: **0**.
+- Diferencia final: **0 órdenes / 0 puntos**.
+
+Bono diario:
+
+- Regla 4.5 / base 4 preservada.
+- Tarifa normal S/30 y especial S/45 preservadas.
+- P7 SGI: PDG hasta 31/07; tarifa especial desde 01/08.
+- P8 SGI Alex Bastidas: PDG.
+- GAR/VTR activo setiembre: **6 BONO / 9 puntos**.
+- PEXT setiembre: **0 puntos**.
+- Única diferencia diaria válida: `02/09 P1 Traslado Dany Atencio`, de 4 a 5 pts por recuperación de `3404829`, generando **+S/45 por cuadrilla**.
+
+Valorización base preparada:
+
+- Legacy setiembre: **S/236,530**.
+- Tarifa efectiva unívoca: **S/238,870**.
+- Recuperable: **S/2,340** por `MESHPV` y `REUSR`.
+- `CAT6MESH2` conserva ambigüedad S/90 vs S/105 y no se resuelve automáticamente; no afecta órdenes históricas Jul–Sep actuales.
+
+Documento de validación: `migration/09_produccion_bonus_validation.md`.
 
 ## Siguiente fase
 
