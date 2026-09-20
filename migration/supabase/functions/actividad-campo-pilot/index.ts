@@ -1,5 +1,5 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-const VERSION="V1-ACTIVIDAD-CAMPO-INTEGRADO-20260920",MODULO="ACTIVIDAD CAMPO";
+const VERSION="V2-ACTIVIDAD-CAMPO-INTEGRADO-20260920",MODULO="ACTIVIDAD CAMPO";
 const cors={"Access-Control-Allow-Origin":"*","Access-Control-Allow-Headers":"authorization, x-client-info, apikey, content-type","Access-Control-Allow-Methods":"GET, POST, OPTIONS"};
 function json(x:unknown,status=200){return new Response(JSON.stringify(x),{status,headers:{...cors,"Content-Type":"application/json; charset=utf-8"}})}
 function txt(v:unknown){return String(v??"").trim()}
@@ -29,12 +29,19 @@ Deno.serve(async(req:Request)=>{
     const q=await rpc(c.admin,"mv_actividad_listar_cuadrillas",{p_usuario:c.u.usuario});
     return json({ok:true,version:VERSION,usuario:c.u,permiso:c.p,cuadrillas:q?.cuadrillas||[],fuente:"POSTGRESQL PILOTO"});
   }
-  if(a==="listarActividadCampo"){
-    const x=await rpc(c.admin,"mv_actividad_listar",{p_usuario:c.u.usuario,p_filtros:d.filtros||{}});
-    return json({...x,version:VERSION,fuente:"POSTGRESQL PILOTO"});
-  }
-  if(a==="resumenActividadCampo"){
-    const x=await rpc(c.admin,"mv_actividad_resumen",{p_usuario:c.u.usuario,p_filtros:d.filtros||{}});
+  if(a==="listarActividadCampo"||a==="resumenActividadCampo"){
+    const filtros={...(d.filtros||{})};
+    const periodo=txt(filtros.periodo);
+    if(/^20\d{2}-\d{2}$/.test(periodo)){
+      const [y,m]=periodo.split("-").map(Number);
+      const next=new Date(Date.UTC(y,m,1)).toISOString().slice(0,10);
+      filtros.fechaDesde=periodo+"-01";
+      const nd=new Date(Date.UTC(y,m,0)).toISOString().slice(0,10);
+      filtros.fechaHasta=nd;
+      delete filtros.periodo;
+    }
+    const fn=a==="listarActividadCampo"?"mv_actividad_listar":"mv_actividad_resumen";
+    const x=await rpc(c.admin,fn,{p_usuario:c.u.usuario,p_filtros:filtros});
     return json({...x,version:VERSION,fuente:"POSTGRESQL PILOTO"});
   }
   if(a==="buscarDatosAuditoriaCampo"){
