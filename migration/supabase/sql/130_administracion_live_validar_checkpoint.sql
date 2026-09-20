@@ -3,7 +3,7 @@
 
 update public.migration_live_source_control
 set postgres_target='app_users + app_permissions + auth.users + auth-admin-pilot + base_operativa_migracion + motores reutilizados',
-    source_mode='HYBRID_PILOT',
+    source_mode='SHEET_LIVE_SNAPSHOT',
     status='LIVE_VALIDAR',
     requires_final_resync=true,
     last_audit_at=now(),
@@ -14,7 +14,7 @@ where modulo='ADMINISTRACION';
 
 update public.migration_live_source_control
 set postgres_target='base_operativa_legacy + base_operativa_migracion + mv_base_operativa_unificada_pilot + staging/reconciliation/apply',
-    source_mode='SHEET_LIVE_SNAPSHOT + VERSIONED_MIGRATION',
+    source_mode='SHEET_LIVE_SNAPSHOT',
     status='LIVE_VALIDAR',
     requires_final_resync=true,
     last_audit_at=now(),
