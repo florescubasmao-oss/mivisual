@@ -1,3 +1,15 @@
+# Checkpoint Administración / Base Operativa — 20/09/2026
+
+- BASE_OPERATIVA_HISTORICA alineada: 4,144 Sheets / 4,144 PostgreSQL.
+- BASE_OPERATIVA registrada en control maestro como LIVE_VALIDAR.
+- Nueva RPC mv_base_operativa_preview_staging.
+- Nueva Edge base-operativa-pilot V1 ACTIVE/JWT.
+- Carga por bloques + staging + preview; SIN APPLY.
+- Prueba septiembre: 3 filas, corte 18/09, 2 finalizadas, 0 faltantes, puedeAplicar=true; ROLLBACK y 0 residuos.
+- Nueva UI base-operativa-pilot.html enlazada desde Administración.
+- Administración completa sigue PENDIENTE_MIGRACION hasta portar APPLY y subprocesos restantes.
+- main/Apps Script/Sheets/Drive productivos sin cambios.
+
 # Checkpoint Auth / Materiales / Utilidad — 20/09/2026
 
 - Auth Admin Edge V2: provisión gradual sin contraseña disponible, sin invitación automática.
