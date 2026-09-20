@@ -204,7 +204,25 @@
   const metricas = [];
 
   const MV420_SCRIPT_TIMEOUT_MS = 12000;
+  const MV557_ACTAS_SCRIPT_TIMEOUT_MS = 30000;
   const fallosScript = new Map();
+
+  function perfilLoader(){
+    return String(localStorage.getItem("perfil") || "")
+      .toUpperCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"").trim();
+  }
+
+  function archivosModuloV557(id, config){
+    const archivos = [...(config.archivos || [])];
+    if(id !== "actas" || perfilLoader() !== "TECNICO") return archivos;
+
+    // V557: el Técnico no necesita cargar capas exclusivas de Almacén/Jefatura
+    // para poder abrir Gestión de Actas y subir su PDF.
+    return archivos.filter(function(url){
+      return !url.includes("actas_mantenimiento_v402.js") &&
+             !url.includes("actas_motivos_observacion_v403.js");
+    });
+  }
 
   function urlScriptV420(url){
     const fallos = Number(fallosScript.get(url) || 0);
@@ -261,7 +279,7 @@
     });
   }
 
-  function cargarScript(url){
+  function cargarScript(url, tiempoLimiteMs){
     if(promesasScript.has(url)) return promesasScript.get(url);
 
     const rutaBase = url.split("?")[0].replace(/^\.\//,"");
@@ -313,9 +331,11 @@
         fallar("No se pudo descargar un archivo del módulo. Verifique la conexión y pulse Reintentar.");
       };
 
+      const limiteMs = Math.max(1000, Number(tiempoLimiteMs) || MV420_SCRIPT_TIMEOUT_MS);
       temporizador = setTimeout(function(){
-        fallar("La carga del módulo superó 12 segundos y fue cancelada para evitar que MI VISUAL quede bloqueado. Pulse Reintentar.");
-      }, MV420_SCRIPT_TIMEOUT_MS);
+        const segundos = Math.round(limiteMs / 1000);
+        fallar(`La carga del módulo superó ${segundos} segundos y fue cancelada para evitar que MI VISUAL quede bloqueado. Pulse Reintentar.`);
+      }, limiteMs);
 
       document.head.appendChild(script);
     });
@@ -333,7 +353,9 @@
     const inicio = performance.now();
     const promesa = (async function(){
       for(const dependencia of (config.depende || [])) await cargarModulo(dependencia);
-      for(const archivo of (config.archivos || [])) await cargarScript(archivo);
+      const archivos = archivosModuloV557(id, config);
+      const timeoutScript = id === "actas" ? MV557_ACTAS_SCRIPT_TIMEOUT_MS : MV420_SCRIPT_TIMEOUT_MS;
+      for(const archivo of archivos) await cargarScript(archivo, timeoutScript);
 
       for(const nombre of (config.entradas || [])){
         const candidata = window[nombre];
@@ -409,8 +431,9 @@
     const p = String(perfil || "").toUpperCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"").trim();
     if(p === "TECNICO"){
       programarCarga("dashboards_core",350);
-      programarCarga("mi_desempeno",1300);
-      programarCarga("validacion",2800);
+      programarCarga("actas",900);
+      programarCarga("mi_desempeno",1500);
+      programarCarga("validacion",3000);
       return;
     }
     if(p === "SUPERVISOR"){
