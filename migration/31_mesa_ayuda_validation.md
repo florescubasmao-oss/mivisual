@@ -44,3 +44,12 @@ Antes de integrar el menú, resíncronizar las tres hojas: la app actual sigue e
 ## Vista previa publicada
 
 Publicado draft de Netlify `6ab02775a10b6736da91453c` en el sitio existente `mi-visual-piloto` (sin --prod). Página verificada en navegador: https://6ab02775a10b6736da91453c--mi-visual-piloto.netlify.app/migration/pilot/mesa-ayuda-pilot . El formulario carga y muestra «Ingresa con tu cuenta del piloto». La solicitud segura de autenticación terminó con toma de control por el usuario, sin evidencia de sesión iniciada; pruebas autenticadas y de actas continúan pendientes. El sitio principal del piloto mantiene su pantalla de Mapa Operativo; no se reemplazó producción.
+
+
+## Recuperación de acceso habilitada
+
+Tras autorización expresa del usuario para actualizar solo `mi-visual-piloto.netlify.app`, se publicó el deploy `6ab03082193c47bec980fa6c`. Incluye Mapa Operativo (script original preservado sin diferencias), Mesa de Ayuda y `/recuperar.html` + `/recovery.js`. GitHub Pages productivo y main no se modificaron. Se verificó en navegador la página de recuperación y la presencia de Mapa Operativo.
+
+Flujo oficial `resetPasswordForEmail` → `PASSWORD_RECOVERY` → `updateUser`. Formulario pide mínimo 12 caracteres y confirmación; limpia los campos después del cambio; no se registra ni se define la contraseña del usuario. Pruebas simuladas: sin sesión de recuperación no actualiza, contraseñas distintas no actualizan, éxito limpia campos. No se completó cambio real de contraseña ni pruebas autenticadas de Mesa.
+
+Se solicitó una sola recuperación para el correo de JEFZNORTE indicado por el usuario. Supabase respondió HTTP 200. Esto confirma aceptación del envío, no entrega en la bandeja ni cambio de contraseña. El usuario debe abrir su correo y completar personalmente el cambio. Referencia: https://supabase.com/docs/reference/javascript/auth-resetpasswordforemail .
