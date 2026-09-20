@@ -24,7 +24,7 @@ table{width:100%;border-collapse:collapse;font-size:12px}th,td{padding:7px;borde
 <body><div class="wrap">
 <div class="card">
   <div class="row" style="justify-content:space-between"><h1 style="margin-bottom:0">Resync final</h1><button class="sec" onclick="location.href='administracion-pilot.html'">Volver a Administración</button></div>
-  <p class="lead">Validación Técnica · Programación de Descansos · Actas · Mapa Operativo · Catálogo CTO</p>
+  <p class="lead">Validación Técnica · Descansos · Actas · Mapa · CTO · Asignaciones Campo</p>
   <div class="notice" style="margin-top:10px"><b>Flujo controlado:</b> cargue una copia Excel actual de MI VISUAL. Primero se valida y crea staging. Mapa y CTO además ejecutan un preview obligatorio antes de habilitar APPLY. Mapa no modifica períodos protegidos y ambos generan backup para rollback.</div>
 </div>
 
@@ -82,6 +82,17 @@ table{width:100%;border-collapse:collapse;font-size:12px}th,td{padding:7px;borde
     <div id="actasStatus" class="status"></div>
   </div>
 
+  <div class="module" id="modASG">
+    <h3>Asignaciones Campo</h3>
+    <div id="asgInfo" class="muted"></div>
+    <div class="row" style="margin-top:8px">
+      <button id="asgStage" onclick="stageModule('ASG')">Crear staging</button>
+      <button id="asgApply" class="good hidden" onclick="applyModule('ASG')">Aplicar Asignaciones</button>
+      <button id="asgCancel" class="warn hidden" onclick="cancelModule('ASG')">Cancelar staging</button>
+    </div>
+    <div id="asgStatus" class="status"></div>
+  </div>
+
   <div class="module" id="modMAPA">
     <h3>Mapa Operativo</h3>
     <div id="mapaInfo" class="muted"></div>
@@ -122,6 +133,7 @@ const MODS={
   VT:{modulo:"VALIDACION_TECNICA",rows:[],runId:null,applyAction:"aplicarValidacionTecnica",confirm:"APLICAR_VALIDACION_TECNICA_STAGING",prefix:"vt"},
   DESC:{modulo:"PROGRAMACION_DESCANSOS",rows:[],runId:null,applyAction:"aplicarDescansos",confirm:"APLICAR_DESCANSOS_STAGING",prefix:"desc"},
   ACTAS:{modulo:"ACTAS",rows:[],runId:null,applyAction:"aplicarActas",confirm:"APLICAR_ACTAS_STAGING",prefix:"actas"},
+  ASG:{modulo:"ASIGNACIONES_CAMPO",rows:[],runId:null,applyAction:"aplicarAsignacionesCampo",confirm:"APLICAR_ASIGNACIONES_CAMPO_STAGING",prefix:"asg"},
   MAPA:{modulo:"MAPA_OPERATIVO",rows:[],runId:null,applyAction:"aplicarMapa",previewAction:"previewMapa",rollbackAction:"rollbackMapa",confirm:"APLICAR_MAPA_STAGING",rollbackConfirm:"ROLLBACK_MAPA_STAGING",prefix:"mapa"},
   CTO:{modulo:"CATALOGO_CTO",rows:[],runId:null,applyAction:"aplicarCto",previewAction:"previewCto",rollbackAction:"rollbackCto",confirm:"APLICAR_CTO_STAGING",rollbackConfirm:"ROLLBACK_CTO_STAGING",prefix:"cto"}
 };
@@ -270,6 +282,27 @@ function mapActas(rows){
   }
   return out;
 }
+function mapAsignaciones(rows){
+  const h=rows[0]||[],i={};h.forEach((x,n)=>{const k=norm(x);if(k&&!Object.prototype.hasOwnProperty.call(i,k))i[k]=n});
+  for(const k of ["ID","FECHA_ASIGNACION","ASIGNADO_POR","SEDE","SUPERVISOR","CUADRILLA","TIPO_ACTIVIDAD","MOTIVO","ESTADO"])if(i[k]===undefined)throw Error("ASIGNACIONES_CAMPO: falta "+k+".");
+  const out=[];
+  for(let r=1;r<rows.length;r++){
+    const row=rows[r],id=txt(at(row,i.ID));if(!id)continue;
+    const fecha=excelDate(at(row,i.FECHA_ASIGNACION));if(!fecha)throw Error("ASIGNACIONES_CAMPO fila "+(r+1)+": fecha inválida.");
+    out.push({sourceKey:id,sourceRow:r+1,rowData:{
+      id,fecha_asignacion:fecha,hora_asignacion:timePart(at(row,i.HORA_ASIGNACION)),
+      asignado_por:txt(at(row,i.ASIGNADO_POR)),sede:txt(at(row,i.SEDE)),supervisor:txt(at(row,i.SUPERVISOR)),
+      codigo_ingresado:txt(at(row,i.CODIGO_INGRESADO)),codigo_orden:txt(at(row,i.CODIGO_ORDEN)),
+      codigo_pedido:txt(at(row,i.CODIGO_PEDIDO)),cliente:txt(at(row,i.CLIENTE)),dni:txt(at(row,i.DNI)),
+      cuadrilla:txt(at(row,i.CUADRILLA)),tipo_actividad:txt(at(row,i.TIPO_ACTIVIDAD)),motivo:txt(at(row,i.MOTIVO)),
+      prioridad:txt(at(row,i.PRIORIDAD))||"NORMAL",fecha_limite:excelDate(at(row,i.FECHA_LIMITE)),
+      estado:txt(at(row,i.ESTADO)),fecha_inicio:excelDate(at(row,i.FECHA_INICIO)),hora_inicio:timePart(at(row,i.HORA_INICIO)),
+      fecha_cierre:excelDate(at(row,i.FECHA_CIERRE)),hora_cierre:timePart(at(row,i.HORA_CIERRE)),
+      id_actividad_campo:txt(at(row,i.ID_ACTIVIDAD_CAMPO)),observacion_jefatura:txt(at(row,i.OBSERVACION_JEFATURA))
+    }});
+  }
+  return out;
+}
 function mapMapa(rows){
   const h=rows[0]||[],i={};h.forEach((x,n)=>{const k=norm(x);if(k&&!Object.prototype.hasOwnProperty.call(i,k))i[k]=n});
   for(const k of ["ORDEN_ID","TIPO_TRABAJO","FECHA_SOLICITUD"])if(i[k]===undefined)throw Error("MAPA_ORDENES: falta "+k+".");
@@ -330,17 +363,19 @@ async function leerWorkbook(){
     MODS.VT.rows=mapVT(sheetRows(wb,"VALIDACION_TECNICA"));
     MODS.DESC.rows=mapDesc(sheetRows(wb,"PROGRAMACION_DESCANSOS"));
     MODS.ACTAS.rows=mapActas(sheetRows(wb,"ACTAS_ESCANEADAS"));
+    MODS.ASG.rows=mapAsignaciones(sheetRows(wb,"ASIGNACIONES_CAMPO"));
     MODS.MAPA.rows=mapMapa(sheetRows(wb,"MAPA_ORDENES"));
     MODS.CTO.rows=mapCto(sheetRows(wb,"CATALOGO_CTO"));
     for(const m of Object.values(MODS)){m.runId=null;resetButtons(m)}
     E("summary").classList.remove("hidden");E("modules").classList.remove("hidden");E("preview").classList.remove("hidden");
-    E("metrics").innerHTML='<div class="metric">Validación Técnica<b>'+MODS.VT.rows.length+'</b></div><div class="metric">Descansos<b>'+MODS.DESC.rows.length+'</b></div><div class="metric">Actas<b>'+MODS.ACTAS.rows.length+'</b></div><div class="metric">Mapa<b>'+MODS.MAPA.rows.length+'</b></div><div class="metric">CTO<b>'+MODS.CTO.rows.length+'</b></div>';
+    E("metrics").innerHTML='<div class="metric">Validación Técnica<b>'+MODS.VT.rows.length+'</b></div><div class="metric">Descansos<b>'+MODS.DESC.rows.length+'</b></div><div class="metric">Actas<b>'+MODS.ACTAS.rows.length+'</b></div><div class="metric">Asignaciones<b>'+MODS.ASG.rows.length+'</b></div><div class="metric">Mapa<b>'+MODS.MAPA.rows.length+'</b></div><div class="metric">CTO<b>'+MODS.CTO.rows.length+'</b></div>';
     E("vtInfo").textContent=MODS.VT.rows.length+" filas detectadas.";
     E("descInfo").textContent=MODS.DESC.rows.length+" filas detectadas.";
     E("actasInfo").textContent=MODS.ACTAS.rows.length+" filas detectadas.";
+    E("asgInfo").textContent=MODS.ASG.rows.length+" asignaciones detectadas.";
     E("mapaInfo").textContent=MODS.MAPA.rows.length+" filas detectadas. Los períodos protegidos no se actualizarán.";
     E("ctoInfo").textContent=MODS.CTO.rows.length+" CTO detectadas.";
-    E("validationMsg").className="ok";E("validationMsg").textContent="Las cinco hojas fueron leídas y normalizadas. Ningún dato se ha enviado aún a PostgreSQL.";
+    E("validationMsg").className="ok";E("validationMsg").textContent="Las seis hojas fueron leídas y normalizadas. Ningún dato se ha enviado aún a PostgreSQL.";
     E("fileStatus").className="ok";E("fileStatus").textContent="Archivo válido: "+f.name;
     renderSample();
   }catch(e){E("fileStatus").className="err";E("fileStatus").textContent=e.message}
@@ -350,6 +385,7 @@ function renderSample(){
     ["Validación",MODS.VT.rows[0]?.sourceKey,MODS.VT.rows[0]?.rowData?.periodo],
     ["Descansos",MODS.DESC.rows[0]?.sourceKey,MODS.DESC.rows[0]?.rowData?.fecha],
     ["Actas",MODS.ACTAS.rows[0]?.sourceKey,MODS.ACTAS.rows[0]?.rowData?.fecha_gestion],
+    ["Asignaciones",MODS.ASG.rows[0]?.sourceKey,MODS.ASG.rows[0]?.rowData?.fecha_asignacion],
     ["Mapa",MODS.MAPA.rows[0]?.sourceKey,MODS.MAPA.rows[0]?.rowData?.fecha_solicitud],
     ["CTO",MODS.CTO.rows[0]?.sourceKey,MODS.CTO.rows[0]?.rowData?.ultima_actualizacion]
   ];
