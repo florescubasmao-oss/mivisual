@@ -1,0 +1,46 @@
+begin;
+do $$
+declare jefe uuid;sup uuid;tech uuid:=gen_random_uuid();oper uuid:=gen_random_uuid();ger uuid:=gen_random_uuid();x jsonb;y jsonb;p jsonb;cid text;failed boolean;n int;
+begin
+select auth_user_id into jefe from public.app_users where usuario='JEFZNORTE';
+select auth_user_id into sup from public.app_users where usuario='SUPCHICLAYO';
+-- Existing test actors only; profile substitutions are rolled back.
+tech:=sup;oper:=sup;ger:=sup;
+x:=public.mesa_pilot_rpc(jefe,'{"accion":"listarConsultasReclamos"}');
+if jsonb_array_length(x->'casos')<>7 then raise exception 'Jefatura count failed';end if;
+x:=public.mesa_pilot_rpc(sup,'{"accion":"listarConsultasReclamos"}');
+if jsonb_array_length(x->'casos')<>7 then raise exception 'Supervisor count failed';end if;
+if public.mesa_visible('{"perfil":"SUPERVISOR","sede":"CHICLAYO"}','{"categoria":"SUPERVISOR","sede":"CHICLAYO"}') then raise exception 'Confidentiality failed';end if;
+if public.mesa_visible('{"perfil":"TECNICO","usuario":"X","cuadrilla":""}','{"tecnico":"Y","cuadrilla":""}') then raise exception 'Empty squad leaked';end if;
+update public.app_users set perfil='TECNICO' where auth_user_id=sup;
+p:=jsonb_build_object('accion','registrarConsultaReclamo','requestId',gen_random_uuid(),'categoria','SUPERVISOR','subcategoria','SUPERVISOR NO RESPONDE','descripcion','ROLLBACK TEST');
+x:=public.mesa_pilot_rpc(tech,p);cid:=x->>'id';y:=public.mesa_pilot_rpc(tech,p);if x<>y then raise exception 'Idempotency failed';end if;
+select count(*) into n from public.mesa_historial_migracion where caso_id=cid;if n<>1 then raise exception 'Duplicate history';end if;
+failed:=false;begin perform public.mesa_pilot_rpc(tech,p||'{"descripcion":"DIFFERENT"}');exception when raise_exception then failed:=true;end;if not failed then raise exception 'Different payload accepted';end if;
+update public.app_users set perfil='SUPERVISOR' where auth_user_id=sup;
+failed:=false;begin perform public.mesa_pilot_rpc(sup,jsonb_build_object('accion','listarHistorialReclamo','id',cid));exception when raise_exception then failed:=true;end;if not failed then raise exception 'Supervisor read complaint';end if;
+update public.app_users set perfil='JEFATURA OPERACIONES' where auth_user_id=sup;
+failed:=false;begin perform public.mesa_pilot_rpc(oper,jsonb_build_object('accion','actualizarConsultaReclamo','id',cid,'requestId',gen_random_uuid(),'version',0,'estado','SOLUCIONADO','comentario','x'));exception when raise_exception then failed:=true;end;if not failed then raise exception 'Wrong area accepted';end if;
+update public.app_users set perfil='TECNICO' where auth_user_id=sup;
+p:=jsonb_build_object('accion','actualizarConsultaReclamo','id',cid,'requestId',gen_random_uuid(),'version',0,'estado','SOLUCIONADO','comentario','Resuelto');
+x:=public.mesa_pilot_rpc(jefe,p);y:=public.mesa_pilot_rpc(jefe,p);if x<>y then raise exception 'Update retry failed';end if;
+failed:=false;begin perform public.mesa_pilot_rpc(tech,jsonb_build_object('accion','agregarComentarioReclamo','id',cid,'requestId',gen_random_uuid(),'version',1,'comentario','x'));exception when raise_exception then failed:=true;end;if not failed then raise exception 'Finalized comment accepted';end if;
+x:=public.mesa_pilot_rpc(jefe,jsonb_build_object('accion','restablecerConsultaReclamo','id',cid,'requestId',gen_random_uuid(),'version',1,'motivo','Corrección'));
+if x->>'estado'<>'REGISTRADO' then raise exception 'Restore state failed';end if;
+select datos into y from public.mesa_casos_migracion where id=cid;if y->>'fechaSolucion'<>'' or y->>'respuestaFinal'<>'' or y->>'fechaPrimeraRespuesta'<>'' then raise exception 'Restore dates failed';end if;
+if not exists(select 1 from public.mesa_historial_migracion where caso_id=cid and datos->>'accion'='CAMBIO DE ESTADO ANULADO') then raise exception 'Audit failed';end if;
+failed:=false;begin perform public.mesa_pilot_rpc(jefe,jsonb_build_object('accion','agregarComentarioReclamo','id',cid,'requestId',gen_random_uuid(),'version',0,'comentario','Stale'));exception when raise_exception then failed:=true;end;if not failed then raise exception 'Stale version accepted';end if;
+x:=public.mesa_pilot_rpc(tech,jsonb_build_object('accion','agregarComentarioReclamo','id',cid,'requestId',gen_random_uuid(),'version',2,'comentario','Información'));
+x:=public.mesa_pilot_rpc(jefe,jsonb_build_object('accion','restablecerConsultaReclamo','id',cid,'requestId',gen_random_uuid(),'version',3,'motivo','Anular comentario'));
+if x->>'estado'<>'REGISTRADO' or x->>'movimientoAnulado'<>'COMENTARIO' then raise exception 'Restore comment failed';end if;
+update public.app_users set perfil='GERENCIA GENERAL' where auth_user_id=sup;
+failed:=false;begin perform public.mesa_pilot_rpc(ger,jsonb_build_object('accion','agregarComentarioReclamo','id',cid,'requestId',gen_random_uuid(),'version',4,'comentario','x'));exception when raise_exception then failed:=true;end;if not failed then raise exception 'Gerencia write accepted';end if;
+failed:=false;begin perform public.mesa_pilot_rpc(gen_random_uuid(),'{"accion":"listarConsultasReclamos"}');exception when raise_exception then failed:=true;end;if not failed then raise exception 'Unlinked accepted';end if;
+update public.app_users set perfil='TECNICO' where auth_user_id=sup;
+p:=jsonb_build_object('accion','registrarConsultaReclamo','requestId',gen_random_uuid(),'categoria','BONO, PRODUCCION Y PUNTAJE','subcategoria','PUNTOS NO CONTABILIZADOS','descripcion','ROLLBACK DAYS','detalleDias',jsonb_build_array(jsonb_build_object('fecha','2026-09-20','puntos',2.5,'codigos',jsonb_build_array(jsonb_build_object('codigo','0001')))));
+x:=public.mesa_pilot_rpc(tech,p);select datos into y from public.mesa_casos_migracion where id=x->>'id';if y->>'totalPuntos'<>'2.5' or y->>'cantidadDias'<>'1' then raise exception 'Days failed';end if;
+failed:=false;begin perform public.mesa_pilot_rpc(tech,p||jsonb_build_object('requestId',gen_random_uuid(),'detalleDias','[]'::jsonb));exception when raise_exception then failed:=true;end;if not failed then raise exception 'Empty days accepted';end if;
+raise notice 'Mesa transactional tests passed';
+end$$;
+rollback;
+select (select count(*) from public.mesa_casos_migracion) casos,(select count(*) from public.mesa_historial_migracion) historial,(select count(*) from public.mesa_operaciones_piloto) test_operations_remaining;
