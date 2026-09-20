@@ -1,6 +1,6 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
-const VERSION = "V1-EVIDENCIAS-PILOT-20260919";
+const VERSION = "V2-EVIDENCIAS-PILOT-20260920";
 const BUCKET = "mi-visual-evidencias";
 const TZ = "America/Lima";
 const MAX_BYTES = 10 * 1024 * 1024;
@@ -239,6 +239,22 @@ async function sign(ctx:any, data:any) {
     signedUrl:signed.signedUrl, expiresIn:seconds
   };
 }
+async function removeEvidence(ctx:any, data:any) {
+  const path = parseStorageRef(data.storageRef || data.path);
+  if (!path) throw new Error("Referencia de evidencia obligatoria.");
+  assertReadScope(ctx,path);
+  const parts=path.split("/");
+  const owner=parts[2]||"";
+  if(owner!==safePart(ctx.appUser.usuario)){
+    throw new Error("Solo el propietario puede eliminar esta evidencia temporal.");
+  }
+  const { error }=await ctx.admin.storage.from(BUCKET).remove([path]);
+  if(error) throw error;
+  return {
+    ok:true,version:VERSION,accion:"ELIMINAR_EVIDENCIA",
+    modulo:ctx.info.module,storageRef:`storage://${BUCKET}/${path}`
+  };
+}
 
 Deno.serve(async (req:Request) => {
   if (req.method === "OPTIONS") return new Response("ok",{headers:corsHeaders});
@@ -249,6 +265,7 @@ Deno.serve(async (req:Request) => {
     const accion = norm(data.accion);
     if (accion === "SUBIR EVIDENCIA" || accion === "SUBIR_EVIDENCIA") return json(await upload(ctx,data));
     if (accion === "FIRMAR EVIDENCIA" || accion === "FIRMAR_EVIDENCIA") return json(await sign(ctx,data));
+    if (accion === "ELIMINAR EVIDENCIA" || accion === "ELIMINAR_EVIDENCIA") return json(await removeEvidence(ctx,data));
     return json({ok:false,version:VERSION,error:"Acción no soportada."},400);
   } catch(e) {
     const msg = e instanceof Error ? e.message : String(e);
