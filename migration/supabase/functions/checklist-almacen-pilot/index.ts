@@ -1,5 +1,5 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-const VERSION="V1-CHECKLIST-ALMACEN-INTEGRADO-20260920",MODULO="CHECKLIST ALMACEN";
+const VERSION="V2-CHECKLIST-ALMACEN-INTEGRADO-20260920",MODULO="CHECKLIST ALMACEN";
 const cors={"Access-Control-Allow-Origin":"*","Access-Control-Allow-Headers":"authorization, x-client-info, apikey, content-type","Access-Control-Allow-Methods":"GET, POST, OPTIONS"};
 function json(x:unknown,status=200){return new Response(JSON.stringify(x),{status,headers:{...cors,"Content-Type":"application/json; charset=utf-8"}})}
 function txt(v:unknown){return String(v??"").trim()}
@@ -30,8 +30,15 @@ Deno.serve(async(req:Request)=>{
     return json({ok:true,version:VERSION,usuario:c.u,permiso:c.p,catalogoHerramientas:cat?.herramientas||cat||[],fuente:"POSTGRESQL PILOTO"});
   }
   if(a==="listarChecklist"){
-    const x=await rpc(c.admin,"mv_checklist_listar",{p_usuario:c.u.usuario,p_filtros:d.filtros||{}});
-    return json({...x,version:VERSION,fuente:"POSTGRESQL PILOTO"});
+    const filtros={...(d.filtros||{})};
+    const periodo=txt(filtros.periodo);
+    delete filtros.periodo;
+    const x=await rpc(c.admin,"mv_checklist_listar",{p_usuario:c.u.usuario,p_filtros:filtros});
+    let rows=Array.isArray(x?.checklist)?x.checklist:[];
+    if(/^20\d{2}-\d{2}$/.test(periodo)){
+      rows=rows.filter((r:any)=>txt(r.fechaGestion||r.fechaRegistro).slice(0,7)===periodo);
+    }
+    return json({...x,checklist:rows,registros:rows.length,periodo:periodo||null,version:VERSION,fuente:"POSTGRESQL PILOTO"});
   }
   if(a==="registrarChecklist"){
     if(!c.p.registrar)throw Error("Sin permiso para registrar.");
