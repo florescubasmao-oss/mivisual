@@ -92,4 +92,4 @@ function decisionesJson(){try{return JSON.parse(decisiones.value||"[]")}catch{th
 async function recibir(){return escribir("recmsg",async()=>{const equipos=decisionesJson();if(!Array.isArray(equipos))throw Error("Las decisiones deben ser una lista.");const solicitudId=await intento(true);const d=await api({accion:"validarRecepcionEquiposAveriados",id:rid.value.trim(),solicitudId,equipos,observacionGeneral:obs.value});msg("recmsg","Recepción procesada: "+d.estado);dbg(d);await listar()})}
 async function verificar(){try{const d=await api({accion:"verificarRecepcionEquiposAveriadosV399",id:rid.value.trim(),solicitudId:await intento()},"GET");msg("recmsg",d.confirmado?"Recepción confirmada.":"Aún no confirmada.",d.confirmado);dbg(d)}catch(e){msg("recmsg",e.message,false)}}
 async function volver(){try{const d=await api({accion:"volverPendienteEquiposAveriados",id:rid.value.trim()});msg("recmsg","Solicitud vuelta a pendiente.");dbg(d);await listar()}catch(e){msg("recmsg",e.message,false)}}
-</script></body></html>
+</script><script src="shell-embed.js"></script>\n</body></html>
