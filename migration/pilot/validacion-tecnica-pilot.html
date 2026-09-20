@@ -1,0 +1,57 @@
+<!doctype html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>MI VISUAL · Validación Técnica</title><script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.57.4"></script><style>
+:root{--navy:#0b2340;--blue:#0f6fff;--green:#15803d;--red:#b91c1c;--orange:#b45309;--line:#dbe3ec;--muted:#64748b}
+*{box-sizing:border-box}body{font-family:Arial,sans-serif;margin:0;padding:16px;background:#f5f7fb;color:#102033}.wrap{max-width:1280px;margin:auto}
+h1{margin:0 0 5px;font-size:24px}.lead{color:var(--muted);margin:0 0 16px}.card{background:#fff;border:1px solid var(--line);border-radius:15px;padding:16px;margin-bottom:14px}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:10px}.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+input,select,textarea,button{font:inherit;padding:10px;border-radius:9px;border:1px solid #cbd5e1}input,select,textarea{width:100%}textarea{min-height:74px}
+button{border:0;background:var(--blue);color:#fff;font-weight:700;cursor:pointer}button.sec{background:#475569}button.good{background:var(--green)}button.danger{background:var(--red)}button:disabled{opacity:.5;cursor:not-allowed}
+.badge{display:inline-block;background:#e2e8f0;padding:4px 8px;border-radius:999px;margin:2px;font-size:12px}.ok{color:var(--green)}.err{color:var(--red)}.warn{color:var(--orange)}.muted{color:var(--muted)}
+.metrics{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px}.metric{border:1px solid var(--line);border-radius:11px;padding:10px;background:#f8fafc}.metric b{display:block;font-size:20px}
+.tablewrap{overflow:auto;max-height:520px}table{width:100%;border-collapse:collapse;font-size:12px}th,td{padding:8px;border-bottom:1px solid var(--line);text-align:left;vertical-align:top;white-space:nowrap}tr.pick{cursor:pointer}tr.pick:hover{background:#eef6ff}tr.selected{background:#dbeafe}
+.notice{padding:10px;border-radius:10px;background:#fff7ed;color:#9a3412}.hidden{display:none!important}pre{white-space:pre-wrap;background:#f8fafc;padding:10px;border-radius:9px;max-height:260px;overflow:auto}
+@media(max-width:650px){body{padding:8px}.card{padding:12px}h1{font-size:20px}}
+</style></head><body><div class="wrap">
+<h1>Validación Técnica</h1><p class="lead">PostgreSQL · Reglas V490 · Recableado / GAR / VTR</p>
+<div class="card"><div id="ctx" class="muted">Cargando sesión...</div></div>
+<div class="card">
+ <div class="grid">
+  <input id="periodo" value="2026-09" placeholder="YYYY-MM">
+  <select id="tipo"><option value="">Todos los tipos</option><option>RECABLEADO</option><option>GAR</option><option>VTR</option><option>OTRO</option></select>
+  <select id="estado"><option value="">Todos los estados</option><option>PENDIENTE</option><option>SIN RESPUESTA</option><option>APROBADO</option><option>RECHAZADO</option><option>OBSERVADO</option><option>BONO</option><option>NO BONO</option></select>
+  <select id="sede"><option value="">Todas las sedes</option><option>CHICLAYO</option><option>PIURA</option><option>TRUJILLO</option></select>
+ </div>
+ <div class="row" style="margin-top:9px"><button onclick="listar()">Actualizar</button><button class="sec" onclick="exportarCsv()">Exportar lista</button></div>
+ <div id="msg" style="margin-top:8px"></div>
+</div>
+<div class="card"><div class="metrics" id="metrics"></div><div class="tablewrap"><table id="tabla"></table></div></div>
+<div id="validarCard" class="card hidden">
+ <h3>Validar registro seleccionado</h3><div id="sel" class="muted"></div>
+ <div class="grid" style="margin-top:9px"><select id="resultado"></select><input id="puntaje" type="number" step="0.01" min="0" placeholder="Puntaje VTR/GAR"></div>
+ <textarea id="motivo" placeholder="Comentario / motivo"></textarea>
+ <div class="row"><button class="good" onclick="validar()">Guardar validación</button></div><div id="vmsg"></div>
+</div>
+<div id="registroCard" class="card hidden">
+ <h3>Registro técnico</h3><div class="grid"><input id="buscarCodigo" placeholder="Código cliente"><input id="buscarDni" placeholder="DNI"><input id="buscarTicket" placeholder="Ticket"></div>
+ <div class="row" style="margin-top:8px"><button onclick="buscar()">Buscar atención</button></div><div id="busqueda"></div>
+ <div id="regForm" class="hidden"><div class="grid"><input id="rCodigo" readonly><input id="rDni" readonly><input id="rTicket" readonly><select id="rOrigen"><option value="">Origen GAR/VTR</option><option>PROPIA</option><option>ASIGNADA</option></select></div>
+ <textarea id="rMotivo" placeholder="Motivo técnico"></textarea><button class="good" onclick="registrar()">Registrar validación</button><div id="rmsg"></div></div>
+</div>
+<div class="card"><details><summary>Diagnóstico</summary><pre id="debug">Sin consultas.</pre></details></div>
+<script>
+const URL="https://uudvodiaizfarodjpetb.supabase.co",KEY="sb_publishable_2hiwePKtqoo3_c_D5B9JuA_p38dPe3D",API=URL+"/functions/v1/validacion-tecnica-pilot";
+const sb=supabase.createClient(URL,KEY);let CTX=null,ROWS=[],SELECTED=null,SEARCHED=null;
+const E=id=>document.getElementById(id),N=v=>String(v??"").trim().toUpperCase().normalize("NFD").replace(/[\u0300-\u036f]/g,""),H=v=>String(v??"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+async function tok(){const {data}=await sb.auth.getSession();return data.session?.access_token||""}
+async function api(data,method="GET"){const t=await tok();if(!t)throw Error("Inicie sesión en MI VISUAL.");let r;if(method==="GET"){const u=new URL(API);Object.entries(data).forEach(([k,v])=>{if(v!==""&&v!=null)u.searchParams.set(k,String(v))});r=await fetch(u,{headers:{Authorization:"Bearer "+t,apikey:KEY}})}else r=await fetch(API,{method:"POST",headers:{Authorization:"Bearer "+t,apikey:KEY,"Content-Type":"application/json"},body:JSON.stringify(data)});const d=await r.json();if(!r.ok||!d.ok)throw Error(d.error||"Error");return d}
+function setMsg(id,t,ok=true){E(id).className=ok?"ok":"err";E(id).textContent=t}
+async function contexto(){const d=await api({accion:"contextoValidacionTecnica"});CTX=d;E("ctx").innerHTML='<span class="badge">'+H(d.usuario.usuario)+'</span><span class="badge">'+H(d.usuario.perfil)+'</span><span class="badge">'+H(d.usuario.sede||"")+'</span><span class="badge">Alcance: '+H(d.permiso.alcance)+'</span>';if(d.usuario.perfil==="TECNICO"&&d.permiso.registrar)E("registroCard").classList.remove("hidden");return d}
+async function listar(){try{setMsg("msg","Consultando...");const d=await api({accion:"listarValidacionTecnica",periodo:E("periodo").value,tipoValidacion:E("tipo").value,estado:E("estado").value,sede:E("sede").value});ROWS=d.lista||[];SELECTED=null;render();setMsg("msg",ROWS.length+" registros.")}catch(e){setMsg("msg",e.message,false)}}
+function render(){const pend=ROWS.filter(x=>N(x.estado)==="PENDIENTE").length,gar=ROWS.filter(x=>["GAR","VTR"].includes(N(x.tipo_validacion))).length,auto=ROWS.filter(x=>N(x.estado)==="SIN RESPUESTA").length;E("metrics").innerHTML='<div class="metric">Registros<b>'+ROWS.length+'</b></div><div class="metric">Pendientes<b>'+pend+'</b></div><div class="metric">GAR/VTR<b>'+gar+'</b></div><div class="metric">Sin respuesta<b>'+auto+'</b></div>';E("tabla").innerHTML='<tr><th>Fecha</th><th>Sede</th><th>Cuadrilla</th><th>Tipo</th><th>Código</th><th>Ticket</th><th>Estado</th><th>Resultado</th><th>Validador</th></tr>'+ROWS.map((x,i)=>'<tr class="pick" data-i="'+i+'"><td>'+H(x.registro_at)+'</td><td>'+H(x.sede)+'</td><td>'+H(x.cuadrilla)+'</td><td>'+H(x.tipo_validacion)+'</td><td>'+H(x.codigo)+'</td><td>'+H(x.ticket_final)+'</td><td>'+H(x.estado)+'</td><td>'+H(x.resultado_final)+'</td><td>'+H(x.validado_por)+'</td></tr>').join("");E("tabla").querySelectorAll("[data-i]").forEach(tr=>tr.onclick=()=>selectRow(Number(tr.dataset.i)))}
+function selectRow(i){SELECTED=ROWS[i];E("tabla").querySelectorAll("tr").forEach(x=>x.classList.remove("selected"));E("tabla").querySelector('[data-i="'+i+'"]')?.classList.add("selected");if(!CTX?.permiso?.validar||N(SELECTED.estado)!=="PENDIENTE"){E("validarCard").classList.add("hidden");return}const t=N(SELECTED.tipo_validacion),p=N(CTX.usuario.perfil);let opts=[];if(["GAR","VTR"].includes(t)&&["JEFATURA","JEFATURA GENERAL"].includes(p))opts=["BONO","NO BONO"];else if(["RECABLEADO","OTRO"].includes(t))opts=["APROBADO","RECHAZADO","OBSERVADO"];if(!opts.length){E("validarCard").classList.add("hidden");return}E("validarCard").classList.remove("hidden");E("sel").textContent=SELECTED.tipo_validacion+" · "+SELECTED.codigo+" · "+(SELECTED.ticket_final||"");E("resultado").innerHTML=opts.map(x=>'<option>'+x+'</option>').join("");E("puntaje").style.display=opts.includes("BONO")?"":"none"}
+async function validar(){try{if(!SELECTED)throw Error("Seleccione un registro.");const d=await api({accion:"validarValidacionTecnica",id:SELECTED.id,resultado:E("resultado").value,motivoValidacion:E("motivo").value,puntajeVtrGar:E("puntaje").value},"POST");setMsg("vmsg",d.mensaje||"Guardado.");await listar()}catch(e){setMsg("vmsg",e.message,false)}}
+async function buscar(){try{const d=await api({accion:"buscarDatosValidacionTecnica",codigo:E("buscarCodigo").value,dni:E("buscarDni").value,ticketFinal:E("buscarTicket").value});const a=d.lista||[];E("busqueda").innerHTML=a.length?a.map((x,i)=>'<button class="sec" style="margin:4px" onclick="elegir('+i+')">'+H(x.codigo)+' · '+H(x.dni)+' · '+H(x.ticketFinal)+'</button>').join(""):'Sin coincidencias';window.SEARCHROWS=a}catch(e){E("busqueda").innerHTML='<span class="err">'+H(e.message)+'</span>'}}
+window.elegir=i=>{SEARCHED=window.SEARCHROWS[i];E("rCodigo").value=SEARCHED.codigo||"";E("rDni").value=SEARCHED.dni||"";E("rTicket").value=SEARCHED.ticketFinal||"";E("regForm").classList.remove("hidden")}
+async function registrar(){try{if(!SEARCHED)throw Error("Seleccione una atención.");const d=await api({accion:"registrarValidacionTecnica",codigo:E("rCodigo").value,dniCliente:E("rDni").value,ticketFinal:E("rTicket").value,motivoTecnico:E("rMotivo").value,origenOrden:E("rOrigen").value,fuenteValidadaV430:true},"POST");setMsg("rmsg",d.mensaje||"Registrado.");await listar()}catch(e){setMsg("rmsg",e.message,false)}}
+function exportarCsv(){const cols=["registro_at","sede","cuadrilla","tipo_validacion","codigo","ticket_final","dni_cliente","estado","resultado_final","validado_por","motivo_validacion","puntaje_vtr_gar"];const q=v=>'"'+String(v??"").replaceAll('"','""')+'"';const csv=[cols.join(","),...ROWS.map(r=>cols.map(c=>q(r[c])).join(","))].join("\n");const b=new Blob(["\ufeff"+csv],{type:"text/csv;charset=utf-8"}),a=document.createElement("a");a.href=URL.createObjectURL(b);a.download="validacion_tecnica_"+E("periodo").value+".csv";a.click();URL.revokeObjectURL(a.href)}
+(async()=>{try{await contexto();await listar()}catch(e){E("ctx").innerHTML='<span class="err">'+H(e.message)+'</span>'}})();
+</script><script src="shell-embed.js"></script></body></html>
