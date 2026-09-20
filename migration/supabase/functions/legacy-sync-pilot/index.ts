@@ -1,6 +1,6 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
-const VERSION="V4-LEGACY-SYNC-MAPA-CTO-20260920";
+const VERSION="V5-LEGACY-SYNC-ASIGNACIONES-20260920";
 const ALLOWED=new Set([
   "MAPA_OPERATIVO","CATALOGO_CTO","ACTAS","VALIDACION_TECNICA",
   "PROGRAMACION_DESCANSOS","OBSERVACIONES","USUARIOS","PERMISOS",
@@ -168,6 +168,16 @@ Deno.serve(async(req:Request)=>{
       if(txt(d.confirmacion)!=="ROLLBACK_CTO_STAGING")throw new Error("Confirmación explícita requerida.");
       const {data,error}=await admin.rpc("mv_sync_rollback_cto",{
         p_run_id:runId,p_actor:u.usuario,p_confirmacion:"ROLLBACK_CTO_STAGING"
+      });
+      if(error)throw error;
+      return json({...data,version:VERSION});
+    }
+
+    if(accion==="aplicarAsignacionesCampo"){
+      const runId=txt(d.runId);
+      if(txt(d.confirmacion)!=="APLICAR_ASIGNACIONES_CAMPO_STAGING")throw new Error("Confirmación explícita requerida.");
+      const {data,error}=await admin.rpc("mv_sync_apply_asignaciones_campo",{
+        p_run_id:runId,p_actor:u.usuario,p_confirmacion:"APLICAR_ASIGNACIONES_CAMPO_STAGING"
       });
       if(error)throw error;
       return json({...data,version:VERSION});
