@@ -2,20 +2,162 @@
 *{box-sizing:border-box}body{margin:0;padding:14px;font-family:Arial,sans-serif;background:#f5f7fb;color:#102033}.wrap{max-width:1280px;margin:auto}h1{margin:0 0 5px}.lead{margin:0 0 14px;color:#64748b}.card{background:#fff;border:1px solid #dbe3ec;border-radius:14px;padding:14px;margin-bottom:12px}.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:8px}.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}input,select,textarea,button{font:inherit;padding:9px;border-radius:9px;border:1px solid #cbd5e1}input,select,textarea{width:100%}textarea{min-height:74px}button{border:0;background:#0f6fff;color:white;font-weight:700;cursor:pointer}button.sec{background:#475569}button.good{background:#15803d}button.warn{background:#b45309}button.danger{background:#b91c1c}.badge{display:inline-block;background:#e2e8f0;padding:4px 8px;border-radius:999px;font-size:12px;margin:2px}.notice{padding:10px;border-radius:10px;background:#fff7ed;color:#9a3412;font-size:13px}.ok{color:#15803d}.err{color:#b91c1c}.muted{color:#64748b}.metrics{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:8px}.metric{border:1px solid #dbe3ec;border-radius:10px;padding:10px;background:#f8fafc}.metric b{display:block;font-size:20px}.tablewrap{overflow:auto;max-height:560px}table{width:100%;border-collapse:collapse;font-size:12px}th,td{padding:8px;border-bottom:1px solid #e2e8f0;text-align:left;vertical-align:top;white-space:nowrap}tr.pick{cursor:pointer}tr.pick:hover{background:#eef6ff}.hidden{display:none!important}pre{white-space:pre-wrap;background:#f8fafc;padding:10px;border-radius:9px;overflow:auto}.links a{margin-right:7px}
 @media(max-width:650px){body{padding:7px}.card{padding:10px}h1{font-size:20px}}
 </style></head><body><div class="wrap">
-<h1>Actividad en Campo</h1><p class="lead">Auditorías, seguimientos, capacitación y control de campo</p>
-<div class="card"><div id="ctx" class="muted">Cargando...</div><div class="notice" style="margin-top:8px"><b>Piloto:</b> la lectura ya usa PostgreSQL. El formulario complejo de Auditoría/Checklist seguirá temporalmente en legacy hasta portar toda su matriz visual y evidencias sin recortar campos.</div></div>
+<h1>Actividad en Campo</h1><p class="lead">Auditorías, seguimientos, capacitación, control y trabajos asignados</p>
+<div class="card"><div id="ctx" class="muted">Cargando...</div><div class="notice" style="margin-top:8px"><b>Piloto:</b> la lectura ya usa PostgreSQL. El formulario complejo de Auditoría/Checklist seguirá temporalmente en legacy hasta portar toda su matriz visual y evidencias sin recortar campos.</div></div><div id="asgCard" class="card hidden">
+  <div class="row" style="justify-content:space-between">
+    <h3 style="margin:0">Trabajos asignados</h3>
+    <div class="row"><button onclick="cargarAsignaciones()">Actualizar</button><button id="asgNewBtn" class="good hidden" onclick="abrirAsignacionForm()">+ Asignar trabajo</button></div>
+  </div>
+  <div id="asgMetrics" class="metrics" style="margin-top:10px"></div>
+  <div class="grid" style="margin-top:10px">
+    <select id="asgEstado" onchange="cargarAsignaciones()"><option value="TODOS">Todos los estados</option><option>PENDIENTE</option><option>EN PROCESO</option><option>COMPLETADO</option><option>ANULADO</option></select>
+    <select id="asgSede" onchange="cargarAsignaciones()"><option value="">Todas las sedes</option><option>CHICLAYO</option><option>PIURA</option><option>TRUJILLO</option></select>
+  </div>
+  <div class="tablewrap" style="margin-top:10px"><table id="asgTabla"></table></div>
+  <div id="asgMsg"></div>
+</div>
+
+<div id="asgForm" class="card hidden">
+  <h3>Nueva asignación de campo</h3>
+  <div class="notice">Auditoría en Frío/Caliente requiere vincular una orden por Código o DNI. Seguimiento, Validación, Capacitación y Checklist pueden asignarse directamente a una cuadrilla.</div>
+  <div class="grid" style="margin-top:9px">
+    <select id="asgFSede" onchange="refrescarCatalogoAsignacion()"></select>
+    <select id="asgFCuadrilla"></select>
+    <select id="asgFSupervisor"></select>
+    <select id="asgFTipo"><option>AUDITORIA EN FRIO</option><option>AUDITORIA EN CALIENTE</option><option>SEGUIMIENTO</option><option>VALIDACION DE OBSERVACION</option><option>CAPACITACION</option><option>CHECKLIST</option></select>
+    <select id="asgFPrioridad"><option>NORMAL</option><option>ALTA</option><option>URGENTE</option></select>
+    <input id="asgFFechaLimite" type="date" placeholder="Fecha límite">
+  </div>
+  <div class="row" style="margin-top:8px">
+    <input id="asgFCodigo" placeholder="Código de orden / pedido o DNI" style="flex:1;min-width:240px">
+    <button class="sec" onclick="prepararAsignacion()">Buscar referencia</button>
+  </div>
+  <div id="asgFReferencia" class="muted" style="margin-top:7px"></div>
+  <textarea id="asgFMotivo" placeholder="Motivo / indicación para el Supervisor"></textarea>
+  <textarea id="asgFObs" placeholder="Observación adicional de Jefatura / Gerencia"></textarea>
+  <div class="row"><button class="good" onclick="crearAsignacion()">Asignar trabajo</button><button class="sec" onclick="E('asgForm').classList.add('hidden')">Cancelar</button></div>
+  <div id="asgFMsg"></div>
+</div>
 <div class="card"><div class="grid"><input id="periodo" value="2026-09"><select id="tipo"><option value="">Todos los tipos</option><option>AUDITORIA EN FRIO</option><option>AUDITORIA EN CALIENTE</option><option>SEGUIMIENTO</option><option>VALIDACION DE OBSERVACION</option><option>CAPACITACION</option><option>CHECKLIST</option></select><select id="sede"><option value="">Todas las sedes</option><option>CHICLAYO</option><option>PIURA</option><option>TRUJILLO</option></select></div><div class="row" style="margin-top:8px"><button onclick="cargar()">Actualizar</button><button class="sec" onclick="csv()">Exportar</button></div><div id="msg"></div></div>
 <div class="card"><div id="metrics" class="metrics"></div><div class="tablewrap"><table id="tabla"></table></div></div>
 <div id="simpleCard" class="card hidden"><h3>Registro simple de campo</h3><div class="notice">Disponible solo para Seguimiento, Validación de Observación y Capacitación. Auditorías y Checklist completos permanecen en legacy durante esta fase.</div><div class="grid" style="margin-top:8px"><select id="cuadrilla"></select><select id="tipoNuevo"><option>SEGUIMIENTO</option><option>VALIDACION DE OBSERVACION</option><option>CAPACITACION</option></select><input id="estadoNuevo" placeholder="Estado / motivo breve"></div><textarea id="obsNueva" placeholder="Detalle de la actividad"></textarea><button onclick="registrarSimple()">Registrar en piloto</button><div id="rmsg"></div></div>
 <div id="detalle" class="card hidden"><h3>Detalle</h3><pre id="det"></pre></div>
 <script>
-const URL="https://uudvodiaizfarodjpetb.supabase.co",KEY="sb_publishable_2hiwePKtqoo3_c_D5B9JuA_p38dPe3D",API=URL+"/functions/v1/actividad-campo-pilot";const sb=supabase.createClient(URL,KEY);let CTX=null,ROWS=[];
+const URL="https://uudvodiaizfarodjpetb.supabase.co",KEY="sb_publishable_2hiwePKtqoo3_c_D5B9JuA_p38dPe3D",API=URL+"/functions/v1/actividad-campo-pilot";const sb=supabase.createClient(URL,KEY);let CTX=null,ROWS=[],ASG_ROWS=[],ASG_CAT=null,ASG_PREP=null,ACTIVE_ASG=null;
 const E=id=>document.getElementById(id),H=v=>String(v??"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
 async function tok(){const {data}=await sb.auth.getSession();return data.session?.access_token||""}
 async function api(d,m="GET"){const t=await tok();if(!t)throw Error("Inicie sesión.");let r;if(m==="GET"){const u=new URL(API);Object.entries(d).forEach(([k,v])=>{if(v!==""&&v!=null)u.searchParams.set(k,String(v))});r=await fetch(u,{headers:{Authorization:"Bearer "+t,apikey:KEY}})}else r=await fetch(API,{method:"POST",headers:{Authorization:"Bearer "+t,apikey:KEY,"Content-Type":"application/json"},body:JSON.stringify(d)});const x=await r.json();if(!r.ok||!x.ok)throw Error(x.error||"Error");return x}
-async function contexto(){CTX=await api({accion:"contextoActividadCampo"});E("ctx").innerHTML='<span class="badge">'+H(CTX.usuario.usuario)+'</span><span class="badge">'+H(CTX.usuario.perfil)+'</span><span class="badge">'+H(CTX.usuario.sede||"")+'</span><span class="badge">Alcance: '+H(CTX.permiso.alcance_datos)+'</span>';E("cuadrilla").innerHTML=(CTX.cuadrillas||[]).map(x=>'<option>'+H(x.cuadrilla)+'</option>').join("");if(CTX.permiso.registrar)E("simpleCard").classList.remove("hidden")}
+async function contexto(){
+  CTX=await api({accion:"contextoActividadCampo"});
+  E("ctx").innerHTML='<span class="badge">'+H(CTX.usuario.usuario)+'</span><span class="badge">'+H(CTX.usuario.perfil)+'</span><span class="badge">'+H(CTX.usuario.sede||"")+'</span><span class="badge">Alcance: '+H(CTX.permiso.alcance_datos)+'</span>';
+  E("cuadrilla").innerHTML=(CTX.cuadrillas||[]).map(x=>'<option>'+H(x.cuadrilla)+'</option>').join("");
+  if(CTX.permiso.registrar)E("simpleCard").classList.remove("hidden");
+  const perfil=String(CTX.usuario.perfil||"").toUpperCase();
+  if(CTX.puedeAsignar||perfil==="SUPERVISOR"){
+    E("asgCard").classList.remove("hidden");
+    if(CTX.puedeAsignar)E("asgNewBtn").classList.remove("hidden");
+    await cargarAsignaciones();
+  }
+}
+function asgMetric(l,v){return '<div class="metric">'+H(l)+'<b>'+Number(v||0)+'</b></div>'}
+async function cargarAsignaciones(){
+  try{
+    E("asgMsg").className="muted";E("asgMsg").textContent="Consultando...";
+    const d=await api({accion:"listarAsignacionesCampo",filtros:{estado:E("asgEstado").value,sede:E("asgSede").value}},"POST");
+    ASG_ROWS=d.asignaciones||[];const t=d.totales||{};
+    E("asgMetrics").innerHTML=asgMetric("Pendientes",t.PENDIENTE)+asgMetric("En proceso",t["EN PROCESO"])+asgMetric("Completadas",t.COMPLETADO)+asgMetric("Total",t.TOTAL);
+    const simple=new Set(["SEGUIMIENTO","VALIDACION DE OBSERVACION","CAPACITACION"]);
+    E("asgTabla").innerHTML='<tr><th>Estado</th><th>Prioridad</th><th>Sede</th><th>Supervisor</th><th>Cuadrilla</th><th>Actividad</th><th>Motivo</th><th>Acción</th></tr>'+
+      ASG_ROWS.map((x,i)=>{
+        let accion='';
+        if(String(CTX.usuario.perfil||"").toUpperCase()==="SUPERVISOR"&&["PENDIENTE","EN PROCESO"].includes(x.estado)){
+          accion=simple.has(x.tipoActividad)
+            ?'<button onclick="iniciarAsignacion('+i+')">Iniciar</button>'
+            :'<span class="badge">Formulario completo aún en legacy</span>';
+        }else if(CTX.puedeAsignar&&["PENDIENTE","EN PROCESO"].includes(x.estado)){
+          accion='<button class="danger" onclick="anularAsignacion('+i+')">Anular</button>';
+        }else if(x.idActividadCampo){
+          accion='<span class="badge">'+H(x.idActividadCampo)+'</span>';
+        }
+        return '<tr><td>'+H(x.estado)+'</td><td>'+H(x.prioridad)+'</td><td>'+H(x.sede)+'</td><td>'+H(x.supervisor)+'</td><td>'+H(x.cuadrilla)+'</td><td>'+H(x.tipoActividad)+'</td><td style="white-space:normal;min-width:220px">'+H(x.motivo)+'</td><td>'+accion+'</td></tr>';
+      }).join("");
+    E("asgMsg").className="ok";E("asgMsg").textContent=ASG_ROWS.length+" asignaciones.";
+  }catch(e){E("asgMsg").className="err";E("asgMsg").textContent=e.message}
+}
+async function abrirAsignacionForm(){
+  try{
+    if(!ASG_CAT)ASG_CAT=await api({accion:"catalogoAsignacionesCampo"});
+    E("asgForm").classList.remove("hidden");
+    E("asgFSede").innerHTML='<option value="">Seleccione sede</option>'+ASG_CAT.sedes.map(x=>'<option>'+H(x)+'</option>').join("");
+    ASG_PREP=null;E("asgFReferencia").textContent="";
+    refrescarCatalogoAsignacion();
+    E("asgForm").scrollIntoView({behavior:"smooth",block:"start"});
+  }catch(e){E("asgMsg").className="err";E("asgMsg").textContent=e.message}
+}
+function refrescarCatalogoAsignacion(){
+  if(!ASG_CAT)return;
+  const s=E("asgFSede").value;
+  const qs=ASG_CAT.cuadrillas.filter(x=>!s||String(x.sede).toUpperCase()===String(s).toUpperCase());
+  const ss=ASG_CAT.supervisores.filter(x=>!s||String(x.sede).toUpperCase()===String(s).toUpperCase());
+  E("asgFCuadrilla").innerHTML='<option value="">Seleccione cuadrilla</option>'+qs.map(x=>'<option value="'+H(x.cuadrilla)+'">'+H(x.cuadrilla)+(x.plataforma?' · '+H(x.plataforma):'')+'</option>').join("");
+  E("asgFSupervisor").innerHTML='<option value="">Seleccione Supervisor</option>'+ss.map(x=>'<option value="'+H(x.usuario)+'">'+H(x.nombresApellidos||x.usuario)+' · '+H(x.usuario)+'</option>').join("");
+}
+async function prepararAsignacion(){
+  try{
+    const codigo=E("asgFCodigo").value.trim();if(!codigo)throw Error("Ingrese Código o DNI.");
+    ASG_PREP=await api({accion:"prepararAsignacionCampo",codigo});
+    const o=ASG_PREP.orden||{};
+    E("asgFReferencia").className="ok";
+    E("asgFReferencia").textContent="Orden "+(o.ordenId||"-")+" · "+(o.cliente||"")+" · "+(o.region||"")+" · "+(o.cuadrilla||"");
+    if(o.region){E("asgFSede").value=String(o.region).toUpperCase();refrescarCatalogoAsignacion()}
+    if(o.cuadrilla)E("asgFCuadrilla").value=o.cuadrilla;
+  }catch(e){ASG_PREP=null;E("asgFReferencia").className="err";E("asgFReferencia").textContent=e.message}
+}
+async function crearAsignacion(){
+  try{
+    const d=await api({
+      accion:"crearAsignacionCampo",
+      codigo:E("asgFCodigo").value.trim(),
+      sede:E("asgFSede").value,
+      cuadrilla:E("asgFCuadrilla").value,
+      supervisor:E("asgFSupervisor").value,
+      tipoActividad:E("asgFTipo").value,
+      prioridad:E("asgFPrioridad").value,
+      fechaLimite:E("asgFFechaLimite").value,
+      motivo:E("asgFMotivo").value.trim(),
+      observacionJefatura:E("asgFObs").value.trim()
+    },"POST");
+    E("asgFMsg").className="ok";E("asgFMsg").textContent="Asignación creada: "+d.id;
+    E("asgForm").classList.add("hidden");await cargarAsignaciones();
+  }catch(e){E("asgFMsg").className="err";E("asgFMsg").textContent=e.message}
+}
+async function iniciarAsignacion(i){
+  try{
+    const a=ASG_ROWS[i];if(!a)throw Error("Asignación no encontrada.");
+    const d=await api({accion:"iniciarAsignacionCampo",id:a.id},"POST");
+    ACTIVE_ASG=a;ACTIVE_ASG.estado=d.estado;
+    E("cuadrilla").value=a.cuadrilla;
+    E("tipoNuevo").value=a.tipoActividad;
+    E("estadoNuevo").value=a.motivo||"";
+    E("obsNueva").value=(a.observacionJefatura?("Asignación: "+a.observacionJefatura+"\n"):"")+(a.motivo||"");
+    E("simpleCard").classList.remove("hidden");
+    E("simpleCard").scrollIntoView({behavior:"smooth",block:"start"});
+    E("rmsg").className="ok";E("rmsg").textContent="Trabajo "+a.id+" iniciado. Registre la actividad para completarlo.";
+    await cargarAsignaciones();
+  }catch(e){E("asgMsg").className="err";E("asgMsg").textContent=e.message}
+}
+async function anularAsignacion(i){
+  const a=ASG_ROWS[i];if(!a)return;
+  if(!confirm("¿Anular la asignación "+a.id+"?"))return;
+  try{await api({accion:"anularAsignacionCampo",id:a.id},"POST");await cargarAsignaciones()}
+  catch(e){E("asgMsg").className="err";E("asgMsg").textContent=e.message}
+}
 async function cargar(){try{E("msg").textContent="Consultando...";const filtros={periodo:E("periodo").value,tipoActividad:E("tipo").value,sede:E("sede").value};const [d,r]=await Promise.all([api({accion:"listarActividadCampo",filtros},"POST"),api({accion:"resumenActividadCampo",filtros},"POST")]);ROWS=d.actividades||[];const t=r.totales||{};E("metrics").innerHTML='<div class="metric">Total<b>'+ROWS.length+'</b></div><div class="metric">Aud. Frío<b>'+Number(t["AUDITORIA EN FRIO"]||0)+'</b></div><div class="metric">Aud. Caliente<b>'+Number(t["AUDITORIA EN CALIENTE"]||0)+'</b></div><div class="metric">Seguimiento<b>'+Number(t["SEGUIMIENTO"]||0)+'</b></div>';E("tabla").innerHTML='<tr><th>Fecha</th><th>Sede</th><th>Supervisor</th><th>Cuadrilla</th><th>Tipo</th><th>Resultado</th><th>Evidencias</th></tr>'+ROWS.map((x,i)=>'<tr class="pick" data-i="'+i+'"><td>'+H(x.fecha)+' '+H(x.hora)+'</td><td>'+H(x.sede)+'</td><td>'+H(x.supervisor)+'</td><td>'+H(x.cuadrilla)+'</td><td>'+H(x.tipoActividad)+'</td><td>'+H(x.puntajeTotal||x.estadoInstalacion||x.clasificacion||"-")+'</td><td class="links">'+[x.foto1,x.foto2,x.foto3,x.foto4].filter(Boolean).map((u,j)=>'<a target="_blank" href="'+H(u)+'">Foto '+(j+1)+'</a>').join("")+'</td></tr>').join("");E("tabla").querySelectorAll("[data-i]").forEach(tr=>tr.onclick=()=>{const x=ROWS[Number(tr.dataset.i)];E("detalle").classList.remove("hidden");E("det").textContent=JSON.stringify(x,null,2)});E("msg").className="ok";E("msg").textContent=ROWS.length+" registros."}catch(e){E("msg").className="err";E("msg").textContent=e.message}}
-async function registrarSimple(){try{const d=await api({accion:"registrarActividadCampo",cuadrilla:E("cuadrilla").value,tipoActividad:E("tipoNuevo").value,estadoInstalacion:E("estadoNuevo").value,observaciones:E("obsNueva").value,clientePresente:"",dniValidado:"",reservaCable:"",potenciaConforme:"",velocidadConforme:"",limpiezaTrabajo:"",clienteConforme:""},"POST");E("rmsg").className="ok";E("rmsg").textContent="Registrado: "+d.id;await cargar()}catch(e){E("rmsg").className="err";E("rmsg").textContent=e.message}}
+async function registrarSimple(){try{
+  const d=await api({accion:"registrarActividadCampo",cuadrilla:E("cuadrilla").value,tipoActividad:E("tipoNuevo").value,estadoInstalacion:E("estadoNuevo").value,observaciones:E("obsNueva").value,asignacionCampoId:ACTIVE_ASG?.id||"",clientePresente:"",dniValidado:"",reservaCable:"",potenciaConforme:"",velocidadConforme:"",limpiezaTrabajo:"",clienteConforme:""},"POST");
+  E("rmsg").className="ok";E("rmsg").textContent="Registrado: "+d.id+(d.asignacionCompletada?" · Asignación completada":"");
+  ACTIVE_ASG=null;await Promise.all([cargar(),cargarAsignaciones()]);
+}catch(e){E("rmsg").className="err";E("rmsg").textContent=e.message}}
 function csv(){const c=["fecha","hora","sede","supervisor","cuadrilla","tipoActividad","tipoOrden","codigoPedido","puntajeTotal","clasificacion","estadoInstalacion","observaciones"],q=v=>'"'+String(v??"").replaceAll('"','""')+'"',s=[c.join(","),...ROWS.map(r=>c.map(k=>q(r[k])).join(","))].join("\n"),b=new Blob(["\ufeff"+s],{type:"text/csv;charset=utf-8"}),a=document.createElement("a");a.href=URL.createObjectURL(b);a.download="actividad_campo_"+E("periodo").value+".csv";a.click();URL.revokeObjectURL(a.href)}
 (async()=>{try{await contexto();await cargar()}catch(e){E("ctx").innerHTML='<span class="err">'+H(e.message)+'</span>'}})();
 </script><script src="shell-embed.js"></script></body></html>
