@@ -1,3 +1,19 @@
+# Checkpoint UI Ranking / Dashboard / Observaciones — 20/09/2026
+
+- Edge `ranking-dashboard-pilot` V1 ACTIVE + JWT.
+- Edge `observaciones-pilot` V1 ACTIVE + JWT.
+- Ranking integrado al shell.
+- Dashboard Jefatura/Supervisor integrado al shell.
+- Observaciones integrado al shell.
+- JEFATURA: 14/21 módulos visibles con UI integrada.
+- SUPERVISOR: 12/17 módulos visibles con UI integrada.
+- Observaciones: 78 Sheets / 78 PostgreSQL por conteo.
+- Septiembre Observaciones: 21 / S/ 4,130 / S/ 1,618 afectado.
+- Ranking/Dashboard septiembre: 33 cuadrillas, 16 Chiclayo.
+- QA sintáctico: shell + 3 pantallas = 4/4 correcto.
+- Advertencia de convivencia agregada a Observaciones.
+- `main`, Apps Script, Sheets y Drive sin cambios.
+
 # Checkpoint UI Validación / Actas / Descansos — 20/09/2026
 
 - Validación Técnica integrada al shell.
