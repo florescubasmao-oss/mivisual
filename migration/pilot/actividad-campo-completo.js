@@ -173,7 +173,7 @@ async function mvUploadAuditEvidence(i,cuadrilla){
  const d=await mvEvidenceApi({accion:"SUBIR_EVIDENCIA",modulo:"ACTIVIDAD CAMPO",cuadrilla,registroId:MV_AUD_DRAFT.id,categoria:"AUDITORIA-"+i,archivo});
  return d.storageRef;
 }
-async function mvCleanupRefs(refs){for(const r of refs){try{await mvEvidenceApi({accion:"ELIMINAR_EVIDENCIA",modulo:"ACTIVIDAD CAMPO",storageRef:r})}catch(_){}}}
+async function mvCleanupRefs(refs){for(const r of refs.filter(Boolean)){try{await mvEvidenceApi({accion:"ELIMINAR_EVIDENCIA",modulo:"ACTIVIDAD CAMPO",storageRef:r})}catch(_){}}}
 function mvAuditObservaciones(tipo,aud){
  const t=mvAudTechnical(tipo),lines=["TIPO DE ACTIVIDAD: "+tipo,"TIPO DE ORDEN: "+aud.tipoOrden,"CODIGO DE PEDIDO: "+aud.codigoPedido,"TICKET: "+aud.ticket,"DNI CLIENTE: "+aud.dniCliente,"CLIENTE: "+aud.cliente,"DIRECCION: "+aud.direccion];
  Object.entries(t).forEach(([k,v])=>lines.push(k.replace(/([A-Z])/g," $1").toUpperCase()+": "+v));
@@ -186,7 +186,7 @@ async function mvAudGuardar(){
   btn.disabled=true;E("mvAudMsg").className="muted";E("mvAudMsg").textContent="Validando y subiendo evidencias...";
   const cuadrilla=E("mvAudCuadrilla").value;if(!cuadrilla)throw Error("Seleccione cuadrilla.");
   const aud=mvAudBuild(),tipo=E("mvAudTipo").value,tech=mvAudTechnical(tipo);
-  for(let i=1;i<=4;i++){const r=await mvUploadAuditEvidence(i,cuadrilla);if(r){refs.push(r)}}
+  for(let i=1;i<=4;i++){const r=await mvUploadAuditEvidence(i,cuadrilla);refs[i-1]=r||""}
   const payload={accion:"registrarActividadCampo",cuadrilla,tipoActividad:tipo,asignacionCampoId:MV_AUD_DRAFT?.asignacion?.id||"",
    clientePresente:tipo==="AUDITORIA EN FRIO"?tech.clientePresente:"",dniValidado:tipo==="AUDITORIA EN FRIO"?tech.dniValidado:"",
    estadoInstalacion:tipo==="AUDITORIA EN FRIO"?tech.estadoInstalacion:"REGISTRADO",dropMetraje:tipo==="AUDITORIA EN FRIO"?tech.dropMetraje:"",
