@@ -1,5 +1,5 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-const VERSION="V2-ACTIVIDAD-CAMPO-INTEGRADO-20260920",MODULO="ACTIVIDAD CAMPO";
+const VERSION="V3-ACTIVIDAD-CAMPO-ASIGNACIONES-20260920",MODULO="ACTIVIDAD CAMPO";
 const cors={"Access-Control-Allow-Origin":"*","Access-Control-Allow-Headers":"authorization, x-client-info, apikey, content-type","Access-Control-Allow-Methods":"GET, POST, OPTIONS"};
 function json(x:unknown,status=200){return new Response(JSON.stringify(x),{status,headers:{...cors,"Content-Type":"application/json; charset=utf-8"}})}
 function txt(v:unknown){return String(v??"").trim()}
@@ -27,7 +27,9 @@ Deno.serve(async(req:Request)=>{
   const c=await context(req),d=await input(req),a=txt(d.accion);
   if(a==="contextoActividadCampo"){
     const q=await rpc(c.admin,"mv_actividad_listar_cuadrillas",{p_usuario:c.u.usuario});
-    return json({ok:true,version:VERSION,usuario:c.u,permiso:c.p,cuadrillas:q?.cuadrillas||[],fuente:"POSTGRESQL PILOTO"});
+    const perfil=norm(c.u.perfil);
+    const puedeAsignar=["JEFATURA","JEFATURA GENERAL","ADMIN","ADMINISTRADOR","JEFATURA OPERACIONES","JEFATURA DE OPERACIONES","OPERACIONES","GERENCIA GENERAL","GERENCIAL GENERAL","GERENCIA LIMA"].includes(perfil);
+    return json({ok:true,version:VERSION,usuario:c.u,permiso:c.p,cuadrillas:q?.cuadrillas||[],puedeAsignar,fuente:"POSTGRESQL PILOTO"});
   }
   if(a==="listarActividadCampo"||a==="resumenActividadCampo"){
     const filtros={...(d.filtros||{})};
@@ -44,6 +46,32 @@ Deno.serve(async(req:Request)=>{
     const x=await rpc(c.admin,fn,{p_usuario:c.u.usuario,p_filtros:filtros});
     return json({...x,version:VERSION,fuente:"POSTGRESQL PILOTO"});
   }
+  if(a==="listarAsignacionesCampo"){
+    const filtros={...(d.filtros||{})};
+    const x=await rpc(c.admin,"mv_asignaciones_campo_listar",{p_usuario:c.u.usuario,p_filtros:filtros});
+    return json({...x,version:VERSION,fuente:"POSTGRESQL PILOTO"});
+  }
+  if(a==="catalogoAsignacionesCampo"){
+    const x=await rpc(c.admin,"mv_asignaciones_campo_catalogo",{p_usuario:c.u.usuario});
+    return json({...x,version:VERSION});
+  }
+  if(a==="prepararAsignacionCampo"){
+    const x=await rpc(c.admin,"mv_asignaciones_campo_preparar",{p_usuario:c.u.usuario,p_codigo:txt(d.codigo)});
+    return json({...x,version:VERSION});
+  }
+  if(a==="crearAsignacionCampo"){
+    const data={...d};delete data.accion;delete data.usuario;
+    const x=await rpc(c.admin,"mv_asignaciones_campo_crear",{p_usuario:c.u.usuario,p_data:data});
+    return json({...x,version:VERSION});
+  }
+  if(a==="iniciarAsignacionCampo"){
+    const x=await rpc(c.admin,"mv_asignaciones_campo_iniciar",{p_usuario:c.u.usuario,p_id:txt(d.id)});
+    return json({...x,version:VERSION});
+  }
+  if(a==="anularAsignacionCampo"){
+    const x=await rpc(c.admin,"mv_asignaciones_campo_anular",{p_usuario:c.u.usuario,p_id:txt(d.id)});
+    return json({...x,version:VERSION});
+  }
   if(a==="buscarDatosAuditoriaCampo"){
     const x=await rpc(c.admin,"mv_actividad_buscar_datos_auditoria",{p_usuario:c.u.usuario,p_codigo:txt(d.codigoPedido||d.codigo),p_cuadrilla:txt(d.cuadrilla)});
     return json({...x,version:VERSION});
@@ -51,7 +79,7 @@ Deno.serve(async(req:Request)=>{
   if(a==="registrarActividadCampo"){
     if(!c.p.registrar)throw Error("Sin permiso para registrar.");
     const data={...d};delete data.accion;delete data.usuario;
-    const x=await rpc(c.admin,"mv_actividad_registrar",{p_usuario:c.u.usuario,p_data:data});
+    const x=await rpc(c.admin,"mv_actividad_registrar_con_asignacion",{p_usuario:c.u.usuario,p_data:data});
     return json({...x,version:VERSION});
   }
   return json({ok:false,version:VERSION,error:"Acción no soportada."},400);
