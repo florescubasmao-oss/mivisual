@@ -3,9 +3,10 @@
 @media(max-width:650px){body{padding:7px}.card{padding:10px}h1{font-size:20px}}
 </style></head><body><div class="wrap">
 <h1>Actividad en Campo</h1><p class="lead">Auditorías, seguimientos, capacitación, control y trabajos asignados</p>
-<div class="card"><div id="ctx" class="muted">Cargando...</div><div class="notice" style="margin-top:8px"><b>Migración:</b> lectura, Seguimiento, Validación, Capacitación y Auditorías Frío/Caliente ya usan PostgreSQL. Las evidencias de auditoría se guardan en Storage privado. El formulario completo de Checklist es el siguiente bloque pendiente.</div></div>
-<div id="fullActionsCard" class="card hidden"><h3>Nuevo registro completo</h3><div class="row"><button onclick="mvCompNuevaAuditoria('AUDITORIA EN FRIO')">+ Auditoría en Frío</button><button class="warn" onclick="mvCompNuevaAuditoria('AUDITORIA EN CALIENTE')">+ Auditoría en Caliente</button><button class="sec" disabled>Checklist completo · siguiente bloque</button></div></div>
-<div id="auditFullCard" class="card hidden"></div><div id="asgCard" class="card hidden">
+<div class="card"><div id="ctx" class="muted">Cargando...</div><div class="notice" style="margin-top:8px"><b>Migración:</b> Actividad Campo ya registra Seguimiento, Validación, Capacitación, Auditorías Frío/Caliente y Checklist completo en PostgreSQL. Evidencias y documentos nuevos se guardan en Storage privado.</div></div>
+<div id="fullActionsCard" class="card hidden"><h3>Nuevo registro completo</h3><div class="row"><button onclick="mvCompNuevaAuditoria('AUDITORIA EN FRIO')">+ Auditoría en Frío</button><button class="warn" onclick="mvCompNuevaAuditoria('AUDITORIA EN CALIENTE')">+ Auditoría en Caliente</button><button class="sec" onclick="mvCompNuevaChecklist()">+ Checklist completo</button></div></div>
+<div id="auditFullCard" class="card hidden"></div>
+<div id="checkFullCard" class="card hidden"></div><div id="asgCard" class="card hidden">
   <div class="row" style="justify-content:space-between">
     <h3 style="margin:0">Trabajos asignados</h3>
     <div class="row"><button onclick="cargarAsignaciones()">Actualizar</button><button id="asgNewBtn" class="good hidden" onclick="abrirAsignacionForm()">+ Asignar trabajo</button></div>
@@ -42,7 +43,7 @@
 </div>
 <div class="card"><div class="grid"><input id="periodo" value="2026-09"><select id="tipo"><option value="">Todos los tipos</option><option>AUDITORIA EN FRIO</option><option>AUDITORIA EN CALIENTE</option><option>SEGUIMIENTO</option><option>VALIDACION DE OBSERVACION</option><option>CAPACITACION</option><option>CHECKLIST</option></select><select id="sede"><option value="">Todas las sedes</option><option>CHICLAYO</option><option>PIURA</option><option>TRUJILLO</option></select></div><div class="row" style="margin-top:8px"><button onclick="cargar()">Actualizar</button><button class="sec" onclick="csv()">Exportar</button></div><div id="msg"></div></div>
 <div class="card"><div id="metrics" class="metrics"></div><div class="tablewrap"><table id="tabla"></table></div></div>
-<div id="simpleCard" class="card hidden"><h3>Registro simple de campo</h3><div class="notice">Disponible solo para Seguimiento, Validación de Observación y Capacitación. Auditorías y Checklist completos permanecen en legacy durante esta fase.</div><div class="grid" style="margin-top:8px"><select id="cuadrilla"></select><select id="tipoNuevo"><option>SEGUIMIENTO</option><option>VALIDACION DE OBSERVACION</option><option>CAPACITACION</option></select><input id="estadoNuevo" placeholder="Estado / motivo breve"></div><textarea id="obsNueva" placeholder="Detalle de la actividad"></textarea><button onclick="registrarSimple()">Registrar en piloto</button><div id="rmsg"></div></div>
+<div id="simpleCard" class="card hidden"><h3>Registro simple de campo</h3><div class="notice">Acceso rápido para Seguimiento, Validación de Observación y Capacitación. Auditorías y Checklist completos están disponibles en la sección superior.</div><div class="grid" style="margin-top:8px"><select id="cuadrilla"></select><select id="tipoNuevo"><option>SEGUIMIENTO</option><option>VALIDACION DE OBSERVACION</option><option>CAPACITACION</option></select><input id="estadoNuevo" placeholder="Estado / motivo breve"></div><textarea id="obsNueva" placeholder="Detalle de la actividad"></textarea><button onclick="registrarSimple()">Registrar en piloto</button><div id="rmsg"></div></div>
 <div id="detalle" class="card hidden"><h3>Detalle</h3><pre id="det"></pre></div>
 <script>
 const URL="https://uudvodiaizfarodjpetb.supabase.co",KEY="sb_publishable_2hiwePKtqoo3_c_D5B9JuA_p38dPe3D",API=URL+"/functions/v1/actividad-campo-pilot";const sb=supabase.createClient(URL,KEY);let CTX=null,ROWS=[],ASG_ROWS=[],ASG_CAT=null,ASG_PREP=null,ACTIVE_ASG=null;
@@ -78,7 +79,7 @@ async function cargarAsignaciones(){
             ?'<button onclick="iniciarAsignacion('+i+')">Iniciar</button>'
             :audit.has(x.tipoActividad)
               ?'<button onclick="iniciarAsignacionCompleta('+i+')">Iniciar auditoría</button>'
-              :'<span class="badge">Checklist completo · siguiente bloque</span>';
+              :'<button onclick="iniciarAsignacionCompleta('+i+')">Iniciar Checklist</button>';
         }else if(CTX.puedeAsignar&&["PENDIENTE","EN PROCESO"].includes(x.estado)){
           accion='<button class="danger" onclick="anularAsignacion('+i+')">Anular</button>';
         }else if(x.idActividadCampo){
@@ -165,4 +166,4 @@ async function registrarSimple(){try{
 }catch(e){E("rmsg").className="err";E("rmsg").textContent=e.message}}
 function csv(){const c=["fecha","hora","sede","supervisor","cuadrilla","tipoActividad","tipoOrden","codigoPedido","puntajeTotal","clasificacion","estadoInstalacion","observaciones"],q=v=>'"'+String(v??"").replaceAll('"','""')+'"',s=[c.join(","),...ROWS.map(r=>c.map(k=>q(r[k])).join(","))].join("\n"),b=new Blob(["\ufeff"+s],{type:"text/csv;charset=utf-8"}),a=document.createElement("a");a.href=URL.createObjectURL(b);a.download="actividad_campo_"+E("periodo").value+".csv";a.click();URL.revokeObjectURL(a.href)}
 (async()=>{try{await contexto();await cargar()}catch(e){E("ctx").innerHTML='<span class="err">'+H(e.message)+'</span>'}})();
-</script><script src="actividad-campo-completo.js"></script><script src="shell-embed.js"></script></body></html>
+</script><script src="actividad-campo-completo.js"></script><script src="actividad-campo-checklist.js"></script><script src="shell-embed.js"></script></body></html>
