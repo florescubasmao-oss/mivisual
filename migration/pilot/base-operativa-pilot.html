@@ -21,7 +21,7 @@ pre{white-space:pre-wrap;background:#f8fafc;padding:10px;border-radius:8px}
 </head>
 <body><div class="wrap">
 <div class="card"><h1>Actualizar Base Operativa</h1><p class="lead">Carga segura en staging + previsualización PostgreSQL</p>
-<div class="notice" style="margin-top:10px"><b>Piloto:</b> esta pantalla NO aplica cambios operativos. Solo valida la base, detecta período/corte y compara contra PostgreSQL.</div></div>
+<div class="notice" style="margin-top:10px"><b>Piloto controlado:</b> primero valida y concilia. Si todo queda conforme, puede guardar una versión en la capa migrada. Esto NO modifica <code>ordenes</code>, Sheets ni la producción legacy.</div></div>
 
 <div class="card">
   <div class="grid">
@@ -57,7 +57,12 @@ pre{white-space:pre-wrap;background:#f8fafc;padding:10px;border-radius:8px}
     <div id="reconUnmatched"></div>
     <div class="notice" style="margin-top:10px"><b>Solo lectura:</b> la conciliación compara cobertura y lógica. No modifica órdenes, estados ni indicadores.</div>
   </div>
-  <div class="row" style="margin-top:10px"><button class="warn" onclick="cancelar()">Cancelar staging</button></div>
+  <div class="row" style="margin-top:10px">
+    <button id="applyBtn" class="hidden" onclick="aplicarMigracion()">Aplicar en capa migrada</button>
+    <button id="rollbackBtn" class="sec hidden" onclick="rollbackMigracion()">Rollback capa migrada</button>
+    <button id="cancelBtn" class="warn" onclick="cancelar()">Cancelar staging</button>
+  </div>
+  <div id="applyMsg" style="margin-top:8px"></div>
 </div>
 </div>
 
@@ -66,7 +71,7 @@ const URL="https://uudvodiaizfarodjpetb.supabase.co";
 const KEY="sb_publishable_2hiwePKtqoo3_c_D5B9JuA_p38dPe3D";
 const API=URL+"/functions/v1/base-operativa-pilot";
 const sb=supabase.createClient(URL,KEY);
-let REG=[],ARCHIVO="",RUN=null,LOCAL=null;
+let REG=[],ARCHIVO="",RUN=null,LOCAL=null,PREVIEW=null,ACTIVE_PERIOD=null;
 const E=id=>document.getElementById(id);
 const H=v=>String(v??"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
 const N=v=>String(v??"").toUpperCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"").replace(/\s+/g," ").trim();
@@ -116,6 +121,8 @@ async function leerArchivo(){try{const f=E("file").files?.[0];if(!f)throw Error(
 async function leerCarpeta(){try{const fs=[...(E("folder").files||[])];if(!fs.length)throw Error("Seleccione la carpeta _archivos.");const list=fs.filter(f=>/sheet\d+\.html?$/i.test(f.name)).concat(fs.filter(f=>/\.html?$/i.test(f.name)&&!/sheet\d+\.html?$/i.test(f.name)));if(!list.length)throw Error("No se encontró sheet001.htm.");let last;for(const f of list){try{const t=await f.text();if(/Excel Workbook Frameset/i.test(t))continue;ARCHIVO=f.webkitRelativePath||f.name;renderLocal(extraer(htmlMatrix(t)));return}catch(e){last=e}}throw last||Error("No se pudo leer la carpeta.")}catch(e){E("localMsg").className="err";E("localMsg").textContent=e.message}}
 async function enviarStaging(){try{if(!REG.length)throw Error("Primero lea el archivo.");E("previewBtn").disabled=true;E("uploadMsg").className="muted";E("uploadMsg").textContent="Creando staging...";const ini=await api({accion:"iniciarCarga",archivo:ARCHIVO,sourceRows:REG.length});RUN=ini.carga.id;for(let i=0;i<REG.length;i+=500){const d=await api({accion:"cargarBloque",runId:RUN,registros:REG.slice(i,i+500)});E("uploadMsg").textContent="Cargando "+d.stagedRows+" / "+d.sourceRows}const p=await api({accion:"previsualizarCarga",runId:RUN});renderPreview(p);E("uploadMsg").className="ok";E("uploadMsg").textContent="Previsualización PostgreSQL completada."}catch(e){E("uploadMsg").className="err";E("uploadMsg").textContent=e.message}finally{E("previewBtn").disabled=false}}
 function renderPreview(p){
+  PREVIEW=p;
+  ACTIVE_PERIOD=p.periodo||null;
   E("previewCard").classList.remove("hidden");
   E("previewMetrics").innerHTML=
     '<div class="metric">Periodo<b>'+H(p.periodo)+'</b></div>'+
@@ -136,6 +143,18 @@ function renderPreview(p){
   if(!h)h='<div class="ok">Previsualización sin bloqueos de catálogo/cuadrilla.</div>';
   E("alerts").innerHTML=h;
   renderRecon(p.conciliacion||null);
+  const recon=p.conciliacion||{},cov=recon.cobertura||{};
+  const puedeMigrar=!!p.puedeAplicar
+    && Number(p.duplicadosExactos||0)===0
+    && Number(cov.sinOrden||0)===0
+    && Number(cov.porcentaje||0)===100;
+  E("applyBtn").classList.toggle("hidden",!puedeMigrar);
+  E("rollbackBtn").classList.add("hidden");
+  E("cancelBtn").classList.remove("hidden");
+  E("applyMsg").className=puedeMigrar?"ok":"muted";
+  E("applyMsg").textContent=puedeMigrar
+    ?"La carga cumple las condiciones para guardarse en la capa versionada de migración."
+    :"APPLY migrado bloqueado hasta resolver catálogo, cuadrillas, duplicados o cobertura de órdenes.";
 }
 function kvRow(nombre,a,b){
   return '<tr><td>'+H(nombre)+'</td><td>'+H(a??0)+'</td><td>'+H(b??0)+'</td></tr>';
@@ -170,6 +189,45 @@ function renderRecon(r){
       no.slice(0,30).map(x=>'Fila '+H(x.sourceRow)+' · Liquidación '+H(x.codigoLiquidacion||"-")+' · Pedido '+H(x.codigoPedido||"-")+' · '+H(x.cuadrilla||"")).join("<br>")+
       (no.length>30?'<br>... y '+(no.length-30)+' más.':'')+'</div>'
     : '<div class="ok" style="margin-top:10px">Todas las filas del período con código de liquidación quedaron vinculadas al universo PostgreSQL.</div>';
+}
+async function aplicarMigracion(){
+  try{
+    if(!RUN||!PREVIEW)throw Error("No hay una carga previsualizada.");
+    const c=PREVIEW.conciliacion?.cobertura||{};
+    if(!PREVIEW.puedeAplicar||Number(PREVIEW.duplicadosExactos||0)!==0||Number(c.sinOrden||0)!==0||Number(c.porcentaje||0)!==100){
+      throw Error("La carga todavía no cumple las condiciones para APPLY migrado.");
+    }
+    const detalle="Periodo: "+PREVIEW.periodo+"\nCorte: "+PREVIEW.corte+"\nCobertura órdenes: "+Number(c.porcentaje||0).toFixed(2)+"%\n\nSe guardará una versión SOLO en la capa migrada. No se modificará producción legacy ni ordenes. ¿Continuar?";
+    if(!confirm(detalle))return;
+    E("applyBtn").disabled=true;
+    E("applyMsg").className="muted";
+    E("applyMsg").textContent="Aplicando versión migrada...";
+    const r=await api({accion:"aplicarCargaMigracion",runId:RUN,confirmacion:"APLICAR_BASE_OPERATIVA_MIGRACION"});
+    ACTIVE_PERIOD=r.periodo||PREVIEW.periodo;
+    E("applyMsg").className="ok";
+    E("applyMsg").textContent="Versión migrada aplicada: "+Number(r.filasAplicadas||0)+" filas · período "+r.periodo+". Sin impacto productivo.";
+    E("applyBtn").classList.add("hidden");
+    E("rollbackBtn").classList.remove("hidden");
+    E("cancelBtn").classList.add("hidden");
+  }catch(e){
+    E("applyMsg").className="err";E("applyMsg").textContent=e.message;
+  }finally{E("applyBtn").disabled=false}
+}
+async function rollbackMigracion(){
+  try{
+    if(!ACTIVE_PERIOD)throw Error("No hay período activo para rollback.");
+    if(!confirm("Se revertirá la versión migrada activa de "+ACTIVE_PERIOD+". No se tocará producción legacy. ¿Continuar?"))return;
+    E("rollbackBtn").disabled=true;
+    const r=await api({accion:"rollbackMigracion",periodo:ACTIVE_PERIOD,confirmacion:"ROLLBACK_BASE_OPERATIVA_MIGRACION"});
+    E("applyMsg").className="ok";
+    E("applyMsg").textContent=r.fallbackLegacy
+      ?"Rollback completado. La capa migrada quedó sin versión activa para "+r.periodo+"."
+      :"Rollback completado. Se restauró la versión anterior.";
+    E("rollbackBtn").classList.add("hidden");
+    E("cancelBtn").classList.remove("hidden");
+  }catch(e){
+    E("applyMsg").className="err";E("applyMsg").textContent=e.message;
+  }finally{E("rollbackBtn").disabled=false}
 }
 async function cancelar(){try{if(!RUN)return;await api({accion:"cancelarCarga",runId:RUN});E("previewCard").classList.add("hidden");E("uploadMsg").className="ok";E("uploadMsg").textContent="Staging cancelado y limpiado.";RUN=null}catch(e){E("uploadMsg").className="err";E("uploadMsg").textContent=e.message}}
 </script>
