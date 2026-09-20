@@ -1,6 +1,6 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
-const VERSION="V3-LEGACY-SYNC-FINAL-20260920";
+const VERSION="V4-LEGACY-SYNC-MAPA-CTO-20260920";
 const ALLOWED=new Set([
   "MAPA_OPERATIVO","CATALOGO_CTO","ACTAS","VALIDACION_TECNICA",
   "PROGRAMACION_DESCANSOS","OBSERVACIONES","USUARIOS","PERMISOS",
@@ -117,6 +117,60 @@ Deno.serve(async(req:Request)=>{
       const {error:ue}=await admin.from("migration_sync_runs").update({staged_rows:staged,status:"VALIDATED",validated_at:new Date().toISOString()}).eq("id",runId);
       if(ue)throw ue;
       return json({ok:true,version:VERSION,runId,status:"VALIDATED",sourceRows:r.source_rows,stagedRows:staged,aplicaDatos:false});
+    }
+
+    if(accion==="previewMapa"){
+      const runId=txt(d.runId);
+      const {data,error}=await admin.rpc("mv_sync_preview_mapa",{p_run_id:runId});
+      if(error)throw error;
+      return json({...data,version:VERSION});
+    }
+
+    if(accion==="aplicarMapa"){
+      const runId=txt(d.runId);
+      if(txt(d.confirmacion)!=="APLICAR_MAPA_STAGING")throw new Error("Confirmación explícita requerida.");
+      const {data,error}=await admin.rpc("mv_sync_apply_mapa",{
+        p_run_id:runId,p_actor:u.usuario,p_confirmacion:"APLICAR_MAPA_STAGING"
+      });
+      if(error)throw error;
+      return json({...data,version:VERSION});
+    }
+
+    if(accion==="rollbackMapa"){
+      const runId=txt(d.runId);
+      if(txt(d.confirmacion)!=="ROLLBACK_MAPA_STAGING")throw new Error("Confirmación explícita requerida.");
+      const {data,error}=await admin.rpc("mv_sync_rollback_mapa",{
+        p_run_id:runId,p_actor:u.usuario,p_confirmacion:"ROLLBACK_MAPA_STAGING"
+      });
+      if(error)throw error;
+      return json({...data,version:VERSION});
+    }
+
+    if(accion==="previewCto"){
+      const runId=txt(d.runId);
+      const {data,error}=await admin.rpc("mv_sync_preview_cto",{p_run_id:runId});
+      if(error)throw error;
+      return json({...data,version:VERSION});
+    }
+
+    if(accion==="aplicarCto"){
+      const runId=txt(d.runId);
+      if(txt(d.confirmacion)!=="APLICAR_CTO_STAGING")throw new Error("Confirmación explícita requerida.");
+      const {data,error}=await admin.rpc("mv_sync_apply_cto",{
+        p_run_id:runId,p_actor:u.usuario,p_confirmacion:"APLICAR_CTO_STAGING"
+      });
+      if(error)throw error;
+      return json({...data,version:VERSION});
+    }
+
+    if(accion==="rollbackCto"){
+      const runId=txt(d.runId);
+      if(txt(d.confirmacion)!=="ROLLBACK_CTO_STAGING")throw new Error("Confirmación explícita requerida.");
+      const {data,error}=await admin.rpc("mv_sync_rollback_cto",{
+        p_run_id:runId,p_actor:u.usuario,p_confirmacion:"ROLLBACK_CTO_STAGING"
+      });
+      if(error)throw error;
+      return json({...data,version:VERSION});
     }
 
     if(accion==="aplicarActas"){
