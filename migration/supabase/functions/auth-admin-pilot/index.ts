@@ -222,6 +222,87 @@ Deno.serve(async (req: Request) => {
       });
     }
 
+    if (accion === "previsualizarProvisionAuth") {
+      const perfil = normUpper(payload.perfil || "");
+      const sede = normUpper(payload.sede || "");
+      const permitidos = new Set(["SUPERVISOR","TECNICO","ALMACEN","JEFATURA ALMACEN"]);
+      if (perfil && !permitidos.has(perfil)) {
+        return json({ok:false,error:"Perfil no habilitado para provisión gradual."},400);
+      }
+      const candidatos = users.filter((u:any)=>{
+        if (normUpper(u.estado)!=="ACTIVO" || u.auth_user_id || !validEmail(u.correo)) return false;
+        if (perfil && normUpper(u.perfil)!==perfil) return false;
+        if (sede && normUpper(u.sede)!==sede) return false;
+        return permitidos.has(normUpper(u.perfil));
+      }).map((u:any)=>({
+        id:u.id,usuario:u.usuario,correo:u.correo,perfil:u.perfil,sede:u.sede||"",
+        nombresApellidos:u.nombres_apellidos||"",cuadrilla:u.cuadrilla||""
+      }));
+      return json({ok:true,modulo:"ADMINISTRACION",accion:"PREVISUALIZAR_PROVISION_AUTH",registros:candidatos.length,usuarios:candidatos});
+    }
+
+    if (accion === "crearAccesoAuthSinPassword") {
+      const targetUsuario = norm(payload.usuarioObjetivo);
+      const confirmacion = norm(payload.confirmacion);
+      if (!targetUsuario) return json({ok:false,error:"Debe indicar usuario objetivo."},400);
+      if (confirmacion !== "PROVISIONAR_AUTH_SIN_PASSWORD") {
+        return json({ok:false,error:"Confirmación explícita inválida."},400);
+      }
+
+      const objetivo = users.find((u:any)=>normUpper(u.usuario)===normUpper(targetUsuario));
+      if (!objetivo) return json({ok:false,error:"El usuario no existe en app_users."},404);
+      if (normUpper(objetivo.estado)!=="ACTIVO") return json({ok:false,error:"El usuario objetivo está inactivo."},400);
+      if (!validEmail(objetivo.correo)) return json({ok:false,error:"El usuario no tiene un correo válido."},400);
+      if (objetivo.auth_user_id) {
+        return json({ok:true,modulo:"ADMINISTRACION",accion:"CREAR_ACCESO_AUTH_SIN_PASSWORD",yaExistia:true,usuario:objetivo.usuario,correo:objetivo.correo,perfil:objetivo.perfil,sede:objetivo.sede||"",authVinculado:true});
+      }
+
+      const perfilObjetivo=normUpper(objetivo.perfil);
+      const permitidos = new Set(["SUPERVISOR","TECNICO","ALMACEN","JEFATURA ALMACEN"]);
+      if (!permitidos.has(perfilObjetivo)) {
+        return json({ok:false,error:"El perfil requiere alta manual controlada."},400);
+      }
+
+      const { data: creado, error: crearError } = await admin.auth.admin.createUser({
+        email: norm(objetivo.correo).toLowerCase(),
+        email_confirm: true,
+        user_metadata: {
+          source:"MI_VISUAL_AUTH_ROLLING_MIGRATION",
+          usuario:objetivo.usuario,
+          requiere_configurar_password:true,
+        },
+        app_metadata: {
+          mi_visual_usuario:objetivo.usuario,
+          mi_visual_perfil:objetivo.perfil,
+        }
+      });
+
+      if (crearError || !creado?.user) {
+        await audit(admin,ctx,{accion:"CREAR_ACCESO_AUTH_SIN_PASSWORD",target_app_user_id:objetivo.id,target_usuario:objetivo.usuario,target_correo:objetivo.correo,resultado:"ERROR",detalle:{mensaje:crearError?.message||"No se pudo crear Auth."}});
+        return json({ok:false,error:crearError?.message||"No se pudo crear el acceso Auth."},400);
+      }
+
+      const { data: vinculado, error: vinculoError } = await admin
+        .from("app_users")
+        .select("id,auth_user_id,usuario,correo,perfil,nivel_acceso,sede,estado")
+        .eq("id", objetivo.id)
+        .maybeSingle();
+      if (vinculoError) throw vinculoError;
+
+      if (!vinculado?.auth_user_id || String(vinculado.auth_user_id)!==String(creado.user.id)) {
+        await admin.auth.admin.deleteUser(creado.user.id).catch(()=>{});
+        await audit(admin,ctx,{accion:"CREAR_ACCESO_AUTH_SIN_PASSWORD",target_app_user_id:objetivo.id,target_usuario:objetivo.usuario,target_correo:objetivo.correo,resultado:"REVERTIDO",detalle:{motivo:"Auth creado sin vínculo consistente; alta revertida."}});
+        return json({ok:false,error:"Auth fue creado pero no se vinculó correctamente; el alta fue revertida."},500);
+      }
+
+      await audit(admin,ctx,{accion:"CREAR_ACCESO_AUTH_SIN_PASSWORD",target_app_user_id:vinculado.id,target_usuario:vinculado.usuario,target_correo:vinculado.correo,target_auth_user_id:vinculado.auth_user_id,resultado:"OK",detalle:{perfil:vinculado.perfil,sede:vinculado.sede||"",sinPassword:true,emailEnviado:false}});
+      return json({
+        ok:true,modulo:"ADMINISTRACION",accion:"CREAR_ACCESO_AUTH_SIN_PASSWORD",
+        yaExistia:false,usuario:vinculado.usuario,correo:vinculado.correo,perfil:vinculado.perfil,
+        sede:vinculado.sede||"",authVinculado:true,requiereConfigurarPassword:true,emailEnviado:false
+      });
+    }
+
     if (accion === "crearAccesoAuth") {
       const targetUsuario = norm(payload.usuarioObjetivo);
       const targetCorreo = norm(payload.correoObjetivo).toLowerCase();
