@@ -1,0 +1,115 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>MI VISUAL · Base Operativa</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.57.4"></script>
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<style>
+*{box-sizing:border-box}body{font-family:Arial,sans-serif;margin:0;background:#f5f7fb;color:#102033;padding:12px}
+.wrap{max-width:1180px;margin:auto}.card{background:#fff;border:1px solid #dbe3ec;border-radius:14px;padding:14px;margin-bottom:12px}
+h1{margin:0 0 5px}.lead{margin:0;color:#64748b}.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:9px}
+.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}input,textarea,button{font:inherit;padding:9px;border-radius:9px;border:1px solid #cbd5e1}
+input,textarea{width:100%}button{border:0;background:#0f6fff;color:#fff;font-weight:700;cursor:pointer}button.sec{background:#475569}button.warn{background:#b45309}button:disabled{opacity:.5}
+.notice{padding:10px;background:#fff7ed;color:#9a3412;border-radius:10px;font-size:13px}.ok{color:#15803d}.err{color:#b91c1c}.muted{color:#64748b}
+.metrics{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:8px}.metric{background:#f8fafc;border:1px solid #dbe3ec;border-radius:10px;padding:10px}.metric b{display:block;font-size:20px}
+.tablewrap{overflow:auto;max-height:500px}table{width:100%;border-collapse:collapse;font-size:12px}th,td{padding:8px;border-bottom:1px solid #e2e8f0;text-align:left;vertical-align:top;white-space:nowrap}th{background:#f8fafc;position:sticky;top:0}
+.hidden{display:none!important}.pill{display:inline-block;padding:3px 7px;border-radius:999px;background:#e2e8f0;font-size:11px}.pill.ok{background:#dcfce7;color:#166534}.pill.bad{background:#fee2e2;color:#991b1b}
+pre{white-space:pre-wrap;background:#f8fafc;padding:10px;border-radius:8px}
+</style>
+</head>
+<body><div class="wrap">
+<div class="card"><h1>Actualizar Base Operativa</h1><p class="lead">Carga segura en staging + previsualización PostgreSQL</p>
+<div class="notice" style="margin-top:10px"><b>Piloto:</b> esta pantalla NO aplica cambios operativos. Solo valida la base, detecta período/corte y compara contra PostgreSQL.</div></div>
+
+<div class="card">
+  <div class="grid">
+    <div><b>Archivo base madre</b><input id="file" type="file" accept=".xlsx,.xls,.csv,.htm,.html"></div>
+    <div><b>Carpeta complementaria _archivos</b><input id="folder" type="file" webkitdirectory directory multiple></div>
+  </div>
+  <div class="row" style="margin-top:9px">
+    <button onclick="leerArchivo()">Leer archivo</button>
+    <button class="sec" onclick="leerCarpeta()">Leer carpeta</button>
+  </div>
+  <div id="localMsg" class="muted" style="margin-top:8px">Seleccione un archivo o la carpeta complementaria.</div>
+</div>
+
+<div id="localCard" class="card hidden">
+  <h3>Validación local</h3>
+  <div id="localMetrics" class="metrics"></div>
+  <div id="dupMsg"></div>
+  <div class="row" style="margin-top:10px">
+    <button id="previewBtn" onclick="enviarStaging()">Previsualizar en PostgreSQL</button>
+  </div>
+  <div id="uploadMsg"></div>
+</div>
+
+<div id="previewCard" class="card hidden">
+  <h3>Previsualización PostgreSQL</h3>
+  <div id="previewMetrics" class="metrics"></div>
+  <div id="compare"></div>
+  <div id="alerts"></div>
+  <div class="row" style="margin-top:10px"><button class="warn" onclick="cancelar()">Cancelar staging</button></div>
+</div>
+</div>
+
+<script>
+const URL="https://uudvodiaizfarodjpetb.supabase.co";
+const KEY="sb_publishable_2hiwePKtqoo3_c_D5B9JuA_p38dPe3D";
+const API=URL+"/functions/v1/base-operativa-pilot";
+const sb=supabase.createClient(URL,KEY);
+let REG=[],ARCHIVO="",RUN=null,LOCAL=null;
+const E=id=>document.getElementById(id);
+const H=v=>String(v??"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const N=v=>String(v??"").toUpperCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"").replace(/\s+/g," ").trim();
+async function tok(){const {data}=await sb.auth.getSession();return data.session?.access_token||""}
+async function api(d){const t=await tok();if(!t)throw Error("Inicie sesión en MI VISUAL.");const r=await fetch(API,{method:"POST",headers:{Authorization:"Bearer "+t,apikey:KEY,"Content-Type":"application/json"},body:JSON.stringify(d)});const x=await r.json();if(!r.ok||!x.ok)throw Error(x.error||"Error");return x}
+function fechaISO(v){
+ if(v instanceof Date&&!isNaN(v)){const y=v.getFullYear(),m=String(v.getMonth()+1).padStart(2,"0"),d=String(v.getDate()).padStart(2,"0");return y+"-"+m+"-"+d}
+ if(typeof v==="number"&&window.XLSX){const p=XLSX.SSF.parse_date_code(v);if(p)return String(p.y).padStart(4,"0")+"-"+String(p.m).padStart(2,"0")+"-"+String(p.d).padStart(2,"0")}
+ const s=String(v??"").trim();let m=s.match(/^(\d{4})-(\d{1,2})-(\d{1,2})/);if(m)return m[1]+"-"+m[2].padStart(2,"0")+"-"+m[3].padStart(2,"0");
+ m=s.match(/^(\d{1,2})[\/\-.](\d{1,2})[\/\-.](\d{4})/);if(m)return m[3]+"-"+m[2].padStart(2,"0")+"-"+m[1].padStart(2,"0");return "";
+}
+function fullMatrix(ws){
+ if(!ws||!ws["!ref"])return[];const rg=XLSX.utils.decode_range(ws["!ref"]),out=[];
+ for(let r=rg.s.r;r<=rg.e.r;r++){const row=[];for(let c=rg.s.c;c<=rg.e.c;c++){const x=ws[XLSX.utils.encode_cell({r,c})];row.push(x?(x.v??x.w??""):"")}out.push(row)}return out
+}
+function bestSheet(wb){
+ const req=["CUADRILLA","FECHA","ESTADO","TIPO DE PARTIDA"];let best=null;
+ wb.SheetNames.forEach(name=>{const rows=fullMatrix(wb.Sheets[name]);for(let i=0;i<Math.min(rows.length,25);i++){const h=(rows[i]||[]).map(N),score=req.filter(x=>h.includes(x)).length;if(!best||score>best.score||(score===best.score&&rows.length>best.rows.length))best={name,rows,row:i,heads:h,score}}});
+ if(!best||best.score<4)throw Error("No se encontraron los encabezados Cuadrilla, Fecha, Estado y Tipo de Partida.");return best
+}
+function htmlMatrix(text){
+ const doc=new DOMParser().parseFromString(text,"text/html"),tabs=[...doc.querySelectorAll("table")];if(!tabs.length)throw Error("El HTML no contiene tablas.");let best=null;
+ for(const tab of tabs){const rows=[...tab.querySelectorAll("tr")].map(tr=>[...tr.querySelectorAll("th,td")].map(td=>(td.textContent||"").replace(/\u00a0/g," ").replace(/\s+/g," ").trim()));
+  for(let i=0;i<Math.min(rows.length,25);i++){const h=(rows[i]||[]).map(N),score=["CUADRILLA","FECHA","ESTADO","TIPO DE PARTIDA"].filter(x=>h.includes(x)).length;if(!best||score>best.score)best={name:"HTML",rows,row:i,heads:h,score}}}
+ if(!best||best.score<4)throw Error("No se encontró una tabla con los encabezados requeridos.");return best
+}
+function idx(heads){
+ const a={tipoTrabajo:["TIPO DE TRABAJO"],cuadrilla:["CUADRILLA"],fecha:["FECHA"],estado:["ESTADO"],numeroDocumento:["NUMERO DE DOCUMENTO"],cliente:["CLIENTE"],sede:["SEDE"],codigoPedido:["CODIGO DE PEDIDO"],ticket:["TICKET"],codigoLiquidacion:["CODIGO DE LIQUIDACION"],tipoAtencion:["TIPO DE ATENCION / PAQUETE DE SERVICIO","TIPO DE ATENCION/PAQUETE DE SERVICIO"],tipoPartida:["TIPO DE PARTIDA"],tipoPartidaAlterna:["OBSERVACION ADICIONAL O DE LA CANCELACION"]},o={};
+ for(const k in a){o[k]=-1;for(const x of a[k]){const n=heads.indexOf(x);if(n>=0){o[k]=n;break}}}return o
+}
+function extraer(sel){
+ const I=idx(sel.heads),faltan=["cuadrilla","fecha","estado","tipoPartida"].filter(k=>I[k]<0);if(faltan.length)throw Error("Faltan columnas: "+faltan.join(", "));
+ const out=[];let invalid=0;
+ for(let i=sel.row+1;i<sel.rows.length;i++){const f=sel.rows[i]||[],fecha=fechaISO(f[I.fecha]),cuadrilla=String(f[I.cuadrilla]??"").trim(),estado=String(f[I.estado]??"").trim();if(!fecha||!cuadrilla||!estado){invalid++;continue}
+  out.push({sourceRow:i+1,fecha,cuadrilla,estado,tipoTrabajo:I.tipoTrabajo>=0?String(f[I.tipoTrabajo]??""):"",numeroDocumento:I.numeroDocumento>=0?String(f[I.numeroDocumento]??""):"",cliente:I.cliente>=0?String(f[I.cliente]??""):"",sede:I.sede>=0?String(f[I.sede]??""):"",codigoPedido:I.codigoPedido>=0?String(f[I.codigoPedido]??""):"",ticket:I.ticket>=0?String(f[I.ticket]??""):"",codigoLiquidacion:I.codigoLiquidacion>=0?String(f[I.codigoLiquidacion]??""):"",tipoAtencion:I.tipoAtencion>=0?String(f[I.tipoAtencion]??""):"",tipoPartida:String(f[I.tipoPartida]??""),tipoPartidaAlterna:I.tipoPartidaAlterna>=0?String(f[I.tipoPartidaAlterna]??""):""})
+ }
+ if(!out.length)throw Error("No se encontraron filas válidas.");const fin=out.filter(x=>N(x.estado)==="FINALIZADA").map(x=>x.fecha).sort();if(!fin.length)throw Error("No existen órdenes FINALIZADAS.");
+ const corte=fin[fin.length-1],periodo=corte.slice(0,7),scope=out.filter(x=>x.fecha.slice(0,7)===periodo&&x.fecha<=corte);
+ const keys=new Map();for(const x of scope){const k=[x.fecha,N(x.cuadrilla),N(x.estado),N(x.tipoTrabajo),N(x.numeroDocumento),N(x.cliente),N(x.sede),N(x.codigoPedido),N(x.ticket),N(x.codigoLiquidacion),N(x.tipoAtencion),N(x.tipoPartida),N(x.tipoPartidaAlterna)].join("|");keys.set(k,(keys.get(k)||0)+1)}
+ const dup=[...keys.values()].reduce((s,n)=>s+Math.max(0,n-1),0);
+ return {registros:out,invalid,corte,periodo,scope:scope.length,finalizadas:scope.filter(x=>N(x.estado)==="FINALIZADA").length,duplicados:dup}
+}
+function renderLocal(r){
+ LOCAL=r;REG=r.registros;E("localCard").classList.remove("hidden");E("localMetrics").innerHTML='<div class="metric">Filas válidas<b>'+REG.length+'</b></div><div class="metric">Periodo<b>'+H(r.periodo)+'</b></div><div class="metric">Corte<b>'+H(r.corte)+'</b></div><div class="metric">Finalizadas<b>'+r.finalizadas+'</b></div><div class="metric">Duplicados exactos<b>'+r.duplicados+'</b></div><div class="metric">Omitidas inválidas<b>'+r.invalid+'</b></div>';E("dupMsg").innerHTML=r.duplicados?'<div class="notice">Se detectaron '+r.duplicados+' copia(s) exacta(s). La previsualización PostgreSQL también las reportará.</div>':'<div class="ok">Sin copias exactas detectadas.</div>';E("localMsg").className="ok";E("localMsg").textContent="Archivo leído correctamente: "+ARCHIVO
+}
+async function leerArchivo(){try{const f=E("file").files?.[0];if(!f)throw Error("Seleccione un archivo.");ARCHIVO=f.name;const buf=await f.arrayBuffer(),sample=new TextDecoder("utf-8").decode(buf.slice(0,50000));let sel;if(/\.html?$/i.test(f.name)||/^\s*<html/i.test(sample)){if(/Excel Workbook Frameset/i.test(sample)&&/sheet\d+\.html?/i.test(sample))throw Error("Este archivo es el índice del reporte. Use la carpeta _archivos.");sel=htmlMatrix(new TextDecoder("utf-8").decode(buf))}else{const wb=XLSX.read(buf,{type:"array",cellDates:true});sel=bestSheet(wb)}renderLocal(extraer(sel))}catch(e){E("localMsg").className="err";E("localMsg").textContent=e.message}}
+async function leerCarpeta(){try{const fs=[...(E("folder").files||[])];if(!fs.length)throw Error("Seleccione la carpeta _archivos.");const list=fs.filter(f=>/sheet\d+\.html?$/i.test(f.name)).concat(fs.filter(f=>/\.html?$/i.test(f.name)&&!/sheet\d+\.html?$/i.test(f.name)));if(!list.length)throw Error("No se encontró sheet001.htm.");let last;for(const f of list){try{const t=await f.text();if(/Excel Workbook Frameset/i.test(t))continue;ARCHIVO=f.webkitRelativePath||f.name;renderLocal(extraer(htmlMatrix(t)));return}catch(e){last=e}}throw last||Error("No se pudo leer la carpeta.")}catch(e){E("localMsg").className="err";E("localMsg").textContent=e.message}}
+async function enviarStaging(){try{if(!REG.length)throw Error("Primero lea el archivo.");E("previewBtn").disabled=true;E("uploadMsg").className="muted";E("uploadMsg").textContent="Creando staging...";const ini=await api({accion:"iniciarCarga",archivo:ARCHIVO,sourceRows:REG.length});RUN=ini.carga.id;for(let i=0;i<REG.length;i+=500){const d=await api({accion:"cargarBloque",runId:RUN,registros:REG.slice(i,i+500)});E("uploadMsg").textContent="Cargando "+d.stagedRows+" / "+d.sourceRows}const p=await api({accion:"previsualizarCarga",runId:RUN});renderPreview(p);E("uploadMsg").className="ok";E("uploadMsg").textContent="Previsualización PostgreSQL completada."}catch(e){E("uploadMsg").className="err";E("uploadMsg").textContent=e.message}finally{E("previewBtn").disabled=false}}
+function renderPreview(p){E("previewCard").classList.remove("hidden");E("previewMetrics").innerHTML='<div class="metric">Periodo<b>'+H(p.periodo)+'</b></div><div class="metric">Corte<b>'+H(p.corte)+'</b></div><div class="metric">Finalizadas<b>'+Number(p.finalizadasPeriodo||0)+'</b></div><div class="metric">Duplicados<b>'+Number(p.duplicadosExactos||0)+'</b></div><div class="metric">Partidas faltantes<b>'+Number((p.partidasNoEncontradas||[]).length)+'</b></div><div class="metric">Cuadrillas faltantes<b>'+Number((p.cuadrillasNoEncontradas||[]).length)+'</b></div><div class="metric">Puede aplicar<b>'+(p.puedeAplicar?"SÍ":"NO")+'</b></div>';const a=p.actual||{},n=p.nuevo||{};E("compare").innerHTML='<div class="tablewrap"><table><tr><th>Indicador</th><th>Actual</th><th>Nuevo</th></tr>'+["registros","finalizadas","canceladas","regestiones","reprogramadas"].map(k=>'<tr><td>'+H(k)+'</td><td>'+Number(a[k]||0)+'</td><td>'+Number(n[k]||0)+'</td></tr>').join("")+'</table></div>';let h="";if((p.partidasNoEncontradas||[]).length)h+='<div class="notice"><b>Partidas sin catálogo:</b><br>'+p.partidasNoEncontradas.map(H).join("<br>")+'</div>';if((p.cuadrillasNoEncontradas||[]).length)h+='<div class="notice"><b>Cuadrillas no reconocidas:</b><br>'+p.cuadrillasNoEncontradas.map(H).join("<br>")+'</div>';if(!h)h='<div class="ok">Previsualización sin bloqueos de catálogo/cuadrilla. Aun así, este piloto no aplica cambios.</div>';E("alerts").innerHTML=h}
+async function cancelar(){try{if(!RUN)return;await api({accion:"cancelarCarga",runId:RUN});E("previewCard").classList.add("hidden");E("uploadMsg").className="ok";E("uploadMsg").textContent="Staging cancelado y limpiado.";RUN=null}catch(e){E("uploadMsg").className="err";E("uploadMsg").textContent=e.message}}
+</script>
+<script src="shell-embed.js"></script>
+</body></html>
