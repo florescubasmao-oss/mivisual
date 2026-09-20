@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>MI VISUAL · VTR / GAR</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.57.4"></script>
+<link rel="stylesheet" href="indicadores-tecnico-common.css">
+</head>
+<body>
+<div class="wrap">
+  <div class="card">
+    <h1>VTR / GAR</h1>
+    <p class="lead">Incidencias GAR/VTR confirmadas y porcentaje de su cuadrilla.</p>
+    <div id="who" style="margin-top:9px"></div>
+  </div>
+  <div class="card">
+    <div class="row">
+      <label><b>Periodo</b><br><select id="periodo"></select></label>
+      <button id="reload">Actualizar</button>
+    </div>
+    <div id="msg" class="muted" style="margin-top:8px"></div>
+  </div>
+  <div class="card"><div id="metrics" class="metrics"></div></div>
+  <div class="card"><b>Estado de fuentes</b><div id="fresh" style="margin-top:8px"></div></div>
+  <div id="detail"></div>
+</div>
+<script>window.MV_IND={"type":"VTRGAR"};</script>
+<script src="indicadores-tecnico-common.js"></script>
+<script src="shell-embed.js"></script>
+</body></html>
