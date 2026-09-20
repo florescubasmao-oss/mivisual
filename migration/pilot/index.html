@@ -105,9 +105,6 @@ function entries(){
       backendReady:BACKEND_READY.has(key)||!!route?.page
     });
   }
-  if(CTX?.capacidadesEspeciales?.mesaAyuda&&!seen.has("MESA AYUDA"))out.push({key:"MESA AYUDA",...ROUTES["MESA AYUDA"],ready:true,backendReady:true});
-  if(CTX?.capacidadesEspeciales?.bonosSupervisores&&!seen.has("BONOS SUPERVISORES"))out.push({key:"BONOS SUPERVISORES",...ROUTES["BONOS SUPERVISORES"],ready:true,backendReady:true});
-  if(CTX?.capacidadesEspeciales?.publicadorWin&&!seen.has("PUBLICADOR WIN"))out.push({key:"PUBLICADOR WIN",...ROUTES["PUBLICADOR WIN"],ready:true,backendReady:true});
   return out;
 }
 function renderNav(){
@@ -141,7 +138,7 @@ function setActive(key){
 }
 function showHome(){
   el("moduleView").classList.add("hidden");el("home").classList.remove("hidden");el("pageTitle").textContent="Inicio";setActive(null);
-  el("moduleFrame").src="about:blank";el("sidebar").classList.remove("open");
+  el("moduleFrame").src="about:blank";el("sidebar").classList.remove("open");history.replaceState(null,"",location.pathname);
 }
 function openModule(key){
   const item=entries().find(x=>x.key===key);if(!item?.page)return;
@@ -167,14 +164,20 @@ async function login(){
   try{await enter();el("password").value=""}catch(e){await sb.auth.signOut();el("loginMsg").className="msg err";el("loginMsg").textContent=e.message}
   el("loginBtn").disabled=false;
 }
-async function logout(){
-  el("moduleFrame").src="about:blank";await sb.auth.signOut();CTX=null;location.hash="";
+function resetLoggedOut(){
+  el("moduleFrame").src="about:blank";CTX=null;history.replaceState(null,"",location.pathname);
   el("shellView").classList.add("hidden");el("loginView").classList.remove("hidden");el("loginMsg").textContent="Sesión cerrada.";
+}
+async function logout(){
+  CTX=null;
+  const {error}=await sb.auth.signOut();
+  resetLoggedOut();
+  if(error){el("loginMsg").className="msg err";el("loginMsg").textContent="No se pudo cerrar sesión: "+error.message}
 }
 el("loginBtn").onclick=login;el("password").addEventListener("keydown",e=>{if(e.key==="Enter")login()});
 el("logoutBtn").onclick=logout;el("homeBtn").onclick=showHome;el("menuBtn").onclick=()=>el("sidebar").classList.toggle("open");
 window.addEventListener("message",e=>{if(e.data?.type==="mv-module-error")console.warn("Módulo:",e.data.message)});
-sb.auth.onAuthStateChange((event)=>{if(event==="SIGNED_OUT"&&CTX)logout()});
+sb.auth.onAuthStateChange((event)=>{if(event==="SIGNED_OUT")resetLoggedOut()});
 sb.auth.getSession().then(async({data})=>{if(data.session){try{await enter()}catch(e){el("loginMsg").className="msg err";el("loginMsg").textContent=e.message}}});
 </script>
 </body>
