@@ -2,259 +2,180 @@
 <html lang="es">
 <head>
 <meta charset="utf-8">
-<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>MI VISUAL · Piloto Supabase</title>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<title>MI VISUAL · Migración Supabase</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.57.4"></script>
 <style>
-:root{color-scheme:light}
-*{box-sizing:border-box}
-body{font-family:Arial,sans-serif;background:#0b2340;color:#102033;margin:0;padding:24px}
-.wrap{max-width:1100px;margin:auto}
-h1{color:#fff;margin:0 0 18px}
-.card{background:#fff;border-radius:18px;padding:20px;margin-bottom:18px;box-shadow:0 12px 35px #0003}
-.muted{color:#64748b}.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:12px}
-input,select,button{width:100%;padding:11px;border-radius:10px;border:1px solid #cbd5e1;font-size:14px}
-button{background:#0f6fff;color:#fff;border:0;font-weight:700;cursor:pointer}
-button.sec{background:#475569}button.danger{background:#b91c1c}button:disabled{opacity:.55;cursor:not-allowed}
-.row{display:flex;gap:10px;flex-wrap:wrap}.row button{width:auto}
-.ok{color:#15803d}.err{color:#b91c1c}.warn{color:#b45309}
-pre{white-space:pre-wrap;background:#f8fafc;padding:12px;border-radius:10px;max-height:300px;overflow:auto}
-table{width:100%;border-collapse:collapse;font-size:12px}
-th,td{padding:7px;border-bottom:1px solid #e2e8f0;text-align:left;vertical-align:top}
-.badge{display:inline-block;padding:4px 8px;border-radius:999px;background:#e2e8f0;margin:3px 6px 3px 0}
-.section-title{margin:16px 0 8px;font-size:14px;font-weight:700}
+:root{--navy:#0b2340;--navy2:#12304f;--blue:#0f6fff;--bg:#eef3f8;--card:#fff;--line:#dbe4ee;--text:#102033;--muted:#64748b;--green:#15803d;--red:#b91c1c;--orange:#b45309}
+*{box-sizing:border-box}html,body{margin:0;min-height:100%;font-family:Arial,sans-serif;background:var(--bg);color:var(--text)}
+button,input{font:inherit}.hidden{display:none!important}.app{min-height:100vh}.login{min-height:100vh;display:grid;place-items:center;padding:22px;background:linear-gradient(145deg,#07192e,#123b68)}
+.login-card{width:min(440px,100%);background:#fff;border-radius:22px;padding:28px;box-shadow:0 28px 70px #0005}.brand{font-size:27px;font-weight:800;color:var(--navy);margin:0}.sub{color:var(--muted);line-height:1.45}
+.field{width:100%;padding:13px 14px;border:1px solid #cbd5e1;border-radius:11px;margin:7px 0}.btn{border:0;border-radius:10px;padding:11px 14px;background:var(--blue);color:#fff;font-weight:700;cursor:pointer}.btn.secondary{background:#475569}.btn.danger{background:#b91c1c}.btn:disabled{opacity:.55;cursor:not-allowed}
+.msg{min-height:22px;margin-top:10px;font-size:14px}.err{color:var(--red)}.ok{color:var(--green)}
+.shell{display:grid;grid-template-columns:250px 1fr;min-height:100vh}.sidebar{background:var(--navy);color:#fff;padding:18px 14px;position:sticky;top:0;height:100vh;overflow:auto}
+.side-brand{padding:8px 10px 18px;border-bottom:1px solid #ffffff22}.side-brand b{display:block;font-size:20px}.side-brand small{color:#c7d4e3}.userbox{padding:14px 10px;border-bottom:1px solid #ffffff22;font-size:13px;line-height:1.5}.userbox strong{display:block;font-size:14px}.nav{padding-top:12px}.nav button{width:100%;text-align:left;border:0;background:transparent;color:#dce7f3;padding:10px 11px;border-radius:9px;cursor:pointer;margin:2px 0}.nav button:hover,.nav button.active{background:#ffffff18;color:#fff}.nav button:disabled{opacity:.48;cursor:not-allowed}.nav .group{color:#8fa8c2;text-transform:uppercase;font-size:10px;font-weight:700;letter-spacing:.08em;padding:13px 10px 5px}
+.main{min-width:0}.topbar{height:64px;background:#fff;border-bottom:1px solid var(--line);display:flex;align-items:center;justify-content:space-between;padding:0 20px;position:sticky;top:0;z-index:4}.topbar h1{font-size:17px;margin:0}.top-actions{display:flex;gap:8px}
+.home{padding:22px}.hero{background:linear-gradient(135deg,#fff,#f7fbff);border:1px solid var(--line);border-radius:18px;padding:22px;margin-bottom:18px}.hero h2{margin:0 0 7px}.badges{display:flex;gap:7px;flex-wrap:wrap}.badge{background:#e8eef5;padding:5px 9px;border-radius:999px;font-size:12px}.badge.green{background:#dcfce7;color:#166534}.badge.orange{background:#ffedd5;color:#9a3412}
+.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:13px}.card{background:#fff;border:1px solid var(--line);border-radius:15px;padding:16px;min-height:140px;display:flex;flex-direction:column}.card h3{font-size:15px;margin:0 0 7px}.card p{font-size:13px;color:var(--muted);line-height:1.4;margin:0 0 15px}.card .btn{margin-top:auto;width:max-content}.status{font-size:11px;font-weight:700;margin-bottom:8px}.status.ready{color:var(--green)}.status.pending{color:var(--orange)}
+.module-view{height:calc(100vh - 64px);background:#f5f7fb}.module-view iframe{width:100%;height:100%;border:0;background:#fff}.module-head{display:none}
+.mobile-menu{display:none}
+@media(max-width:850px){.shell{grid-template-columns:1fr}.sidebar{position:fixed;left:-280px;width:260px;z-index:20;transition:.2s}.sidebar.open{left:0}.mobile-menu{display:inline-block}.topbar{padding:0 12px}.home{padding:12px}.module-view{height:calc(100vh - 64px)}}
 </style>
 </head>
 <body>
-<div class="wrap">
-<h1>MI VISUAL · Piloto Supabase/PostgreSQL</h1>
-
-<div class="card">
-<h2>1. Acceso de prueba</h2>
-<p class="muted">Piloto aislado. No reemplaza el login productivo ni modifica Google Sheets.</p>
-<div class="grid">
-  <input id="email" type="email" autocomplete="username" placeholder="Correo">
-  <input id="password" type="password" autocomplete="current-password" placeholder="Contraseña de prueba">
-</div>
-<div class="row" style="margin-top:12px">
-  <button onclick="login()">Iniciar sesión</button>
-  <button class="sec" onclick="signup()">Crear acceso de prueba</button>
-  <button class="danger" onclick="logout()">Cerrar sesión</button>
-</div>
-<div id="authmsg" style="margin-top:10px"></div>
-<div id="perfil" style="margin-top:10px"></div>
+<div id="loginView" class="login">
+  <div class="login-card">
+    <p class="brand">MI VISUAL</p>
+    <p class="sub">Piloto integrado Supabase/PostgreSQL. Un solo acceso para todos los módulos migrados.</p>
+    <input id="email" class="field" type="email" autocomplete="username" placeholder="Correo">
+    <input id="password" class="field" type="password" autocomplete="current-password" placeholder="Contraseña">
+    <button id="loginBtn" class="btn">Ingresar</button>
+    <div style="margin-top:11px"><a href="/recuperar.html">¿Olvidaste tu contraseña?</a></div>
+    <div id="loginMsg" class="msg"></div>
+    <p class="sub" style="font-size:12px;margin-bottom:0">Este piloto no reemplaza aún la aplicación productiva.</p>
+  </div>
 </div>
 
-<div class="card">
-<h2>2. Mapa Operativo · validación funcional</h2>
-<div class="grid">
-  <select id="periodo"><option value="2026-09">2026-09</option></select>
-  <select id="sede"><option value="">Todas las sedes</option><option>CHICLAYO</option><option>PIURA</option><option>TRUJILLO</option></select>
-  <input id="fecha" type="date">
-  <select id="grupo"><option value="">Todos los grupos</option></select>
-  <select id="estadoFiltro"><option value="">Todos los estados</option></select>
-  <select id="cuadrilla"><option value="">Todas las cuadrillas</option></select>
-  <input id="codigo" placeholder="Orden / pedido / DNI">
-</div>
-<div class="row" style="margin-top:12px">
-  <button onclick="contexto()">Validar perfil y permisos</button>
-  <button onclick="catalogos()">Cargar catálogos</button>
-  <button onclick="consultar()">Consultar órdenes</button>
-  <button class="sec" onclick="probarCto()">Probar CTO cercanas</button>
-</div>
-<div id="estado" style="margin-top:10px"></div>
-<div id="resumen" style="margin-top:10px"></div>
-<div style="overflow:auto"><table id="tabla"></table></div>
-<div class="section-title">Resultado CTO</div>
-<pre id="ctos">Primero consulte una orden con coordenadas y luego pulse “Probar CTO cercanas”.</pre>
-</div>
-
-<div class="card">
-<h2>3. Bonos Supervisores · piloto PostgreSQL</h2>
-<p class="muted">Prueba aislada del módulo migrado: Jefatura ve todos los supervisores y puede validar controles; Supervisor solo ve su propia ficha.</p>
-<div class="row">
-  <button onclick="location.href='bonos-supervisores-pilot.html'">Abrir Bonos Supervisores</button>
-</div>
-</div>
-
-<div class="card">
-<h2>Diagnóstico</h2>
-<p class="muted">Las consultas de esta pantalla usan Supabase Auth + Edge Function + PostgreSQL.</p>
-<pre id="debug">Sin consultas.</pre>
-</div>
+<div id="shellView" class="shell hidden">
+  <aside id="sidebar" class="sidebar">
+    <div class="side-brand"><b>MI VISUAL</b><small>Migración Supabase</small></div>
+    <div class="userbox"><strong id="uNombre"></strong><span id="uMeta"></span></div>
+    <nav id="nav" class="nav"></nav>
+  </aside>
+  <section class="main">
+    <div class="topbar">
+      <div style="display:flex;align-items:center;gap:10px">
+        <button id="menuBtn" class="btn secondary mobile-menu">☰</button>
+        <h1 id="pageTitle">Inicio</h1>
+      </div>
+      <div class="top-actions">
+        <button id="homeBtn" class="btn secondary">Inicio</button>
+        <button id="logoutBtn" class="btn danger">Salir</button>
+      </div>
+    </div>
+    <div id="home" class="home"></div>
+    <div id="moduleView" class="module-view hidden"><iframe id="moduleFrame" title="Módulo MI VISUAL"></iframe></div>
+  </section>
 </div>
 
 <script>
 const PROJECT_URL="https://uudvodiaizfarodjpetb.supabase.co";
-const PUBLISHABLE_KEY="sb_publishable_2hiwePKtqoo3_c_D5B9JuA_p38dPe3D";
-const API=PROJECT_URL+"/functions/v1/mapa-operativo-pilot";
-const sb=supabase.createClient(PROJECT_URL,PUBLISHABLE_KEY);
-let lastRows=[];
+const KEY="sb_publishable_2hiwePKtqoo3_c_D5B9JuA_p38dPe3D";
+const SHELL_API=PROJECT_URL+"/functions/v1/app-shell-pilot";
+const sb=supabase.createClient(PROJECT_URL,KEY);
+let CTX=null;
 
-function msg(t,ok=true){const e=document.getElementById("authmsg");e.className=ok?"ok":"err";e.textContent=t}
-function state(t,ok=true){const e=document.getElementById("estado");e.className=ok?"ok":"err";e.textContent=t}
-function dbg(x){document.getElementById("debug").textContent=typeof x==="string"?x:JSON.stringify(x,null,2)}
+const ROUTES={
+  "MAPA OPERATIVO":{title:"Mapa Operativo",page:"mapa-pilot.html",group:"Operación",desc:"Órdenes WIN y CTO cercanas."},
+  "EQUIPOS AVERIADOS":{title:"Equipos Averiados",page:"equipos-averiados-pilot.html",group:"Operación",desc:"Solicitudes, recepción y cargos."},
+  "SEGURIDAD":{title:"Seguridad ATS/PETAR",page:"seguridad-pilot.html",group:"Operación",desc:"ATS, PETAR, firmas y validaciones."},
+  "ACCESOS":{title:"Accesos",page:"accesos-pilot.html",group:"Recursos",desc:"Enlaces operativos y certificaciones."},
+  "BIBLIOTECA":{title:"Biblioteca",page:"biblioteca-pilot.html",group:"Recursos",desc:"Documentos y procedimientos."},
+  "CAPACITACION":{title:"Capacitación",page:"capacitacion-pilot.html",group:"Recursos",desc:"Recursos y Mis Funciones."},
+  "PUBLICADOR WIN":{title:"Publicador WIN",page:"publicador-win-pilot.html",group:"Jefatura",desc:"Previsualización y publicación piloto V497."},
+  "BONOS SUPERVISORES":{title:"Bonos Supervisores",page:"bonos-supervisores-pilot.html",group:"Gestión",desc:"Evaluación y cálculo del bono de supervisores."},
+  "MESA AYUDA":{title:"Mesa de Ayuda",page:"mesa-ayuda-pilot.html",group:"Soporte",desc:"Consultas, reclamos e historial."}
+};
+const BACKEND_READY=new Set(["PRODUCCION","EFECTIVIDAD","PORCENTAJE RECABLEADO","VTR GAR","RANKING","VALIDACION TECNICA","ACTAS ESCANEADAS","PROGRAMACION DESCANSOS","OBSERVACIONES","ACTIVIDAD CAMPO","CHECKLIST ALMACEN"]);
+const LABELS={"PORCENTAJE RECABLEADO":"Recableado","VTR GAR":"VTR / GAR","ACTAS ESCANEADAS":"Gestión de Actas","VALIDACION TECNICA":"Validación Técnica","PROGRAMACION DESCANSOS":"Programación de Descansos","ACTIVIDAD CAMPO":"Actividad en Campo","CHECKLIST ALMACEN":"Checklist Almacén","ANALISIS ECONOMICO":"Análisis Económico","UTILIDAD CUADRILLA":"Utilidad Cuadrilla","PLANTILLA ORDEN":"Plantilla Orden"};
+
+function el(id){return document.getElementById(id)}
 function esc(v){return String(v??"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]))}
-function optionFill(id,values,emptyLabel){
-  const el=document.getElementById(id);
-  el.innerHTML="";
-  if(emptyLabel){const o=document.createElement("option");o.value="";o.textContent=emptyLabel;el.appendChild(o)}
-  (values||[]).forEach(v=>{const o=document.createElement("option");o.value=String(v);o.textContent=String(v);el.appendChild(o)});
+function norm(v){return String(v??"").trim().toUpperCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"")}
+async function token(){const {data}=await sb.auth.getSession();return data.session?.access_token||""}
+async function context(){
+  const t=await token();if(!t)throw Error("Sesión requerida.");
+  const r=await fetch(SHELL_API,{headers:{Authorization:"Bearer "+t,apikey:KEY},cache:"no-store"});
+  const d=await r.json();if(!r.ok||!d.ok)throw Error(d.error||"No se pudo cargar MI VISUAL.");return d;
 }
-
-async function signup(){
-  const email=document.getElementById("email").value.trim();
-  const password=document.getElementById("password").value;
-  if(!email||!password)return msg("Ingrese correo y contraseña.",false);
-  const {data,error}=await sb.auth.signUp({email,password});
-  if(error)return msg(error.message,false);
-  if(data.session){
-    msg("Acceso creado y sesión iniciada.");
-    await contexto();
-    await catalogos();
-  }else{
-    msg("Acceso creado. Revise su correo para confirmar si Supabase lo solicita.");
+function allowedPerms(){
+  return (CTX?.permisos||[]).filter(p=>p.activo&&p.ver&&p.mostrarModulo&&norm(p.alcanceDatos)!=="SIN ACCESO");
+}
+function entries(){
+  const out=[];
+  const seen=new Set();
+  for(const p of allowedPerms()){
+    const key=norm(p.modulo);if(seen.has(key))continue;seen.add(key);
+    const route=ROUTES[key];
+    out.push({
+      key,title:route?.title||LABELS[key]||key,group:route?.group||"Módulos",
+      desc:route?.desc||"Backend migrado; integración visual en proceso.",
+      page:route?.page||null,ready:!!route?.page,
+      backendReady:BACKEND_READY.has(key)||!!route?.page
+    });
   }
-  dbg({signup:true,user:data.user?.id||null,session:!!data.session});
+  if(CTX?.capacidadesEspeciales?.mesaAyuda&&!seen.has("MESA AYUDA"))out.push({key:"MESA AYUDA",...ROUTES["MESA AYUDA"],ready:true,backendReady:true});
+  if(CTX?.capacidadesEspeciales?.bonosSupervisores&&!seen.has("BONOS SUPERVISORES"))out.push({key:"BONOS SUPERVISORES",...ROUTES["BONOS SUPERVISORES"],ready:true,backendReady:true});
+  if(CTX?.capacidadesEspeciales?.publicadorWin&&!seen.has("PUBLICADOR WIN"))out.push({key:"PUBLICADOR WIN",...ROUTES["PUBLICADOR WIN"],ready:true,backendReady:true});
+  return out;
 }
-
+function renderNav(){
+  const list=entries().filter(x=>x.ready);
+  const groups=[...new Set(list.map(x=>x.group))];
+  el("nav").innerHTML='<button data-home class="active">⌂ Inicio</button>'+groups.map(g=>
+    '<div class="group">'+esc(g)+'</div>'+
+    list.filter(x=>x.group===g).map(x=>'<button data-key="'+esc(x.key)+'">'+esc(x.title)+'</button>').join("")
+  ).join("");
+  el("nav").querySelector("[data-home]").onclick=showHome;
+  el("nav").querySelectorAll("[data-key]").forEach(b=>b.onclick=()=>openModule(b.dataset.key));
+}
+function renderHome(){
+  const all=entries();
+  const ready=all.filter(x=>x.ready);
+  const pending=all.filter(x=>!x.ready);
+  el("home").innerHTML=
+    '<div class="hero"><h2>MI VISUAL integrado</h2><p class="sub">Sesión única activa. Los módulos disponibles usan Supabase Auth + Edge Functions + PostgreSQL.</p>'+
+    '<div class="badges"><span class="badge green">'+ready.length+' módulos integrados</span><span class="badge orange">'+pending.length+' módulos visibles pendientes de UI</span><span class="badge">'+esc(CTX.usuario.perfil)+'</span><span class="badge">'+esc(CTX.usuario.sede||"Zona Norte")+'</span></div></div>'+
+    '<div class="cards">'+all.map(x=>
+      '<div class="card"><div class="status '+(x.ready?'ready':'pending')+'">'+(x.ready?'INTEGRADO':'BACKEND / UI PENDIENTE')+'</div>'+
+      '<h3>'+esc(x.title)+'</h3><p>'+esc(x.desc)+'</p>'+
+      (x.ready?'<button class="btn" data-open="'+esc(x.key)+'">Abrir</button>':'<button class="btn secondary" disabled>En integración</button>')+
+      '</div>').join("")+'</div>';
+  el("home").querySelectorAll("[data-open]").forEach(b=>b.onclick=()=>openModule(b.dataset.open));
+}
+function setActive(key){
+  el("nav").querySelectorAll("button").forEach(b=>b.classList.remove("active"));
+  const b=key?el("nav").querySelector('[data-key="'+CSS.escape(key)+'"]'):el("nav").querySelector("[data-home]");
+  if(b)b.classList.add("active");
+}
+function showHome(){
+  el("moduleView").classList.add("hidden");el("home").classList.remove("hidden");el("pageTitle").textContent="Inicio";setActive(null);
+  el("moduleFrame").src="about:blank";el("sidebar").classList.remove("open");
+}
+function openModule(key){
+  const item=entries().find(x=>x.key===key);if(!item?.page)return;
+  el("home").classList.add("hidden");el("moduleView").classList.remove("hidden");el("pageTitle").textContent=item.title;setActive(key);
+  el("moduleFrame").src=item.page+"?embed=1&shell=1";el("sidebar").classList.remove("open");
+  history.replaceState(null,"","#"+encodeURIComponent(key));
+}
+async function enter(){
+  CTX=await context();
+  el("uNombre").textContent=CTX.usuario.nombre||CTX.usuario.usuario;
+  el("uMeta").innerHTML=esc(CTX.usuario.perfil)+"<br>"+esc(CTX.usuario.sede||"")+(CTX.usuario.cuadrilla?"<br>"+esc(CTX.usuario.cuadrilla):"");
+  el("loginView").classList.add("hidden");el("shellView").classList.remove("hidden");
+  renderNav();renderHome();
+  const key=decodeURIComponent(location.hash.slice(1)||"");
+  if(entries().some(x=>x.key===key&&x.ready))openModule(key);else showHome();
+}
 async function login(){
-  const email=document.getElementById("email").value.trim();
-  const password=document.getElementById("password").value;
-  if(!email||!password)return msg("Ingrese correo y contraseña.",false);
-  const {data,error}=await sb.auth.signInWithPassword({email,password});
-  if(error)return msg(error.message,false);
-  msg("Sesión iniciada correctamente.");
-  await contexto();
-  await catalogos();
-  dbg({login:true,user:data.user?.id||null});
+  const email=el("email").value.trim(),password=el("password").value;
+  if(!email||!password){el("loginMsg").className="msg err";el("loginMsg").textContent="Ingrese correo y contraseña.";return}
+  el("loginBtn").disabled=true;el("loginMsg").textContent="Validando...";
+  const {error}=await sb.auth.signInWithPassword({email,password});
+  if(error){el("loginMsg").className="msg err";el("loginMsg").textContent=error.message;el("loginBtn").disabled=false;return}
+  try{await enter();el("password").value=""}catch(e){await sb.auth.signOut();el("loginMsg").className="msg err";el("loginMsg").textContent=e.message}
+  el("loginBtn").disabled=false;
 }
-
 async function logout(){
-  await sb.auth.signOut();
-  msg("Sesión cerrada.");
-  document.getElementById("perfil").innerHTML="";
-  document.getElementById("tabla").innerHTML="";
-  document.getElementById("resumen").innerHTML="";
-  lastRows=[];
+  el("moduleFrame").src="about:blank";await sb.auth.signOut();CTX=null;location.hash="";
+  el("shellView").classList.add("hidden");el("loginView").classList.remove("hidden");el("loginMsg").textContent="Sesión cerrada.";
 }
-
-async function token(){
-  const {data}=await sb.auth.getSession();
-  return data.session?.access_token||"";
-}
-
-async function api(params){
-  const t=await token();
-  if(!t)throw new Error("Primero inicie sesión.");
-  const u=new URL(API);
-  Object.entries(params).forEach(([k,v])=>{
-    if(v!==null&&v!==undefined&&String(v)!=="")u.searchParams.set(k,String(v));
-  });
-  const r=await fetch(u,{headers:{Authorization:"Bearer "+t,apikey:PUBLISHABLE_KEY}});
-  const text=await r.text();
-  let d;
-  try{d=JSON.parse(text)}catch(_){throw new Error(text||"Respuesta inválida")}
-  if(!r.ok||!d.ok)throw new Error(d.error||"Error de consulta");
-  return d;
-}
-
-async function contexto(){
-  try{
-    const d=await api({accion:"contextoMapaOperativo"});
-    const p=d.permiso||{};
-    document.getElementById("perfil").innerHTML=
-      '<span class="badge">Usuario: '+esc(d.usuario)+'</span>'+
-      '<span class="badge">Perfil: '+esc(d.perfil)+'</span>'+
-      '<span class="badge">Sede: '+esc(d.sede)+'</span>'+
-      '<span class="badge">Nivel: '+esc(d.nivelAcceso)+'</span>'+
-      '<span class="badge">Alcance: '+esc(p.alcanceDatos)+'</span>'+
-      '<span class="badge">VER: '+(p.ver?"Sí":"No")+'</span>';
-    state("Perfil, permisos y alcance validados.");
-    dbg(d);
-    return d;
-  }catch(e){
-    state(e.message,false);dbg(String(e));throw e;
-  }
-}
-
-async function catalogos(){
-  state("Consultando catálogos...");
-  try{
-    const d=await api({accion:"catalogosMapaOperativo"});
-    optionFill("periodo",d.periodos||[],null);
-    optionFill("sede",d.sedes||[],"Todas las sedes");
-    optionFill("grupo",d.gruposTrabajo||[],"Todos los grupos");
-    optionFill("estadoFiltro",d.estados||[],"Todos los estados");
-    optionFill("cuadrilla",d.cuadrillas||[],"Todas las cuadrillas");
-    if((d.periodos||[]).includes("2026-09")) document.getElementById("periodo").value="2026-09";
-    state("Catálogos cargados desde PostgreSQL. Última actualización: "+(d.ultimaActualizacionTexto||""));
-    dbg(d);
-  }catch(e){state(e.message,false);dbg(String(e))}
-}
-
-async function consultar(){
-  state("Consultando PostgreSQL...");
-  try{
-    const d=await api({
-      accion:"listarMapaOperativo",
-      periodo:document.getElementById("periodo").value,
-      sede:document.getElementById("sede").value,
-      fecha:document.getElementById("fecha").value,
-      grupoTrabajo:document.getElementById("grupo").value,
-      estado:document.getElementById("estadoFiltro").value,
-      cuadrilla:document.getElementById("cuadrilla").value,
-      codigo:document.getElementById("codigo").value.trim()
-    });
-    lastRows=d.ordenes||[];
-    state("Consulta completada.");
-    document.getElementById("resumen").innerHTML=
-      '<span class="badge">'+d.registros+' órdenes</span>'+
-      '<span class="badge">'+esc(d.motor||"")+'</span>'+
-      (d.criterioBusqueda?'<span class="badge">Búsqueda: '+esc(d.criterioBusqueda)+'</span>':'');
-    const rows=lastRows.slice(0,200);
-    document.getElementById("tabla").innerHTML=
-      '<tr><th>Orden</th><th>Pedido</th><th>DNI</th><th>Fecha</th><th>Sede</th><th>Estado</th><th>Cuadrilla</th></tr>'+
-      rows.map(x=>'<tr><td>'+esc(x.ordenId)+'</td><td>'+esc(x.codigoCliente)+'</td><td>'+esc(x.numeroDocumento)+'</td><td>'+esc(x.fechaSolicitud)+'</td><td>'+esc(x.region)+'</td><td>'+esc(x.estado)+'</td><td>'+esc(x.cuadrilla)+'</td></tr>').join("");
-    dbg({...d,ordenes:'['+lastRows.length+' registros]'});
-  }catch(e){state(e.message,false);dbg(String(e))}
-}
-
-async function probarCto(){
-  try{
-    const base=lastRows.find(x=>Number.isFinite(Number(x.latitud))&&Number.isFinite(Number(x.longitud)));
-    if(!base)throw new Error("La consulta actual no contiene una orden con coordenadas.");
-    const lat=Number(base.latitud), lon=Number(base.longitud), delta=0.01;
-    state("Consultando CTO cercanas...");
-    const d=await api({
-      accion:"listarCtosCercanasMapaOperativo",
-      sur:lat-delta,
-      norte:lat+delta,
-      oeste:lon-delta,
-      este:lon+delta,
-      sede:base.region||"",
-      limite:100
-    });
-    document.getElementById("ctos").textContent=JSON.stringify({
-      ordenReferencia:base.ordenId,
-      coordenadaOrden:[lat,lon],
-      totalCoincidencias:d.totalCoincidencias,
-      mostradas:d.mostradas,
-      truncado:d.truncado,
-      primerasCto:(d.ctos||[]).slice(0,20)
-    },null,2);
-    state("CTO cercanas consultadas correctamente.");
-    dbg(d);
-  }catch(e){state(e.message,false);document.getElementById("ctos").textContent=String(e);dbg(String(e))}
-}
-
-sb.auth.getSession().then(async({data})=>{
-  if(data.session){
-    msg("Sesión de prueba activa.");
-    try{await contexto();await catalogos();}catch(_){}
-  }
-});
+el("loginBtn").onclick=login;el("password").addEventListener("keydown",e=>{if(e.key==="Enter")login()});
+el("logoutBtn").onclick=logout;el("homeBtn").onclick=showHome;el("menuBtn").onclick=()=>el("sidebar").classList.toggle("open");
+window.addEventListener("message",e=>{if(e.data?.type==="mv-module-error")console.warn("Módulo:",e.data.message)});
+sb.auth.onAuthStateChange((event)=>{if(event==="SIGNED_OUT"&&CTX)logout()});
+sb.auth.getSession().then(async({data})=>{if(data.session){try{await enter()}catch(e){el("loginMsg").className="msg err";el("loginMsg").textContent=e.message}}});
 </script>
 </body>
 </html>
