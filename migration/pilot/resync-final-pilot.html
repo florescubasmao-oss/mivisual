@@ -363,6 +363,7 @@ function resetButtons(m){
 }
 async function stageModule(k){
   const m=MODS[k];if(!m.rows.length)throw Error("No hay filas para "+m.modulo);
+  if(m.runId)throw Error("Ya existe un staging para este módulo. Aplíquelo o cancélelo antes de crear otro.");
   const st=E(m.prefix+"Status"),btn=E(m.prefix+"Stage");
   try{
     btn.disabled=true;st.className="status muted";st.textContent="Creando staging...";
@@ -383,13 +384,20 @@ async function stageModule(k){
     }
     st.className="status ok";st.textContent="VALIDATED · Run "+m.runId+" · "+v.stagedRows+" / "+v.sourceRows+" filas"+extra+".";
     E(m.prefix+"Apply").classList.remove("hidden");E(m.prefix+"Cancel").classList.remove("hidden");btn.classList.add("hidden");
-  }catch(e){st.className="status err";st.textContent=e.message;btn.disabled=false}
+  }catch(e){
+    st.className="status err";st.textContent=e.message;btn.disabled=false;
+    if(m.runId){
+      btn.classList.add("hidden");
+      E(m.prefix+"Cancel").classList.remove("hidden");
+      E(m.prefix+"Apply").classList.add("hidden");
+    }
+  }
 }
 async function applyModule(k){
   const m=MODS[k],st=E(m.prefix+"Status"),btn=E(m.prefix+"Apply");
   try{
     if(!m.runId)throw Error("No existe staging validado.");
-    const msg="Se aplicará el resync completo de "+m.modulo+" con "+m.rows.length+" filas.\n\nEl proceso hace upsert por clave estable y no borra registros. ¿Confirmar?";
+    const msg="Se aplicará el resync de "+m.modulo+" con "+m.rows.length+" filas.\n\nEl proceso usa claves estables. En Mapa se omiten períodos protegidos y se crea backup para rollback. ¿Confirmar?";
     if(!confirm(msg))return;
     btn.disabled=true;
     const d=await api({accion:m.applyAction,runId:m.runId,confirmacion:m.confirm});
@@ -405,8 +413,11 @@ async function rollbackModule(k){
     if(!confirm("Se restaurará el estado previo al APPLY de "+m.modulo+". ¿Confirmar rollback?"))return;
     btn.disabled=true;
     const d=await api({accion:m.rollbackAction,runId:m.runId,confirmacion:m.rollbackConfirm});
-    st.className="status ok";st.textContent="ROLLED_BACK · restauradas "+Number(d.restored||0)+" · eliminadas nuevas "+Number(d.deleted||0)+" · Run "+m.runId;
+    const oldRun=m.runId;
+    st.className="status ok";st.textContent="ROLLED_BACK · restauradas "+Number(d.restored||0)+" · eliminadas nuevas "+Number(d.deleted||0)+" · Run "+oldRun;
     btn.classList.add("hidden");
+    m.runId=null;m.preview=null;
+    E(m.prefix+"Stage").classList.remove("hidden");E(m.prefix+"Stage").disabled=false;
   }catch(e){st.className="status err";st.textContent=e.message}finally{btn.disabled=false}
 }
 async function cancelModule(k){
