@@ -53,3 +53,8 @@ Tras autorización expresa del usuario para actualizar solo `mi-visual-piloto.ne
 Flujo oficial `resetPasswordForEmail` → `PASSWORD_RECOVERY` → `updateUser`. Formulario pide mínimo 12 caracteres y confirmación; limpia los campos después del cambio; no se registra ni se define la contraseña del usuario. Pruebas simuladas: sin sesión de recuperación no actualiza, contraseñas distintas no actualizan, éxito limpia campos. No se completó cambio real de contraseña ni pruebas autenticadas de Mesa.
 
 Se solicitó una sola recuperación para el correo de JEFZNORTE indicado por el usuario. Supabase respondió HTTP 200. Esto confirma aceptación del envío, no entrega en la bandeja ni cambio de contraseña. El usuario debe abrir su correo y completar personalmente el cambio. Referencia: https://supabase.com/docs/reference/javascript/auth-resetpasswordforemail .
+
+
+## Corrección de redirección a localhost
+
+La captura del usuario mostró ERR_CONNECTION_REFUSED en localhost. Se verificó el panel del proyecto existente `uudvodiaizfarodjpetb`: Site URL era `http://localhost:3000` y la lista Redirect URLs estaba vacía. La configuración propuesta anteriormente no estaba aplicada. Se corrigió y verificó visualmente Site URL=`https://mi-visual-piloto.netlify.app` y un único retorno permitido exacto: `https://mi-visual-piloto.netlify.app/recuperar.html` (sin comodines). No se creó proyecto, organización ni cuenta adicional. Se pidió un nuevo correo de recuperación tras guardar la configuración; respuesta HTTP 200. El correo previo podía conservar el destino localhost. Cambio real de contraseña y pruebas autenticadas siguen pendientes del usuario. No se usó la posible contraseña legacy compartida por el usuario.
