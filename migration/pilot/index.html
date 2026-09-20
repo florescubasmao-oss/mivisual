@@ -87,9 +87,9 @@ const ROUTES={
   "CHECKLIST ALMACEN":{title:"Checklist Almacén",page:"checklist-almacen-pilot.html",group:"Operación",desc:"Materiales, herramientas, unidad, documentación y EPP."},
   "PEXT":{title:"PEXT / Conjunta",page:"pext-pilot.html",group:"Operación",desc:"Normalización, Conjunta PEXT, Ordenamiento y bonos."},
   "PLANTILLA ORDEN":{title:"Plantilla de Orden",page:"plantilla-orden-pilot.html",group:"Operación",desc:"Consulta unificada de orden y CTO cercanas."},
-  "FACTURAS":{title:"Facturas",page:"facturas-pilot.html",group:"Gestión",desc:"Facturas de combustible, pendientes y validación."},
-  "ANALISIS ECONOMICO":{title:"Análisis Económico",page:"analisis-economico-pilot.html",group:"Gestión",desc:"Producción valorizada, costos y utilidad por cuadrilla."},
-  "ADMINISTRACION":{title:"Administración",page:"administracion-pilot.html",group:"Sistema",desc:"Usuarios y migración de accesos Supabase Auth."}
+  "FACTURAS":{title:"Facturas",page:"facturas-pilot.html",group:"Gestión",phase:"PILOTO · RESYNC FINAL",desc:"Facturas de combustible, pendientes y validación."},
+  "ANALISIS ECONOMICO":{title:"Análisis Económico",page:"analisis-economico-pilot.html",group:"Gestión",phase:"PROTEGIDO · RESYNC FINAL",desc:"Producción valorizada, costos y utilidad; históricos cerrados protegidos."},
+  "ADMINISTRACION":{title:"Administración",page:"administracion-pilot.html",group:"Sistema",phase:"PARCIAL · AUTH",desc:"Usuarios/Auth integrados; catálogos y cargas legacy aún pendientes."}
 };
 const BACKEND_READY=new Set(["PRODUCCION","EFECTIVIDAD","PORCENTAJE RECABLEADO","VTR GAR","RANKING","VALIDACION TECNICA","ACTAS ESCANEADAS","PROGRAMACION DESCANSOS","OBSERVACIONES","ACTIVIDAD CAMPO","CHECKLIST ALMACEN"]);
 const LABELS={"PORCENTAJE RECABLEADO":"Recableado","VTR GAR":"VTR / GAR","ACTAS ESCANEADAS":"Gestión de Actas","VALIDACION TECNICA":"Validación Técnica","PROGRAMACION DESCANSOS":"Programación de Descansos","ACTIVIDAD CAMPO":"Actividad en Campo","CHECKLIST ALMACEN":"Checklist Almacén","ANALISIS ECONOMICO":"Análisis Económico","UTILIDAD CUADRILLA":"Utilidad Cuadrilla","PLANTILLA ORDEN":"Plantilla Orden"};
@@ -116,6 +116,7 @@ function entries(){
       key,title:route?.title||LABELS[key]||key,group:route?.group||"Módulos",
       desc:route?.desc||"Backend migrado; integración visual en proceso.",
       page:route?.page||null,ready:!!route?.page,
+      phase:route?.phase||(route?.page?"INTEGRADO":"BACKEND / UI PENDIENTE"),
       backendReady:BACKEND_READY.has(key)||!!route?.page
     });
   }
@@ -137,9 +138,9 @@ function renderHome(){
   const pending=all.filter(x=>!x.ready);
   el("home").innerHTML=
     '<div class="hero"><h2>MI VISUAL integrado</h2><p class="sub">Sesión única activa. Los módulos disponibles usan Supabase Auth + Edge Functions + PostgreSQL.</p>'+
-    '<div class="badges"><span class="badge green">'+ready.length+' módulos integrados</span><span class="badge orange">'+pending.length+' módulos visibles pendientes de UI</span><span class="badge">'+esc(CTX.usuario.perfil)+'</span><span class="badge">'+esc(CTX.usuario.sede||"Zona Norte")+'</span></div></div>'+
+    '<div class="badges"><span class="badge green">'+ready.length+' módulos con UI</span><span class="badge orange">'+pending.length+' módulos visibles pendientes de UI</span><span class="badge">'+esc(CTX.usuario.perfil)+'</span><span class="badge">'+esc(CTX.usuario.sede||"Zona Norte")+'</span></div></div>'+
     '<div class="cards">'+all.map(x=>
-      '<div class="card"><div class="status '+(x.ready?'ready':'pending')+'">'+(x.ready?'INTEGRADO':'BACKEND / UI PENDIENTE')+'</div>'+
+      '<div class="card"><div class="status '+(x.ready&&x.phase==="INTEGRADO"?'ready':'pending')+'">'+esc(x.phase)+'</div>'+
       '<h3>'+esc(x.title)+'</h3><p>'+esc(x.desc)+'</p>'+
       (x.ready?'<button class="btn" data-open="'+esc(x.key)+'">Abrir</button>':'<button class="btn secondary" disabled>En integración</button>')+
       '</div>').join("")+'</div>';
