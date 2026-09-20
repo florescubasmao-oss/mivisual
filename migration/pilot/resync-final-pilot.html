@@ -24,8 +24,8 @@ table{width:100%;border-collapse:collapse;font-size:12px}th,td{padding:7px;borde
 <body><div class="wrap">
 <div class="card">
   <div class="row" style="justify-content:space-between"><h1 style="margin-bottom:0">Resync final</h1><button class="sec" onclick="location.href='administracion-pilot.html'">Volver a Administración</button></div>
-  <p class="lead">Validación Técnica · Programación de Descansos · Actas</p>
-  <div class="notice" style="margin-top:10px"><b>Flujo controlado:</b> cargue una copia Excel actual de MI VISUAL. Primero se valida y crea staging. Cada módulo requiere su propio botón de aplicación. No se incluyen Mapa ni CTO en esta etapa.</div>
+  <p class="lead">Validación Técnica · Programación de Descansos · Actas · Mapa Operativo · Catálogo CTO</p>
+  <div class="notice" style="margin-top:10px"><b>Flujo controlado:</b> cargue una copia Excel actual de MI VISUAL. Primero se valida y crea staging. Mapa y CTO además ejecutan un preview obligatorio antes de habilitar APPLY. Mapa no modifica períodos protegidos y ambos generan backup para rollback.</div>
 </div>
 
 <div class="card">
@@ -81,6 +81,30 @@ table{width:100%;border-collapse:collapse;font-size:12px}th,td{padding:7px;borde
     </div>
     <div id="actasStatus" class="status"></div>
   </div>
+
+  <div class="module" id="modMAPA">
+    <h3>Mapa Operativo</h3>
+    <div id="mapaInfo" class="muted"></div>
+    <div class="row" style="margin-top:8px">
+      <button id="mapaStage" onclick="stageModule('MAPA')">Crear staging + preview</button>
+      <button id="mapaApply" class="good hidden" onclick="applyModule('MAPA')">Aplicar Mapa</button>
+      <button id="mapaRollback" class="sec hidden" onclick="rollbackModule('MAPA')">Rollback Mapa</button>
+      <button id="mapaCancel" class="warn hidden" onclick="cancelModule('MAPA')">Cancelar staging</button>
+    </div>
+    <div id="mapaStatus" class="status"></div>
+  </div>
+
+  <div class="module" id="modCTO">
+    <h3>Catálogo CTO</h3>
+    <div id="ctoInfo" class="muted"></div>
+    <div class="row" style="margin-top:8px">
+      <button id="ctoStage" onclick="stageModule('CTO')">Crear staging + preview</button>
+      <button id="ctoApply" class="good hidden" onclick="applyModule('CTO')">Aplicar CTO</button>
+      <button id="ctoRollback" class="sec hidden" onclick="rollbackModule('CTO')">Rollback CTO</button>
+      <button id="ctoCancel" class="warn hidden" onclick="cancelModule('CTO')">Cancelar staging</button>
+    </div>
+    <div id="ctoStatus" class="status"></div>
+  </div>
 </div>
 
 <div id="preview" class="card hidden">
@@ -97,7 +121,9 @@ const sb=supabase.createClient(URL,KEY);
 const MODS={
   VT:{modulo:"VALIDACION_TECNICA",rows:[],runId:null,applyAction:"aplicarValidacionTecnica",confirm:"APLICAR_VALIDACION_TECNICA_STAGING",prefix:"vt"},
   DESC:{modulo:"PROGRAMACION_DESCANSOS",rows:[],runId:null,applyAction:"aplicarDescansos",confirm:"APLICAR_DESCANSOS_STAGING",prefix:"desc"},
-  ACTAS:{modulo:"ACTAS",rows:[],runId:null,applyAction:"aplicarActas",confirm:"APLICAR_ACTAS_STAGING",prefix:"actas"}
+  ACTAS:{modulo:"ACTAS",rows:[],runId:null,applyAction:"aplicarActas",confirm:"APLICAR_ACTAS_STAGING",prefix:"actas"},
+  MAPA:{modulo:"MAPA_OPERATIVO",rows:[],runId:null,applyAction:"aplicarMapa",previewAction:"previewMapa",rollbackAction:"rollbackMapa",confirm:"APLICAR_MAPA_STAGING",rollbackConfirm:"ROLLBACK_MAPA_STAGING",prefix:"mapa"},
+  CTO:{modulo:"CATALOGO_CTO",rows:[],runId:null,applyAction:"aplicarCto",previewAction:"previewCto",rollbackAction:"rollbackCto",confirm:"APLICAR_CTO_STAGING",rollbackConfirm:"ROLLBACK_CTO_STAGING",prefix:"cto"}
 };
 let FILE_NAME="";
 const E=id=>document.getElementById(id);
@@ -244,6 +270,58 @@ function mapActas(rows){
   }
   return out;
 }
+function mapMapa(rows){
+  const h=rows[0]||[],i={};h.forEach((x,n)=>{const k=norm(x);if(k&&!Object.prototype.hasOwnProperty.call(i,k))i[k]=n});
+  for(const k of ["ORDEN_ID","TIPO_TRABAJO","FECHA_SOLICITUD"])if(i[k]===undefined)throw Error("MAPA_ORDENES: falta "+k+".");
+  const out=[];
+  for(let r=1;r<rows.length;r++){
+    const row=rows[r],id=txt(at(row,i.ORDEN_ID));if(!id)continue;
+    const fs=excelDate(at(row,i.FECHA_SOLICITUD));if(!fs)throw Error("MAPA_ORDENES fila "+(r+1)+": fecha inválida.");
+    out.push({sourceKey:id,sourceRow:r+1,rowData:{
+      orden_id:id,
+      tipo_trabajo:txt(at(row,i.TIPO_TRABAJO)),
+      fecha_solicitud:fs,
+      hora_solicitud:timePart(at(row,i.HORA_SOLICITUD)),
+      cliente:txt(at(row,i.CLIENTE)),tipo:txt(at(row,i.TIPO)),producto_origen:txt(at(row,i.PRODUCTO_ORIGEN)),
+      cuadrilla:txt(at(row,i.CUADRILLA)),estado:txt(at(row,i.ESTADO)),direccion:txt(at(row,i.DIRECCION)),
+      direccion_adicional:txt(at(row,i.DIRECCION_ADICIONAL)),
+      fecha_ultimo_estado:at(row,i.FECHA_ULTIMO_ESTADO)?parseDateTimeValue(at(row,i.FECHA_ULTIMO_ESTADO),false):"",
+      producto_servicio:txt(at(row,i.PRODUCTO_SERVICIO)),sede:txt(at(row,i.REGION)),
+      codigo_cliente:txt(at(row,i.CODIGO_CLIENTE)),numero_documento:txt(at(row,i.NUMERO_DOCUMENTO)),
+      telefono_movil:txt(at(row,i.TELEFONO_MOVIL)),telefono_fijo:txt(at(row,i.TELEFONO_FIJO)),
+      fecha_fin_visita:at(row,i.FECHA_FIN_VISITA)?parseDateTimeValue(at(row,i.FECHA_FIN_VISITA),false):"",
+      fecha_inicio_visita:at(row,i.FECHA_INICIO_VISITA)?parseDateTimeValue(at(row,i.FECHA_INICIO_VISITA),false):"",
+      motivo_cancelacion:txt(at(row,i.MOTIVO_CANCELACION)),motivo_finalizacion:txt(at(row,i.MOTIVO_FINALIZACION)),
+      motivo_anulacion:txt(at(row,i.MOTIVO_ANULACION)),
+      latitud:txt(at(row,i.LATITUD)),longitud:txt(at(row,i.LONGITUD)),detalle:txt(at(row,i.DETALLE)),
+      fecha_importacion:at(row,i.FECHA_IMPORTACION)?parseDateTimeValue(at(row,i.FECHA_IMPORTACION),false):"",
+      usuario_importacion:txt(at(row,i.USUARIO_IMPORTACION)),
+      cto_1:txt(at(row,i.CTO_1)),coordenada_cto_1:txt(at(row,i.COORDENADA_CTO_1)),
+      cto_2:txt(at(row,i.CTO_2)),coordenada_cto_2:txt(at(row,i.COORDENADA_CTO_2)),
+      cto_3:txt(at(row,i.CTO_3)),coordenada_cto_3:txt(at(row,i.COORDENADA_CTO_3)),
+      cto:txt(at(row,i.CTO)),puerto:txt(at(row,i.PUERTO)),codigo_seguimiento:txt(at(row,i.CODIGO_SEGUIMIENTO))
+    }});
+  }
+  return out;
+}
+function mapCto(rows){
+  const h=rows[0]||[],i={};h.forEach((x,n)=>{const k=norm(x);if(k&&!Object.prototype.hasOwnProperty.call(i,k))i[k]=n});
+  for(const k of ["CODIGO_CTO"])if(i[k]===undefined)throw Error("CATALOGO_CTO: falta "+k+".");
+  const out=[];
+  for(let r=1;r<rows.length;r++){
+    const row=rows[r],codigo=txt(at(row,i.CODIGO_CTO));if(!codigo)continue;
+    out.push({sourceKey:codigo,sourceRow:r+1,rowData:{
+      codigo_cto:codigo,latitud:txt(at(row,i.LATITUD)),longitud:txt(at(row,i.LONGITUD)),
+      coordenada:txt(at(row,i.COORDENADA)),sede:txt(at(row,i.SEDE)),
+      primera_deteccion:at(row,i.PRIMERA_DETECCION)?parseDateTimeValue(at(row,i.PRIMERA_DETECCION),false):"",
+      ultima_actualizacion:at(row,i.ULTIMA_ACTUALIZACION)?parseDateTimeValue(at(row,i.ULTIMA_ACTUALIZACION),false):"",
+      orden_referencia:txt(at(row,i.ORDEN_REFERENCIA)),codigo_cliente:txt(at(row,i.CODIGO_CLIENTE)),
+      tipo_trabajo:txt(at(row,i.TIPO_TRABAJO)),puerto_referencia:txt(at(row,i.PUERTO_REFERENCIA)),
+      usuario_actualizacion:txt(at(row,i.USUARIO_ACTUALIZACION)),veces_detectada:Math.max(1,num(at(row,i.VECES_DETECTADA),1))
+    }});
+  }
+  return out;
+}
 async function leerWorkbook(){
   try{
     const f=E("file").files?.[0];if(!f)throw Error("Seleccione el archivo Excel.");
@@ -252,13 +330,17 @@ async function leerWorkbook(){
     MODS.VT.rows=mapVT(sheetRows(wb,"VALIDACION_TECNICA"));
     MODS.DESC.rows=mapDesc(sheetRows(wb,"PROGRAMACION_DESCANSOS"));
     MODS.ACTAS.rows=mapActas(sheetRows(wb,"ACTAS_ESCANEADAS"));
+    MODS.MAPA.rows=mapMapa(sheetRows(wb,"MAPA_ORDENES"));
+    MODS.CTO.rows=mapCto(sheetRows(wb,"CATALOGO_CTO"));
     for(const m of Object.values(MODS)){m.runId=null;resetButtons(m)}
     E("summary").classList.remove("hidden");E("modules").classList.remove("hidden");E("preview").classList.remove("hidden");
-    E("metrics").innerHTML='<div class="metric">Validación Técnica<b>'+MODS.VT.rows.length+'</b></div><div class="metric">Descansos<b>'+MODS.DESC.rows.length+'</b></div><div class="metric">Actas<b>'+MODS.ACTAS.rows.length+'</b></div>';
+    E("metrics").innerHTML='<div class="metric">Validación Técnica<b>'+MODS.VT.rows.length+'</b></div><div class="metric">Descansos<b>'+MODS.DESC.rows.length+'</b></div><div class="metric">Actas<b>'+MODS.ACTAS.rows.length+'</b></div><div class="metric">Mapa<b>'+MODS.MAPA.rows.length+'</b></div><div class="metric">CTO<b>'+MODS.CTO.rows.length+'</b></div>';
     E("vtInfo").textContent=MODS.VT.rows.length+" filas detectadas.";
     E("descInfo").textContent=MODS.DESC.rows.length+" filas detectadas.";
     E("actasInfo").textContent=MODS.ACTAS.rows.length+" filas detectadas.";
-    E("validationMsg").className="ok";E("validationMsg").textContent="Las tres hojas fueron leídas y normalizadas. Ningún dato se ha enviado aún a PostgreSQL.";
+    E("mapaInfo").textContent=MODS.MAPA.rows.length+" filas detectadas. Los períodos protegidos no se actualizarán.";
+    E("ctoInfo").textContent=MODS.CTO.rows.length+" CTO detectadas.";
+    E("validationMsg").className="ok";E("validationMsg").textContent="Las cinco hojas fueron leídas y normalizadas. Ningún dato se ha enviado aún a PostgreSQL.";
     E("fileStatus").className="ok";E("fileStatus").textContent="Archivo válido: "+f.name;
     renderSample();
   }catch(e){E("fileStatus").className="err";E("fileStatus").textContent=e.message}
@@ -267,13 +349,16 @@ function renderSample(){
   const items=[
     ["Validación",MODS.VT.rows[0]?.sourceKey,MODS.VT.rows[0]?.rowData?.periodo],
     ["Descansos",MODS.DESC.rows[0]?.sourceKey,MODS.DESC.rows[0]?.rowData?.fecha],
-    ["Actas",MODS.ACTAS.rows[0]?.sourceKey,MODS.ACTAS.rows[0]?.rowData?.fecha_gestion]
+    ["Actas",MODS.ACTAS.rows[0]?.sourceKey,MODS.ACTAS.rows[0]?.rowData?.fecha_gestion],
+    ["Mapa",MODS.MAPA.rows[0]?.sourceKey,MODS.MAPA.rows[0]?.rowData?.fecha_solicitud],
+    ["CTO",MODS.CTO.rows[0]?.sourceKey,MODS.CTO.rows[0]?.rowData?.ultima_actualizacion]
   ];
   E("sample").innerHTML="<tr><th>Módulo</th><th>Primera clave</th><th>Periodo/Fecha</th></tr>"+items.map(x=>"<tr><td>"+H(x[0])+"</td><td>"+H(x[1]||"-")+"</td><td>"+H(x[2]||"-")+"</td></tr>").join("");
 }
 function resetButtons(m){
   E(m.prefix+"Stage").classList.remove("hidden");E(m.prefix+"Stage").disabled=false;
   E(m.prefix+"Apply").classList.add("hidden");E(m.prefix+"Cancel").classList.add("hidden");
+  const rb=E(m.prefix+"Rollback");if(rb)rb.classList.add("hidden");
   E(m.prefix+"Status").textContent="";
 }
 async function stageModule(k){
@@ -288,7 +373,15 @@ async function stageModule(k){
       runId=d.runId;m.runId=runId;st.textContent="Staging "+d.stagedRows+" / "+m.rows.length;
     }
     const v=await api({accion:"validarStaging",runId:m.runId});
-    st.className="status ok";st.textContent="VALIDATED · Run "+m.runId+" · "+v.stagedRows+" / "+v.sourceRows+" filas.";
+    let extra="";
+    if(m.previewAction){
+      const p=await api({accion:m.previewAction,runId:m.runId});
+      m.preview=p;
+      if(!p.puedeAplicar)throw Error("Preview bloqueado: "+JSON.stringify(p));
+      if(k==="MAPA")extra=" · existentes "+Number(p.existentes||0)+" · nuevas "+Number(p.nuevas||0)+" · protegidas "+Number(p.filasProtegidas||0)+" · nuevas protegidas "+Number(p.nuevasEnProtegidos||0)+" · grupos sin clasificar "+Number(p.grupoSinClasificarActivo||0);
+      if(k==="CTO")extra=" · existentes "+Number(p.existentes||0)+" · nuevas "+Number(p.nuevas||0);
+    }
+    st.className="status ok";st.textContent="VALIDATED · Run "+m.runId+" · "+v.stagedRows+" / "+v.sourceRows+" filas"+extra+".";
     E(m.prefix+"Apply").classList.remove("hidden");E(m.prefix+"Cancel").classList.remove("hidden");btn.classList.add("hidden");
   }catch(e){st.className="status err";st.textContent=e.message;btn.disabled=false}
 }
@@ -300,8 +393,20 @@ async function applyModule(k){
     if(!confirm(msg))return;
     btn.disabled=true;
     const d=await api({accion:m.applyAction,runId:m.runId,confirmacion:m.confirm});
-    st.className="status ok";st.textContent="APPLIED · PostgreSQL: "+Number(d.postgres_rows||0)+" registros · Run "+m.runId;
+    st.className="status ok";st.textContent="APPLIED · PostgreSQL: "+Number(d.postgres_rows||0)+" registros · Run "+m.runId+(d.backup?" · backup listo":"");
     btn.classList.add("hidden");E(m.prefix+"Cancel").classList.add("hidden");
+    const rb=E(m.prefix+"Rollback");if(rb&&m.rollbackAction)rb.classList.remove("hidden");
+  }catch(e){st.className="status err";st.textContent=e.message}finally{btn.disabled=false}
+}
+async function rollbackModule(k){
+  const m=MODS[k],st=E(m.prefix+"Status"),btn=E(m.prefix+"Rollback");
+  try{
+    if(!m.runId||!m.rollbackAction)throw Error("No hay APPLY con rollback disponible.");
+    if(!confirm("Se restaurará el estado previo al APPLY de "+m.modulo+". ¿Confirmar rollback?"))return;
+    btn.disabled=true;
+    const d=await api({accion:m.rollbackAction,runId:m.runId,confirmacion:m.rollbackConfirm});
+    st.className="status ok";st.textContent="ROLLED_BACK · restauradas "+Number(d.restored||0)+" · eliminadas nuevas "+Number(d.deleted||0)+" · Run "+m.runId;
+    btn.classList.add("hidden");
   }catch(e){st.className="status err";st.textContent=e.message}finally{btn.disabled=false}
 }
 async function cancelModule(k){
