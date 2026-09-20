@@ -50,6 +50,13 @@ pre{white-space:pre-wrap;background:#f8fafc;padding:10px;border-radius:8px}
   <div id="previewMetrics" class="metrics"></div>
   <div id="compare"></div>
   <div id="alerts"></div>
+  <div id="reconCard" class="hidden" style="margin-top:14px">
+    <h3>Conciliación con motores PostgreSQL</h3>
+    <div id="reconCoverage" class="metrics"></div>
+    <div id="reconCompare" class="tablewrap" style="margin-top:10px"></div>
+    <div id="reconUnmatched"></div>
+    <div class="notice" style="margin-top:10px"><b>Solo lectura:</b> la conciliación compara cobertura y lógica. No modifica órdenes, estados ni indicadores.</div>
+  </div>
   <div class="row" style="margin-top:10px"><button class="warn" onclick="cancelar()">Cancelar staging</button></div>
 </div>
 </div>
@@ -108,7 +115,62 @@ function renderLocal(r){
 async function leerArchivo(){try{const f=E("file").files?.[0];if(!f)throw Error("Seleccione un archivo.");ARCHIVO=f.name;const buf=await f.arrayBuffer(),sample=new TextDecoder("utf-8").decode(buf.slice(0,50000));let sel;if(/\.html?$/i.test(f.name)||/^\s*<html/i.test(sample)){if(/Excel Workbook Frameset/i.test(sample)&&/sheet\d+\.html?/i.test(sample))throw Error("Este archivo es el índice del reporte. Use la carpeta _archivos.");sel=htmlMatrix(new TextDecoder("utf-8").decode(buf))}else{const wb=XLSX.read(buf,{type:"array",cellDates:true});sel=bestSheet(wb)}renderLocal(extraer(sel))}catch(e){E("localMsg").className="err";E("localMsg").textContent=e.message}}
 async function leerCarpeta(){try{const fs=[...(E("folder").files||[])];if(!fs.length)throw Error("Seleccione la carpeta _archivos.");const list=fs.filter(f=>/sheet\d+\.html?$/i.test(f.name)).concat(fs.filter(f=>/\.html?$/i.test(f.name)&&!/sheet\d+\.html?$/i.test(f.name)));if(!list.length)throw Error("No se encontró sheet001.htm.");let last;for(const f of list){try{const t=await f.text();if(/Excel Workbook Frameset/i.test(t))continue;ARCHIVO=f.webkitRelativePath||f.name;renderLocal(extraer(htmlMatrix(t)));return}catch(e){last=e}}throw last||Error("No se pudo leer la carpeta.")}catch(e){E("localMsg").className="err";E("localMsg").textContent=e.message}}
 async function enviarStaging(){try{if(!REG.length)throw Error("Primero lea el archivo.");E("previewBtn").disabled=true;E("uploadMsg").className="muted";E("uploadMsg").textContent="Creando staging...";const ini=await api({accion:"iniciarCarga",archivo:ARCHIVO,sourceRows:REG.length});RUN=ini.carga.id;for(let i=0;i<REG.length;i+=500){const d=await api({accion:"cargarBloque",runId:RUN,registros:REG.slice(i,i+500)});E("uploadMsg").textContent="Cargando "+d.stagedRows+" / "+d.sourceRows}const p=await api({accion:"previsualizarCarga",runId:RUN});renderPreview(p);E("uploadMsg").className="ok";E("uploadMsg").textContent="Previsualización PostgreSQL completada."}catch(e){E("uploadMsg").className="err";E("uploadMsg").textContent=e.message}finally{E("previewBtn").disabled=false}}
-function renderPreview(p){E("previewCard").classList.remove("hidden");E("previewMetrics").innerHTML='<div class="metric">Periodo<b>'+H(p.periodo)+'</b></div><div class="metric">Corte<b>'+H(p.corte)+'</b></div><div class="metric">Finalizadas<b>'+Number(p.finalizadasPeriodo||0)+'</b></div><div class="metric">Duplicados<b>'+Number(p.duplicadosExactos||0)+'</b></div><div class="metric">Partidas faltantes<b>'+Number((p.partidasNoEncontradas||[]).length)+'</b></div><div class="metric">Cuadrillas faltantes<b>'+Number((p.cuadrillasNoEncontradas||[]).length)+'</b></div><div class="metric">Puede aplicar<b>'+(p.puedeAplicar?"SÍ":"NO")+'</b></div>';const a=p.actual||{},n=p.nuevo||{};E("compare").innerHTML='<div class="tablewrap"><table><tr><th>Indicador</th><th>Actual</th><th>Nuevo</th></tr>'+["registros","finalizadas","canceladas","regestiones","reprogramadas"].map(k=>'<tr><td>'+H(k)+'</td><td>'+Number(a[k]||0)+'</td><td>'+Number(n[k]||0)+'</td></tr>').join("")+'</table></div>';let h="";if((p.partidasNoEncontradas||[]).length)h+='<div class="notice"><b>Partidas sin catálogo:</b><br>'+p.partidasNoEncontradas.map(H).join("<br>")+'</div>';if((p.cuadrillasNoEncontradas||[]).length)h+='<div class="notice"><b>Cuadrillas no reconocidas:</b><br>'+p.cuadrillasNoEncontradas.map(H).join("<br>")+'</div>';if(!h)h='<div class="ok">Previsualización sin bloqueos de catálogo/cuadrilla. Aun así, este piloto no aplica cambios.</div>';E("alerts").innerHTML=h}
+function renderPreview(p){
+  E("previewCard").classList.remove("hidden");
+  E("previewMetrics").innerHTML=
+    '<div class="metric">Periodo<b>'+H(p.periodo)+'</b></div>'+
+    '<div class="metric">Corte<b>'+H(p.corte)+'</b></div>'+
+    '<div class="metric">Finalizadas<b>'+Number(p.finalizadasPeriodo||0)+'</b></div>'+
+    '<div class="metric">Duplicados<b>'+Number(p.duplicadosExactos||0)+'</b></div>'+
+    '<div class="metric">Partidas faltantes<b>'+Number((p.partidasNoEncontradas||[]).length)+'</b></div>'+
+    '<div class="metric">Cuadrillas faltantes<b>'+Number((p.cuadrillasNoEncontradas||[]).length)+'</b></div>'+
+    '<div class="metric">Validación base<b>'+(p.puedeAplicar?"OK":"BLOQUEADA")+'</b></div>';
+  const a=p.actual||{},n=p.nuevo||{};
+  E("compare").innerHTML='<div class="tablewrap"><table><tr><th>Indicador</th><th>Actual</th><th>Nueva base</th></tr>'+
+    ["registros","finalizadas","canceladas","regestiones","reprogramadas"].map(k=>
+      '<tr><td>'+H(k)+'</td><td>'+Number(a[k]||0)+'</td><td>'+Number(n[k]||0)+'</td></tr>'
+    ).join("")+'</table></div>';
+  let h="";
+  if((p.partidasNoEncontradas||[]).length)h+='<div class="notice"><b>Partidas sin catálogo:</b><br>'+p.partidasNoEncontradas.map(H).join("<br>")+'</div>';
+  if((p.cuadrillasNoEncontradas||[]).length)h+='<div class="notice"><b>Cuadrillas no reconocidas:</b><br>'+p.cuadrillasNoEncontradas.map(H).join("<br>")+'</div>';
+  if(!h)h='<div class="ok">Previsualización sin bloqueos de catálogo/cuadrilla.</div>';
+  E("alerts").innerHTML=h;
+  renderRecon(p.conciliacion||null);
+}
+function kvRow(nombre,a,b){
+  return '<tr><td>'+H(nombre)+'</td><td>'+H(a??0)+'</td><td>'+H(b??0)+'</td></tr>';
+}
+function renderRecon(r){
+  if(!r){E("reconCard").classList.add("hidden");return}
+  E("reconCard").classList.remove("hidden");
+  const c=r.cobertura||{},ef=r.efectividad||{},rc=r.recableado||{},vg=r.vtrGar||{},pr=r.produccion||{};
+  E("reconCoverage").innerHTML=
+    '<div class="metric">Cobertura órdenes<b>'+Number(c.porcentaje||0).toFixed(2)+'%</b></div>'+
+    '<div class="metric">Vinculadas<b>'+Number(c.vinculadasOrdenes||0)+'</b></div>'+
+    '<div class="metric">Sin orden<b>'+Number(c.sinOrden||0)+'</b></div>'+
+    '<div class="metric">Cuadrilla distinta<b>'+Number(c.cuadrillaDifiere||0)+'</b></div>'+
+    '<div class="metric">Estado literal distinto<b>'+Number(c.estadoDifiere||0)+'</b></div>'+
+    '<div class="metric">APPLY motor<b>'+(r.applyHabilitado?"HABILITADO":"NO HABILITADO")+'</b></div>';
+  let rows='';
+  rows+=kvRow("Efectividad · Finalizadas",ef.base?.finalizada,ef.motor?.finalizada);
+  rows+=kvRow("Efectividad · Canceladas",ef.base?.cancelada,ef.motor?.cancelada);
+  rows+=kvRow("Efectividad · Regestión",ef.base?.regestion,ef.motor?.regestion);
+  rows+=kvRow("Efectividad · Reprogramado",ef.base?.reprogramado,ef.motor?.reprogramado);
+  rows+=kvRow("Efectividad · Total evaluable",ef.base?.totalGeneral,ef.motor?.totalGeneral);
+  rows+=kvRow("Recableado · LOS",rc.base?.los,rc.motor?.los);
+  rows+=kvRow("Recableado · Recableados",rc.base?.recableados,rc.motor?.recableados);
+  rows+=kvRow("Producción · Finalizadas/Elegibles",pr.base?.finalizadas,pr.motor?.ordenesElegibles);
+  rows+=kvRow("Producción · Puntos",pr.base?.puntos,pr.motor?.puntos);
+  rows+=kvRow("VTR/GAR · GAR etiquetadas/confirmadas",vg.baseEtiquetas?.garEtiquetadas,vg.motorDecisiones?.gar);
+  rows+=kvRow("VTR/GAR · VTR etiquetadas/confirmadas",vg.baseEtiquetas?.vtrEtiquetadas,vg.motorDecisiones?.vtr);
+  E("reconCompare").innerHTML='<table><tr><th>Control</th><th>Base cargada</th><th>Motor PostgreSQL</th></tr>'+rows+'</table>';
+  const no=r.ordenesNoVinculadas||[];
+  E("reconUnmatched").innerHTML=no.length
+    ? '<div class="notice" style="margin-top:10px"><b>Órdenes no vinculadas ('+no.length+'):</b><br>'+
+      no.slice(0,30).map(x=>'Fila '+H(x.sourceRow)+' · Liquidación '+H(x.codigoLiquidacion||"-")+' · Pedido '+H(x.codigoPedido||"-")+' · '+H(x.cuadrilla||"")).join("<br>")+
+      (no.length>30?'<br>... y '+(no.length-30)+' más.':'')+'</div>'
+    : '<div class="ok" style="margin-top:10px">Todas las filas del período con código de liquidación quedaron vinculadas al universo PostgreSQL.</div>';
+}
 async function cancelar(){try{if(!RUN)return;await api({accion:"cancelarCarga",runId:RUN});E("previewCard").classList.add("hidden");E("uploadMsg").className="ok";E("uploadMsg").textContent="Staging cancelado y limpiado.";RUN=null}catch(e){E("uploadMsg").className="err";E("uploadMsg").textContent=e.message}}
 </script>
 <script src="shell-embed.js"></script>
