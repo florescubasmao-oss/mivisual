@@ -1,6 +1,6 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
-const VERSION="V1-MI-VISUAL-SHELL-20260920";
+const VERSION="V2-MI-VISUAL-SHELL-20260920";
 const cors={
   "Access-Control-Allow-Origin":"*",
   "Access-Control-Allow-Headers":"authorization, x-client-info, apikey, content-type",
@@ -70,12 +70,8 @@ Deno.serve(async(req:Request)=>{
         supervisor:txt(u.supervisor)
       },
       permisos,
-      capacidadesEspeciales:{
-        mesaAyuda:true,
-        bonosSupervisores:["SUPERVISOR","JEFATURA","JEFATURA GENERAL"].includes(norm(u.perfil)),
-        publicadorWin:["JEFATURA","JEFATURA GENERAL"].includes(norm(u.perfil))
-      },
-      arquitectura:"AUTH_EDGE_POSTGRESQL"
+      arquitectura:"AUTH_EDGE_POSTGRESQL",
+      reglaMenu:"ACTIVO && MOSTRAR_MODULO && VER && ALCANCE_DATOS != SIN ACCESO"
     });
   }catch(e){
     const m=e instanceof Error?e.message:String(e);
