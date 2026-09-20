@@ -46,21 +46,27 @@ La vista final `mv_ranking_migracion` trabaja así:
 
 No se recalculan julio ni agosto.
 
-## Configuración de pesos
-La configuración productiva encontrada el 19/09/2026 se conserva separadamente:
-- Julio: 35 / 30 / 0 / 10 / 12.5 / 12.5
-- Agosto: 30 / 20 / 15 / 15 / 10 / 10
-- Septiembre productivo: 50 / 20 / 5 / 5 / 5 / 15
+## Configuración de pesos por período — corrección 20/09/2026
 
-La configuración objetivo de migración para septiembre se mantiene separada y no altera Google Sheets:
-- Producción 40%
-- Efectividad 20%
-- SLA 10%
-- Observaciones 10%
-- Recableado 10%
-- VTR/GAR 10%
+Regla confirmada: los pesos del Ranking han cambiado entre períodos y no existe una ponderación global única.
 
-La vista `mv_ranking_configuracion_comparacion` deja auditable esta diferencia.
+Fuente administrativa actual `CONFIGURACION_RANKING`:
+- Julio: 35 / 30 / 0 / 10 / 12.5 / 12.5.
+- Agosto: 30 / 20 / 15 / 15 / 10 / 10.
+- Septiembre vigente desde 16/09/2026: 50 / 20 / 5 / 5 / 5 / 15.
+
+Se detectó que las filas históricas publicadas de julio conservan `pesos_json` 30 / 20 / 15 / 15 / 10 / 10 y aportes consistentes con esa ponderación. Por seguridad:
+- Julio y agosto continúan como snapshots cerrados y NO se recalculan.
+- En meses cerrados manda el resultado publicado y su trazabilidad histórica; una configuración administrativa modificada posteriormente no reescribe el cierre.
+- Septiembre es período activo y sí debe coincidir con la configuración productiva vigente.
+
+Corrección aplicada en Supabase el 20/09/2026:
+- Septiembre pasó de 40 / 20 / 10 / 10 / 10 / 10 a 50 / 20 / 5 / 5 / 5 / 15.
+- `mv_ranking_configuracion_comparacion` debe devolver `IGUAL` para septiembre.
+- Se refrescó `dashboard_ranking_cache` únicamente para 2026-09.
+- Julio y agosto no fueron modificados.
+
+Para octubre y meses siguientes se creará una fila independiente por período; nunca se sustituirá la configuración del período anterior.
 
 ## Validaciones septiembre
 Motor actual:
