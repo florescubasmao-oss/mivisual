@@ -1,6 +1,6 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
-const VERSION="V1-LEGACY-SYNC-STAGING-20260920";
+const VERSION="V2-LEGACY-SYNC-STAGING-20260920";
 const ALLOWED=new Set([
   "MAPA_OPERATIVO","CATALOGO_CTO","ACTAS","VALIDACION_TECNICA",
   "PROGRAMACION_DESCANSOS","OBSERVACIONES","USUARIOS","PERMISOS",
@@ -117,6 +117,16 @@ Deno.serve(async(req:Request)=>{
       const {error:ue}=await admin.from("migration_sync_runs").update({staged_rows:staged,status:"VALIDATED",validated_at:new Date().toISOString()}).eq("id",runId);
       if(ue)throw ue;
       return json({ok:true,version:VERSION,runId,status:"VALIDATED",sourceRows:r.source_rows,stagedRows:staged,aplicaDatos:false});
+    }
+
+    if(accion==="aplicarValidacionTecnica"){
+      const runId=txt(d.runId);
+      if(txt(d.confirmacion)!=="APLICAR_VALIDACION_TECNICA_STAGING")throw new Error("Confirmación explícita requerida.");
+      const {data,error}=await admin.rpc("mv_sync_apply_validacion_tecnica",{
+        p_run_id:runId,p_actor:u.usuario,p_confirmacion:"APLICAR_VALIDACION_TECNICA_STAGING"
+      });
+      if(error)throw error;
+      return json({...data,version:VERSION});
     }
 
     if(accion==="cancelarStaging"){
