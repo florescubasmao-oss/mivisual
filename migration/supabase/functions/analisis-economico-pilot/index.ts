@@ -1,5 +1,5 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-const VERSION="V2-ANALISIS-ECONOMICO-INTEGRADO-20260920",MODULO="ANALISIS ECONOMICO";
+const VERSION="V3-ANALISIS-ECONOMICO-INTEGRADO-20260920",MODULO="ANALISIS ECONOMICO";
 const cors={"Access-Control-Allow-Origin":"*","Access-Control-Allow-Headers":"authorization, x-client-info, apikey, content-type","Access-Control-Allow-Methods":"GET, OPTIONS"};
 function json(x:unknown,status=200){return new Response(JSON.stringify(x),{status,headers:{...cors,"Content-Type":"application/json; charset=utf-8"}})}
 function txt(v:unknown){return String(v??"").trim()}
@@ -60,6 +60,18 @@ Deno.serve(async(req:Request)=>{
     let rq=c.admin.from("mv_economico_materiales_cuadrilla").select("*").eq("periodo",periodo).order("materiales",{ascending:false});
     const sede=norm(q.sede);if(sede&&sede!=="TODAS")rq=rq.eq("sede",sede);
     const {data,error}=await rq;if(error)throw error;return json({ok:true,version:VERSION,periodo,lista:data||[],fuente:"POSTGRESQL PILOTO"});
+  }
+  if(a==="catalogoMateriales"){
+    const {data,error}=await c.admin.from("mv_economico_catalogo_materiales_limpio").select("*").order("material");if(error)throw error;
+    return json({ok:true,version:VERSION,registros:(data||[]).length,lista:data||[],fuente:"POSTGRESQL PILOTO"});
+  }
+  if(a==="lotesMateriales"){
+    const {data,error}=await c.admin.from("mv_economico_materiales_lotes").select("*").order("fecha_importacion",{ascending:false}).limit(100);if(error)throw error;
+    return json({ok:true,version:VERSION,registros:(data||[]).length,lista:data||[],fuente:"POSTGRESQL PILOTO"});
+  }
+  if(a==="resumenMateriales"){
+    const {data,error}=await c.admin.from("mv_economico_materiales_resumen_periodo").select("*").order("periodo",{ascending:false});if(error)throw error;
+    return json({ok:true,version:VERSION,lista:data||[],fuente:"POSTGRESQL PILOTO"});
   }
   return json({ok:false,version:VERSION,error:"Acción no soportada."},400);
  }catch(e){const m=e instanceof Error?e.message:String(e);return json({ok:false,version:VERSION,error:m},/Sesión|Auth|vinculado/i.test(m)?401:/Sin acceso/i.test(m)?403:400)}
