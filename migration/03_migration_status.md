@@ -1,3 +1,15 @@
+# Checkpoint UI Validación / Actas / Descansos — 20/09/2026
+
+- Validación Técnica integrada al shell.
+- Edge `actas-pilot` V1 ACTIVE + UI Actas integrada.
+- Edge `descansos-pilot` V1 ACTIVE + UI Descansos integrada.
+- JEFATURA: 11/21 módulos visibles ya tienen UI integrada.
+- SUPERVISOR: 9/17 módulos visibles ya tienen UI integrada.
+- QA sintáctico: shell + 3 nuevas pantallas = 4/4 correcto.
+- Drive sigue vigente para PDFs de Actas; no se migró almacenamiento físico.
+- Fuentes legacy continúan vivas: resync final sigue obligatorio.
+- `main`, Apps Script y Sheets sin cambios.
+
 # Checkpoint shell integrado — 20/09/2026
 
 - Shell único MI VISUAL creado en `migration/pilot/index.html`.
