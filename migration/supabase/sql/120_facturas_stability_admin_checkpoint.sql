@@ -17,11 +17,11 @@ grant execute on function public.mv_facturas_estado_visible(text,date) to servic
 
 update public.migration_live_source_control
 set postgres_target='app_users + app_permissions + auth.users + auth-admin-pilot',
-    status='PARCIAL_MIGRADO',
+    status='PENDIENTE_MIGRACION',
     content_match=null,
     requires_final_resync=true,
     last_audit_at=now(),
     audit_scope='ADMINISTRACION_AUTH_USUARIOS_PERMISOS',
-    notes='Contenedor UI de Administración integrado para usuarios/Auth. Catálogos, cargas y otras acciones legacy permanecen pendientes y no se consideran migradas.',
+    notes='Contenedor UI de Administración integrado para usuarios/Auth, pero el módulo completo continúa PENDIENTE_MIGRACION. Catálogos, cargas y otras acciones legacy permanecen pendientes y no se consideran migradas.',
     updated_at=now()
 where modulo='ADMINISTRACION';
