@@ -1,3 +1,21 @@
+# Checkpoint UI Actividad / Checklist / PEXT / Plantilla — 20/09/2026
+
+- Actividad Campo integrada al shell.
+- Checklist Almacén integrado al shell.
+- PEXT integrado al shell.
+- Plantilla Orden integrada al shell.
+- Edge Actividad V2 ACTIVE/JWT.
+- Edge Checklist V2 ACTIVE/JWT.
+- Edge PEXT V2 ACTIVE/JWT.
+- Plantilla Orden V2 ACTIVE/JWT.
+- JEFATURA: 18/21 módulos visibles integrados.
+- SUPERVISOR: 16/17 módulos visibles integrados.
+- PEXT drift nuevo: 30 Sheets / 28 PostgreSQL -> REQUIERE_RESYNC_FINAL.
+- Actividad: 72/72 por conteo; 11 registros septiembre; 0 escrituras piloto persistentes.
+- Checklist: 114/114 por conteo; 25 registros septiembre.
+- Formularios complejos de Auditoría/Checklist no se recortaron: continúan en legacy hasta paridad completa.
+- `main`, Apps Script, Sheets y Drive sin cambios.
+
 # Checkpoint UI Ranking / Dashboard / Observaciones — 20/09/2026
 
 - Edge `ranking-dashboard-pilot` V1 ACTIVE + JWT.
