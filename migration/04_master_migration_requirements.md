@@ -156,15 +156,19 @@ Reglas consolidadas:
 
 No migrar solo el valor final; migrar la lógica y su trazabilidad.
 
-Pesos vigentes posteriores:
-- Producción 40%
-- Efectividad 20%
-- SLA 10%
-- Observaciones 10%
-- Recableado 10%
-- VTR/GAR 10%
+Regla obligatoria de pesos por período:
+- Los pesos NO son globales ni permanentes.
+- Cada período conserva la configuración con la que su Ranking fue publicado/cerrado.
+- Un cambio de pesos en un mes nuevo no puede modificar meses anteriores.
+- Para períodos cerrados, el snapshot publicado y sus `pesos_json` son la referencia de cálculo histórico.
+- `CONFIGURACION_RANKING` se conserva como trazabilidad/configuración administrativa, pero una modificación posterior de esa hoja no autoriza recalcular silenciosamente un período cerrado.
+- Para el período activo, el motor PostgreSQL debe usar una fila propia en `ranking_configuracion_motor` y debe coincidir con la configuración productiva vigente antes del cutover.
+- Para un nuevo mes se crea/activa una nueva configuración del período; nunca se reemplaza la del mes anterior.
 
-Históricamente existieron pesos anteriores; no usar valores antiguos para períodos nuevos.
+Configuraciones verificadas al 20/09/2026:
+- Julio 2026: histórico protegido; no recalcular. Las filas publicadas conservan sus pesos históricos grabados.
+- Agosto 2026: histórico protegido; no recalcular.
+- Septiembre 2026 vigente: Producción 50%, Efectividad 20%, SLA 5%, Observaciones 5%, Recableado 5%, VTR/GAR 15%.
 
 Debe preservarse:
 - ranking por período.
@@ -172,7 +176,8 @@ Debe preservarse:
 - reglas de homologación/continuidad cuando cambian códigos de cuadrilla.
 - indicadores de apoyo.
 - histórico.
-- recalcular solo después de cargas válidas.
+- pesos y trazabilidad de cada período.
+- recalcular solo después de cargas válidas y únicamente para períodos no cerrados.
 
 ## 10. Efectividad
 
