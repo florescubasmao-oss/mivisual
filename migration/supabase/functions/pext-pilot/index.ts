@@ -1,6 +1,6 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
-const VERSION="V1-PEXT-CONJUNTA-V152-V517D-PILOT-20260919";
+const VERSION="V2-PEXT-CONJUNTA-INTEGRADO-20260920";
 const BUCKET="mi-visual-evidencias";
 const MAX_BYTES=10*1024*1024;
 const MIME_OK=new Set(["image/jpeg","image/png","image/webp","image/heic","image/heif","application/pdf"]);
@@ -149,6 +149,9 @@ Deno.serve(async(req:Request)=>{
   try{
     const ctx=await context(req),d=await input(req),a=txt(d.accion);
 
+    if(a==="contextoPext"){
+      return json({ok:true,version:VERSION,modulo:"PEXT",accion:"CONTEXTO",usuario:ctx.u,permiso:ctx.p,fuente:"POSTGRESQL PILOTO"});
+    }
     if(a==="obtenerConfiguracionPext"){
       const {data,error}=await ctx.admin.from("module_config").select("*").eq("modulo","PEXT").maybeSingle();if(error)throw error;
       return json({ok:true,version:VERSION,modulo:"PEXT",accion:"OBTENER_CONFIGURACION",perfil:ctx.u.perfil,configuracion:data||null,activoOperativo:true,nota:"Compatibilidad legacy: exigirPextActivo() no bloquea el módulo."});
