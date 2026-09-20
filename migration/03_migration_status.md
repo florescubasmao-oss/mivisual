@@ -1,3 +1,15 @@
+# Checkpoint Auth / Materiales / Utilidad — 20/09/2026
+
+- Auth Admin Edge V2: provisión gradual sin contraseña disponible, sin invitación automática.
+- No se ejecutó alta masiva; 2/80 usuarios siguen vinculados Auth.
+- Materiales: 1,392/1,392 filas; catálogo limpio 25 (24 activos, 1 pendiente).
+- MATERIALES: LIVE_VALIDAR.
+- UTILIDAD_CUADRILLA: LIVE_VALIDAR.
+- Analisis Económico Edge V3: catálogo, lotes y resúmenes de materiales añadidos.
+- Facturas: source_mode corregido a SHEET_LIVE_SNAPSHOT + LIVE_VALIDAR.
+- Deploy Netlify pendiente por falta de repo local accesible desde el entorno; no se hizo deploy parcial.
+- main/Apps Script/Sheets/Drive productivos sin cambios.
+
 # Checkpoint Facturas / Económico / Administración — 20/09/2026
 
 - Cobertura UI JEFATURA: 21/21.
