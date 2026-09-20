@@ -1,3 +1,20 @@
+# Checkpoint Facturas / Económico / Administración — 20/09/2026
+
+- Cobertura UI JEFATURA: 21/21.
+- Cobertura UI SUPERVISOR: 17/17.
+- Cobertura UI completa NO significa cutover completo.
+- Facturas backend creado y probado transaccionalmente; Edge ACTIVE/JWT; 0 datos de prueba persistentes.
+- Facturas legacy tenía 0 pendientes / 0 detalles al corte.
+- Análisis Económico V2 ACTIVE/JWT.
+- Protección histórica económica corregida:
+  - JUL 2026 producción S/ 289,440; utilidad S/ 104,839.54.
+  - AGO 2026 producción S/ 314,570; utilidad parcial S/ 228,129.30.
+- Detalle monetario por cuadrilla de JUL/AGO queda bloqueado hasta snapshot inmutable por cuadrilla.
+- Administración UI integrada solo para usuarios/Auth; módulo completo continúa PENDIENTE_MIGRACION.
+- Auth: 2/80 usuarios vinculados.
+- Security Advisor sin nuevos errores de views/search_path; Leaked Password Protection sigue pendiente.
+- `main`, Apps Script, Sheets y Drive productivos sin cambios.
+
 # Checkpoint UI Actividad / Checklist / PEXT / Plantilla — 20/09/2026
 
 - Actividad Campo integrada al shell.
