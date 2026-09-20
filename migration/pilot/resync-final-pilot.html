@@ -1,0 +1,323 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>MI VISUAL · Resync final</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.57.4"></script>
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<style>
+*{box-sizing:border-box}body{font-family:Arial,sans-serif;margin:0;background:#f5f7fb;color:#102033;padding:12px}
+.wrap{max-width:1180px;margin:auto}.card{background:#fff;border:1px solid #dbe3ec;border-radius:14px;padding:14px;margin-bottom:12px}
+h1,h2,h3{margin-top:0}.lead{color:#64748b;margin:0}.notice{padding:10px;border-radius:10px;background:#fff7ed;color:#9a3412;font-size:13px}
+.ok{color:#15803d}.err{color:#b91c1c}.muted{color:#64748b}.hidden{display:none!important}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:9px}.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+input,button{font:inherit;padding:9px;border-radius:9px;border:1px solid #cbd5e1}input{width:100%}
+button{border:0;background:#0f6fff;color:white;font-weight:700;cursor:pointer}button.sec{background:#475569}button.good{background:#15803d}button.warn{background:#b45309}button:disabled{opacity:.5}
+.metrics{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:8px}.metric{background:#f8fafc;border:1px solid #dbe3ec;border-radius:10px;padding:10px}.metric b{display:block;font-size:20px}
+.module{border:1px solid #dbe3ec;border-radius:12px;padding:12px;margin-top:10px}.module h3{margin:0 0 5px}.status{font-size:12px;margin-top:7px;white-space:pre-wrap}
+.pill{display:inline-block;padding:3px 7px;border-radius:999px;background:#e2e8f0;font-size:11px}.pill.ok{background:#dcfce7;color:#166534}.pill.warn{background:#ffedd5;color:#9a3412}
+table{width:100%;border-collapse:collapse;font-size:12px}th,td{padding:7px;border-bottom:1px solid #e2e8f0;text-align:left}.tablewrap{overflow:auto;max-height:280px}
+@media(max-width:650px){body{padding:7px}.card{padding:10px}}
+</style>
+</head>
+<body><div class="wrap">
+<div class="card">
+  <h1>Resync final</h1>
+  <p class="lead">Validación Técnica · Programación de Descansos · Actas</p>
+  <div class="notice" style="margin-top:10px"><b>Flujo controlado:</b> cargue una copia Excel actual de MI VISUAL. Primero se valida y crea staging. Cada módulo requiere su propio botón de aplicación. No se incluyen Mapa ni CTO en esta etapa.</div>
+</div>
+
+<div class="card">
+  <div class="grid">
+    <div><b>Archivo Excel actual</b><input id="file" type="file" accept=".xlsx,.xls"></div>
+    <div><b>Estado</b><div id="fileStatus" class="muted">Sin archivo cargado.</div></div>
+  </div>
+  <div class="row" style="margin-top:9px">
+    <button onclick="leerWorkbook()">Leer y validar archivo</button>
+    <button class="sec" onclick="limpiar()">Limpiar</button>
+  </div>
+</div>
+
+<div id="summary" class="card hidden">
+  <h2>Conteos detectados</h2>
+  <div id="metrics" class="metrics"></div>
+  <div id="validationMsg" style="margin-top:10px"></div>
+</div>
+
+<div id="modules" class="card hidden">
+  <h2>Sincronización por módulo</h2>
+  <div class="notice">El botón <b>Crear staging</b> no cambia datos operativos. Después de validar el staging, aparecerá <b>Aplicar</b>. Revise el conteo antes de confirmar.</div>
+
+  <div class="module" id="modVT">
+    <h3>Validación Técnica</h3>
+    <div id="vtInfo" class="muted"></div>
+    <div class="row" style="margin-top:8px">
+      <button id="vtStage" onclick="stageModule('VT')">Crear staging</button>
+      <button id="vtApply" class="good hidden" onclick="applyModule('VT')">Aplicar Validación Técnica</button>
+      <button id="vtCancel" class="warn hidden" onclick="cancelModule('VT')">Cancelar staging</button>
+    </div>
+    <div id="vtStatus" class="status"></div>
+  </div>
+
+  <div class="module" id="modDESC">
+    <h3>Programación de Descansos</h3>
+    <div id="descInfo" class="muted"></div>
+    <div class="row" style="margin-top:8px">
+      <button id="descStage" onclick="stageModule('DESC')">Crear staging</button>
+      <button id="descApply" class="good hidden" onclick="applyModule('DESC')">Aplicar Descansos</button>
+      <button id="descCancel" class="warn hidden" onclick="cancelModule('DESC')">Cancelar staging</button>
+    </div>
+    <div id="descStatus" class="status"></div>
+  </div>
+
+  <div class="module" id="modACTAS">
+    <h3>Actas</h3>
+    <div id="actasInfo" class="muted"></div>
+    <div class="row" style="margin-top:8px">
+      <button id="actasStage" onclick="stageModule('ACTAS')">Crear staging</button>
+      <button id="actasApply" class="good hidden" onclick="applyModule('ACTAS')">Aplicar Actas</button>
+      <button id="actasCancel" class="warn hidden" onclick="cancelModule('ACTAS')">Cancelar staging</button>
+    </div>
+    <div id="actasStatus" class="status"></div>
+  </div>
+</div>
+
+<div id="preview" class="card hidden">
+  <h2>Muestra de filas normalizadas</h2>
+  <div class="tablewrap"><table id="sample"></table></div>
+</div>
+</div>
+
+<script>
+const URL="https://uudvodiaizfarodjpetb.supabase.co";
+const KEY="sb_publishable_2hiwePKtqoo3_c_D5B9JuA_p38dPe3D";
+const API=URL+"/functions/v1/legacy-sync-pilot";
+const sb=supabase.createClient(URL,KEY);
+const MODS={
+  VT:{modulo:"VALIDACION_TECNICA",rows:[],runId:null,applyAction:"aplicarValidacionTecnica",confirm:"APLICAR_VALIDACION_TECNICA_STAGING",prefix:"vt"},
+  DESC:{modulo:"PROGRAMACION_DESCANSOS",rows:[],runId:null,applyAction:"aplicarDescansos",confirm:"APLICAR_DESCANSOS_STAGING",prefix:"desc"},
+  ACTAS:{modulo:"ACTAS",rows:[],runId:null,applyAction:"aplicarActas",confirm:"APLICAR_ACTAS_STAGING",prefix:"actas"}
+};
+let FILE_NAME="";
+const E=id=>document.getElementById(id);
+const H=v=>String(v??"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const txt=v=>String(v??"").trim();
+const norm=v=>txt(v).toUpperCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"").replace(/\s+/g," ").trim();
+
+async function token(){const {data}=await sb.auth.getSession();return data.session?.access_token||""}
+async function api(d){
+  const t=await token();if(!t)throw Error("Inicie sesión en MI VISUAL.");
+  const r=await fetch(API,{method:"POST",headers:{Authorization:"Bearer "+t,apikey:KEY,"Content-Type":"application/json"},body:JSON.stringify(d)});
+  const x=await r.json();if(!r.ok||!x.ok)throw Error(x.error||"Error en sincronización.");return x;
+}
+function excelDate(v){
+  if(v instanceof Date&&!isNaN(v))return v.toISOString().slice(0,10);
+  if(typeof v==="number"){const p=XLSX.SSF.parse_date_code(v);if(p)return String(p.y).padStart(4,"0")+"-"+String(p.m).padStart(2,"0")+"-"+String(p.d).padStart(2,"0")}
+  const s=txt(v);let m=s.match(/^(20\d{2})-(\d{1,2})-(\d{1,2})/);if(m)return m[1]+"-"+m[2].padStart(2,"0")+"-"+m[3].padStart(2,"0");
+  m=s.match(/^(\d{1,2})[\/\-.](\d{1,2})[\/\-.](20\d{2})/);if(m)return m[3]+"-"+m[2].padStart(2,"0")+"-"+m[1].padStart(2,"0");
+  return "";
+}
+function timePart(v){
+  if(v instanceof Date&&!isNaN(v))return String(v.getHours()).padStart(2,"0")+":"+String(v.getMinutes()).padStart(2,"0")+":"+String(v.getSeconds()).padStart(2,"0");
+  if(typeof v==="number"){const sec=Math.round((v%1)*86400)%86400;return String(Math.floor(sec/3600)).padStart(2,"0")+":"+String(Math.floor((sec%3600)/60)).padStart(2,"0")+":"+String(sec%60).padStart(2,"0")}
+  const s=txt(v);let m=s.match(/(\d{1,2}):(\d{2})(?::(\d{2}))?/);if(m)return m[1].padStart(2,"0")+":"+m[2]+":"+(m[3]||"00");
+  return "";
+}
+function localTimestamp(dateVal,timeVal,withOffset=false){
+  const d=excelDate(dateVal);if(!d)return "";
+  const t=timePart(timeVal)||"00:00:00";
+  return d+"T"+t+(withOffset?"-05:00":"");
+}
+function parseDateTimeValue(v,withOffset=false){
+  if(v instanceof Date&&!isNaN(v)){
+    const d=excelDate(v),t=timePart(v);return d+"T"+t+(withOffset?"-05:00":"");
+  }
+  if(typeof v==="number"){
+    const p=XLSX.SSF.parse_date_code(v);if(!p)return "";
+    const d=String(p.y).padStart(4,"0")+"-"+String(p.m).padStart(2,"0")+"-"+String(p.d).padStart(2,"0");
+    const t=String(p.H||0).padStart(2,"0")+":"+String(p.M||0).padStart(2,"0")+":"+String(Math.floor(p.S||0)).padStart(2,"0");
+    return d+"T"+t+(withOffset?"-05:00":"");
+  }
+  const s=txt(v);if(!s)return "";
+  let m=s.match(/^(20\d{2})-(\d{1,2})-(\d{1,2})(?:[ T](\d{1,2}):(\d{2})(?::(\d{2}))?)?/);
+  if(m)return m[1]+"-"+m[2].padStart(2,"0")+"-"+m[3].padStart(2,"0")+"T"+(m[4]||"00").padStart(2,"0")+":"+(m[5]||"00")+":"+(m[6]||"00")+(withOffset?"-05:00":"");
+  m=s.match(/^(\d{1,2})[\/\-.](\d{1,2})[\/\-.](20\d{2})(?:\s+(\d{1,2}):(\d{2})(?::(\d{2}))?)?/);
+  if(m)return m[3]+"-"+m[2].padStart(2,"0")+"-"+m[1].padStart(2,"0")+"T"+(m[4]||"00").padStart(2,"0")+":"+(m[5]||"00")+":"+(m[6]||"00")+(withOffset?"-05:00":"");
+  return "";
+}
+function sheetRows(wb,name){
+  const ws=wb.Sheets[name];if(!ws)throw Error("Falta la hoja "+name+".");
+  return XLSX.utils.sheet_to_json(ws,{header:1,raw:true,defval:"",blankrows:false});
+}
+function headerIndex(header,label){
+  const n=norm(label);return header.findIndex(x=>norm(x)===n);
+}
+function at(row,i){return i>=0?row[i]:""}
+function num(v,def=0){const n=Number(v);return Number.isFinite(n)?n:def}
+
+function mapVT(rows){
+  const h=rows[0]||[];const idx={};
+  ["ID","FECHA_REGISTRO","HORA_REGISTRO","SEDE","TECNICO","CUADRILLA","TIPO_VALIDACION","CODIGO","TIPO_TICKET","NUMERO_TICKET","TICKET_FINAL","DNI_CLIENTE","MOTIVO_TECNICO","ESTADO","RESULTADO_FINAL","VALIDADO_POR","PERFIL_VALIDADOR","FECHA_VALIDACION","HORA_VALIDACION","MOTIVO_VALIDACION","LINK_TELEGRAM","PUNTAJE_VTR_GAR"].forEach(k=>idx[k]=headerIndex(h,k));
+  const horaLimites=[];h.forEach((x,i)=>{if(norm(x)==="HORA_LIMITE")horaLimites.push(i)});
+  if(idx.ID<0||idx.FECHA_REGISTRO<0||idx.CUADRILLA<0||horaLimites.length<2)throw Error("VALIDACION_TECNICA no tiene la estructura esperada.");
+  const out=[];
+  for(let r=1;r<rows.length;r++){
+    const row=rows[r],id=txt(at(row,idx.ID));if(!id)continue;
+    const fecha=excelDate(at(row,idx.FECHA_REGISTRO));if(!fecha)throw Error("VALIDACION_TECNICA fila "+(r+1)+": fecha inválida.");
+    const origenRaw=norm(at(row,horaLimites[1]));
+    out.push({sourceKey:id,sourceRow:r+1,rowData:{
+      id,source_row:r+1,
+      registro_at:localTimestamp(at(row,idx.FECHA_REGISTRO),at(row,idx.HORA_REGISTRO),false),
+      sede:txt(at(row,idx.SEDE)),tecnico:txt(at(row,idx.TECNICO)),cuadrilla:txt(at(row,idx.CUADRILLA)),
+      tipo_validacion:txt(at(row,idx.TIPO_VALIDACION)),codigo:txt(at(row,idx.CODIGO)),
+      tipo_ticket:txt(at(row,idx.TIPO_TICKET)),numero_ticket:txt(at(row,idx.NUMERO_TICKET)),ticket_final:txt(at(row,idx.TICKET_FINAL)),
+      dni_cliente:txt(at(row,idx.DNI_CLIENTE)),motivo_tecnico:txt(at(row,idx.MOTIVO_TECNICO)),
+      estado:txt(at(row,idx.ESTADO)),resultado_final:txt(at(row,idx.RESULTADO_FINAL)),
+      validado_por:txt(at(row,idx.VALIDADO_POR)),perfil_validador:txt(at(row,idx.PERFIL_VALIDADOR)),
+      validado_at:at(row,idx.FECHA_VALIDACION)?localTimestamp(at(row,idx.FECHA_VALIDACION),at(row,idx.HORA_VALIDACION),false):"",
+      motivo_validacion:txt(at(row,idx.MOTIVO_VALIDACION)),link_telegram:txt(at(row,idx.LINK_TELEGRAM)),
+      hora_limite:parseDateTimeValue(at(row,horaLimites[0]),false),
+      origen_orden:["PROPIA","ASIGNADA"].includes(origenRaw)?origenRaw:"",
+      periodo:fecha.slice(0,7),
+      puntaje_vtr_gar:num(at(row,idx.PUNTAJE_VTR_GAR),0)
+    }});
+  }
+  return out;
+}
+function mapDesc(rows){
+  const h=rows[0]||[],i={};h.forEach((x,n)=>{const k=norm(x);if(k&&!Object.prototype.hasOwnProperty.call(i,k))i[k]=n});
+  const req=["ID","PERIODO","FECHA","SEDE","CUADRILLA","PLATAFORMA"];for(const k of req)if(i[k]===undefined)throw Error("PROGRAMACION_DESCANSOS: falta "+k+".");
+  const out=[];
+  for(let r=1;r<rows.length;r++){
+    const row=rows[r],id=txt(at(row,i.ID));if(!id)continue;
+    const fecha=excelDate(at(row,i.FECHA));if(!fecha)throw Error("PROGRAMACION_DESCANSOS fila "+(r+1)+": fecha inválida.");
+    out.push({sourceKey:id,sourceRow:r+1,rowData:{
+      id,source_row:r+1,periodo:txt(at(row,i.PERIODO))||fecha.slice(0,7),fecha,
+      dia_semana:txt(at(row,i.DIA_SEMANA)),sede:txt(at(row,i.SEDE)),cuadrilla:txt(at(row,i.CUADRILLA)),plataforma:txt(at(row,i.PLATAFORMA)),
+      supervisor:txt(at(row,i.SUPERVISOR)),tecnicos_afectados:txt(at(row,i.TECNICOS_AFECTADOS)),
+      estado_dia:txt(at(row,i.ESTADO_DIA)),estado_programacion:txt(at(row,i.ESTADO_PROGRAMACION)),
+      solicitud_cambio:txt(at(row,i.SOLICITUD_CAMBIO)),motivo_solicitud:txt(at(row,i.MOTIVO_SOLICITUD)),solicitado_por:txt(at(row,i.SOLICITADO_POR)),
+      fecha_solicitud:at(row,i.FECHA_SOLICITUD)?parseDateTimeValue(at(row,i.FECHA_SOLICITUD),true):"",
+      resultado_supervisor:txt(at(row,i.RESULTADO_SUPERVISOR)),motivo_supervisor:txt(at(row,i.MOTIVO_SUPERVISOR)),validado_supervisor_por:txt(at(row,i.VALIDADO_SUPERVISOR_POR)),
+      fecha_validacion_supervisor:at(row,i.FECHA_VALIDACION_SUPERVISOR)?localTimestamp(at(row,i.FECHA_VALIDACION_SUPERVISOR),at(row,i.HORA_VALIDACION_SUPERVISOR),true):"",
+      resultado_jefatura:txt(at(row,i.RESULTADO_JEFATURA)),motivo_jefatura:txt(at(row,i.MOTIVO_JEFATURA)),validado_jefatura_por:txt(at(row,i.VALIDADO_JEFATURA_POR)),
+      fecha_validacion_jefatura:at(row,i.FECHA_VALIDACION_JEFATURA)?localTimestamp(at(row,i.FECHA_VALIDACION_JEFATURA),at(row,i.HORA_VALIDACION_JEFATURA),true):"",
+      cobertura_sede:num(at(row,i.COBERTURA_SEDE),0),estado_cobertura:txt(at(row,i.ESTADO_COBERTURA)),version:Math.max(1,num(at(row,i.VERSION),1)),
+      estado_validacion:txt(at(row,i.ESTADO_VALIDACION)),comentario_supervisor:txt(at(row,i.COMENTARIO_SUPERVISOR)),comentario_jefatura:txt(at(row,i.COMENTARIO_JEFATURA)),
+      fecha_validacion:at(row,i.FECHA_VALIDACION)?parseDateTimeValue(at(row,i.FECHA_VALIDACION),true):"",
+      validado_por:txt(at(row,i.VALIDADO_POR)),tipo_registro:txt(at(row,i.TIPO_REGISTRO)),estado_anterior:txt(at(row,i.ESTADO_ANTERIOR)),estado_nuevo:txt(at(row,i.ESTADO_NUEVO)),
+      id_origen:txt(at(row,i.ID_ORIGEN))||id
+    }});
+  }
+  return out;
+}
+function mapActas(rows){
+  const h=rows[0]||[],i={};h.forEach((x,n)=>{const k=norm(x);if(k&&!Object.prototype.hasOwnProperty.call(i,k))i[k]=n});
+  for(const k of ["ID","SEDE","CUADRILLA","FECHA_GESTION"])if(i[k]===undefined)throw Error("ACTAS_ESCANEADAS: falta "+k+".");
+  const out=[];
+  for(let r=1;r<rows.length;r++){
+    const row=rows[r],id=txt(at(row,i.ID));if(!id)continue;
+    const fg=excelDate(at(row,i.FECHA_GESTION));
+    const regAt=at(row,i.FECHA_REGISTRO)?localTimestamp(at(row,i.FECHA_REGISTRO),at(row,i.HORA_REGISTRO),true):"";
+    out.push({sourceKey:id,sourceRow:r+1,rowData:{
+      id,registrado_at:regAt,sede:txt(at(row,i.SEDE)),cuadrilla:txt(at(row,i.CUADRILLA)),supervisor:txt(at(row,i.SUPERVISOR)),tecnico:txt(at(row,i.TECNICO)),
+      fecha_gestion:fg,tipo_ejecucion:txt(at(row,i.TIPO_EJECUCION)),tipo_partida:txt(at(row,i.TIPO_PARTIDA)),
+      codigo_orden:txt(at(row,i.CODIGO_ORDEN)),codigo_pedido:txt(at(row,i.CODIGO_PEDIDO)),numero_acta:txt(at(row,i.NUMERO_ACTA)),dni:txt(at(row,i.DNI)),cliente:txt(at(row,i.CLIENTE)),
+      nombre_archivo:txt(at(row,i.NOMBRE_ARCHIVO)),link_acta:txt(at(row,i.LINK_ACTA)),estado:txt(at(row,i.ESTADO)),
+      resultado_almacen:txt(at(row,i.RESULTADO_ALMACEN)),motivo_almacen:txt(at(row,i.MOTIVO_ALMACEN)),validado_almacen_por:txt(at(row,i.VALIDADO_ALMACEN_POR)),
+      validado_almacen_at:at(row,i.FECHA_VALIDACION_ALMACEN)?localTimestamp(at(row,i.FECHA_VALIDACION_ALMACEN),at(row,i.HORA_VALIDACION_ALMACEN),true):"",
+      resultado_jefatura:txt(at(row,i.RESULTADO_JEFATURA)),motivo_jefatura:txt(at(row,i.MOTIVO_JEFATURA)),validado_jefatura_por:txt(at(row,i.VALIDADO_JEFATURA_POR)),
+      validado_jefatura_at:at(row,i.FECHA_VALIDACION_JEFATURA)?localTimestamp(at(row,i.FECHA_VALIDACION_JEFATURA),at(row,i.HORA_VALIDACION_JEFATURA),true):"",
+      version:Math.max(0,num(at(row,i.VERSION),0)),estado_entrega_fisica:txt(at(row,i.ESTADO_ENTREGA_FISICA))||"PENDIENTE",
+      confirmado_fisico_por:txt(at(row,i.CONFIRMADO_FISICO_POR)),perfil_confirmacion_fisica:txt(at(row,i.PERFIL_CONFIRMACION_FISICA)),
+      confirmado_fisico_at:at(row,i.FECHA_CONFIRMACION_FISICA)?localTimestamp(at(row,i.FECHA_CONFIRMACION_FISICA),at(row,i.HORA_CONFIRMACION_FISICA),true):"",
+      motivo_reversion_fisica:txt(at(row,i.MOTIVO_REVERSION_FISICA)),origen_registro:txt(at(row,i.ORIGEN_REGISTRO))||"TECNICO",
+      motivo_acta_faltante:txt(at(row,i.MOTIVO_ACTA_FALTANTE)),registrado_faltante_por:txt(at(row,i.REGISTRADO_FALTANTE_POR)),
+      registrado_faltante_at:at(row,i.FECHA_REGISTRO_FALTANTE)?localTimestamp(at(row,i.FECHA_REGISTRO_FALTANTE),at(row,i.HORA_REGISTRO_FALTANTE),true):"",
+      estado_fecha_carpeta:txt(at(row,i.ESTADO_FECHA_CARPETA)),
+      fecha_limite_verificacion:at(row,i.FECHA_LIMITE_VERIFICACION)?parseDateTimeValue(at(row,i.FECHA_LIMITE_VERIFICACION),true):"",
+      ultimo_intento_fecha:at(row,i.ULTIMO_INTENTO_FECHA)?parseDateTimeValue(at(row,i.ULTIMO_INTENTO_FECHA),true):"",
+      intentos_fecha:Math.max(0,num(at(row,i.INTENTOS_FECHA),0)),fecha_carpeta:excelDate(at(row,i.FECHA_CARPETA)),
+      fecha_confirmada_por:txt(at(row,i.FECHA_CONFIRMADA_POR)),perfil_confirmacion_fecha:txt(at(row,i.PERFIL_CONFIRMACION_FECHA)),origen_fecha_carpeta:txt(at(row,i.ORIGEN_FECHA_CARPETA))
+    }});
+  }
+  return out;
+}
+async function leerWorkbook(){
+  try{
+    const f=E("file").files?.[0];if(!f)throw Error("Seleccione el archivo Excel.");
+    FILE_NAME=f.name;E("fileStatus").className="muted";E("fileStatus").textContent="Leyendo "+f.name+"...";
+    const wb=XLSX.read(await f.arrayBuffer(),{type:"array",cellDates:true});
+    MODS.VT.rows=mapVT(sheetRows(wb,"VALIDACION_TECNICA"));
+    MODS.DESC.rows=mapDesc(sheetRows(wb,"PROGRAMACION_DESCANSOS"));
+    MODS.ACTAS.rows=mapActas(sheetRows(wb,"ACTAS_ESCANEADAS"));
+    for(const m of Object.values(MODS)){m.runId=null;resetButtons(m)}
+    E("summary").classList.remove("hidden");E("modules").classList.remove("hidden");E("preview").classList.remove("hidden");
+    E("metrics").innerHTML='<div class="metric">Validación Técnica<b>'+MODS.VT.rows.length+'</b></div><div class="metric">Descansos<b>'+MODS.DESC.rows.length+'</b></div><div class="metric">Actas<b>'+MODS.ACTAS.rows.length+'</b></div>';
+    E("vtInfo").textContent=MODS.VT.rows.length+" filas detectadas.";
+    E("descInfo").textContent=MODS.DESC.rows.length+" filas detectadas.";
+    E("actasInfo").textContent=MODS.ACTAS.rows.length+" filas detectadas.";
+    E("validationMsg").className="ok";E("validationMsg").textContent="Las tres hojas fueron leídas y normalizadas. Ningún dato se ha enviado aún a PostgreSQL.";
+    E("fileStatus").className="ok";E("fileStatus").textContent="Archivo válido: "+f.name;
+    renderSample();
+  }catch(e){E("fileStatus").className="err";E("fileStatus").textContent=e.message}
+}
+function renderSample(){
+  const items=[
+    ["Validación",MODS.VT.rows[0]?.sourceKey,MODS.VT.rows[0]?.rowData?.periodo],
+    ["Descansos",MODS.DESC.rows[0]?.sourceKey,MODS.DESC.rows[0]?.rowData?.fecha],
+    ["Actas",MODS.ACTAS.rows[0]?.sourceKey,MODS.ACTAS.rows[0]?.rowData?.fecha_gestion]
+  ];
+  E("sample").innerHTML="<tr><th>Módulo</th><th>Primera clave</th><th>Periodo/Fecha</th></tr>"+items.map(x=>"<tr><td>"+H(x[0])+"</td><td>"+H(x[1]||"-")+"</td><td>"+H(x[2]||"-")+"</td></tr>").join("");
+}
+function resetButtons(m){
+  E(m.prefix+"Stage").classList.remove("hidden");E(m.prefix+"Stage").disabled=false;
+  E(m.prefix+"Apply").classList.add("hidden");E(m.prefix+"Cancel").classList.add("hidden");
+  E(m.prefix+"Status").textContent="";
+}
+async function stageModule(k){
+  const m=MODS[k];if(!m.rows.length)throw Error("No hay filas para "+m.modulo);
+  const st=E(m.prefix+"Status"),btn=E(m.prefix+"Stage");
+  try{
+    btn.disabled=true;st.className="status muted";st.textContent="Creando staging...";
+    let runId=null;
+    for(let i=0;i<m.rows.length;i+=500){
+      const chunk=m.rows.slice(i,i+500);
+      const d=await api({accion:"crearStaging",modulo:m.modulo,sourceName:FILE_NAME+" · "+m.modulo,sourceRows:m.rows.length,runId,rows:chunk,notes:"Resync final desde Excel cargado por usuario"});
+      runId=d.runId;m.runId=runId;st.textContent="Staging "+d.stagedRows+" / "+m.rows.length;
+    }
+    const v=await api({accion:"validarStaging",runId:m.runId});
+    st.className="status ok";st.textContent="VALIDATED · Run "+m.runId+" · "+v.stagedRows+" / "+v.sourceRows+" filas.";
+    E(m.prefix+"Apply").classList.remove("hidden");E(m.prefix+"Cancel").classList.remove("hidden");btn.classList.add("hidden");
+  }catch(e){st.className="status err";st.textContent=e.message;btn.disabled=false}
+}
+async function applyModule(k){
+  const m=MODS[k],st=E(m.prefix+"Status"),btn=E(m.prefix+"Apply");
+  try{
+    if(!m.runId)throw Error("No existe staging validado.");
+    const msg="Se aplicará el resync completo de "+m.modulo+" con "+m.rows.length+" filas.\n\nEl proceso hace upsert por clave estable y no borra registros. ¿Confirmar?";
+    if(!confirm(msg))return;
+    btn.disabled=true;
+    const d=await api({accion:m.applyAction,runId:m.runId,confirmacion:m.confirm});
+    st.className="status ok";st.textContent="APPLIED · PostgreSQL: "+Number(d.postgres_rows||0)+" registros · Run "+m.runId;
+    btn.classList.add("hidden");E(m.prefix+"Cancel").classList.add("hidden");
+  }catch(e){st.className="status err";st.textContent=e.message}finally{btn.disabled=false}
+}
+async function cancelModule(k){
+  const m=MODS[k],st=E(m.prefix+"Status");try{
+    if(!m.runId)return;
+    await api({accion:"cancelarStaging",runId:m.runId,notes:"Cancelado desde Resync Final UI"});
+    st.className="status muted";st.textContent="CANCELLED · Run "+m.runId;
+    m.runId=null;resetButtons(m);
+  }catch(e){st.className="status err";st.textContent=e.message}
+}
+function limpiar(){
+  E("file").value="";FILE_NAME="";
+  for(const m of Object.values(MODS)){m.rows=[];m.runId=null;resetButtons(m)}
+  E("summary").classList.add("hidden");E("modules").classList.add("hidden");E("preview").classList.add("hidden");
+  E("fileStatus").className="muted";E("fileStatus").textContent="Sin archivo cargado.";
+}
+</script>
+<script src="shell-embed.js"></script>
+</body></html>
