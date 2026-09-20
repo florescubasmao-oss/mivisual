@@ -1,0 +1,17 @@
+const fs=require('node:fs'),vm=require('node:vm'),assert=require('node:assert/strict');
+const source=fs.readFileSync(__dirname+'/index.ts','utf8').replace(/^import .*;\n/,'');
+const rows=[{id_legacy:'1',nombre:'VIDEO ONT',tipo:'VIDEO',link:'https://example.com/1'},{id_legacy:'2',nombre:'EXAMEN SEGURIDAD',tipo:'VIDEO',link:'https://example.com/2'},{id_legacy:'3',nombre:'sin enlace',tipo:'PDF',link:''},{id_legacy:'4',nombre:'invalid',tipo:'PDF',link:'javascript:alert(1)'}];
+let user={usuario:'QA',perfil:'SUPERVISOR',estado:'ACTIVO'},permission={activo:true,ver:true},authValid=true,queryError=false,reads=0,handler;
+const ctx={URL,Response,Deno:{env:{get:()=> 'set'},serve:fn=>handler=fn},createClient:(_u,_k,o)=>o.global?{auth:{getUser:async()=>({data:{user:authValid?{id:'QA'}:null}})}}:{from(table){const q={select(){return q},eq(){return q},async maybeSingle(){return {data:table==='app_users'?user:permission}},async order(){reads++;return {data:rows,error:queryError?Error('private DB detail'):null}}};return q}}};vm.createContext(ctx);vm.runInContext(source,ctx);
+(async()=>{const req=(method='GET',token=true)=>new Request('https://example.invalid/?perfil=ADMIN',{method,headers:token?{Authorization:'Bearer test'}:{}});
+ assert.equal((await handler(req('GET',false))).status,401);
+ authValid=false;assert.equal((await handler(req())).status,401);authValid=true;
+ const active=user;user=null;assert.equal((await handler(req())).status,403);
+ user={...active,estado:'INACTIVO'};assert.equal((await handler(req())).status,403);user=active;
+ permission={activo:true,ver:false};assert.equal((await handler(req())).status,403);
+ permission={activo:true,ver:true,alcance_datos:'SIN ACCESO'};assert.equal((await handler(req())).status,403);assert.equal(reads,0);
+ permission={activo:true,ver:true};const res=await handler(req());assert.equal(res.status,200);const data=await res.json();assert.equal(data.recursos.length,2);assert.equal(data.perfil,'SUPERVISOR');assert.equal(data.misFunciones,false);user={...active,perfil:'TECNICO'};assert.equal((await (await handler(req())).json()).misFunciones,true);user=active;assert.equal(data.recursos[0].categoria,'🎥 Videos');assert.equal(data.recursos[1].categoria,'📝 Evaluaciones');
+ assert.equal((await handler(req('POST'))).status,405);
+ queryError=true;const error=await handler(req());assert.equal(error.status,500);assert.ok(!(await error.text()).includes('private DB detail'));
+ console.log('10 casos handler + filtrado de enlaces + categorias: PASS (dependencias simuladas)');
+})().catch(e=>{console.error(e);process.exit(1)});
