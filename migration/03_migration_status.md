@@ -1,3 +1,14 @@
+# Checkpoint Resync Final — 20/09/2026
+
+- Drift vivo: Actas +48; Validación +15; Descansos +18; Mapa +239; CTO +180.
+- legacy-sync-pilot V3 ACTIVE/JWT.
+- Aplicadores transaccionales listos: Validación Técnica, Descansos y Actas.
+- Nueva UI resync-final-pilot.html: Excel → normalización → staging → VALIDATED → APPLY independiente.
+- Pruebas Actas/Descansos en ROLLBACK: correctas, 0 residuos.
+- El resync real no se ejecutó por transferencia de conectores; se hará desde carga autenticada del Excel.
+- Siguiente bloque: Mapa Operativo + Catálogo CTO, con conciliación antes de tocar motor de Producción.
+- main/Apps Script/Sheets/Drive productivos sin cambios.
+
 # Checkpoint Administración / Base Operativa — 20/09/2026
 
 - BASE_OPERATIVA_HISTORICA alineada: 4,144 Sheets / 4,144 PostgreSQL.
