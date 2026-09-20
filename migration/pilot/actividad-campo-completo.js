@@ -218,7 +218,8 @@ async function iniciarAsignacionCompleta(i){
   const a=ASG_ROWS[i];if(!a)throw Error("Asignación no encontrada.");
   await api({accion:"iniciarAsignacionCampo",id:a.id},"POST");ACTIVE_ASG=a;
   if(["AUDITORIA EN FRIO","AUDITORIA EN CALIENTE"].includes(a.tipoActividad))mvCompNuevaAuditoria(a.tipoActividad,a);
-  else alert("Este formulario completo se integrará en el siguiente bloque.");
+  else if(a.tipoActividad==="CHECKLIST")mvCompNuevaChecklist(a);
+  else alert("Tipo de asignación no reconocido.");
   await cargarAsignaciones();
  }catch(e){E("asgMsg").className="err";E("asgMsg").textContent=e.message}
 }
