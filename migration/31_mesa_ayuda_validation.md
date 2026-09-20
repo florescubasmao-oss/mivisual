@@ -39,3 +39,8 @@ RLS activado en cuatro tablas, sin grants a anon/authenticated; RPC y helpers so
 Validar con las dos sesiones reales habilitadas; probar interfaz en móvil, subida real, descarga y expiración de actas, así como reintento tras pérdida de conexión. Aún no se ha probado extremo a extremo Auth–Edge–Storage con una cuenta real. Un envío fallido puede dejar un objeto privado sin caso; antes de uso general definir limpieza de huérfanos con antigüedad y comprobación de referencias (no borrar automáticamente tras una respuesta incierta). El recibo de reintento de pantalla se conserva en sessionStorage y cubre recargas en la misma pestaña, no su cierre.
 
 Antes de integrar el menú, resíncronizar las tres hojas: la app actual sigue escribiendo allí. Conservar o separar casos de prueba del piloto al resíncronizar; no sustituir filas modificadas a ciegas. Ningún cambio en main, Apps Script, Sheets ni Drive; ningún usuario adicional creado o invitado.
+
+
+## Vista previa publicada
+
+Publicado draft de Netlify `6ab02775a10b6736da91453c` en el sitio existente `mi-visual-piloto` (sin --prod). Página verificada en navegador: https://6ab02775a10b6736da91453c--mi-visual-piloto.netlify.app/migration/pilot/mesa-ayuda-pilot . El formulario carga y muestra «Ingresa con tu cuenta del piloto». La solicitud segura de autenticación terminó con toma de control por el usuario, sin evidencia de sesión iniciada; pruebas autenticadas y de actas continúan pendientes. El sitio principal del piloto mantiene su pantalla de Mapa Operativo; no se reemplazó producción.
