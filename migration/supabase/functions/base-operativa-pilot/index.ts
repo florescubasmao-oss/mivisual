@@ -1,5 +1,5 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-const VERSION="V2-BASE-OPERATIVA-STAGING-20260920";
+const VERSION="V3-BASE-OPERATIVA-VERSIONADA-20260920";
 const MODULO="ADMINISTRACION";
 const cors={"Access-Control-Allow-Origin":"*","Access-Control-Allow-Headers":"authorization, x-client-info, apikey, content-type","Access-Control-Allow-Methods":"GET, POST, OPTIONS"};
 function json(x:unknown,status=200){return new Response(JSON.stringify(x),{status,headers:{...cors,"Content-Type":"application/json; charset=utf-8"}})}
@@ -43,8 +43,11 @@ Deno.serve(async(req:Request)=>{
  try{
   const c=await context(req),d:any=await input(req),a=txt(d.accion);
   if(a==="estado"){
-    const {data,error}=await c.admin.from("migration_sync_runs").select("id,source_name,source_rows,staged_rows,status,created_by,created_at,validated_at,notes").eq("modulo","BASE_OPERATIVA").order("created_at",{ascending:false}).limit(20);
-    if(error)throw error;return json({ok:true,version:VERSION,registros:(data||[]).length,cargas:data||[]});
+    const {data,error}=await c.admin.from("migration_sync_runs").select("id,source_name,source_rows,staged_rows,applied_rows,status,created_by,created_at,validated_at,applied_at,notes").eq("modulo","BASE_OPERATIVA").order("created_at",{ascending:false}).limit(20);
+    if(error)throw error;
+    const {data:activos,error:ae}=await c.admin.from("base_operativa_migracion_activa").select("periodo,run_id,previous_run_id,activated_by,activated_at").order("periodo");
+    if(ae)throw ae;
+    return json({ok:true,version:VERSION,registros:(data||[]).length,cargas:data||[],activos:activos||[]});
   }
   if(a==="iniciarCarga"){
     const archivo=txt(d.archivo)||"BASE_OPERATIVA";
@@ -94,6 +97,25 @@ Deno.serve(async(req:Request)=>{
     const {data,error}=await c.admin.rpc("mv_base_operativa_preview_staging",{p_run_id:runId,p_actor:c.u.usuario});if(error)throw error;
     const {data:conc,error:concError}=await c.admin.rpc("mv_base_operativa_reconcile_staging",{p_run_id:runId,p_actor:c.u.usuario});if(concError)throw concError;
     return json({...data,conciliacion:conc,version:VERSION});
+  }
+  if(a==="aplicarCargaMigracion"){
+    const runId=txt(d.runId);if(!runId)throw Error("runId obligatorio.");
+    const {data:run,error:re}=await c.admin.from("migration_sync_runs").select("id,status,created_by").eq("id",runId).eq("modulo","BASE_OPERATIVA").maybeSingle();
+    if(re||!run)throw Error("Carga no encontrada.");
+    if(run.created_by!==c.u.usuario)throw Error("La carga pertenece a otro usuario.");
+    const {data,error}=await c.admin.rpc("mv_base_operativa_apply_staging",{
+      p_run_id:runId,p_actor:c.u.usuario,p_confirmacion:txt(d.confirmacion)
+    });
+    if(error)throw error;
+    return json({...data,version:VERSION});
+  }
+  if(a==="rollbackMigracion"){
+    const periodo=txt(d.periodo);if(!periodo)throw Error("Periodo obligatorio.");
+    const {data,error}=await c.admin.rpc("mv_base_operativa_rollback_migracion",{
+      p_periodo:periodo,p_actor:c.u.usuario,p_confirmacion:txt(d.confirmacion)
+    });
+    if(error)throw error;
+    return json({...data,version:VERSION});
   }
   if(a==="cancelarCarga"){
     const runId=txt(d.runId);if(!runId)throw Error("runId obligatorio.");
