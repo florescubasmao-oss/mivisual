@@ -1,3 +1,14 @@
+# Checkpoint Mapa + CTO seguro — 20/09/2026
+
+- legacy-sync-pilot V4 ACTIVE/JWT.
+- Resync Final UI ahora incluye Mapa Operativo y Catálogo CTO.
+- Mapa: preview, períodos protegidos, clasificación de grupo, backup, APPLY y rollback probados.
+- CTO: preview, backup, APPLY y rollback probados.
+- Julio y agosto protegidos; septiembre activo.
+- QA Mapa y CTO: rollback exacto y 0 residuos.
+- Datos reales todavía NO resyncronizados: Mapa 6788 vs 6549; CTO 6995 vs 6815.
+- main/Apps Script/Sheets/Drive productivos sin cambios.
+
 # Checkpoint Resync Final — 20/09/2026
 
 - Drift vivo: Actas +48; Validación +15; Descansos +18; Mapa +239; CTO +180.
