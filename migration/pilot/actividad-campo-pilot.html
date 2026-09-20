@@ -1,9 +1,11 @@
-<!doctype html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>MI VISUAL · Actividad en Campo</title><script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.57.4"></script><style>
+<!doctype html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>MI VISUAL · Actividad en Campo</title><script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.57.4"></script><link rel="stylesheet" href="actividad-campo-completo.css"><style>
 *{box-sizing:border-box}body{margin:0;padding:14px;font-family:Arial,sans-serif;background:#f5f7fb;color:#102033}.wrap{max-width:1280px;margin:auto}h1{margin:0 0 5px}.lead{margin:0 0 14px;color:#64748b}.card{background:#fff;border:1px solid #dbe3ec;border-radius:14px;padding:14px;margin-bottom:12px}.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:8px}.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}input,select,textarea,button{font:inherit;padding:9px;border-radius:9px;border:1px solid #cbd5e1}input,select,textarea{width:100%}textarea{min-height:74px}button{border:0;background:#0f6fff;color:white;font-weight:700;cursor:pointer}button.sec{background:#475569}button.good{background:#15803d}button.warn{background:#b45309}button.danger{background:#b91c1c}.badge{display:inline-block;background:#e2e8f0;padding:4px 8px;border-radius:999px;font-size:12px;margin:2px}.notice{padding:10px;border-radius:10px;background:#fff7ed;color:#9a3412;font-size:13px}.ok{color:#15803d}.err{color:#b91c1c}.muted{color:#64748b}.metrics{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:8px}.metric{border:1px solid #dbe3ec;border-radius:10px;padding:10px;background:#f8fafc}.metric b{display:block;font-size:20px}.tablewrap{overflow:auto;max-height:560px}table{width:100%;border-collapse:collapse;font-size:12px}th,td{padding:8px;border-bottom:1px solid #e2e8f0;text-align:left;vertical-align:top;white-space:nowrap}tr.pick{cursor:pointer}tr.pick:hover{background:#eef6ff}.hidden{display:none!important}pre{white-space:pre-wrap;background:#f8fafc;padding:10px;border-radius:9px;overflow:auto}.links a{margin-right:7px}
 @media(max-width:650px){body{padding:7px}.card{padding:10px}h1{font-size:20px}}
 </style></head><body><div class="wrap">
 <h1>Actividad en Campo</h1><p class="lead">Auditorías, seguimientos, capacitación, control y trabajos asignados</p>
-<div class="card"><div id="ctx" class="muted">Cargando...</div><div class="notice" style="margin-top:8px"><b>Piloto:</b> la lectura ya usa PostgreSQL. El formulario complejo de Auditoría/Checklist seguirá temporalmente en legacy hasta portar toda su matriz visual y evidencias sin recortar campos.</div></div><div id="asgCard" class="card hidden">
+<div class="card"><div id="ctx" class="muted">Cargando...</div><div class="notice" style="margin-top:8px"><b>Migración:</b> lectura, Seguimiento, Validación, Capacitación y Auditorías Frío/Caliente ya usan PostgreSQL. Las evidencias de auditoría se guardan en Storage privado. El formulario completo de Checklist es el siguiente bloque pendiente.</div></div>
+<div id="fullActionsCard" class="card hidden"><h3>Nuevo registro completo</h3><div class="row"><button onclick="mvCompNuevaAuditoria('AUDITORIA EN FRIO')">+ Auditoría en Frío</button><button class="warn" onclick="mvCompNuevaAuditoria('AUDITORIA EN CALIENTE')">+ Auditoría en Caliente</button><button class="sec" disabled>Checklist completo · siguiente bloque</button></div></div>
+<div id="auditFullCard" class="card hidden"></div><div id="asgCard" class="card hidden">
   <div class="row" style="justify-content:space-between">
     <h3 style="margin:0">Trabajos asignados</h3>
     <div class="row"><button onclick="cargarAsignaciones()">Actualizar</button><button id="asgNewBtn" class="good hidden" onclick="abrirAsignacionForm()">+ Asignar trabajo</button></div>
@@ -51,7 +53,7 @@ async function contexto(){
   CTX=await api({accion:"contextoActividadCampo"});
   E("ctx").innerHTML='<span class="badge">'+H(CTX.usuario.usuario)+'</span><span class="badge">'+H(CTX.usuario.perfil)+'</span><span class="badge">'+H(CTX.usuario.sede||"")+'</span><span class="badge">Alcance: '+H(CTX.permiso.alcance_datos)+'</span>';
   E("cuadrilla").innerHTML=(CTX.cuadrillas||[]).map(x=>'<option>'+H(x.cuadrilla)+'</option>').join("");
-  if(CTX.permiso.registrar)E("simpleCard").classList.remove("hidden");
+  if(CTX.permiso.registrar){E("simpleCard").classList.remove("hidden");E("fullActionsCard").classList.remove("hidden")}
   const perfil=String(CTX.usuario.perfil||"").toUpperCase();
   if(CTX.puedeAsignar||perfil==="SUPERVISOR"){
     E("asgCard").classList.remove("hidden");
@@ -67,13 +69,16 @@ async function cargarAsignaciones(){
     ASG_ROWS=d.asignaciones||[];const t=d.totales||{};
     E("asgMetrics").innerHTML=asgMetric("Pendientes",t.PENDIENTE)+asgMetric("En proceso",t["EN PROCESO"])+asgMetric("Completadas",t.COMPLETADO)+asgMetric("Total",t.TOTAL);
     const simple=new Set(["SEGUIMIENTO","VALIDACION DE OBSERVACION","CAPACITACION"]);
+    const audit=new Set(["AUDITORIA EN FRIO","AUDITORIA EN CALIENTE"]);
     E("asgTabla").innerHTML='<tr><th>Estado</th><th>Prioridad</th><th>Sede</th><th>Supervisor</th><th>Cuadrilla</th><th>Actividad</th><th>Motivo</th><th>Acción</th></tr>'+
       ASG_ROWS.map((x,i)=>{
         let accion='';
         if(String(CTX.usuario.perfil||"").toUpperCase()==="SUPERVISOR"&&["PENDIENTE","EN PROCESO"].includes(x.estado)){
           accion=simple.has(x.tipoActividad)
             ?'<button onclick="iniciarAsignacion('+i+')">Iniciar</button>'
-            :'<span class="badge">Formulario completo aún en legacy</span>';
+            :audit.has(x.tipoActividad)
+              ?'<button onclick="iniciarAsignacionCompleta('+i+')">Iniciar auditoría</button>'
+              :'<span class="badge">Checklist completo · siguiente bloque</span>';
         }else if(CTX.puedeAsignar&&["PENDIENTE","EN PROCESO"].includes(x.estado)){
           accion='<button class="danger" onclick="anularAsignacion('+i+')">Anular</button>';
         }else if(x.idActividadCampo){
@@ -152,7 +157,7 @@ async function anularAsignacion(i){
   try{await api({accion:"anularAsignacionCampo",id:a.id},"POST");await cargarAsignaciones()}
   catch(e){E("asgMsg").className="err";E("asgMsg").textContent=e.message}
 }
-async function cargar(){try{E("msg").textContent="Consultando...";const filtros={periodo:E("periodo").value,tipoActividad:E("tipo").value,sede:E("sede").value};const [d,r]=await Promise.all([api({accion:"listarActividadCampo",filtros},"POST"),api({accion:"resumenActividadCampo",filtros},"POST")]);ROWS=d.actividades||[];const t=r.totales||{};E("metrics").innerHTML='<div class="metric">Total<b>'+ROWS.length+'</b></div><div class="metric">Aud. Frío<b>'+Number(t["AUDITORIA EN FRIO"]||0)+'</b></div><div class="metric">Aud. Caliente<b>'+Number(t["AUDITORIA EN CALIENTE"]||0)+'</b></div><div class="metric">Seguimiento<b>'+Number(t["SEGUIMIENTO"]||0)+'</b></div>';E("tabla").innerHTML='<tr><th>Fecha</th><th>Sede</th><th>Supervisor</th><th>Cuadrilla</th><th>Tipo</th><th>Resultado</th><th>Evidencias</th></tr>'+ROWS.map((x,i)=>'<tr class="pick" data-i="'+i+'"><td>'+H(x.fecha)+' '+H(x.hora)+'</td><td>'+H(x.sede)+'</td><td>'+H(x.supervisor)+'</td><td>'+H(x.cuadrilla)+'</td><td>'+H(x.tipoActividad)+'</td><td>'+H(x.puntajeTotal||x.estadoInstalacion||x.clasificacion||"-")+'</td><td class="links">'+[x.foto1,x.foto2,x.foto3,x.foto4].filter(Boolean).map((u,j)=>'<a target="_blank" href="'+H(u)+'">Foto '+(j+1)+'</a>').join("")+'</td></tr>').join("");E("tabla").querySelectorAll("[data-i]").forEach(tr=>tr.onclick=()=>{const x=ROWS[Number(tr.dataset.i)];E("detalle").classList.remove("hidden");E("det").textContent=JSON.stringify(x,null,2)});E("msg").className="ok";E("msg").textContent=ROWS.length+" registros."}catch(e){E("msg").className="err";E("msg").textContent=e.message}}
+async function cargar(){try{E("msg").textContent="Consultando...";const filtros={periodo:E("periodo").value,tipoActividad:E("tipo").value,sede:E("sede").value};const [d,r]=await Promise.all([api({accion:"listarActividadCampo",filtros},"POST"),api({accion:"resumenActividadCampo",filtros},"POST")]);ROWS=d.actividades||[];const t=r.totales||{};E("metrics").innerHTML='<div class="metric">Total<b>'+ROWS.length+'</b></div><div class="metric">Aud. Frío<b>'+Number(t["AUDITORIA EN FRIO"]||0)+'</b></div><div class="metric">Aud. Caliente<b>'+Number(t["AUDITORIA EN CALIENTE"]||0)+'</b></div><div class="metric">Seguimiento<b>'+Number(t["SEGUIMIENTO"]||0)+'</b></div>';E("tabla").innerHTML='<tr><th>Fecha</th><th>Sede</th><th>Supervisor</th><th>Cuadrilla</th><th>Tipo</th><th>Resultado</th><th>Evidencias</th></tr>'+ROWS.map((x,i)=>'<tr class="pick" data-i="'+i+'"><td>'+H(x.fecha)+' '+H(x.hora)+'</td><td>'+H(x.sede)+'</td><td>'+H(x.supervisor)+'</td><td>'+H(x.cuadrilla)+'</td><td>'+H(x.tipoActividad)+'</td><td>'+H(x.puntajeTotal||x.estadoInstalacion||x.clasificacion||"-")+'</td><td class="links">'+[x.foto1,x.foto2,x.foto3,x.foto4].map((u,j)=>u?'<button class="sec" onclick="event.stopPropagation();mvAbrirEvidencia(\''+H(u).replaceAll("'","&#39;")+'\')">Foto '+(j+1)+'</button>':'').join(" ")+'</td></tr>').join("");E("tabla").querySelectorAll("[data-i]").forEach(tr=>tr.onclick=()=>{const x=ROWS[Number(tr.dataset.i)];E("detalle").classList.remove("hidden");E("det").textContent=JSON.stringify(x,null,2)});E("msg").className="ok";E("msg").textContent=ROWS.length+" registros."}catch(e){E("msg").className="err";E("msg").textContent=e.message}}
 async function registrarSimple(){try{
   const d=await api({accion:"registrarActividadCampo",cuadrilla:E("cuadrilla").value,tipoActividad:E("tipoNuevo").value,estadoInstalacion:E("estadoNuevo").value,observaciones:E("obsNueva").value,asignacionCampoId:ACTIVE_ASG?.id||"",clientePresente:"",dniValidado:"",reservaCable:"",potenciaConforme:"",velocidadConforme:"",limpiezaTrabajo:"",clienteConforme:""},"POST");
   E("rmsg").className="ok";E("rmsg").textContent="Registrado: "+d.id+(d.asignacionCompletada?" · Asignación completada":"");
@@ -160,4 +165,4 @@ async function registrarSimple(){try{
 }catch(e){E("rmsg").className="err";E("rmsg").textContent=e.message}}
 function csv(){const c=["fecha","hora","sede","supervisor","cuadrilla","tipoActividad","tipoOrden","codigoPedido","puntajeTotal","clasificacion","estadoInstalacion","observaciones"],q=v=>'"'+String(v??"").replaceAll('"','""')+'"',s=[c.join(","),...ROWS.map(r=>c.map(k=>q(r[k])).join(","))].join("\n"),b=new Blob(["\ufeff"+s],{type:"text/csv;charset=utf-8"}),a=document.createElement("a");a.href=URL.createObjectURL(b);a.download="actividad_campo_"+E("periodo").value+".csv";a.click();URL.revokeObjectURL(a.href)}
 (async()=>{try{await contexto();await cargar()}catch(e){E("ctx").innerHTML='<span class="err">'+H(e.message)+'</span>'}})();
-</script><script src="shell-embed.js"></script></body></html>
+</script><script src="actividad-campo-completo.js"></script><script src="shell-embed.js"></script></body></html>
