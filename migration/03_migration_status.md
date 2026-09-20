@@ -1,3 +1,16 @@
+# Checkpoint shell integrado — 20/09/2026
+
+- Shell único MI VISUAL creado en `migration/pilot/index.html`.
+- `app-shell-pilot` V2 ACTIVE con JWT.
+- Menú gobernado exclusivamente por `app_permissions`.
+- 9 páginas piloto adaptadas a sesión compartida/embedded.
+- Matriz de permisos PostgreSQL: 297 filas = 267 legacy + 30 explícitas del piloto.
+- JEFATURA: 8 módulos con UI ya integrada; SUPERVISOR: 6.
+- `MOSTRAR_MODULO=false` continúa ocultando el módulo.
+- `main`, Apps Script y Sheets sin cambios.
+- Config Netlify preparada para publicar solo `migration/pilot`.
+- Deploy público del nuevo shell aún no ejecutado: Netlify requiere fuente local y este entorno no puede clonar el repo.
+
 # Checkpoint integral de migración — 20/09/2026
 
 ## Decisión
