@@ -1,5 +1,5 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-const VERSION="V1-BASE-OPERATIVA-STAGING-20260920";
+const VERSION="V2-BASE-OPERATIVA-STAGING-20260920";
 const MODULO="ADMINISTRACION";
 const cors={"Access-Control-Allow-Origin":"*","Access-Control-Allow-Headers":"authorization, x-client-info, apikey, content-type","Access-Control-Allow-Methods":"GET, POST, OPTIONS"};
 function json(x:unknown,status=200){return new Response(JSON.stringify(x),{status,headers:{...cors,"Content-Type":"application/json; charset=utf-8"}})}
@@ -92,7 +92,8 @@ Deno.serve(async(req:Request)=>{
       if(ue)throw ue;
     }
     const {data,error}=await c.admin.rpc("mv_base_operativa_preview_staging",{p_run_id:runId,p_actor:c.u.usuario});if(error)throw error;
-    return json({...data,version:VERSION});
+    const {data:conc,error:concError}=await c.admin.rpc("mv_base_operativa_reconcile_staging",{p_run_id:runId,p_actor:c.u.usuario});if(concError)throw concError;
+    return json({...data,conciliacion:conc,version:VERSION});
   }
   if(a==="cancelarCarga"){
     const runId=txt(d.runId);if(!runId)throw Error("runId obligatorio.");
