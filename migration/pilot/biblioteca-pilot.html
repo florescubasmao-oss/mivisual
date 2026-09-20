@@ -14,4 +14,4 @@ async function load(){clear();const ticket=generation;el('status').textContent='
 el('loginForm').addEventListener('submit',async event=>{event.preventDefault();clear();const button=event.submitter;button.disabled=true;try{const {error}=await client.auth.signInWithPassword({email:el('email').value.trim(),password:el('password').value});el('password').value='';if(error)throw error;await load()}catch(e){el('status').textContent=e.message}finally{button.disabled=false}});
 el('refresh').onclick=load;el('search').oninput=filter;el('logout').onclick=async()=>{clear();const {error}=await client.auth.signOut();el('status').textContent=error?'No se pudo cerrar sesión: '+error.message:'Sesión cerrada.'};
 client.auth.onAuthStateChange(event=>{if(event==='SIGNED_OUT'){clear();el('status').textContent='Sesión cerrada.'}});load();
-</script></body></html>
+</script><script src="shell-embed.js"></script>\n</body></html>
