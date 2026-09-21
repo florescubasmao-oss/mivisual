@@ -1,4 +1,4 @@
-<!doctype html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>MI VISUAL · Validación Técnica</title><script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.57.4"></script><style>
+<!doctype html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>MI VISUAL · Validación Técnica</title><script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.57.4"></script><script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script><style>
 :root{--navy:#0b2340;--blue:#0f6fff;--green:#15803d;--red:#b91c1c;--orange:#b45309;--line:#dbe3ec;--muted:#64748b}
 *{box-sizing:border-box}body{font-family:Arial,sans-serif;margin:0;padding:16px;background:#f5f7fb;color:#102033}.wrap{max-width:1280px;margin:auto}
 h1{margin:0 0 5px;font-size:24px}.lead{color:var(--muted);margin:0 0 16px}.card{background:#fff;border:1px solid var(--line);border-radius:15px;padding:16px;margin-bottom:14px}
@@ -20,7 +20,7 @@ button{border:0;background:var(--blue);color:#fff;font-weight:700;cursor:pointer
   <select id="estado"><option value="">Todos los estados</option><option>PENDIENTE</option><option>SIN RESPUESTA</option><option>APROBADO</option><option>RECHAZADO</option><option>OBSERVADO</option><option>BONO</option><option>NO BONO</option></select>
   <select id="sede"><option value="">Todas las sedes</option><option>CHICLAYO</option><option>PIURA</option><option>TRUJILLO</option></select>
  </div>
- <div class="row" style="margin-top:9px"><button onclick="listar()">Actualizar</button><button class="sec" onclick="exportarCsv()">Exportar lista</button></div>
+ <div class="row" style="margin-top:9px"><button onclick="listar()">Actualizar</button><button class="sec" onclick="exportarExcel()">Exportar Excel</button><button class="sec" onclick="exportarCsv()">CSV</button></div>
  <div id="msg" style="margin-top:8px"></div>
 </div>
 <div class="card"><div class="metrics" id="metrics"></div><div class="tablewrap"><table id="tabla"></table></div></div>
@@ -52,6 +52,43 @@ async function validar(){try{if(!SELECTED)throw Error("Seleccione un registro.")
 async function buscar(){try{const d=await api({accion:"buscarDatosValidacionTecnica",codigo:E("buscarCodigo").value,dni:E("buscarDni").value,ticketFinal:E("buscarTicket").value});const a=d.lista||[];E("busqueda").innerHTML=a.length?a.map((x,i)=>'<button class="sec" style="margin:4px" onclick="elegir('+i+')">'+H(x.codigo)+' · '+H(x.dni)+' · '+H(x.ticketFinal)+'</button>').join(""):'Sin coincidencias';window.SEARCHROWS=a}catch(e){E("busqueda").innerHTML='<span class="err">'+H(e.message)+'</span>'}}
 window.elegir=i=>{SEARCHED=window.SEARCHROWS[i];E("rCodigo").value=SEARCHED.codigo||"";E("rDni").value=SEARCHED.dni||"";E("rTicket").value=SEARCHED.ticketFinal||"";E("regForm").classList.remove("hidden")}
 async function registrar(){try{if(!SEARCHED)throw Error("Seleccione una atención.");const d=await api({accion:"registrarValidacionTecnica",codigo:E("rCodigo").value,dniCliente:E("rDni").value,ticketFinal:E("rTicket").value,motivoTecnico:E("rMotivo").value,origenOrden:E("rOrigen").value,fuenteValidadaV430:true},"POST");setMsg("rmsg",d.mensaje||"Registrado.");await listar()}catch(e){setMsg("rmsg",e.message,false)}}
+function exportarExcel(){
+  try{
+    if(!ROWS.length)throw Error("No hay registros para exportar.");
+    if(typeof XLSX==="undefined")throw Error("No se pudo cargar el generador Excel.");
+    const data=ROWS.map(x=>({
+      "Fecha registro":x.registro_at||"",
+      "Sede":x.sede||"",
+      "Técnico":x.tecnico||"",
+      "Cuadrilla":x.cuadrilla||"",
+      "Tipo validación":x.tipo_validacion||"",
+      "Código cliente":x.codigo||"",
+      "Tipo ticket":x.tipo_ticket||"",
+      "Número ticket":x.numero_ticket||"",
+      "Ticket final":x.ticket_final||"",
+      "DNI cliente":x.dni_cliente||"",
+      "Motivo técnico":x.motivo_tecnico||"",
+      "Estado":x.estado||"",
+      "Resultado final":x.resultado_final||"",
+      "Validado por":x.validado_por||"",
+      "Perfil validador":x.perfil_validador||"",
+      "Fecha validación":x.validado_at||"",
+      "Motivo validación":x.motivo_validacion||"",
+      "Origen orden":x.origen_orden||"",
+      "Periodo":x.periodo||"",
+      "Puntaje VTR/GAR":Number(x.puntaje_vtr_gar||0),
+      "Fuente":x.fuente||""
+    }));
+    const ws=XLSX.utils.json_to_sheet(data);
+    ws["!autofilter"]={ref:ws["!ref"]};
+    ws["!cols"]=[18,13,20,42,18,16,14,14,18,14,38,16,18,20,18,19,38,16,12,16,22].map(w=>({wch:w}));
+    const wb=XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb,ws,"Validacion Tecnica");
+    const p=(E("periodo").value||"todos").replace(/[^0-9-]/g,"");
+    XLSX.writeFile(wb,"validacion_tecnica_"+p+".xlsx");
+    setMsg("msg","Excel generado con "+ROWS.length+" registros.");
+  }catch(e){setMsg("msg",e.message,false)}
+}
 function exportarCsv(){const cols=["registro_at","sede","cuadrilla","tipo_validacion","codigo","ticket_final","dni_cliente","estado","resultado_final","validado_por","motivo_validacion","puntaje_vtr_gar"];const q=v=>'"'+String(v??"").replaceAll('"','""')+'"';const csv=[cols.join(","),...ROWS.map(r=>cols.map(c=>q(r[c])).join(","))].join("\n");const b=new Blob(["\ufeff"+csv],{type:"text/csv;charset=utf-8"}),a=document.createElement("a");a.href=URL.createObjectURL(b);a.download="validacion_tecnica_"+E("periodo").value+".csv";a.click();URL.revokeObjectURL(a.href)}
 (async()=>{try{await contexto();await listar()}catch(e){E("ctx").innerHTML='<span class="err">'+H(e.message)+'</span>'}})();
 </script><script src="shell-embed.js"></script></body></html>
