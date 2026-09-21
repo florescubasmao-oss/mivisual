@@ -1,0 +1,43 @@
+name: Package MI VISUAL migration pilot
+
+on:
+  push:
+    branches:
+      - migracion-supabase
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  package-pilot:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout migration branch
+        uses: actions/checkout@v4
+
+      - name: Prepare deploy source
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -rf deploy-source
+          mkdir -p deploy-source/migration
+          cp netlify.toml deploy-source/netlify.toml
+          cp -R migration/pilot deploy-source/migration/pilot
+
+      - name: Validate expected files
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -f deploy-source/netlify.toml
+          test -f deploy-source/migration/pilot/index.html
+          test -f deploy-source/migration/pilot/shell-embed.js
+          find deploy-source -maxdepth 3 -type f | sort
+
+      - name: Upload deploy source artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: mi-visual-pilot-deploy-source
+          path: deploy-source
+          if-no-files-found: error
+          retention-days: 3
