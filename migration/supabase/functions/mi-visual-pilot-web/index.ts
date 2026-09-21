@@ -1,5 +1,5 @@
 const SLUG="mi-visual-pilot-web";
-const HOST="https://raw.githack.com/florescubasmao-oss/mivisual/migracion-supabase/migration/pilot/";
+const HOST="https://raw.githack.com/florescubasmao-oss/mivisual/bb44815caddc859ff4c08d16f3f958f3edc19507/migration/pilot/";
 
 Deno.serve((req:Request)=>{
   try{
