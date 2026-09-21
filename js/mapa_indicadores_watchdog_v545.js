@@ -34,11 +34,13 @@
     const btn=caja.querySelector("[data-mv544-btn]");
     if(!texto||!btn)return;
 
-    if(timer)clearTimeout(timer);
+    if(timer)return;
+    const actual=norm(texto.textContent);
+    if(!actual.includes("VERIFICANDO ESTADO"))return;
     timer=setTimeout(()=>{
       timer=null;
-      const actual=norm(texto.textContent);
-      if(!actual.includes("VERIFICANDO ESTADO"))return;
+      const actualFinal=norm(texto.textContent);
+      if(!actualFinal.includes("VERIFICANDO ESTADO"))return;
 
       caja.style.background="#fff7ed";
       caja.style.borderColor="#fdba74";
