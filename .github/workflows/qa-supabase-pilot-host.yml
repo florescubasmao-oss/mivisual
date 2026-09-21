@@ -1,0 +1,45 @@
+name: QA Supabase MI VISUAL pilot host
+
+on:
+  push:
+    branches:
+      - migracion-supabase
+    paths:
+      - .github/workflows/qa-supabase-pilot-host.yml
+
+permissions:
+  contents: read
+
+jobs:
+  qa-host:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check integrated shell
+        shell: bash
+        run: |
+          set -euo pipefail
+          BASE="https://uudvodiaizfarodjpetb.supabase.co/functions/v1/mi-visual-pilot-web/"
+          curl --fail --show-error --silent --location --retry 3 --retry-delay 2             "${BASE}" -o /tmp/index.html
+          grep -q "MI VISUAL integrado" /tmp/index.html
+          grep -q "administracion-pilot.html" /tmp/index.html
+
+      - name: Check Administration module
+        shell: bash
+        run: |
+          set -euo pipefail
+          BASE="https://uudvodiaizfarodjpetb.supabase.co/functions/v1/mi-visual-pilot-web/"
+          curl --fail --show-error --silent --location --retry 3 --retry-delay 2             "${BASE}administracion-pilot.html" -o /tmp/admin.html
+          grep -q "Catálogo de Partidas" /tmp/admin.html
+          grep -q "administracion-control.js" /tmp/admin.html
+
+      - name: Check Resync Final live sources
+        shell: bash
+        run: |
+          set -euo pipefail
+          BASE="https://uudvodiaizfarodjpetb.supabase.co/functions/v1/mi-visual-pilot-web/"
+          curl --fail --show-error --silent --location --retry 3 --retry-delay 2             "${BASE}resync-final-pilot.html" -o /tmp/resync.html
+          grep -q "Capturar Mapa vivo" /tmp/resync.html
+          grep -q "Capturar Actas vivas" /tmp/resync.html
+
+      - name: Summary
+        run: echo "Supabase static QA host is serving the integrated MI VISUAL migration shell."
