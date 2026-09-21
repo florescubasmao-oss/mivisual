@@ -25,7 +25,19 @@ table{width:100%;border-collapse:collapse;font-size:12px}th,td{padding:7px;borde
 <div class="card">
   <div class="row" style="justify-content:space-between"><h1 style="margin-bottom:0">Resync final</h1><button class="sec" onclick="location.href='administracion-pilot.html'">Volver a Administración</button></div>
   <p class="lead">Validación Técnica · Descansos · Actas · Mapa · CTO · Asignaciones Campo</p>
-  <div class="notice" style="margin-top:10px"><b>Flujo controlado:</b> cargue una copia Excel actual de MI VISUAL. Primero se valida y crea staging. Mapa y CTO además ejecutan un preview obligatorio antes de habilitar APPLY. Mapa no modifica períodos protegidos y ambos generan backup para rollback.</div>
+  <div class="notice" style="margin-top:10px"><b>Flujo controlado:</b> para Mapa puede capturar directamente la fuente viva legacy por GET de solo lectura. El Excel queda disponible como respaldo y para módulos que aún no tienen captura viva. Todo pasa por staging; Mapa/CTO requieren preview antes de APPLY y generan backup para rollback.</div>
+</div>
+
+<div class="card">
+  <h3>Fuente viva · Mapa Operativo</h3>
+  <p class="muted">Lee el backend legacy por GET usando su usuario autenticado de Jefatura. No escribe en Sheets ni aplica cambios automáticamente.</p>
+  <div class="grid">
+    <div><b>Periodo abierto</b><input id="liveMapaPeriodo" value="2026-09" pattern="20[0-9]{2}-(0[1-9]|1[0-2])"></div>
+    <div><b>Estado</b><div id="liveMapaStatus" class="muted">Sin captura viva.</div></div>
+  </div>
+  <div class="row" style="margin-top:9px">
+    <button id="liveMapaBtn" class="good" onclick="capturarMapaVivo()">Capturar Mapa vivo + preview</button>
+  </div>
 </div>
 
 <div class="card">
@@ -134,7 +146,7 @@ const MODS={
   DESC:{modulo:"PROGRAMACION_DESCANSOS",rows:[],runId:null,applyAction:"aplicarDescansos",confirm:"APLICAR_DESCANSOS_STAGING",prefix:"desc"},
   ACTAS:{modulo:"ACTAS",rows:[],runId:null,applyAction:"aplicarActas",confirm:"APLICAR_ACTAS_STAGING",prefix:"actas"},
   ASG:{modulo:"ASIGNACIONES_CAMPO",rows:[],runId:null,applyAction:"aplicarAsignacionesCampo",confirm:"APLICAR_ASIGNACIONES_CAMPO_STAGING",prefix:"asg"},
-  MAPA:{modulo:"MAPA_OPERATIVO",rows:[],runId:null,applyAction:"aplicarMapa",previewAction:"previewMapa",rollbackAction:"rollbackMapa",confirm:"APLICAR_MAPA_STAGING",rollbackConfirm:"ROLLBACK_MAPA_STAGING",prefix:"mapa"},
+  MAPA:{modulo:"MAPA_OPERATIVO",rows:[],sourceRows:0,runId:null,applyAction:"aplicarMapa",previewAction:"previewMapa",rollbackAction:"rollbackMapa",confirm:"APLICAR_MAPA_STAGING",rollbackConfirm:"ROLLBACK_MAPA_STAGING",prefix:"mapa"},
   CTO:{modulo:"CATALOGO_CTO",rows:[],runId:null,applyAction:"aplicarCto",previewAction:"previewCto",rollbackAction:"rollbackCto",confirm:"APLICAR_CTO_STAGING",rollbackConfirm:"ROLLBACK_CTO_STAGING",prefix:"cto"}
 };
 let FILE_NAME="";
@@ -148,6 +160,33 @@ async function api(d){
   const t=await token();if(!t)throw Error("Inicie sesión en MI VISUAL.");
   const r=await fetch(API,{method:"POST",headers:{Authorization:"Bearer "+t,apikey:KEY,"Content-Type":"application/json"},body:JSON.stringify(d)});
   const x=await r.json();if(!r.ok||!x.ok)throw Error(x.error||"Error en sincronización.");return x;
+}
+
+async function capturarMapaVivo(){
+  const m=MODS.MAPA,btn=E("liveMapaBtn"),st=E("liveMapaStatus");
+  try{
+    if(m.runId)throw Error("Mapa ya tiene un staging activo. Aplíquelo, haga rollback o cancélelo antes de capturar otro corte.");
+    const periodo=txt(E("liveMapaPeriodo").value);
+    if(!/^20\d{2}-(0[1-9]|1[0-2])$/.test(periodo))throw Error("Periodo inválido.");
+    btn.disabled=true;st.className="muted";st.textContent="Leyendo fuente viva legacy y preparando staging...";
+    const d=await api({accion:"capturarMapaVivo",periodo});
+    m.runId=d.runId;m.sourceRows=Number(d.sourceRows||0);m.preview=d.preview||null;
+    FILE_NAME="LEGACY_API_MAPA "+periodo;
+    E("summary").classList.remove("hidden");E("modules").classList.remove("hidden");E("preview").classList.remove("hidden");
+    E("metrics").innerHTML='<div class="metric">Mapa vivo '+H(periodo)+'<b>'+m.sourceRows+'</b></div><div class="metric">Existentes PG<b>'+Number(d.existingRows||0)+'</b></div><div class="metric">Nuevas<b>'+Number(d.newRows||0)+'</b></div>';
+    E("mapaInfo").textContent=m.sourceRows+" órdenes capturadas del período "+periodo+". Corte legacy: "+(d.legacyUpdatedAt||"sin fecha")+".";
+    E("validationMsg").className="ok";E("validationMsg").textContent="Mapa vivo capturado en staging. Legacy sigue activo; este corte no es definitivo hasta el delta final de cutover.";
+    const p=d.preview||{},extra=" · existentes "+Number(p.existentes||0)+" · nuevas "+Number(p.nuevas||0)+" · protegidas "+Number(p.filasProtegidas||0)+" · nuevas protegidas "+Number(p.nuevasEnProtegidos||0)+" · grupos sin clasificar "+Number(p.grupoSinClasificarActivo||0);
+    E("mapaStatus").className=p.puedeAplicar?"status ok":"status err";
+    E("mapaStatus").textContent=(p.puedeAplicar?"VALIDATED":"PREVIEW BLOQUEADO")+" · Run "+m.runId+" · "+m.sourceRows+" filas"+extra+".";
+    E("mapaStage").classList.add("hidden");E("mapaCancel").classList.remove("hidden");
+    if(p.puedeAplicar)E("mapaApply").classList.remove("hidden");else E("mapaApply").classList.add("hidden");
+    st.className=p.puedeAplicar?"ok":"err";
+    st.textContent="Captura completada · "+m.sourceRows+" órdenes · actualización legacy "+(d.legacyUpdatedAt||"-")+(p.puedeAplicar?" · lista para revisión/APPLY":" · preview bloqueado");
+    renderSample();
+  }catch(e){
+    st.className="err";st.textContent=e.message;
+  }finally{btn.disabled=false}
 }
 function excelDate(v){
   if(v instanceof Date&&!isNaN(v))return v.toISOString().slice(0,10);
@@ -433,7 +472,8 @@ async function applyModule(k){
   const m=MODS[k],st=E(m.prefix+"Status"),btn=E(m.prefix+"Apply");
   try{
     if(!m.runId)throw Error("No existe staging validado.");
-    const msg="Se aplicará el resync de "+m.modulo+" con "+m.rows.length+" filas.\n\nEl proceso usa claves estables. En Mapa se omiten períodos protegidos y se crea backup para rollback. ¿Confirmar?";
+    const cantidad=Number(m.sourceRows||m.rows.length||0);
+    const msg="Se aplicará el resync de "+m.modulo+" con "+cantidad+" filas.\n\nEl proceso usa claves estables. En Mapa se omiten períodos protegidos y se crea backup para rollback. ¿Confirmar?";
     if(!confirm(msg))return;
     btn.disabled=true;
     const d=await api({accion:m.applyAction,runId:m.runId,confirmacion:m.confirm});
@@ -452,7 +492,7 @@ async function rollbackModule(k){
     const oldRun=m.runId;
     st.className="status ok";st.textContent="ROLLED_BACK · restauradas "+Number(d.restored||0)+" · eliminadas nuevas "+Number(d.deleted||0)+" · Run "+oldRun;
     btn.classList.add("hidden");
-    m.runId=null;m.preview=null;
+    m.runId=null;m.preview=null;m.sourceRows=0;
     E(m.prefix+"Stage").classList.remove("hidden");E(m.prefix+"Stage").disabled=false;
   }catch(e){st.className="status err";st.textContent=e.message}finally{btn.disabled=false}
 }
@@ -461,12 +501,12 @@ async function cancelModule(k){
     if(!m.runId)return;
     await api({accion:"cancelarStaging",runId:m.runId,notes:"Cancelado desde Resync Final UI"});
     st.className="status muted";st.textContent="CANCELLED · Run "+m.runId;
-    m.runId=null;resetButtons(m);
+    m.runId=null;m.sourceRows=0;resetButtons(m);
   }catch(e){st.className="status err";st.textContent=e.message}
 }
 function limpiar(){
   E("file").value="";FILE_NAME="";
-  for(const m of Object.values(MODS)){m.rows=[];m.runId=null;resetButtons(m)}
+  for(const m of Object.values(MODS)){m.rows=[];m.sourceRows=0;m.runId=null;resetButtons(m)}
   E("summary").classList.add("hidden");E("modules").classList.add("hidden");E("preview").classList.add("hidden");
   E("fileStatus").className="muted";E("fileStatus").textContent="Sin archivo cargado.";
 }
