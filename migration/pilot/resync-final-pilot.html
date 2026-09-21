@@ -213,7 +213,7 @@ async function capturarActasVivas(){
       '<div class="metric">Actas vivas<b>'+m.sourceRows+'</b></div>'+
       '<div class="metric">Existentes PG<b>'+Number(p.existentes||0)+'</b></div>'+
       '<div class="metric">Nuevas<b>'+Number(p.nuevas||0)+'</b></div>'+
-      '<div class="metric">Conflictos<b>'+Number(p.conflictosPostgresql||0)+Number(p.conflictosStorage||0)+Number(p.conflictosIdentidad||0)+Number(p.conflictosDrive||0)+'</b></div>';
+      '<div class="metric">Conflictos<b>'+(Number(p.conflictosPostgresql||0)+Number(p.conflictosStorage||0)+Number(p.conflictosIdentidad||0)+Number(p.conflictosDrive||0))+'</b></div>';
     E("actasInfo").textContent=m.sourceRows+" actas capturadas del backend legacy.";
     const extra=
       " · existentes "+Number(p.existentes||0)+
