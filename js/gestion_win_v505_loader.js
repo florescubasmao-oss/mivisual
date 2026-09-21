@@ -90,9 +90,9 @@
      queda correctamente por fuera de V386 gracias a la instalacion sincrona.
      Se conserva el sincronizador de indicadores y V547 para lecturas 404.
   */
-  cargar("./js/indicadores_win_sync_v4879.js?v=V554-PREVALIDACION-INTEGRAL-20260921-1")
-    .then(()=>cargar("./js/mapa_indicadores_estado_v544.js?v=V554-PREVALIDACION-INTEGRAL-20260921-1"))
-    .then(()=>cargar("./js/mapa_indicadores_watchdog_v545.js?v=V554-PREVALIDACION-INTEGRAL-20260921-1"))
+  cargar("./js/indicadores_win_sync_v4879.js?v=V555-PUBLICACION-UNICA-20260921-1")
+    .then(()=>cargar("./js/mapa_indicadores_estado_v544.js?v=V555-PUBLICACION-UNICA-20260921-1"))
+    .then(()=>cargar("./js/mapa_indicadores_watchdog_v545.js?v=V555-PUBLICACION-UNICA-20260921-1"))
     .then(()=>cargar("./js/mapa_resiliencia_v547.js?v=V547-MAPA-LECTURA-RESILIENTE-20260915-1"))
     .then(()=>cargar("./js/partidas_snapshot_auto_v513d.js?v=V513D-SNAPSHOT-AUTO-20260827"))
     .catch(e=>
