@@ -1,0 +1,31 @@
+name: QA CDN MI VISUAL pilot immutable
+
+on:
+  push:
+    branches:
+      - migracion-supabase
+    paths:
+      - .github/workflows/qa-cdn-pilot-v2.yml
+
+permissions:
+  contents: read
+
+jobs:
+  qa-cdn:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check immutable CDN shell and module
+        shell: bash
+        run: |
+          set -euo pipefail
+          BASE="https://cdn.jsdelivr.net/gh/florescubasmao-oss/mivisual@4910c3520f729a7370e61b8326cb7ec74c3c7b50/migration/pilot/"
+          curl --fail --show-error --silent --location -D /tmp/h1 "$BASE" -o /tmp/index.html
+          cat /tmp/h1
+          grep -qi '^content-type: text/html' /tmp/h1
+          if grep -qi '^content-security-policy:.*sandbox' /tmp/h1; then exit 1; fi
+          grep -q '<title>MI VISUAL · Migración Supabase</title>' /tmp/index.html
+          grep -q 'administracion-pilot.html' /tmp/index.html
+          curl --fail --show-error --silent --location -D /tmp/h2 "${BASE}administracion-pilot.html" -o /tmp/admin.html
+          cat /tmp/h2
+          grep -qi '^content-type: text/html' /tmp/h2
+          grep -q 'Catálogo de Partidas' /tmp/admin.html
