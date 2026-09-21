@@ -1,5 +1,5 @@
 /* MI VISUAL V550 - MAPA: ORDEN DE WRAPPERS + RESILIENCIA CENTRAL V528 */
-const MV339_CACHE = "mivisual-v554-prevalidacion-integral-20260921-1";
+const MV339_CACHE = "mivisual-v555-publicacion-unica-20260921-1";
 const MV517C19_BRIDGE = "./js/vtr_gar_ux_v517b.js?v=GARVTR-EXCEL-20260914-1";
 
 /*
@@ -37,7 +37,7 @@ const MV339_CORE = [
   "./js/permisos.js?v=V339-CORE",
   "./js/app.js?v=V408-RESTAURA-V377",
   "./js/modulos_loader.js?v=V520H-DASHBOARD-SINCRONIZADO-20260902-3",
-  "./js/gestion_win_v505_loader.js?v=V554-PREVALIDACION-INTEGRAL-20260921-1",
+  "./js/gestion_win_v505_loader.js?v=V555-PUBLICACION-UNICA-20260921-1",
   "./js/vtr_gar_validacion_restaurar_v514.js?v=V514A-TABS-UNICA-20260828",
   "./js/vtr_gar_v515.js?v=V515-VTRGAR-BONO-DESEMPENO-20260828",
   "./js/vtr_gar_ui_fix_v516.js?v=V516-TABS-DESPLEGABLES-20260828",
@@ -78,9 +78,9 @@ const MV339_CORE = [
   "./js/dashboard_actualizacion_indicadores_v512b.js?v=V512E-DASHBOARD-PIE-20260827",
   "./js/estabilidad_ranking_validacion_v518a.js?v=V518B-20260831-1",
   "./js/actualizacion_win_v507.js?v=V512A-SELLO-DASHBOARD",
-  "./js/indicadores_win_sync_v4879.js?v=V554-PREVALIDACION-INTEGRAL-20260921-1",
-  "./js/mapa_indicadores_estado_v544.js?v=V554-PREVALIDACION-INTEGRAL-20260921-1",
-  "./js/mapa_indicadores_watchdog_v545.js?v=V554-PREVALIDACION-INTEGRAL-20260921-1",
+  "./js/indicadores_win_sync_v4879.js?v=V555-PUBLICACION-UNICA-20260921-1",
+  "./js/mapa_indicadores_estado_v544.js?v=V555-PUBLICACION-UNICA-20260921-1",
+  "./js/mapa_indicadores_watchdog_v545.js?v=V555-PUBLICACION-UNICA-20260921-1",
   "./js/dashboard_herramientas_final_v512d.js?v=V512D-HERRAMIENTAS-FINAL",
   "./js/checklist_rapido_v508.js?v=V508-CHECKLIST-RAPIDO",
   "./js/actas_tecnico_sin_descarga_v508.js?v=V508-ACTAS-TECNICO",
