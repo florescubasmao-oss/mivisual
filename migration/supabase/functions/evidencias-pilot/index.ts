@@ -1,6 +1,6 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
-const VERSION = "V3-EVIDENCIAS-ACTAS-20260920";
+const VERSION = "V4-EVIDENCIAS-OBSERVACIONES-20260920";
 const BUCKET = "mi-visual-evidencias";
 const TZ = "America/Lima";
 const MAX_BYTES = 10 * 1024 * 1024;
@@ -51,6 +51,9 @@ function moduleInfo(v: unknown) {
   }
   if (n === "ACTAS ESCANEADAS" || n === "ACTAS") {
     return { module: "ACTAS ESCANEADAS", slug: "actas" };
+  }
+  if (n === "OBSERVACIONES") {
+    return { module: "OBSERVACIONES", slug: "observaciones" };
   }
   throw new Error("Módulo de evidencia no válido.");
 }
@@ -158,6 +161,21 @@ async function assertUploadScope(ctx:any, data:any) {
     return { cuadrilla:dc.cuadrilla, sede:dc.sede };
   }
 
+  if (ctx.info.slug === "observaciones") {
+    if (perfil !== "TECNICO") throw new Error("Solo Técnico puede subir evidencias de descargo.");
+    if (!ctx.perm.observar) throw new Error("Sin permiso para registrar descargo.");
+    const observacionId=txt(data.registroId||data.observacionId);
+    if (!observacionId) throw new Error("Observación obligatoria.");
+    const {data:o,error:oe}=await ctx.admin.from("observaciones_migracion")
+      .select("id,cuadrilla,sede")
+      .eq("id",observacionId).maybeSingle();
+    if (oe||!o) throw new Error("Observación no encontrada.");
+    if (safePart(o.cuadrilla)!==safePart(ctx.appUser.cuadrilla)) {
+      throw new Error("La observación no pertenece a su cuadrilla.");
+    }
+    return { cuadrilla:o.cuadrilla, sede:o.sede };
+  }
+
   if (!["TECNICO","SUPERVISOR"].includes(perfil)) {
     throw new Error("Solo Técnico o Supervisor pueden subir evidencias de Checklist.");
   }
@@ -194,6 +212,19 @@ function assertReadScope(ctx:any, path:string) {
     }
     if (!["TECNICO","SUPERVISOR","ALMACEN","JEFATURA ALMACEN","JEFATURA","ADMIN","ADMINISTRADOR","GERENCIA LIMA"].includes(perfil)) {
       throw new Error("Sin acceso a PDF de Actas.");
+    }
+    return;
+  }
+
+  if (ctx.info.slug === "observaciones") {
+    if (perfil === "TECNICO" && cuadrilla !== safePart(ctx.appUser.cuadrilla)) {
+      throw new Error("Sin acceso a esta evidencia.");
+    }
+    if (perfil === "SUPERVISOR" && sede !== safePart(ctx.appUser.sede)) {
+      throw new Error("Sin acceso a esta evidencia.");
+    }
+    if (!["TECNICO","SUPERVISOR","JEFATURA","ADMIN","ADMINISTRADOR","GERENCIA GENERAL","GERENCIA LIMA"].includes(perfil)) {
+      throw new Error("Sin acceso a evidencias de Observaciones.");
     }
     return;
   }
