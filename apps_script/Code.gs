@@ -17437,7 +17437,7 @@ const HOJA_ACTAS_BONO_SUPERVISORES = "ACTAS_BONO_SUPERVISORES";
 // de atender una nueva consulta de bonos.
 let MV334_DATOS_BONO_SESION_ = {};
 
-const MV334_CACHE_BONO_VERSION_ = "MV353_CUMPLIMIENTO_PRODUCTIVO_VERSION";
+const MV334_CACHE_BONO_VERSION_ = "V562_BONO_CUADRILLAS_HISTORICAS_VERSION";
 const MV334_CACHE_BONO_TTL_SEGUNDOS_ = 300;
 const MV334_CACHE_BONO_CHUNK_ = 24000;
 
@@ -18982,6 +18982,30 @@ function contextoCalculoBonoSupervisoresLegacyV361_(periodo) {
 }
 
 function contextoCalculoBonoSupervisores_(periodo) {
+  const esHistorico = periodo < periodoActualBonoSupervisores_();
+
+  // V562: un bono histórico debe respetar la fotografía real del período.
+  // Producción, Efectividad, Recableado y VTR/GAR se leen de las hojas base
+  // del mes para conservar los nombres/cuadrillas que existían entonces.
+  // El resumen V361 se mantiene únicamente para Estados y SLA, porque allí
+  // sí conserva el detalle histórico por cuadrilla y evita recalcular Mapa.
+  if (esHistorico) {
+    const historico = contextoCalculoBonoSupervisoresLegacyV361_(periodo);
+    try {
+      const resumenHistorico = mapasBonoDesdeResumenDashboardRankingV361_(periodo);
+      historico.estadosResumen = resumenHistorico.estados;
+      historico.slaResumen = resumenHistorico.sla;
+      historico.fuenteResumenV361 = true;
+      historico.fuenteIndicadoresHistoricos = "HOJAS_BASE_PERIODO";
+      historico.reglaCuadrillasHistoricas = "ASIGNACION_BONO_SUPERVISORES";
+    } catch (error) {
+      console.warn("V562: resumen histórico SLA/Estados no disponible; se usa base operativa",error);
+      historico.fuenteIndicadoresHistoricos = "HOJAS_BASE_PERIODO";
+      historico.reglaCuadrillasHistoricas = "ASIGNACION_BONO_SUPERVISORES";
+    }
+    return historico;
+  }
+
   try {
     const resumen = mapasBonoDesdeResumenDashboardRankingV361_(periodo);
     const parametros = parametrosSlaWinVigentes_(periodo);
