@@ -150,8 +150,7 @@
     if(!/^\d{4}-\d{2}$/.test(p))return;
     conservarResultadoHasta=0;
 
-    if(typeof window.mv4879CalcularIndicadoresWin!=="function" ||
-       typeof window.mv4879PublicarIndicadoresWin!=="function"){
+    if(typeof window.mv4879PublicarIndicadoresWin!=="function"){
       conservarResultadoHasta=Date.now()+60000;
       pintar({tipo:"error",mensaje:"El motor integral de indicadores todavía está cargando. Espere unos segundos y vuelva a pulsar."});
       try{if(typeof window.mv505InstalarHookWin==="function")window.mv505InstalarHookWin();}catch(_){}
@@ -159,29 +158,20 @@
     }
 
     publicando=true;
-    pintar({tipo:"procesando",periodo:p});
+    pintar({
+      tipo:"procesando",
+      periodo:p,
+      mensaje:"Sincronizando integralmente. No cierre esta pestaña ni vuelva a pulsar el botón; el proceso puede tardar varios minutos."
+    });
     try{
       /*
-        V554: PREVALIDACION OBLIGATORIA.
-        Primero ejecuta la misma previsualizacion oficial del publicador.
-        Es solo lectura: no escribe Produccion, Efectividad, Recableado,
-        VTR/GAR, Ranking ni Dashboard.
+        V555:
+        No ejecuta una previsualizacion pesada antes del publicador.
+        El publicador oficial ya valida, usa lock, snapshot y rollback.
+        De esta forma Mapa se lee/calcula una sola vez y evitamos duplicar
+        el costo que provocaba AbortError con el volumen actual.
       */
-      const previo=await window.mv4879CalcularIndicadoresWin(p);
-      if(!previo || previo.ok===false){
-        throw new Error((previo&&previo.error)||"La prevalidación integral no devolvió un resultado válido.");
-      }
-      if(previo.produccion && previo.produccion.ok===false){
-        conservarResultadoHasta=Date.now()+10*60*1000;
-        pintar({
-          tipo:"error",
-          mensaje:"PREVALIDACIÓN: no se publicó nada. "+txt(previo.produccion.error||"Producción tiene órdenes sin clasificación confiable.")+
-            " Corrija primero esas órdenes/partidas; Efectividad, Recableado, VTR/GAR, Ranking y Dashboard permanecen sin cambios."
-        });
-        return;
-      }
-
-      const r=await window.mv4879PublicarIndicadoresWin(p,"RECUPERACION_MANUAL_V554");
+      const r=await window.mv4879PublicarIndicadoresWin(p,"RECUPERACION_MANUAL_V555");
       const fecha=txt(r&&r.fechaPublicacionTexto||"");
 
       // Confirmación independiente del sello V512 después del publicador.
@@ -209,8 +199,8 @@
       conservarResultadoHasta=Date.now()+10*60*1000;
       pintar({
         tipo:"error",
-        mensaje:"DIAGNÓSTICO INTEGRAL: "+(e&&e.message?e.message:String(e))+
-          ". No vuelva a cargar el Excel ni repita la publicación hasta corregir este bloqueo."
+        mensaje:"SINCRONIZACIÓN INTEGRAL: "+(e&&e.message?e.message:String(e))+
+          ". No se confirmó ninguna escritura completa. No vuelva a cargar el Excel; revise este mensaje antes de un nuevo intento."
       });
     }finally{publicando=false;}
   }
