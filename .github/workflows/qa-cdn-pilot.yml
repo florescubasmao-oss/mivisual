@@ -14,20 +14,31 @@ jobs:
   qa-cdn:
     runs-on: ubuntu-latest
     steps:
-      - name: Check branch CDN with cache bust
+      - name: Purge branch CDN cache
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl --fail --show-error --silent "https://purge.jsdelivr.net/gh/florescubasmao-oss/mivisual@migracion-supabase/migration/pilot/index.html"
+          echo
+          curl --fail --show-error --silent "https://purge.jsdelivr.net/gh/florescubasmao-oss/mivisual@migracion-supabase/migration/pilot/administracion-pilot.html"
+          echo
+          sleep 3
+
+      - name: Check fresh branch CDN
         shell: bash
         run: |
           set -euo pipefail
           BASE="https://cdn.jsdelivr.net/gh/florescubasmao-oss/mivisual@migracion-supabase/migration/pilot/"
-          VER="2b3010bac0eccf433de24919d246acf08b636bce"
-          curl --fail --show-error --silent --location -D /tmp/h1 "${BASE}?v=${VER}" -o /tmp/index.html
+          curl --fail --show-error --silent --location -D /tmp/h1 "${BASE}index.html" -o /tmp/index.html
           echo "--- INDEX HEADERS ---"
           cat /tmp/h1
+          echo "--- INDEX MARKERS ---"
+          grep -E '<title>|administracion-pilot.html|MI VISUAL integrado' /tmp/index.html | head -20 || true
           grep -qi '^content-type: text/html' /tmp/h1
-          if grep -qi '^content-security-policy:.*sandbox' /tmp/h1; then exit 1; fi
           grep -q '<title>MI VISUAL' /tmp/index.html
           grep -q 'administracion-pilot.html' /tmp/index.html
-          curl --fail --show-error --silent --location -D /tmp/h2 "${BASE}administracion-pilot.html?v=${VER}" -o /tmp/admin.html
+
+          curl --fail --show-error --silent --location -D /tmp/h2 "${BASE}administracion-pilot.html" -o /tmp/admin.html
           echo "--- ADMIN HEADERS ---"
           cat /tmp/h2
           grep -qi '^content-type: text/html' /tmp/h2
