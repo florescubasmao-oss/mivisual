@@ -17,12 +17,13 @@ const MIME={
 
 function headers(type:string){
   return {
-    "Content-Type":type,
-    "Cache-Control":"no-store, max-age=0",
-    "X-Content-Type-Options":"nosniff",
-    "Referrer-Policy":"no-referrer",
-    "X-MI-Visual-Host":"Supabase Edge QA",
-    "Access-Control-Allow-Origin":"*"
+    "content-type":type,
+    "content-disposition":"inline",
+    "cache-control":"no-store, no-cache, must-revalidate, max-age=0",
+    "x-content-type-options":"nosniff",
+    "referrer-policy":"no-referrer",
+    "x-mi-visual-host":"Supabase Edge QA",
+    "access-control-allow-origin":"*"
   };
 }
 
@@ -45,8 +46,15 @@ Deno.serve(async(req:Request)=>{
     const upstream=await fetch(BASE+rel,{headers:{"Accept":"*/*","User-Agent":"MI-VISUAL-Supabase-QA"}});
     if(!upstream.ok)return new Response("Archivo no disponible en la rama de migración.",{status:upstream.status===404?404:502,headers:headers("text/plain")});
 
+    const type=MIME[ext as keyof typeof MIME];
+    const isText=ext==="html"||ext==="js"||ext==="css"||ext==="json"||ext==="svg"||ext==="txt";
+    if(req.method==="HEAD")return new Response(null,{status:200,headers:headers(type)});
+    if(isText){
+      const text=await upstream.text();
+      return new Response(text,{status:200,headers:headers(type)});
+    }
     const body=await upstream.arrayBuffer();
-    return new Response(req.method==="HEAD"?null:body,{status:200,headers:headers(MIME[ext as keyof typeof MIME])});
+    return new Response(body,{status:200,headers:headers(type)});
   }catch(e){
     return new Response("No se pudo servir MI VISUAL piloto: "+(e instanceof Error?e.message:String(e)),{status:502,headers:headers("text/plain")});
   }
