@@ -39,6 +39,17 @@ table{width:100%;border-collapse:collapse;font-size:12px}th,td{padding:7px;borde
     <button id="liveMapaBtn" class="good" onclick="capturarMapaVivo()">Capturar Mapa vivo + preview</button>
   </div>
 </div>
+<div class="card">
+  <h3>Fuente viva · Actas</h3>
+  <p class="muted">Lee el listado de Actas del backend legacy por GET. Antes de APPLY verifica cambios exclusivos de PostgreSQL, PDF en Storage y choques de identidad.</p>
+  <div class="grid">
+    <div><b>Fuente</b><div class="pill ok">GET LEGACY · SOLO LECTURA</div></div>
+    <div><b>Estado</b><div id="liveActasStatus" class="muted">Sin captura viva.</div></div>
+  </div>
+  <div class="row" style="margin-top:9px">
+    <button id="liveActasBtn" class="good" onclick="capturarActasVivas()">Capturar Actas vivas + preview</button>
+  </div>
+</div>
 
 <div class="card">
   <div class="grid">
@@ -144,7 +155,7 @@ const sb=supabase.createClient(URL,KEY);
 const MODS={
   VT:{modulo:"VALIDACION_TECNICA",rows:[],runId:null,applyAction:"aplicarValidacionTecnica",confirm:"APLICAR_VALIDACION_TECNICA_STAGING",prefix:"vt"},
   DESC:{modulo:"PROGRAMACION_DESCANSOS",rows:[],runId:null,applyAction:"aplicarDescansos",confirm:"APLICAR_DESCANSOS_STAGING",prefix:"desc"},
-  ACTAS:{modulo:"ACTAS",rows:[],runId:null,applyAction:"aplicarActas",confirm:"APLICAR_ACTAS_STAGING",prefix:"actas"},
+  ACTAS:{modulo:"ACTAS",rows:[],sourceRows:0,runId:null,applyAction:"aplicarActas",previewAction:"previewActas",confirm:"APLICAR_ACTAS_STAGING",prefix:"actas"},
   ASG:{modulo:"ASIGNACIONES_CAMPO",rows:[],runId:null,applyAction:"aplicarAsignacionesCampo",confirm:"APLICAR_ASIGNACIONES_CAMPO_STAGING",prefix:"asg"},
   MAPA:{modulo:"MAPA_OPERATIVO",rows:[],sourceRows:0,runId:null,applyAction:"aplicarMapa",previewAction:"previewMapa",rollbackAction:"rollbackMapa",confirm:"APLICAR_MAPA_STAGING",rollbackConfirm:"ROLLBACK_MAPA_STAGING",prefix:"mapa"},
   CTO:{modulo:"CATALOGO_CTO",rows:[],runId:null,applyAction:"aplicarCto",previewAction:"previewCto",rollbackAction:"rollbackCto",confirm:"APLICAR_CTO_STAGING",rollbackConfirm:"ROLLBACK_CTO_STAGING",prefix:"cto"}
@@ -188,6 +199,46 @@ async function capturarMapaVivo(){
     st.className="err";st.textContent=e.message;
   }finally{btn.disabled=false}
 }
+async function capturarActasVivas(){
+  const m=MODS.ACTAS,btn=E("liveActasBtn"),st=E("liveActasStatus");
+  try{
+    if(m.runId)throw Error("Actas ya tiene un staging activo. Aplíquelo o cancélelo antes de capturar otro corte.");
+    btn.disabled=true;st.className="muted";st.textContent="Leyendo Actas vivas y preparando staging...";
+    const d=await api({accion:"capturarActasVivas"});
+    m.runId=d.runId;m.sourceRows=Number(d.sourceRows||0);m.preview=d.preview||null;
+    FILE_NAME="LEGACY_API_ACTAS";
+    E("summary").classList.remove("hidden");E("modules").classList.remove("hidden");E("preview").classList.remove("hidden");
+    const p=d.preview||{};
+    E("metrics").innerHTML=
+      '<div class="metric">Actas vivas<b>'+m.sourceRows+'</b></div>'+
+      '<div class="metric">Existentes PG<b>'+Number(p.existentes||0)+'</b></div>'+
+      '<div class="metric">Nuevas<b>'+Number(p.nuevas||0)+'</b></div>'+
+      '<div class="metric">Conflictos<b>'+Number(p.conflictosPostgresql||0)+Number(p.conflictosStorage||0)+Number(p.conflictosIdentidad||0)+Number(p.conflictosDrive||0)+'</b></div>';
+    E("actasInfo").textContent=m.sourceRows+" actas capturadas del backend legacy.";
+    const extra=
+      " · existentes "+Number(p.existentes||0)+
+      " · nuevas "+Number(p.nuevas||0)+
+      " · PG exclusivo "+Number(p.conflictosPostgresql||0)+
+      " · Storage "+Number(p.conflictosStorage||0)+
+      " · identidad "+Number(p.conflictosIdentidad||0)+
+      " · Drive "+Number(p.conflictosDrive||0)+
+      " · inválidas "+Number(p.invalidas||0);
+    E("actasStatus").className=p.puedeAplicar?"status ok":"status err";
+    E("actasStatus").textContent=(p.puedeAplicar?"VALIDATED":"PREVIEW BLOQUEADO")+" · Run "+m.runId+" · "+m.sourceRows+" filas"+extra+".";
+    E("actasStage").classList.add("hidden");E("actasCancel").classList.remove("hidden");
+    if(p.puedeAplicar)E("actasApply").classList.remove("hidden");else E("actasApply").classList.add("hidden");
+    E("validationMsg").className=p.puedeAplicar?"ok":"err";
+    E("validationMsg").textContent=p.puedeAplicar
+      ?"Actas vivas capturadas en staging. Legacy sigue activo; deberá repetirse el delta antes del cutover."
+      :"Actas capturadas, pero el preview detectó conflictos. No se habilita APPLY hasta conciliarlos.";
+    st.className=p.puedeAplicar?"ok":"err";
+    st.textContent="Captura completada · "+m.sourceRows+" actas"+(p.puedeAplicar?" · lista para revisión/APPLY":" · bloqueada por coexistencia");
+    renderSample();
+  }catch(e){
+    st.className="err";st.textContent=e.message;
+  }finally{btn.disabled=false}
+}
+
 function excelDate(v){
   if(v instanceof Date&&!isNaN(v))return v.toISOString().slice(0,10);
   if(typeof v==="number"){const p=XLSX.SSF.parse_date_code(v);if(p)return String(p.y).padStart(4,"0")+"-"+String(p.m).padStart(2,"0")+"-"+String(p.d).padStart(2,"0")}
@@ -456,6 +507,7 @@ async function stageModule(k){
       if(!p.puedeAplicar)throw Error("Preview bloqueado: "+JSON.stringify(p));
       if(k==="MAPA")extra=" · existentes "+Number(p.existentes||0)+" · nuevas "+Number(p.nuevas||0)+" · protegidas "+Number(p.filasProtegidas||0)+" · nuevas protegidas "+Number(p.nuevasEnProtegidos||0)+" · grupos sin clasificar "+Number(p.grupoSinClasificarActivo||0);
       if(k==="CTO")extra=" · existentes "+Number(p.existentes||0)+" · nuevas "+Number(p.nuevas||0);
+      if(k==="ACTAS")extra=" · existentes "+Number(p.existentes||0)+" · nuevas "+Number(p.nuevas||0)+" · PG exclusivo "+Number(p.conflictosPostgresql||0)+" · Storage "+Number(p.conflictosStorage||0)+" · identidad "+Number(p.conflictosIdentidad||0)+" · Drive "+Number(p.conflictosDrive||0);
     }
     st.className="status ok";st.textContent="VALIDATED · Run "+m.runId+" · "+v.stagedRows+" / "+v.sourceRows+" filas"+extra+".";
     E(m.prefix+"Apply").classList.remove("hidden");E(m.prefix+"Cancel").classList.remove("hidden");btn.classList.add("hidden");
