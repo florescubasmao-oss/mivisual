@@ -1,3 +1,13 @@
+# Checkpoint publicación shell — 20/09/2026
+
+- Paquete actual del piloto: 51 archivos.
+- GitHub Actions run 35559064452 / artifact 10621745703.
+- Head SHA empaquetado: 9fbbde8aeb35f42b7facf96f46a9746a6dc75deb.
+- Netlify no recibió deploy nuevo.
+- Bloqueo técnico confirmado: entorno local sin resolución DNS a registry.npmjs.org (EAI_AGAIN).
+- Current deploy Netlify permanece 6ab03082193c47bec980fa6c.
+- No hubo deploy parcial ni cambios en producción.
+
 # Checkpoint Administración completa — 20/09/2026
 
 - Administración deja de figurar como PARCIAL en el shell.
