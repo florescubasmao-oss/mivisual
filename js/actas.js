@@ -10,6 +10,7 @@ const ACTAS_LECTURAS_GET = new Set([
     "resumenActasEscaneadas",
     "listarCuadrillasActasFaltantes",
     "consultarDatosAutomaticosActa",
+    "buscarOrdenFinalizadaActaWinV517D",
     "listarTiposPartidaActas",
     "listarCargosActas"
 ]);
@@ -970,6 +971,62 @@ function programarConsultaDatosAutomaticosActa(){
     temporizadorDatosAutomaticosActa = setTimeout(consultarDatosAutomaticosFormularioActa, 450);
 }
 
+function claveCodigoActaV561_(valor){
+    return normalizarActas(valor || "").replace(/[^A-Z0-9]/g,"");
+}
+
+function sincronizarSesionActasV561_(automaticos){
+    const u = usuarioActualActas();
+    if(u.perfil !== "TECNICO" || !automaticos || automaticos.encontradoMapa !== true) return;
+    if(automaticos.cuadrilla) localStorage.setItem("cuadrilla", automaticos.cuadrilla);
+    if(automaticos.sede) localStorage.setItem("sede", normalizarActas(automaticos.sede));
+}
+
+async function consultarFuenteVivaActaV561_(codigoOrden,codigoPedido){
+    const u = usuarioActualActas();
+    const identificador = codigoOrden || codigoPedido;
+    if(!identificador) return null;
+
+    const respuesta = await apiActas({
+        accion:"buscarOrdenFinalizadaActaWinV517D",
+        usuario:u.usuario,
+        identificador:identificador,
+        __forzar:true
+    });
+
+    const ordenes = Array.isArray(respuesta && respuesta.ordenes) ? respuesta.ordenes : [];
+    if(!ordenes.length) return null;
+
+    const ordenClave = claveCodigoActaV561_(codigoOrden);
+    const pedidoClave = claveCodigoActaV561_(codigoPedido);
+    let candidatos = ordenes.filter(x =>
+        (!ordenClave || claveCodigoActaV561_(x.codigoOrden) === ordenClave) &&
+        (!pedidoClave || claveCodigoActaV561_(x.codigoPedido) === pedidoClave)
+    );
+
+    if(!candidatos.length && ordenClave){
+        candidatos = ordenes.filter(x => claveCodigoActaV561_(x.codigoOrden) === ordenClave);
+    }
+    if(!candidatos.length && pedidoClave){
+        candidatos = ordenes.filter(x => claveCodigoActaV561_(x.codigoPedido) === pedidoClave);
+    }
+    if(candidatos.length !== 1) return null;
+
+    const item = candidatos[0] || {};
+    const a = Object.assign({}, item.automaticos || {});
+    if(!a.sede) a.sede = item.sede || "";
+    if(!a.cuadrilla) a.cuadrilla = item.cuadrilla || "";
+    if(!a.fechaGestion) a.fechaGestion = item.fecha || item.fechaVisible || "";
+    if(!a.tipoEjecucion) a.tipoEjecucion = item.tipoEjecucion || "";
+    if(!a.tipoPartida) a.tipoPartida = item.tipoPartida || "";
+    if(!a.dni) a.dni = item.dni || "";
+    if(!a.cliente) a.cliente = item.cliente || "";
+    a.encontradoMapa = true;
+    a.encontradoProduccion = !!a.tipoPartida;
+    a.fuenteMapa = a.fuenteMapa || "MAPA_ORDENES";
+    return a;
+}
+
 async function consultarDatosAutomaticosFormularioActa(){
     const codigoOrden = document.getElementById("actaCodigoOrden")?.value.trim() || "";
     const codigoPedido = document.getElementById("actaCodigoPedido")?.value.trim() || "";
@@ -978,41 +1035,83 @@ async function consultarDatosAutomaticosFormularioActa(){
         pintarDatosAutomaticosActa(base, "Ingrese el código de orden o el código de pedido para consultar los datos automáticos.", "warn");
         return;
     }
+
     const numeroConsulta = ++secuenciaDatosAutomaticosActa;
-    pintarDatosAutomaticosActa(Object.assign({}, base, {tipoEjecucion:"",tipoPartida:"",dni:"",cliente:""}), "Buscando información en Mapa Operativo y Producción...", "");
+    const vacioConsulta = Object.assign({}, base, {
+        sede:"",cuadrilla:"",fechaGestion:"",
+        tipoEjecucion:"",tipoPartida:"",dni:"",cliente:""
+    });
+    pintarDatosAutomaticosActa(vacioConsulta, "Buscando información actual en Mapa Operativo y Producción...", "");
+
     try{
         const u = usuarioActualActas();
-        const respuesta = await apiActas({
+        let respuesta = await apiActas({
             accion:"consultarDatosAutomaticosActa",
             usuario:u.usuario,
             codigoOrden:codigoOrden,
-            codigoPedido:codigoPedido
+            codigoPedido:codigoPedido,
+            __forzar:true
         });
         if(numeroConsulta !== secuenciaDatosAutomaticosActa) return;
-        const encontrados = respuesta.automaticos || {};
+
+        let encontrados = Object.assign({}, respuesta.automaticos || {});
+
+        // V561: si la consulta tradicional no trae la identidad completa,
+        // se consulta la fuente viva WIN/MAPA con los mismos códigos.
+        if(
+            !encontrados.encontradoMapa ||
+            !encontrados.cuadrilla ||
+            !encontrados.fechaGestion ||
+            !encontrados.dni ||
+            !encontrados.cliente
+        ){
+            try{
+                const vivo = await consultarFuenteVivaActaV561_(codigoOrden,codigoPedido);
+                if(numeroConsulta !== secuenciaDatosAutomaticosActa) return;
+                if(vivo) encontrados = Object.assign({}, encontrados, vivo);
+            }catch(_){}
+        }
+
         const esRegistroOriginal = codigoPedido === (base.codigoPedidoOriginal || "") && codigoOrden === (base.codigoOrdenOriginal || "");
         const datos = Object.assign({}, base, encontrados);
         if(esRegistroOriginal){
-            ["tipoEjecucion","tipoPartida","dni","cliente"].forEach(k => {
+            ["sede","cuadrilla","fechaGestion","tipoEjecucion","tipoPartida","dni","cliente"].forEach(k => {
                 if(!datos[k] && base[k]) datos[k] = base[k];
             });
         }
+
         window._actaAutomaticosActuales = datos;
+        sincronizarSesionActasV561_(encontrados);
+
         let mensaje = "";
         let clase = "ok";
         if(encontrados.encontradoMapa && encontrados.encontradoProduccion){
-            mensaje = "Datos encontrados en Mapa Operativo y Producción.";
+            mensaje = "Datos actuales encontrados en Mapa Operativo y Producción.";
         }else if(encontrados.encontradoMapa){
-            mensaje = "Mapa Operativo encontrado. El tipo de partida queda pendiente hasta que Producción tenga una coincidencia válida.";
+            mensaje = "Mapa Operativo encontrado. La partida queda pendiente hasta que Producción tenga una coincidencia válida.";
             clase = "warn";
         }else{
-            mensaje = "No se encontró coincidencia todavía. El acta podrá guardarse y los datos podrán completarse posteriormente desde Gestión de Actas.";
+            mensaje = "No se encontró todavía la orden en la fuente actual. Revise los códigos o actualice Mapa Operativo.";
             clase = "warn";
         }
         pintarDatosAutomaticosActa(datos, mensaje, clase);
     }catch(err){
         if(numeroConsulta !== secuenciaDatosAutomaticosActa) return;
-        pintarDatosAutomaticosActa(base, "No se pudo consultar ahora: " + err.message, "warn");
+        try{
+            const vivo = await consultarFuenteVivaActaV561_(codigoOrden,codigoPedido);
+            if(numeroConsulta !== secuenciaDatosAutomaticosActa) return;
+            if(vivo){
+                const datos = Object.assign({}, base, vivo);
+                window._actaAutomaticosActuales = datos;
+                sincronizarSesionActasV561_(vivo);
+                pintarDatosAutomaticosActa(datos, vivo.encontradoProduccion ?
+                    "Datos actuales encontrados en WIN/MAPA y Producción." :
+                    "Orden encontrada en WIN/MAPA. La partida queda pendiente de actualización.",
+                    vivo.encontradoProduccion ? "ok" : "warn");
+                return;
+            }
+        }catch(_){}
+        pintarDatosAutomaticosActa(vacioConsulta, "No se pudo consultar ahora: " + err.message, "warn");
     }
 }
 
@@ -1030,11 +1129,12 @@ async function mostrarFormularioActa(codigoPedidoPrefill){
         mostrarPantalla(`${estiloActas()}<div class="actas-wrap"><div class="actas-msg err">Solo el técnico puede subir actas.</div></div>`);
         return;
     }
-    const fechaAutomatica = actaPrefill?.fechaGestion || fechaHoyLimaActas();
+    // V561: en un acta nueva no se pinta cuadrilla/fecha desde localStorage.
+    // Esos datos deben venir de la orden vigente en Mapa Operativo.
     window._actaAutomaticosBase = {
-        sede:u.sede,
-        cuadrilla:u.cuadrilla,
-        fechaGestion:fechaAutomatica,
+        sede:actaPrefill?.sede || "",
+        cuadrilla:actaPrefill?.cuadrilla || "",
+        fechaGestion:actaPrefill?.fechaGestion || "",
         tipoEjecucion:actaPrefill?.tipoEjecucion || "",
         tipoPartida:actaPrefill?.tipoPartida || "",
         dni:actaPrefill?.dni || "",
