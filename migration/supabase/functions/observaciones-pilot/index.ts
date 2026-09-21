@@ -1,5 +1,5 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-const VERSION="V1-OBSERVACIONES-INTEGRADO-20260920",MODULO="OBSERVACIONES";
+const VERSION="V2-OBSERVACIONES-EVIDENCIAS-20260920",MODULO="OBSERVACIONES";
 const cors={"Access-Control-Allow-Origin":"*","Access-Control-Allow-Headers":"authorization, x-client-info, apikey, content-type","Access-Control-Allow-Methods":"GET, POST, OPTIONS"};
 function json(x:unknown,status=200){return new Response(JSON.stringify(x),{status,headers:{...cors,"Content-Type":"application/json; charset=utf-8"}})}
 function txt(v:unknown){return String(v??"").trim()}
@@ -30,7 +30,7 @@ async function listar(c:any,d:any){
  const sede=norm(d.sede);if(sede&&scopeKind(c.p.alcance_datos)==="ZONA")q=q.eq("sede",sede);
  const buscar=txt(d.buscar);if(buscar)q=q.or(`codigo_ticket.ilike.%${buscar}%,descripcion.ilike.%${buscar}%,cuadrilla.ilike.%${buscar}%`);
  const {data,error}=await q;if(error)throw error;const rows=data||[],ids=rows.map((x:any)=>x.id);
- let ev:any[]=[];if(ids.length){const {data:e,error:ee}=await c.admin.from("observaciones_evidencias_migracion").select("observacion_id,orden,url,drive_file_id").in("observacion_id",ids).order("orden");if(!ee)ev=e||[]}
+ let ev:any[]=[];if(ids.length){const {data:e,error:ee}=await c.admin.from("observaciones_evidencias_migracion").select("observacion_id,orden,url,drive_file_id,storage_backend,storage_ref").in("observacion_id",ids).order("orden");if(!ee)ev=e||[]}
  const lista=rows.map((x:any)=>({...x,evidencias:ev.filter((e:any)=>e.observacion_id===x.id)}));
  const affected=(x:any)=>Number(x.monto||0)*(["SUBSANADO","ANULADO"].includes(norm(x.estado))?.2:1);
  return {ok:true,version:VERSION,lista,resumen:{registros:rows.length,montoTotal:rows.reduce((a:number,x:any)=>a+Number(x.monto||0),0),montoAfectado:rows.reduce((a:number,x:any)=>a+affected(x),0),penalizadas:rows.filter((x:any)=>norm(x.estado)==="PENALIZADO").length,subsanadas:rows.filter((x:any)=>norm(x.estado)==="SUBSANADO").length},fuente:"POSTGRESQL PILOTO"};
@@ -44,7 +44,7 @@ Deno.serve(async(req:Request)=>{
  if(req.method==="OPTIONS")return new Response("ok",{headers:cors});
  try{
   const c=await context(req),d=await input(req),a=txt(d.accion);
-  if(a==="contextoObservaciones")return json({ok:true,version:VERSION,usuario:c.u,permiso:c.p,cuadrillas:await cuadrillas(c),evidencias:{storage:"GOOGLE DRIVE",uploadPiloto:false},fuente:"POSTGRESQL PILOTO"});
+  if(a==="contextoObservaciones")return json({ok:true,version:VERSION,usuario:c.u,permiso:c.p,cuadrillas:await cuadrillas(c),evidencias:{historicos:"GOOGLE DRIVE",nuevos:"SUPABASE STORAGE PRIVADO",maximo:5},fuente:"POSTGRESQL PILOTO"});
   if(a==="listarObservaciones")return json(await listar(c,d));
   if(a==="registrarObservacion"){if(!c.p.registrar)throw Error("Sin permiso para registrar.");const x=await rpc(c.admin,"mv_observaciones_registrar",{p_usuario:c.u.usuario,p_cuadrilla:txt(d.cuadrilla),p_fuente:txt(d.fuente),p_codigo_ticket:txt(d.codigoTicket),p_tipo_observacion:txt(d.tipoObservacion),p_descripcion:txt(d.descripcion),p_estado:txt(d.estado)||"DERIVADO",p_monto:Number(d.monto||0),p_id_solicitud:txt(d.idSolicitud)||null});return json({...x,version:VERSION})}
   if(a==="actualizarEstadoObservacion"){if(!c.p.editar)throw Error("Sin permiso para editar.");const x=await rpc(c.admin,"mv_observaciones_actualizar_estado",{p_usuario:c.u.usuario,p_observacion_id:txt(d.id),p_estado:txt(d.estado),p_monto:d.monto===""||d.monto==null?null:Number(d.monto)});return json({...x,version:VERSION})}
