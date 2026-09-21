@@ -1,6 +1,6 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
-const VERSION="V2-ACTAS-STORAGE-20260920";
+const VERSION="V3-ACTAS-LISTADO-COMPLETO-20260921";
 const MODULO="ACTAS ESCANEADAS";
 const cors={
   "Access-Control-Allow-Origin":"*",
@@ -65,8 +65,8 @@ function applyScope(q:any,ctx:any){
 }
 async function listar(ctx:any,d:any){
   let q=ctx.admin.from("actas_migracion")
-    .select("id,legacy_id,registrado_at,sede,cuadrilla,supervisor,tecnico,fecha_gestion,tipo_ejecucion,tipo_partida,codigo_orden,codigo_pedido,numero_acta,dni,cliente,nombre_archivo,link_acta,drive_file_id,archivo_storage_backend,archivo_storage_ref,estado,resultado_almacen,motivo_almacen,validado_almacen_por,validado_almacen_at,resultado_jefatura,motivo_jefatura,validado_jefatura_por,validado_jefatura_at,version,estado_entrega_fisica,confirmado_fisico_por,confirmado_fisico_at,origen_registro,motivo_acta_faltante,estado_fecha_carpeta,fecha_limite_verificacion,fecha_carpeta,fecha_confirmada_por,perfil_confirmacion_fecha,origen_fecha_carpeta,updated_at")
-    .order("registrado_at",{ascending:false}).limit(500);
+    .select("id,legacy_id,registrado_at,sede,cuadrilla,supervisor,tecnico,fecha_gestion,tipo_ejecucion,tipo_partida,codigo_orden,codigo_pedido,numero_acta,dni,cliente,nombre_archivo,link_acta,drive_file_id,archivo_storage_backend,archivo_storage_ref,estado,resultado_almacen,motivo_almacen,validado_almacen_por,validado_almacen_at,resultado_jefatura,motivo_jefatura,validado_jefatura_por,validado_jefatura_at,version,estado_entrega_fisica,confirmado_fisico_por,confirmado_fisico_at,origen_registro,motivo_acta_faltante,estado_fecha_carpeta,fecha_limite_verificacion,fecha_carpeta,fecha_confirmada_por,perfil_confirmacion_fecha,origen_fecha_carpeta,updated_at",{count:"exact"})
+    .order("registrado_at",{ascending:false}).limit(5000);
   q=applyScope(q,ctx);
   const periodo=txt(d.periodo);
   if(/^20\d{2}-\d{2}$/.test(periodo)){
@@ -76,9 +76,9 @@ async function listar(ctx:any,d:any){
   const sede=norm(d.sede);if(sede&&scopeKind(ctx.p.alcance_datos)==="ZONA")q=q.eq("sede",sede);
   const codigo=txt(d.codigo).replace(/[^0-9A-Za-z-]/g,"");
   if(codigo)q=q.or(`codigo_orden.ilike.%${codigo}%,codigo_pedido.ilike.%${codigo}%,numero_acta.ilike.%${codigo}%,dni.ilike.%${codigo}%`);
-  const {data,error}=await q;if(error)throw error;
+  const {data,error,count}=await q;if(error)throw error;
   const rows=data||[];
-  return {ok:true,version:VERSION,registros:rows.length,lista:rows,
+  return {ok:true,version:VERSION,registros:rows.length,totalCoincidencias:count??rows.length,truncado:(count??rows.length)>rows.length,limiteConsulta:5000,lista:rows,
     resumen:{
       pendientes:rows.filter((x:any)=>norm(x.estado)==="PENDIENTE").length,
       finalizadas:rows.filter((x:any)=>norm(x.estado)==="FINALIZADO").length,
