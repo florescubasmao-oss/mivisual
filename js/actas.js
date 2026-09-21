@@ -976,10 +976,10 @@ function claveCodigoActaV561_(valor){
 }
 
 function sincronizarSesionActasV561_(automaticos){
-    const u = usuarioActualActas();
-    if(u.perfil !== "TECNICO" || !automaticos || automaticos.encontradoMapa !== true) return;
-    if(automaticos.cuadrilla) localStorage.setItem("cuadrilla", automaticos.cuadrilla);
-    if(automaticos.sede) localStorage.setItem("sede", normalizarActas(automaticos.sede));
+    // V561.1: una orden histórica o una atención reasignada NO debe modificar
+    // la sesión del técnico. La sesión se gobierna por USUARIOS/login.
+    // Los datos de la orden solo se pintan dentro de Gestión de Actas.
+    return automaticos || null;
 }
 
 async function consultarFuenteVivaActaV561_(codigoOrden,codigoPedido){
