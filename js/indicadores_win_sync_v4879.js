@@ -113,7 +113,7 @@
     }finally{if(t)clearTimeout(t);}
   }
 
-  async function apiPost(payload,tiempoMs=180000){
+  async function apiPost(payload,tiempoMs=320000){
     if(!API)throw new Error("No se encontró la URL de MI VISUAL.");
     const c=typeof AbortController==="function"?new AbortController():null;
     const t=c?setTimeout(()=>c.abort(),tiempoMs):null;
@@ -196,8 +196,15 @@
   window.mv4879InvalidarCachesCliente=invalidarCachesCliente;
 
   async function confirmarPublicacionIncierta(periodo,inicioMs){
-    for(let i=0;i<4;i++){
-      if(i)await dormir(i===1?1800:2600);
+    /*
+      V555: una desconexion/AbortError del navegador NO implica que Apps Script
+      haya detenido el publicador. Durante hasta 150 s se consulta solo el sello
+      V512. Nunca vuelve a ejecutar la publicacion desde este bucle.
+    */
+    const limite=Date.now()+150000;
+    let intento=0;
+    while(Date.now()<limite){
+      if(intento++)await dormir(5000);
       const s=await selloIndicadores(periodo);
       const ms=fechaMs(s.iso);
       if(ms && ms>=inicioMs-5000){
@@ -207,7 +214,7 @@
           fechaPublicacionTexto:s.visible,
           actualizadoPor:s.usuario,
           publicacionConfirmadaPorSello:true,
-          sincronizador:"V543"
+          sincronizador:"V555"
         };
       }
     }
@@ -230,7 +237,7 @@
           usuario:usuario(),
           periodo:p,
           confirmacion:CONFIRMACION
-        },180000);
+        },320000);
       }catch(error){
         const confirmado=await confirmarPublicacionIncierta(p,inicio);
         if(!confirmado)throw error;
