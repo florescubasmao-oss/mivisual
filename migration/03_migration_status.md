@@ -1,3 +1,17 @@
+# Checkpoint Administración completa — 20/09/2026
+
+- Administración deja de figurar como PARCIAL en el shell.
+- Funciones integradas: Base Operativa, VTR/GAR, Catálogo Partidas, Usuarios/Auth, Ranking y Permisos.
+- administracion-control-pilot V1 ACTIVE/JWT.
+- 80 usuarios / 79 activos / 2 Auth vinculados.
+- 297 permisos.
+- 33 partidas.
+- Ranking septiembre conserva 50/20/5/5/5/15 y 33 cuadrillas en cache.
+- Edición auditada y protección histórica/autoprotección validadas.
+- QA con ROLLBACK: sin cambios de prueba persistentes.
+- Cutover sigue bloqueado por resync vivo, ampliación Auth, publicación shell y E2E.
+- main/Apps Script/Sheets/Drive productivos sin cambios.
+
 # Checkpoint Mapa + CTO seguro — 20/09/2026
 
 - legacy-sync-pilot V4 ACTIVE/JWT.
