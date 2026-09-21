@@ -1,6 +1,6 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
-const VERSION="V2-MI-VISUAL-SHELL-20260920";
+const VERSION="V3-MI-VISUAL-SHELL-20260920";
 const cors={
   "Access-Control-Allow-Origin":"*",
   "Access-Control-Allow-Headers":"authorization, x-client-info, apikey, content-type",
@@ -31,7 +31,7 @@ Deno.serve(async(req:Request)=>{
     if(ue||!ud?.user)throw new Error("Sesión no válida.");
 
     const {data:u,error}=await admin.from("app_users")
-      .select("usuario,nombres_apellidos,perfil,sede,cuadrilla,estado,supervisor,auth_user_id")
+      .select("usuario,nombres_apellidos,perfil,sede,cuadrilla,estado,usuario_supervisor,auth_user_id")
       .eq("auth_user_id",ud.user.id).maybeSingle();
     if(error||!u)throw new Error("El usuario Auth no está vinculado a MI VISUAL.");
     if(norm(u.estado)!=="ACTIVO")throw new Error("Usuario MI VISUAL inactivo.");
@@ -67,7 +67,7 @@ Deno.serve(async(req:Request)=>{
         perfil:norm(u.perfil),
         sede:txt(u.sede),
         cuadrilla:txt(u.cuadrilla),
-        supervisor:txt(u.supervisor)
+        supervisor:txt(u.usuario_supervisor)
       },
       permisos,
       arquitectura:"AUTH_EDGE_POSTGRESQL",
