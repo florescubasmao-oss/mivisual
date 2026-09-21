@@ -1,5 +1,5 @@
 const SLUG="mi-visual-pilot-web";
-const CDN="https://cdn.jsdelivr.net/gh/florescubasmao-oss/mivisual@568b91b2f2525afa2e37acef6a41f3a8d9af71d4/migration/pilot/";
+const HOST="https://raw.githack.com/florescubasmao-oss/mivisual/migracion-supabase/migration/pilot/";
 
 Deno.serve((req:Request)=>{
   try{
@@ -10,7 +10,7 @@ Deno.serve((req:Request)=>{
     rel=decodeURIComponent(rel||"/").replace(/^\/+/, "");
     if(!rel||rel.endsWith("/"))rel+="index.html";
     if(rel.includes("..")||rel.includes("\\"))rel="index.html";
-    const target=new URL(rel,CDN);
+    const target=new URL(rel,HOST);
     target.search=url.search;
     return new Response(null,{
       status:302,
@@ -21,6 +21,6 @@ Deno.serve((req:Request)=>{
       }
     });
   }catch(_){
-    return new Response(null,{status:302,headers:{location:CDN+"index.html","cache-control":"no-store"}});
+    return new Response(null,{status:302,headers:{location:HOST+"index.html","cache-control":"no-store"}});
   }
 });
