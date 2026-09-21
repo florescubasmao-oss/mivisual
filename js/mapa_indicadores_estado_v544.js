@@ -41,7 +41,7 @@
   }
   function esc(v){return txt(v).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"}[c]));}
 
-  async function get(payload,timeout=18000){
+  async function get(payload,timeout=10000){
     if(!API)throw new Error("No se encontró la API de MI VISUAL.");
     const url=new URL(API);
     Object.entries(payload||{}).forEach(([k,v])=>{
@@ -135,7 +135,10 @@
         pintar({tipo:"ok",periodo:p,fecha:indVisible||mapaVisible});
       }
     }catch(e){
-      if(forzar)pintar({tipo:"error",mensaje:"No se pudo verificar el estado ahora. Puede reintentar sin volver a cargar el Excel."});
+      pintar({
+        tipo:"error",
+        mensaje:"La consulta de estado está demorando. No vuelva a cargar el Excel; use el botón para sincronizar los indicadores pendientes."
+      });
     }finally{revisando=false;}
   }
 
