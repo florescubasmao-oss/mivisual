@@ -1,5 +1,5 @@
 /* MI VISUAL V550 - MAPA: ORDEN DE WRAPPERS + RESILIENCIA CENTRAL V528 */
-const MV339_CACHE = "mivisual-v555-publicacion-unica-20260921-1";
+const MV339_CACHE = "mivisual-v561-actas-fuente-viva-20260921-1";
 const MV517C19_BRIDGE = "./js/vtr_gar_ux_v517b.js?v=GARVTR-EXCEL-20260914-1";
 
 /*
@@ -36,7 +36,7 @@ const MV339_CORE = [
   "./js/login.js?v=V339-CACHE",
   "./js/permisos.js?v=V339-CORE",
   "./js/app.js?v=V408-RESTAURA-V377",
-  "./js/modulos_loader.js?v=V520H-DASHBOARD-SINCRONIZADO-20260902-3",
+  "./js/modulos_loader.js?v=V561-ACTAS-FUENTE-VIVA-20260921-1",
   "./js/gestion_win_v505_loader.js?v=V555-PUBLICACION-UNICA-20260921-1",
   "./js/vtr_gar_validacion_restaurar_v514.js?v=V514A-TABS-UNICA-20260828",
   "./js/vtr_gar_v515.js?v=V515-VTRGAR-BONO-DESEMPENO-20260828",
@@ -275,7 +275,9 @@ self.addEventListener("fetch", event => {
     url.pathname.endsWith("/js/indicadores_win_sync_v4879.js") ||
     url.pathname.endsWith("/js/mapa_indicadores_estado_v544.js") ||
     url.pathname.endsWith("/js/mapa_indicadores_watchdog_v545.js") ||
-    url.pathname.endsWith("/js/actas_api_resiliente_v392.js");
+    url.pathname.endsWith("/js/actas_api_resiliente_v392.js") ||
+    url.pathname.endsWith("/js/actas.js") ||
+    url.pathname.endsWith("/js/actas_tecnico_resiliente_v543.js");
 
   if(rutaCritica){
     event.respondWith(
