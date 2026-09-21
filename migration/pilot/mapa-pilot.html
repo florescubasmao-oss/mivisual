@@ -6,6 +6,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>MI VISUAL · Piloto Supabase</title>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <style>
 :root{color-scheme:light}
 *{box-sizing:border-box}
@@ -60,8 +61,23 @@ th,td{padding:7px;border-bottom:1px solid #e2e8f0;text-align:left;vertical-align
 </div>
 </div>
 
+
+<div class="card" id="importCard" style="display:none">
+<h2>2. Ingresar datos · Mapa Operativo</h2>
+<p class="muted"><b>Fuente operativa principal.</b> Cargue aquí el Excel de WIN. La información se registra en PostgreSQL y alimenta la base del Mapa Operativo y sus consultas relacionadas.</p>
+<div class="grid">
+  <input id="mapFile" type="file" accept=".xlsx,.xls,.csv">
+  <div><span class="badge">Acumulativo</span><span class="badge">Sin duplicar ORDEN_ID</span><span class="badge">Históricos protegidos</span></div>
+</div>
+<div class="row" style="margin-top:12px">
+  <button class="sec" onclick="leerArchivoMapa()">Leer archivo</button>
+  <button id="mapImportBtn" onclick="registrarArchivoMapa()" disabled>Registrar información</button>
+</div>
+<div id="mapImportMsg" style="margin-top:10px" class="muted">Seleccione el mismo archivo operativo que utiliza actualmente en Mapa Operativo.</div>
+</div>
+
 <div class="card">
-<h2>2. Mapa Operativo · validación funcional</h2>
+<h2>3. Mapa Operativo · consulta PostgreSQL</h2>
 <div class="grid">
   <select id="periodo"><option value="2026-09">2026-09</option></select>
   <select id="sede"><option value="">Todas las sedes</option><option>CHICLAYO</option><option>PIURA</option><option>TRUJILLO</option></select>
@@ -98,6 +114,7 @@ const API=PROJECT_URL+"/functions/v1/mapa-operativo-pilot";
 const AUTH_API=PROJECT_URL+"/functions/v1/auth-admin-pilot";
 const sb=supabase.createClient(PROJECT_URL,PUBLISHABLE_KEY);
 let lastRows=[];
+let mapaImportacion=[];
 
 function msg(t,ok=true){const e=document.getElementById("authmsg");e.className=ok?"ok":"err";e.textContent=t}
 function state(t,ok=true){const e=document.getElementById("estado");e.className=ok?"ok":"err";e.textContent=t}
@@ -108,6 +125,118 @@ function optionFill(id,values,emptyLabel){
   el.innerHTML="";
   if(emptyLabel){const o=document.createElement("option");o.value="";o.textContent=emptyLabel;el.appendChild(o)}
   (values||[]).forEach(v=>{const o=document.createElement("option");o.value=String(v);o.textContent=String(v);el.appendChild(o)});
+}
+
+
+function mapaCab(v){return String(v??"").trim().toUpperCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"").replace(/[^A-Z0-9]/g,"")}
+function mapaFecha(v){
+  if(v instanceof Date&&!isNaN(v))return v;
+  if(typeof v==="number"&&window.XLSX){const p=XLSX.SSF.parse_date_code(v);if(p)return new Date(p.y,p.m-1,p.d,p.H||0,p.M||0,Math.floor(p.S||0))}
+  const s=String(v??"").trim();if(!s)return null;
+  let m=s.match(/^(\d{1,2})[\/\-.](\d{1,2})[\/\-.](20\d{2})(?:\s+(\d{1,2}):(\d{2})(?::(\d{2}))?)?/);
+  if(m)return new Date(Number(m[3]),Number(m[2])-1,Number(m[1]),Number(m[4]||0),Number(m[5]||0),Number(m[6]||0));
+  m=s.match(/^(20\d{2})-(\d{1,2})-(\d{1,2})(?:[ T](\d{1,2}):(\d{2})(?::(\d{2}))?)?/);
+  if(m)return new Date(Number(m[1]),Number(m[2])-1,Number(m[3]),Number(m[4]||0),Number(m[5]||0),Number(m[6]||0));
+  const d=new Date(s);return isNaN(d)?null:d;
+}
+function mapaYmd(v){const d=mapaFecha(v);return d?String(d.getFullYear()).padStart(4,"0")+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0"):""}
+function mapaHms(v){const d=mapaFecha(v);return d?String(d.getHours()).padStart(2,"0")+":"+String(d.getMinutes()).padStart(2,"0")+":"+String(d.getSeconds()).padStart(2,"0"):""}
+function mapaTs(v){const d=mapaFecha(v);return d?mapaYmd(d)+"T"+mapaHms(d):""}
+function mapaVal(row,map,...names){for(const n of names){const i=map[mapaCab(n)];if(i!==undefined&&row[i]!==undefined&&row[i]!==null)return row[i]}return ""}
+function mapaCoord(v){
+  const m=String(v??"").replace(/[()]/g,"").replace(/;/g,",").match(/(-?\d+(?:\.\d+)?)\s*,\s*(-?\d+(?:\.\d+)?)/);
+  if(!m)return [null,null];const lat=Number(m[1]),lon=Number(m[2]);
+  return Number.isFinite(lat)&&Number.isFinite(lon)?[lat,lon]:[null,null];
+}
+function mapaCoordText(v){const [a,b]=mapaCoord(v);return Number.isFinite(a)&&Number.isFinite(b)?a+","+b:""}
+function mapaCtoTexto(row,map){
+  const gi=map.GEOREFERENCIA;
+  if(gi!==undefined&&row[gi+1]!==undefined)return String(row[gi+1]??"").trim();
+  return String(mapaVal(row,map,"Datos CTO","Información CTO","Informacion CTO","Detalle CTO")??"").trim();
+}
+function mapaExtraerCto(texto){
+  const campos={};
+  String(texto??"").split(";").forEach(seg=>{
+    const p=seg.split("/");if(p.length<3)return;
+    const k=mapaCab(p.shift());p.shift();const value=p.join("/").trim();
+    if(k&&value&&!campos[k])campos[k]=value;
+  });
+  return {
+    cto1:String(campos.CTO1||"").trim(),coordenadaCto1:mapaCoordText(campos.COORDENADACTO1),
+    cto2:String(campos.CTO2||"").trim(),coordenadaCto2:mapaCoordText(campos.COORDENADACTO2),
+    cto3:String(campos.CTO3||"").trim(),coordenadaCto3:mapaCoordText(campos.COORDENADACTO3),
+    cto:String(campos.CTO||"").trim(),puerto:String(campos.PUERTO||"").trim()
+  };
+}
+async function leerArchivoMapa(){
+  const msg=document.getElementById("mapImportMsg"),btn=document.getElementById("mapImportBtn");
+  try{
+    const f=document.getElementById("mapFile")?.files?.[0];
+    if(!f)throw new Error("Seleccione el archivo Excel de WIN.");
+    msg.className="muted";msg.textContent="Leyendo archivo...";
+    const wb=XLSX.read(await f.arrayBuffer(),{type:"array",cellDates:true});
+    const ws=wb.Sheets[wb.SheetNames[0]];
+    const rows=XLSX.utils.sheet_to_json(ws,{header:1,defval:"",raw:true,blankrows:false});
+    if(rows.length<2)throw new Error("El archivo no contiene registros.");
+    let hi=-1;
+    for(let i=0;i<Math.min(rows.length,30);i++){
+      if((rows[i]||[]).map(mapaCab).includes("ORDENID")){hi=i;break}
+    }
+    if(hi<0)throw new Error("No se encontró la fila de encabezados con OrdenId.");
+    const map={};(rows[hi]||[]).forEach((x,i)=>{const k=mapaCab(x);if(k)map[k]=i});
+    const out=[];
+    rows.slice(hi+1).forEach(r=>{
+      const orden=String(mapaVal(r,map,"OrdenId","ORDEN_ID")??"").trim();if(!orden)return;
+      const fs=mapaVal(r,map,"F.Soli","FSOLI","FECHA SOLICITUD");
+      let dir=String(mapaVal(r,map,"Direccion")??"").trim(),dir2=String(mapaVal(r,map,"Direccion1")??"").trim();
+      if(dir&&dir2&&mapaCab(dir)===mapaCab(dir2))dir2="";
+      if(!dir&&dir2){dir=dir2;dir2=""}
+      const [lat,lon]=mapaCoord(mapaVal(r,map,"Georeferencia","GEOREFERENCIA"));
+      out.push(Object.assign({
+        ordenId:orden,tipoTrabajo:String(mapaVal(r,map,"TipoTraba","TIPO_TRABAJO")??"").trim(),
+        fechaSolicitud:mapaYmd(fs),horaSolicitud:mapaHms(fs),
+        cliente:String(mapaVal(r,map,"Cliente")??"").trim(),tipo:String(mapaVal(r,map,"Tipo")??"").trim(),
+        productoOrigen:String(mapaVal(r,map,"Producto")??"").trim(),cuadrilla:String(mapaVal(r,map,"Cuadrilla")??"").trim(),
+        estado:String(mapaVal(r,map,"Estado")??"").trim(),direccion:dir,direccionAdicional:dir2,
+        fechaUltimoEstado:mapaTs(mapaVal(r,map,"FechaUltimoEstado","Fecha Ultimo Estado")),
+        productoServicio:String(mapaVal(r,map,"IdenServi")??"").trim(),region:String(mapaVal(r,map,"Region")??"").trim(),
+        codigoCliente:String(mapaVal(r,map,"CodiSeguiClien")??"").trim(),codigoSeguimiento:String(mapaVal(r,map,"CodiSegui")??"").trim(),
+        numeroDocumento:String(mapaVal(r,map,"Número Documento","Numero Documento")??"").trim(),
+        telefonoMovil:String(mapaVal(r,map,"TeleMovilNume")??"").trim(),telefonoFijo:String(mapaVal(r,map,"TeleFijoNume")??"").trim(),
+        fechaInicioVisita:mapaTs(mapaVal(r,map,"FechaIniVisi")),fechaFinVisita:mapaTs(mapaVal(r,map,"FechaFinVisi")),
+        motivoCancelacion:String(mapaVal(r,map,"Motivo Cancelación","Motivo Cancelacion")??"").trim(),
+        motivoFinalizacion:String(mapaVal(r,map,"Motivo Finalización","Motivo Finalizacion")??"").trim(),
+        motivoAnulacion:String(mapaVal(r,map,"Motivo Anulación","Motivo Anulacion")??"").trim(),
+        latitud:Number.isFinite(lat)?lat:"",longitud:Number.isFinite(lon)?lon:"",
+        detalle:String(mapaVal(r,map,"Detalle","Motivo Regestión","Motivo Regestion")??"").trim()
+      },mapaExtraerCto(mapaCtoTexto(r,map))));
+    });
+    if(!out.length)throw new Error("No se encontraron filas con OrdenId.");
+    mapaImportacion=out;btn.disabled=false;
+    const geo=out.filter(x=>Number.isFinite(Number(x.latitud))&&Number.isFinite(Number(x.longitud))).length;
+    const cto=out.filter(x=>x.cto||x.cto1||x.cto2||x.cto3).length;
+    msg.className="ok";msg.textContent="Archivo leído: "+out.length+" órdenes · "+geo+" con georreferencia · "+cto+" con datos CTO. Aún no se ha escrito nada.";
+  }catch(e){
+    mapaImportacion=[];btn.disabled=true;msg.className="err";msg.textContent=e.message;
+  }
+}
+async function registrarArchivoMapa(){
+  const msg=document.getElementById("mapImportMsg"),btn=document.getElementById("mapImportBtn");
+  try{
+    if(!mapaImportacion.length)throw new Error("Primero lea un archivo válido.");
+    if(!confirm("Se registrarán "+mapaImportacion.length+" órdenes en PostgreSQL. Los períodos protegidos se omitirán y no se borrará el historial existente. ¿Continuar?"))return;
+    btn.disabled=true;msg.className="muted";msg.textContent="Registrando información en PostgreSQL...";
+    const d=await apiPost({accion:"importarMapaOperativo",registros:mapaImportacion});
+    const c=d.catalogoCto||{};
+    msg.className="ok";
+    msg.textContent="Registro confirmado: "+Number(d.nuevos||0)+" nuevos, "+Number(d.actualizados||0)+" actualizados, "+Number(d.repetidosCarga||0)+" repetidos consolidados, "+Number(d.protegidosOmitidos||0)+" protegidos omitidos y "+Number(d.retrocesosEstadoEvitados||0)+" retrocesos de estado evitados. CTO: "+Number(c.nuevos||0)+" nuevos, "+Number(c.actualizados||0)+" actualizados.";
+    mapaImportacion=[];
+    document.getElementById("mapFile").value="";
+    await catalogos();
+    dbg(d);
+  }catch(e){
+    btn.disabled=false;msg.className="err";msg.textContent=e.message;dbg(String(e));
+  }
 }
 
 async function login(){
@@ -275,6 +404,7 @@ async function contexto(){
       '<span class="badge">Alcance: '+esc(p.alcanceDatos)+'</span>'+
       '<span class="badge">VER: '+(p.ver?"Sí":"No")+'</span>';
     await validarAdminAuth();
+    const importCard=document.getElementById("importCard");if(importCard)importCard.style.display=d.puedeImportar?"block":"none";
     state("Perfil, permisos y alcance validados.");
     dbg(d);
     return d;
