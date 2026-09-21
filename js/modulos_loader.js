@@ -91,7 +91,7 @@
     },
     actas: {
       archivos: [
-        `./js/actas.js?v=V561-ACTAS-FUENTE-VIVA-20260921-1`,
+        `./js/actas.js?v=V5611-ACTAS-SESION-SEGURA-20260921-2`,
         `./js/actas_pdf_movil_v373.js?v=V408-RESTAURA-V403`,
         `./js/actas_correccion_v387.js?v=V408-RESTAURA-V403`,
         `./js/actas_api_resiliente_v392.js?v=ACTAS-RECUPERACION-REV1-20260911`,
