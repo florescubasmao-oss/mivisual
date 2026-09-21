@@ -1,6 +1,6 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
-const VERSION = "V2-EVIDENCIAS-PILOT-20260920";
+const VERSION = "V3-EVIDENCIAS-ACTAS-20260920";
 const BUCKET = "mi-visual-evidencias";
 const TZ = "America/Lima";
 const MAX_BYTES = 10 * 1024 * 1024;
@@ -48,6 +48,9 @@ function moduleInfo(v: unknown) {
   }
   if (n === "CHECKLIST ALMACEN") {
     return { module: "CHECKLIST ALMACEN", slug: "checklist-almacen" };
+  }
+  if (n === "ACTAS ESCANEADAS" || n === "ACTAS") {
+    return { module: "ACTAS ESCANEADAS", slug: "actas" };
   }
   throw new Error("Módulo de evidencia no válido.");
 }
@@ -146,6 +149,15 @@ async function assertUploadScope(ctx:any, data:any) {
     return { cuadrilla:dc.cuadrilla, sede:dc.sede };
   }
 
+  if (ctx.info.slug === "actas") {
+    if (perfil !== "TECNICO") throw new Error("Solo Técnico puede subir PDF de Actas.");
+    if (!ctx.perm.registrar) throw new Error("Sin permiso para registrar Actas.");
+    cuadrilla = txt(ctx.appUser.cuadrilla);
+    if (!cuadrilla) throw new Error("Técnico sin cuadrilla configurada.");
+    const dc = await cuadrillaSede(ctx.admin, cuadrilla);
+    return { cuadrilla:dc.cuadrilla, sede:dc.sede };
+  }
+
   if (!["TECNICO","SUPERVISOR"].includes(perfil)) {
     throw new Error("Solo Técnico o Supervisor pueden subir evidencias de Checklist.");
   }
@@ -169,6 +181,19 @@ function assertReadScope(ctx:any, path:string) {
     }
     if (!["SUPERVISOR","JEFATURA","ADMIN","ADMINISTRADOR","GERENCIA LIMA","OPERACIONES LIMA"].includes(perfil)) {
       throw new Error("Sin acceso a evidencias de Actividad en Campo.");
+    }
+    return;
+  }
+
+  if (ctx.info.slug === "actas") {
+    if (perfil === "TECNICO" && cuadrilla !== safePart(ctx.appUser.cuadrilla)) {
+      throw new Error("Sin acceso a este PDF.");
+    }
+    if (["SUPERVISOR","ALMACEN"].includes(perfil) && sede !== safePart(ctx.appUser.sede)) {
+      throw new Error("Sin acceso a este PDF.");
+    }
+    if (!["TECNICO","SUPERVISOR","ALMACEN","JEFATURA ALMACEN","JEFATURA","ADMIN","ADMINISTRADOR","GERENCIA LIMA"].includes(perfil)) {
+      throw new Error("Sin acceso a PDF de Actas.");
     }
     return;
   }
