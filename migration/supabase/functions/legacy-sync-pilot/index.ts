@@ -1,6 +1,6 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
-const VERSION="V6-LEGACY-LIVE-MAPA-20260920";
+const VERSION="V7-LEGACY-LIVE-ACTAS-20260920";
 const ALLOWED=new Set([
   "MAPA_OPERATIVO","CATALOGO_CTO","ACTAS","VALIDACION_TECNICA",
   "PROGRAMACION_DESCANSOS","OBSERVACIONES","USUARIOS","PERMISOS",
@@ -119,6 +119,105 @@ function liveMapaRow(x:any,sourceAt:string,actor:string,isNew:boolean,sourceRow:
   };
 }
 
+function limaDate(v:unknown){
+  const s=txt(v);if(!s)return "";
+  let m=s.match(/^(\d{1,2})[\/\-.](\d{1,2})[\/\-.](20\d{2})/);
+  if(m)return m[3]+"-"+m[2].padStart(2,"0")+"-"+m[1].padStart(2,"0");
+  m=s.match(/^(20\d{2})-(\d{1,2})-(\d{1,2})(?!T)/);
+  if(m)return m[1]+"-"+m[2].padStart(2,"0")+"-"+m[3].padStart(2,"0");
+  const d=new Date(s);
+  if(!Number.isFinite(d.getTime()))return "";
+  const parts=new Intl.DateTimeFormat("en-CA",{timeZone:"America/Lima",year:"numeric",month:"2-digit",day:"2-digit"}).formatToParts(d);
+  const p:any={};for(const x of parts)p[x.type]=x.value;
+  return p.year+"-"+p.month+"-"+p.day;
+}
+function limaTime(v:unknown){
+  const s=txt(v);if(!s)return "";
+  let m=s.match(/^(\d{1,2}):(\d{2})(?::(\d{2}))?$/);
+  if(m)return m[1].padStart(2,"0")+":"+m[2]+":"+(m[3]||"00");
+  const d=new Date(s);
+  if(!Number.isFinite(d.getTime()))return "";
+  const parts=new Intl.DateTimeFormat("en-GB",{timeZone:"America/Lima",hour:"2-digit",minute:"2-digit",second:"2-digit",hour12:false}).formatToParts(d);
+  const p:any={};for(const x of parts)p[x.type]=x.value;
+  return p.hour+":"+p.minute+":"+p.second;
+}
+function limaTs(dateVal:unknown,timeVal?:unknown){
+  const d=limaDate(dateVal);if(!d)return "";
+  const t=limaTime(timeVal)||limaTime(dateVal)||"00:00:00";
+  return d+"T"+t+"-05:00";
+}
+function liveActaRow(x:any,sourceRow:number){
+  const id=txt(x?.id);if(!id)throw new Error("Acta legacy sin ID.");
+  return {
+    sourceKey:id,sourceRow,
+    rowData:{
+      id,
+      registrado_at:limaTs(x.fechaRegistro,x.horaRegistro),
+      sede:txt(x.sede),cuadrilla:txt(x.cuadrilla),supervisor:txt(x.supervisor),tecnico:txt(x.tecnico),
+      fecha_gestion:limaDate(x.fechaGestion),
+      tipo_ejecucion:txt(x.tipoEjecucion),tipo_partida:txt(x.tipoPartida),
+      codigo_orden:txt(x.codigoOrden),codigo_pedido:txt(x.codigoPedido),numero_acta:txt(x.numeroActa),
+      dni:txt(x.dni),cliente:txt(x.cliente),nombre_archivo:txt(x.nombreArchivo),link_acta:txt(x.linkActa),
+      estado:txt(x.estado),
+      resultado_almacen:txt(x.resultadoAlmacen),motivo_almacen:txt(x.motivoAlmacen),validado_almacen_por:txt(x.validadoAlmacenPor),
+      validado_almacen_at:limaTs(x.fechaValidacionAlmacen,x.horaValidacionAlmacen),
+      resultado_jefatura:txt(x.resultadoJefatura),motivo_jefatura:txt(x.motivoJefatura),validado_jefatura_por:txt(x.validadoJefaturaPor),
+      validado_jefatura_at:limaTs(x.fechaValidacionJefatura,x.horaValidacionJefatura),
+      version:Math.max(0,Number(x.version)||0),
+      estado_entrega_fisica:txt(x.estadoEntregaFisica)||"PENDIENTE",
+      confirmado_fisico_por:txt(x.confirmadoFisicoPor),perfil_confirmacion_fisica:txt(x.perfilConfirmacionFisica),
+      confirmado_fisico_at:limaTs(x.fechaConfirmacionFisica,x.horaConfirmacionFisica),
+      motivo_reversion_fisica:txt(x.motivoReversionFisica),
+      origen_registro:txt(x.origenRegistro)||"TECNICO",
+      motivo_acta_faltante:txt(x.motivoActaFaltante),registrado_faltante_por:txt(x.registradoFaltantePor),
+      registrado_faltante_at:limaTs(x.fechaRegistroFaltante,x.horaRegistroFaltante),
+      estado_fecha_carpeta:txt(x.estadoFechaCarpeta),
+      fecha_limite_verificacion:limaTs(x.fechaLimiteVerificacion),
+      ultimo_intento_fecha:limaTs(x.ultimoIntentoFecha),
+      intentos_fecha:Math.max(0,Number(x.intentosFecha)||0),
+      fecha_carpeta:limaDate(x.fechaCarpeta),
+      fecha_confirmada_por:txt(x.fechaConfirmadaPor),perfil_confirmacion_fecha:txt(x.perfilConfirmacionFecha),
+      origen_fecha_carpeta:txt(x.origenFechaCarpeta)
+    }
+  };
+}
+async function createValidatedRun(admin:any,u:any,modulo:string,sourceName:string,rows:any[],notes:string){
+  const {data:run,error:re}=await admin.from("migration_sync_runs").insert({
+    modulo,source_name:sourceName,source_snapshot_at:new Date().toISOString(),
+    source_rows:rows.length,status:"STAGING",created_by:u.usuario,notes
+  }).select("id").single();
+  if(re)throw re;
+  try{
+    for(let i=0;i<rows.length;i+=500){
+      const prepared=[];
+      for(const item of rows.slice(i,i+500)){
+        prepared.push({
+          run_id:run.id,source_key:item.sourceKey,source_row:item.sourceRow,
+          row_hash:await hashRow(item.rowData),row_data:item.rowData
+        });
+      }
+      if(prepared.length){
+        const {error}=await admin.from("migration_sync_staging").insert(prepared);
+        if(error)throw error;
+      }
+    }
+    const {count,error:ce}=await admin.from("migration_sync_staging").select("*",{count:"exact",head:true}).eq("run_id",run.id);
+    if(ce)throw ce;
+    const staged=count||0;
+    if(staged!==rows.length)throw new Error("Conteo staging no coincide con la captura.");
+    const {error:ue}=await admin.from("migration_sync_runs").update({
+      staged_rows:staged,status:"VALIDATED",validated_at:new Date().toISOString()
+    }).eq("id",run.id);
+    if(ue)throw ue;
+    return run.id;
+  }catch(e){
+    await admin.from("migration_sync_runs").update({
+      status:"CANCELLED",notes:notes+" | Captura cancelada: "+(e instanceof Error?e.message:String(e))
+    }).eq("id",run.id);
+    throw e;
+  }
+}
+
 Deno.serve(async(req:Request)=>{
   if(req.method==="OPTIONS")return new Response("ok",{headers:cors});
   try{
@@ -196,6 +295,34 @@ Deno.serve(async(req:Request)=>{
         await admin.from("migration_sync_runs").update({status:"CANCELLED",notes:"Captura viva cancelada por error: "+(e instanceof Error?e.message:String(e))}).eq("id",run.id);
         throw e;
       }
+    }
+
+    if(accion==="capturarActasVivas"){
+      const legacy=await legacyGet({accion:"listarActasEscaneadas",usuario:u.usuario});
+      const actas=Array.isArray(legacy.actas)?legacy.actas:[];
+      if(Number(legacy.registros||actas.length)!==actas.length)throw new Error("Conteo legacy de Actas inconsistente.");
+      const ids=actas.map((x:any)=>txt(x?.id)).filter(Boolean);
+      if(ids.length!==actas.length)throw new Error("Legacy devolvió Actas sin ID.");
+      if(new Set(ids).size!==ids.length)throw new Error("Legacy devolvió IDs de Acta duplicados.");
+
+      const rows=actas.map((x:any,i:number)=>liveActaRow(x,i+2));
+      const runId=await createValidatedRun(
+        admin,u,"ACTAS","LEGACY_API_ACTAS",rows,
+        "Captura viva GET solo lectura de Actas. Legacy continúa activo."
+      );
+      const {data:preview,error:pe}=await admin.rpc("mv_sync_preview_actas",{p_run_id:runId});
+      if(pe)throw pe;
+      return json({
+        ok:true,version:VERSION,accion:"CAPTURAR_ACTAS_VIVAS",
+        runId,sourceRows:rows.length,preview
+      });
+    }
+
+    if(accion==="previewActas"){
+      const runId=txt(d.runId);
+      const {data,error}=await admin.rpc("mv_sync_preview_actas",{p_run_id:runId});
+      if(error)throw error;
+      return json({...data,version:VERSION});
     }
 
     if(accion==="crearStaging"){
