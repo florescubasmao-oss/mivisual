@@ -1,6 +1,6 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
-const VERSION="V1-ACTAS-INTEGRADO-20260920";
+const VERSION="V2-ACTAS-STORAGE-20260920";
 const MODULO="ACTAS ESCANEADAS";
 const cors={
   "Access-Control-Allow-Origin":"*",
@@ -65,7 +65,7 @@ function applyScope(q:any,ctx:any){
 }
 async function listar(ctx:any,d:any){
   let q=ctx.admin.from("actas_migracion")
-    .select("id,legacy_id,registrado_at,sede,cuadrilla,supervisor,tecnico,fecha_gestion,tipo_ejecucion,tipo_partida,codigo_orden,codigo_pedido,numero_acta,dni,cliente,nombre_archivo,link_acta,estado,resultado_almacen,motivo_almacen,validado_almacen_por,validado_almacen_at,resultado_jefatura,motivo_jefatura,validado_jefatura_por,validado_jefatura_at,version,estado_entrega_fisica,confirmado_fisico_por,confirmado_fisico_at,origen_registro,motivo_acta_faltante,estado_fecha_carpeta,fecha_limite_verificacion,fecha_carpeta,fecha_confirmada_por,perfil_confirmacion_fecha,origen_fecha_carpeta,updated_at")
+    .select("id,legacy_id,registrado_at,sede,cuadrilla,supervisor,tecnico,fecha_gestion,tipo_ejecucion,tipo_partida,codigo_orden,codigo_pedido,numero_acta,dni,cliente,nombre_archivo,link_acta,drive_file_id,archivo_storage_backend,archivo_storage_ref,estado,resultado_almacen,motivo_almacen,validado_almacen_por,validado_almacen_at,resultado_jefatura,motivo_jefatura,validado_jefatura_por,validado_jefatura_at,version,estado_entrega_fisica,confirmado_fisico_por,confirmado_fisico_at,origen_registro,motivo_acta_faltante,estado_fecha_carpeta,fecha_limite_verificacion,fecha_carpeta,fecha_confirmada_por,perfil_confirmacion_fecha,origen_fecha_carpeta,updated_at")
     .order("registrado_at",{ascending:false}).limit(500);
   q=applyScope(q,ctx);
   const periodo=txt(d.periodo);
@@ -91,11 +91,23 @@ Deno.serve(async(req:Request)=>{
   if(req.method==="OPTIONS")return new Response("ok",{headers:cors});
   try{
     const ctx=await context(req),d=await input(req),accion=txt(d.accion);
-    if(accion==="contextoActas")return json({ok:true,version:VERSION,usuario:ctx.u,permiso:ctx.p,fuente:"POSTGRESQL PILOTO",drive:{historicos:"GOOGLE DRIVE",subidaPiloto:false}});
+    if(accion==="contextoActas")return json({ok:true,version:VERSION,usuario:ctx.u,permiso:ctx.p,fuente:"POSTGRESQL PILOTO",archivos:{historicos:"GOOGLE DRIVE",nuevos:"SUPABASE STORAGE PRIVADO"}});
     if(accion==="listarActas")return json(await listar(ctx,d));
     if(accion==="resolverMapaActa"){
       const data=await rpc(ctx.admin,"mv_actas_resolver_mapa_v344",{p_codigo_orden:txt(d.codigoOrden),p_codigo_pedido:txt(d.codigoPedido),p_cuadrilla:txt(d.cuadrilla||ctx.u.cuadrilla)});
       return json({ok:true,version:VERSION,lista:data||[]});
+    }
+    if(accion==="registrarActaPdfStorage"){
+      if(!ctx.p.registrar)throw new Error("Sin permiso para registrar Actas.");
+      const data=await rpc(ctx.admin,"mv_actas_registrar_storage_v1",{
+        p_usuario:ctx.u.usuario,
+        p_codigo_orden:txt(d.codigoOrden),
+        p_codigo_pedido:txt(d.codigoPedido),
+        p_numero_acta:txt(d.numeroActa),
+        p_nombre_archivo:txt(d.nombreArchivo),
+        p_storage_ref:txt(d.storageRef)
+      });
+      return json({...data,version:VERSION});
     }
     if(accion==="registrarFaltanteActa"){
       const data=await rpc(ctx.admin,"mv_actas_registrar_faltante_v344",{
