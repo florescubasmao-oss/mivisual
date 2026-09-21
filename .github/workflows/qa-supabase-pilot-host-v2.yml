@@ -1,0 +1,27 @@
+name: QA Supabase MI VISUAL host MIME
+
+on:
+  push:
+    branches:
+      - migracion-supabase
+    paths:
+      - .github/workflows/qa-supabase-pilot-host-v2.yml
+
+permissions:
+  contents: read
+
+jobs:
+  qa-mime:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check MIME and shell
+        shell: bash
+        run: |
+          set -euo pipefail
+          URL="https://uudvodiaizfarodjpetb.supabase.co/functions/v1/mi-visual-pilot-web/"
+          curl --fail --show-error --silent --location --retry 3 --retry-delay 2             -D /tmp/headers.txt "$URL" -o /tmp/index.html
+          cat /tmp/headers.txt
+          grep -qi '^content-type: text/html' /tmp/headers.txt
+          grep -qi '^content-disposition: inline' /tmp/headers.txt
+          grep -q '<!doctype html>' /tmp/index.html
+          grep -q 'MI VISUAL integrado' /tmp/index.html
