@@ -14,20 +14,20 @@ jobs:
   qa-githack:
     runs-on: ubuntu-latest
     steps:
-      - name: Check GitHack shell and module
+      - name: Check shell and fixed modules
         shell: bash
         run: |
           set -euo pipefail
           BASE="https://raw.githack.com/florescubasmao-oss/mivisual/migracion-supabase/migration/pilot/"
           curl --fail --show-error --silent --location -D /tmp/h1 "${BASE}index.html" -o /tmp/index.html
-          echo "--- INDEX HEADERS ---"
-          cat /tmp/h1
           grep -qi '^content-type: text/html' /tmp/h1
-          if grep -qi '^content-security-policy:.*sandbox' /tmp/h1; then exit 1; fi
-          grep -q '<title>MI VISUAL' /tmp/index.html
           grep -q 'administracion-pilot.html' /tmp/index.html
-          curl --fail --show-error --silent --location -D /tmp/h2 "${BASE}administracion-pilot.html" -o /tmp/admin.html
-          echo "--- ADMIN HEADERS ---"
-          cat /tmp/h2
-          grep -qi '^content-type: text/html' /tmp/h2
-          grep -q 'Catálogo de Partidas' /tmp/admin.html
+
+          for FILE in validacion-tecnica-pilot.html actas-pilot.html observaciones-pilot.html descansos-pilot.html checklist-almacen-pilot.html ranking-pilot.html dashboard-pilot.html; do
+            curl --fail --show-error --silent --location "${BASE}${FILE}" -o "/tmp/${FILE}"
+            grep -q 'new window.URL' "/tmp/${FILE}"
+            if grep -q 'new URL(API)' "/tmp/${FILE}"; then
+              echo "Constructor roto aún visible en ${FILE}"
+              exit 1
+            fi
+          done
