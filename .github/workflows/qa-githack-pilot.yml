@@ -14,20 +14,23 @@ jobs:
   qa-githack:
     runs-on: ubuntu-latest
     steps:
-      - name: Check shell and fixed modules
+      - name: Check immutable GitHack shell and fixed modules
         shell: bash
         run: |
           set -euo pipefail
-          BASE="https://raw.githack.com/florescubasmao-oss/mivisual/migracion-supabase/migration/pilot/"
+          BASE="https://raw.githack.com/florescubasmao-oss/mivisual/bb44815caddc859ff4c08d16f3f958f3edc19507/migration/pilot/"
           curl --fail --show-error --silent --location -D /tmp/h1 "${BASE}index.html" -o /tmp/index.html
+          cat /tmp/h1
           grep -qi '^content-type: text/html' /tmp/h1
           grep -q 'administracion-pilot.html' /tmp/index.html
 
           for FILE in validacion-tecnica-pilot.html actas-pilot.html observaciones-pilot.html descansos-pilot.html checklist-almacen-pilot.html ranking-pilot.html dashboard-pilot.html; do
-            curl --fail --show-error --silent --location "${BASE}${FILE}" -o "/tmp/${FILE}"
+            echo "Checking ${FILE}"
+            curl --fail --show-error --silent --location -D /tmp/h "${BASE}${FILE}" -o "/tmp/${FILE}"
+            grep -qi '^content-type: text/html' /tmp/h
             grep -q 'new window.URL' "/tmp/${FILE}"
             if grep -q 'new URL(API)' "/tmp/${FILE}"; then
-              echo "Constructor roto aún visible en ${FILE}"
+              echo "Constructor roto visible en ${FILE}"
               exit 1
             fi
           done
