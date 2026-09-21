@@ -22,6 +22,7 @@
   let secuencia=0;
   let revisando=false;
   let publicando=false;
+  let conservarResultadoHasta=0;
 
   function txt(v){return String(v==null?"":v).trim();}
   function norm(v){return txt(v).toUpperCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"").replace(/\s+/g," ").trim();}
@@ -112,6 +113,7 @@
 
   async function revisarEstado(forzar){
     if(!puede()||!document.getElementById("moVistaFiltros")||revisando||publicando)return;
+    if(Date.now()<conservarResultadoHasta)return;
     const miSec=++secuencia;
     revisando=true;
     try{
@@ -146,8 +148,12 @@
     if(publicando||!puede())return;
     const p=periodo();
     if(!/^\d{4}-\d{2}$/.test(p))return;
-    if(typeof window.mv4879PublicarIndicadoresWin!=="function"){
-      pintar({tipo:"error",mensaje:"El sincronizador todavía está cargando. Espere unos segundos y vuelva a pulsar."});
+    conservarResultadoHasta=0;
+
+    if(typeof window.mv4879CalcularIndicadoresWin!=="function" ||
+       typeof window.mv4879PublicarIndicadoresWin!=="function"){
+      conservarResultadoHasta=Date.now()+60000;
+      pintar({tipo:"error",mensaje:"El motor integral de indicadores todavía está cargando. Espere unos segundos y vuelva a pulsar."});
       try{if(typeof window.mv505InstalarHookWin==="function")window.mv505InstalarHookWin();}catch(_){}
       return;
     }
@@ -155,13 +161,57 @@
     publicando=true;
     pintar({tipo:"procesando",periodo:p});
     try{
-      const r=await window.mv4879PublicarIndicadoresWin(p,"RECUPERACION_MANUAL_V544");
+      /*
+        V554: PREVALIDACION OBLIGATORIA.
+        Primero ejecuta la misma previsualizacion oficial del publicador.
+        Es solo lectura: no escribe Produccion, Efectividad, Recableado,
+        VTR/GAR, Ranking ni Dashboard.
+      */
+      const previo=await window.mv4879CalcularIndicadoresWin(p);
+      if(!previo || previo.ok===false){
+        throw new Error((previo&&previo.error)||"La prevalidación integral no devolvió un resultado válido.");
+      }
+      if(previo.produccion && previo.produccion.ok===false){
+        conservarResultadoHasta=Date.now()+10*60*1000;
+        pintar({
+          tipo:"error",
+          mensaje:"PREVALIDACIÓN: no se publicó nada. "+txt(previo.produccion.error||"Producción tiene órdenes sin clasificación confiable.")+
+            " Corrija primero esas órdenes/partidas; Efectividad, Recableado, VTR/GAR, Ranking y Dashboard permanecen sin cambios."
+        });
+        return;
+      }
+
+      const r=await window.mv4879PublicarIndicadoresWin(p,"RECUPERACION_MANUAL_V554");
       const fecha=txt(r&&r.fechaPublicacionTexto||"");
-      pintar({tipo:"ok",periodo:p,fecha});
-      try{sessionStorage.removeItem("MV395_MAPA_CAT");sessionStorage.removeItem("MV395_MAPA_LIST");}catch(_){}
-      setTimeout(()=>revisarEstado(true),1200);
+
+      // Confirmación independiente del sello V512 después del publicador.
+      let sello=null;
+      try{
+        sello=await get({
+          accion:"obtenerActualizacionIndicadoresWinV512",
+          usuario:usuario(),
+          periodo:p
+        },12000);
+      }catch(_){}
+      const fechaSello=txt(sello&&sello.fechaPublicacionTexto||fecha);
+      if(!fechaSello){
+        throw new Error("El publicador respondió, pero no dejó sello V512 de confirmación.");
+      }
+
+      conservarResultadoHasta=Date.now()+45000;
+      pintar({tipo:"ok",periodo:p,fecha:fechaSello});
+      try{
+        sessionStorage.removeItem("MV395_MAPA_CAT");
+        sessionStorage.removeItem("MV395_MAPA_LIST");
+        if(typeof window.mv366InvalidarResumenDashboard==="function")window.mv366InvalidarResumenDashboard(p);
+      }catch(_){}
     }catch(e){
-      pintar({tipo:"error",mensaje:"La sincronización no pudo confirmarse: "+(e&&e.message?e.message:String(e))+". No vuelva a cargar el Excel; primero reintente este botón."});
+      conservarResultadoHasta=Date.now()+10*60*1000;
+      pintar({
+        tipo:"error",
+        mensaje:"DIAGNÓSTICO INTEGRAL: "+(e&&e.message?e.message:String(e))+
+          ". No vuelva a cargar el Excel ni repita la publicación hasta corregir este bloqueo."
+      });
     }finally{publicando=false;}
   }
 
