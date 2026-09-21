@@ -1,0 +1,29 @@
+name: QA redirect MI VISUAL pilot
+
+on:
+  push:
+    branches:
+      - migracion-supabase
+    paths:
+      - .github/workflows/qa-pilot-redirect.yml
+
+permissions:
+  contents: read
+
+jobs:
+  qa-redirect:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check redirect and final HTML
+        shell: bash
+        run: |
+          set -euo pipefail
+          OLD="https://uudvodiaizfarodjpetb.supabase.co/functions/v1/mi-visual-pilot-web/"
+          curl --silent --show-error -D /tmp/h0 -o /dev/null "$OLD"
+          cat /tmp/h0
+          grep -q '^HTTP/2 302' /tmp/h0
+          grep -qi '^location: https://cdn.jsdelivr.net/gh/florescubasmao-oss/mivisual@568b91b2f2525afa2e37acef6a41f3a8d9af71d4/migration/pilot/index.html' /tmp/h0
+          curl --fail --silent --show-error --location -D /tmp/h1 "$OLD" -o /tmp/index.html
+          cat /tmp/h1
+          grep -qi '^content-type: text/html' /tmp/h1
+          grep -q 'MI VISUAL' /tmp/index.html
