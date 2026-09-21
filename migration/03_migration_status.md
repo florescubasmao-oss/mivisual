@@ -1,3 +1,19 @@
+# Checkpoint coexistencia viva + host QA — 20/09/2026
+
+- APP CUADRILLAS WIN confirmado como fuente viva mientras legacy continúa operativo.
+- Corte actual: Mapa 6790/6549; CTO 6995/6815; VT 690/674; Actas 2355/2294; Descansos 723/705; Observaciones 80/78; PEXT 30/28; Asignaciones 4/0.
+- legacy-sync-pilot V7 ACTIVE/JWT.
+- Mapa vivo: GET periodo abierto -> staging -> preview -> APPLY explícito.
+- Actas vivas: GET -> staging -> preview con conflictos PG/Storage/identidad -> APPLY explícito.
+- VT no usa GET por efectos automáticos y ausencia de puntaje explícito.
+- Descansos no usa GET como dump porque su respuesta es colapsada/limitada.
+- CTO sigue snapshot controlado; endpoint existente no es dump completo.
+- Snapshot APP CUADRILLAS WIN.xlsx exportado desde Drive.
+- Host QA temporal Supabase Edge mi-visual-pilot-web V1 ACTIVE.
+- GitHub Actions QA host run 35560642372: SUCCESS.
+- Netlify público sigue sin cambios.
+- main/Apps Script/Sheets/Drive productivos sin cambios.
+
 # Checkpoint publicación shell — 20/09/2026
 
 - Paquete actual del piloto: 51 archivos.
