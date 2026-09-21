@@ -155,6 +155,69 @@ async function lastUpdate(admin: any) {
   return value;
 }
 
+
+function canImportMapa(ctx:any){
+  const p=normUpper(ctx?.appUser?.perfil);
+  return !!ctx?.permiso?.registrar || ["SUPERVISOR","JEFATURA","JEFATURA GENERAL","JEFATURA OPERACIONES","JEFATURA DE OPERACIONES","OPERACIONES","ADMIN","ADMINISTRADOR"].includes(p);
+}
+function isoDateImport(v:unknown){
+  const s=norm(v); if(!s)return "";
+  let m=s.match(/^(20\d{2})-(\d{1,2})-(\d{1,2})/);
+  if(m)return m[1]+"-"+m[2].padStart(2,"0")+"-"+m[3].padStart(2,"0");
+  m=s.match(/^(\d{1,2})[\/\-.](\d{1,2})[\/\-.](20\d{2})/);
+  return m?m[3]+"-"+m[2].padStart(2,"0")+"-"+m[1].padStart(2,"0"):"";
+}
+function isoTimeImport(v:unknown){
+  const s=norm(v);if(!s)return "";
+  const m=s.match(/(\d{1,2}):(\d{2})(?::(\d{2}))?/);
+  return m?m[1].padStart(2,"0")+":"+m[2]+":"+(m[3]||"00"):"";
+}
+function isoTsImport(v:unknown){
+  const s=norm(v);if(!s)return "";
+  let m=s.match(/^(20\d{2})-(\d{1,2})-(\d{1,2})(?:[ T](\d{1,2}):(\d{2})(?::(\d{2}))?)?/);
+  if(m)return m[1]+"-"+m[2].padStart(2,"0")+"-"+m[3].padStart(2,"0")+"T"+(m[4]||"00").padStart(2,"0")+":"+(m[5]||"00")+":"+(m[6]||"00");
+  m=s.match(/^(\d{1,2})[\/\-.](\d{1,2})[\/\-.](20\d{2})(?:\s+(\d{1,2}):(\d{2})(?::(\d{2}))?)?/);
+  return m?m[3]+"-"+m[2].padStart(2,"0")+"-"+m[1].padStart(2,"0")+"T"+(m[4]||"00").padStart(2,"0")+":"+(m[5]||"00")+":"+(m[6]||"00"):"";
+}
+function sedeImport(v:unknown){
+  const s=normUpper(v);
+  if(!s)return "";
+  if(s.includes("CHICLAYO")||s.includes("LAMBAYEQUE"))return "CHICLAYO";
+  if(s.includes("PIURA"))return "PIURA";
+  if(s.includes("TRUJILLO"))return "TRUJILLO";
+  return s;
+}
+function coordImport(v:unknown){
+  const nums=norm(v).match(/-?\d+(?:\.\d+)?/g)||[];
+  if(nums.length<2)return "";
+  const lat=Number(nums[0]),lon=Number(nums[1]);
+  return Number.isFinite(lat)&&Number.isFinite(lon)&&Math.abs(lat)<=90&&Math.abs(lon)<=180?lat+","+lon:"";
+}
+function mapaImportRow(r:any){
+  const lat=Number(r?.latitud),lon=Number(r?.longitud);
+  return {
+    orden_id:norm(r?.ordenId ?? r?.ORDEN_ID),
+    tipo_trabajo:norm(r?.tipoTrabajo),
+    fecha_solicitud:isoDateImport(r?.fechaSolicitud),
+    hora_solicitud:isoTimeImport(r?.horaSolicitud),
+    cliente:norm(r?.cliente),tipo:norm(r?.tipo),producto_origen:norm(r?.productoOrigen),
+    cuadrilla:norm(r?.cuadrilla),estado:norm(r?.estado),direccion:norm(r?.direccion),
+    direccion_adicional:norm(r?.direccionAdicional),fecha_ultimo_estado:isoTsImport(r?.fechaUltimoEstado),
+    producto_servicio:norm(r?.productoServicio),sede:sedeImport(r?.region ?? r?.sede),
+    codigo_cliente:norm(r?.codigoCliente),numero_documento:norm(r?.numeroDocumento),
+    telefono_movil:norm(r?.telefonoMovil),telefono_fijo:norm(r?.telefonoFijo),
+    fecha_fin_visita:isoTsImport(r?.fechaFinVisita),fecha_inicio_visita:isoTsImport(r?.fechaInicioVisita),
+    motivo_cancelacion:norm(r?.motivoCancelacion),motivo_finalizacion:norm(r?.motivoFinalizacion),
+    motivo_anulacion:norm(r?.motivoAnulacion),
+    latitud:Number.isFinite(lat)?lat:"",longitud:Number.isFinite(lon)?lon:"",
+    detalle:norm(r?.detalle),
+    cto_1:norm(r?.cto1),coordenada_cto_1:coordImport(r?.coordenadaCto1),
+    cto_2:norm(r?.cto2),coordenada_cto_2:coordImport(r?.coordenadaCto2),
+    cto_3:norm(r?.cto3),coordenada_cto_3:coordImport(r?.coordenadaCto3),
+    cto:norm(r?.cto),puerto:norm(r?.puerto),codigo_seguimiento:norm(r?.codigoSeguimiento)
+  };
+}
+
 Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
 
@@ -281,9 +344,22 @@ Deno.serve(async (req: Request) => {
           registrar:!!ctx.permiso.registrar,
           alcanceDatos:ctx.permiso.alcance_datos || ""
         },
+        puedeImportar:canImportMapa(ctx),
         cuadrillasPermitidas:Array.isArray(ctx.permitidas) ? ctx.permitidas : null,
         totalCuadrillasPermitidas:Array.isArray(ctx.permitidas) ? ctx.permitidas.length : null
       });
+    }
+
+
+    if (accion === "importarMapaOperativo") {
+      if (!canImportMapa(ctx)) return json({ok:false,error:"No tienes permiso para ingresar información al Mapa Operativo."},403);
+      const registros=Array.isArray(payload.registros)?payload.registros:[];
+      if(!registros.length)return json({ok:false,error:"No se recibieron registros para importar."},400);
+      if(registros.length>10000)return json({ok:false,error:"La importación supera el máximo de 10,000 órdenes por carga."},400);
+      const rows=registros.map(mapaImportRow);
+      const {data,error}=await admin.rpc("mv_mapa_importar_operativo",{p_rows:rows,p_actor:ctx.appUser.usuario || "SISTEMA"});
+      if(error)throw error;
+      return json({...data,fuente:"MAPA_OPERATIVO_POSTGRESQL",motor:"POSTGRESQL"});
     }
 
     if (accion === "catalogosMapaOperativo") {
