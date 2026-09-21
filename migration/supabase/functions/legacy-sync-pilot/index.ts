@@ -1,6 +1,6 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
-const VERSION="V5-LEGACY-SYNC-ASIGNACIONES-20260920";
+const VERSION="V6-LEGACY-LIVE-MAPA-20260920";
 const ALLOWED=new Set([
   "MAPA_OPERATIVO","CATALOGO_CTO","ACTAS","VALIDACION_TECNICA",
   "PROGRAMACION_DESCANSOS","OBSERVACIONES","USUARIOS","PERMISOS",
@@ -47,6 +47,78 @@ async function hashRow(value:unknown){
   return Array.from(new Uint8Array(digest)).map(b=>b.toString(16).padStart(2,"0")).join("");
 }
 
+const LEGACY_API="https://script.google.com/macros/s/AKfycbwugGpuEMcJYFsDNS1hkcdZXJ92PUvXNv5ttpktyhZWv2fWB7ceCZNkfIFYxAs5wsgN/exec";
+
+function isoDate(v:unknown){
+  const s=txt(v);if(!s)return "";
+  let m=s.match(/^(20\d{2})-(\d{1,2})-(\d{1,2})/);
+  if(m)return m[1]+"-"+m[2].padStart(2,"0")+"-"+m[3].padStart(2,"0");
+  m=s.match(/^(\d{1,2})[\/\-.](\d{1,2})[\/\-.](20\d{2})/);
+  return m?m[3]+"-"+m[2].padStart(2,"0")+"-"+m[1].padStart(2,"0"):"";
+}
+function isoTime(v:unknown){
+  const s=txt(v),m=s.match(/(\d{1,2}):(\d{2})(?::(\d{2}))?/);
+  return m?m[1].padStart(2,"0")+":"+m[2]+":"+(m[3]||"00"):"";
+}
+function isoDateTime(v:unknown){
+  const s=txt(v);if(!s)return "";
+  let m=s.match(/^(20\d{2})-(\d{1,2})-(\d{1,2})(?:[ T](\d{1,2}):(\d{2})(?::(\d{2}))?)?/);
+  if(m)return m[1]+"-"+m[2].padStart(2,"0")+"-"+m[3].padStart(2,"0")+"T"+(m[4]||"00").padStart(2,"0")+":"+(m[5]||"00")+":"+(m[6]||"00");
+  m=s.match(/^(\d{1,2})[\/\-.](\d{1,2})[\/\-.](20\d{2})(?:\s+(\d{1,2}):(\d{2})(?::(\d{2}))?)?/);
+  if(m)return m[3]+"-"+m[2].padStart(2,"0")+"-"+m[1].padStart(2,"0")+"T"+(m[4]||"00").padStart(2,"0")+":"+(m[5]||"00")+":"+(m[6]||"00");
+  const d=new Date(s);return Number.isFinite(d.getTime())?d.toISOString().replace(/Z$/,""):"";
+}
+async function legacyGet(params:Record<string,unknown>){
+  const u=new URL(LEGACY_API);
+  for(const [k,v] of Object.entries(params))if(v!==undefined&&v!==null)u.searchParams.set(k,txt(v));
+  const ctl=new AbortController(),timer=setTimeout(()=>ctl.abort(),45000);
+  try{
+    const r=await fetch(u.toString(),{method:"GET",headers:{"Accept":"application/json"},signal:ctl.signal});
+    const body=await r.text();let x:any;
+    try{x=JSON.parse(body)}catch(_){throw new Error("Legacy no devolvió JSON válido.");}
+    if(!r.ok||!x?.ok)throw new Error(x?.error||("Legacy HTTP "+r.status));
+    return x;
+  }finally{clearTimeout(timer)}
+}
+async function existingOrderIds(admin:any,ids:string[]){
+  const out=new Set<string>();
+  for(let i=0;i<ids.length;i+=400){
+    const part=ids.slice(i,i+400);
+    const {data,error}=await admin.from("ordenes").select("orden_id").in("orden_id",part);
+    if(error)throw error;
+    for(const x of data||[])out.add(txt(x.orden_id));
+  }
+  return out;
+}
+function liveMapaRow(x:any,sourceAt:string,actor:string,isNew:boolean,sourceRow:number){
+  const fecha=isoDate(x?.fechaSolicitud);
+  if(!txt(x?.ordenId)||!fecha)throw new Error("Fila legacy de Mapa sin OrdenId/Fecha válida.");
+  return {
+    sourceKey:txt(x.ordenId),sourceRow,
+    rowData:{
+      orden_id:txt(x.ordenId),tipo_trabajo:txt(x.tipoTrabajo),fecha_solicitud:fecha,
+      hora_solicitud:isoTime(x.horaSolicitud),cliente:txt(x.cliente),tipo:txt(x.tipo),
+      producto_origen:txt(x.productoOrigen),cuadrilla:txt(x.cuadrilla),estado:txt(x.estado),
+      direccion:txt(x.direccion),direccion_adicional:txt(x.direccionAdicional),
+      fecha_ultimo_estado:isoDateTime(x.fechaUltimoEstado),producto_servicio:txt(x.productoServicio),
+      sede:txt(x.region),codigo_cliente:txt(x.codigoCliente),numero_documento:txt(x.numeroDocumento),
+      telefono_movil:txt(x.telefonoMovil),telefono_fijo:txt(x.telefonoFijo),
+      fecha_fin_visita:isoDateTime(x.fechaFinVisita),fecha_inicio_visita:isoDateTime(x.fechaInicioVisita),
+      motivo_cancelacion:txt(x.motivoCancelacion),motivo_finalizacion:txt(x.motivoFinalizacion),
+      motivo_anulacion:txt(x.motivoAnulacion),
+      latitud:x.latitud===null||x.latitud===undefined?"":txt(x.latitud),
+      longitud:x.longitud===null||x.longitud===undefined?"":txt(x.longitud),
+      detalle:txt(x.detalle),
+      fecha_importacion:isNew?sourceAt:"",
+      usuario_importacion:isNew?actor:"",
+      cto_1:txt(x.cto1),coordenada_cto_1:txt(x.coordenadaCto1),
+      cto_2:txt(x.cto2),coordenada_cto_2:txt(x.coordenadaCto2),
+      cto_3:txt(x.cto3),coordenada_cto_3:txt(x.coordenadaCto3),
+      cto:txt(x.cto),puerto:txt(x.puerto),codigo_seguimiento:txt(x.codigoSeguimiento)
+    }
+  };
+}
+
 Deno.serve(async(req:Request)=>{
   if(req.method==="OPTIONS")return new Response("ok",{headers:cors});
   try{
@@ -58,6 +130,72 @@ Deno.serve(async(req:Request)=>{
       const {data,error}=await admin.from("mv_migration_sync_status").select("*").limit(50);
       if(error)throw error;
       return json({ok:true,version:VERSION,runs:data||[]});
+    }
+
+    if(accion==="capturarMapaVivo"){
+      const periodo=txt(d.periodo);
+      if(!/^20\d{2}-(0[1-9]|1[0-2])$/.test(periodo))throw new Error("Periodo inválido.");
+      const {data:pp,error:ppe}=await admin.from("produccion_periodos").select("periodo,protegido").eq("periodo",periodo).maybeSingle();
+      if(ppe)throw ppe;
+      if(pp?.protegido)throw new Error("El período "+periodo+" está protegido y no admite captura para APPLY.");
+
+      const legacy=await legacyGet({
+        accion:"listarMapaOperativo",usuario:u.usuario,periodo,
+        sede:"",fecha:"",grupoTrabajo:"",estado:"",cuadrilla:"",codigo:""
+      });
+      const orders=Array.isArray(legacy.ordenes)?legacy.ordenes:[];
+      if(Number(legacy.registros||orders.length)!==orders.length)throw new Error("Conteo legacy inconsistente.");
+      const ids=orders.map((x:any)=>txt(x?.ordenId)).filter(Boolean);
+      if(new Set(ids).size!==ids.length)throw new Error("Legacy devolvió OrdenId duplicados.");
+
+      const existing=await existingOrderIds(admin,ids);
+      const sourceAt=isoDateTime(legacy.ultimaActualizacionTexto||legacy.ultimaActualizacion)||new Date().toISOString().replace(/Z$/,"");
+      const rows=orders.map((x:any,i:number)=>liveMapaRow(x,sourceAt,u.usuario,!existing.has(txt(x?.ordenId)),i+1));
+
+      const {data:run,error:re}=await admin.from("migration_sync_runs").insert({
+        modulo:"MAPA_OPERATIVO",
+        source_name:"LEGACY_API_MAPA "+periodo,
+        source_snapshot_at:new Date().toISOString(),
+        source_rows:rows.length,status:"STAGING",created_by:u.usuario,
+        notes:"Captura viva GET solo lectura. Corte legacy: "+txt(legacy.ultimaActualizacionTexto||legacy.ultimaActualizacion)+". Legacy continúa activo."
+      }).select("id").single();
+      if(re)throw re;
+
+      try{
+        for(let i=0;i<rows.length;i+=500){
+          const prepared=[];
+          for(const item of rows.slice(i,i+500)){
+            prepared.push({
+              run_id:run.id,source_key:item.sourceKey,source_row:item.sourceRow,
+              row_hash:await hashRow(item.rowData),row_data:item.rowData
+            });
+          }
+          if(prepared.length){
+            const {error}=await admin.from("migration_sync_staging").insert(prepared);
+            if(error)throw error;
+          }
+        }
+        const {count,error:ce}=await admin.from("migration_sync_staging").select("*",{count:"exact",head:true}).eq("run_id",run.id);
+        if(ce)throw ce;
+        const staged=count||0;
+        if(staged!==rows.length)throw new Error("Conteo staging vivo no coincide con la captura.");
+        const {error:ue}=await admin.from("migration_sync_runs").update({
+          staged_rows:staged,status:"VALIDATED",validated_at:new Date().toISOString()
+        }).eq("id",run.id);
+        if(ue)throw ue;
+        const {data:preview,error:pe}=await admin.rpc("mv_sync_preview_mapa",{p_run_id:run.id});
+        if(pe)throw pe;
+        return json({
+          ok:true,version:VERSION,accion:"CAPTURAR_MAPA_VIVO",periodo,
+          runId:run.id,sourceRows:rows.length,legacyRowsEvaluated:Number(legacy.filasEvaluadas||0),
+          legacyUpdatedAt:txt(legacy.ultimaActualizacionTexto||legacy.ultimaActualizacion),
+          existingRows:existing.size,newRows:rows.length-existing.size,
+          preview
+        });
+      }catch(e){
+        await admin.from("migration_sync_runs").update({status:"CANCELLED",notes:"Captura viva cancelada por error: "+(e instanceof Error?e.message:String(e))}).eq("id",run.id);
+        throw e;
+      }
     }
 
     if(accion==="crearStaging"){
