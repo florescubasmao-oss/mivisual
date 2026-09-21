@@ -3681,19 +3681,36 @@ function buscarTipoPartidaProduccionActa(itemMapa, cuadrilla, contexto) {
 function resolverDatosAutomaticosActa(codigoPedido, codigoOrden, cuadrilla, sede, contexto) {
   contexto = contexto || crearContextoDatosAutomaticosActas();
   const mapa = buscarRegistroMapaParaActa(codigoPedido, codigoOrden, cuadrilla, contexto);
+
+  // V561: cuando la orden existe en MAPA_ORDENES, la identidad operativa de
+  // la atención (cuadrilla/sede/fecha/DNI/cliente) manda sobre la sesión.
+  // La cuadrilla de sesión queda únicamente como pista de búsqueda/seguridad.
+  const cuadrillaMapa = mapa && mapa.cuadrilla
+    ? normalizarCuadrilla(mapa.cuadrilla)
+    : normalizarCuadrilla(cuadrilla);
+  const sedeMapa = mapa
+    ? normalizarTexto(sedeMapaOperativo(mapa.region) || sede || "")
+    : normalizarTexto(sede || "");
+
   const tipoEjecucion = tipoEjecucionDesdeMapaActa(mapa);
-  const tipoPartida = buscarTipoPartidaProduccionActa(mapa, cuadrilla, contexto);
-  const fechaAtencionMapa = mapa ? (fechaClaveActa(mapa.fechaFinVisita) || fechaClaveActa(mapa.fechaInicioVisita) || fechaClaveActa(mapa.fechaSolicitud)) : "";
+  const tipoPartida = buscarTipoPartidaProduccionActa(mapa, cuadrillaMapa, contexto);
+  const fechaAtencionMapa = mapa
+    ? (fechaClaveActa(mapa.fechaFinVisita) ||
+       fechaClaveActa(mapa.fechaInicioVisita) ||
+       fechaClaveActa(mapa.fechaSolicitud))
+    : "";
+
   return {
-    sede: normalizarTexto(sede || (mapa ? sedeMapaOperativo(mapa.region) : "")),
-    cuadrilla: normalizarCuadrilla(cuadrilla),
-    fechaGestion: fechaAtencionMapa,
-    tipoEjecucion: tipoEjecucion,
-    tipoPartida: tipoPartida,
-    dni: mapa ? textoIdentificadorActa(mapa.numeroDocumento) : "",
-    cliente: mapa ? (mapa.cliente || "").toString().trim().toUpperCase() : "",
-    encontradoMapa: !!mapa,
-    encontradoProduccion: !!tipoPartida
+    sede:sedeMapa,
+    cuadrilla:cuadrillaMapa,
+    fechaGestion:fechaAtencionMapa,
+    tipoEjecucion:tipoEjecucion,
+    tipoPartida:tipoPartida,
+    dni:mapa ? textoIdentificadorActa(mapa.numeroDocumento) : "",
+    cliente:mapa ? (mapa.cliente || "").toString().trim().toUpperCase() : "",
+    encontradoMapa:!!mapa,
+    encontradoProduccion:!!tipoPartida,
+    fuenteIdentidad:mapa ? "MAPA_ORDENES" : "USUARIO"
   };
 }
 
@@ -3872,15 +3889,63 @@ function confirmarFechaAtencionActa(data) {
 function consultarDatosAutomaticosActa(data) {
   const usuario = obtenerUsuarioApp(data.usuario);
   const perfil = normalizarTexto(usuario.perfil);
-  const permitidos = perfil === "TECNICO" || esPerfilAlmacen(perfil) || esPerfilJefaturaAlmacen(perfil) || esPerfilJefatura(perfil);
-  if (!permitidos) throw new Error("No tiene permiso para consultar datos automáticos de actas");
-  const cuadrilla = perfil === "TECNICO" ? usuario.cuadrilla : (data.cuadrilla || usuario.cuadrilla);
-  if (!cuadrilla) throw new Error("No se encontró la cuadrilla para consultar el acta");
-  const dc = obtenerDatosCuadrillaApp(cuadrilla);
-  const sede = dc.sede || usuario.sede;
-  const contexto = crearContextoDatosAutomaticosActas();
-  const automaticos = resolverDatosAutomaticosActa(data.codigoPedido || data.codigo_pedido, data.codigoOrden || data.codigo_orden, cuadrilla, sede, contexto);
-  return {ok:true, modulo:"ACTAS", accion:"DATOS_AUTOMATICOS", automaticos:automaticos};
+  const permitidos =
+    perfil === "TECNICO" ||
+    esPerfilAlmacen(perfil) ||
+    esPerfilJefaturaAlmacen(perfil) ||
+    esPerfilJefatura(perfil);
+
+  if (!permitidos) {
+    throw new Error("No tiene permiso para consultar datos automáticos de actas");
+  }
+
+  const cuadrillaSesion = perfil === "TECNICO"
+    ? usuario.cuadrilla
+    : (data.cuadrilla || usuario.cuadrilla);
+
+  if (!cuadrillaSesion) {
+    throw new Error("No se encontró la cuadrilla para consultar el acta");
+  }
+
+  const dc = obtenerDatosCuadrillaApp(cuadrillaSesion);
+  const sedeSesion = dc.sede || usuario.sede;
+
+  const codigoPedido = data.codigoPedido || data.codigo_pedido || "";
+  const codigoOrden = data.codigoOrden || data.codigo_orden || "";
+
+  const contexto = crearContextoDatosAutomaticosActaPuntualV558_(
+    codigoPedido,
+    codigoOrden,
+    cuadrillaSesion
+  );
+
+  const automaticos = resolverDatosAutomaticosActa(
+    codigoPedido,
+    codigoOrden,
+    cuadrillaSesion,
+    sedeSesion,
+    contexto
+  );
+
+  // V561: si MAPA_ORDENES encontró la atención, se permite que el nombre
+  // completo de la cuadrilla haya cambiado (p.ej. relevo de técnico), pero
+  // no que el técnico consulte una posición/modalidad distinta.
+  if (
+    perfil === "TECNICO" &&
+    automaticos.encontradoMapa &&
+    claveCuadrillaActa(automaticos.cuadrilla) !== claveCuadrillaActa(cuadrillaSesion)
+  ) {
+    throw new Error("La orden encontrada pertenece a otra cuadrilla.");
+  }
+
+  return {
+    ok:true,
+    modulo:"ACTAS",
+    accion:"DATOS_AUTOMATICOS",
+    automaticos:automaticos,
+    fuentePrincipal:automaticos.encontradoMapa ? "MAPA_ORDENES" : "USUARIOS",
+    version:"V561-ACTAS-FUENTE-MAPA"
+  };
 }
 
 function actualizarDatosAutomaticosActas(data) {
