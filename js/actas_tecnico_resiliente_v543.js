@@ -1,5 +1,5 @@
 /* ============================================================
-   MI VISUAL V544 - ACTAS TECNICO / CONSULTA AUTOMATICA RAPIDA
+   MI VISUAL V561 - ACTAS TECNICO / CONSULTA AUTOMATICA FUENTE VIVA
    16/09/2026
 
    Alcance estricto:
@@ -105,9 +105,10 @@
   async function consultarAutoRapido(payload){
     const k=clavePayload(payload);
     const ahora=Date.now();
+    const forzar=!!(payload&&payload.__forzar);
     const guardado=cacheAuto.get(k);
-    if(guardado&&ahora-guardado.t<CACHE_AUTO_MS)return guardado.data;
-    if(enCursoAuto.has(k))return enCursoAuto.get(k);
+    if(!forzar&&guardado&&ahora-guardado.t<CACHE_AUTO_MS)return guardado.data;
+    if(!forzar&&enCursoAuto.has(k))return enCursoAuto.get(k);
 
     const tarea=(async function(){
       let ultimo=null;
