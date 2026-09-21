@@ -1,0 +1,34 @@
+name: QA CDN MI VISUAL pilot
+
+on:
+  push:
+    branches:
+      - migracion-supabase
+    paths:
+      - .github/workflows/qa-cdn-pilot.yml
+
+permissions:
+  contents: read
+
+jobs:
+  qa-cdn:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check jsDelivr HTML and module
+        shell: bash
+        run: |
+          set -euo pipefail
+          BASE="https://cdn.jsdelivr.net/gh/florescubasmao-oss/mivisual@migracion-supabase/migration/pilot/"
+          curl --fail --show-error --silent --location -D /tmp/h1 "$BASE" -o /tmp/index.html
+          echo "--- INDEX HEADERS ---"
+          cat /tmp/h1
+          grep -qi '^content-type: text/html' /tmp/h1
+          if grep -qi '^content-security-policy:.*sandbox' /tmp/h1; then
+            echo "Sandbox CSP detected"; exit 1
+          fi
+          grep -q 'MI VISUAL integrado' /tmp/index.html
+          curl --fail --show-error --silent --location -D /tmp/h2 "${BASE}administracion-pilot.html" -o /tmp/admin.html
+          echo "--- ADMIN HEADERS ---"
+          cat /tmp/h2
+          grep -qi '^content-type: text/html' /tmp/h2
+          grep -q 'Catálogo de Partidas' /tmp/admin.html
