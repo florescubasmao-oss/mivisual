@@ -1,5 +1,5 @@
 /* MI VISUAL V550 - MAPA: ORDEN DE WRAPPERS + RESILIENCIA CENTRAL V528 */
-const MV339_CACHE = "mivisual-v5611-actas-sesion-segura-20260921-2";
+const MV339_CACHE = "mivisual-v563-actas-historial-resiliente-20260922-1";
 const MV517C19_BRIDGE = "./js/vtr_gar_ux_v517b.js?v=GARVTR-EXCEL-20260914-1";
 
 /*
