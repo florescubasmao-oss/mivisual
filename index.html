@@ -102,7 +102,7 @@
 if ("serviceWorker" in navigator) {
   window.addEventListener("load", function(){
     navigator.serviceWorker
-      .register("./sw.js?v=V5611-ACTAS-SESION-SEGURA-20260921-2")
+      .register("./sw.js?v=V563-ACTAS-HISTORIAL-RESILIENTE-20260922-1")
       .then(function(registro){
         registro.update().catch(function(){});
         console.log("SW V532 ACTAS ID OK");
