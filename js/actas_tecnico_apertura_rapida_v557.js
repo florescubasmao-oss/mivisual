@@ -1,6 +1,6 @@
 /* ============================================================
-   MI VISUAL V557 - ACTAS TECNICO / APERTURA RAPIDA
-   18/09/2026
+   MI VISUAL V563 - ACTAS TECNICO / HISTORIAL RESILIENTE
+   22/09/2026
 
    Alcance estricto:
    - SOLO perfil TECNICO y SOLO la carga visual del historial de Actas.
@@ -43,9 +43,12 @@
     if(!base)throw new Error("API de Gestión de Actas no disponible");
 
     if(typeof window.mv336ApiGet==="function"){
+      // V563: 7 segundos era insuficiente para el arranque en frío de
+      // Apps Script + lectura de ACTAS_ESCANEADAS. Se mantiene una sola
+      // consulta para no duplicar carga, pero se permite completar hasta 30 s.
       return await window.mv336ApiGet(base,payload,{
         intentos:1,
-        tiempoMs:forzar?10000:7000
+        tiempoMs:forzar?30000:25000
       });
     }
 
@@ -118,10 +121,11 @@
     };
 
     nuevo.__mv557=true;
+    nuevo.__mv563=true;
     nuevo.__base=base;
     window.cargarActas=nuevo;
     try{cargarActas=nuevo;}catch(_){}
-    console.log("MI VISUAL V557: apertura rápida de Actas Técnico habilitada.");
+    console.log("MI VISUAL V563: historial Técnico con espera resiliente habilitado.");
     return true;
   }
 
