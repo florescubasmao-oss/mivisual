@@ -155,10 +155,10 @@
     administracion: {
       depende: ["dashboards_core", "accesos", "checklist"],
       archivos: [
-        `./js/base_operativa.js?v=V564-PARNET-SIN-VTRGAR-20260924-1`,
+        `./js/base_operativa.js?v=V5642-PARNET-CIERRE-SEGURO-20260924-1`,
         `./js/base_operativa_lectura_v385.js?v=V408-RESTAURA-V403`,
         `./js/base_operativa_sync_v367.js?v=V408-RESTAURA-V403`,
-        `./js/admin_checklist.js?v=V564-PARNET-SIN-VTRGAR-20260924-1`
+        `./js/admin_checklist.js?v=V5642-PARNET-CIERRE-SEGURO-20260924-1`
       ],
       entradas: ["mostrarAdministracion"]
     }
