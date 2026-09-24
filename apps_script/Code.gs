@@ -4,7 +4,7 @@
    Base: código vigente entregado por el usuario el 07/08/2026.
 ========================================================== */
 
-const MI_VISUAL_BACKEND_VERSION_ = "V564.2-PARNET-CIERRE-SEGURO-20260924";
+const MI_VISUAL_BACKEND_VERSION_ = "V564.3-PARNET-CIERRE-CONTINUIDAD-20260924";
 const HOJA_PRODUCCION = "PRODUCCION_APP";
 const HOJA_CATALOGO_ORDENES = "CATALOGO_ORDENES";
 const HOJA_EFECTIVIDAD = "EFECTIVIDAD";
@@ -14027,8 +14027,85 @@ function validarControlLecturaBaseOperativa(control, preparado, matrices) {
   }
 }
 
+function reglasContinuidadCuadrillasParnet_() {
+  const hoja = SpreadsheetApp.getActiveSpreadsheet().getSheetByName("CONTINUIDAD_CUADRILLAS");
+  if (!hoja || hoja.getLastRow() <= 1) return [];
+
+  return hoja.getRange(2, 1, hoja.getLastRow() - 1, Math.min(8, hoja.getLastColumn()))
+    .getValues()
+    .map(function(fila) {
+      const anterior = normalizarCuadrilla(fila[1] || "");
+      const nueva = normalizarCuadrilla(fila[2] || "");
+      const fechaEfectiva = fechaBaseOperativa(fila[3]);
+      const estado = normalizarTexto(fila[5] || "ACTIVO");
+      if (!anterior || !nueva || !fechaEfectiva || estado !== "ACTIVO") return null;
+      return {
+        anterior: anterior,
+        anteriorClave: normalizarTexto(anterior),
+        nueva: nueva,
+        periodoDesde: fechaEfectiva.getFullYear() * 12 + fechaEfectiva.getMonth()
+      };
+    })
+    .filter(Boolean);
+}
+
+function resolverContinuidadCuadrillaParnet_(cuadrilla, fecha, reglas) {
+  let actual = normalizarCuadrilla(cuadrilla || "");
+  const fechaRegistro = fechaBaseOperativa(fecha);
+  if (!actual || !fechaRegistro || !Array.isArray(reglas) || !reglas.length) return actual;
+
+  const periodoRegistro = fechaRegistro.getFullYear() * 12 + fechaRegistro.getMonth();
+  const vistos = {};
+  for (let paso = 0; paso < 20; paso++) {
+    const clave = normalizarTexto(actual);
+    if (!clave || vistos[clave]) break;
+    vistos[clave] = true;
+
+    const regla = reglas.find(function(item) {
+      return item.anteriorClave === clave && periodoRegistro >= item.periodoDesde;
+    });
+    if (!regla) break;
+    actual = regla.nueva;
+  }
+  return actual;
+}
+
+function aplicarContinuidadCuadrillasParnet_(registros) {
+  const reglas = reglasContinuidadCuadrillasParnet_();
+  const detalleMapa = {};
+  let cambios = 0;
+
+  const salida = (Array.isArray(registros) ? registros : []).map(function(registro) {
+    const copia = Object.assign({}, registro || {});
+    const anterior = normalizarCuadrilla(copia.cuadrilla || "");
+    const nueva = resolverContinuidadCuadrillaParnet_(anterior, copia.fecha, reglas);
+    if (anterior && nueva && normalizarTexto(anterior) !== normalizarTexto(nueva)) {
+      copia.cuadrilla = nueva;
+      cambios++;
+      const clave = normalizarTexto(anterior) + "|" + normalizarTexto(nueva);
+      if (!detalleMapa[clave]) detalleMapa[clave] = { anterior:anterior, nueva:nueva, registros:0 };
+      detalleMapa[clave].registros++;
+    }
+    return copia;
+  });
+
+  return {
+    registros: salida,
+    cambios: cambios,
+    detalle: Object.keys(detalleMapa).map(function(clave) { return detalleMapa[clave]; })
+  };
+}
+
 function prepararModoParnetSinVtrGar_(data) {
   const seguro = Object.assign({}, data || {});
+  const continuidad = aplicarContinuidadCuadrillasParnet_(seguro.registros);
+
+  // V564.3: Partner se consolida por CONTINUIDAD_CUADRILLAS antes de
+  // construir Producción/Efectividad/Recableado. La regla aplica desde
+  // el mes de FECHA_EFECTIVA y no reescribe períodos anteriores.
+  seguro.registros = continuidad.registros;
+  seguro._continuidadParnet = continuidad;
+
   // El modo de cierre Partner es deliberadamente unilateral:
   // nunca permite que la carga Partner escriba GAR/VTR.
   seguro.incluirVtrGar = false;
@@ -14041,23 +14118,29 @@ function prepararModoParnetSinVtrGar_(data) {
 }
 
 function previsualizarBaseOperativaParnet(data) {
-  const respuesta = previsualizarBaseOperativa(prepararModoParnetSinVtrGar_(data));
+  const preparado = prepararModoParnetSinVtrGar_(data);
+  const respuesta = previsualizarBaseOperativa(preparado);
   respuesta.accion = "PREVISUALIZAR_PARNET_SIN_VTRGAR";
   respuesta.modoParnetSinVtrGar = true;
   respuesta.vtrgarProtegido = true;
   respuesta.actasControlProtegido = true;
   respuesta.vtrgar = null;
   respuesta.incidencias = 0;
+  respuesta.continuidadCuadrillasAplicada = Number(preparado._continuidadParnet && preparado._continuidadParnet.cambios || 0);
+  respuesta.continuidadDetalle = preparado._continuidadParnet && preparado._continuidadParnet.detalle || [];
   return respuesta;
 }
 
 function procesarBaseOperativaParnet(data) {
-  const respuesta = procesarBaseOperativa(prepararModoParnetSinVtrGar_(data));
+  const preparado = prepararModoParnetSinVtrGar_(data);
+  const respuesta = procesarBaseOperativa(preparado);
   respuesta.accion = "PROCESAR_PARNET_SIN_VTRGAR";
   respuesta.modoParnetSinVtrGar = true;
   respuesta.vtrgarProtegido = true;
   respuesta.actasControlProtegido = true;
   respuesta.rankingUsaVtrGarExistente = true;
+  respuesta.continuidadCuadrillasAplicada = Number(preparado._continuidadParnet && preparado._continuidadParnet.cambios || 0);
+  respuesta.continuidadDetalle = preparado._continuidadParnet && preparado._continuidadParnet.detalle || [];
   return respuesta;
 }
 
