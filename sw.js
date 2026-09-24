@@ -1,5 +1,5 @@
 /* MI VISUAL V550 - MAPA: ORDEN DE WRAPPERS + RESILIENCIA CENTRAL V528 */
-const MV339_CACHE = "mivisual-v563-actas-historial-resiliente-20260922-1";
+const MV339_CACHE = "mivisual-v564-parnet-sin-vtrgar-20260924-1";
 const MV517C19_BRIDGE = "./js/vtr_gar_ux_v517b.js?v=GARVTR-EXCEL-20260914-1";
 
 /*
@@ -36,7 +36,7 @@ const MV339_CORE = [
   "./js/login.js?v=V339-CACHE",
   "./js/permisos.js?v=V339-CORE",
   "./js/app.js?v=V408-RESTAURA-V377",
-  "./js/modulos_loader.js?v=V5611-ACTAS-SESION-SEGURA-20260921-2",
+  "./js/modulos_loader.js?v=V564-PARNET-SIN-VTRGAR-20260924-1",
   "./js/gestion_win_v505_loader.js?v=V555-PUBLICACION-UNICA-20260921-1",
   "./js/vtr_gar_validacion_restaurar_v514.js?v=V514A-TABS-UNICA-20260828",
   "./js/vtr_gar_v515.js?v=V515-VTRGAR-BONO-DESEMPENO-20260828",
