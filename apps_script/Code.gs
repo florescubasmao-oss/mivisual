@@ -4,7 +4,7 @@
    Base: código vigente entregado por el usuario el 07/08/2026.
 ========================================================== */
 
-const MI_VISUAL_BACKEND_VERSION_ = "V564-PARNET-SEGURO-SIN-VTRGAR-20260924";
+const MI_VISUAL_BACKEND_VERSION_ = "V564.1-PARNET-GARVTR-BLOQUEADO-20260924";
 const HOJA_PRODUCCION = "PRODUCCION_APP";
 const HOJA_CATALOGO_ORDENES = "CATALOGO_ORDENES";
 const HOJA_EFECTIVIDAD = "EFECTIVIDAD";
@@ -14029,7 +14029,7 @@ function validarControlLecturaBaseOperativa(control, preparado, matrices) {
 
 function previsualizarBaseOperativa(data) {
   const usuario = validarAdministracionBaseOperativa(data.usuario);
-  const omitirVtrGar = !!(data && data.omitirVtrGar === true);
+  const omitirVtrGar = !(data && data.incluirVtrGar === true);
   const preparado = prepararRegistrosBaseOperativa(data.registros);
   const corteEntrada = obtenerCorteBaseOperativa(preparado.registros);
   const historica = combinarBaseOperativaHistorica(
@@ -14382,7 +14382,7 @@ function construirResumenDashboardRankingRapidoBaseV369_(periodo,version) {
 
 function procesarBaseOperativa(data) {
   const usuario = validarAdministracionBaseOperativa(data.usuario);
-  const omitirVtrGar = !!(data && data.omitirVtrGar === true);
+  const omitirVtrGar = !(data && data.incluirVtrGar === true);
   const lock = LockService.getScriptLock();
   lock.waitLock(30000);
   let snapshots = [];
