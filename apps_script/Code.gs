@@ -4,7 +4,7 @@
    Base: código vigente entregado por el usuario el 07/08/2026.
 ========================================================== */
 
-const MI_VISUAL_BACKEND_VERSION_ = "V399-CONCURRENCIA-CARGOS-20260813";
+const MI_VISUAL_BACKEND_VERSION_ = "V564-PARNET-SEGURO-SIN-VTRGAR-20260924";
 const HOJA_PRODUCCION = "PRODUCCION_APP";
 const HOJA_CATALOGO_ORDENES = "CATALOGO_ORDENES";
 const HOJA_EFECTIVIDAD = "EFECTIVIDAD";
@@ -13306,8 +13306,33 @@ function obtenerAsignacionIncidenciaBase(tipo, ticket, fecha, codigoPedido, asig
   return asignaciones.porFallback[[tipo, fechaIsoBaseOperativa(fecha), normalizarTexto(codigoPedido)].join("|")] || null;
 }
 
+function ajustesPartidaValidadosBaseOperativa_() {
+  // Reutiliza decisiones ya validadas por Jefatura en el módulo de Partidas.
+  // La clave ORDEN_ID coincide con Código de Liquidación / ORDEN_ID de Partner-WIN.
+  const hoja = SpreadsheetApp.getActiveSpreadsheet().getSheetByName("AJUSTES_PARTIDA_WIN");
+  const mapa = {};
+  if (!hoja || hoja.getLastRow() <= 1) return mapa;
+
+  const datos = hoja.getDataRange().getValues();
+  for (let i = 1; i < datos.length; i++) {
+    const ordenId = normalizarTexto(textoValidoBaseOperativa(datos[i][1]));
+    const codigoPropuesto = textoValidoBaseOperativa(datos[i][10]);
+    const estado = normalizarTexto(datos[i][14]);
+    if (!ordenId || !codigoPropuesto || estado !== "VALIDADO") continue;
+
+    mapa[ordenId] = {
+      codigo: codigoPropuesto,
+      puntos: numeroProduccion(datos[i][11]),
+      origen: (datos[i][12] || "").toString(),
+      motivo: (datos[i][13] || "").toString()
+    };
+  }
+  return mapa;
+}
+
 function crearMatricesBaseOperativa(registros, corte, usuarioCarga) {
   const catalogo = catalogoPartidasBaseOperativa();
+  const ajustesPartidaValidados = ajustesPartidaValidadosBaseOperativa_();
   const usuarios = cuadrillasTecnicasBaseOperativa();
   const gestionAnterior = obtenerGestionVtrGarExistente();
   const periodo = nombrePeriodoBaseOperativa(corte);
@@ -13323,6 +13348,7 @@ function crearMatricesBaseOperativa(registros, corte, usuarioCarga) {
   const detalleNoClasificadasMapa = {};
   let totalFinalizadasBase = 0;
   let totalProduccionClasificada = 0;
+  let ajustesPartidaAplicados = 0;
 
   function asegurarCuadrilla(mapa, cuadrilla, base) {
     if (!mapa[cuadrilla]) mapa[cuadrilla] = Object.assign({ cuadrilla }, base || {});
@@ -13332,7 +13358,28 @@ function crearMatricesBaseOperativa(registros, corte, usuarioCarga) {
   delPeriodo.forEach(r => {
     if (!usuarios[r.cuadrilla]) cuadrillasNoEncontradas[r.cuadrilla] = true;
     let tipoPartidaResuelta = r.tipoPartida;
-    let cat = catalogo.porTipo[tipoPartidaResuelta] || null;
+    let cat = null;
+
+    // Prioridad 1: conservar ajustes puntuales ya validados por Jefatura.
+    // Evita perder decisiones previas al volver temporalmente a Partner.
+    const ordenAjuste = normalizarTexto(textoValidoBaseOperativa(r.codigoLiquidacion));
+    const ajuste = ordenAjuste ? ajustesPartidaValidados[ordenAjuste] : null;
+    if (ajuste && ajuste.codigo) {
+      cat = catalogo.lista.find(item =>
+        normalizarTexto(item.codigo) === normalizarTexto(ajuste.codigo) &&
+        normalizarTexto(item.estado || "ACTIVO") === "ACTIVO"
+      ) || null;
+      if (cat) {
+        tipoPartidaResuelta = cat.tipoOrden || tipoPartidaResuelta;
+        ajustesPartidaAplicados++;
+      }
+    }
+
+    // Prioridad 2: clasificación nativa de Partner por Tipo de Partida.
+    if (!cat) {
+      cat = catalogo.porTipo[tipoPartidaResuelta] || null;
+    }
+
     if (!cat && r.tipoPartidaAlterna && (
       catalogo.porTipo[r.tipoPartidaAlterna] || ["", "AVERIA", "INSTALACION"].includes(r.tipoPartida)
     )) {
@@ -13471,6 +13518,7 @@ function crearMatricesBaseOperativa(registros, corte, usuarioCarga) {
     periodo, actualizadoAl, corte, produccion, efectividad, recableado, vtrgar,
     baseIncidencias, incidenciasDetectadasPeriodo: incidenciasPeriodo.length,
     totalFinalizadasBase, totalProduccionClasificada,
+    ajustesPartidaAplicados,
     finalizadasSinCatalogo: Math.max(totalFinalizadasBase - totalProduccionClasificada, 0),
     detalleNoClasificadas,
     partidasNoEncontradas: Object.keys(partidasNoEncontradas).sort(),
@@ -13760,6 +13808,72 @@ function escribirIndicadoresYConciliarBaseOperativa(hojas, matrices) {
   }
 }
 
+function escribirIndicadoresYConciliarBaseOperativaSinVtrGar_(hojas, matrices) {
+  // MODO PARNET SEGURO:
+  // actualiza Producción, Efectividad, Recableado y Base Operativa Histórica.
+  // NO modifica POR VTR/GAR ni BASE_VTR_GAR_DETECTADA.
+  const controles = [];
+  const produccionHistorica = combinarMatrizPeriodoBaseOperativa(hojas[0], matrices.produccion, 2, matrices.corte);
+  const efectividadHistorica = combinarMatrizPeriodoBaseOperativa(hojas[1], matrices.efectividad, 3, matrices.corte);
+  const recableadoHistorico = combinarMatrizPeriodoBaseOperativa(hojas[2], matrices.recableado, 3, matrices.corte);
+
+  controles.push(reemplazarHojaBaseOperativa(hojas[0], produccionHistorica));
+  controles.push(reemplazarHojaBaseOperativa(hojas[1], efectividadHistorica));
+  controles.push(reemplazarHojaBaseOperativa(hojas[2], recableadoHistorico));
+  controles.push(reemplazarHojaBaseOperativa(hojas[3], matrices.baseHistorica));
+
+  aplicarFormatosBaseOperativaSinVtrGar_(matrices);
+  SpreadsheetApp.flush();
+
+  try {
+    const conciliacion = validarConciliacionPostEscrituraBaseOperativa(matrices);
+    conciliacion.filtrosEliminados = controles.filter(x => x && x.filtroEliminado).length;
+    conciliacion.reintentoProduccion = false;
+    conciliacion.vtrGarProtegido = true;
+    return conciliacion;
+  } catch (primerError) {
+    reemplazarHojaBaseOperativa(hojas[0], produccionHistorica);
+    aplicarFormatosBaseOperativaSinVtrGar_(matrices);
+    SpreadsheetApp.flush();
+
+    const conciliacion = validarConciliacionPostEscrituraBaseOperativa(matrices);
+    conciliacion.filtrosEliminados = controles.filter(x => x && x.filtroEliminado).length;
+    conciliacion.reintentoProduccion = true;
+    conciliacion.vtrGarProtegido = true;
+    return conciliacion;
+  }
+}
+
+function aplicarFormatosBaseOperativaSinVtrGar_(matrices) {
+  const hp = obtenerHoja(HOJA_PRODUCCION);
+  if (hp.getLastRow() > 1) {
+    const filas = hp.getLastRow() - 1;
+    hp.getRange(2, 3, filas, 1).setNumberFormat("dd/mm/yyyy");
+    hp.getRange(2, 7, filas, 1).setNumberFormat("dd/mm/yyyy");
+  }
+
+  const he = obtenerHoja(HOJA_EFECTIVIDAD);
+  if (he.getLastRow() > 1) {
+    const filas = he.getLastRow() - 1;
+    he.getRange(2, 4, filas, 1).setNumberFormat("dd/mm/yyyy");
+    he.getRange(2, 10, filas, 1).setNumberFormat("0.00%");
+  }
+
+  const hr = obtenerHoja(HOJA_RECABLEADO);
+  if (hr.getLastRow() > 1) {
+    const filas = hr.getLastRow() - 1;
+    hr.getRange(2, 4, filas, 1).setNumberFormat("dd/mm/yyyy");
+    hr.getRange(2, 7, filas, 1).setNumberFormat("0.00%");
+  }
+
+  const hh = asegurarHojaBaseOperativaHistorica();
+  if (hh.getLastRow() > 1) {
+    const filas = hh.getLastRow() - 1;
+    hh.getRange(2, 3, filas, 1).setNumberFormat("dd/mm/yyyy");
+    hh.getRange(2, 18, filas, 1).setNumberFormat("dd/mm/yyyy hh:mm:ss");
+  }
+}
+
 function aplicarFormatosBaseOperativa(matrices) {
   const hp = obtenerHoja(HOJA_PRODUCCION);
   if (hp.getLastRow() > 1) {
@@ -13801,7 +13915,7 @@ function aplicarFormatosBaseOperativa(matrices) {
   }
 }
 
-function registrarHistorialCargaBaseOperativa(usuario, archivo, preparado, matrices, estado) {
+function registrarHistorialCargaBaseOperativa(usuario, archivo, preparado, matrices, estado, opciones) {
   const hoja = asegurarHojaHistorialCargaOperativa();
   const ahora = new Date();
   hoja.appendRow([
@@ -13809,7 +13923,8 @@ function registrarHistorialCargaBaseOperativa(usuario, archivo, preparado, matri
     ahora, ahora, usuario.usuario, archivo || "", matrices.periodo, matrices.corte,
     preparado.recibidos, preparado.registros.length, preparado.duplicados,
     matrices.produccion.length - 1, matrices.efectividad.length - 1,
-    matrices.recableado.length - 1, matrices.vtrgar.length - 1,
+    matrices.recableado.length - 1,
+    opciones && opciones.omitirVtrGar ? "" : (matrices.vtrgar.length - 1),
     matrices.partidasNoEncontradas.length, estado
   ]);
   const fila = hoja.getLastRow();
@@ -13914,6 +14029,7 @@ function validarControlLecturaBaseOperativa(control, preparado, matrices) {
 
 function previsualizarBaseOperativa(data) {
   const usuario = validarAdministracionBaseOperativa(data.usuario);
+  const omitirVtrGar = !!(data && data.omitirVtrGar === true);
   const preparado = prepararRegistrosBaseOperativa(data.registros);
   const corteEntrada = obtenerCorteBaseOperativa(preparado.registros);
   const historica = combinarBaseOperativaHistorica(
@@ -13954,12 +14070,14 @@ function previsualizarBaseOperativa(data) {
     incidencias: matrices.incidenciasDetectadasPeriodo || 0,
     totalFinalizadasBase: matrices.totalFinalizadasBase,
     totalProduccionClasificada: matrices.totalProduccionClasificada,
+    ajustesPartidaAplicados: Number(matrices.ajustesPartidaAplicados || 0),
     finalizadasSinCatalogo: matrices.finalizadasSinCatalogo,
     detalleNoClasificadas: matrices.detalleNoClasificadas,
     sugerenciasNoClasificadas: sugerenciasCatalogoBaseOperativa(matrices.detalleNoClasificadas, catalogoVista.lista),
     catalogoOpciones: opcionesCatalogoBaseOperativa(catalogoVista.lista),
     partidasNoEncontradas: matrices.partidasNoEncontradas,
     cuadrillasNoEncontradas: matrices.cuadrillasNoEncontradas,
+    vtrgarProtegido: omitirVtrGar,
     actual: resumenActualBaseOperativa(matrices.corte),
     nuevo: resumenNuevoBaseOperativa(matrices)
   };
@@ -14264,6 +14382,7 @@ function construirResumenDashboardRankingRapidoBaseV369_(periodo,version) {
 
 function procesarBaseOperativa(data) {
   const usuario = validarAdministracionBaseOperativa(data.usuario);
+  const omitirVtrGar = !!(data && data.omitirVtrGar === true);
   const lock = LockService.getScriptLock();
   lock.waitLock(30000);
   let snapshots = [];
@@ -14304,17 +14423,26 @@ function procesarBaseOperativa(data) {
       );
     }
 
-    const hojas = [
-      obtenerHoja(HOJA_PRODUCCION), obtenerHoja(HOJA_EFECTIVIDAD), obtenerHoja(HOJA_RECABLEADO),
-      obtenerHojaVtrGarFlexible(), asegurarHojaBaseVtrGarDetectada(),
-      asegurarHojaBaseOperativaHistorica(), obtenerHoja(HOJA_RANKING)
-    ];
+    const hojas = omitirVtrGar
+      ? [
+          obtenerHoja(HOJA_PRODUCCION),
+          obtenerHoja(HOJA_EFECTIVIDAD),
+          obtenerHoja(HOJA_RECABLEADO),
+          asegurarHojaBaseOperativaHistorica(),
+          obtenerHoja(HOJA_RANKING)
+        ]
+      : [
+          obtenerHoja(HOJA_PRODUCCION), obtenerHoja(HOJA_EFECTIVIDAD), obtenerHoja(HOJA_RECABLEADO),
+          obtenerHojaVtrGarFlexible(), asegurarHojaBaseVtrGarDetectada(),
+          asegurarHojaBaseOperativaHistorica(), obtenerHoja(HOJA_RANKING)
+        ];
     snapshots = hojas.map(snapshotHojaBaseOperativa);
 
-    // V235: elimina filtros y filas ocultas antes de escribir, usa una sola
-    // escritura completa y realiza un reintento automático de Producción si la
-    // primera conciliación no coincide.
-    const conciliacion = escribirIndicadoresYConciliarBaseOperativa(hojas, matrices);
+    // En modo Partner seguro GAR/VTR queda congelado: no se escribe ni el
+    // indicador POR VTR/GAR ni la base de gestión BASE_VTR_GAR_DETECTADA.
+    const conciliacion = omitirVtrGar
+      ? escribirIndicadoresYConciliarBaseOperativaSinVtrGar_(hojas, matrices)
+      : escribirIndicadoresYConciliarBaseOperativa(hojas, matrices);
 
     // V396: la misma Base Operativa alimenta el control de Actas.
     // Este control es auxiliar; si fallara, no invalida Producción/Efectividad.
@@ -14342,7 +14470,14 @@ function procesarBaseOperativa(data) {
     }
 
     const ranking = actualizarRanking(matrices.periodo, matrices.actualizadoAl);
-    registrarHistorialCargaBaseOperativa(usuario, data.archivo, preparado, matrices, "OK");
+    registrarHistorialCargaBaseOperativa(
+      usuario,
+      data.archivo,
+      preparado,
+      matrices,
+      omitirVtrGar ? "OK_PARNET_SIN_VTRGAR" : "OK",
+      { omitirVtrGar: omitirVtrGar }
+    );
 
     invalidarCacheBonosSupervisores_();
     invalidarResumenDashboardRankingV361_();
@@ -14375,10 +14510,12 @@ function procesarBaseOperativa(data) {
       produccion: matrices.produccion.length - 1,
       efectividad: matrices.efectividad.length - 1,
       recableado: matrices.recableado.length - 1,
-      vtrgar: matrices.vtrgar.length - 1,
-      incidencias: matrices.incidenciasDetectadasPeriodo || 0,
+      vtrgar: omitirVtrGar ? null : (matrices.vtrgar.length - 1),
+      vtrgarProtegido: omitirVtrGar,
+      incidencias: omitirVtrGar ? 0 : (matrices.incidenciasDetectadasPeriodo || 0),
       finalizadas: matrices.totalFinalizadasBase,
       produccionOrdenes: matrices.totalProduccionClasificada,
+      ajustesPartidaAplicados: Number(matrices.ajustesPartidaAplicados || 0),
       duplicados: preparado.duplicados,
       duplicadosDetectados: Number(controlDuplicados.duplicadosDetectados || controlDuplicados.duplicadosExactos || preparado.duplicados || 0),
       duplicadosConservados: Number(controlDuplicados.duplicadosConservados || preparado.duplicados || 0),
