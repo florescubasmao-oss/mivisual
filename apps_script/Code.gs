@@ -4,7 +4,7 @@
    Base: código vigente entregado por el usuario el 07/08/2026.
 ========================================================== */
 
-const MI_VISUAL_BACKEND_VERSION_ = "V399-CONCURRENCIA-CARGOS-20260813";
+const MI_VISUAL_BACKEND_VERSION_ = "V564-PARNET-SEGURO-SIN-VTRGAR-20260924";
 const HOJA_PRODUCCION = "PRODUCCION_APP";
 const HOJA_CATALOGO_ORDENES = "CATALOGO_ORDENES";
 const HOJA_EFECTIVIDAD = "EFECTIVIDAD";
