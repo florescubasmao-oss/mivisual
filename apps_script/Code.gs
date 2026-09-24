@@ -13306,8 +13306,33 @@ function obtenerAsignacionIncidenciaBase(tipo, ticket, fecha, codigoPedido, asig
   return asignaciones.porFallback[[tipo, fechaIsoBaseOperativa(fecha), normalizarTexto(codigoPedido)].join("|")] || null;
 }
 
+function ajustesPartidaValidadosBaseOperativa_() {
+  // Reutiliza decisiones ya validadas por Jefatura en el módulo de Partidas.
+  // La clave ORDEN_ID coincide con Código de Liquidación / ORDEN_ID de Partner-WIN.
+  const hoja = SpreadsheetApp.getActiveSpreadsheet().getSheetByName("AJUSTES_PARTIDA_WIN");
+  const mapa = {};
+  if (!hoja || hoja.getLastRow() <= 1) return mapa;
+
+  const datos = hoja.getDataRange().getValues();
+  for (let i = 1; i < datos.length; i++) {
+    const ordenId = normalizarTexto(textoValidoBaseOperativa(datos[i][1]));
+    const codigoPropuesto = textoValidoBaseOperativa(datos[i][10]);
+    const estado = normalizarTexto(datos[i][14]);
+    if (!ordenId || !codigoPropuesto || estado !== "VALIDADO") continue;
+
+    mapa[ordenId] = {
+      codigo: codigoPropuesto,
+      puntos: numeroProduccion(datos[i][11]),
+      origen: (datos[i][12] || "").toString(),
+      motivo: (datos[i][13] || "").toString()
+    };
+  }
+  return mapa;
+}
+
 function crearMatricesBaseOperativa(registros, corte, usuarioCarga) {
   const catalogo = catalogoPartidasBaseOperativa();
+  const ajustesPartidaValidados = ajustesPartidaValidadosBaseOperativa_();
   const usuarios = cuadrillasTecnicasBaseOperativa();
   const gestionAnterior = obtenerGestionVtrGarExistente();
   const periodo = nombrePeriodoBaseOperativa(corte);
@@ -13323,6 +13348,7 @@ function crearMatricesBaseOperativa(registros, corte, usuarioCarga) {
   const detalleNoClasificadasMapa = {};
   let totalFinalizadasBase = 0;
   let totalProduccionClasificada = 0;
+  let ajustesPartidaAplicados = 0;
 
   function asegurarCuadrilla(mapa, cuadrilla, base) {
     if (!mapa[cuadrilla]) mapa[cuadrilla] = Object.assign({ cuadrilla }, base || {});
@@ -13332,7 +13358,28 @@ function crearMatricesBaseOperativa(registros, corte, usuarioCarga) {
   delPeriodo.forEach(r => {
     if (!usuarios[r.cuadrilla]) cuadrillasNoEncontradas[r.cuadrilla] = true;
     let tipoPartidaResuelta = r.tipoPartida;
-    let cat = catalogo.porTipo[tipoPartidaResuelta] || null;
+    let cat = null;
+
+    // Prioridad 1: conservar ajustes puntuales ya validados por Jefatura.
+    // Evita perder decisiones previas al volver temporalmente a Partner.
+    const ordenAjuste = normalizarTexto(textoValidoBaseOperativa(r.codigoLiquidacion));
+    const ajuste = ordenAjuste ? ajustesPartidaValidados[ordenAjuste] : null;
+    if (ajuste && ajuste.codigo) {
+      cat = catalogo.lista.find(item =>
+        normalizarTexto(item.codigo) === normalizarTexto(ajuste.codigo) &&
+        normalizarTexto(item.estado || "ACTIVO") === "ACTIVO"
+      ) || null;
+      if (cat) {
+        tipoPartidaResuelta = cat.tipoOrden || tipoPartidaResuelta;
+        ajustesPartidaAplicados++;
+      }
+    }
+
+    // Prioridad 2: clasificación nativa de Partner por Tipo de Partida.
+    if (!cat) {
+      cat = catalogo.porTipo[tipoPartidaResuelta] || null;
+    }
+
     if (!cat && r.tipoPartidaAlterna && (
       catalogo.porTipo[r.tipoPartidaAlterna] || ["", "AVERIA", "INSTALACION"].includes(r.tipoPartida)
     )) {
@@ -13471,6 +13518,7 @@ function crearMatricesBaseOperativa(registros, corte, usuarioCarga) {
     periodo, actualizadoAl, corte, produccion, efectividad, recableado, vtrgar,
     baseIncidencias, incidenciasDetectadasPeriodo: incidenciasPeriodo.length,
     totalFinalizadasBase, totalProduccionClasificada,
+    ajustesPartidaAplicados,
     finalizadasSinCatalogo: Math.max(totalFinalizadasBase - totalProduccionClasificada, 0),
     detalleNoClasificadas,
     partidasNoEncontradas: Object.keys(partidasNoEncontradas).sort(),
@@ -14022,6 +14070,7 @@ function previsualizarBaseOperativa(data) {
     incidencias: matrices.incidenciasDetectadasPeriodo || 0,
     totalFinalizadasBase: matrices.totalFinalizadasBase,
     totalProduccionClasificada: matrices.totalProduccionClasificada,
+    ajustesPartidaAplicados: Number(matrices.ajustesPartidaAplicados || 0),
     finalizadasSinCatalogo: matrices.finalizadasSinCatalogo,
     detalleNoClasificadas: matrices.detalleNoClasificadas,
     sugerenciasNoClasificadas: sugerenciasCatalogoBaseOperativa(matrices.detalleNoClasificadas, catalogoVista.lista),
@@ -14466,6 +14515,7 @@ function procesarBaseOperativa(data) {
       incidencias: omitirVtrGar ? 0 : (matrices.incidenciasDetectadasPeriodo || 0),
       finalizadas: matrices.totalFinalizadasBase,
       produccionOrdenes: matrices.totalProduccionClasificada,
+      ajustesPartidaAplicados: Number(matrices.ajustesPartidaAplicados || 0),
       duplicados: preparado.duplicados,
       duplicadosDetectados: Number(controlDuplicados.duplicadosDetectados || controlDuplicados.duplicadosExactos || preparado.duplicados || 0),
       duplicadosConservados: Number(controlDuplicados.duplicadosConservados || preparado.duplicados || 0),
