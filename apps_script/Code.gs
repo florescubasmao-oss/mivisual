@@ -4,7 +4,7 @@
    Base: código vigente entregado por el usuario el 07/08/2026.
 ========================================================== */
 
-const MI_VISUAL_BACKEND_VERSION_ = "V564.1-PARNET-GARVTR-BLOQUEADO-20260924";
+const MI_VISUAL_BACKEND_VERSION_ = "V564.2-PARNET-CIERRE-SEGURO-20260924";
 const HOJA_PRODUCCION = "PRODUCCION_APP";
 const HOJA_CATALOGO_ORDENES = "CATALOGO_ORDENES";
 const HOJA_EFECTIVIDAD = "EFECTIVIDAD";
@@ -14027,6 +14027,41 @@ function validarControlLecturaBaseOperativa(control, preparado, matrices) {
   }
 }
 
+function prepararModoParnetSinVtrGar_(data) {
+  const seguro = Object.assign({}, data || {});
+  // El modo de cierre Partner es deliberadamente unilateral:
+  // nunca permite que la carga Partner escriba GAR/VTR.
+  seguro.incluirVtrGar = false;
+  seguro.omitirVtrGar = true;
+  seguro.modoParnetSinVtrGar = true;
+
+  // Gestión de Actas queda congelada hasta su validación específica.
+  seguro.omitirSincronizacionActas = true;
+  return seguro;
+}
+
+function previsualizarBaseOperativaParnet(data) {
+  const respuesta = previsualizarBaseOperativa(prepararModoParnetSinVtrGar_(data));
+  respuesta.accion = "PREVISUALIZAR_PARNET_SIN_VTRGAR";
+  respuesta.modoParnetSinVtrGar = true;
+  respuesta.vtrgarProtegido = true;
+  respuesta.actasControlProtegido = true;
+  respuesta.vtrgar = null;
+  respuesta.incidencias = 0;
+  return respuesta;
+}
+
+function procesarBaseOperativaParnet(data) {
+  const respuesta = procesarBaseOperativa(prepararModoParnetSinVtrGar_(data));
+  respuesta.accion = "PROCESAR_PARNET_SIN_VTRGAR";
+  respuesta.modoParnetSinVtrGar = true;
+  respuesta.vtrgarProtegido = true;
+  respuesta.actasControlProtegido = true;
+  respuesta.rankingUsaVtrGarExistente = true;
+  return respuesta;
+}
+
+
 function previsualizarBaseOperativa(data) {
   const usuario = validarAdministracionBaseOperativa(data.usuario);
   const omitirVtrGar = !(data && data.incluirVtrGar === true);
@@ -14382,7 +14417,9 @@ function construirResumenDashboardRankingRapidoBaseV369_(periodo,version) {
 
 function procesarBaseOperativa(data) {
   const usuario = validarAdministracionBaseOperativa(data.usuario);
-  const omitirVtrGar = !(data && data.incluirVtrGar === true);
+  const modoParnetSinVtrGar = !!(data && data.modoParnetSinVtrGar === true);
+  const omitirVtrGar = modoParnetSinVtrGar || !(data && data.incluirVtrGar === true);
+  const omitirSincronizacionActas = !!(data && data.omitirSincronizacionActas === true);
   const lock = LockService.getScriptLock();
   lock.waitLock(30000);
   let snapshots = [];
@@ -14444,10 +14481,12 @@ function procesarBaseOperativa(data) {
       ? escribirIndicadoresYConciliarBaseOperativaSinVtrGar_(hojas, matrices)
       : escribirIndicadoresYConciliarBaseOperativa(hojas, matrices);
 
-    // V396: la misma Base Operativa alimenta el control de Actas.
-    // Este control es auxiliar; si fallara, no invalida Producción/Efectividad.
+    // V396/V564.2: Control de Actas NO se toca durante el cierre Partner.
+    // Se conserva la ruta histórica para otros flujos, pero el wrapper Parnet
+    // fuerza omitirSincronizacionActas=true hasta validar este módulo aparte.
     let controlActasV396 = {
       ok:false,
+      protegido:omitirSincronizacionActas,
       periodo:matrices.periodoClave || clavePeriodoBaseOperativa(historica.corte),
       registrosControl:0,
       finalizadasDetectadas:0,
@@ -14455,18 +14494,21 @@ function procesarBaseOperativa(data) {
       error:""
     };
 
-    try {
-      controlActasV396 = sincronizarControlActasFinalizadasV396_(
-        historica.registrosPeriodo,
-        matrices.periodoClave || clavePeriodoBaseOperativa(historica.corte),
-        usuario.usuario,
-        data.archivo
-      );
-    } catch (errorControlActas) {
-      controlActasV396.error =
-        errorControlActas && errorControlActas.message
-          ? errorControlActas.message
-          : String(errorControlActas || "No se pudo actualizar Control de Actas");
+    if (!omitirSincronizacionActas) {
+      try {
+        controlActasV396 = sincronizarControlActasFinalizadasV396_(
+          historica.registrosPeriodo,
+          matrices.periodoClave || clavePeriodoBaseOperativa(historica.corte),
+          usuario.usuario,
+          data.archivo
+        );
+        controlActasV396.protegido = false;
+      } catch (errorControlActas) {
+        controlActasV396.error =
+          errorControlActas && errorControlActas.message
+            ? errorControlActas.message
+            : String(errorControlActas || "No se pudo actualizar Control de Actas");
+      }
     }
 
     const ranking = actualizarRanking(matrices.periodo, matrices.actualizadoAl);
@@ -14476,7 +14518,11 @@ function procesarBaseOperativa(data) {
       preparado,
       matrices,
       omitirVtrGar ? "OK_PARNET_SIN_VTRGAR" : "OK",
-      { omitirVtrGar: omitirVtrGar }
+      {
+        omitirVtrGar: omitirVtrGar,
+        modoParnetSinVtrGar: modoParnetSinVtrGar,
+        omitirSincronizacionActas: omitirSincronizacionActas
+      }
     );
 
     invalidarCacheBonosSupervisores_();
@@ -14512,6 +14558,8 @@ function procesarBaseOperativa(data) {
       recableado: matrices.recableado.length - 1,
       vtrgar: omitirVtrGar ? null : (matrices.vtrgar.length - 1),
       vtrgarProtegido: omitirVtrGar,
+      modoParnetSinVtrGar: modoParnetSinVtrGar,
+      rankingUsaVtrGarExistente: omitirVtrGar,
       incidencias: omitirVtrGar ? 0 : (matrices.incidenciasDetectadasPeriodo || 0),
       finalizadas: matrices.totalFinalizadasBase,
       produccionOrdenes: matrices.totalProduccionClasificada,
@@ -14535,6 +14583,7 @@ function procesarBaseOperativa(data) {
       resumenModo:"RAPIDO_OPERATIVO_V369",
       slaSincronizacionPendiente:true,
       actasControlActualizado:!!controlActasV396.ok,
+      actasControlProtegido:!!controlActasV396.protegido,
       actasControlPeriodo:controlActasV396.periodo || matrices.periodoClave,
       actasControlFinalizadas:Number(controlActasV396.registrosControl || 0),
       actasControlSinCodigoOrden:Number(controlActasV396.sinCodigoOrden || 0),
@@ -19999,6 +20048,10 @@ function doPost(e) {
     if (data.accion === "guardarConfiguracionBonoSupervisores") return respuestaJson(guardarConfiguracionBonoSupervisores(data));
     if (data.accion === "guardarSatisfaccionBonoSupervisor") return respuestaJson(guardarSatisfaccionBonoSupervisor(data));
     if (data.accion === "listarTrabajosDiariosCuadrilla") return respuestaJson(listarTrabajosDiariosCuadrilla(data));
+    // V564.2: flujo exclusivo de cierre Partner. Fuerza protección de
+    // GAR/VTR y de Control de Actas aunque el cliente envíe otros flags.
+    if (data.accion === "previsualizarBaseOperativaParnet") return respuestaJson(previsualizarBaseOperativaParnet(data));
+    if (data.accion === "procesarBaseOperativaParnet") return respuestaJson(procesarBaseOperativaParnet(data));
     if (data.accion === "previsualizarBaseOperativa") return respuestaJson(previsualizarBaseOperativa(data));
     if (data.accion === "procesarBaseOperativa") return respuestaJson(procesarBaseOperativa(data));
     if (data.accion === "listarGestionVtrGar") return respuestaJson(listarGestionVtrGar(data));
