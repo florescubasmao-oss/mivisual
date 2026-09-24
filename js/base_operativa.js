@@ -87,10 +87,10 @@ function boCss(){
 function mostrarActualizarBaseOperativa(){
   BO_REGISTROS=[]; BO_REGISTROS_ORIGINALES=[]; BO_DUPLICADOS_REVISION=[]; BO_DUPLICADOS_REVISADOS=true; BO_FILAS_OMITIDAS=0; BO_ARCHIVO=""; BO_CONTROL_LECTURA={registrosValidos:0,finalizadasPeriodo:0,finalizadasLeidas:0,duplicadosExactos:0};
   mostrarPantalla(boCss()+`<div class="bo-wrap">
-    <div class="bo-head"><h2>📤 Actualizar base operativa Partner</h2><p>Actualiza Producción, Efectividad y Recableado del mes detectado. GAR/VTR queda protegido y sin cambios.</p></div>
+    <div class="bo-head"><h2>📤 Actualizar base operativa Partner</h2><p>Actualiza Producción, Efectividad y Recableado del mes detectado. GAR/VTR, SLA, Mapa Operativo y Actas quedan protegidos.</p></div>
     <div class="bo-card">
       <div class="bo-grid"><div><label><b>Archivo base madre</b></label><input id="boArchivo" class="bo-file" type="file" accept=".xlsx,.xls,.csv,.htm,.html"></div><button id="boLeer" class="bo-btn" onclick="boLeerArchivo()">Leer archivo</button></div>
-      <p class="bo-note">La fecha oficial será el último día con órdenes en estado FINALIZADA. Las órdenes posteriores a ese corte no se mezclarán. Si una orden ya existe, se actualiza sin duplicarla; los demás meses permanecen guardados. <b>Modo cierre Partner:</b> POR VTR/GAR y BASE_VTR_GAR_DETECTADA no se modifican.</p>
+      <p class="bo-note">La fecha oficial será el último día con órdenes en estado FINALIZADA. Las órdenes posteriores a ese corte no se mezclarán. Si una orden ya existe, se actualiza sin duplicarla; los demás meses permanecen guardados. <b>Modo cierre Partner:</b> POR VTR/GAR, BASE_VTR_GAR_DETECTADA, SLA, MAPA_ORDENES y Control de Actas no se modifican.</p>
       <details id="boCompatibilidad" style="margin:12px 0"><summary style="cursor:pointer;font-weight:800">El archivo .xls no abre o viene acompañado de una carpeta</summary>
         <p class="bo-note"><b>Opción recomendada para este reporte:</b> seleccione la carpeta cuyo nombre termina en <b>_archivos</b>. El sistema buscará y leerá automáticamente <b>sheet001.htm</b>, que contiene la base real.</p>
         <div class="bo-grid"><div><label><b>Carpeta complementaria del reporte</b></label><input id="boCarpetaReporte" class="bo-file" type="file" webkitdirectory directory multiple></div><button id="boLeerCarpeta" class="bo-btn" onclick="boLeerCarpetaReporte()">Leer carpeta</button></div>
@@ -609,7 +609,7 @@ async function boProcesarBase(){
   try{
     btn.disabled=true;msg.className="bo-msg";msg.textContent="Validando resultados antes de actualizar el período...";
     document.querySelectorAll(".bo-preview-generated").forEach(el=>el.remove());
-    const vista=await boApi({accion:"previsualizarBaseOperativa",usuario:boUsuario(),archivo:BO_ARCHIVO,registros:BO_REGISTROS,controlLectura:BO_CONTROL_LECTURA,omitirVtrGar:true});
+    const vista=await boApi({accion:"previsualizarBaseOperativaParnet",usuario:boUsuario(),archivo:BO_ARCHIVO,registros:BO_REGISTROS,controlLectura:BO_CONTROL_LECTURA});
     BO_PREVISTA=vista;BO_CATALOGO_OPCIONES=vista.catalogoOpciones||{plataformas:[],grupos:[],estados:[]};
     const a=vista.actual||{},n=vista.nuevo||{},partidas=vista.partidasNoEncontradas||[],cuadrillas=vista.cuadrillasNoEncontradas||[];
     const noClasificadas=vista.detalleNoClasificadas||[];
@@ -644,14 +644,14 @@ async function boProcesarBase(){
       msg.textContent=`NO SE MODIFICÓ NINGUNA HOJA.\nLa validación no coincide: ${totalFinalizadas} finalizadas y ${totalClasificadas} clasificadas en Producción.`;
       return;
     }
-    if(!confirm(`PREVISUALIZACIÓN DE LA NUEVA BASE\n\n${detalle}\n\nEsta operación actualizará únicamente el período detectado en Producción, Efectividad, Recableados, VTR/GAR y Ranking. Los meses anteriores permanecerán guardados. ¿Confirmar?`)){
+    if(!confirm(`PREVISUALIZACIÓN DE LA NUEVA BASE\n\n${detalle}\n\nEsta operación actualizará únicamente Producción, Efectividad, Recableado y el histórico operativo del período detectado. Ranking/Dashboard usarán el VTR/GAR ya existente. GAR/VTR, SLA, MAPA_ORDENES y Actas permanecerán sin cambios. Los meses anteriores seguirán guardados. ¿Confirmar?`)){
       msg.className="bo-msg bo-warn";msg.textContent="Validación realizada. No se modificó ninguna hoja.";return;
     }
     msg.className="bo-msg";msg.textContent="Procesando base y actualizando hojas. No cierre esta pantalla...";
-    const r=await boApi({accion:"procesarBaseOperativa",usuario:boUsuario(),archivo:BO_ARCHIVO,registros:BO_REGISTROS,controlLectura:BO_CONTROL_LECTURA,omitirVtrGar:true});
+    const r=await boApi({accion:"procesarBaseOperativaParnet",usuario:boUsuario(),archivo:BO_ARCHIVO,registros:BO_REGISTROS,controlLectura:BO_CONTROL_LECTURA});
     const desconocidas=(r.partidasNoEncontradas||[]),cuadNo=(r.cuadrillasNoEncontradas||[]);
     msg.className="bo-msg bo-ok";
-    msg.textContent=`BASE OPERATIVA ACTUALIZADA\nPeríodo: ${r.periodo||"-"}\nCorte: ${r.actualizadoAl}\nFinalizadas cargadas: ${r.finalizadas||0}\nÓrdenes nuevas en el histórico: ${r.historicoNuevos||0}\nÓrdenes actualizadas en el histórico: ${r.historicoActualizados||0}\nÓrdenes registradas en Producción: ${r.produccionOrdenes||0}\nAjustes de partida validados reutilizados: ${r.ajustesPartidaAplicados||0}\nProducción: ${r.produccion} filas agrupadas\nEfectividad: ${r.efectividad} cuadrillas\nRecableados: ${r.recableado} cuadrillas\nVTR/GAR: PROTEGIDO · SIN CAMBIOS\nMeses anteriores conservados: Sí\nDuplicados revisados: ${r.duplicadosDetectados||0}
+    msg.textContent=`BASE OPERATIVA ACTUALIZADA\nPeríodo: ${r.periodo||"-"}\nCorte: ${r.actualizadoAl}\nFinalizadas cargadas: ${r.finalizadas||0}\nÓrdenes nuevas en el histórico: ${r.historicoNuevos||0}\nÓrdenes actualizadas en el histórico: ${r.historicoActualizados||0}\nÓrdenes registradas en Producción: ${r.produccionOrdenes||0}\nAjustes de partida validados reutilizados: ${r.ajustesPartidaAplicados||0}\nProducción: ${r.produccion} filas agrupadas\nEfectividad: ${r.efectividad} cuadrillas\nRecableados: ${r.recableado} cuadrillas\nVTR/GAR: PROTEGIDO · SIN CAMBIOS\nSLA / Mapa Operativo: PROTEGIDOS · SIN CAMBIOS\nControl de Actas: PROTEGIDO · SIN CAMBIOS\nRanking usa VTR/GAR existente: ${r.rankingUsaVtrGarExistente?"Sí":"Revisar"}\nMeses anteriores conservados: Sí\nDuplicados revisados: ${r.duplicadosDetectados||0}
 Copias conservadas: ${r.duplicadosConservados||0}
 Copias omitidas: ${r.duplicadosOmitidos||0}\nConciliación posterior: ${r.conciliacion&&r.conciliacion.ok?"OK":"No confirmada"}\nRanking actualizado: ${r.ranking?"Sí":"No"}`;
     if(desconocidas.length||cuadNo.length)resumen.insertAdjacentHTML("beforeend",`<div class="bo-msg bo-warn bo-preview-generated">${desconocidas.length?`<b>Partidas no encontradas (${desconocidas.length}):</b><br>${desconocidas.slice(0,30).map(boEsc).join("<br>")}`:""}${cuadNo.length?`<br><br><b>Cuadrillas no encontradas en USUARIOS:</b><br>${cuadNo.map(boEsc).join("<br>")}`:""}</div>`);
