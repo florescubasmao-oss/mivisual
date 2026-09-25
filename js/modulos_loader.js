@@ -132,6 +132,7 @@
     mapa: {
       archivos: [
         `./js/mapa_operativo.js?v=V563-MAPA-FILTRO-P`,
+        `./js/mapa_resiliencia_v547.js?v=V547-MAPA-RESILIENTE`,
         `./js/mapa_partner_visual_v386.js?v=V563-MAPA-FILTRO-P2`,
         `./js/indicadores_win_sync_v4879.js?v=V563-MAPA-SYNC-INTEGRAL`,
         `./js/mapa_indicadores_estado_v544.js?v=V563-MAPA-SYNC-INTEGRAL`,
