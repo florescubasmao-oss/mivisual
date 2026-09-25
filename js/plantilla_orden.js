@@ -102,32 +102,80 @@ function poPanelCtoAsociadasHtml(orden){
 }
 
 async function poApi(payload){
-  const parametros = new URLSearchParams();
-  Object.entries(payload || {}).forEach(([clave, valor]) => {
-    if(valor !== undefined && valor !== null){
-      parametros.set(clave, typeof valor === "object" ? JSON.stringify(valor) : String(valor));
-    }
-  });
-  parametros.set("_ts", String(Date.now()));
+  const construirUrl=()=>{
+    const parametros = new URLSearchParams();
+    Object.entries(payload || {}).forEach(([clave, valor]) => {
+      if(valor !== undefined && valor !== null){
+        parametros.set(clave, typeof valor === "object" ? JSON.stringify(valor) : String(valor));
+      }
+    });
+    parametros.set("_ts", String(Date.now()));
+    const separador = API_PLANTILLA_ORDEN.includes("?") ? "&" : "?";
+    return API_PLANTILLA_ORDEN + separador + parametros.toString();
+  };
 
-  const separador = API_PLANTILLA_ORDEN.includes("?") ? "&" : "?";
-  const respuesta = await fetch(API_PLANTILLA_ORDEN + separador + parametros.toString(), {
-    method:"GET",
-    cache:"no-store"
-  });
-  const texto = await respuesta.text();
-  let data;
-  try{
-    data = JSON.parse(texto);
-  }catch(error){
-    const mensaje = String(texto || "").trim();
-    if(mensaje === "MI VISUAL API OK"){
-      throw new Error("La API no reconoció la consulta. Actualice la implementación de Apps Script.");
+  const interpretar=async(respuesta)=>{
+    const texto=await respuesta.text();
+    const limpio=String(texto||"").trim();
+    try{
+      const data=JSON.parse(limpio);
+      if(!data.ok) throw new Error(data.error || "No se pudo realizar la consulta");
+      return {ok:true,data};
+    }catch(error){
+      if(error && error.message && !/^Unexpected token|JSON/i.test(error.message) && !limpio.startsWith("<")){
+        throw error;
+      }
+      if(limpio === "MI VISUAL API OK"){
+        return {ok:false,tipo:"SALUDO"};
+      }
+      if(/^<!DOCTYPE html/i.test(limpio) || /^<html/i.test(limpio) || limpio.startsWith("<")){
+        return {ok:false,tipo:"HTML"};
+      }
+      return {ok:false,tipo:"INVALIDA"};
     }
-    throw new Error(mensaje || "La API devolvió una respuesta inválida.");
+  };
+
+  let ultimoTipo="";
+  for(let intento=1;intento<=2;intento++){
+    try{
+      const respuesta=await fetch(construirUrl(),{
+        method:"GET",
+        cache:"no-store",
+        redirect:"follow",
+        headers:{Accept:"application/json,text/plain,*/*"}
+      });
+      const r=await interpretar(respuesta);
+      if(r.ok)return r.data;
+      ultimoTipo=r.tipo||"";
+    }catch(error){
+      if(intento===2)ultimoTipo=error&&error.message?error.message:"ERROR";
+    }
+    await new Promise(resolve=>setTimeout(resolve,350*intento));
   }
-  if(!data.ok) throw new Error(data.error || "No se pudo realizar la consulta");
-  return data;
+
+  // Respaldo: la misma acción existe también por POST en el backend.
+  try{
+    const respuesta=await fetch(API_PLANTILLA_ORDEN,{
+      method:"POST",
+      cache:"no-store",
+      redirect:"follow",
+      body:JSON.stringify(payload||{}),
+      headers:{Accept:"application/json,text/plain,*/*"}
+    });
+    const r=await interpretar(respuesta);
+    if(r.ok)return r.data;
+    ultimoTipo=r.tipo||ultimoTipo;
+  }catch(error){
+    ultimoTipo=error&&error.message?error.message:ultimoTipo;
+  }
+
+  if(ultimoTipo==="SALUDO"){
+    throw new Error("La API no reconoció la consulta. Actualice la implementación de Apps Script.");
+  }
+  if(ultimoTipo==="HTML"){
+    throw new Error("La API respondió temporalmente con una página HTML. Vuelva a pulsar Buscar en unos segundos.");
+  }
+  throw new Error("No se pudo obtener una respuesta JSON válida de MI VISUAL.");
 }
 
 function mostrarPlantillaOrden(){
