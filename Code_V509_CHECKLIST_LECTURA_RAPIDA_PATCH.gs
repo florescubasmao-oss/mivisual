@@ -50,7 +50,7 @@ function listarChecklistAlmacen(data) {
   }
 
   // La estructura vigente llega hasta la columna 83.
-  const columnas = Math.min(83, Math.max(1, hoja.getLastColumn()));
+  const columnas = Math.min(84, Math.max(1, hoja.getLastColumn())); // V510: 84 solo para leer legado EPP desfasado; la estructura vigente sigue siendo 83.
   const datos = hoja.getRange(2, 1, ultimaFila - 1, columnas).getValues();
 
   // Una sola lectura de USUARIOS para toda la consulta.
