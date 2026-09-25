@@ -112,7 +112,7 @@
     },
     checklist: {
       archivos: [
-        `./js/checklist_almacen.js?v=V408-RESTAURA-V403`,
+        `./js/checklist_almacen.js?v=V510-CHECKLIST-OPERATIVO`,
         `./js/checklist_confirmacion_v398.js?v=V408-RESTAURA-V403`
       ],
       entradas: ["mostrarChecklistAlmacen"]
