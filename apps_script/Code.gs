@@ -20762,7 +20762,7 @@ function registrarChecklistAlmacen(data) {
     let meshHuawei={series:"",links:""};
     let winbox={series:"",links:""};
     let fonowin={series:"",links:""};
-    let extra=Array(28).fill("");
+    let extra=Array(27).fill("");
 
     if (tipo === "MATERIALES") {
       ontZte = guardarEquiposChecklist(
@@ -20799,15 +20799,15 @@ function registrarChecklistAlmacen(data) {
 
     } else if (tipo === "UNIDAD VEHICULAR") {
       const req=[
-        ["fotoUnidadFrente",3],
-        ["fotoUnidadPosterior",4],
-        ["fotoUnidadLadoIzquierdo",5],
-        ["fotoUnidadLadoDerecho",6],
-        ["fotoExtintor",7],
-        ["fotoBotiquin",8],
-        ["fotoRejaSeparadora",9],
-        ["fotoParrilla1",10],
-        ["fotoParrilla2",11]
+        ["fotoUnidadFrente",2],
+        ["fotoUnidadPosterior",3],
+        ["fotoUnidadLadoIzquierdo",4],
+        ["fotoUnidadLadoDerecho",5],
+        ["fotoExtintor",6],
+        ["fotoBotiquin",7],
+        ["fotoRejaSeparadora",8],
+        ["fotoParrilla1",9],
+        ["fotoParrilla2",10]
       ];
 
       req.forEach(function(x){
@@ -20822,8 +20822,8 @@ function registrarChecklistAlmacen(data) {
         );
       });
 
-      extra[12]="CONFORME";
-      extra[13]=data.observacionUnidad || "";
+      extra[11]="CONFORME";
+      extra[12]=data.observacionUnidad || "";
 
     } else if (tipo === "DOCUMENTACION") {
       if (
@@ -20836,59 +20836,59 @@ function registrarChecklistAlmacen(data) {
         );
       }
 
-      extra[14]=data.licenciaFechaVencimiento;
-      extra[15]=guardarArchivoChecklistGeneral(
+      extra[13]=data.licenciaFechaVencimiento;
+      extra[14]=guardarArchivoChecklistGeneral(
         carpeta,id,"LICENCIA_FRENTE",data.licenciaFotoFrente
       );
-      extra[16]=guardarArchivoChecklistGeneral(
+      extra[15]=guardarArchivoChecklistGeneral(
         carpeta,id,"LICENCIA_REVERSO",data.licenciaFotoReverso
       );
-      extra[17]=data.soatFechaVencimiento;
-      extra[18]=guardarArchivoChecklistGeneral(
+      extra[16]=data.soatFechaVencimiento;
+      extra[17]=guardarArchivoChecklistGeneral(
         carpeta,id,"SOAT",data.soatArchivo
       );
-      extra[19]=data.revisionTecnicaFechaVencimiento;
-      extra[20]=guardarArchivoChecklistGeneral(
+      extra[18]=data.revisionTecnicaFechaVencimiento;
+      extra[19]=guardarArchivoChecklistGeneral(
         carpeta,id,"REVISION_TECNICA",data.revisionTecnicaArchivo
       );
 
       if (
+        !extra[14] ||
         !extra[15] ||
-        !extra[16] ||
-        !extra[18] ||
-        !extra[20]
+        !extra[17] ||
+        !extra[19]
       ) {
         throw new Error(
           "Faltan archivos de documentación"
         );
       }
 
-      extra[21]="CONFORME";
-      extra[22]=data.observacionDocumentacion || "";
+      extra[20]="CONFORME";
+      extra[21]=data.observacionDocumentacion || "";
 
     } else {
-      extra[23]=guardarArchivoChecklistGeneral(
+      extra[22]=guardarArchivoChecklistGeneral(
         carpeta,id,"PERSONAL_COMPLETO",data.fotoPersonalCompleto
       );
-      extra[24]=guardarArchivoChecklistGeneral(
+      extra[23]=guardarArchivoChecklistGeneral(
         carpeta,id,"BOTAS",data.fotoBotas
       );
-      extra[25]=guardarArchivoChecklistGeneral(
+      extra[24]=guardarArchivoChecklistGeneral(
         carpeta,id,"FOTOCHECK",data.fotoFotocheck
       );
 
       if (
+        !extra[22] ||
         !extra[23] ||
-        !extra[24] ||
-        !extra[25]
+        !extra[24]
       ) {
         throw new Error(
           "Faltan evidencias de EPP"
         );
       }
 
-      extra[26]="CONFORME";
-      extra[27]=data.observacionEpp || "";
+      extra[25]="CONFORME";
+      extra[26]=data.observacionEpp || "";
     }
 
     const ahora = new Date();
@@ -20991,8 +20991,32 @@ function registrarChecklistAlmacen(data) {
     ck398LiberarReserva_(reserva);
   }
 }
-function filaChecklistAObjeto(f){return {id:f[0],fechaRegistro:f[1],horaRegistro:f[2],usuario:f[3],nombresApellidos:f[4],sede:f[5],cuadrilla:f[6],fechaGestion:f[7],estadoGeneral:f[8],ontZte:f[9],fotosOntZte:f[10],ontHuawei:f[11],fotosOntHuawei:f[12],meshZte:f[13],fotosMeshZte:f[14],meshHuawei:f[15],fotosMeshHuawei:f[16],winbox:f[17],fotosWinbox:f[18],fonowin:f[19],fotosFonowin:f[20],cableDrop:f[21],pre50:f[22],pre100:f[23],pre150:f[24],pre200:f[25],anclajeP:f[26],cintaBandIt:f[27],hebilla:f[28],acoplador:f[29],roseta:f[30],conectoresOpticos:f[31],templadores:f[32],splitter:f[33],clevis:f[34],utpCat5:f[35],utpCat6:f[36],patchApcApc:f[37],patchUpcApc:f[38],rj45:f[39],resultadoAlmacen:f[40],motivoAlmacen:f[41],validadoAlmacenPor:f[42],fechaValidacionAlmacen:f[43],horaValidacionAlmacen:f[44],resultadoJefatura:f[45],motivoJefatura:f[46],validadoJefaturaPor:f[47],fechaValidacionJefatura:f[48],horaValidacionJefatura:f[49],version:f[50],origenRegistro:f[51]||'TECNICO',registradoPor:f[52]||f[3],perfilRegistro:f[53]||'TECNICO',comentarioFinal:f[54]||'',tipoChecklist:f[55]||'MATERIALES',resultadoHerramientas:f[56],observacionHerramientas:f[57],fotoUnidadFrente:f[58],fotoUnidadPosterior:f[59],fotoUnidadLadoIzquierdo:f[60],fotoUnidadLadoDerecho:f[61],fotoExtintor:f[62],fotoBotiquin:f[63],fotoRejaSeparadora:f[64],fotoParrilla1:f[65],fotoParrilla2:f[66],resultadoUnidad:f[67],observacionUnidad:f[68],licenciaFechaVencimiento:f[69],licenciaFotoFrente:f[70],licenciaFotoReverso:f[71],soatFechaVencimiento:f[72],soatArchivo:f[73],revisionTecnicaFechaVencimiento:f[74],revisionTecnicaArchivo:f[75],resultadoDocumentacion:f[76],observacionDocumentacion:f[77],fotoPersonalCompleto:f[78],fotoBotas:f[79],fotoFotocheck:f[80],resultadoEpp:f[81],observacionEpp:f[82]};}
+function filaChecklistAObjeto(f){
+  const o={id:f[0],fechaRegistro:f[1],horaRegistro:f[2],usuario:f[3],nombresApellidos:f[4],sede:f[5],cuadrilla:f[6],fechaGestion:f[7],estadoGeneral:f[8],ontZte:f[9],fotosOntZte:f[10],ontHuawei:f[11],fotosOntHuawei:f[12],meshZte:f[13],fotosMeshZte:f[14],meshHuawei:f[15],fotosMeshHuawei:f[16],winbox:f[17],fotosWinbox:f[18],fonowin:f[19],fotosFonowin:f[20],cableDrop:f[21],pre50:f[22],pre100:f[23],pre150:f[24],pre200:f[25],anclajeP:f[26],cintaBandIt:f[27],hebilla:f[28],acoplador:f[29],roseta:f[30],conectoresOpticos:f[31],templadores:f[32],splitter:f[33],clevis:f[34],utpCat5:f[35],utpCat6:f[36],patchApcApc:f[37],patchUpcApc:f[38],rj45:f[39],resultadoAlmacen:f[40],motivoAlmacen:f[41],validadoAlmacenPor:f[42],fechaValidacionAlmacen:f[43],horaValidacionAlmacen:f[44],resultadoJefatura:f[45],motivoJefatura:f[46],validadoJefaturaPor:f[47],fechaValidacionJefatura:f[48],horaValidacionJefatura:f[49],version:f[50],origenRegistro:f[51]||'TECNICO',registradoPor:f[52]||f[3],perfilRegistro:f[53]||'TECNICO',comentarioFinal:f[54]||'',tipoChecklist:f[55]||'MATERIALES',resultadoHerramientas:f[56],observacionHerramientas:f[57],fotoUnidadFrente:f[58],fotoUnidadPosterior:f[59],fotoUnidadLadoIzquierdo:f[60],fotoUnidadLadoDerecho:f[61],fotoExtintor:f[62],fotoBotiquin:f[63],fotoRejaSeparadora:f[64],fotoParrilla1:f[65],fotoParrilla2:f[66],resultadoUnidad:f[67],observacionUnidad:f[68],licenciaFechaVencimiento:f[69],licenciaFotoFrente:f[70],licenciaFotoReverso:f[71],soatFechaVencimiento:f[72],soatArchivo:f[73],revisionTecnicaFechaVencimiento:f[74],revisionTecnicaArchivo:f[75],resultadoDocumentacion:f[76],observacionDocumentacion:f[77],fotoPersonalCompleto:f[78],fotoBotas:f[79],fotoFotocheck:f[80],resultadoEpp:f[81],observacionEpp:f[82]};
+  const tipo=normalizarTexto(o.tipoChecklist||'MATERIALES');
+  const esUrl=function(v){return /^https?:\/\//i.test((v||'').toString().trim());};
+  const esFecha=function(v){
+    if(v instanceof Date&&!isNaN(v.getTime()))return true;
+    const s=(v||'').toString().trim();
+    return /^\d{4}-\d{2}-\d{2}(?:T.*)?$/.test(s)||/^\d{2}\/\d{2}\/\d{4}$/.test(s);
+  };
 
+  // Compatibilidad con registros creados antes de V510:
+  // Unidad, Documentación y EPP quedaron desplazados una columna a la derecha.
+  if(tipo==='UNIDAD VEHICULAR'&&!o.fotoUnidadFrente&&esUrl(f[59])){
+    o.fotoUnidadFrente=f[59]||'';o.fotoUnidadPosterior=f[60]||'';o.fotoUnidadLadoIzquierdo=f[61]||'';o.fotoUnidadLadoDerecho=f[62]||'';
+    o.fotoExtintor=f[63]||'';o.fotoBotiquin=f[64]||'';o.fotoRejaSeparadora=f[65]||'';o.fotoParrilla1=f[66]||'';o.fotoParrilla2=f[67]||'';
+    o.resultadoUnidad=f[68]||'';o.observacionUnidad=f[69]||'';o.compatibilidadChecklistV510=true;
+  }else if(tipo==='DOCUMENTACION'&&!o.licenciaFechaVencimiento&&esFecha(f[70])&&esUrl(f[71])){
+    o.licenciaFechaVencimiento=f[70]||'';o.licenciaFotoFrente=f[71]||'';o.licenciaFotoReverso=f[72]||'';
+    o.soatFechaVencimiento=f[73]||'';o.soatArchivo=f[74]||'';o.revisionTecnicaFechaVencimiento=f[75]||'';o.revisionTecnicaArchivo=f[76]||'';
+    o.resultadoDocumentacion=f[77]||'';o.observacionDocumentacion=f[78]||'';o.compatibilidadChecklistV510=true;
+  }else if(tipo==='EPP'&&!o.fotoPersonalCompleto&&esUrl(f[79])){
+    o.fotoPersonalCompleto=f[79]||'';o.fotoBotas=f[80]||'';o.fotoFotocheck=f[81]||'';o.resultadoEpp=f[82]||'';o.observacionEpp=f[83]||'';
+    o.compatibilidadChecklistV510=true;
+  }
+  return o;
+}
 
 /* =========================
    CHECKLIST POR FUNCIÓN V141
