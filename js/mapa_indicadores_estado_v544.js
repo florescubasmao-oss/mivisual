@@ -218,7 +218,13 @@
   },true);
   window.addEventListener("mv487IndicadoresPublicados",()=>setTimeout(()=>revisarEstado(true),500));
 
-  const obs=new MutationObserver(()=>activarSiMapa());
+  const obs=new MutationObserver(()=>{
+    // V545: evitar ciclo de mutaciones causado por los propios cambios del panel.
+    // Solo activar cuando aparece la vista del Mapa y el panel aún no existe.
+    if(!document.getElementById("moVistaFiltros"))return;
+    if(document.getElementById(ID))return;
+    activarSiMapa();
+  });
   obs.observe(document.documentElement,{childList:true,subtree:true});
   setTimeout(activarSiMapa,300);
 
