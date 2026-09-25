@@ -68,9 +68,11 @@
 
   function validarImportacion(){
     const registros=registrosImportacion();
-    if(!registros.length) return {ok:true,total:0,invalidos:[]};
+    if(!registros.length) return {ok:true,total:0,validos:[],invalidos:[]};
+    const validos=registros.filter(r=>esCuadrillaVisualP(r && r.cuadrilla));
     const invalidos=registros.filter(r=>!esCuadrillaVisualP(r && r.cuadrilla));
-    return {ok:invalidos.length===0,total:registros.length,invalidos};
+    reemplazarImportacion(validos);
+    return {ok:validos.length>0,total:validos.length,validos,invalidos};
   }
 
   function bloquearCarga(resultado){
@@ -79,22 +81,17 @@
     if(btn) btn.disabled=true;
     const msg=document.getElementById("moImportMsg");
     if(!msg) return;
-    const nombres=[...new Set((resultado.invalidos||[]).map(r=>norm(r&&r.cuadrilla)||"SIN CUADRILLA"))].slice(0,8);
     msg.className="mo-msg mo-error";
-    msg.textContent=
-      `Archivo rechazado: se detectaron ${resultado.invalidos.length} registro(s) que no pertenecen a cuadrillas Visual P#.\n`+
-      `Solo se aceptan cuadrillas como P1, P2, P3, P10, P 6, etc.`+
-      (nombres.length?`\nDetectadas: ${nombres.join(", ")}${resultado.invalidos.length>nombres.length?"…":""}`:"")+
-      `\nNo se registro ningun dato.`;
+    msg.textContent="No se encontraron órdenes de provincia con cuadrilla P. No se registró ningún dato.";
   }
 
   function mensajeCargaValida(resultado){
     const msg=document.getElementById("moImportMsg");
     if(!msg||!resultado.total) return;
-    const actual=String(msg.textContent||"");
-    if(actual.includes("Validacion partner: OK")) return;
+    const base=`✅ Provincia: ${resultado.total} orden(es) P listas para registrar.`;
+    const omitidos=(resultado.invalidos||[]).length;
     msg.className="mo-msg mo-ok";
-    msg.textContent=actual+`\n✅ Validacion partner: OK. ${resultado.total} registro(s) pertenecen a cuadrillas P#.`;
+    msg.textContent=base+(omitidos?` ${omitidos} fila(s) K/D/u otro prefijo fueron ignoradas.`:"");
   }
 
   function cargarMotorEstado(){
