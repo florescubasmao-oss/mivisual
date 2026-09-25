@@ -58,6 +58,54 @@ const CK_EQUIPOS={
 };
 
 let CK_LISTA_ACTUAL=[];
+
+// V510 - Compatibilidad segura para registros operativos creados con el desfase histórico de 1 columna.
+// Solo actúa cuando el tipo y el patrón fecha/URL demuestran el desfase; Materiales y Herramientas no se modifican.
+function ckNormalizarRegistroV510(x){
+  if(!x||typeof x!=='object')return x;
+  const o={...x},tipo=ckNorm(o.tipoChecklist||'MATERIALES');
+  const esUrl=v=>/^https?:\/\//i.test((v||'').toString().trim());
+  const esFecha=v=>/^\d{4}-\d{2}-\d{2}(?:T.*)?$/.test((v||'').toString().trim())||/^\d{2}\/\d{2}\/\d{4}$/.test((v||'').toString().trim());
+
+  if(tipo==='UNIDAD VEHICULAR'&&!o.fotoUnidadFrente&&esUrl(o.fotoUnidadPosterior)){
+    const v={...o};
+    o.fotoUnidadFrente=v.fotoUnidadPosterior||'';
+    o.fotoUnidadPosterior=v.fotoUnidadLadoIzquierdo||'';
+    o.fotoUnidadLadoIzquierdo=v.fotoUnidadLadoDerecho||'';
+    o.fotoUnidadLadoDerecho=v.fotoExtintor||'';
+    o.fotoExtintor=v.fotoBotiquin||'';
+    o.fotoBotiquin=v.fotoRejaSeparadora||'';
+    o.fotoRejaSeparadora=v.fotoParrilla1||'';
+    o.fotoParrilla1=v.fotoParrilla2||'';
+    o.fotoParrilla2=v.resultadoUnidad||'';
+    o.resultadoUnidad=v.observacionUnidad||'';
+    o.observacionUnidad=v.licenciaFechaVencimiento||'';
+    o.compatibilidadChecklistV510=true;
+  }else if(tipo==='DOCUMENTACION'&&!o.licenciaFechaVencimiento&&esFecha(o.licenciaFotoFrente)&&esUrl(o.licenciaFotoReverso)){
+    const v={...o};
+    o.licenciaFechaVencimiento=v.licenciaFotoFrente||'';
+    o.licenciaFotoFrente=v.licenciaFotoReverso||'';
+    o.licenciaFotoReverso=v.soatFechaVencimiento||'';
+    o.soatFechaVencimiento=v.soatArchivo||'';
+    o.soatArchivo=v.revisionTecnicaFechaVencimiento||'';
+    o.revisionTecnicaFechaVencimiento=v.revisionTecnicaArchivo||'';
+    o.revisionTecnicaArchivo=v.resultadoDocumentacion||'';
+    o.resultadoDocumentacion=v.observacionDocumentacion||'';
+    o.observacionDocumentacion=v.fotoPersonalCompleto||'';
+    o.compatibilidadChecklistV510=true;
+  }else if(tipo==='EPP'&&!o.fotoPersonalCompleto&&esUrl(o.fotoBotas)){
+    const v={...o};
+    o.fotoPersonalCompleto=v.fotoBotas||'';
+    o.fotoBotas=v.fotoFotocheck||'';
+    o.fotoFotocheck=v.resultadoEpp||'';
+    o.resultadoEpp=v.observacionEpp||'';
+    // La observación histórica puede venir fuera del rango antiguo de 83 columnas;
+    // si el backend V510 la recupera, se conserva automáticamente.
+    o.observacionEpp=v.observacionEppV510||'';
+    o.compatibilidadChecklistV510=true;
+  }
+  return o;
+}
 let CK_PERIODO_SELECCIONADO=ckPeriodoActual();
 
 // V311 - historial mensual. La fecha de gestión define el periodo.
@@ -259,7 +307,7 @@ function ckCard(x,u){
   const origen=esCampo?`<div class="ck-alerta-ok" style="margin-top:8px"><b>Ejecutado en campo por Supervisor:</b> ${ckEsc(x.registradoPor||'Supervisor')}${x.comentarioFinal?`<br><b>Comentario final:</b> ${ckEsc(x.comentarioFinal)}`:''}</div>`:'';
   return `<div class="ck-card"><div style="display:flex;justify-content:space-between;gap:8px"><div><b>${ckEsc(x.cuadrilla)}</b><div class="ck-meta">${ckEsc(x.nombresApellidos)} · ${ckEsc(x.sede)}<br>${ckEsc(formatearFechaPeruApp(x.fechaGestion||x.fechaRegistro))}</div></div>${ckEstado(x.estadoGeneral)}</div>${origen}${alerta}${ckDetalle(x)}${acciones?`<div class="ck-actions" style="margin-top:8px">${acciones}</div>`:''}</div>`;
 }
-async function ckCargarHistorialTecnico(){const box=document.getElementById('ckLista');if(!box)return;try{const d=await ckApi({accion:'listarChecklistAlmacen',usuario:ckUser().usuario});CK_LISTA_ACTUAL=d.checklist||[];CK_PERIODO_SELECCIONADO=ckPeriodoActual();ckRenderHistorialTecnico();}catch(e){box.innerHTML=`<div class="ck-card">${ckEsc(e.message)}</div>`}}
+async function ckCargarHistorialTecnico(){const box=document.getElementById('ckLista');if(!box)return;try{const d=await ckApi({accion:'listarChecklistAlmacen',usuario:ckUser().usuario});CK_LISTA_ACTUAL=(d.checklist||[]).map(ckNormalizarRegistroV510);CK_PERIODO_SELECCIONADO=ckPeriodoActual();ckRenderHistorialTecnico();}catch(e){box.innerHTML=`<div class="ck-card">${ckEsc(e.message)}</div>`}}
 function ckEsJefaturaVisualChecklist(perfil){
   const p=ckNorm(perfil);
   return ['JEFATURA','GERENCIA LIMA','ADMIN','ADMINISTRADOR','JEFATURA ALMACEN','JEFATURA DE ALMACEN'].includes(p);
@@ -347,7 +395,7 @@ async function ckCargarLista(){
   const c=document.getElementById('ckContenido')||document.getElementById('ckLista');if(!c)return;
   try{
     const d=await ckApi({accion:'listarChecklistAlmacen',usuario:ckUser().usuario});
-    const arr=d.checklist||[];CK_LISTA_ACTUAL=arr;
+    const arr=(d.checklist||[]).map(ckNormalizarRegistroV510);CK_LISTA_ACTUAL=arr;
     const u=ckUser();
     const toolbar=u.perfil!=='TECNICO'?`<div class="ck-toolbar"><button class="ck-btn blue" onclick="ckAbrirInformeChecklist()">📥 Descargar informe de checklist</button></div>`:'';
     if(ckEsJefaturaVisualChecklist(u.perfil)){
@@ -561,4 +609,4 @@ function ckConteosLista(arr){return {total:arr.length,pend:arr.filter(x=>ckNorm(
 function ckKpisHtml(c,compacto){const cls=compacto?'ck-sede-kpis':'ck-kpis',item=compacto?'ck-sede-kpi':'ck-kpi';return `<div class="${cls}"><div class="${item} total"><b>${c.total}</b><span>Total</span></div><div class="${item} pendiente"><b>${c.pend}</b><span>Pendientes</span></div><div class="${item} visto"><b>${c.obs||0}</b><span>Observados</span></div><div class="${item} conforme"><b>${c.ok}</b><span>Conformes</span></div></div>`;}
 function ckAplicarFiltrosVisuales(){const box=document.getElementById('ckResultadosJefatura'),kpis=document.getElementById('ckResumenGeneralJefatura');if(!box||!kpis)return;const f=ckFiltrarVisualChecklist(CK_LISTA_ACTUAL||[]);kpis.innerHTML=ckKpisHtml(ckConteosLista(f),false);box.innerHTML=ckRenderAgrupadoPorSede(f);ckActivarDesplegablesSede();}
 function ckLimpiarFiltrosVisuales(){['ckFiltroSede','ckFiltroTipo','ckFiltroCuadrilla','ckFiltroSupervisor','ckFiltroDesde','ckFiltroHasta','ckFiltroEstado','ckFiltroVencimiento','ckFiltroHerramienta'].forEach(id=>{const e=document.getElementById(id);if(e)e.value='';});CK_PERIODO_SELECCIONADO=ckPeriodoActual();const periodo=document.getElementById('ckFiltroPeriodo');if(periodo)periodo.value=CK_PERIODO_SELECCIONADO;ckAplicarFiltrosVisuales();}
-async function ckCargarLista(){const c=document.getElementById('ckContenido')||document.getElementById('ckLista');if(!c)return;try{const d=await ckApi({accion:'listarChecklistAlmacen',usuario:ckUser().usuario});const arr=d.checklist||[];CK_LISTA_ACTUAL=arr;CK_PERIODO_SELECCIONADO=ckPeriodoActual();const u=ckUser(),toolbar=u.perfil!=='TECNICO'?`<div class="ck-toolbar"><button class="ck-btn blue" onclick="ckAbrirInformeChecklist()">📥 Descargar informe de checklist</button></div>`:'';if(u.perfil==='TECNICO'){ckRenderHistorialTecnico();}else{const periodo=ckFiltrarPeriodo(arr);c.innerHTML=toolbar+ckRenderFiltrosRolV141(arr,u)+`<div id="ckResumenGeneralJefatura">${ckKpisHtml(ckConteosLista(periodo),false)}</div><div id="ckResultadosJefatura">${ckRenderAgrupadoPorSede(periodo)}</div>`;ckActivarDesplegablesSede();}}catch(e){c.innerHTML=`<div class="ck-card">${ckEsc(e.message)}</div>`}}
+async function ckCargarLista(){const c=document.getElementById('ckContenido')||document.getElementById('ckLista');if(!c)return;try{const d=await ckApi({accion:'listarChecklistAlmacen',usuario:ckUser().usuario});const arr=(d.checklist||[]).map(ckNormalizarRegistroV510);CK_LISTA_ACTUAL=arr;CK_PERIODO_SELECCIONADO=ckPeriodoActual();const u=ckUser(),toolbar=u.perfil!=='TECNICO'?`<div class="ck-toolbar"><button class="ck-btn blue" onclick="ckAbrirInformeChecklist()">📥 Descargar informe de checklist</button></div>`:'';if(u.perfil==='TECNICO'){ckRenderHistorialTecnico();}else{const periodo=ckFiltrarPeriodo(arr);c.innerHTML=toolbar+ckRenderFiltrosRolV141(arr,u)+`<div id="ckResumenGeneralJefatura">${ckKpisHtml(ckConteosLista(periodo),false)}</div><div id="ckResultadosJefatura">${ckRenderAgrupadoPorSede(periodo)}</div>`;ckActivarDesplegablesSede();}}catch(e){c.innerHTML=`<div class="ck-card">${ckEsc(e.message)}</div>`}}
