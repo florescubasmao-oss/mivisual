@@ -395,9 +395,11 @@ async function moLeerArchivo(){
       if(filaCab.includes('ORDENID')){headerIndex=i;break}
     }
     if(headerIndex<0)throw new Error('No se encontró la fila de encabezados con OrdenId.');
-    const headers=(rows[headerIndex]||[]).map(moNormCab),map={};headers.forEach((h,i)=>{if(h)map[h]=i});const out=[];
+    const headers=(rows[headerIndex]||[]).map(moNormCab),map={};headers.forEach((h,i)=>{if(h)map[h]=i});const out=[];let omitidasNoProvincia=0;
     rows.slice(headerIndex+1).forEach(r=>{
       const orden=moValor(r,map,'OrdenId','ORDEN_ID');if(!moNorm(orden))return;
+      const cuadrilla=moNorm(moValor(r,map,'Cuadrilla'));
+      if(!/^P\s*\d+/i.test(cuadrilla)){omitidasNoProvincia++;return;}
       const fs=moFechaExcel(moValor(r,map,'F.Soli','FSOLI','FECHA SOLICITUD'));
       let dir=moNorm(moValor(r,map,'Direccion')),dir2=moNorm(moValor(r,map,'Direccion1'));
       if(dir&&dir2&&moNormCab(dir)===moNormCab(dir2))dir2='';
@@ -407,7 +409,7 @@ async function moLeerArchivo(){
       out.push(Object.assign({
         ordenId:moNorm(orden),tipoTrabajo:moNorm(moValor(r,map,'TipoTraba','TIPO_TRABAJO')),fechaSolicitud:moFmtFecha(fs),horaSolicitud:moFmtHora(fs),
         cliente:moNorm(moValor(r,map,'Cliente')),tipo:moNorm(moValor(r,map,'Tipo')),productoOrigen:moNorm(moValor(r,map,'Producto')),
-        cuadrilla:moNorm(moValor(r,map,'Cuadrilla')),estado:moNorm(moValor(r,map,'Estado')),direccion:dir,direccionAdicional:dir2,
+        cuadrilla:cuadrilla,estado:moNorm(moValor(r,map,'Estado')),direccion:dir,direccionAdicional:dir2,
         fechaUltimoEstado:moFmtFechaHoraValor(moValor(r,map,'FechaUltimoEstado','Fecha Ultimo Estado')),productoServicio:moNorm(moValor(r,map,'IdenServi')),
         region:moNorm(moValor(r,map,'Region')),codigoCliente:moNorm(moValor(r,map,'CodiSeguiClien')),
         codigoSeguimiento:moNorm(moValor(r,map,'CodiSegui')),
@@ -419,13 +421,15 @@ async function moLeerArchivo(){
         detalle:moNorm(moValor(r,map,'Detalle','Motivo Regestión','Motivo Regestion'))
       },datosCto));
     });
-    if(!out.length)throw new Error('No se encontraron filas con OrdenId.');moImportacion=out;btn.disabled=false;const conGeo=out.filter(x=>Number.isFinite(x.latitud)&&Number.isFinite(x.longitud)).length;const conCto=out.filter(x=>x.cto||x.puerto||x.cto1||x.cto2||x.cto3).length;msg.className='mo-msg mo-ok';msg.textContent=`Archivo leído: ${out.length} órdenes; ${conGeo} con georreferencia válida y ${conCto} con datos CTO. El historial existente se conservará y las coincidencias del mismo día se actualizarán.`;
+    if(!out.length)throw new Error('No se encontraron órdenes de provincia con cuadrilla P.');moImportacion=out;btn.disabled=false;const conGeo=out.filter(x=>Number.isFinite(x.latitud)&&Number.isFinite(x.longitud)).length;const conCto=out.filter(x=>x.cto||x.puerto||x.cto1||x.cto2||x.cto3).length;msg.className='mo-msg mo-ok';msg.textContent=`Archivo leído: ${out.length} órdenes de provincia (P); ${omitidasNoProvincia} filas fuera de provincia ignoradas; ${conGeo} con georreferencia válida y ${conCto} con datos CTO. El historial existente se conservará y las coincidencias se actualizarán.`;
   }catch(e){moImportacion=[];btn.disabled=true;msg.className='mo-msg mo-error';msg.textContent=e.message}
 }
 async function moRegistrarImportacion(){
   if(!moImportacion.length)return;const btn=document.getElementById('moBtnImportar'),msg=document.getElementById('moImportMsg');btn.disabled=true;msg.className='mo-msg';msg.textContent='Registrando información...';
   try{
-    const d=await moApi({accion:'importarMapaOperativo',usuario:moUsuario(),registros:moImportacion});
+    const registrosProvincia=moImportacion.filter(x=>/^P\s*\d+/i.test(moNorm(x&&x.cuadrilla)));
+    if(!registrosProvincia.length)throw new Error('No hay órdenes de provincia (P) para registrar.');
+    const d=await moApi({accion:'importarMapaOperativo',usuario:moUsuario(),registros:registrosProvincia});
     const c=d.catalogoCto||{};
     const confirmacion=`Registro confirmado: ${d.nuevos} nuevos, ${d.actualizados} actualizados, ${d.repetidosCarga||0} repetidos consolidados y ${d.omitidos||0} omitidos.${d.consolidadosExistentes?` Se depuraron ${d.consolidadosExistentes} duplicados anteriores.`:''} Catálogo CTO: ${c.nuevos||0} nuevos, ${c.actualizados||0} actualizados, ${c.total||0} únicos.`;
     msg.className='mo-msg mo-ok';msg.textContent=confirmacion;
