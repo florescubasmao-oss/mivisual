@@ -147,7 +147,7 @@
       entradas: ["mostrarFacturas"]
     },
     plantilla: {
-      archivos: [`./js/plantilla_orden.js?v=V407-DOCUMENTO-VISIBLE`],
+      archivos: [`./js/plantilla_orden.js?v=V563-PLANTILLA-JSON-RESILIENTE`],
       entradas: ["mostrarPlantillaOrden"]
     },
     seguridad: {
