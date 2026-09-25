@@ -11,7 +11,7 @@
   const MODULOS = {
     dashboards_core: {
       archivos: [
-        `./js/dashboards.js?v=V449-SIN-ACTIVIDAD-META`,
+        `./js/dashboards.js?v=V564-TRABAJOS-DIARIOS-GET`,
         `./js/resumen_dashboard_v361.js?v=V520H-DASHBOARD-SINCRONIZADO-20260902-3`,
         `./js/sla_gestion_v363.js?v=V408-RESTAURA-V403`,
         `./js/sla_excepciones_v411.js?v=V411-SLA-EXCEPCIONES`,
