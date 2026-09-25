@@ -131,7 +131,7 @@
     },
     mapa: {
       archivos: [
-        `./js/mapa_operativo.js?v=V551-MAPA-REGISTRO`,
+        `./js/mapa_operativo.js?v=V563-MAPA-FILTRO-P`,
         `./js/mapa_partner_visual_v386.js?v=V551-MAPA-REGISTRO`,
         `./js/mapa_progreso_v393.js?v=V551-MAPA-REGISTRO`,
         `./js/mapa_rapido_v395.js?v=V408-RESTAURA-V403`,
