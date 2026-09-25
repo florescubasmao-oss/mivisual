@@ -11614,35 +11614,33 @@ function importarMapaOperativo(data) {
 
   const hoja = asegurarHojaMapaOperativo();
 
-  // V394: reserva exclusiva SOLO para el Mapa, sin mantener un ScriptLock
-  // global durante toda la importación.
+  // V564: importación incremental.
+  // Conserva la misma lógica de coincidencia y combinación, pero deja de
+  // reescribir MAPA_ORDENES completo en cada carga. Solo actualiza filas
+  // tocadas y agrega filas nuevas.
   const bloqueoMapa = adquirirBloqueoMapaOperativoV394_(usuario.usuario);
 
   try {
     const ultimaFila = hoja.getLastRow();
-    const filasExistentes = ultimaFila > 1 ? hoja.getRange(2,1,ultimaFila-1,COLUMNAS_MAPA_OPERATIVO).getValues() : [];
-    const resultado = [];
+    const filasExistentes = ultimaFila > 1
+      ? hoja.getRange(2,1,ultimaFila-1,COLUMNAS_MAPA_OPERATIVO).getValues()
+      : [];
+
     const metas = [];
     const indices = crearIndicesCoincidenciaMapa();
-    let consolidadosExistentes = 0;
 
-    filasExistentes.forEach(function(fila){
+    // Se conserva la última coincidencia de cada ORDEN_ID, igual que el índice
+    // histórico. No se depura masivamente aquí: una carga diaria no debe
+    // reconstruir toda la hoja. La base actual ya fue conciliada sin duplicados.
+    filasExistentes.forEach(function(fila, posicion){
       const item = filaMapaOperativoAObjeto(fila);
-      if (!item.ordenId) return;
-      const meta = datosCoincidenciaMapa(item);
-      const posicion = buscarCoincidenciaMapa(indices, metas, meta);
-      if (posicion >= 0) {
-        retirarIndiceCoincidenciaMapa(indices, metas[posicion], posicion);
-        resultado[posicion] = combinarFilasMapaOperativo_(resultado[posicion],fila,null,null);
-        metas[posicion] = datosCoincidenciaMapa(filaMapaOperativoAObjeto(resultado[posicion]));
-        registrarIndiceCoincidenciaMapa(indices, metas[posicion], posicion);
-        consolidadosExistentes++;
-      } else {
-        const nuevaPosicion = resultado.length;
-        resultado.push(fila);
-        metas.push(meta);
-        registrarIndiceCoincidenciaMapa(indices, meta, nuevaPosicion);
+      if (!item.ordenId) {
+        metas[posicion] = datosCoincidenciaMapa(item);
+        return;
       }
+      const meta = datosCoincidenciaMapa(item);
+      metas[posicion] = meta;
+      registrarIndiceCoincidenciaMapa(indices, meta, posicion);
     });
 
     const ahora = new Date();
@@ -11651,49 +11649,99 @@ function importarMapaOperativo(data) {
     let omitidos = 0;
     let repetidosCarga = 0;
     const posicionesActualizadasEnCarga = {};
+    const actualizacionesPorFila = {};
+    const nuevasFilas = [];
+    const baseExistente = filasExistentes.length;
 
     registros.forEach(function(r){
-      const fila = filaImportacionMapa(r, ahora, usuario);
-      const item = filaMapaOperativoAObjeto(fila);
-      if (!item.ordenId) { omitidos++; return; }
+      const filaNueva = filaImportacionMapa(r, ahora, usuario);
+      const itemNuevo = filaMapaOperativoAObjeto(filaNueva);
+      if (!itemNuevo.ordenId) {
+        omitidos++;
+        return;
+      }
 
-      const meta = datosCoincidenciaMapa(item);
-      const posicion = buscarCoincidenciaMapa(indices, metas, meta);
+      const metaNueva = datosCoincidenciaMapa(itemNuevo);
+      const posicion = buscarCoincidenciaMapa(indices, metas, metaNueva);
+
       if (posicion >= 0) {
         if (posicionesActualizadasEnCarga[posicion]) repetidosCarga++;
         else actualizados++;
         posicionesActualizadasEnCarga[posicion] = true;
+
+        const esFilaExistente = posicion < baseExistente;
+        const filaAnterior = esFilaExistente
+          ? (actualizacionesPorFila[posicion + 2] || filasExistentes[posicion])
+          : nuevasFilas[posicion - baseExistente];
+
         retirarIndiceCoincidenciaMapa(indices, metas[posicion], posicion);
-        resultado[posicion] = combinarFilasMapaOperativo_(resultado[posicion],fila,ahora,usuario);
-        metas[posicion] = datosCoincidenciaMapa(filaMapaOperativoAObjeto(resultado[posicion]));
+        const combinada = combinarFilasMapaOperativo_(filaAnterior, filaNueva, ahora, usuario);
+        metas[posicion] = datosCoincidenciaMapa(filaMapaOperativoAObjeto(combinada));
         registrarIndiceCoincidenciaMapa(indices, metas[posicion], posicion);
-      } else {
-        const nuevaPosicion = resultado.length;
-        resultado.push(fila);
-        metas.push(meta);
-        registrarIndiceCoincidenciaMapa(indices, meta, nuevaPosicion);
-        posicionesActualizadasEnCarga[nuevaPosicion] = true;
-        nuevos++;
+
+        if (esFilaExistente) {
+          actualizacionesPorFila[posicion + 2] = combinada;
+        } else {
+          nuevasFilas[posicion - baseExistente] = combinada;
+        }
+        return;
       }
+
+      const nuevaPosicion = baseExistente + nuevasFilas.length;
+      nuevasFilas.push(filaNueva);
+      metas[nuevaPosicion] = metaNueva;
+      registrarIndiceCoincidenciaMapa(indices, metaNueva, nuevaPosicion);
+      posicionesActualizadasEnCarga[nuevaPosicion] = true;
+      nuevos++;
     });
 
-    // Renovamos la reserva antes de las escrituras principales.
     renovarBloqueoMapaOperativoV394_(bloqueoMapa);
 
-    if (resultado.length) hoja.getRange(2,1,resultado.length,COLUMNAS_MAPA_OPERATIVO).setValues(resultado);
-    const filasAnteriores = Math.max(ultimaFila - 1, 0);
-    if (filasAnteriores > resultado.length) {
-      hoja.getRange(resultado.length + 2, 1, filasAnteriores - resultado.length, COLUMNAS_MAPA_OPERATIVO).clearContent();
+    // Escribe únicamente filas existentes que realmente cambiaron.
+    const filasActualizar = Object.keys(actualizacionesPorFila)
+      .map(Number)
+      .filter(function(n){ return Number.isInteger(n) && n >= 2; })
+      .sort(function(a,b){ return a-b; });
+
+    if (filasActualizar.length) {
+      let inicioGrupo = filasActualizar[0];
+      let grupo = [actualizacionesPorFila[inicioGrupo]];
+
+      for (let i = 1; i <= filasActualizar.length; i++) {
+        const actual = filasActualizar[i];
+        const anterior = filasActualizar[i - 1];
+
+        if (i < filasActualizar.length && actual === anterior + 1) {
+          grupo.push(actualizacionesPorFila[actual]);
+          continue;
+        }
+
+        hoja.getRange(inicioGrupo, 1, grupo.length, COLUMNAS_MAPA_OPERATIVO).setValues(grupo);
+        hoja.getRange(inicioGrupo, 27, grupo.length, 1).setNumberFormat("dd/mm/yyyy hh:mm");
+
+        if (i < filasActualizar.length) {
+          inicioGrupo = actual;
+          grupo = [actualizacionesPorFila[actual]];
+        }
+      }
     }
-    if (resultado.length) hoja.getRange(2,27,resultado.length,1).setNumberFormat("dd/mm/yyyy hh:mm");
+
+    // Las órdenes nuevas se agregan en un solo bloque.
+    if (nuevasFilas.length) {
+      const filaInicioNuevas = Math.max(hoja.getLastRow() + 1, 2);
+      hoja.getRange(filaInicioNuevas, 1, nuevasFilas.length, COLUMNAS_MAPA_OPERATIVO).setValues(nuevasFilas);
+      hoja.getRange(filaInicioNuevas, 27, nuevasFilas.length, 1).setNumberFormat("dd/mm/yyyy hh:mm");
+    }
+
+    // Funciones existentes que deben conservarse después de una importación.
     const catalogoCto = alimentarCatalogoCtoMapaOperativo_(registros, ahora, usuario);
     registrarUltimaActualizacionMapaOperativo(ahora);
-    // V395: cualquier nueva importación invalida catálogos y consultas rápidas.
     invalidarCacheMapaV395_();
     const ultimaActualizacionMapa = obtenerUltimaActualizacionMapaOperativo(hoja);
 
     invalidarCacheBonosSupervisores_();
-  invalidarResumenDashboardRankingV361_();
+    invalidarResumenDashboardRankingV361_();
+
     return {
       ok:true,
       modulo:"MAPA_OPERATIVO",
@@ -11702,11 +11750,15 @@ function importarMapaOperativo(data) {
       actualizados:actualizados,
       omitidos:omitidos,
       repetidosCarga:repetidosCarga,
-      consolidadosExistentes:consolidadosExistentes,
-      totalGuardado:resultado.length,
+      // V564 no hace una depuración histórica masiva durante la carga diaria.
+      consolidadosExistentes:0,
+      totalGuardado:Math.max(ultimaFila - 1, 0) + nuevasFilas.length,
       catalogoCto:catalogoCto,
       ultimaActualizacion:ultimaActualizacionMapa.ultimaActualizacion,
-      ultimaActualizacionTexto:ultimaActualizacionMapa.ultimaActualizacionTexto
+      ultimaActualizacionTexto:ultimaActualizacionMapa.ultimaActualizacionTexto,
+      modoIncrementalV564:true,
+      filasActualizadasV564:filasActualizar.length,
+      filasNuevasV564:nuevasFilas.length
     };
   } finally {
     liberarBloqueoMapaOperativoV394_(bloqueoMapa);
