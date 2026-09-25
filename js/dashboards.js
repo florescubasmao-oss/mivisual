@@ -3314,17 +3314,23 @@ async function mv282ConsultarTrabajosDiarios(origen){
     MV282_TRABAJOS_DIARIOS.resultado = null;
     mv282RenderDashboard(origen);
     try{
-        const res = await fetch(MV58_API, {
-            method:"POST",
-            body:JSON.stringify({
-                accion:"listarTrabajosDiariosCuadrilla",
-                usuario:localStorage.getItem("usuario") || "",
-                periodo:MV276_DASH_PERIODO,
-                fecha,
-                cuadrilla
-            })
+        const url = new URL(MV58_API);
+        url.searchParams.set("accion","listarTrabajosDiariosCuadrilla");
+        url.searchParams.set("usuario",localStorage.getItem("usuario") || "");
+        url.searchParams.set("periodo",MV276_DASH_PERIODO || "");
+        url.searchParams.set("fecha",fecha);
+        url.searchParams.set("cuadrilla",cuadrilla);
+        url.searchParams.set("_mv282",Date.now().toString());
+        const res = await fetch(url.toString(), {
+            method:"GET",
+            cache:"no-store",
+            redirect:"follow",
+            headers:{Accept:"application/json"}
         });
-        const data = await res.json();
+        const texto = (await res.text()).trim();
+        let data;
+        try{ data = JSON.parse(texto); }
+        catch(_){ throw new Error("La consulta de trabajos diarios no devolvió JSON válido."); }
         if(!data.ok) throw new Error((data.error || "No se pudo consultar los trabajos").replace(/^Error:\s*/,""));
         MV282_TRABAJOS_DIARIOS.resultado = data;
     }catch(e){
