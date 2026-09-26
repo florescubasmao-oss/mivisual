@@ -1472,7 +1472,7 @@ function listarObservaciones(data) {
     };
 
     let permitir = false;
-    if (usuario.perfil === "TECNICO") permitir = normalizarCuadrilla(usuario.cuadrilla) === normalizarCuadrilla(item.cuadrilla);
+    if (usuario.perfil === "TECNICO") permitir = registroPerteneceIdentidadActualV566_(usuario, item.usuario, item.fechaRegistro);
     if (usuario.perfil === "SUPERVISOR") permitir = normalizarTexto(usuario.sede) === normalizarTexto(item.sede);
     if (esPerfilJefatura(usuario.perfil) || esPerfilGerenciaLima(usuario.perfil) || esOperacionesLima(usuario.perfil)) permitir = true;
     if (!permitir) continue;
@@ -5466,7 +5466,7 @@ function listarActasEscaneadas(data) {
   const hoja = asegurarHojaActasEscaneadas(), datos = hoja.getDataRange().getValues(), usuario = obtenerUsuarioApp(data.usuario), lista=[];
   for (let i=1;i<datos.length;i++) {
     const item=filaActaAObjeto(datos[i]); let permitir=false;
-    if(usuario.perfil==="TECNICO") permitir=normalizarCuadrilla(usuario.cuadrilla)===normalizarCuadrilla(item.cuadrilla);
+    if(usuario.perfil==="TECNICO") permitir=registroPerteneceIdentidadActualV566_(usuario, item.tecnico, item.fechaRegistro);
     if(usuario.perfil==="SUPERVISOR") permitir=normalizarTexto(usuario.sede)===normalizarTexto(item.sede);
     if(esPerfilAlmacen(usuario.perfil)) permitir=normalizarTexto(usuario.sede)===normalizarTexto(item.sede);
     if(esPerfilJefatura(usuario.perfil)||esPerfilJefaturaAlmacen(usuario.perfil)) permitir=true;
@@ -6537,7 +6537,7 @@ function listarChecklistAlmacen(data) {
   for (let i=1;i<datos.length;i++) {
     const item = filaChecklistAObjeto(datos[i]);
     let permitir=false;
-    if (usuario.perfil === "TECNICO") permitir = normalizarCuadrilla(usuario.cuadrilla) === normalizarCuadrilla(item.cuadrilla);
+    if (usuario.perfil === "TECNICO") permitir = registroPerteneceIdentidadActualV566_(usuario, item.usuario, item.fechaRegistro);
     else if (usuario.perfil === "ALMACEN" || usuario.perfil === "SUPERVISOR") permitir = normalizarTexto(usuario.sede) === normalizarTexto(item.sede);
     else if (esPerfilJefaturaAlmacen(usuario.perfil) || esPerfilJefatura(usuario.perfil)) permitir = true;
     if (!permitir) continue;
@@ -15392,8 +15392,121 @@ function completarSolicitudEquiposAveriadosTecnico(data) {
   return {ok:true,modulo:"EQUIPOS_AVERIADOS",accion:"COMPLETAR_TECNICO",id:reg.item.id,equipos:equipos.length};
 }
 
+function fechaIsoIdentidadV566_(valor) {
+  if (!valor) return "";
+  if (valor instanceof Date && !isNaN(valor.getTime())) {
+    return Utilities.formatDate(valor, "America/Lima", "yyyy-MM-dd");
+  }
+  const txt = String(valor).trim();
+  let m = txt.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+  if (m) return m[3] + "-" + ("0"+m[2]).slice(-2) + "-" + ("0"+m[1]).slice(-2);
+  m = txt.match(/^(\d{4})-(\d{1,2})-(\d{1,2})$/);
+  if (m) return m[1] + "-" + ("0"+m[2]).slice(-2) + "-" + ("0"+m[3]).slice(-2);
+  return "";
+}
+
+function nombreComparableIdentidadV566_(valor) {
+  return normalizarTexto(valor || "").replace(/[^A-Z0-9]+/g, " ").replace(/\s+/g, " ").trim();
+}
+
+function obtenerInicioIdentidadTecnicoV566_(usuario) {
+  const u = normalizarUsuario(usuario && usuario.usuario || "");
+  const nombreActual = nombreComparableIdentidadV566_(usuario && usuario.nombresApellidos || "");
+  if (!u) return {reutilizado:false, fechaDesde:"", fuente:"SIN_USUARIO"};
+
+  const cache = CacheService.getScriptCache();
+  const clave = "V566_IDENTIDAD_" + u;
+  try {
+    const guardado = cache.get(clave);
+    if (guardado) return JSON.parse(guardado);
+  } catch (_) {}
+
+  let reutilizado = false;
+  const fechasActual = [];
+
+  function evaluarFila(usuarioFila, nombreFila, fechaFila) {
+    if (normalizarUsuario(usuarioFila || "") !== u) return;
+    const nombre = nombreComparableIdentidadV566_(nombreFila || "");
+    if (!nombre || nombre === nombreComparableIdentidadV566_(u)) return;
+    if (nombreActual && nombre === nombreActual) {
+      const iso = fechaIsoIdentidadV566_(fechaFila);
+      if (iso) fechasActual.push(iso);
+    } else if (nombreActual && nombre !== nombreActual) {
+      reutilizado = true;
+    }
+  }
+
+  try {
+    const h = eaAsegurarHojaSolicitudes_();
+    const lr = h.getLastRow();
+    if (lr > 1) {
+      const d = h.getRange(2,1,lr-1,11).getValues();
+      d.forEach(function(r){ evaluarFila(r[9], r[10], r[1]); });
+    }
+  } catch (_) {}
+
+  try {
+    const h = asegurarHojaChecklistAlmacen();
+    const lr = h.getLastRow();
+    if (lr > 1) {
+      const d = h.getRange(2,1,lr-1,8).getValues();
+      d.forEach(function(r){ evaluarFila(r[3], r[4], r[1]); });
+    }
+  } catch (_) {}
+
+  let fechaDesde = fechasActual.length ? fechasActual.sort()[0] : "";
+
+  // Si existe continuidad formal de cuadrilla, se usa como respaldo cuando
+  // el usuario fue reutilizado y todavía no existe una evidencia personal
+  // con el nombre actual.
+  if (reutilizado && !fechaDesde) {
+    try {
+      const ss = SpreadsheetApp.getActiveSpreadsheet();
+      const h = ss.getSheetByName("CONTINUIDAD_CUADRILLAS");
+      if (h && h.getLastRow() > 1) {
+        const d = h.getRange(2,1,h.getLastRow()-1,8).getValues();
+        const cuadActual = normalizarCuadrilla(usuario.cuadrilla || "");
+        const candidatos = [];
+        d.forEach(function(r){
+          const estado = normalizarTexto(r[5] || "ACTIVO");
+          if (estado !== "ACTIVO") return;
+          if (normalizarCuadrilla(r[2]) !== cuadActual) return;
+          const iso = fechaIsoIdentidadV566_(r[3]);
+          if (iso) candidatos.push(iso);
+        });
+        if (candidatos.length) fechaDesde = candidatos.sort().pop();
+      }
+    } catch (_) {}
+  }
+
+  // Protección conservadora: si se comprobó que el usuario fue reciclado
+  // pero no existe una fecha confiable, no se hereda historial anterior.
+  if (reutilizado && !fechaDesde) {
+    fechaDesde = Utilities.formatDate(new Date(), "America/Lima", "yyyy-MM-dd");
+  }
+
+  const salida = {
+    reutilizado: reutilizado,
+    fechaDesde: fechaDesde,
+    fuente: reutilizado ? (fechasActual.length ? "REGISTRO_PERSONAL" : "CONTINUIDAD_O_HOY") : "SIN_REUSO"
+  };
+  try { cache.put(clave, JSON.stringify(salida), 300); } catch (_) {}
+  return salida;
+}
+
+function registroPerteneceIdentidadActualV566_(usuario, usuarioRegistro, fechaRegistro) {
+  if (normalizarUsuario(usuarioRegistro || "") !== normalizarUsuario(usuario.usuario || "")) return false;
+  const identidad = obtenerInicioIdentidadTecnicoV566_(usuario);
+  if (!identidad.reutilizado || !identidad.fechaDesde) return true;
+  const fecha = fechaIsoIdentidadV566_(fechaRegistro);
+  if (!fecha) return false;
+  return fecha >= identidad.fechaDesde;
+}
+
 function eaRegistroVisible_(usuario, item) {
-  if (eaEsTecnico_(usuario.perfil)) return normalizarUsuario(item.usuarioTecnico) === normalizarUsuario(usuario.usuario) || normalizarCuadrilla(item.cuadrilla) === normalizarCuadrilla(usuario.cuadrilla);
+  if (eaEsTecnico_(usuario.perfil)) {
+    return registroPerteneceIdentidadActualV566_(usuario, item.usuarioTecnico, item.fechaRegistro);
+  }
   if (eaEsResponsableAlmacen_(usuario.perfil)) return normalizarTexto(item.sede) === normalizarTexto(usuario.sede);
   return eaEsJefaturaAlmacen_(usuario.perfil) || eaEsJefaturaGeneral_(usuario.perfil);
 }
@@ -21148,7 +21261,7 @@ function listarChecklistAlmacen(data) {
     const item = filaChecklistAObjeto(datos[i]);
     const tipo = normalizarTexto(item.tipoChecklist || "MATERIALES");
     let permitir = false;
-    if (usuario.perfil === "TECNICO") permitir = normalizarCuadrilla(usuario.cuadrilla) === normalizarCuadrilla(item.cuadrilla);
+    if (usuario.perfil === "TECNICO") permitir = registroPerteneceIdentidadActualV566_(usuario, item.usuario, item.fechaRegistro);
     else if (usuario.perfil === "ALMACEN" || usuario.perfil === "SUPERVISOR") permitir = normalizarTexto(usuario.sede) === normalizarTexto(item.sede);
     else if (esPerfilJefaturaAlmacen(usuario.perfil) || esPerfilJefatura(usuario.perfil)) permitir = true;
     if (!permitir) continue;
