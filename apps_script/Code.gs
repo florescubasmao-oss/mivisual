@@ -15437,20 +15437,26 @@ function obtenerInicioIdentidadTecnicoV566_(usuario) {
   }
 
   try {
-    const h = eaAsegurarHojaSolicitudes_();
-    const lr = h.getLastRow();
-    if (lr > 1) {
-      const d = h.getRange(2,1,lr-1,11).getValues();
-      d.forEach(function(r){ evaluarFila(r[9], r[10], r[1]); });
+    const ss = SpreadsheetApp.getActiveSpreadsheet();
+    const h = ss.getSheetByName(HOJA_EQUIPOS_AVERIADOS);
+    if (h) {
+      const lr = h.getLastRow();
+      if (lr > 1) {
+        const d = h.getRange(2,1,lr-1,11).getValues();
+        d.forEach(function(r){ evaluarFila(r[9], r[10], r[1]); });
+      }
     }
   } catch (_) {}
 
   try {
-    const h = asegurarHojaChecklistAlmacen();
-    const lr = h.getLastRow();
-    if (lr > 1) {
-      const d = h.getRange(2,1,lr-1,8).getValues();
-      d.forEach(function(r){ evaluarFila(r[3], r[4], r[1]); });
+    const ss = SpreadsheetApp.getActiveSpreadsheet();
+    const h = ss.getSheetByName(HOJA_CHECKLIST_ALMACEN);
+    if (h) {
+      const lr = h.getLastRow();
+      if (lr > 1) {
+        const d = h.getRange(2,1,lr-1,8).getValues();
+        d.forEach(function(r){ evaluarFila(r[3], r[4], r[1]); });
+      }
     }
   } catch (_) {}
 
