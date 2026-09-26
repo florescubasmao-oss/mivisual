@@ -15855,46 +15855,73 @@ function consultarPlantillaOrden(data) {
   if (!codigoBuscado) throw new Error("Ingrese Código de cliente, DNI, Código de orden o Código de pedido válido");
 
   const hoja = asegurarHojaMapaOperativo();
-  if (hoja.getLastRow() <= 1) throw new Error("Mapa Operativo todavía no tiene órdenes registradas");
+  const ultimaFila = hoja.getLastRow();
+  if (ultimaFila <= 1) throw new Error("Mapa Operativo todavía no tiene órdenes registradas");
 
-  const filas = hoja.getRange(2,1,hoja.getLastRow()-1,COLUMNAS_MAPA_OPERATIVO).getValues();
+  const cantidad = ultimaFila - 1;
   const perfil = normalizarTexto(usuario.perfil);
   const cuadrillaTecnico = normalizarCuadrilla(usuario.cuadrilla);
   const cuadrillasSupervisor = perfil === "SUPERVISOR" ? cuadrillasSupervisorMapa(usuario.usuario) : {};
 
-  function permitido(fila) {
-    const cuadrillaFila = normalizarCuadrilla(fila[7]);
+  // V565: búsqueda liviana.
+  // Primero leemos únicamente las 4 columnas necesarias para identificar
+  // coincidencias y validar alcance: A (orden), H (cuadrilla), O (cliente), P (DNI).
+  // Solo después se leen las 37 columnas completas de las filas candidatas.
+  const colOrden = hoja.getRange(2,1,cantidad,1).getDisplayValues();
+  const colCuadrilla = hoja.getRange(2,8,cantidad,1).getDisplayValues();
+  const colClienteDni = hoja.getRange(2,15,cantidad,2).getDisplayValues();
+
+  function permitidoIndice(indice) {
+    const cuadrillaFila = normalizarCuadrilla(colCuadrilla[indice][0]);
     if (perfil === "TECNICO") return cuadrillaFila === cuadrillaTecnico;
     if (perfil === "SUPERVISOR") return !!cuadrillasSupervisor[cuadrillaFila];
     return true;
   }
 
-  let coincidencias = [];
-  filas.forEach(function(fila){
+  const candidatos = [];
+  for (let i = 0; i < cantidad; i++) {
     let criterio = "";
-    if (normalizarIdentificadorMapa(fila[0]) === codigoBuscado) criterio = "Código de orden";
-    else if (normalizarIdentificadorMapa(fila[14]) === codigoBuscado) criterio = "Código de cliente";
-    else if (normalizarIdentificadorMapa(fila[15]) === codigoBuscado) criterio = "DNI";
-    if (criterio && permitido(fila)) coincidencias.push({fila:fila,criterio:criterio,codigoPedido:""});
-  });
+    if (normalizarIdentificadorMapa(colOrden[i][0]) === codigoBuscado) criterio = "Código de orden";
+    else if (normalizarIdentificadorMapa(colClienteDni[i][0]) === codigoBuscado) criterio = "Código de cliente";
+    else if (normalizarIdentificadorMapa(colClienteDni[i][1]) === codigoBuscado) criterio = "DNI";
 
-  // Código de pedido vive en bases relacionadas, no en MAPA_ORDENES.
-  // Solo se consulta esa relación cuando no hubo coincidencia directa, para mantener la búsqueda rápida.
-  if (!coincidencias.length) {
-    const ordenesPorPedido = buscarOrdenesPorPedidoPlantillaOrden_(consultaOriginal);
-    filas.forEach(function(fila){
-      const orden = normalizarIdentificadorMapa(fila[0]);
-      if (ordenesPorPedido[orden] && permitido(fila)) {
-        coincidencias.push({fila:fila,criterio:"Código de pedido",codigoPedido:ordenesPorPedido[orden]});
-      }
-    });
+    if (criterio && permitidoIndice(i)) {
+      candidatos.push({indice:i,criterio:criterio,codigoPedido:""});
+    }
   }
 
-  if (!coincidencias.length) {
+  // Código de pedido: solo se consulta la relación auxiliar si no hubo
+  // coincidencia directa por Orden / Cliente / DNI.
+  if (!candidatos.length) {
+    const ordenesPorPedido = buscarOrdenesPorPedidoPlantillaOrden_(consultaOriginal);
+    for (let i = 0; i < cantidad; i++) {
+      const orden = normalizarIdentificadorMapa(colOrden[i][0]);
+      if (orden && ordenesPorPedido[orden] && permitidoIndice(i)) {
+        candidatos.push({
+          indice:i,
+          criterio:"Código de pedido",
+          codigoPedido:ordenesPorPedido[orden]
+        });
+      }
+    }
+  }
+
+  if (!candidatos.length) {
     if (perfil === "TECNICO") throw new Error("No se encontró una orden con ese dato asociada a su cuadrilla");
     if (perfil === "SUPERVISOR") throw new Error("No se encontró una orden con ese dato asociada a sus cuadrillas");
     throw new Error("No se encontró una orden por Código de cliente, DNI, Código de orden o Código de pedido");
   }
+
+  // Lee completas únicamente las filas coincidentes.
+  const coincidencias = candidatos.map(function(candidato){
+    const filaHoja = candidato.indice + 2;
+    const fila = hoja.getRange(filaHoja,1,1,COLUMNAS_MAPA_OPERATIVO).getValues()[0];
+    return {
+      fila:fila,
+      criterio:candidato.criterio,
+      codigoPedido:candidato.codigoPedido || ""
+    };
+  });
 
   coincidencias.sort(function(a,b){ return compararRecenciaPlantillaOrden_(a.fila,b.fila); });
   const elegida = coincidencias[0];
@@ -15912,7 +15939,8 @@ function consultarPlantillaOrden(data) {
     coincidencias:coincidencias.length,
     criterioBusqueda:elegida.criterio,
     orden:item,
-    plantilla:construirTextoPlantillaOrden_(item)
+    plantilla:construirTextoPlantillaOrden_(item),
+    optimizadoV565:true
   };
 }
 
