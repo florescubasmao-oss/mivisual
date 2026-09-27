@@ -155,6 +155,10 @@
       archivos: [`./js/seguridad_v443.js?v=V443-GUIA-SIN-PREMARCADO-FIX`],
       entradas: ["mostrarSeguridad"]
     },
+    recuperacion: {
+      archivos: [`./js/recuperacion_ordenes_v567.js?v=V567-LECTURA`],
+      entradas: ["mostrarRecuperacionOrdenes"]
+    },
     administracion: {
       depende: ["dashboards_core", "accesos", "checklist"],
       archivos: [
@@ -196,6 +200,7 @@
     mostrarFacturas: "facturas",
     mostrarPlantillaOrden: "plantilla",
     mostrarSeguridad: "seguridad",
+    mostrarRecuperacionOrdenes: "recuperacion",
     mostrarAdministracion: "administracion"
   };
 
@@ -241,7 +246,7 @@
       actividad:"Actividad en Campo", validacion:"Validación Técnica", actas:"Gestión de Actas",
       equipos:"Equipos Averiados", analisis:"Análisis Económico", checklist:"Checklist Almacén",
       descansos:"Programación de Descansos", pext:"PEXT", mesa:"Mesa de Ayuda",
-      mapa:"Mapa Operativo", plantilla:"Plantilla de Orden", facturas:"Facturas", seguridad:"Seguridad ATS/PETAR", administracion:"Administración"
+      mapa:"Mapa Operativo", plantilla:"Plantilla de Orden", facturas:"Facturas", seguridad:"Seguridad ATS/PETAR", recuperacion:"Recuperación de Órdenes", administracion:"Administración"
     };
     return nombres[id] || "módulo";
   }
