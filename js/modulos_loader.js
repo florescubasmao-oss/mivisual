@@ -156,7 +156,7 @@
       entradas: ["mostrarSeguridad"]
     },
     recuperacion: {
-      archivos: [`./js/recuperacion_ordenes_v575.js?v=V575-ESTABLE-RAPIDA`],
+      archivos: [`./js/recuperacion_ordenes_v576.js?v=V576-PANEL-GESTION`],
       entradas: ["mostrarRecuperacionOrdenes"]
     },
     administracion: {
