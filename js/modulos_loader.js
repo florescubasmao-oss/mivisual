@@ -156,7 +156,7 @@
       entradas: ["mostrarSeguridad"]
     },
     recuperacion: {
-      archivos: [`./js/recuperacion_ordenes_v570.js?v=V570-RESPUESTA-SEGURA`],
+      archivos: [`./js/recuperacion_ordenes_v571.js?v=V571-FECHA-UNICA`],
       entradas: ["mostrarRecuperacionOrdenes"]
     },
     administracion: {
