@@ -156,7 +156,7 @@
       entradas: ["mostrarSeguridad"]
     },
     recuperacion: {
-      archivos: [`./js/recuperacion_ordenes_v569.js?v=V569-DIARIA-RAPIDA`],
+      archivos: [`./js/recuperacion_ordenes_v570.js?v=V570-RESPUESTA-SEGURA`],
       entradas: ["mostrarRecuperacionOrdenes"]
     },
     administracion: {
