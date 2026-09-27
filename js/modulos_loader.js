@@ -156,7 +156,7 @@
       entradas: ["mostrarSeguridad"]
     },
     recuperacion: {
-      archivos: [`./js/recuperacion_ordenes_v573.js?v=V573-FECHA-CORRECTA`],
+      archivos: [`./js/recuperacion_ordenes_v574.js?v=V574-CODIGO-FEEDBACK`],
       entradas: ["mostrarRecuperacionOrdenes"]
     },
     administracion: {
