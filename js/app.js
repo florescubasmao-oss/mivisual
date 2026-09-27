@@ -180,12 +180,14 @@ function prepararMenuVisual(){
         </button>` : "";
     const perfilesRecuperacion = ["TECNICO","SUPERVISOR","JEFATURA","JEFATURA GENERAL","JEFATURA OPERACIONES","JEFATURA DE OPERACIONES","OPERACIONES","ADMIN","ADMINISTRADOR"];
     const botonRecuperacion = perfilesRecuperacion.includes(perfilPlantilla) ? `
-        <button id="btnRecuperacionOrdenes" type="button" title="Recuperación de órdenes" aria-label="Recuperación de órdenes" onclick="mostrarRecuperacionOrdenes()" style="width:58px;height:40px;border:2px solid #9a3412;border-radius:10px;background:#f97316;box-shadow:0 4px 10px rgba(249,115,22,.3);cursor:pointer;margin-left:6px;font-size:22px;line-height:1">📞</button>` : "";
+        <button id="btnRecuperacionOrdenes" class="mv568-recuperacion-btn" type="button" title="Recuperación de órdenes" aria-label="Recuperación de órdenes" onclick="mostrarRecuperacionOrdenes()">📞</button>` : "";
+    const accionesRapidas = (botonRecuperacion || botonPlantilla)
+      ? `<div class="mv568-welcome-actions">${botonRecuperacion}${botonPlantilla}</div>`
+      : "";
     welcome.innerHTML = `
         <div class="mv55-welcome-hi">👋 Bienvenido${info.nombresApellidos ? ", " + info.nombresApellidos : ""}</div>
         <div class="mv55-welcome-detail">${info.detalle}</div>
-        ${botonPlantilla}
-        ${botonRecuperacion}
+        ${accionesRapidas}
     `;
 
     return { menu, welcome, main, recursos, recursosTitle };
