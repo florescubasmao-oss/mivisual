@@ -156,7 +156,7 @@
       entradas: ["mostrarSeguridad"]
     },
     recuperacion: {
-      archivos: [`./js/recuperacion_ordenes_v567.js?v=V567-LECTURA`],
+      archivos: [`./js/recuperacion_ordenes_v568.js?v=V568-GESTION`],
       entradas: ["mostrarRecuperacionOrdenes"]
     },
     administracion: {
