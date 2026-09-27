@@ -156,7 +156,7 @@
       entradas: ["mostrarSeguridad"]
     },
     recuperacion: {
-      archivos: [`./js/recuperacion_ordenes_v576.js?v=V576-PANEL-GESTION`],
+      archivos: [`./js/recuperacion_ordenes_v577.js?v=V577-LIBERAR-FEEDBACK`],
       entradas: ["mostrarRecuperacionOrdenes"]
     },
     administracion: {
