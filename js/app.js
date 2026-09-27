@@ -182,7 +182,7 @@ function prepararMenuVisual(){
     const botonRecuperacion = perfilesRecuperacion.includes(perfilPlantilla) ? `
         <button id="btnRecuperacionOrdenes" class="mv568-recuperacion-btn" type="button" title="Recuperación de órdenes" aria-label="Recuperación de órdenes" onclick="mostrarRecuperacionOrdenes()">📞</button>` : "";
     const accionesRapidas = (botonRecuperacion || botonPlantilla)
-      ? `<div class="mv568-welcome-actions">${botonRecuperacion}${botonPlantilla}</div>`
+      ? `<div class="mv568-welcome-actions">${botonPlantilla}${botonRecuperacion}</div>`
       : "";
     welcome.innerHTML = `
         <div class="mv55-welcome-hi">👋 Bienvenido${info.nombresApellidos ? ", " + info.nombresApellidos : ""}</div>
