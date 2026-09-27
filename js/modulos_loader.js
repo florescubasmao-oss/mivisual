@@ -156,7 +156,7 @@
       entradas: ["mostrarSeguridad"]
     },
     recuperacion: {
-      archivos: [`./js/recuperacion_ordenes_v571.js?v=V571-FECHA-UNICA`],
+      archivos: [`./js/recuperacion_ordenes_v572.js?v=V572-FECHA-MANUAL`],
       entradas: ["mostrarRecuperacionOrdenes"]
     },
     administracion: {
