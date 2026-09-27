@@ -1500,8 +1500,9 @@ body{background:linear-gradient(180deg,var(--mv4-bg),var(--mv4-bg2));font-family
 /* V251 - Fecha y hora de última actualización del Mapa Operativo */
 .mo-update-status{
   display:flex;
+  flex-direction:column;
   align-items:center;
-  gap:8px;
+  gap:6px;
   min-height:40px;
   padding:7px 12px;
   box-sizing:border-box;
@@ -1919,11 +1920,11 @@ body{background:linear-gradient(180deg,var(--mv4-bg),var(--mv4-bg2));font-family
   flex:0 0 auto;
 }
 .mv55-welcome:has(.mv568-welcome-actions){
-  padding-right:132px!important;
+  padding-right:82px!important;
 }
 @media(max-width:700px){
-  .mv568-welcome-actions{right:12px;gap:6px;}
+  .mv568-welcome-actions{right:12px;gap:5px;}
   .mv568-welcome-actions .mv271-plantilla-btn,
   .mv568-recuperacion-btn{width:42px;height:42px;border-radius:9px;}
-  .mv55-welcome:has(.mv568-welcome-actions){padding-right:108px!important;}
+  .mv55-welcome:has(.mv568-welcome-actions){padding-right:66px!important;}
 }
