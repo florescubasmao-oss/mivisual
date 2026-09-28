@@ -53,7 +53,7 @@
       entradas: ["mostrarRanking"]
     },
     bonos: {
-      archivos: [`./js/bonos.js?v=V408-RESTAURA-V403`],
+      archivos: [`./js/bonos_v578.js?v=V578-BONOS-CARGA-SEGURA`],
       entradas: ["mostrarBonos"]
     },
     observaciones: {
@@ -362,7 +362,7 @@
     const promesa = (async function(){
       for(const dependencia of (config.depende || [])) await cargarModulo(dependencia);
       const archivos = archivosModuloV557(id, config);
-      const timeoutScript = id === "actas" ? MV557_ACTAS_SCRIPT_TIMEOUT_MS : MV420_SCRIPT_TIMEOUT_MS;
+      const timeoutScript = id === "actas" ? MV557_ACTAS_SCRIPT_TIMEOUT_MS : (id === "bonos" ? 25000 : MV420_SCRIPT_TIMEOUT_MS);
       for(const archivo of archivos) await cargarScript(archivo, timeoutScript);
 
       for(const nombre of (config.entradas || [])){
