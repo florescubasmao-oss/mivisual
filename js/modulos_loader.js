@@ -68,7 +68,7 @@
         `./js/accesos.js?v=${VERSION}`,
         `./js/accesos_certificacion_v362.js?v=V408-RESTAURA-V403`,
         `./js/accesos_simulacro_v383.js?v=V408-RESTAURA-V403`,
-        `./js/accesos_examenes_setiembre_v384.js?v=V384-CERTIFICACION-SETIEMBRE`
+        `./js/accesos_examenes_setiembre_v384.js?v=V579-AVERIAS-LINK-CORRECTO`
       ],
       entradas: ["mostrarAccesos", "mostrarBiblioteca", "mostrarCapacitacion"]
     },
