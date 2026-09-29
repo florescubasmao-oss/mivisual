@@ -1,11 +1,13 @@
 /* ============================================================
-   MI VISUAL V384 - EXÁMENES WIN SETIEMBRE EN CERTIFICACIÓN
+   MI VISUAL V579 - EXAMEN AVERÍAS SETIEMBRE LINK FIJO
    - Reubica visualmente los accesos existentes de la hoja ACCESOS.
    - No duplica enlaces ni modifica backend.
    - Instalaciones y Visita Técnica quedan dentro de Certificación WIN.
 ============================================================ */
 (function(){
   "use strict";
+
+  const LINK_EXAMEN_AVERIAS_SETIEMBRE_V579 = "https://forms.cloud.microsoft/pages/responsepage.aspx?id=B1bL-kMKCUSswbHiafr3qJwY5T47pQtCtqjGvrus3WhUOEY3WEM1REVOTUZBNVlLTE9ONDlSN0Q3Mi4u&route=shorturl";
   if(window.MV384_EXAMENES_SETIEMBRE_OK) return;
 
   function estilosV384(){
@@ -55,8 +57,11 @@
         grid.appendChild(card);
       }else if(nombre==="EXAMEN WIN - VISITA TÉCNICA (SETIEMBRE)" || nombre==="EXAMEN WIN - VISITA TECNICA (SETIEMBRE)"){
         card.className="mv384-examen-card visita";
-        card.innerHTML="<span>🔧</span><b>EXAMEN WIN · VISITA TÉCNICA</b><small>Evaluación oficial · Setiembre</small>";
-        card.setAttribute("data-search","EXAMEN WIN VISITA TECNICA SETIEMBRE CERTIFICACION");
+        card.href=LINK_EXAMEN_AVERIAS_SETIEMBRE_V579;
+        card.target="_blank";
+        card.rel="noopener noreferrer";
+        card.innerHTML="<span>🔧</span><b>EXAMEN WIN · AVERÍAS / VISITA TÉCNICA</b><small>Evaluación oficial · Setiembre</small>";
+        card.setAttribute("data-search","EXAMEN WIN AVERIAS VISITA TECNICA SETIEMBRE CERTIFICACION");
         grid.appendChild(card);
       }
     });
