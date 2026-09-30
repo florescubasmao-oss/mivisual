@@ -135,8 +135,8 @@
         `./js/mapa_operativo.js?v=V563-MAPA-FILTRO-P`,
         `./js/mapa_partner_visual_v386.js?v=V563-MAPA-FILTRO-P2`,
         `./js/indicadores_win_sync_v4879.js?v=V563-MAPA-SYNC-INTEGRAL`,
-        `./js/mapa_indicadores_estado_v544.js?v=V545-MAPA-OBSERVER-SEGURO`,
-        `./js/mapa_progreso_v393.js?v=V551-MAPA-REGISTRO`,
+        `./js/mapa_indicadores_estado_v580.js?v=V580-SYNC-INTEGRAL`,
+        `./js/mapa_progreso_v580.js?v=V580-CONFIRMACION-INTEGRAL`,
         `./js/mapa_rapido_v395.js?v=V408-RESTAURA-V403`,
         `./js/mapa_campo_v408.js?v=V408-MAPA-CAMPO`,
         `./js/mapa_auditoria_v421.js?v=V426-GENERAR-AUDITORIA`
