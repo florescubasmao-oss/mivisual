@@ -224,12 +224,18 @@
     const archivos = [...(config.archivos || [])];
     if(id !== "actas" || perfilLoader() !== "TECNICO") return archivos;
 
-    // V557: el Técnico no necesita cargar capas exclusivas de Almacén/Jefatura
-    // para poder abrir Gestión de Actas y subir su PDF.
-    return archivos.filter(function(url){
+    // V581 cierre de mes:
+    // - Técnico no carga capas exclusivas de Almacén/Jefatura.
+    // - Se añade UN solo bundle con las capas resilientes ya probadas para
+    //   consulta automática, WIN reciente, guardado y confirmación.
+    //   Esto reduce peticiones HTTP y evita que una lectura lenta bloquee la subida.
+    const tecnico = archivos.filter(function(url){
       return !url.includes("actas_mantenimiento_v402.js") &&
              !url.includes("actas_motivos_observacion_v403.js");
     });
+
+    tecnico.push("./js/actas_tecnico_cierre_v581.js?v=V581-CIERRE-MES-RESILIENTE");
+    return tecnico;
   }
 
   function urlScriptV420(url){
