@@ -235,6 +235,7 @@
     });
 
     tecnico.push("./js/actas_tecnico_cierre_v581.js?v=V581-CIERRE-MES-RESILIENTE");
+    tecnico.push("./js/actas_tecnico_inicio_rapido_v593.js?v=V593-INICIO-RAPIDO-20261003");
     return tecnico;
   }
 
