@@ -13,8 +13,26 @@ const MO_TOTAL_ESTILOS_CUADRILLA=MO_TOTAL_COLORES_CUADRILLA*MO_TOTAL_PATRONES_CU
 async function moApi(payload){
   const r=await fetch(API_MAPA_OPERATIVO,{method:'POST',body:JSON.stringify(payload)});
   const t=await r.text(); let d; try{d=JSON.parse(t)}catch(e){
-    if(moNorm(t)==='MI VISUAL API OK')throw new Error('No se recibió la confirmación del registro. Espere unos segundos y revise la última actualización antes de volver a intentarlo.');
-    throw new Error(t||'Respuesta no válida');
+    const bruto=moNorm(t);
+    const bajo=bruto.toLowerCase();
+    const respuestaHtml=
+      bajo.includes('<!doctype') ||
+      bajo.includes('<html') ||
+      bajo.includes('script nonce=') ||
+      bajo.includes("window['_ppconfig']") ||
+      bajo.includes('window["_ppconfig"]') ||
+      bajo.includes('google apps script') ||
+      bajo.includes('accounts.google');
+
+    if(bruto==='MI VISUAL API OK' || respuestaHtml){
+      throw new Error('No se recibió la confirmación del registro. La información pudo haberse guardado correctamente; MI VISUAL verificará la última actualización antes de permitir un nuevo intento.');
+    }
+
+    throw new Error(
+      bruto.length>500
+        ? 'No se recibió una respuesta válida de MI VISUAL. Revise la última actualización antes de volver a registrar el mismo archivo.'
+        : (bruto||'Respuesta no válida')
+    );
   }
   if(!d.ok) throw new Error(d.error||'Error en Mapa Operativo'); return d;
 }
