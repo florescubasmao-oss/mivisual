@@ -51,24 +51,47 @@
       return 0;
     }
     try{
-      const r=await window.pdApi({accion:"obtenerNotificacionesDescansos",usuario:u.usuario});
-      let total=contarConsolidados(r);
+      // V597: el badge usa la misma fuente consolidada que la pantalla.
+      // El endpoint de notificaciones cuenta filas históricas pendientes y puede
+      // revivir cambios ya aprobados. ListarProgramacionDescansos devuelve además
+      // el historial reciente, con el cual descartamos pendientes antiguos.
+      const periodo=typeof window.pdPeriodoActual==="function"?window.pdPeriodoActual():"";
+      const periodos=(typeof window.pdPeriodosVista==="function"&&periodo)?window.pdPeriodosVista(periodo):undefined;
+      const data=await window.pdApi({
+        accion:"listarProgramacionDescansos",
+        usuario:u.usuario,
+        periodo:periodo,
+        periodos:periodos
+      });
 
-      // Si V595 ya verificó la programación vigente, ese estado tiene prioridad
-      // sobre pendientes históricos que todavía permanezcan en la hoja.
-      if(window.MV595_DESCANSOS_DATA_VERIFICADA){
-        const d=window.PD_DATA;
-        const lista=d&&Array.isArray(d.programacion)?d.programacion:[];
-        total=lista.filter(function(x){
-          const e=norm(x&&(x.estadoValidacion||x.estadoProgramacion));
-          return ["PENDIENTE JEFATURA","PENDIENTE SUPERVISOR","OBSERVADO"].includes(e);
-        }).length;
-      }
+      const historial=Array.isArray(data&&data.historial)?data.historial:[];
+      const ultimo=new Map();
+      historial.forEach(function(x){
+        const k=norm(x&&x.idOrigen)||[norm(x&&x.cuadrilla),txt(x&&x.fecha)].join("|");
+        if(k&&!ultimo.has(k))ultimo.set(k,x);
+      });
+
+      const vistos=new Set();
+      let total=0;
+      (Array.isArray(data&&data.programacion)?data.programacion:[]).forEach(function(x){
+        const e=norm(x&&(x.estadoValidacion||x.estadoProgramacion||x.resultadoJefatura||""));
+        if(!["PENDIENTE JEFATURA","PENDIENTE SUPERVISOR","OBSERVADO"].includes(e))return;
+
+        const k=norm(x&&x.idOrigen)||[norm(x&&x.cuadrilla),txt(x&&x.fecha)].join("|");
+        if(!k||vistos.has(k))return;
+
+        const uHist=ultimo.get(k);
+        const eu=norm(uHist&&(uHist.estadoValidacion||uHist.estadoProgramacion||uHist.resultadoJefatura||""));
+        if(["APROBADO","APLICADO","RECHAZADO"].includes(eu))return;
+
+        vistos.add(k);
+        total++;
+      });
 
       if(typeof window.pdAplicarNotificacionDescansosMenu==="function")window.pdAplicarNotificacionDescansosMenu(total);
       return total;
     }catch(e){
-      console.warn("V594: no se pudo actualizar notificaciones de descansos",e);
+      console.warn("V597: no se pudo calcular pendientes vigentes de descansos",e);
       return 0;
     }
   }
