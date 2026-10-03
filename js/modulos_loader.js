@@ -121,7 +121,8 @@
     descansos: {
       archivos: [
         `./js/programacion_descansos.js?v=V449-SIN-ACTIVIDAD`,
-        `./js/descansos_alertas_consolidadas_v594.js?v=V594-20261003`
+        `./js/descansos_alertas_consolidadas_v594.js?v=V594-20261003`,
+        `./js/descansos_pendiente_vigente_v595.js?v=V595-20261003`
       ],
       entradas: ["mostrarProgramacionDescansos"]
     },
