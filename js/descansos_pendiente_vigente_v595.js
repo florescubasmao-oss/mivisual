@@ -108,6 +108,7 @@
           depurarData(PD_DATA);
           try{window.PD_DATA=PD_DATA;}catch(_){}
         }
+        window.MV595_DESCANSOS_DATA_VERIFICADA=true;
         refrescarContadorDesdeData();
       }catch(e){
         console.warn("V595: no se pudo depurar pendientes históricos",e);

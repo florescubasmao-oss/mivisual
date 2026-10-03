@@ -52,7 +52,19 @@
     }
     try{
       const r=await window.pdApi({accion:"obtenerNotificacionesDescansos",usuario:u.usuario});
-      const total=contarConsolidados(r);
+      let total=contarConsolidados(r);
+
+      // Si V595 ya verificó la programación vigente, ese estado tiene prioridad
+      // sobre pendientes históricos que todavía permanezcan en la hoja.
+      if(window.MV595_DESCANSOS_DATA_VERIFICADA){
+        const d=window.PD_DATA;
+        const lista=d&&Array.isArray(d.programacion)?d.programacion:[];
+        total=lista.filter(function(x){
+          const e=norm(x&&(x.estadoValidacion||x.estadoProgramacion));
+          return ["PENDIENTE JEFATURA","PENDIENTE SUPERVISOR","OBSERVADO"].includes(e);
+        }).length;
+      }
+
       if(typeof window.pdAplicarNotificacionDescansosMenu==="function")window.pdAplicarNotificacionDescansosMenu(total);
       return total;
     }catch(e){
