@@ -151,7 +151,74 @@ function tcActualizarPuntosConjunta(){
 }
 function tcCodigosDinamicos(tipo){const esCon=tipo==="con",n=Math.max(0,parseInt(document.getElementById(esCon?"tcConCant":"tcRecCant").value)||0),id=esCon?"tcCodCon":"tcCodRec",pref=esCon?"Conectorizado":"Recableado";document.getElementById(id).innerHTML=n?`<div class="tc-codigos"><b>Códigos o DNI de ${pref}s</b>${Array.from({length:n},(_,i)=>`<input class="${esCon?'tcCodigoCon':'tcCodigoRec'}" placeholder="Código o DNI ${i+1}">`).join("")}</div>`:"";}
 function tcArchivoBase64(file){return new Promise((ok,no)=>{const r=new FileReader();r.onload=()=>ok({nombre:file.name,mime:file.type||"image/jpeg",base64:r.result.split(",")[1]});r.onerror=no;r.readAsDataURL(file);});}
-async function tcGuardar(btn){const msg=document.getElementById("tcMsg");try{btn.disabled=true;tcLoading("Guardando registro...");const t=document.getElementById("tcTipo").value,files=[...(document.getElementById("tcEvidencias").files||[])];if(!files.length)throw new Error("Debe adjuntar al menos una evidencia");if(files.length>3)throw new Error("Máximo 3 evidencias");const evidencias=await Promise.all(files.map(tcArchivoBase64));const payload={accion:"registrarTrabajoConjunta",usuario:tcUsuario().usuario,cuadrilla:document.getElementById("tcCuadrilla").value,tipoTrabajo:t,fechaTrabajo:document.getElementById("tcFecha").value,horaInicio:document.getElementById("tcInicio").value,horaFin:document.getElementById("tcFin").value,trabajosAdicionales:document.getElementById("tcAdicionales").value,puntosSolicitados:document.getElementById("tcPuntos")?.value||0,comentarioFinal:document.getElementById("tcComentario").value,evidencias};if(t==="NORMALIZACION")payload.descripcionTrabajo=document.getElementById("tcDescripcion").value;if(t==="CONJUNTA PEXT"){payload.cto=document.getElementById("tcCto").value;payload.cantidadConectorizados=document.getElementById("tcConCant").value;payload.codigosConectorizados=[...document.querySelectorAll(".tcCodigoCon")].map(x=>x.value);payload.cantidadRecableados=document.getElementById("tcRecCant").value;payload.codigosRecableados=[...document.querySelectorAll(".tcCodigoRec")].map(x=>x.value);}if(t==="ORDENAMIENTO"){payload.cantidadCuadras=document.getElementById("tcCuadras").value;payload.zonaReferencia=document.getElementById("tcZona").value;}await tcApi(payload);msg.innerHTML='<div class="tc-okmsg">Registro guardado correctamente.</div>';document.getElementById("tcFormulario").innerHTML="";await tcCargar();}catch(e){msg.innerHTML=`<div class="tc-error">${tcEsc(e.message)}</div>`;}finally{btn.disabled=false;tcLoadingOff();}}
+async function tcGuardar(btn){
+  const msg=document.getElementById("tcMsg");
+  let registroConfirmado=false;
+  try{
+    btn.disabled=true;
+    tcLoading("Guardando registro...");
+
+    const t=document.getElementById("tcTipo").value;
+    const files=[...(document.getElementById("tcEvidencias").files||[])];
+    if(!files.length)throw new Error("Debe adjuntar al menos una evidencia");
+    if(files.length>3)throw new Error("Máximo 3 evidencias");
+
+    const evidencias=await Promise.all(files.map(tcArchivoBase64));
+    const payload={
+      accion:"registrarTrabajoConjunta",
+      usuario:tcUsuario().usuario,
+      cuadrilla:document.getElementById("tcCuadrilla").value,
+      tipoTrabajo:t,
+      fechaTrabajo:document.getElementById("tcFecha").value,
+      horaInicio:document.getElementById("tcInicio").value,
+      horaFin:document.getElementById("tcFin").value,
+      trabajosAdicionales:document.getElementById("tcAdicionales").value,
+      puntosSolicitados:document.getElementById("tcPuntos")?.value||0,
+      comentarioFinal:document.getElementById("tcComentario").value,
+      evidencias
+    };
+
+    if(t==="NORMALIZACION"){
+      payload.descripcionTrabajo=document.getElementById("tcDescripcion").value;
+    }
+    if(t==="CONJUNTA PEXT"){
+      payload.cto=document.getElementById("tcCto").value;
+      payload.cantidadConectorizados=document.getElementById("tcConCant").value;
+      payload.codigosConectorizados=[...document.querySelectorAll(".tcCodigoCon")].map(x=>x.value);
+      payload.cantidadRecableados=document.getElementById("tcRecCant").value;
+      payload.codigosRecableados=[...document.querySelectorAll(".tcCodigoRec")].map(x=>x.value);
+    }
+    if(t==="ORDENAMIENTO"){
+      payload.cantidadCuadras=document.getElementById("tcCuadras").value;
+      payload.zonaReferencia=document.getElementById("tcZona").value;
+    }
+
+    const respuesta=await tcApi(payload);
+    registroConfirmado=!!(respuesta&&respuesta.ok);
+    if(!registroConfirmado)throw new Error("No se recibió confirmación del registro.");
+
+    msg.innerHTML='<div class="tc-okmsg">Registro guardado correctamente.</div>';
+    document.getElementById("tcFormulario").innerHTML="";
+
+    // V600: la recarga posterior es independiente del guardado.
+    // Si listar falla, NO se transforma un registro confirmado en un error de guardado.
+    try{
+      await tcCargar();
+    }catch(errorRefresco){
+      console.warn("V600: registro PEXT guardado; falló solo la actualización de la vista",errorRefresco);
+      msg.innerHTML='<div class="tc-okmsg">Registro guardado correctamente. La vista no pudo actualizarse en este momento; use "Actualizar" más tarde.</div>';
+    }
+  }catch(e){
+    if(registroConfirmado){
+      msg.innerHTML='<div class="tc-okmsg">Registro guardado correctamente. La vista no pudo actualizarse en este momento; no vuelva a registrar el mismo PEXT.</div>';
+    }else{
+      msg.innerHTML=`<div class="tc-error">${tcEsc(e.message)}</div>`;
+    }
+  }finally{
+    btn.disabled=false;
+    tcLoadingOff();
+  }
+}
 
 function tcRenderLista(){const tipo=(document.getElementById("tcFiltroTipo")?.value||""),estado=(document.getElementById("tcFiltroEstado")?.value||""),cuad=(document.getElementById("tcFiltroCuadrilla")?.value||"").toUpperCase(),desde=document.getElementById("tcFiltroDesde")?.value||"",hasta=document.getElementById("tcFiltroHasta")?.value||"";const arr=tcRegistros.filter(x=>(!tipo||x.tipoTrabajo===tipo)&&(!estado||x.estadoGeneral===estado)&&(!cuad||(x.cuadrilla||"").toUpperCase().includes(cuad))&&(!desde||x.fechaTrabajo>=desde)&&(!hasta||x.fechaTrabajo<=hasta));const r=document.getElementById("tcResumen");if(r)r.innerHTML=`<div class="tc-kpis"><div><b>${arr.length}</b><span>Total</span></div><div><b>${arr.filter(x=>x.estadoGeneral==="PENDIENTE DE VISTO BUENO TECNICO").length}</b><span>Pendiente Técnico</span></div><div><b>${arr.filter(x=>x.estadoGeneral==="PENDIENTE CONFORMIDAD FINAL").length}</b><span>Pendiente Jefatura</span></div><div><b>${arr.filter(x=>x.estadoGeneral==="CONFORMIDAD FINAL").length}</b><span>Conformes</span></div></div>`;const lista=document.getElementById("tcLista");if(!arr.length){lista.innerHTML='<div class="tc-vacio">No hay registros.</div>';return}lista.innerHTML=arr.map(tcTarjeta).join("");}
 function tcTarjeta(x){const u=tcUsuario(),pendTec=x.estadoGeneral==="PENDIENTE DE VISTO BUENO TECNICO",pendJef=x.estadoGeneral==="PENDIENTE DE VALIDACION JEFATURA"||x.estadoGeneral==="OBSERVADO POR TECNICO",pendConf=x.estadoGeneral==="PENDIENTE CONFORMIDAD FINAL";let acc="";if(u.perfil==="TECNICO"&&pendTec&&(typeof pmPuede!=="function"||pmPuede("PEXT","OBSERVAR")))acc=`<button class="tc-btn tc-ok" onclick="tcRespuestaTecnico('${tcEsc(x.id)}','VISTO BUENO')">Visto bueno</button><button class="tc-btn tc-warn" onclick="tcRespuestaTecnico('${tcEsc(x.id)}','OBSERVADO')">Observar</button>`;if(tcJefatura(u.perfil)&&pendJef&&(typeof pmPuede!=="function"||pmPuede("PEXT","VALIDAR")))acc=`<button class="tc-btn tc-ok" onclick="tcValidarJefatura('${tcEsc(x.id)}','APROBADO')">Aprobar</button><button class="tc-btn tc-warn" onclick="tcValidarJefatura('${tcEsc(x.id)}','OBSERVADO')">Observar</button><button class="tc-btn tc-danger" onclick="tcValidarJefatura('${tcEsc(x.id)}','RECHAZADO')">Rechazar</button>`;if(tcJefatura(u.perfil)&&pendConf&&(typeof pmPuede!=="function"||pmPuede("PEXT","APROBAR")))acc=`<button class="tc-btn tc-ok" onclick="tcConformidad('${tcEsc(x.id)}','CONFORME')">Dar conformidad final</button><button class="tc-btn tc-danger" onclick="tcConformidad('${tcEsc(x.id)}','SIN CONFORMIDAD')">Sin conformidad</button>`;return `<article class="tc-item"><div class="tc-item-top"><div><b>${tcEsc(x.cuadrilla)} · ${tcEsc(x.tipoTrabajo)}</b><small>${tcFmtFecha(x.fechaTrabajo)} · ${tcFmtHoraPE(x.horaInicio)} a ${tcFmtHoraPE(x.horaFin)} · ${tcEsc(x.supervisorRegistra)}</small></div><span class="tc-estado">${tcEsc(x.estadoGeneral)}</span></div><details><summary>Ver detalle</summary>${tcDetalle(x)}<div class="tc-actions">${acc}</div></details></article>`;}
