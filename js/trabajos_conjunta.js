@@ -39,18 +39,8 @@ function tcLeerCache(accion,maxEdadMs){
 }
 async function tcApi(payload){
   const lectura=payload&&["listarTrabajosConjunta","listarCuadrillasTrabajosConjunta"].includes(payload.accion);
-  if(lectura&&typeof mv336ApiGet==="function"){
-    try{
-      const d=await mv336ApiGet(API_TRABAJOS_CONJUNTA,payload,{intentos:1,tiempoMs:30000});
-      tcGuardarCache(payload.accion,d);
-      return d;
-    }catch(error){
-      console.warn("V599 PEXT GET no disponible; se intenta una sola lectura POST",error);
-    }
-  }
-
   const controlador=typeof AbortController==="function"?new AbortController():null;
-  const temporizador=controlador?setTimeout(()=>controlador.abort(),45000):null;
+  const temporizador=controlador?setTimeout(()=>controlador.abort(),50000):null;
   try{
     const r=await fetch(API_TRABAJOS_CONJUNTA,{
       method:"POST",
@@ -64,14 +54,14 @@ async function tcApi(payload){
     if(!r.ok)throw new Error("La API de PEXT no está disponible temporalmente.");
     let d;
     try{d=JSON.parse(t)}catch(e){
-      if(/<!doctype|<html|google drive|accounts\.google|google apps script/i.test(t))throw new Error("La conexión recibió una página externa en lugar de los datos. Intente actualizar nuevamente.");
-      throw new Error("La API devolvió una respuesta inválida. Intente actualizar nuevamente.");
+      if(/<!doctype|<html|google drive|accounts\.google|google apps script/i.test(t))throw new Error("La conexión recibió una página externa en lugar de los datos.");
+      throw new Error("La API devolvió una respuesta inválida.");
     }
     if(!d.ok)throw new Error(d.error||"Error en PEXT");
     if(lectura)tcGuardarCache(payload.accion,d);
     return d;
   }catch(error){
-    if(error&&error.name==="AbortError")throw new Error("La operación tardó demasiado. Verifique la conexión e inténtelo nuevamente.");
+    if(error&&error.name==="AbortError")throw new Error("La operación tardó demasiado.");
     throw error;
   }finally{if(temporizador)clearTimeout(temporizador)}
 }
@@ -151,9 +141,85 @@ function tcActualizarPuntosConjunta(){
 }
 function tcCodigosDinamicos(tipo){const esCon=tipo==="con",n=Math.max(0,parseInt(document.getElementById(esCon?"tcConCant":"tcRecCant").value)||0),id=esCon?"tcCodCon":"tcCodRec",pref=esCon?"Conectorizado":"Recableado";document.getElementById(id).innerHTML=n?`<div class="tc-codigos"><b>Códigos o DNI de ${pref}s</b>${Array.from({length:n},(_,i)=>`<input class="${esCon?'tcCodigoCon':'tcCodigoRec'}" placeholder="Código o DNI ${i+1}">`).join("")}</div>`:"";}
 function tcArchivoBase64(file){return new Promise((ok,no)=>{const r=new FileReader();r.onload=()=>ok({nombre:file.name,mime:file.type||"image/jpeg",base64:r.result.split(",")[1]});r.onerror=no;r.readAsDataURL(file);});}
+const TC_PENDIENTE_PREFIX="MI_VISUAL_PEXT_PENDIENTE_V601|";
+function tcNormRegistro(v){return (v==null?"":String(v)).trim().toUpperCase().replace(/\s+/g," ");}
+function tcHuellaPayload(p){
+  return [
+    tcNormRegistro(p.usuario),
+    tcNormRegistro(p.cuadrilla),
+    tcNormRegistro(p.tipoTrabajo),
+    tcNormRegistro(p.fechaTrabajo),
+    tcNormRegistro(p.horaInicio),
+    tcNormRegistro(p.horaFin),
+    tcNormRegistro(p.cto),
+    String(Number(p.cantidadConectorizados)||0),
+    String(Number(p.cantidadRecableados)||0),
+    tcNormRegistro(p.descripcionTrabajo),
+    tcNormRegistro(p.zonaReferencia),
+    String(Number(p.cantidadCuadras)||0),
+    tcNormRegistro(p.comentarioFinal)
+  ].join("|");
+}
+function tcHuellaRegistro(x){
+  return [
+    tcNormRegistro(x.supervisorRegistra),
+    tcNormRegistro(x.cuadrilla),
+    tcNormRegistro(x.tipoTrabajo),
+    tcNormRegistro(x.fechaTrabajo),
+    tcNormRegistro(x.horaInicio),
+    tcNormRegistro(x.horaFin),
+    tcNormRegistro(x.cto),
+    String(Number(x.cantidadConectorizados)||0),
+    String(Number(x.cantidadRecableados)||0),
+    tcNormRegistro(x.descripcionTrabajo),
+    tcNormRegistro(x.zonaReferencia),
+    String(Number(x.cantidadCuadras)||0),
+    tcNormRegistro(x.comentarioFinal)
+  ].join("|");
+}
+function tcClavePendiente(huella){return TC_PENDIENTE_PREFIX+huella;}
+function tcLeerPendiente(huella){
+  try{
+    const x=JSON.parse(localStorage.getItem(tcClavePendiente(huella))||"null");
+    if(!x||!x.fecha)return null;
+    if(Date.now()-Number(x.fecha)>30*60*1000){
+      localStorage.removeItem(tcClavePendiente(huella));
+      return null;
+    }
+    return x;
+  }catch(_){return null;}
+}
+function tcGuardarPendiente(huella,payload,estado){
+  try{localStorage.setItem(tcClavePendiente(huella),JSON.stringify({fecha:Date.now(),payload,estado:estado||"ENVIADO"}));}catch(_){}
+}
+function tcLimpiarPendiente(huella){try{localStorage.removeItem(tcClavePendiente(huella));}catch(_){}}
+function tcBuscarCoincidencia(huella,lista){
+  return (Array.isArray(lista)?lista:[]).find(x=>tcHuellaRegistro(x)===huella)||null;
+}
+function tcEsErrorDefinitivoRegistro(error){
+  const m=String(error&&error.message||error||"");
+  return /debe seleccionar|solo puede registrar|tipo de trabajo no válido|complete fecha|hora de fin|comentario final|descripción del trabajo|ingrese los puntos|cto es obligatoria|códigos|cantidad de cuadras|zona o referencia|permiso|no tienes permiso/i.test(m);
+}
+function tcEsperar(ms){return new Promise(r=>setTimeout(r,ms));}
+async function tcVerificarRegistroRemoto(payload,huella){
+  const u=tcUsuario();
+  for(const espera of [2500,6000,12000]){
+    await tcEsperar(espera);
+    try{
+      const d=await tcApi({accion:"listarTrabajosConjunta",usuario:u.usuario});
+      const lista=d&&Array.isArray(d.trabajos)?d.trabajos:[];
+      tcRegistros=lista;
+      const encontrado=tcBuscarCoincidencia(huella,lista);
+      if(encontrado)return encontrado;
+    }catch(e){
+      console.warn("V601: verificación PEXT aún no disponible",e);
+    }
+  }
+  return null;
+}
 async function tcGuardar(btn){
   const msg=document.getElementById("tcMsg");
-  let registroConfirmado=false;
+  let huella="";
   try{
     btn.disabled=true;
     tcLoading("Guardando registro...");
@@ -163,7 +229,6 @@ async function tcGuardar(btn){
     if(!files.length)throw new Error("Debe adjuntar al menos una evidencia");
     if(files.length>3)throw new Error("Máximo 3 evidencias");
 
-    const evidencias=await Promise.all(files.map(tcArchivoBase64));
     const payload={
       accion:"registrarTrabajoConjunta",
       usuario:tcUsuario().usuario,
@@ -174,13 +239,9 @@ async function tcGuardar(btn){
       horaFin:document.getElementById("tcFin").value,
       trabajosAdicionales:document.getElementById("tcAdicionales").value,
       puntosSolicitados:document.getElementById("tcPuntos")?.value||0,
-      comentarioFinal:document.getElementById("tcComentario").value,
-      evidencias
+      comentarioFinal:document.getElementById("tcComentario").value
     };
-
-    if(t==="NORMALIZACION"){
-      payload.descripcionTrabajo=document.getElementById("tcDescripcion").value;
-    }
+    if(t==="NORMALIZACION")payload.descripcionTrabajo=document.getElementById("tcDescripcion").value;
     if(t==="CONJUNTA PEXT"){
       payload.cto=document.getElementById("tcCto").value;
       payload.cantidadConectorizados=document.getElementById("tcConCant").value;
@@ -193,27 +254,61 @@ async function tcGuardar(btn){
       payload.zonaReferencia=document.getElementById("tcZona").value;
     }
 
-    const respuesta=await tcApi(payload);
-    registroConfirmado=!!(respuesta&&respuesta.ok);
-    if(!registroConfirmado)throw new Error("No se recibió confirmación del registro.");
+    huella=tcHuellaPayload(payload);
 
-    msg.innerHTML='<div class="tc-okmsg">Registro guardado correctamente.</div>';
-    document.getElementById("tcFormulario").innerHTML="";
+    // 1. Defensa contra duplicados ya visibles.
+    const existente=tcBuscarCoincidencia(huella,tcRegistros);
+    if(existente){
+      msg.innerHTML='<div class="tc-okmsg">Este PEXT ya está registrado. No se enviará nuevamente.</div>';
+      document.getElementById("tcFormulario").innerHTML="";
+      return;
+    }
 
-    // V600: la recarga posterior es independiente del guardado.
-    // Si listar falla, NO se transforma un registro confirmado en un error de guardado.
+    // 2. Defensa contra doble clic/reintento cuando la respuesta anterior fue incierta.
+    const pendiente=tcLeerPendiente(huella);
+    if(pendiente){
+      msg.innerHTML='<div class="tc-warn" style="padding:10px 12px;border-radius:10px;background:#fff7ed;border:1px solid #fdba74;color:#9a3412;font-weight:700">Este PEXT ya fue enviado recientemente y está pendiente de verificación. No lo vuelva a registrar para evitar duplicados. Use Actualizar en unos minutos.</div>';
+      return;
+    }
+
+    // Se guarda bloqueo ANTES de enviar.
+    tcGuardarPendiente(huella,payload,"ENVIANDO");
+
+    payload.evidencias=await Promise.all(files.map(tcArchivoBase64));
+
     try{
-      await tcCargar();
-    }catch(errorRefresco){
-      console.warn("V600: registro PEXT guardado; falló solo la actualización de la vista",errorRefresco);
-      msg.innerHTML='<div class="tc-okmsg">Registro guardado correctamente. La vista no pudo actualizarse en este momento; use "Actualizar" más tarde.</div>';
+      const respuesta=await tcApi(payload);
+      if(!respuesta||!respuesta.ok)throw new Error("No se recibió confirmación del registro.");
+      tcLimpiarPendiente(huella);
+      msg.innerHTML='<div class="tc-okmsg">Registro guardado correctamente.</div>';
+      document.getElementById("tcFormulario").innerHTML="";
+      // No se recarga automáticamente: evita que una falla de listado contamine el resultado del guardado.
+      return;
+    }catch(errorEnvio){
+      if(tcEsErrorDefinitivoRegistro(errorEnvio)){
+        tcLimpiarPendiente(huella);
+        throw errorEnvio;
+      }
+
+      // 3. Respuesta incierta: NO se reenvía. Se verifica leyendo el listado.
+      tcGuardarPendiente(huella,payload,"VERIFICANDO");
+      if(msg)msg.innerHTML='<div class="tc-warn" style="padding:10px 12px;border-radius:10px;background:#fff7ed;border:1px solid #fdba74;color:#9a3412;font-weight:700">El servidor demoró en confirmar. No vuelva a registrar este PEXT; MI VISUAL está verificando si ya fue guardado.</div>';
+      tcLoading("Verificando registro...");
+
+      const confirmado=await tcVerificarRegistroRemoto(payload,huella);
+      if(confirmado){
+        tcLimpiarPendiente(huella);
+        msg.innerHTML='<div class="tc-okmsg">Registro confirmado correctamente. No es necesario volver a enviarlo.</div>';
+        document.getElementById("tcFormulario").innerHTML="";
+        try{tcPrepararPeriodos();tcRenderLista();}catch(_){}
+        return;
+      }
+
+      // 4. Si no pudo verificarse por caída del API, se mantiene el bloqueo 30 min.
+      msg.innerHTML='<div class="tc-warn" style="padding:10px 12px;border-radius:10px;background:#fff7ed;border:1px solid #fdba74;color:#9a3412;font-weight:700">No se pudo obtener la confirmación del servidor. El envío queda protegido para evitar duplicados. NO vuelva a registrarlo; espere unos minutos y pulse Actualizar.</div>';
     }
   }catch(e){
-    if(registroConfirmado){
-      msg.innerHTML='<div class="tc-okmsg">Registro guardado correctamente. La vista no pudo actualizarse en este momento; no vuelva a registrar el mismo PEXT.</div>';
-    }else{
-      msg.innerHTML=`<div class="tc-error">${tcEsc(e.message)}</div>`;
-    }
+    if(msg)msg.innerHTML=`<div class="tc-error">${tcEsc(e.message)}</div>`;
   }finally{
     btn.disabled=false;
     tcLoadingOff();
