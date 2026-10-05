@@ -15,19 +15,60 @@ function tcUsuario(){return {usuario:localStorage.getItem("usuario")||"",perfil:
 function tcJefatura(p){return ["JEFATURA","ADMIN","ADMINISTRADOR"].includes((p||"").toUpperCase());}
 
 
-async function tcApi(payload){
-  const controlador=typeof AbortController==="function"?new AbortController():null;
-  const temporizador=controlador?setTimeout(()=>controlador.abort(),60000):null;
+const TC_CACHE_PREFIX="MI_VISUAL_PEXT_V599|";
+function tcCacheKey(accion){
+  const u=tcUsuario();
+  return TC_CACHE_PREFIX+[u.usuario,u.perfil,u.sede,accion].map(v=>(v||"").toString().toUpperCase()).join("|");
+}
+function tcGuardarCache(accion,data){
   try{
-    const r=await fetch(API_TRABAJOS_CONJUNTA,{method:"POST",body:JSON.stringify(payload),signal:controlador?controlador.signal:undefined});
-    const t=await r.text();
+    if(!data||data.ok===false)return;
+    localStorage.setItem(tcCacheKey(accion),JSON.stringify({guardadoEn:Date.now(),data}));
+  }catch(_){}
+}
+function tcLeerCache(accion,maxEdadMs){
+  try{
+    const raw=localStorage.getItem(tcCacheKey(accion));
+    if(!raw)return null;
+    const item=JSON.parse(raw);
+    if(!item||!item.data||!item.guardadoEn)return null;
+    const edad=Date.now()-Number(item.guardadoEn);
+    if(edad<0||edad>maxEdadMs)return null;
+    return item;
+  }catch(_){return null;}
+}
+async function tcApi(payload){
+  const lectura=payload&&["listarTrabajosConjunta","listarCuadrillasTrabajosConjunta"].includes(payload.accion);
+  if(lectura&&typeof mv336ApiGet==="function"){
+    try{
+      const d=await mv336ApiGet(API_TRABAJOS_CONJUNTA,payload,{intentos:1,tiempoMs:30000});
+      tcGuardarCache(payload.accion,d);
+      return d;
+    }catch(error){
+      console.warn("V599 PEXT GET no disponible; se intenta una sola lectura POST",error);
+    }
+  }
+
+  const controlador=typeof AbortController==="function"?new AbortController():null;
+  const temporizador=controlador?setTimeout(()=>controlador.abort(),45000):null;
+  try{
+    const r=await fetch(API_TRABAJOS_CONJUNTA,{
+      method:"POST",
+      headers:{"Content-Type":"text/plain;charset=UTF-8","Accept":"application/json"},
+      body:JSON.stringify(payload),
+      cache:"no-store",
+      redirect:"follow",
+      signal:controlador?controlador.signal:undefined
+    });
+    const t=(await r.text()).trim();
     if(!r.ok)throw new Error("La API de PEXT no está disponible temporalmente.");
     let d;
     try{d=JSON.parse(t)}catch(e){
-      if(/<!doctype|<html|google drive|accounts\.google/i.test(t))throw new Error("La conexión recibió una página externa en lugar de los datos. Intente actualizar nuevamente.");
+      if(/<!doctype|<html|google drive|accounts\.google|google apps script/i.test(t))throw new Error("La conexión recibió una página externa en lugar de los datos. Intente actualizar nuevamente.");
       throw new Error("La API devolvió una respuesta inválida. Intente actualizar nuevamente.");
     }
     if(!d.ok)throw new Error(d.error||"Error en PEXT");
+    if(lectura)tcGuardarCache(payload.accion,d);
     return d;
   }catch(error){
     if(error&&error.name==="AbortError")throw new Error("La operación tardó demasiado. Verifique la conexión e inténtelo nuevamente.");
@@ -218,25 +259,62 @@ async function mostrarTrabajosConjunta(){
 }
 
 async function tcCargar(){
+  const u=tcUsuario();
+  let errorPrincipal=null;
   try{
     tcLoading("Cargando trabajos...");
-    const u=tcUsuario();
     const d=await tcApi({accion:"listarTrabajosConjunta",usuario:u.usuario});
     tcRegistros=d.trabajos||[];
+  }catch(e){
+    errorPrincipal=e;
+    const cache=tcLeerCache("listarTrabajosConjunta",48*60*60*1000);
+    if(cache){
+      tcRegistros=(cache.data.trabajos||[]);
+    }else{
+      const lista=document.getElementById("tcLista");
+      if(lista)lista.innerHTML=`<div class="tc-error">${tcEsc(e.message)}</div>`;
+      tcLoadingOff();
+      return;
+    }
+  }
+
+  try{
     TC_PERIODO_SELECCIONADO=tcPeriodoActual();
     tcPrepararPeriodos();
     const sedes=[...new Set(tcRegistros.map(x=>(x.sede||"").toString().trim()).filter(Boolean))].sort();
     const sel=document.getElementById("tcFiltroSede");
-    if(sel){const actual=sel.value;sel.innerHTML='<option value="">Todas las sedes</option>'+sedes.map(s=>`<option value="${tcEsc(s)}">${tcEsc(s)}</option>`).join("");sel.value=actual;}
-    if(tcPermiso("REGISTRAR")){
-      const q=await tcApi({accion:"listarCuadrillasTrabajosConjunta",usuario:u.usuario});
-      tcCuadrillas=q.cuadrillas||[];
+    if(sel){
+      const actual=sel.value;
+      sel.innerHTML='<option value="">Todas las sedes</option>'+sedes.map(s=>`<option value="${tcEsc(s)}">${tcEsc(s)}</option>`).join("");
+      sel.value=actual;
     }
+
+    if(tcPermiso("REGISTRAR")){
+      try{
+        const q=await tcApi({accion:"listarCuadrillasTrabajosConjunta",usuario:u.usuario});
+        tcCuadrillas=q.cuadrillas||[];
+      }catch(e){
+        const cacheQ=tcLeerCache("listarCuadrillasTrabajosConjunta",48*60*60*1000);
+        if(cacheQ)tcCuadrillas=cacheQ.data.cuadrillas||[];
+        else console.warn("V599: no se pudo cargar cuadrillas PEXT",e);
+      }
+    }
+
     tcRenderLista();
-  }catch(e){
-    const lista=document.getElementById("tcLista");
-    if(lista)lista.innerHTML=`<div class="tc-error">${tcEsc(e.message)}</div>`;
-  }finally{tcLoadingOff();}
+
+    if(errorPrincipal){
+      const lista=document.getElementById("tcLista");
+      if(lista){
+        const aviso=document.createElement("div");
+        aviso.className="tc-warn";
+        aviso.style.cssText="margin:0 0 10px;padding:10px 12px;border-radius:10px;background:#fff7ed;border:1px solid #fdba74;color:#9a3412;font-weight:700";
+        aviso.textContent="Mostrando la última información disponible de PEXT. El servidor está respondiendo con demora y se reintentará al actualizar.";
+        lista.prepend(aviso);
+      }
+    }
+  }finally{
+    tcLoadingOff();
+  }
 }
 
 function tcRenderLista(){
