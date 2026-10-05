@@ -211,7 +211,7 @@
 
   async function mv534PostLectura(payload){
     const controlador = typeof AbortController === "function" ? new AbortController() : null;
-    const timer = controlador ? setTimeout(function(){ controlador.abort(); }, 25000) : null;
+    const timer = controlador ? setTimeout(function(){ controlador.abort(); }, 45000) : null;
     try{
       const respuesta = await fetch(window.API_DESCANSOS || window.MI_VISUAL_API_URL, {
         method:"POST",
@@ -243,18 +243,18 @@
   }
 
   async function mv534LeerRed(payload){
+    /*
+      V598 - una sola lectura de red para Descansos.
+      El flujo anterior podía lanzar GET y luego POST ante lentitud,
+      duplicando trabajo en Apps Script justo cuando el servidor estaba ocupado.
+      Como listarProgramacionDescansos es solo lectura, usamos un único POST
+      con mayor margen de respuesta y mantenemos el snapshot como respaldo.
+    */
     try{
-      if(typeof window.mv336ApiGet === "function"){
-        return await window.mv336ApiGet(
-          window.API_DESCANSOS || window.MI_VISUAL_API_URL,
-          payload,
-          {intentos:1, tiempoMs:20000}
-        );
-      }
-      return await window.pdApi(payload);
+      return await mv534PostLectura(payload);
     }catch(error){
       if(!mv534EsTransitorio(error)) throw error;
-      return await mv534PostLectura(payload);
+      throw error;
     }
   }
 
