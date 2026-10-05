@@ -192,6 +192,9 @@ function tcLeerPendiente(huella){
 function tcGuardarPendiente(huella,payload,estado){
   try{localStorage.setItem(tcClavePendiente(huella),JSON.stringify({fecha:Date.now(),payload,estado:estado||"ENVIADO"}));}catch(_){}
 }
+function tcNuevaIdSolicitudPext(){
+  return "PEXT-"+Date.now().toString(36).toUpperCase()+"-"+Math.random().toString(36).slice(2,10).toUpperCase();
+}
 function tcLimpiarPendiente(huella){try{localStorage.removeItem(tcClavePendiente(huella));}catch(_){}}
 function tcBuscarCoincidencia(huella,lista){
   return (Array.isArray(lista)?lista:[]).find(x=>tcHuellaRegistro(x)===huella)||null;
@@ -270,6 +273,9 @@ async function tcGuardar(btn){
       msg.innerHTML='<div class="tc-warn" style="padding:10px 12px;border-radius:10px;background:#fff7ed;border:1px solid #fdba74;color:#9a3412;font-weight:700">Este PEXT ya fue enviado recientemente y está pendiente de verificación. No lo vuelva a registrar para evitar duplicados. Use Actualizar en unos minutos.</div>';
       return;
     }
+
+    // V602: ID estable de solicitud para que el backend pueda responder de forma idempotente.
+    payload.idSolicitud=tcNuevaIdSolicitudPext();
 
     // Se guarda bloqueo ANTES de enviar.
     tcGuardarPendiente(huella,payload,"ENVIANDO");
