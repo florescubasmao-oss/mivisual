@@ -172,17 +172,16 @@
 
     // V605 - La asistencia del Cierre Diario proviene SOLO de Programación de Descansos.
     // No se usa la existencia de órdenes FINALIZADAS para definir si una cuadrilla laboró.
-    const laboraron=[], descanso=[], faltasQuiebres=[], otrosProgramados=[];
+    const laboraron=[], descanso=[], otrosProgramados=[];
     cuadrillas.forEach(c=>{
       const e=estados[norm(c)]||"EN CAMPO";
       if(e==="EN CAMPO" || e==="EN CAMPO BOLSA"){
         laboraron.push(c);
       }else if(e==="DESCANSO"){
         descanso.push(c);
-      }else if(e==="SIN ACTIVIDAD"){
-        faltasQuiebres.push(c);
       }else{
-        // VACACIONES u otro estado aprobado diferente.
+        // SIN ACTIVIDAD, VACACIONES u otros estados aprobados se muestran
+        // solo como estados programados; no se clasifican como falta/quiebre.
         otrosProgramados.push({cuadrilla:c,estado:e});
       }
     });
@@ -190,7 +189,7 @@
     const ticketsFinalizados=[...finalizadas].filter(x=>x.includes("|")).length || Math.round(ordenesProduccion);
     return {
       fecha, sede:localStorage.getItem("sede")||"", cuadrillas,
-      laboraron, descanso, otrosProgramados, faltasQuiebres,
+      laboraron, descanso, otrosProgramados,
       puntos:Math.round(puntos*100)/100,
       vtr:vtrKeys.size, gar:garKeys.size,
       totalVtrGar:vtrKeys.size+garKeys.size,
@@ -205,10 +204,11 @@
     return '<div class="mv603-lista">'+lista.map(x=>'<span>'+esc(typeof x==="string"?x:(x.cuadrilla+" · "+x.estado))+'</span>').join("")+'</div>';
   }
   function renderResultado(r){
-    return '<div class="mv603-grid">'+
+    return '<div class="mv603-sede-head">🏢 SEDE: <b>'+esc(r.sede||"")+'</b> · '+esc(r.fecha)+'</div>'+
+      '<div class="mv603-grid">'+
       kpi("👷","Cuadrillas laboraron",r.laboraron.length,"de "+r.cuadrillas.length+" activas")+
       kpi("😴","Cuadrillas descanso",r.descanso.length,"programadas")+
-      kpi("⚠️","Faltas / quiebres",r.faltasQuiebres.length,"estado SIN ACTIVIDAD")+
+
       kpi("⭐","Puntos efectuados",r.puntos.toFixed(1),"jornada")+
       kpi("📡","VTR / Garantías",r.totalVtrGar,"VTR "+r.vtr+" · GAR "+r.gar)+
       kpi("🎫","Promedio ticket",r.promedioTicket.toFixed(2),"pts / orden finalizada")+
@@ -217,10 +217,10 @@
       '<div class="mv603-detalles">'+
       detalle("👷 Laboraron",listaHtml(r.laboraron))+
       detalle("😴 Descanso",listaHtml(r.descanso))+
-      detalle("⚠️ Faltas / quiebres",listaHtml(r.faltasQuiebres),true)+
+
       (r.otrosProgramados.length?detalle("📌 Otros estados programados",listaHtml(r.otrosProgramados)):"")+
       '</div>'+
-      '<div class="mv603-nota">La asistencia del cierre se toma <b>únicamente de Programación de Descansos</b>: EN CAMPO / EN CAMPO BOLSA = laboraron; DESCANSO = descanso; SIN ACTIVIDAD = falta/quiebre. Las órdenes finalizadas se usan solo para producción, puntos y promedios.</div>';
+      '<div class="mv603-nota">La asistencia del cierre se toma <b>únicamente de Programación de Descansos</b>: EN CAMPO / EN CAMPO BOLSA = laboraron; DESCANSO = descanso. Los demás estados aprobados se muestran aparte. Las órdenes finalizadas se usan solo para producción, puntos y promedios.</div>';
   }
   function kpi(i,t,v,s){ return '<div class="mv603-kpi"><small>'+i+' '+esc(t)+'</small><b>'+esc(v)+'</b><span>'+esc(s)+'</span></div>'; }
   function detalle(t,c,alerta){ return '<div class="mv603-det '+(alerta?"mv603-alerta":"")+'"><b>'+t+'</b>'+c+'</div>'; }
@@ -260,7 +260,7 @@
       .mv603-modal{width:min(1050px,100%);background:#0b1f39;color:#fff;border-radius:20px;border:1px solid rgba(255,255,255,.12);box-shadow:0 24px 70px rgba(0,0,0,.45);padding:18px}
       .mv603-head{display:flex;justify-content:space-between;gap:12px;align-items:flex-start}.mv603-head h2{margin:3px 0 4px;font-size:22px}.mv603-head small,.mv603-head span{color:#9fc2e7;font-weight:800}.mv603-head button{border:0;border-radius:10px;background:#334155;color:#fff;padding:8px 11px;cursor:pointer}
       .mv603-toolbar{display:flex;gap:10px;align-items:end;flex-wrap:wrap;margin:18px 0}.mv603-toolbar label{font-size:11px;color:#9fc2e7;font-weight:900}.mv603-toolbar input{display:block;margin-top:5px;padding:9px 10px;border-radius:10px;border:1px solid #64748b}.mv603-toolbar button{border:0;border-radius:10px;padding:10px 14px;background:#16a34a;color:#fff;font-weight:900;cursor:pointer}.mv603-solo{padding:9px 11px;border-radius:999px;background:#1e3a8a;color:#dbeafe;font-size:10px;font-weight:900}
-      .mv603-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px}.mv603-kpi{background:#102844;border:1px solid rgba(148,163,184,.2);border-radius:15px;padding:13px}.mv603-kpi small{display:block;color:#9fc2e7;font-weight:900}.mv603-kpi b{display:block;font-size:25px;margin:6px 0}.mv603-kpi span{font-size:11px;color:#b8cbe0}
+      .mv603-sede-head{margin:4px 0 12px;padding:11px 13px;border-radius:13px;background:#17345a;border:1px solid rgba(147,197,253,.28);color:#dbeafe;font-size:15px;font-weight:900;letter-spacing:.2px}.mv603-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px}.mv603-kpi{background:#102844;border:1px solid rgba(148,163,184,.2);border-radius:15px;padding:13px}.mv603-kpi small{display:block;color:#9fc2e7;font-weight:900}.mv603-kpi b{display:block;font-size:25px;margin:6px 0}.mv603-kpi span{font-size:11px;color:#b8cbe0}
       .mv603-detalles{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin-top:12px}.mv603-det{background:#102844;border:1px solid rgba(148,163,184,.18);border-radius:14px;padding:12px}.mv603-alerta{border-color:#f59e0b}.mv603-lista{display:flex;flex-direction:column;gap:5px;margin-top:8px}.mv603-lista span,.mv603-vacio{font-size:11px;color:#cbd5e1;padding:6px 8px;border-radius:8px;background:#0b1f39}.mv603-nota{margin-top:12px;padding:11px;border-radius:12px;background:#172554;color:#dbeafe;font-size:11px;line-height:1.45}.mv603-error{background:#7f1d1d;padding:12px;border-radius:12px}.mv603-cargando{padding:24px;text-align:center;color:#bfdbfe}
       @media(max-width:760px){.mv603-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.mv603-detalles{grid-template-columns:1fr}.mv603-overlay{padding:10px}.mv603-modal{padding:13px}}
     `; document.head.appendChild(s);
