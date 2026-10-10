@@ -17,7 +17,7 @@
     usuarios:"0",
     produccion:"1814992325",
     catalogo:"2013842388",
-    base:"1976252550",
+    mapa:"1086276796",
     vtrgar:"428033617",
     descansos:"1028257832"
   };
@@ -130,8 +130,8 @@
     if(!cuadrillas.length) throw new Error("No se encontraron cuadrillas activas para el Supervisor.");
     const set=new Set(cuadrillas.map(norm));
 
-    const [prod,cat,base,vtrg,desc]=await Promise.all([
-      csv(GID.produccion),csv(GID.catalogo),csv(GID.base),csv(GID.vtrgar),csv(GID.descansos)
+    const [prod,cat,mapa,vtrg,desc]=await Promise.all([
+      csv(GID.produccion),csv(GID.catalogo),csv(GID.mapa),csv(GID.vtrgar),csv(GID.descansos)
     ]);
 
     const hc=mapaHeaders(cat[0]||[]), iCodCat=col(hc,"CODIGO","CÓDIGO"), iPtsCat=col(hc,"PUNTAJE");
@@ -147,23 +147,26 @@
       const cod=norm(valor(f,iPCod)); puntos+=cant*(puntosCodigo[cod]!==undefined?puntosCodigo[cod]:1);
     });
 
-    const hb=mapaHeaders(base[0]||[]), iBCuad=col(hb,"CUADRILLA"), iBFecha=col(hb,"FECHA"), iBEstado=col(hb,"ESTADO"), iBClave=col(hb,"CLAVE_REGISTRO","CODIGO_LIQUIDACION");
-    const laboraronSet=new Set(actividadProd), finalizadas=new Set(), estadosOrdenes={}, clavesOrdenes=new Set();
-    base.slice(1).forEach((f,idx)=>{
-      const c=norm(valor(f,iBCuad)); if(!set.has(c) || fechaISO(valor(f,iBFecha))!==fecha) return;
-      laboraronSet.add(c);
+    // V608 - Estados de órdenes desde MAPA_ORDENES.
+    // Esta es la fuente viva que contiene Finalizada, Cancelada, Regestión,
+    // Anulada, Agendada, En camino, Iniciada, etc. del día.
+    const hm=mapaHeaders(mapa[0]||[]);
+    const iMOrden=col(hm,"ORDEN_ID");
+    const iMFecha=col(hm,"FECHA_SOLICITUD");
+    const iMCuad=col(hm,"CUADRILLA");
+    const iMEstado=col(hm,"ESTADO");
+    const estadosOrdenes={}, clavesOrdenes=new Set();
 
-      const estado=norm(valor(f,iBEstado)||"SIN ESTADO") || "SIN ESTADO";
-      const clave=String(valor(f,iBClave)||("F"+idx)).trim();
-      const claveUnica=c+"|"+clave;
+    mapa.slice(1).forEach((f,idx)=>{
+      const c=norm(valor(f,iMCuad));
+      if(!set.has(c) || fechaISO(valor(f,iMFecha))!==fecha) return;
 
-      // Evita duplicar una misma orden en el resumen por estado.
-      if(!clavesOrdenes.has(claveUnica)){
-        clavesOrdenes.add(claveUnica);
-        estadosOrdenes[estado]=(estadosOrdenes[estado]||0)+1;
-      }
+      const estado=norm(valor(f,iMEstado)||"SIN ESTADO") || "SIN ESTADO";
+      const orden=String(valor(f,iMOrden)||("MAPA"+idx)).trim();
+      if(!orden || clavesOrdenes.has(orden)) return;
 
-      if(estado==="FINALIZADA") finalizadas.add(claveUnica);
+      clavesOrdenes.add(orden);
+      estadosOrdenes[estado]=(estadosOrdenes[estado]||0)+1;
     });
 
     const hv=mapaHeaders(vtrg[0]||[]), iVFecha=col(hv,"FECHA_INCIDENCIA"), iVTipo=col(hv,"TIPO"),
@@ -194,7 +197,7 @@
       }
     });
 
-    const ticketsFinalizados=[...finalizadas].filter(x=>x.includes("|")).length || Math.round(ordenesProduccion);
+    const ticketsFinalizados=Number(estadosOrdenes["FINALIZADA"]||0);
     return {
       fecha, sede:localStorage.getItem("sede")||"", cuadrillas,
       laboraron, descanso, otrosProgramados,
