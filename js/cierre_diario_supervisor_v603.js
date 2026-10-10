@@ -249,7 +249,12 @@
     const detalleEstados=claves.length
       ? claves.map(k=>esc(k)+": <b>"+esc(estados[k])+"</b>").join(" · ")
       : "Sin órdenes";
-    return '<div class="mv603-kpi" style="grid-column:span 2"><small>🧾 Órdenes por estado</small><b>'+esc(total||0)+'</b><span>'+detalleEstados+'</span></div>';
+    return '<div class="mv603-kpi mv603-kpi-estados"><small>🧾 Órdenes por estado</small>'+
+      '<div class="mv603-estados-head"><b>'+esc(total||0)+'</b><span>Total</span></div>'+
+      '<div class="mv603-estados-chips">'+
+        claves.map(k=>'<span class="mv603-chip-estado"><em>'+esc(k)+'</em><b>'+esc(estados[k])+'</b></span>').join('')+
+      '</div>'+
+    '</div>';
   }
   function detalle(t,c,alerta){ return '<div class="mv603-det '+(alerta?"mv603-alerta":"")+'"><b>'+t+'</b>'+c+'</div>'; }
 
@@ -289,6 +294,11 @@
       .mv603-head{display:flex;justify-content:space-between;gap:12px;align-items:flex-start}.mv603-head h2{margin:3px 0 4px;font-size:22px}.mv603-head small,.mv603-head span{color:#9fc2e7;font-weight:800}.mv603-head button{border:0;border-radius:10px;background:#334155;color:#fff;padding:8px 11px;cursor:pointer}
       .mv603-toolbar{display:flex;gap:10px;align-items:end;flex-wrap:wrap;margin:18px 0}.mv603-toolbar label{font-size:11px;color:#9fc2e7;font-weight:900}.mv603-toolbar input{display:block;margin-top:5px;padding:9px 10px;border-radius:10px;border:1px solid #64748b}.mv603-toolbar button{border:0;border-radius:10px;padding:10px 14px;background:#16a34a;color:#fff;font-weight:900;cursor:pointer}.mv603-solo{padding:9px 11px;border-radius:999px;background:#1e3a8a;color:#dbeafe;font-size:10px;font-weight:900}
       .mv603-sede-head{margin:4px 0 12px;padding:11px 13px;border-radius:13px;background:#17345a;border:1px solid rgba(147,197,253,.28);color:#dbeafe;font-size:15px;font-weight:900;letter-spacing:.2px}.mv603-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px}.mv603-kpi{background:#102844;border:1px solid rgba(148,163,184,.2);border-radius:15px;padding:13px}.mv603-kpi small{display:block;color:#9fc2e7;font-weight:900}.mv603-kpi b{display:block;font-size:25px;margin:6px 0}.mv603-kpi span{font-size:11px;color:#b8cbe0}
+      .mv603-kpi-estados{grid-column:span 2!important;padding:11px 12px!important;min-height:0!important}
+      .mv603-estados-head{display:flex;align-items:baseline;gap:6px;margin-top:4px}.mv603-estados-head b{font-size:22px!important;margin:0!important}.mv603-estados-head span{font-size:10px!important;color:#9fb7d8!important}
+      .mv603-estados-chips{display:flex;flex-wrap:wrap;gap:5px;margin-top:8px}
+      .mv603-chip-estado{display:inline-flex!important;align-items:center;gap:5px;padding:4px 7px;border-radius:999px;background:#0b1f39;border:1px solid rgba(148,163,184,.18);line-height:1!important}
+      .mv603-chip-estado em{font-style:normal;font-size:9px;color:#a8c0dc;font-weight:800}.mv603-chip-estado b{display:inline!important;font-size:12px!important;margin:0!important;color:#fff}
       .mv603-detalles{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin-top:12px}.mv603-det{background:#102844;border:1px solid rgba(148,163,184,.18);border-radius:14px;padding:12px}.mv603-alerta{border-color:#f59e0b}.mv603-lista{display:flex;flex-direction:column;gap:5px;margin-top:8px}.mv603-lista span,.mv603-vacio{font-size:11px;color:#cbd5e1;padding:6px 8px;border-radius:8px;background:#0b1f39}.mv603-nota{margin-top:12px;padding:11px;border-radius:12px;background:#172554;color:#dbeafe;font-size:11px;line-height:1.45}.mv603-error{background:#7f1d1d;padding:12px;border-radius:12px}.mv603-cargando{padding:24px;text-align:center;color:#bfdbfe}
       @media(max-width:760px){.mv603-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.mv603-detalles{grid-template-columns:1fr}.mv603-overlay{padding:10px}.mv603-modal{padding:13px}}
     `; document.head.appendChild(s);
