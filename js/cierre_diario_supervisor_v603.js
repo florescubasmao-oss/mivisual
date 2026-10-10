@@ -152,7 +152,10 @@
     base.slice(1).forEach((f,idx)=>{
       const c=norm(valor(f,iBCuad)); if(!set.has(c) || fechaISO(valor(f,iBFecha))!==fecha) return;
       laboraronSet.add(c);
-      if(norm(valor(f,iBEstado))==="FINALIZADA") finalizadas.add(String(valor(f,iBClave)||("F"+idx)).trim());
+      if(norm(valor(f,iBEstado))==="FINALIZADA"){
+        const clave=String(valor(f,iBClave)||("F"+idx)).trim();
+        finalizadas.add(c+"|"+clave);
+      }
     });
 
     const hv=mapaHeaders(vtrg[0]||[]), iVFecha=col(hv,"FECHA_INCIDENCIA"), iVTipo=col(hv,"TIPO"),
@@ -167,15 +170,37 @@
 
     const estados=estadosDescanso(desc,cuadrillas,fecha);
     const descanso=[], otrosProgramados=[], candidatos=[];
+    const laboraron=[];
     cuadrillas.forEach(c=>{
       const k=norm(c), e=estados[k]||"EN CAMPO";
-      if(e==="DESCANSO") descanso.push(c);
-      else if(["VACACIONES","EN CAMPO BOLSA","SIN ACTIVIDAD"].includes(e)) otrosProgramados.push({cuadrilla:c,estado:e});
-      else if(!laboraronSet.has(k)) candidatos.push(c);
+
+      // V604: para Cierre Diario, "laboraron" se determina por la
+      // programación operativa aprobada del módulo Descansos.
+      // EN CAMPO / EN CAMPO BOLSA = cuadrilla programada para laborar.
+      // DESCANSO / VACACIONES / SIN ACTIVIDAD se excluyen.
+      if(e==="DESCANSO"){
+        descanso.push(c);
+        return;
+      }
+      if(e==="VACACIONES" || e==="SIN ACTIVIDAD"){
+        otrosProgramados.push({cuadrilla:c,estado:e});
+        return;
+      }
+      if(e==="EN CAMPO BOLSA"){
+        laboraron.push(c);
+        otrosProgramados.push({cuadrilla:c,estado:e});
+      }else{
+        laboraron.push(c);
+      }
+
+      // Faltas/quiebres = alerta a revisar, no descuento automático.
+      // Se marca si estaba programada EN CAMPO pero no tiene ninguna
+      // orden FINALIZADA en la base operativa de la fecha.
+      const tieneFinalizada=[...finalizadas].some(key=>key.startsWith(k+"|"));
+      if(!tieneFinalizada) candidatos.push(c);
     });
 
-    const laboraron=cuadrillas.filter(c=>laboraronSet.has(norm(c)));
-    const ticketsFinalizados=finalizadas.size || Math.round(ordenesProduccion);
+    const ticketsFinalizados=[...finalizadas].filter(x=>x.includes("|")).length || Math.round(ordenesProduccion);
     return {
       fecha, sede:localStorage.getItem("sede")||"", cuadrillas,
       laboraron, descanso, otrosProgramados, candidatos,
@@ -208,7 +233,7 @@
       detalle("⚠️ Posibles faltas / quiebres",listaHtml(r.candidatos),true)+
       (r.otrosProgramados.length?detalle("📌 Otros estados programados",listaHtml(r.otrosProgramados)):"")+
       '</div>'+
-      '<div class="mv603-nota">Faltas/quiebres se marcan como <b>candidatas</b> cuando una cuadrilla estaba programada EN CAMPO y no tiene actividad registrada en la base del día. En la siguiente fase el Supervisor confirmará el motivo antes de cerrar la jornada.</div>';
+      '<div class="mv603-nota">Cuadrillas que laboraron se toma de la programación aprobada: <b>EN CAMPO / EN CAMPO BOLSA</b>. Faltas/quiebres se muestran solo como <b>candidatas a revisar</b> cuando una cuadrilla programada para laborar no tiene ninguna orden FINALIZADA ese día; no se descuenta automáticamente de “Laboraron”.</div>';
   }
   function kpi(i,t,v,s){ return '<div class="mv603-kpi"><small>'+i+' '+esc(t)+'</small><b>'+esc(v)+'</b><span>'+esc(s)+'</span></div>'; }
   function detalle(t,c,alerta){ return '<div class="mv603-det '+(alerta?"mv603-alerta":"")+'"><b>'+t+'</b>'+c+'</div>'; }
