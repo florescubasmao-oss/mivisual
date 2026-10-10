@@ -193,11 +193,9 @@
         laboraron.push(c);
       }
 
-      // Faltas/quiebres = alerta a revisar, no descuento automático.
-      // Se marca si estaba programada EN CAMPO pero no tiene ninguna
-      // orden FINALIZADA en la base operativa de la fecha.
-      const tieneFinalizada=[...finalizadas].some(key=>key.startsWith(k+"|"));
-      if(!tieneFinalizada) candidatos.push(c);
+      // V604.1: Faltas/quiebres NO se infieren por ausencia de órdenes finalizadas.
+      // Si Descansos indica EN CAMPO / EN CAMPO BOLSA, la cuadrilla cuenta como laborando.
+      // La falta o quiebre deberá ser confirmada manualmente por el Supervisor.
     });
 
     const ticketsFinalizados=[...finalizadas].filter(x=>x.includes("|")).length || Math.round(ordenesProduccion);
@@ -221,7 +219,7 @@
     return '<div class="mv603-grid">'+
       kpi("👷","Cuadrillas laboraron",r.laboraron.length,"de "+r.cuadrillas.length+" activas")+
       kpi("😴","Cuadrillas descanso",r.descanso.length,"programadas")+
-      kpi("⚠️","Faltas / quiebres",r.candidatos.length,"candidatas por validar")+
+      kpi("⚠️","Faltas / quiebres",r.candidatos.length,"registro manual")+
       kpi("⭐","Puntos efectuados",r.puntos.toFixed(1),"jornada")+
       kpi("📡","VTR / Garantías",r.totalVtrGar,"VTR "+r.vtr+" · GAR "+r.gar)+
       kpi("🎫","Promedio ticket",r.promedioTicket.toFixed(2),"pts / orden finalizada")+
