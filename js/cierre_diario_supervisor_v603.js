@@ -148,14 +148,22 @@
     });
 
     const hb=mapaHeaders(base[0]||[]), iBCuad=col(hb,"CUADRILLA"), iBFecha=col(hb,"FECHA"), iBEstado=col(hb,"ESTADO"), iBClave=col(hb,"CLAVE_REGISTRO","CODIGO_LIQUIDACION");
-    const laboraronSet=new Set(actividadProd), finalizadas=new Set();
+    const laboraronSet=new Set(actividadProd), finalizadas=new Set(), estadosOrdenes={}, clavesOrdenes=new Set();
     base.slice(1).forEach((f,idx)=>{
       const c=norm(valor(f,iBCuad)); if(!set.has(c) || fechaISO(valor(f,iBFecha))!==fecha) return;
       laboraronSet.add(c);
-      if(norm(valor(f,iBEstado))==="FINALIZADA"){
-        const clave=String(valor(f,iBClave)||("F"+idx)).trim();
-        finalizadas.add(c+"|"+clave);
+
+      const estado=norm(valor(f,iBEstado)||"SIN ESTADO") || "SIN ESTADO";
+      const clave=String(valor(f,iBClave)||("F"+idx)).trim();
+      const claveUnica=c+"|"+clave;
+
+      // Evita duplicar una misma orden en el resumen por estado.
+      if(!clavesOrdenes.has(claveUnica)){
+        clavesOrdenes.add(claveUnica);
+        estadosOrdenes[estado]=(estadosOrdenes[estado]||0)+1;
       }
+
+      if(estado==="FINALIZADA") finalizadas.add(claveUnica);
     });
 
     const hv=mapaHeaders(vtrg[0]||[]), iVFecha=col(hv,"FECHA_INCIDENCIA"), iVTipo=col(hv,"TIPO"),
@@ -194,7 +202,8 @@
       vtr:vtrKeys.size, gar:garKeys.size,
       totalVtrGar:vtrKeys.size+garKeys.size,
       ticketsFinalizados,
-      promedioTicket:ticketsFinalizados?Math.round((puntos/ticketsFinalizados)*100)/100:0,
+      estadosOrdenes,
+      totalOrdenes:clavesOrdenes.size,
       promedioCuadrilla:laboraron.length?Math.round((puntos/laboraron.length)*100)/100:0
     };
   }
@@ -211,7 +220,7 @@
 
       kpi("⭐","Puntos efectuados",r.puntos.toFixed(1),"jornada")+
       kpi("📡","VTR / Garantías",r.totalVtrGar,"VTR "+r.vtr+" · GAR "+r.gar)+
-      kpi("🎫","Promedio ticket",r.promedioTicket.toFixed(2),"pts / orden finalizada")+
+      kpiEstadosOrdenes(r.estadosOrdenes,r.totalOrdenes)+
       kpi("📊","Promedio por cuadrilla",r.promedioCuadrilla.toFixed(2),"pts / cuadrilla laborada")+
       '</div>'+
       '<div class="mv603-detalles">'+
@@ -220,9 +229,25 @@
 
       (r.otrosProgramados.length?detalle("📌 Otros estados programados",listaHtml(r.otrosProgramados)):"")+
       '</div>'+
-      '<div class="mv603-nota">La asistencia del cierre se toma <b>únicamente de Programación de Descansos</b>: EN CAMPO / EN CAMPO BOLSA = laboraron; DESCANSO = descanso. Los demás estados aprobados se muestran aparte. Las órdenes finalizadas se usan solo para producción, puntos y promedios.</div>';
+      '<div class="mv603-nota">La asistencia del cierre se toma <b>únicamente de Programación de Descansos</b>: EN CAMPO / EN CAMPO BOLSA = laboraron; DESCANSO = descanso. El bloque <b>Órdenes por estado</b> cuenta las órdenes de la jornada según su estado real en la base operativa: finalizadas, canceladas, reprogramadas, anuladas, regestión u otros estados disponibles.</div>';
   }
   function kpi(i,t,v,s){ return '<div class="mv603-kpi"><small>'+i+' '+esc(t)+'</small><b>'+esc(v)+'</b><span>'+esc(s)+'</span></div>'; }
+  function kpiEstadosOrdenes(estados,total){
+    const prioridad=["FINALIZADA","CANCELADA","REPROGRAMADO","REPROGRAMADA","ANULADA","ANULADO","REGESTION","REGESTIÓN","INICIADA","EN CAMINO","AGENDADA"];
+    const claves=Object.keys(estados||{}).sort((a,b)=>{
+      const ia=prioridad.indexOf(a), ib=prioridad.indexOf(b);
+      if(ia>=0 || ib>=0){
+        if(ia<0) return 1;
+        if(ib<0) return -1;
+        return ia-ib;
+      }
+      return a.localeCompare(b);
+    });
+    const detalleEstados=claves.length
+      ? claves.map(k=>esc(k)+": <b>"+esc(estados[k])+"</b>").join(" · ")
+      : "Sin órdenes";
+    return '<div class="mv603-kpi" style="grid-column:span 2"><small>🧾 Órdenes por estado</small><b>'+esc(total||0)+'</b><span>'+detalleEstados+'</span></div>';
+  }
   function detalle(t,c,alerta){ return '<div class="mv603-det '+(alerta?"mv603-alerta":"")+'"><b>'+t+'</b>'+c+'</div>'; }
 
   async function ejecutar(){
