@@ -169,39 +169,28 @@
     });
 
     const estados=estadosDescanso(desc,cuadrillas,fecha);
-    const descanso=[], otrosProgramados=[], candidatos=[];
-    const laboraron=[];
+
+    // V605 - La asistencia del Cierre Diario proviene SOLO de Programación de Descansos.
+    // No se usa la existencia de órdenes FINALIZADAS para definir si una cuadrilla laboró.
+    const laboraron=[], descanso=[], faltasQuiebres=[], otrosProgramados=[];
     cuadrillas.forEach(c=>{
-      const k=norm(c), e=estados[k]||"EN CAMPO";
-
-      // V604: para Cierre Diario, "laboraron" se determina por la
-      // programación operativa aprobada del módulo Descansos.
-      // EN CAMPO / EN CAMPO BOLSA = cuadrilla programada para laborar.
-      // DESCANSO / VACACIONES / SIN ACTIVIDAD se excluyen.
-      if(e==="DESCANSO"){
+      const e=estados[norm(c)]||"EN CAMPO";
+      if(e==="EN CAMPO" || e==="EN CAMPO BOLSA"){
+        laboraron.push(c);
+      }else if(e==="DESCANSO"){
         descanso.push(c);
-        return;
-      }
-      if(e==="VACACIONES" || e==="SIN ACTIVIDAD"){
-        otrosProgramados.push({cuadrilla:c,estado:e});
-        return;
-      }
-      if(e==="EN CAMPO BOLSA"){
-        laboraron.push(c);
-        otrosProgramados.push({cuadrilla:c,estado:e});
+      }else if(e==="SIN ACTIVIDAD"){
+        faltasQuiebres.push(c);
       }else{
-        laboraron.push(c);
+        // VACACIONES u otro estado aprobado diferente.
+        otrosProgramados.push({cuadrilla:c,estado:e});
       }
-
-      // V604.1: Faltas/quiebres NO se infieren por ausencia de órdenes finalizadas.
-      // Si Descansos indica EN CAMPO / EN CAMPO BOLSA, la cuadrilla cuenta como laborando.
-      // La falta o quiebre deberá ser confirmada manualmente por el Supervisor.
     });
 
     const ticketsFinalizados=[...finalizadas].filter(x=>x.includes("|")).length || Math.round(ordenesProduccion);
     return {
       fecha, sede:localStorage.getItem("sede")||"", cuadrillas,
-      laboraron, descanso, otrosProgramados, candidatos,
+      laboraron, descanso, otrosProgramados, faltasQuiebres,
       puntos:Math.round(puntos*100)/100,
       vtr:vtrKeys.size, gar:garKeys.size,
       totalVtrGar:vtrKeys.size+garKeys.size,
@@ -219,7 +208,7 @@
     return '<div class="mv603-grid">'+
       kpi("👷","Cuadrillas laboraron",r.laboraron.length,"de "+r.cuadrillas.length+" activas")+
       kpi("😴","Cuadrillas descanso",r.descanso.length,"programadas")+
-      kpi("⚠️","Faltas / quiebres",r.candidatos.length,"registro manual")+
+      kpi("⚠️","Faltas / quiebres",r.faltasQuiebres.length,"estado SIN ACTIVIDAD")+
       kpi("⭐","Puntos efectuados",r.puntos.toFixed(1),"jornada")+
       kpi("📡","VTR / Garantías",r.totalVtrGar,"VTR "+r.vtr+" · GAR "+r.gar)+
       kpi("🎫","Promedio ticket",r.promedioTicket.toFixed(2),"pts / orden finalizada")+
@@ -228,10 +217,10 @@
       '<div class="mv603-detalles">'+
       detalle("👷 Laboraron",listaHtml(r.laboraron))+
       detalle("😴 Descanso",listaHtml(r.descanso))+
-      detalle("⚠️ Posibles faltas / quiebres",listaHtml(r.candidatos),true)+
+      detalle("⚠️ Faltas / quiebres",listaHtml(r.faltasQuiebres),true)+
       (r.otrosProgramados.length?detalle("📌 Otros estados programados",listaHtml(r.otrosProgramados)):"")+
       '</div>'+
-      '<div class="mv603-nota">Cuadrillas que laboraron se toma de la programación aprobada: <b>EN CAMPO / EN CAMPO BOLSA</b>. Faltas/quiebres se muestran solo como <b>candidatas a revisar</b> cuando una cuadrilla programada para laborar no tiene ninguna orden FINALIZADA ese día; no se descuenta automáticamente de “Laboraron”.</div>';
+      '<div class="mv603-nota">La asistencia del cierre se toma <b>únicamente de Programación de Descansos</b>: EN CAMPO / EN CAMPO BOLSA = laboraron; DESCANSO = descanso; SIN ACTIVIDAD = falta/quiebre. Las órdenes finalizadas se usan solo para producción, puntos y promedios.</div>';
   }
   function kpi(i,t,v,s){ return '<div class="mv603-kpi"><small>'+i+' '+esc(t)+'</small><b>'+esc(v)+'</b><span>'+esc(s)+'</span></div>'; }
   function detalle(t,c,alerta){ return '<div class="mv603-det '+(alerta?"mv603-alerta":"")+'"><b>'+t+'</b>'+c+'</div>'; }
