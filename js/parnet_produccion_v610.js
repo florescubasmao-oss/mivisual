@@ -66,7 +66,8 @@
       ${(s.duplicadosCodigoLiquidacion||0)?`<div class="bo-msg bo-error">Códigos de Liquidación duplicados: <b>${s.duplicadosCodigoLiquidacion}</b></div>`:""}
       ${(s.partidasNoCatalogadas||0)?`<div class="bo-msg bo-error">Finalizadas con partida no configurada: <b>${s.partidasNoCatalogadas}</b></div>`:""}
       ${(s.cuadrillasNoEncontradas||0)?`<div class="bo-msg bo-error">Cuadrillas no reconocidas: <b>${s.cuadrillasNoEncontradas}</b></div>`:""}
-      <p class="bo-note">Regla V610: PARNET manda sobre FINALIZADAS de octubre. Efectividad conserva canceladas/regestión/reprogramadas WIN; Recableado conserva LOS ROJO asignadas; VTR/GAR conserva GAR y VTR. Septiembre y anteriores están protegidos.</p>
+      ${s.parnetDesactualizado?`<div class="bo-msg bo-error"><b>Corte PARNET desactualizado.</b> PARNET llega hasta ${esc(s.corteParnet||"-")}, mientras los indicadores actuales llegan hasta ${esc(s.corteActual||"-")}. No se permite retroceder octubre.</div>`:""}
+      <p class="bo-note">Regla V610.1: PARNET manda sobre FINALIZADAS de octubre solo si su corte es igual o posterior al corte actual. Efectividad conserva canceladas/regestión/reprogramadas WIN; Recableado conserva LOS ROJO asignadas; VTR/GAR conserva GAR y VTR. Septiembre y anteriores están protegidos.</p>
       ${cambios.length?`
       <h3>Cambios por cuadrilla</h3>
       <div class="bo-table-wrap"><table class="bo-table"><thead><tr><th>Cuadrilla</th><th>Órd. actual</th><th>Órd. PARNET</th><th>Dif.</th><th>Pts actual</th><th>Pts PARNET</th><th>Dif. pts</th></tr></thead><tbody>
