@@ -167,7 +167,8 @@
     administracion: {
       depende: ["dashboards_core", "accesos", "checklist"],
       archivos: [
-        `./js/base_operativa.js?v=V408-RESTAURA-V403`,
+        `./js/base_operativa.js?v=V610.1-PARNET-OCTUBRE-CORTE-SEGURO-20261011`,
+        `./js/parnet_produccion_v610.js?v=V610.1-PARNET-OCTUBRE-CORTE-SEGURO-20261011`,
         `./js/base_operativa_lectura_v385.js?v=V408-RESTAURA-V403`,
         `./js/base_operativa_sync_v367.js?v=V408-RESTAURA-V403`,
         `./js/admin_checklist.js?v=${VERSION}`
