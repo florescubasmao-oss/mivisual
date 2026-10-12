@@ -18,7 +18,7 @@
    - APLICAR exige confirmacion explicita, snapshot y rollback.
 ============================================================ */
 
-var MV610_VERSION_ = "V610-PARNET-OCTUBRE-FINALIZADAS-20261011";
+var MV610_VERSION_ = "V610.1-PARNET-OCTUBRE-FINALIZADAS-CORTE-SEGURO-20261011";
 var MV610_PERIODO_ = "2026-10";
 var MV610_CONFIRMACION_ = "APLICAR_PARNET_OCTUBRE_V610";
 
@@ -102,6 +102,23 @@ function mv610ProduccionActual_(){
     porCuadrilla[c].ordenes+=cant; porCuadrilla[c].puntos+=cant*pt;
   });
   return {filas:filas.length,ordenes:ordenes,puntos:Math.round(puntos*100)/100,porCuadrilla:porCuadrilla};
+}
+
+function mv610CorteActualOctubre_(){
+  var max=null;
+  var fuentes=[
+    {hoja:obtenerHoja(HOJA_PRODUCCION),indiceFecha:2,columnas:7},
+    {hoja:obtenerHoja(HOJA_EFECTIVIDAD),indiceFecha:3,columnas:10},
+    {hoja:obtenerHoja(HOJA_RECABLEADO),indiceFecha:3,columnas:7},
+    {hoja:obtenerHojaVtrGarFlexible(),indiceFecha:3,columnas:9}
+  ];
+  fuentes.forEach(function(fuente){
+    mv610LeerPeriodo_(fuente.hoja,fuente.indiceFecha,fuente.columnas).forEach(function(fila){
+      var fecha=fechaBaseOperativa(fila[fuente.indiceFecha]);
+      if(fecha && (!max || fecha>max)) max=fecha;
+    });
+  });
+  return max;
 }
 
 function mv610ResolverCatalogo_(r,catalogo){
@@ -198,6 +215,8 @@ function mv610Preparar_(data){
   Object.keys(vgActual).forEach(function(c){todas[c]=true;});
   Object.keys(finalPorCuadrilla).forEach(function(c){todas[c]=true;});
 
+  var corteActual=mv610CorteActualOctubre_();
+  var parnetDesactualizado=!!(corteActual && corte && corte.getTime()<corteActual.getTime());
   var actualizadoAl=corte||new Date(2026,9,1);
   var fechaAct=actualizadoAl;
   var listaCuadrillas=Object.keys(todas).sort();
@@ -245,6 +264,9 @@ function mv610Preparar_(data){
     periodo:MV610_PERIODO_,
     corte:corte,
     actualizadoAl:mv610FechaVisible_(corte),
+    corteActual:corteActual,
+    corteActualVisible:mv610FechaVisible_(corteActual),
+    parnetDesactualizado:parnetDesactualizado,
     recibidos:preparado.recibidos,
     validos:preparado.validos,
     fueraOctubre:fueraOctubre,
@@ -294,13 +316,17 @@ function previsualizarParnetOctubreV610(data){
       diferenciaPuntos:Math.round((p.produccion.puntos-p.actual.puntos)*100)/100,
       partidasNoCatalogadas:p.noCatalogadas.reduce(function(s,x){return s+x.cantidad;},0),
       cuadrillasNoEncontradas:p.cuadrillasNoEncontradas.length,
-      vtrGarFinalizadasExcluidasProduccion:p.excluidasVtrGar
+      vtrGarFinalizadasExcluidasProduccion:p.excluidasVtrGar,
+      corteParnet:p.actualizadoAl,
+      corteActual:p.corteActualVisible || "",
+      parnetDesactualizado:p.parnetDesactualizado === true
     },
     bloqueos:{
       sinLiquidacion:p.sinLiquidacion>0,
       duplicadosLiquidacion:p.duplicadosLiquidacion.length>0,
       partidasNoCatalogadas:p.noCatalogadas.length>0,
-      cuadrillasNoEncontradas:p.cuadrillasNoEncontradas.length>0
+      cuadrillasNoEncontradas:p.cuadrillasNoEncontradas.length>0,
+      parnetDesactualizado:p.parnetDesactualizado === true
     },
     detalle:{
       duplicadosLiquidacion:p.duplicadosLiquidacion.slice(0,100),
@@ -319,7 +345,8 @@ function previsualizarParnetOctubreV610(data){
       noModificaMapa:true,
       noModificaBaseHistorica:true,
       septiembreYAnterioresProtegidos:true,
-      periodoPermitido:"2026-10"
+      periodoPermitido:"2026-10",
+      noPermiteRetrocederCorte:true
     }
   };
 }
@@ -348,6 +375,7 @@ function aplicarParnetOctubreV610(data){
     throw new Error("V610: falta confirmacion explicita. Primero previsualice.");
   }
   var p=mv610Preparar_(data);
+  if(p.parnetDesactualizado) throw new Error("V610 bloqueado: el corte PARNET ("+p.actualizadoAl+") es anterior al corte actual de indicadores ("+(p.corteActualVisible||"")+"). No se permite retroceder octubre.");
   if(p.sinLiquidacion>0) throw new Error("V610 bloqueado: hay FINALIZADAS sin Codigo de Liquidacion.");
   if(p.duplicadosLiquidacion.length) throw new Error("V610 bloqueado: existen Codigos de Liquidacion duplicados.");
   if(p.noCatalogadas.length) throw new Error("V610 bloqueado: existen partidas PARNET no configuradas en CATALOGO_ORDENES.");
@@ -427,7 +455,7 @@ function DIAGNOSTICO_V610_PARNET_OCTUBRE(){
     "reemplazarHojaBaseOperativa","snapshotHojaBaseOperativa","restaurarSnapshotBaseOperativa"
   ];
   var faltan=deps.filter(function(n){try{return typeof this[n]!=="function";}catch(_){return true;}},this);
-  var r={ok:faltan.length===0,version:MV610_VERSION_,fase:"SOLO_LECTURA",periodoPermitido:MV610_PERIODO_,faltan:faltan,protecciones:{septiembreYAnteriores:true,mapaNoSeToca:true,baseHistoricaNoSeToca:true,previsualizacionSinEscritura:true,rollback:true}};
+  var r={ok:faltan.length===0,version:MV610_VERSION_,fase:"SOLO_LECTURA",periodoPermitido:MV610_PERIODO_,faltan:faltan,protecciones:{septiembreYAnteriores:true,mapaNoSeToca:true,baseHistoricaNoSeToca:true,previsualizacionSinEscritura:true,rollback:true,noRetrocedeCorte:true}};
   Logger.log(JSON.stringify(r,null,2));
   return r;
 }
