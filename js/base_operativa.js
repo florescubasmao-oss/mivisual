@@ -99,7 +99,7 @@ function mostrarActualizarBaseOperativa(){
       </details>
       <div id="boMensaje" class="bo-msg">Seleccione el archivo descargado del sistema central o pegue toda la tabla.</div>
       <div id="boResumen"></div>
-      <div class="bo-actions"><button id="boProcesar" class="bo-btn warn" onclick="boProcesarBase()" disabled>Actualizar período</button><button class="bo-btn alt" onclick="mostrarAdministracion()">⬅️ Volver</button></div>
+      <div class="bo-actions"><button id="boProcesar" class="bo-btn warn" onclick="boProcesarBase()" disabled>Actualizar período</button><button class="bo-btn" onclick="mostrarConciliacionParnetV610()">🧾 Conciliar Producción PARNET</button><button class="bo-btn alt" onclick="mostrarAdministracion()">⬅️ Volver</button></div>
     </div>
   </div>`);
 }
