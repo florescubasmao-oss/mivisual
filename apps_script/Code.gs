@@ -6608,6 +6608,12 @@ function esPerfilEconomicoRestringido_(perfil) {
 }
 
 function exigirAccesoAnalisisEconomicoCompleto_(usuario, accion) {
+  // V616: acceso SOLO LECTURA para Gerencia Lima, exclusivamente a Producción Valorizada.
+  // La habilitación no concede REGISTRAR, EDITAR, DESCARGAR ni acceso a Utilidad.
+  if (normalizarTexto(usuario && usuario.perfil) === "GERENCIA LIMA" &&
+      normalizarTexto(accion || "VER") === "VER") {
+    return {habilitado:true,ver:true,descargar:false,registrar:false,alcanceDatos:"ZONA NORTE",soloLectura:true};
+  }
   if (esPerfilEconomicoRestringido_(usuario && usuario.perfil)) {
     throw new Error("Este perfil no tiene acceso a Producción valorizada ni Utilidad");
   }
