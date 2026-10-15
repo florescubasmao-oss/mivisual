@@ -365,7 +365,7 @@ async function escribirValidacionV556(s){
 /* V621: confirmar UNA subida incierta por identidad exacta y PDF real.
    Nunca vuelve a enviar el PDF; fallo de lectura no equivale a ausencia. */
 async function confirmarSubidaV621(s){
-  if(!txt(s?.codigoOrden)||!txt(s?.numeroActa))return null;
+  if(!txt(s?.codigoOrden)||!txt(s?.numeroActa)||txt(s?.idActaOriginal))return null; // correcciones requieren control de versión separado
   const pedido={accion:"listarActasEscaneadas",usuario:s.usuario,__forzar:true,_v621:Date.now()};
   try{
     let r;
