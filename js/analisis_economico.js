@@ -498,7 +498,24 @@ function aeOpcionesPeriodo(){const o=[],b=new Date();for(let i=0;i<18;i++){const
 // V619: cache temporal SOLO en memoria. Consultar siempre obtiene datos actualizados.
 const AE619_CACHE=new Map();
 const AE619_TTL_MS=90000;
+/* V620: ajuste visual de contraste exclusivo para Producción Valorizada. */
+function aeContrasteV620(){
+ if(document.getElementById("aeContrasteV620"))return;
+ const style=document.createElement("style");style.id="aeContrasteV620";
+ style.textContent=`
+ .ae-modulo .ae-periodo,.ae-modulo .ae-periodo b,.ae-modulo .ae-periodo span{color:#f8fafc!important;opacity:1!important}
+ .ae-modulo .ae-encabezado,.ae-modulo .ae-encabezado h2,.ae-modulo .ae-encabezado p,.ae-modulo .ae-etiqueta{color:#ffffff!important;opacity:1!important}
+ .ae-modulo .ae-kpi{background:#ffffff!important;color:#0f172a!important}
+ .ae-modulo .ae-kpi span{color:#334155!important;opacity:1!important}
+ .ae-modulo .ae-kpi strong{color:#0f172a!important;opacity:1!important}
+ .ae-modulo .ae-kpi small{color:#334155!important;opacity:1!important}
+ .ae-modulo .ae-filtros label{color:#0f172a!important}
+ .ae-modulo .ae-filtros select{background:#fff!important;color:#0f172a!important;border-color:#64748b!important}
+ `;
+ document.head.appendChild(style);
+}
 function mostrarProduccionValorizada(){
+  aeContrasteV620();
   if(!aePerfilProduccionValorizada()){alert("No tienes permiso para ver Producción valorizada.");return}
   if(typeof limpiarPantalla==="function")limpiarPantalla();
   const menu=document.getElementById("menuPrincipal");if(menu)menu.style.display="none";
