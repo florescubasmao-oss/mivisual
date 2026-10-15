@@ -63,7 +63,8 @@ function aePerfilImportarMateriales(){
   return ["JEFATURA","JEFATURA GENERAL","JEFATURA ALMACEN","ADMIN","ADMINISTRADOR"].includes(aePerfilActual());
 }
 function aePerfilProduccionValorizada(){
-  if(aeEsGerenciaLima()||aeEsJefaturaAlmacen())return false;
+  if(aeEsJefaturaAlmacen())return false;
+  if(aeEsGerenciaLima())return true; // V616: Producción valorizada solo lectura
   if(aeAnalisisHabilitado())return true;
   return ["JEFATURA","JEFATURA GENERAL","GERENCIA GENERAL","GERENCIAL GENERAL","ADMIN","ADMINISTRADOR"].includes(aePerfilActual());
 }
