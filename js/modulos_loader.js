@@ -94,6 +94,7 @@
     actas: {
       archivos: [
         `./js/actas.js?v=V612-ACTAS-FILTRO-ESTADOS-20261015`,
+        `./js/actas_lote5_v613.js?v=V613-LOTE5-PRUEBA`,
         `./js/actas_pdf_movil_v373.js?v=V408-RESTAURA-V403`,
         `./js/actas_correccion_v387.js?v=V408-RESTAURA-V403`,
         `./js/actas_api_resiliente_v392.js?v=ACTAS-RECUPERACION-REV1-20260911`,
