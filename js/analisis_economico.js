@@ -526,14 +526,20 @@ function aeFilas(lista,tipo){
   return lista.map((x,i)=>{const nombre=aeNombreFila(x,tipo),meta=x.meta>0?`<small>Meta ${aeMoneda(x.meta)} · ${aePorcentaje(x.cumplimiento)}</small>`:"";return`<div class="ae-fila ae-fila-${tipo} ${x.meta>0?aeClaseCumplimiento(x.cumplimiento):""}"><div class="ae-fila-pos">${i+1}</div><div class="ae-fila-info"><b class="ae-fila-titulo">${nombre}</b><span>${aeNumero(x.cantidad)} órdenes</span>${meta}</div><div class="ae-fila-monto">${aeMoneda(x.monto)}</div><button class="ae-detalle-btn" onclick="aeToggleDetalle(this)">Ver detalle</button><div class="ae-detalle">${aeDetalleFila(x,tipo)}</div></div>`}).join("")
 }
 /* V617: filtro local por sede, sin consultar nuevamente al servidor. */
+function aeSedeCuadrillaV618(x){
+ const nombre=String(x?.cuadrilla||"").toUpperCase().replace(/\s+/g," ").trim();
+ if(nombre==="P22 VISUAL SGI CESAR AUGUSTO BERNAL ALCANTARA"||
+    nombre==="P19 VISUAL SGI LUIS ENRIQUE ALBINES PINTADO")return "PIURA";
+ return String(x?.sede||"SIN SEDE").trim().toUpperCase();
+}
 function aeCuadrillasPorSedeV617(data){
  const lista=(data.porCuadrilla||[]).filter(x=>/^P\d+\b/i.test(String(x.cuadrilla||"")));
- const sedes=[...new Set(lista.map(x=>String(x.sede||"SIN SEDE").trim().toUpperCase()))].sort((a,b)=>a.localeCompare(b,"es"));
+ const sedes=[...new Set(lista.map(x=>aeSedeCuadrillaV618(x)))].sort((a,b)=>a.localeCompare(b,"es"));
  return '<label style="display:block;color:#0f172a;margin-bottom:12px;font-weight:700">Sede <select id="aeV617Sede" onchange="aeCambiarSedeCuadrillasV617()" style="padding:8px;background:white;color:#0f172a;border:1px solid #94a3b8;border-radius:8px"><option value="">Todas las sedes</option>'+sedes.map(v=>'<option value="'+aeEscape(v)+'">'+aeEscape(v)+'</option>').join("")+'</select></label><div id="aeV617Cuenta" style="color:#0f172a;margin-bottom:8px">'+lista.length+' cuadrillas</div><div id="aeV617ListaCuadrillas">'+aeFilas(lista,"cuadrilla")+'</div>';
 }
 function aeCambiarSedeCuadrillasV617(){
  const data=window.aeDatosAnalisisActual||{},sede=document.getElementById("aeV617Sede")?.value||"";
- const lista=(data.porCuadrilla||[]).filter(x=>/^P\d+\b/i.test(String(x.cuadrilla||""))&&(!sede||String(x.sede||"SIN SEDE").trim().toUpperCase()===sede));
+ const lista=(data.porCuadrilla||[]).filter(x=>/^P\d+\b/i.test(String(x.cuadrilla||""))&&(!sede||aeSedeCuadrillaV618(x)===sede));
  const cont=document.getElementById("aeV617ListaCuadrillas");if(cont)cont.innerHTML=aeFilas(lista,"cuadrilla");
  const cuenta=document.getElementById("aeV617Cuenta");if(cuenta)cuenta.textContent=lista.length+" cuadrillas";
 }
