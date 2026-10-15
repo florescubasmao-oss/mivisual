@@ -426,6 +426,7 @@ function mostrarGestionActas(){
             </div>
             <div class="actas-actions">
                 ${u.perfil === "TECNICO" ? `<button class="actas-btn ok" onclick="mostrarFormularioActa()">+ Subir Acta PDF</button>` : ""}
+                ${u.perfil === "TECNICO" ? `<button class="actas-btn blue" type="button" onclick="window.mv613MostrarLoteActas()">📄 Subir hasta 5 PDF</button>` : ""}
                 ${(esAlmacenActas(u.perfil) || esJefaturaAlmacenActas(u.perfil)) ? `<button class="actas-btn orange" onclick="mostrarFormularioActaFaltante()">⚠ Registrar acta faltante</button>` : ""}
                 ${(esAlmacenActas(u.perfil) || esJefaturaAlmacenActas(u.perfil)) ? `<button class="actas-btn ok" onclick="mostrarRecepcionMasivaActas()">📦 Recibir varias actas</button>` : ""}
                 ${(esAlmacenActas(u.perfil) || esJefaturaAlmacenActas(u.perfil)) ? `<button class="actas-btn blue" onclick="actualizarDatosAutomaticosActasFrontend(this)">🧩 Actualizar datos automáticos</button>` : ""}
