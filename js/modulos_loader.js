@@ -97,7 +97,7 @@
         `./js/actas_lote5_v613.js?v=V613-1-CONTRASTE-20261015`,
         `./js/actas_pdf_movil_v373.js?v=V408-RESTAURA-V403`,
         `./js/actas_correccion_v387.js?v=V408-RESTAURA-V403`,
-        `./js/actas_api_resiliente_v392.js?v=ACTAS-RECUPERACION-REV1-20260911`,
+        `./js/actas_api_resiliente_v392.js?v=V621-CONFIRMACION-SUBIDA-20261015`,
         `./js/actas_observaciones_v393.js?v=V408-RESTAURA-V403`,
         `./js/actas_control_finalizadas_v396.js?v=V408-RESTAURA-V403`,
         `./js/actas_mantenimiento_v402.js?v=V453-ACTAS-EDICION-JEFATURA`,
