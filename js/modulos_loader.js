@@ -110,7 +110,7 @@
       entradas: ["mostrarEquiposAveriados"]
     },
     analisis: {
-      archivos: [`./js/analisis_economico.js?v=V618-PIURA-CUADRILLAS-20261015`],
+      archivos: [`./js/analisis_economico.js?v=V619-CACHE-SEGURO-20261015`],
       entradas: ["mostrarAnalisisEconomico"]
     },
     checklist: {
