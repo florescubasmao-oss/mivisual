@@ -8,6 +8,7 @@ let filas=[], ocupado=false, catalogo=null;
 function claveLote(t){return String(t||"").toUpperCase().replace(/[^A-Z0-9]/g,"");}
 async function resolverLote(i){
  const f=filas[i],id=document.getElementById("loteIdentificador"+i)?.value.trim()||"";
+ f.numero=document.getElementById("loteActa"+i)?.value.trim()||f.numero;
  f.identificador=id;f.opciones=[];f.seleccion="";f.mensaje="Buscando...";
  try{
   if(claveLote(id).length<6)throw Error("Ingresa el cliente o DNI.");
@@ -84,15 +85,15 @@ async function ejecutar(){
   if(!Array.isArray(prev.actas))throw Error("No se pudo comprobar si las actas ya existen.");
   const existentes=prev.actas;
   for(const {f,i} of pendientes){
-   if(existentes.some(a=>normalizarActas(a.codigoPedido)===normalizarActas(f.pedido)||normalizarActas(a.numeroActa)===normalizarActas(f.numero))){
-    f.estado="error";f.mensaje="Ya existe un acta con este pedido o número. Revísala en el historial o usa Reemplazar PDF.";pintar();continue;
+   if(existentes.some(a=>normalizarActas(a.codigoOrden)===normalizarActas(f.orden)||normalizarActas(a.numeroActa)===normalizarActas(f.numero))){
+    f.estado="error";f.mensaje="Ya existe un acta con esta orden o número de acta. Revísala en el historial o usa Reemplazar PDF.";pintar();continue;
    }
    f.estado="procesando";f.mensaje="Mantén esta pantalla abierta hasta finalizar.";pintar();
    try{
     const pdf=await leerPdfActa(f.archivo);
     const data=await apiActas({accion:"registrarActaEscaneada",usuario:u.usuario,codigoOrden:f.orden,codigoPedido:f.pedido,numeroActa:f.numero,archivoBase64:pdf.base64,archivoNombre:pdf.nombre,archivoMimeType:pdf.mime});
     f.estado="ok";f.mensaje="Registrada"+(data.nombreArchivo?" como "+data.nombreArchivo:"")+".";
-    existentes.push({codigoPedido:f.pedido,numeroActa:f.numero});
+    existentes.push({codigoOrden:f.orden,codigoPedido:f.pedido,numeroActa:f.numero});
    }catch(e){f.estado="error";f.mensaje=e.message||"No se pudo confirmar la subida. Verifica el historial antes de reintentar.";}
    pintar();
   }
@@ -101,7 +102,7 @@ async function ejecutar(){
 }
 function abrir(){
  if(!tecnico())return;
- filas=[];ocupado=false;
+ filas=[];ocupado=false;catalogo=null;
  mostrarPantalla(`${estiloActas()}<div class="actas-wrap">
  <div class="actas-head"><h2>📄 Subida múltiple (máximo 5 PDF)</h2><p>Registra cada PDF con sus códigos propios. Se envían uno por uno.</p></div>
  <div class="actas-card"><label><b>Seleccionar entre 1 y 5 PDF</b></label><input id="actasLoteArchivos" type="file" accept="application/pdf,.pdf" multiple>
