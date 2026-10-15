@@ -110,7 +110,7 @@
       entradas: ["mostrarEquiposAveriados"]
     },
     analisis: {
-      archivos: [`./js/analisis_economico.js?v=V616-GERENCIA-LIMA-20261015`],
+      archivos: [`./js/analisis_economico.js?v=V617-SEDE-CUADRILLAS-20261015`],
       entradas: ["mostrarAnalisisEconomico"]
     },
     checklist: {
