@@ -495,20 +495,26 @@ function aeClaseCumplimiento(v){const p=(Number(v)||0)*100;if(p>=100)return"ae-o
 function aePeriodoActual(){const d=new Date();return`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}`}
 function aeOpcionesPeriodo(){const o=[],b=new Date();for(let i=0;i<18;i++){const d=new Date(b.getFullYear(),b.getMonth()-i,1),v=`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}`,l=d.toLocaleDateString("es-PE",{month:"long",year:"numeric"}).toUpperCase();o.push(`<option value="${v}">${l}</option>`)}return o.join("")}
 
+// V619: cache temporal SOLO en memoria. Consultar siempre obtiene datos actualizados.
+const AE619_CACHE=new Map();
+const AE619_TTL_MS=90000;
 function mostrarProduccionValorizada(){
   if(!aePerfilProduccionValorizada()){alert("No tienes permiso para ver Producción valorizada.");return}
   if(typeof limpiarPantalla==="function")limpiarPantalla();
   const menu=document.getElementById("menuPrincipal");if(menu)menu.style.display="none";
   if(typeof setBotonNavegacion==="function")setBotonNavegacion("modulo");
   const pantalla=document.getElementById("pantalla");
-  pantalla.innerHTML=`<section class="ae-modulo"><div class="ae-encabezado"><div><div class="ae-etiqueta">JEFATURA · ZONA NORTE</div><h2>💰 Análisis Económico</h2><p>Valorización mensual de los trabajos ejecutados.</p></div></div><div class="ae-filtros"><label>Periodo mensual<select id="aePeriodo">${aeOpcionesPeriodo()}</select></label><button id="aeConsultar" onclick="consultarAnalisisEconomico()">Consultar</button></div><div id="aeResultado"><div class="ae-cargando">Seleccione el periodo y pulse Consultar.</div></div></section>`;
+  pantalla.innerHTML=`<section class="ae-modulo"><div class="ae-encabezado"><div><div class="ae-etiqueta">JEFATURA · ZONA NORTE</div><h2>💰 Análisis Económico</h2><p>Valorización mensual de los trabajos ejecutados.</p></div></div><div class="ae-filtros"><label>Periodo mensual<select id="aePeriodo">${aeOpcionesPeriodo()}</select></label><button id="aeConsultar" onclick="consultarAnalisisEconomico(true)">Consultar</button></div><div id="aeResultado"><div class="ae-cargando">Seleccione el periodo y pulse Consultar.</div></div></section>`;
   document.getElementById("aePeriodo").value=aePeriodoActual();consultarAnalisisEconomico();window.scrollTo({top:0,behavior:"smooth"});
 }
 
-async function consultarAnalisisEconomico(){
+async function consultarAnalisisEconomico(forzarActualizacion=false){
   const periodo=document.getElementById("aePeriodo")?.value||aePeriodoActual(),resultado=document.getElementById("aeResultado"),boton=document.getElementById("aeConsultar");
+  const clave=String(localStorage.getItem("usuario")||"")+"|"+periodo;
+  const anterior=AE619_CACHE.get(clave);
+  if(!forzarActualizacion&&anterior&&Date.now()-anterior.t<AE619_TTL_MS){renderAnalisisEconomico(anterior.data);return;}
   resultado.innerHTML='<div class="ae-cargando">Calculando valorización mensual...</div>';if(boton){boton.disabled=true;boton.textContent="Consultando..."}
-  try{const api=(window.MI_VISUAL_API_URL||API_ANALISIS_ECONOMICO);const r=await fetch(api,{method:"POST",cache:"no-store",headers:{"Content-Type":"text/plain;charset=utf-8"},body:JSON.stringify({accion:"obtenerAnalisisEconomico",usuario:localStorage.getItem("usuario"),periodo})});const texto=await r.text();let data;try{data=JSON.parse(texto)}catch(e){throw new Error(/<!doctype|<html|google drive|accounts\.google/i.test(texto)?"La conexión recibió una página externa en lugar de los datos.":"La API devolvió una respuesta inválida.")}if(!data.ok)throw new Error(data.error||"No se pudo obtener el análisis económico");renderAnalisisEconomico(data)}catch(err){resultado.innerHTML=`<div class="ae-error"><b>No se pudo cargar el análisis económico.</b><br>${aeEscape(String(err.message||err))}</div>`}finally{if(boton){boton.disabled=false;boton.textContent="Consultar"}}
+  try{const api=(window.MI_VISUAL_API_URL||API_ANALISIS_ECONOMICO);const r=await fetch(api,{method:"POST",cache:"no-store",headers:{"Content-Type":"text/plain;charset=utf-8"},body:JSON.stringify({accion:"obtenerAnalisisEconomico",usuario:localStorage.getItem("usuario"),periodo})});const texto=await r.text();let data;try{data=JSON.parse(texto)}catch(e){throw new Error(/<!doctype|<html|google drive|accounts\.google/i.test(texto)?"La conexión recibió una página externa en lugar de los datos.":"La API devolvió una respuesta inválida.")}if(!data.ok)throw new Error(data.error||"No se pudo obtener el análisis económico");AE619_CACHE.set(clave,{t:Date.now(),data});renderAnalisisEconomico(data)}catch(err){resultado.innerHTML=`<div class="ae-error"><b>No se pudo cargar el análisis económico.</b><br>${aeEscape(String(err.message||err))}</div>`}finally{if(boton){boton.disabled=false;boton.textContent="Consultar"}}
 }
 
 function aeTarjeta(titulo,valor,subtexto,clase=""){return`<article class="ae-kpi ${clase}"><span>${titulo}</span><strong>${valor}</strong><small>${subtexto||""}</small></article>`}
