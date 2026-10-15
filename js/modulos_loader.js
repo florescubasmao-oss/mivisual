@@ -93,7 +93,7 @@
     },
     actas: {
       archivos: [
-        `./js/actas.js?v=V613-ACTAS-LOTE5-20261015`,
+        `./js/actas.js?v=V614-VALIDACION-LOTE40-20261015`,
         `./js/actas_lote5_v613.js?v=V613-1-CONTRASTE-20261015`,
         `./js/actas_pdf_movil_v373.js?v=V408-RESTAURA-V403`,
         `./js/actas_correccion_v387.js?v=V408-RESTAURA-V403`,
