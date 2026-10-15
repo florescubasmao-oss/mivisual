@@ -362,6 +362,46 @@ async function escribirValidacionV556(s){
 /* =========================
    ESCRITURAS GENERALES
 ========================= */
+/* V621: confirmar UNA subida incierta por identidad exacta y PDF real.
+   Nunca vuelve a enviar el PDF; fallo de lectura no equivale a ausencia. */
+async function confirmarSubidaV621(s){
+  if(!txt(s?.codigoOrden)||!txt(s?.numeroActa)||txt(s?.idActaOriginal))return null; // correcciones requieren control de versión separado
+  const pedido={accion:"listarActasEscaneadas",usuario:s.usuario,__forzar:true,_v621:Date.now()};
+  try{
+    let r;
+    if(typeof mv336ApiGet==="function"){
+      r=await mv336ApiGet(API_ACTAS,pedido,{intentos:1,tiempoMs:12000});
+    }else{
+      const url=new URL(API_ACTAS);
+      Object.entries(pedido).forEach(([k,v])=>url.searchParams.set(k,String(v)));
+      const c=typeof AbortController==="function"?new AbortController():null;
+      const timeout=c?setTimeout(()=>c.abort(),12000):null;
+      try{
+        const respuesta=await fetch(url.toString(),{method:"GET",cache:"no-store",signal:c?c.signal:undefined});
+        if(!respuesta.ok)return null;
+        r=await respuesta.json();
+      }finally{if(timeout)clearTimeout(timeout);}
+    }
+    if(!r||r.ok!==true||!Array.isArray(r.actas))return null;
+    const coincidencias=r.actas.filter(a=>
+      txt(a.codigoOrden)===txt(s.codigoOrden)&&
+      txt(a.numeroActa)===txt(s.numeroActa)&&
+      txt(a.codigoPedido)===txt(s.codigoPedido)&&
+      !!txt(a.linkActa)&&
+      norm(a.cuadrilla)===norm(localStorage.getItem("cuadrilla")||a.cuadrilla)
+    );
+    if(coincidencias.length!==1)return null;
+    const a=coincidencias[0];
+    return {ok:true,modulo:"ACTAS",accion:"REGISTRO_CONFIRMADO_V621",
+      id:a.id,codigoOrden:a.codigoOrden,codigoPedido:a.codigoPedido,
+      numeroActa:a.numeroActa,nombreArchivo:a.nombreArchivo||s.archivoNombre||"",
+      version:a.version||1,estadoFechaCarpeta:a.estadoFechaCarpeta||"",
+      fechaCarpeta:a.fechaCarpeta||a.fechaGestion||"",
+      tipoPartida:a.tipoPartida||"",dni:a.dni||"",cliente:a.cliente||"",
+      estadoVerificado:true,escrituraRepetida:false};
+  }catch(e){console.warn("V621: verificación no concluyente",e);return null;}
+}
+
 async function escribirGeneralV556(s){
   let intento=0;
   while(true){
@@ -371,6 +411,15 @@ async function escribirGeneralV556(s){
       const transitorio=!!(error&&error.transitorio);
       const puedeReintentar=intento===0&&segura&&transitorio;
       if(!puedeReintentar){
+        if(accion==="registrarActaEscaneada"&&error&&error.incierto){
+          const confirmado=await confirmarSubidaV621(s);
+          if(confirmado){
+            try{if(typeof limpiarCacheActas==="function")limpiarCacheActas();}catch(_){}
+            limpiarSnapshotsV524();
+            return confirmado;
+          }
+          throw new Error("Google no confirmó la subida y la verificación tampoco pudo confirmarla. No vuelva a Guardar sin revisar Gestión de Actas o ACTAS_ESCANEADAS. El PDF no se reenviará automáticamente.");
+        }
         if(error&&error.incierto&&!segura){
           throw new Error(
             `${error.message} La operación podría haberse registrado. `+
