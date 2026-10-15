@@ -30,19 +30,34 @@ async function resolverLote(i){
  pintar();
 }
 
+function estiloLote(){
+ return `<style>
+ .mv613-lote-panel{background:#f8fafc;color:#0f172a;border:1px solid #cbd5e1;border-radius:16px;padding:18px}
+ .mv613-lote-panel label,.mv613-lote-panel b,.mv613-lote-panel .actas-field label{color:#0f172a!important;text-shadow:none!important;font-weight:800!important}
+ .mv613-lote-panel input,.mv613-lote-panel select{background:#fff!important;color:#0f172a!important;border:1.5px solid #94a3b8!important;border-radius:9px!important;min-height:40px}
+ .mv613-lote-panel input:focus,.mv613-lote-panel select:focus{border-color:#1d4ed8!important;outline:2px solid #bfdbfe!important}
+ .mv613-lote-panel .mv613-fila{background:#fff!important;color:#0f172a!important;border:1px solid #cbd5e1!important;border-radius:12px}
+ .mv613-lote-panel .mv613-fila .actas-field label{display:block;margin-bottom:5px;font-size:12px!important}
+ .mv613-lote-panel .mv613-ayuda{color:#334155!important;font-size:12px;line-height:1.5}
+ .mv613-lote-panel .mv613-estado{color:#334155!important;font-weight:700;font-size:12px}
+ .mv613-lote-panel .actas-btn.blue{background:#1d4ed8!important;color:#fff!important}
+ .mv613-lote-panel .actas-btn.ok{background:#15803d!important;color:#fff!important}
+ .mv613-lote-panel .actas-btn.sec{background:#e2e8f0!important;color:#0f172a!important}
+ </style>`;
+}
 function html(s){return String(s||"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));}
 function tecnico(){return typeof usuarioActualActas==="function"&&normalizarActas(usuarioActualActas().perfil)==="TECNICO";}
 function estado(f){return f.estado==="ok"?"✅ Subida":f.estado==="error"?"❌ Error":f.estado==="procesando"?"⏳ Procesando":"En espera";}
 function pintar(){
  const root=document.getElementById("actasLoteFilas");if(!root)return;
- root.innerHTML=filas.map((f,i)=>`<div class="actas-card" style="margin:9px 0;padding:12px;border:1px solid #dbe4ef">
- <b>${i+1}. ${html(f.archivo.name)}</b> <span id="loteEstado${i}" style="font-size:12px">${estado(f)}</span>
+ root.innerHTML=filas.map((f,i)=>`<div class="actas-card mv613-fila" style="margin:9px 0;padding:12px;border:1px solid #cbd5e1">
+ <b>${i+1}. ${html(f.archivo.name)}</b> <span class="mv613-estado" id="loteEstado${i}" style="font-size:12px">${estado(f)}</span>
  <div class="actas-grid" style="margin-top:10px">
  <div class="actas-field"><label>Código cliente o DNI</label><input id="loteIdentificador${i}" value="${html(f.identificador)}" ${ocupado||f.estado==="ok"?"disabled":""}></div>
  <button class="actas-btn blue" type="button" onclick="window.mv613ResolverLote(${i})" ${ocupado||f.estado==="ok"?"disabled":""}>Buscar orden</button>
  ${f.opciones?.length ? `<div class="actas-field"><label>Orden correcta</label><select id="loteElegir${i}" onchange="window.mv613ElegirLote(${i},this.value)" ${ocupado||f.estado==="ok"?"disabled":""}><option value="">Seleccionar orden</option>${f.opciones.map((o,j)=>`<option value="${j}" ${f.seleccion===String(j)?"selected":""}>${html(o.codigoOrden)} · Pedido ${html(o.codigoPedido)} · ${html(o.fechaVisible||o.fecha)}</option>`).join("")}</select></div>` : ""}
  <div class="actas-field"><label>Número de acta</label><input id="loteActa${i}" inputmode="numeric" value="${html(f.numero)}" ${ocupado||f.estado==="ok"?"disabled":""}></div>
- </div><div style="font-size:12px;color:${f.estado==="error"?"#b91c1c":"#475569"}">${html(f.mensaje)}</div>
+ </div><div class="mv613-ayuda" style="font-size:12px;color:${f.estado==="error"?"#b91c1c":"#334155"}">${html(f.mensaje)}</div>
  </div>`).join("");
  const btn=document.getElementById("actasLoteEnviar");if(btn){btn.disabled=ocupado||!filas.length||filas.every(f=>f.estado==="ok");btn.textContent=ocupado?"Procesando actas...":filas.some(f=>f.estado==="error")?"Reintentar pendientes / fallidas":"Subir actas";}
  const pick=document.getElementById("actasLoteArchivos");if(pick)pick.disabled=ocupado;
@@ -103,10 +118,10 @@ async function ejecutar(){
 function abrir(){
  if(!tecnico())return;
  filas=[];ocupado=false;catalogo=null;
- mostrarPantalla(`${estiloActas()}<div class="actas-wrap">
+ mostrarPantalla(`${estiloActas()}${estiloLote()}<div class="actas-wrap">
  <div class="actas-head"><h2>📄 Subida múltiple (máximo 5 PDF)</h2><p>Registra cada PDF con sus códigos propios. Se envían uno por uno.</p></div>
- <div class="actas-card"><label><b>Seleccionar entre 1 y 5 PDF</b></label><input id="actasLoteArchivos" type="file" accept="application/pdf,.pdf" multiple>
- <p style="font-size:12px;color:#475569">Mantén abierta esta pantalla durante la carga. Al cerrar la aplicación, no se garantiza la continuación.</p>
+ <div class="actas-card mv613-lote-panel"><label><b>Seleccionar entre 1 y 5 PDF</b></label><input id="actasLoteArchivos" type="file" accept="application/pdf,.pdf" multiple>
+ <p class="mv613-ayuda" style="font-size:12px;color:#334155">Mantén abierta esta pantalla durante la carga. Al cerrar la aplicación, no se garantiza la continuación.</p>
  <div id="actasLoteFilas"></div>
  <div class="actas-actions"><button id="actasLoteEnviar" class="actas-btn ok" disabled>Subir actas</button><button id="actasLoteVolver" class="actas-btn sec">Volver</button></div>
  </div></div>`);
