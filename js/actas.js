@@ -83,11 +83,29 @@ function fechaIsoFiltroActas(valor){
     return new Intl.DateTimeFormat("en-CA",{timeZone:"America/Lima",year:"numeric",month:"2-digit",day:"2-digit"}).format(d);
 }
 
-function estadoFiltroActas(a){
+// V612: filtro de solo lectura basado en los estados de la tarjeta.
+function estadoDetalleFiltroActas(a){
     if(esActaFaltantePendiente(a)) return "FALTANTE";
+    const jef = normalizarActas(a.resultadoJefatura);
+    const alm = normalizarActas(a.resultadoAlmacen);
     if(estaFinalizadaActa(a)) return "FINALIZADA";
-    if(estaObservadaActa(a)) return "OBSERVADA";
-    return "PENDIENTE";
+    if(jef === "OBSERVADO") return "OBSERVADA_JEFATURA";
+    if(alm === "OBSERVADO" || normalizarActas(a.estadoVisibleTecnico) === "OBSERVADO") return "OBSERVADA_ALMACEN";
+    if(alm === "CORRECTO") return "PENDIENTE_JEFATURA";
+    return "PENDIENTE_ALMACEN";
+}
+function estadoFiltroActas(a){
+    const detalle = estadoDetalleFiltroActas(a);
+    if(detalle.startsWith("OBSERVADA_")) return "OBSERVADA";
+    if(detalle.startsWith("PENDIENTE_")) return "PENDIENTE";
+    return detalle;
+}
+function coincideEstadoFiltroActas(a, filtro){
+    if(!filtro) return true;
+    const detalle = estadoDetalleFiltroActas(a);
+    if(filtro === "ENTREGADA_FISICA") return normalizarActas(a.estadoEntregaFisica) === "ENTREGADA";
+    if(filtro === "PENDIENTE_ENTREGA_FISICA") return normalizarActas(a.estadoEntregaFisica) !== "ENTREGADA";
+    return filtro === detalle || filtro === estadoFiltroActas(a);
 }
 
 function limpiarHtmlActas(txt){
@@ -478,7 +496,7 @@ function construirFiltrosActas(actas){
             <div class="actas-filter-field"><label>Fecha</label><input type="date" id="filtroActaFecha" value="${limpiarHtmlActas(prev.fecha)}" onchange="aplicarFiltrosActas()"></div>
             ${mostrarSede ? `<div class="actas-filter-field"><label>Sede</label><select id="filtroActaSede" onchange="actualizarCuadrillasFiltroActas();aplicarFiltrosActas()"><option value="">Todas</option>${sedes.map(x=>`<option value="${limpiarHtmlActas(x)}" ${normalizarActas(prev.sede)===normalizarActas(x)?"selected":""}>${limpiarHtmlActas(x)}</option>`).join("")}</select></div>` : ""}
             <div class="actas-filter-field"><label>Cuadrilla</label><select id="filtroActaCuadrilla" onchange="aplicarFiltrosActas()"><option value="">Todas</option>${cuadrillas.map(x=>`<option value="${limpiarHtmlActas(x)}" ${normalizarActas(prev.cuadrilla)===normalizarActas(x)?"selected":""}>${limpiarHtmlActas(x)}</option>`).join("")}</select></div>
-            <div class="actas-filter-field"><label>Estado del acta</label><select id="filtroActaEstado" onchange="aplicarFiltrosActas()"><option value="">Todos</option>${["PENDIENTE","OBSERVADA","FINALIZADA","FALTANTE"].map(x=>`<option value="${x}" ${prev.estado===x?"selected":""}>${x}</option>`).join("")}</select></div>
+            <div class="actas-filter-field"><label>Estado del acta</label><select id="filtroActaEstado" onchange="aplicarFiltrosActas()"><option value="">Todos</option>${[["PENDIENTE","Pendientes (todos)"],["PENDIENTE_ALMACEN","Pendiente de Almacén"],["PENDIENTE_JEFATURA","OK Almacén / Pendiente Jefatura"],["OBSERVADA","Observadas (todas)"],["OBSERVADA_ALMACEN","Observada por Almacén"],["OBSERVADA_JEFATURA","Observada por Jefatura"],["FINALIZADA","Finalizadas"],["FALTANTE","Acta faltante"],["ENTREGADA_FISICA","Entrega física confirmada"],["PENDIENTE_ENTREGA_FISICA","Pendiente de entrega física"]].map(([x,label])=>`<option value="${x}" ${prev.estado===x?"selected":""}>${label}</option>`).join("")}</select></div>
             <div class="actas-filter-actions"><button class="actas-btn sec" type="button" onclick="limpiarFiltrosActas()">Limpiar filtros</button></div>
         </div>
         <div id="actasFiltroResultado" class="actas-filter-result"></div>
@@ -522,11 +540,11 @@ function aplicarFiltrosActas(opciones){
         if(fecha && fechaIsoFiltroActas(a.fechaGestion || a.fechaRegistro) !== fecha) return false;
         if(cuadrilla && normalizarActas(a.cuadrilla) !== cuadrilla) return false;
         if(sede && normalizarActas(a.sede) !== sede) return false;
-        if(estado && estadoFiltroActas(a) !== estado) return false;
+        if(!coincideEstadoFiltroActas(a, estado)) return false;
         return true;
     });
     const resultado = document.getElementById("actasFiltroResultado");
-    if(resultado) resultado.textContent = `${filtradas.length} de ${todas.length} actas visibles.`;
+    if(resultado) resultado.textContent = `${filtradas.length} de ${todas.length} actas visibles. Los indicadores superiores muestran el total del periodo, sin aplicar el filtro.`;
     renderActasFiltradas(filtradas, opciones || {});
 }
 
