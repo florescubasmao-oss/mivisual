@@ -550,6 +550,7 @@ function aplicarFiltrosActas(opciones){
 }
 
 function renderActasFiltradas(actas, opciones){
+    seleccionLoteActasV614.clear();
     const u = usuarioActualActas();
     const lista = document.getElementById("actasLista");
     if(!lista) return;
@@ -558,12 +559,12 @@ function renderActasFiltradas(actas, opciones){
         return;
     }
     if(esJefaturaAlmacenActas(u.perfil)){
-        lista.innerHTML = vistaJefaturaAlmacenPorSedes(actas);
+        lista.innerHTML = barraLoteActasV614() + vistaJefaturaAlmacenPorSedes(actas);
         restaurarEstadoVistaActas(opciones);
         return;
     }
     if(esAlmacenActas(u.perfil)){
-        lista.innerHTML = vistaResponsableAlmacenPorProcesos(actas, u.sede);
+        lista.innerHTML = barraLoteActasV614() + vistaResponsableAlmacenPorProcesos(actas, u.sede);
         restaurarEstadoVistaActas(opciones);
         return;
     }
@@ -852,11 +853,12 @@ function accionesEntregaCompactas(a){
 }
 
 function tarjetaActaGestionUnificada(a){
+    const selectorLote = elegibleLoteActasV614(a) ? `<label class="mv614-check"><input type="checkbox" class="mv614-checkbox" data-id="${limpiarHtmlActas(a.id)}" onchange="cambioSeleccionLoteActasV614(this)"> Seleccionar para OK</label>` : "";
     const escaneoBtns = accionesEscaneoCompactas(a);
     const entregaBtns = accionesEntregaCompactas(a);
     return `<div class="actas-process-card ${claseEstadoMarcoActa(a)}" data-acta-id="${limpiarHtmlActas(a.id || "")}">
         <div class="actas-process-head">
-            <div>
+            <div>${selectorLote}
                 ${esActaFaltantePendiente(a) ? `<span class="actas-faltante-tag">ACTA FALTANTE · PENDIENTE DEL TÉCNICO</span>` : ""}
                 <div class="actas-card-title">Acta N.º ${limpiarHtmlActas(a.numeroActa || "-")}</div>
                 <div class="actas-process-meta">
@@ -1600,3 +1602,65 @@ function renderListaCargosActas(lista){
     cont.innerHTML=lista.map(x=>`<div class="actas-cargo-card"><div><b>${limpiarHtmlActas(x.idCargo||"")}</b><br><small>${fechaVisibleActas(x.fechaEntrega)} ${limpiarHtmlActas(formatearHoraPeruApp(x.horaEntrega||"",false))} — Hora Perú</small></div><div><b>${limpiarHtmlActas(x.cuadrilla||"")}</b><br><small>${limpiarHtmlActas(x.sede||"")} · ${limpiarHtmlActas(x.plataforma||"")}</small></div><div><b>${x.totalActas||0} actas</b><br><small>${limpiarHtmlActas(x.usuarioRecibe||"")}</small></div><div><a class="actas-btn blue" href="${limpiarHtmlActas(x.linkPdf||"")}" target="_blank" rel="noopener">Ver / descargar PDF</a></div></div>`).join("");
 }
 
+
+/* V614: Solo escaneo correcto, máximo 40, sin tocar recepción ni observaciones. */
+const seleccionLoteActasV614 = new Set();
+function elegibleLoteActasV614(a){
+ const u=usuarioActualActas();
+ if(!a || !a.id || !a.linkActa || esActaFaltantePendiente(a) || estaFinalizadaActa(a))return false;
+ const alm=normalizarActas(a.resultadoAlmacen);
+ const jef=normalizarActas(a.resultadoJefatura);
+ if(esAlmacenActas(u.perfil))return normalizarActas(a.sede)===normalizarActas(u.sede) && !alm && !jef;
+ if(esJefaturaAlmacenActas(u.perfil))return alm==="CORRECTO" && !jef;
+ return false;
+}
+function barraLoteActasV614(){
+ return '<div class="actas-card" style="background:#f8fafc;color:#0f172a;border:1px solid #94a3b8;padding:12px;margin-bottom:12px;border-radius:12px">' +
+ '<b style="color:#0f172a">✅ Validación por lote (máximo 40 actas)</b>' +
+ '<p style="color:#334155;font-size:12px">Marca solamente actas revisadas. Observaciones: una por una. No confirma entrega física.</p>' +
+ '<b id="mv614Cantidad" style="color:#0f172a">0 seleccionadas</b> ' +
+ '<button type="button" class="actas-btn ok" id="mv614Ejecutar" onclick="confirmarLoteActasV614()" disabled>Validar OK seleccionadas</button>' +
+ '<button type="button" class="actas-btn sec" onclick="limpiarSeleccionLoteActasV614()">Desmarcar</button></div>';
+}
+function cambioSeleccionLoteActasV614(el){
+ const id=el.dataset.id;
+ if(el.checked){
+  if(seleccionLoteActasV614.size>=40){el.checked=false;alert("Máximo 40 actas por lote.");return;}
+  const a=(window._actasTodas||[]).find(x=>String(x.id)===id);
+  if(!elegibleLoteActasV614(a)){el.checked=false;return;}
+  seleccionLoteActasV614.add(id);
+ }else seleccionLoteActasV614.delete(id);
+ const label=document.getElementById("mv614Cantidad");
+ if(label)label.textContent=seleccionLoteActasV614.size+" seleccionadas";
+ const btn=document.getElementById("mv614Ejecutar");
+ if(btn)btn.disabled=seleccionLoteActasV614.size===0;
+}
+function limpiarSeleccionLoteActasV614(){
+ seleccionLoteActasV614.clear();
+ document.querySelectorAll(".mv614-checkbox").forEach(x=>x.checked=false);
+ const c=document.getElementById("mv614Cantidad");if(c)c.textContent="0 seleccionadas";
+ const b=document.getElementById("mv614Ejecutar");if(b)b.disabled=true;
+}
+async function confirmarLoteActasV614(){
+ const u=usuarioActualActas();
+ if(!(esAlmacenActas(u.perfil)||esJefaturaAlmacenActas(u.perfil)))return;
+ const ids=[...seleccionLoteActasV614];
+ if(!ids.length||ids.length>40)return;
+ const invalidos=ids.filter(id=>!elegibleLoteActasV614((window._actasTodas||[]).find(x=>String(x.id)===id)));
+ if(invalidos.length){alert("Hay actas no elegibles. Actualiza el listado.");return;}
+ const etapa=esAlmacenActas(u.perfil)?"primera validación de Almacén":"validación final de Jefatura";
+ if(!confirm("¿Registrar OK en "+ids.length+" actas? Etapa: "+etapa+". Esta acción NO confirma la entrega física."))return;
+ const boton=document.getElementById("mv614Ejecutar");
+ if(boton){boton.disabled=true;boton.textContent="Procesando 0 / "+ids.length;}
+ let correctas=0,errores=[];
+ for(const id of ids){
+  try{
+   await apiActas({accion:"validarActaEscaneada",usuario:u.usuario,id,resultado:"CORRECTO",motivoObservacion:""});
+   correctas++;
+  }catch(e){errores.push(id+": "+String(e.message||e));}
+  if(boton)boton.textContent="Procesando "+(correctas+errores.length)+" / "+ids.length;
+ }
+ alert("Validación finalizada. OK: "+correctas+". Errores: "+errores.length+(errores.length?"\\n"+errores.slice(0,6).join("\\n"):""));
+ const vista=obtenerEstadoVistaActas();limpiarSeleccionLoteActasV614();
+ await cargarActas({...vista,forzar:true});
+}
