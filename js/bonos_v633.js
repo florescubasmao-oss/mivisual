@@ -180,8 +180,14 @@ function mb242ValorPuntoCuadrilla(cuadrilla){
     : MB242_VALOR_PUNTO_CUADRILLA;
 }
 
-function mb250EtiquetaBonoEspecial(cuadrilla, claseExtra){
-  if(!mb242EsTarifaEspecial(cuadrilla)) return "";
+function mv633EsEspecialVigente_(cuadrilla,fecha){
+  const modalidad=mv633ModalidadCuadrilla_(cuadrilla,fecha);
+  if(modalidad==="ESPECIAL")return true;
+  if(modalidad==="REGULAR"||modalidad==="TERCER_PUNTO")return false;
+  return mb242EsTarifaEspecial(cuadrilla);
+}
+function mb250EtiquetaBonoEspecial(cuadrilla, claseExtra, fecha){
+  if(!mv633EsEspecialVigente_(cuadrilla,fecha)) return "";
   return `<span class="mb250-bono-especial-etiqueta ${claseExtra || ""}" title="Tarifa especial de bono">⭐ BONO ESPECIAL</span>`;
 }
 
@@ -605,7 +611,7 @@ function mb242RenderTecnico(datos){
   const itemProximo = mb242ObtenerCuadrilla(proximo, cuadrilla, meta);
   const periodoConsulta = MB242_FILTROS.periodo ? datos.periodos[MB242_FILTROS.periodo] : null;
   const itemConsulta = periodoConsulta ? mb242ObtenerCuadrilla(periodoConsulta, cuadrilla, meta) : null;
-  const etiquetaEspecial = mb250EtiquetaBonoEspecial(cuadrilla, "mb250-bono-especial-tecnico");
+  const etiquetaEspecial = mb250EtiquetaBonoEspecial(cuadrilla, "mb250-bono-especial-tecnico", periodoConsulta?.inicio);
 
   const html = `<div class="mb242-pagina">
     <div class="mb242-cabecera"><div><h2 class="mb250-bonos-titulo">🎁 Bonos ${etiquetaEspecial}</h2><p>${mb242Escapar(cuadrilla)}</p></div><button class="button_1" onclick="volverInicio()">⬅ Volver</button></div>
@@ -702,8 +708,8 @@ function mb242ResumenGestion(lista, periodo){
 }
 
 function mb242FilaCuadrilla(item){
-  const esEspecial = mb242EsTarifaEspecial(item.cuadrilla) || mv633ModalidadCuadrilla_(item.cuadrilla, MB242_FILTROS.periodo ? MB242_FILTROS.periodo.slice(0,10) : "")==="ESPECIAL";
-  const etiquetaEspecial = mb250EtiquetaBonoEspecial(item.cuadrilla, "mb250-bono-especial-gestion");
+  const esEspecial = mv633EsEspecialVigente_(item.cuadrilla, MB242_FILTROS.periodo);
+  const etiquetaEspecial = mb250EtiquetaBonoEspecial(item.cuadrilla, "mb250-bono-especial-gestion", MB242_FILTROS.periodo);
   return `<details class="mb242-cuadrilla-detalle ${esEspecial ? "mb250-bono-especial-marco" : ""}">
     <summary>
       <div><b class="mb250-cuadrilla-nombre">${mb242Escapar(item.cuadrilla)} ${etiquetaEspecial}</b><span>${mb242Escapar(item.plataforma || "")}</span></div>
