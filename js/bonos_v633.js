@@ -242,7 +242,7 @@ function mb242CalcularBonoDiario(puntos, cuadrillaNombre, puntosPext, fecha){
     puntosPextComisionables,
     genera:cuadrilla>0,
     cuadrilla,
-    tecnico:mb242Redondear(cuadrilla / 2),
+    tecnico:mb242Redondear(tercerPunto ? cuadrilla : cuadrilla / 2),
     tarifa,
     bonoProduccion,
     bonoPext
