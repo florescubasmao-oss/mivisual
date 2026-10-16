@@ -1,0 +1,76 @@
+/**
+ * MI VISUAL V627 — Diagnostico de cache segmentada (NO PRODUCCION)
+ * No altera Code.gs, no guarda PDFs ni modifica hojas.
+ * Usa exclusivamente claves de prueba de CacheService con TTL 120 s.
+ * Ejecutar v627IniciarCacheSegmentadaActas y luego v627VerificarCacheSegmentadaActas.
+ */
+function v627Config_(){
+  return {prefijo:'MV_V627_PRUEBA_',ttl:120,maxChars:70000};
+}
+function v627Hash_(texto){
+  const bytes=Utilities.computeDigest(Utilities.DigestAlgorithm.SHA_256,texto);
+  return Utilities.base64EncodeWebSafe(bytes).replace(/=+$/,'');
+}
+function v627Muestras_(){
+  const hoja=asegurarHojaMapaOperativo(),fin=hoja.getLastRow();
+  if(fin<2)throw new Error('MAPA_ORDENES vacio');
+  const inicio=Math.max(2,fin-350);
+  const datos=hoja.getRange(inicio,1,fin-inicio+1,15).getValues();
+  const muestras=[],vistas={};
+  for(let i=datos.length-1;i>=0&&muestras.length<3;i--){
+    const f=datos[i],orden=claveIdentificadorActa(f[0]),pedido=claveIdentificadorActa(f[14]);
+    if(!orden||!pedido||!f[7]||normalizarTexto(f[8])!=='FINALIZADA'||vistas[orden])continue;
+    muestras.push({orden:String(f[0]),pedido:String(f[14]),cuadrilla:String(f[7]),sede:sedeMapaOperativo(f[13])||''});
+    vistas[orden]=true;
+  }
+  if(muestras.length<2)throw new Error('Se necesitan al menos 2 ordenes finalizadas');
+  return muestras;
+}
+function v627Campos_(obj){
+  const keys=['sede','cuadrilla','fechaGestion','tipoEjecucion','tipoPartida','dni','cliente','encontradoMapa','encontradoProduccion','fuenteIdentidad'];
+  const out={};keys.forEach(function(k){out[k]=obj[k]===undefined?null:obj[k];});return out;
+}
+function v627IniciarCacheSegmentadaActas(){
+  const conf=v627Config_(),cache=CacheService.getScriptCache(),muestras=v627Muestras_();
+  const t0=Date.now(),ctx=crearContextoDatosAutomaticosActas(),construccionMs=Date.now()-t0;
+  const segmentos=muestras.map(function(m){
+    const datos=v627Campos_(resolverDatosAutomaticosActa(m.pedido,m.orden,m.cuadrilla,m.sede,ctx));
+    const id=v627Hash_([m.orden,m.pedido,m.cuadrilla].join('|')).slice(0,24);
+    const objeto={id:id,orden:m.orden,pedido:m.pedido,cuadrilla:m.cuadrilla,datos:datos};
+    const json=JSON.stringify(objeto);
+    return {id:id,json:json,bytes:Utilities.newBlob(json).getBytes().length};
+  });
+  const maxBytes=Math.max.apply(null,segmentos.map(function(s){return s.bytes;}));
+  if(maxBytes>80000)throw new Error('Segmento demasiado grande: '+maxBytes+' bytes');
+  const version=v627Hash_(segmentos.map(function(x){return x.json;}).join('|'));
+  const manifiesto={version:version,creado:Date.now(),ids:segmentos.map(function(s){return s.id;}),ttl:conf.ttl};
+  const guardados=[];
+  segmentos.forEach(function(s){
+    const k=conf.prefijo+'SEG_'+s.id;cache.put(k,JSON.stringify({version:version,contenido:s.json}),conf.ttl);
+    guardados.push({id:s.id,bytes:s.bytes});
+  });
+  cache.put(conf.prefijo+'MANIFEST',JSON.stringify(manifiesto),conf.ttl);
+  const salida={ok:true,version:'V627',modo:'DIAGNOSTICO_CACHE_120S',paso:'INICIAR',muestras:muestras.length,
+    construccionMs:construccionMs,segmentos:guardados,manifestVersion:version,ttlSegundos:conf.ttl,
+    nota:'Cache solo de prueba; no se usa en el guardado de actas'};
+  Logger.log('V627 INICIAR '+JSON.stringify(salida));return salida;
+}
+function v627VerificarCacheSegmentadaActas(){
+  const conf=v627Config_(),cache=CacheService.getScriptCache();
+  const raw=cache.get(conf.prefijo+'MANIFEST');
+  if(!raw){const x={ok:false,version:'V627',paso:'VERIFICAR',motivo:'CACHE_AUSENTE_O_VENCIDA'};Logger.log('V627 VERIFICAR '+JSON.stringify(x));return x;}
+  const m=JSON.parse(raw),resultados=[],t0=Date.now();
+  m.ids.forEach(function(id){
+    const r=cache.get(conf.prefijo+'SEG_'+id);
+    if(!r){resultados.push({id:id,estado:'NO_DISPONIBLE'});return;}
+    const item=JSON.parse(r);
+    if(item.version!==m.version){resultados.push({id:id,estado:'VERSION_DISTINTA'});return;}
+    const dato=JSON.parse(item.contenido);
+    resultados.push({id:id,estado:'RECUPERADO',orden:dato.orden,datos:dato.datos});
+  });
+  const lecturaMs=Date.now()-t0,completos=resultados.every(function(x){return x.estado==='RECUPERADO';});
+  const salida={ok:completos,version:'V627',paso:'VERIFICAR',lecturaMs:lecturaMs,
+    edadMs:Date.now()-m.creado,ttlSegundos:m.ttl,completos:completos,
+    resultados:resultados,nota:'No valida cambios posteriores en MAPA_ORDENES ni PRODUCCION_APP'};
+  Logger.log('V627 VERIFICAR '+JSON.stringify(salida));return salida;
+}
