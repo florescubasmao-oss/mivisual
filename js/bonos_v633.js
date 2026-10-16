@@ -152,8 +152,13 @@ function mb242Redondear(valor){
   return Math.round((Number(valor || 0) + Number.EPSILON) * 100) / 100;
 }
 
-function mb242EsCuadrillaPDG(cuadrilla){
+function mb242EsCuadrillaPDG(cuadrilla,fecha){
   const nombre = mb242Cuadrilla(cuadrilla);
+  // V636: P7 SGI fue PDG hasta julio y participa de Bonos desde agosto 2026.
+  const fechaClave = fecha instanceof Date ? mb242ClaveFecha(fecha) : String(fecha||"").slice(0,10);
+  if(/^P7\b/.test(nombre) && nombre.includes("SGI") &&
+     ["PACHERRES","RUIZ","VICTOR"].some(x=>nombre.includes(x)) &&
+     fechaClave >= "2026-08-01") return false;
   if(!nombre) return false;
   const codigo = (nombre.match(/^P\d+/) || [""])[0];
   return MB242_CUADRILLAS_PDG.some(regla => {
@@ -181,6 +186,9 @@ function mb242ValorPuntoCuadrilla(cuadrilla){
 }
 
 function mv633EsEspecialVigente_(cuadrilla,fecha){
+  const nombre=mb242Cuadrilla(cuadrilla);
+  const fechaClave=fecha instanceof Date?mb242ClaveFecha(fecha):String(fecha||"").slice(0,10);
+  if(/^P7\b/.test(nombre)&&nombre.includes("SGI")&&nombre.includes("PACHERRES")&&fechaClave>="2026-08-01")return true;
   const modalidad=mv633ModalidadCuadrilla_(cuadrilla,fecha);
   if(modalidad==="ESPECIAL")return true;
   if(modalidad==="REGULAR"||modalidad==="TERCER_PUNTO")return false;
@@ -215,8 +223,8 @@ function mb242CalcularBonoDiario(puntos, cuadrillaNombre, puntosPext, fecha){
   const produccion = Math.max(0, p - pext);
   const modalidad=mv633ModalidadCuadrilla_(cuadrillaNombre,fecha);
   const tercerPunto=modalidad==="TERCER_PUNTO";
-  const tarifa=tercerPunto?15:modalidad==="ESPECIAL"?MB242_VALOR_PUNTO_CUADRILLA_ESPECIAL
-    :modalidad==="REGULAR"?MB242_VALOR_PUNTO_CUADRILLA:mb242ValorPuntoCuadrilla(cuadrillaNombre);
+  const tarifa=tercerPunto?15:mv633EsEspecialVigente_(cuadrillaNombre,fecha)?MB242_VALOR_PUNTO_CUADRILLA_ESPECIAL
+    :MB242_VALOR_PUNTO_CUADRILLA;
   const minimo=tercerPunto?3:MB242_MINIMO_BONO;
   const base=tercerPunto?2:MB242_BASE_SIN_BONO;
   if(p + 0.000001 < minimo){
@@ -383,7 +391,7 @@ function mb283IntegrarPext(periodos, metaCuadrillas, trabajosPext){
     const estadoBono = mb242Normalizar(registro.estadoBono)==="VALIDADO" ? "VALIDADO" : "PENDIENTE";
     if(!id || vistos.has(id) || !cuadrilla || !fecha || puntosPext<=0) return;
     vistos.add(id);
-    if(mb242EsCuadrillaPDG(cuadrilla)) return;
+    if(mb242EsCuadrillaPDG(cuadrilla,fecha)) return;
 
     if(!metaCuadrillas[cuadrilla]){
       metaCuadrillas[cuadrilla] = {
@@ -463,7 +471,7 @@ async function mb242CargarDatos(forzar){
     const cantidad = mb242Numero(fila[4]);
     if(!cuadrilla || !fecha || !codigo || cantidad <= 0) return;
     // V246: las cuadrillas PDG conservan Producción y puntaje, pero no forman parte de Bonos.
-    if(mb242EsCuadrillaPDG(cuadrilla)) return;
+    if(mb242EsCuadrillaPDG(cuadrilla,fecha)) return;
 
     const partida = catalogo[codigo];
     const puntajeUnitario = partida ? mb242Numero(partida.puntaje) : 0;
@@ -776,7 +784,7 @@ async function mostrarBonos(){
 
     if(perfil === "TECNICO"){
       const cuadrillaTecnico = mb242Cuadrilla(localStorage.getItem("cuadrilla"));
-      if(mb242EsCuadrillaPDG(cuadrillaTecnico)){
+      if(mb242EsCuadrillaPDG(cuadrillaTecnico,new Date())){
         mostrarPantalla(`<div class="mb242-pagina"><div class="mb242-vacio">La opción Bonos no está disponible para esta cuadrilla.</div><button class="button_1" onclick="volverInicio()">Volver</button></div>`);
         return;
       }
