@@ -10318,17 +10318,50 @@ function cargarPagosPdgUtilidad_(periodo,mapa) {
   });
 }
 
-function calcularBonoDiaUtilidad_(produccion,pext,cuadrilla) {
+// V632: reglas por cuadrilla desde 2026-10-01.
+function mv632ModalidadBonoTecnico_(cuadrilla, fecha) {
+  const fechaClave = fecha instanceof Date
+    ? Utilities.formatDate(fecha, "America/Lima", "yyyy-MM-dd")
+    : String(fecha || "").slice(0, 10);
+  if (fechaClave < "2026-10-01") return null;
+  const s = normalizarTexto(normalizarCuadrilla(cuadrilla)).replace(/^P\s+(\d+)/, "P$1");
+  const cambios = [
+    { codigo:"P2", tipo:"SGI", nombre:"WILMER ANTONIO RACCHUMI SANTISTEBAN", modalidad:"ESPECIAL" },
+    { codigo:"P9", tipo:"SGI", nombre:"ANTHONY JUNIOR CHAMBA VALVERDE", modalidad:"ESPECIAL" },
+    { codigo:"P9", tipo:"SGA", nombre:"RONAL ENRIQUE TESEN CALDERON", modalidad:"ESPECIAL" },
+    { codigo:"P12", tipo:"SGI", nombre:"LUIS ALEX FERNANDEZ CHANTA", modalidad:"REGULAR" },
+    { codigo:"P15", tipo:"SGA", nombre:"JOSE SMITH RAMOS CHUNGA", modalidad:"TERCER_PUNTO" }
+  ];
+  for (let i=0;i<cambios.length;i++) {
+    const c=cambios[i];
+    if ((s.match(/^P\d+/)||[""])[0]!==c.codigo) continue;
+    if (!s.includes(c.tipo) || !s.includes(c.nombre)) continue;
+    return c.modalidad;
+  }
+  return null;
+}
+
+// Sustituir SOLO la funcion de nombre igual del Code.gs actual.
+// Fecha se toma del agrupador diario; NO usar fecha actual del servidor.
+function calcularBonoDiaUtilidad_(produccion, pext, cuadrilla, fecha) {
   const puntosProduccion=Math.max(0,Number(produccion)||0);
   const puntosPext=Math.max(0,Number(pext)||0);
   const total=puntosProduccion+puntosPext;
-  if (total+0.000001<4.5) return 0;
-  const especial=CUADRILLAS_BONO_ESPECIAL_UTILIDAD_.some(function(r){return cumpleReglaCuadrillaUtilidad_(cuadrilla,r);});
-  const tarifaProduccion=especial?45:30;
-  const puntosProduccionComisionables=Math.max(0,puntosProduccion-4);
-  const basePendiente=Math.max(0,4-puntosProduccion);
+  const nuevaModalidad=mv632ModalidadBonoTecnico_(cuadrilla,fecha);
+  const desdeTercer=nuevaModalidad==="TERCER_PUNTO";
+  const umbral=desdeTercer?3:4.5;
+  if (total+0.000001<umbral) return 0;
+  const especial=nuevaModalidad==="ESPECIAL"
+    ? true
+    : nuevaModalidad==="REGULAR" || desdeTercer
+      ? false
+      : CUADRILLAS_BONO_ESPECIAL_UTILIDAD_.some(function(r){return cumpleReglaCuadrillaUtilidad_(cuadrilla,r);});
+  const tarifaProduccion=desdeTercer?15:(especial?45:30);
+  const base=desdeTercer?2:4;
+  const puntosProduccionComisionables=Math.max(0,puntosProduccion-base);
+  const basePendiente=Math.max(0,base-puntosProduccion);
   const puntosPextComisionables=Math.max(0,puntosPext-basePendiente);
-  return Math.round((puntosProduccionComisionables*tarifaProduccion+puntosPextComisionables*30)*100)/100;
+  return Math.round((puntosProduccionComisionables*tarifaProduccion+puntosPextComisionables*(desdeTercer?15:30))*100)/100;
 }
 
 function cargarBonosUtilidad_(periodo,mapa) {
@@ -10348,7 +10381,7 @@ function cargarBonosUtilidad_(periodo,mapa) {
     if (!cuadrilla || CUADRILLAS_PDG_UTILIDAD_.some(function(r){return cumpleReglaCuadrillaUtilidad_(cuadrilla,r);})) continue;
     const puntos=(Number(fila[4])||0)*(Number(puntosCatalogo[String(fila[3]||"").trim()])||0);
     const clave=cuadrilla+"|"+Utilities.formatDate(fecha,Session.getScriptTimeZone(),"yyyy-MM-dd");
-    if (!dias[clave]) dias[clave]={cuadrilla,produccion:0,pext:0};
+    if (!dias[clave]) dias[clave]={cuadrilla,fecha:clave.split("|")[1],produccion:0,pext:0};
     dias[clave].produccion+=puntos;
   }
 
@@ -10369,7 +10402,7 @@ function cargarBonosUtilidad_(periodo,mapa) {
       const cuadrilla=normalizarCuadrilla(x.cuadrilla);
       if (!cuadrilla||CUADRILLAS_PDG_UTILIDAD_.some(function(r){return cumpleReglaCuadrillaUtilidad_(cuadrilla,r);})) return;
       const clave=cuadrilla+"|"+Utilities.formatDate(fecha,Session.getScriptTimeZone(),"yyyy-MM-dd");
-      if (!dias[clave]) dias[clave]={cuadrilla,produccion:0,pext:0};
+      if (!dias[clave]) dias[clave]={cuadrilla,fecha:clave.split("|")[1],produccion:0,pext:0};
       dias[clave].pext+=Number(calculo.puntosPext)||0;
     });
   }
@@ -10377,7 +10410,7 @@ function cargarBonosUtilidad_(periodo,mapa) {
   Object.keys(dias).forEach(function(clave) {
     const dia=dias[clave],usuario=usuarios[dia.cuadrilla]||{};
     const item=asegurarAcumuladorUtilidad_(mapa,dia.cuadrilla,usuario.sede);
-    item.bonos+=calcularBonoDiaUtilidad_(dia.produccion,dia.pext,dia.cuadrilla);
+    item.bonos+=calcularBonoDiaUtilidad_(dia.produccion,dia.pext,dia.cuadrilla,dia.fecha);
   });
 }
 
