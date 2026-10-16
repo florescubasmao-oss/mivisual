@@ -1,0 +1,63 @@
+/**
+ * MI VISUAL V625 - DIAGNOSTICO DE REUTILIZACION DE CONTEXTO DE ACTAS
+ * PRUEBA SOLO LECTURA / NO PUBLICAR IMPLEMENTACION.
+ * No usa CacheService, PropertiesService ni escrituras a Sheets/Drive.
+ * El contexto se reutiliza SOLO dentro de esta ejecucion de prueba.
+ * Ejecutar v625DiagnosticarCacheActas() en el proyecto Apps Script existente.
+ */
+function v625DiagnosticarCacheActas() {
+  const inicio = Date.now();
+  const hoja = asegurarHojaMapaOperativo();
+  const finalFila = hoja.getLastRow();
+  if (finalFila < 2) throw new Error('MAPA_ORDENES sin registros');
+  const desde = Math.max(2, finalFila - 350);
+  const filas = hoja.getRange(desde, 1, finalFila - desde + 1, 15).getValues();
+  const muestras = [];
+  const vistas = {};
+  for (let i = filas.length - 1; i >= 0 && muestras.length < 3; i--) {
+    const f = filas[i];
+    const orden = claveIdentificadorActa(f[0]);
+    const pedido = claveIdentificadorActa(f[14]);
+    const cuadrilla = f[7];
+    if (!orden || !pedido || !cuadrilla || normalizarTexto(f[8]) !== 'FINALIZADA' || vistas[orden]) continue;
+    muestras.push({orden: f[0], pedido: f[14], cuadrilla: cuadrilla, sede: sedeMapaOperativo(f[13]) || ''});
+    vistas[orden] = true;
+  }
+  if (muestras.length < 2) throw new Error('Se necesitan al menos dos ordenes FINALIZADAS para la prueba');
+
+  const t0 = Date.now();
+  const contexto = crearContextoDatosAutomaticosActas();
+  const t1 = Date.now();
+  const resultados = [];
+  muestras.forEach(function(x) {
+    const a = Date.now();
+    const conContexto = resolverDatosAutomaticosActa(x.pedido, x.orden, x.cuadrilla, x.sede, contexto);
+    const b = Date.now();
+    const contextoNuevo = crearContextoDatosAutomaticosActas();
+    const reconstruido = resolverDatosAutomaticosActa(x.pedido, x.orden, x.cuadrilla, x.sede, contextoNuevo);
+    const c = Date.now();
+    const campos = ['sede', 'cuadrilla', 'fechaGestion', 'tipoEjecucion', 'tipoPartida', 'dni', 'cliente', 'encontradoMapa', 'encontradoProduccion', 'fuenteIdentidad'];
+    const serializar = function(d) { return JSON.stringify(campos.map(function(k) { return d[k] === undefined ? null : d[k]; })); };
+    resultados.push({
+      orden: String(x.orden),
+      coincide: serializar(conContexto) === serializar(reconstruido),
+      reutilizadoMs: b - a,
+      reconstruidoMs: c - b
+    });
+  });
+  const salida = {
+    ok: resultados.every(function(x) { return x.coincide; }),
+    version: 'V625',
+    modo: 'SOLO_LECTURA_SIN_CACHE_PERSISTENTE',
+    muestras: resultados.length,
+    coincidencias: resultados.filter(function(x) { return x.coincide; }).length,
+    construccionInicialMs: t1 - t0,
+    reutilizadoTotalMs: resultados.reduce(function(n, x) { return n + x.reutilizadoMs; }, 0),
+    reconstruidoTotalMs: resultados.reduce(function(n, x) { return n + x.reconstruidoMs; }, 0),
+    duracionEjecucionMs: Date.now() - inicio,
+    advertencia: 'Reutilizacion solo dentro de esta ejecucion; NO prueba consistencia entre cargas ni caducidad real de cache.',
+    resultados: resultados
+  };
+  Logger.log('V625 DIAGNOSTICO ' + JSON.stringify(salida));
+  return salida;
+}
