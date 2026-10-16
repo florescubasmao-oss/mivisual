@@ -41,12 +41,12 @@ function calcularBonoDiaUtilidad_(produccion, pext, cuadrilla, fecha) {
     : nuevaModalidad==="REGULAR" || desdeTercer
       ? false
       : CUADRILLAS_BONO_ESPECIAL_UTILIDAD_.some(function(r){return cumpleReglaCuadrillaUtilidad_(cuadrilla,r);});
-  const tarifaProduccion=especial?45:30;
+  const tarifaProduccion=desdeTercer?15:(especial?45:30);
   const base=desdeTercer?2:4;
   const puntosProduccionComisionables=Math.max(0,puntosProduccion-base);
   const basePendiente=Math.max(0,base-puntosProduccion);
   const puntosPextComisionables=Math.max(0,puntosPext-basePendiente);
-  return Math.round((puntosProduccionComisionables*tarifaProduccion+puntosPextComisionables*30)*100)/100;
+  return Math.round((puntosProduccionComisionables*tarifaProduccion+puntosPextComisionables*(desdeTercer?15:30))*100)/100;
 }
 
 // INTEGRACION PENDIENTE (NO EJECUTAR COMO CODIGO SUELTO):
@@ -61,7 +61,7 @@ function calcularBonoDiaUtilidad_(produccion, pext, cuadrilla, fecha) {
 // VERIFICACIONES OBLIGATORIAS ANTES DE ACTIVAR:
 //  - Septiembre: mismos importes que antes del cambio.
 //  - Octubre: modalidades exactas para las 5 cuadrillas.
-//  - P15 SGA: 2 puntos => S/0; 3 puntos => S/30 (sujeto a reglas PEXT).
+//  - P15 SGA: 2 puntos => S/0; 3 puntos => S/15; 4 => S/30; 5 => S/45; 6 => S/60 (sujeto a reglas PEXT).
 //  - 1 y 5 actas PDF, ranking, producción y los demás módulos permanecen intactos.
 //  - Se debe revisar qué función alimenta el módulo Bonos de Técnicos;
 //    calcularBonoDiaUtilidad_ se usa en Utilidad/Económico y NO está
