@@ -1,0 +1,90 @@
+/**
+ * V624 - PRUEBA EXCLUSIVAMENTE DE LECTURA, SIN MODIFICAR PRODUCCION.
+ * Añadir como archivo NUEVO en el proyecto Apps Script activo y ejecutar
+ * v624DiagnosticarContextoActas. No implementar ni publicar deployment.
+ *
+ * Compara la resolucion original de datos automaticos contra la version
+ * selectiva para 3 ordenes finalizadas reales. Rechaza discrepancias.
+ * No usa DriveApp, no escribe hojas y no registra actas.
+ */
+function v624ContextoSelectivo_(pedido, orden, cuadrilla) {
+  const hoja = asegurarHojaMapaOperativo();
+  const fin = hoja.getLastRow();
+  const mapa = [];
+  const clavePedido = claveIdentificadorActa(pedido);
+  const claveOrden = claveIdentificadorActa(orden);
+  const claveCuadrilla = claveCuadrillaActa(cuadrilla);
+  if (fin > 1) {
+    const indices = hoja.getRange(2,1,fin-1,15).getValues();
+    const filas = [];
+    for (let i=indices.length-1;i>=0;i--) {
+      const f=indices[i];
+      if (claveCuadrilla && claveCuadrillaActa(f[7]) !== claveCuadrilla) continue;
+      const o=claveIdentificadorActa(f[0]), p=claveIdentificadorActa(f[14]);
+      if ((claveOrden && (o===claveOrden || p===claveOrden)) ||
+          (clavePedido && (p===clavePedido || o===clavePedido))) filas.push(i+2);
+    }
+    // Mismo orden que el contexto original: fila mas antigua primero.
+    filas.reverse().forEach(function(n){
+      mapa.push(hoja.getRange(n,1,1,26).getValues()[0]);
+    });
+  }
+  // Se conservan exactos los catalogos, fechas y reglas de Produccion.
+  const contexto={mapa:mapa,catalogo:catalogoPartidasAutomaticasActas(),produccion:{}};
+  const prod=obtenerHoja(HOJA_PRODUCCION);
+  const n=prod.getLastRow();
+  if (n>1) {
+    prod.getRange(2,1,n-1,7).getValues().forEach(function(f){
+      const c=claveCuadrillaActa(f[1]),fecha=fechaClaveActa(f[2]);
+      const codigo=normalizarTexto(f[3]||"");
+      if (!c || !fecha || !codigo || numeroProduccion(f[4])<=0) return;
+      const k=c+"|"+fecha;
+      if(!contexto.produccion[k])contexto.produccion[k]=[];
+      contexto.produccion[k].push(codigo);
+    });
+  }
+  return contexto;
+}
+function v624Snapshot_(d) {
+  if(!d)return "";
+  const campos=["sede","cuadrilla","fechaGestion","tipoEjecucion",
+    "tipoPartida","dni","cliente","encontradoMapa","encontradoProduccion","fuenteIdentidad"];
+  return JSON.stringify(campos.map(function(k){return [k,d[k]===undefined?null:d[k]];}));
+}
+function v624DiagnosticarContextoActas(){
+  const hoja=asegurarHojaMapaOperativo();
+  const fin=hoja.getLastRow();
+  if(fin<2)throw new Error("Mapa sin datos");
+  const desde=Math.max(2,fin-350);
+  const filas=hoja.getRange(desde,1,fin-desde+1,15).getValues();
+  const ejemplos=[], vistos={};
+  for(let i=filas.length-1;i>=0&&ejemplos.length<3;i--){
+    const f=filas[i],o=claveIdentificadorActa(f[0]),p=claveIdentificadorActa(f[14]);
+    if(!o||!p||!f[7]||normalizarTexto(f[8])!=="FINALIZADA"||vistos[o])continue;
+    ejemplos.push({orden:f[0],pedido:f[14],cuadrilla:f[7],sede:sedeMapaOperativo(f[13])||""});
+    vistos[o]=true;
+  }
+  if(!ejemplos.length)throw new Error("No hay ordenes finalizadas en la muestra");
+  const salida=[];
+  ejemplos.forEach(function(x){
+    const t0=Date.now();
+    const ctxActual=crearContextoDatosAutomaticosActas();
+    const datoActual=resolverDatosAutomaticosActa(x.pedido,x.orden,x.cuadrilla,x.sede,ctxActual);
+    const t1=Date.now();
+    const ctxNuevo=v624ContextoSelectivo_(x.pedido,x.orden,x.cuadrilla);
+    const datoNuevo=resolverDatosAutomaticosActa(x.pedido,x.orden,x.cuadrilla,x.sede,ctxNuevo);
+    const t2=Date.now();
+    const coincide=v624Snapshot_(datoActual)===v624Snapshot_(datoNuevo);
+    salida.push({orden:String(x.orden),coincide:coincide,actualMs:t1-t0,
+      selectivoMs:t2-t1,filasMapaSelectivo:ctxNuevo.mapa.length,
+      actual:datoActual,propuesto:datoNuevo});
+  });
+  const ok=salida.every(function(x){return x.coincide;});
+  const resumen={ok:ok,version:"V624",modo:"SOLO_LECTURA",
+    muestras:salida.length,coincidencias:salida.filter(function(x){return x.coincide;}).length,
+    actualTotalMs:salida.reduce(function(n,x){return n+x.actualMs;},0),
+    selectivoTotalMs:salida.reduce(function(n,x){return n+x.selectivoMs;},0),
+    resultados:salida};
+  Logger.log("V624 DIAGNOSTICO "+JSON.stringify(resumen));
+  return resumen;
+}
