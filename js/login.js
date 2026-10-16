@@ -24,12 +24,13 @@ async function login() {
     const url = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRpVkCmSvopgPByWsEX6nkuAT6mf3yD2_Cywpl9pFSZEqYpxmprDePPeV0KNgT14YpEP6gkVlvOAtZy/pub?gid=0&single=true&output=csv";
 
     try {
-        const texto = typeof mv336FetchTextoCache === "function"
-            ? await mv336FetchTextoCache(url, 30000)
-            : await fetch(url).then(function(respuesta){
-                if(!respuesta.ok) throw new Error("No se pudo leer la lista de usuarios.");
-                return respuesta.text();
-              });
+        // V635: login siempre consulta la publicación vigente; nunca usa
+        // un respaldo de cache expirado para decidir "credenciales incorrectas".
+        const urlVigente = url + "&mv_login_ts=" + Date.now();
+        const respuesta = await fetch(urlVigente, {cache:"no-store",redirect:"follow"});
+        if(!respuesta.ok) throw new Error("No se pudo consultar la lista de usuarios.");
+        const texto = await respuesta.text();
+        if(!texto || /<html[\\s>]/i.test(texto)) throw new Error("La fuente de usuarios no devolvió CSV válido.");
         const filas = texto.split("\n");
 
         for (let i = 1; i < filas.length; i++) {
