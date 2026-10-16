@@ -54,7 +54,7 @@
       entradas: ["mostrarRanking"]
     },
     bonos: {
-      archivos: [`./js/bonos_v633.js?v=V633-BONOS-OCTUBRE-20261016`],
+      archivos: [`./js/bonos_v633.js?v=V6331-BONOS-UNICO-20261016`],
       entradas: ["mostrarBonos"]
     },
     observaciones: {
