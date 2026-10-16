@@ -418,6 +418,17 @@
               "linear-gradient(135deg,#854d0e,#eab308)"
             )}
 
+            ${normalizarCuadrilla(localStorage.getItem("cuadrilla")) === "P7 VISUAL SGI VICTOR MANUEL PACHERRES RUIZ" && String(localStorage.getItem("perfil")||"").toUpperCase().trim() === "TECNICO" && String(periodo||"") >= "2026-08"
+              ? tarjetaIndicador(
+                  "🎁",
+                  "Bonos",
+                  "Ver mis bonos",
+                  "Bonos de producción y PEXT",
+                  "mostrarBonos()",
+                  "linear-gradient(135deg,#166534,#15803d)"
+                )
+              : ""}
+
             ${tarjetaIndicador(
               "⏱️",
               "Tiempo de Gestión – SLA",
