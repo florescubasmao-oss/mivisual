@@ -54,7 +54,7 @@
       entradas: ["mostrarRanking"]
     },
     bonos: {
-      archivos: [`./js/bonos_v578.js?v=V578-BONOS-CARGA-SEGURA`],
+      archivos: [`./js/bonos_v633.js?v=V633-BONOS-OCTUBRE-20261016`],
       entradas: ["mostrarBonos"]
     },
     observaciones: {
