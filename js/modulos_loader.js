@@ -29,7 +29,7 @@
     },
     mi_desempeno: {
       depende: ["dashboards_core", "indicadores", "ranking"],
-      archivos: [`./js/mi_desempeno_v363.js?v=V408-RESTAURA-V403`],
+      archivos: [`./js/mi_desempeno_v363.js?v=V634-P7-BONOS-MI-DESEMPENO`],
       entradas: ["mostrarMiDesempeno"]
     },
     dashboard: {
