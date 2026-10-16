@@ -1,0 +1,103 @@
+/**
+ * MI VISUAL V628 | PRUEBA DE SEGURIDAD DE CACHE DE ACTAS
+ * NO PUBLICAR WEB APP. NO MODIFICA Code.gs, PDF ni hojas.
+ * Solamente escribe claves de diagnostico en CacheService por 120 s.
+ * PRUEBA 1: v628IniciarPruebaSeguridadActas
+ * PRUEBA 2: v628VerificarPruebaSeguridadActas (antes de 120 segundos)
+ *
+ * Es un prototipo de validacion POR COMPARACION con fuente vigente:
+ * no prueba invalidacion automatica al instante ni rapidez real de subir PDFs.
+ */
+function v628Config_(){
+  return {prefijo:'MV_V628_PRUEBA_ACTAS_',ttl:120};
+}
+function v628Hash_(v){
+  return Utilities.base64EncodeWebSafe(
+    Utilities.computeDigest(Utilities.DigestAlgorithm.SHA_256,String(v))
+  ).replace(/=+$/,'');
+}
+function v628Muestra_(){
+  var hoja=asegurarHojaMapaOperativo();
+  var fin=hoja.getLastRow();
+  if(fin<2)throw new Error('Mapa Operativo vacio');
+  var inicio=Math.max(2,fin-350);
+  var filas=hoja.getRange(inicio,1,fin-inicio+1,15).getValues();
+  for(var i=filas.length-1;i>=0;i--){
+    var f=filas[i];
+    if(claveIdentificadorActa(f[0])&&claveIdentificadorActa(f[14])&&
+      f[7]&&normalizarTexto(f[8])==='FINALIZADA'){
+      return {orden:String(f[0]),pedido:String(f[14]),cuadrilla:String(f[7]),
+        sede:sedeMapaOperativo(f[13])||''};
+    }
+  }
+  throw new Error('No se encontro una orden finalizada para comparar');
+}
+function v628Campos_(d){
+  var claves=['sede','cuadrilla','fechaGestion','tipoEjecucion','tipoPartida',
+    'dni','cliente','encontradoMapa','encontradoProduccion','fuenteIdentidad'];
+  var resultado={};
+  claves.forEach(function(c){resultado[c]=d[c]===undefined?null:d[c];});
+  return JSON.stringify(resultado);
+}
+function v628HuellaActual_(m){
+  var contexto=crearContextoDatosAutomaticosActas();
+  var datos=resolverDatosAutomaticosActa(m.pedido,m.orden,m.cuadrilla,m.sede,contexto);
+  return v628Hash_(v628Campos_(datos));
+}
+function v628EvaluarCache_(entrada,huellaActual){
+  if(!entrada)return 'FALLBACK_CACHE_AUSENTE';
+  if(entrada.version!=='V628'||!entrada.huella||!entrada.creado)
+    return 'FALLBACK_FORMATO_INVALIDO';
+  if(Date.now()-entrada.creado>120000||Date.now()<entrada.creado)
+    return 'FALLBACK_VENCIDA';
+  if(entrada.huella!==huellaActual)return 'FALLBACK_DATOS_CAMBIARON';
+  return 'CACHE_COINCIDENTE';
+}
+function v628IniciarPruebaSeguridadActas(){
+  var c=v628Config_(),m=v628Muestra_();
+  var t=Date.now(),huella=v628HuellaActual_(m),lecturaMs=Date.now()-t;
+  var id=v628Hash_([m.orden,m.pedido,m.cuadrilla].join('|')).slice(0,20);
+  var entrada={version:'V628',creado:Date.now(),id:id,huella:huella};
+  var cache=CacheService.getScriptCache(),inicio=Date.now();
+  cache.put(c.prefijo+'REGISTRO',JSON.stringify(entrada),c.ttl);
+  var escrituraMs=Date.now()-inicio;
+  var simulada=Object.assign({},entrada,{huella:v628Hash_('SIMULACION_CAMBIO_V628')});
+  var salida={ok:true,version:'V628',modo:'SOLO_LECTURA_Y_CACHE_PRUEBA',
+    paso:'INICIAR',orden:m.orden,lecturaActualMs:lecturaMs,
+    escrituraCacheMs:escrituraMs,ttlSegundos:c.ttl,
+    escenarios:{
+      cacheCorrecta:v628EvaluarCache_(entrada,huella),
+      datosModificadosSimulados:v628EvaluarCache_(simulada,huella),
+      cacheAusente:v628EvaluarCache_(null,huella),
+      cacheVencida:v628EvaluarCache_(Object.assign({},entrada,{creado:Date.now()-121000}),huella),
+      cacheMalformada:v628EvaluarCache_({version:'incorrecta'},huella)
+    },nota:'Ninguna hoja fue alterada. No contiene DNI ni cliente en CacheService.'};
+  Logger.log('V628 INICIAR '+JSON.stringify(salida));return salida;
+}
+function v628VerificarPruebaSeguridadActas(){
+  var c=v628Config_(),cache=CacheService.getScriptCache();
+  var t=Date.now(),raw;
+  try{raw=cache.get(c.prefijo+'REGISTRO');}catch(e){raw=null;}
+  var cacheMs=Date.now()-t;
+  if(!raw){
+    var falta={ok:false,version:'V628',paso:'VERIFICAR',estado:'CACHE_AUSENTE_O_VENCIDA',
+      fallbackSeguro:true,cacheMs:cacheMs};
+    Logger.log('V628 VERIFICAR '+JSON.stringify(falta));return falta;
+  }
+  var entrada;try{entrada=JSON.parse(raw);}catch(e){entrada=null;}
+  var m=v628Muestra_();
+  var id=v628Hash_([m.orden,m.pedido,m.cuadrilla].join('|')).slice(0,20);
+  if(!entrada||entrada.id!==id){
+    var diferente={ok:false,version:'V628',paso:'VERIFICAR',
+      estado:'MUESTRA_CAMBIO_O_CACHE_INVALIDA',fallbackSeguro:true};
+    Logger.log('V628 VERIFICAR '+JSON.stringify(diferente));return diferente;
+  }
+  var inicio=Date.now(),actual=v628HuellaActual_(m),consultaMs=Date.now()-inicio;
+  var estado=v628EvaluarCache_(entrada,actual);
+  var salida={ok:estado==='CACHE_COINCIDENTE',version:'V628',paso:'VERIFICAR',
+    estado:estado,orden:m.orden,edadMs:Date.now()-entrada.creado,
+    cacheMs:cacheMs,consultaFuenteActualMs:consultaMs,
+    fallbackSeguro:estado!=='CACHE_COINCIDENTE',
+    nota:'La verificacion consulto nuevamente las hojas. No mide aceleracion real.'};
+  Logger.log('V628 VERIFICAR '+JSON.stringify(salida));return salida;
+}
