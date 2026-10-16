@@ -5356,8 +5356,8 @@ function registrarActaEscaneada(data) {
       anterior = obj;
     }
 
-    const contextoAutomatico = crearContextoDatosAutomaticosActas();
-    const automaticos = resolverDatosAutomaticosActa(codigoPedido, codigoOrden, cuadrilla, sede, contextoAutomatico);
+    // V630: resolucion conservadora, verificada mediante V630_COMPARAR antes de desplegar.
+    const automaticos = v630ResolverDatosActa_(codigoPedido, codigoOrden, cuadrilla, sede);
     const fechaGestion = automaticos.fechaGestion || anterior.fechaGestion || "";
     const tipoPartida = automaticos.tipoPartida || anterior.tipoPartida || "";
     const tipoEjecucion = automaticos.tipoEjecucion || anterior.tipoEjecucion || inferirTipoEjecucionActaServidor(cuadrilla);
