@@ -22,7 +22,9 @@
     const regla=indicadores[indicador];
     if(!regla||!Array.isArray(lista)||!lista.length)return "";
     const items=lista.map(x=>{
-      const v=regla.extra?regla.extra(x):Number(x?.[regla.campo]);
+      let v=regla.extra?regla.extra(x):Number(x?.[regla.campo]);
+      if(v===null || v===undefined || (!regla.extra && (x?.[regla.campo]===null || x?.[regla.campo]===undefined || x?.[regla.campo]===""))) v=NaN;
+      if(regla.unidad==="%" && Number.isFinite(v) && Math.abs(v)<=1 && ["EFECTIVIDAD","RECABLEADO","VTRGAR"].includes(indicador)) v*=100;
       return {nombre:String(x?.cuadrilla||""),v};
     }).filter(x=>Number.isFinite(x.v)&&(indicador!=="RANKING"||x.v>0));
     if(!items.length)return "";
@@ -51,6 +53,7 @@
   "use strict";
   if(window.MV637_COMPLEMENTOS_OK)return;
   function num(v){return v===null||v===undefined||v===""?null:(Number.isFinite(Number(v))?Number(v):null);}
+  function pct(v){const n=num(v);return n===null?null:Math.abs(n)<=1?n*100:n;}
   function safe(v){return String(v??"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;").replace(/'/g,"&#39;");}
   function barra(nombre,v,max,unidad,color){
     if(v===null)return "";
@@ -82,7 +85,7 @@
       try{
         if(!x)return html;
         const meta=Number(window.META_PRODUCCION_CUADRILLA)||130;
-        const cifras=[["Producción",num(x.produccion),meta,"pts"],["Efectividad",num(x.efectividad),100,"%"],["Recableado",num(x.recableado),100,"%"],["GAR/VTR",num(x.vtrgar),100,"%"],["SLA",num(x.slaAjustado??x.sla),100,"%"]];
+        const cifras=[["Producción",num(x.produccion),meta,"pts"],["Efectividad",pct(x.efectividad),100,"%"],["Recableado",pct(x.recableado),100,"%"],["GAR/VTR",pct(x.vtrgar),100,"%"],["SLA",num(x.slaAjustado??x.sla),100,"%"]];
         return html+panel("📊 Indicadores de cuadrilla · barras de referencia",cifras.map(([n,v,m,u])=>barra(n,v,m,u,"#60a5fa")).join(""));
       }catch(e){console.warn("V637 gráfico cuadrilla omitido",e);return html;}
     };
