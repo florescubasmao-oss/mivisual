@@ -45,3 +45,60 @@
   };
   window.MV637_DASHBOARD_VISUAL_OK=true;
 })();
+
+/* V637.2: resúmenes, ficha de cuadrilla y estados diarios: solo presentación. */
+(function(){
+  "use strict";
+  if(window.MV637_COMPLEMENTOS_OK)return;
+  function num(v){return v===null||v===undefined||v===""?null:(Number.isFinite(Number(v))?Number(v):null);}
+  function safe(v){return String(v??"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;").replace(/'/g,"&#39;");}
+  function barra(nombre,v,max,unidad,color){
+    if(v===null)return "";
+    const pct=Math.max(0,Math.min(100,max>0?v/max*100:0));
+    return '<div style="margin:9px 0"><div style="display:flex;justify-content:space-between;gap:12px;font-size:12px"><span>'+safe(nombre)+'</span><b>'+safe(v.toLocaleString("es-PE",{maximumFractionDigits:1}))+' '+safe(unidad)+'</b></div><div style="height:10px;background:#223b5c;border-radius:8px;overflow:hidden;margin-top:5px"><span style="display:block;height:100%;width:'+pct.toFixed(2)+'%;background:'+color+';border-radius:8px"></span></div></div>';
+  }
+  function panel(titulo,cuerpo){
+    return cuerpo?'<details class="mv637-vista" style="margin:12px 0;padding:14px;border-radius:16px;background:#102844;border:1px solid #315577;color:#fff"><summary style="font-weight:850;cursor:pointer">'+safe(titulo)+'</summary><div style="padding-top:9px">'+cuerpo+'</div></details>':"";
+  }
+  // Siempre se añade a la salida del generador original, sin interferir con los KPI existentes.
+  if(typeof window.mv4DashboardKpis==="function"){
+    const original=window.mv4DashboardKpis;
+    window.mv4DashboardKpis=function(lista){
+      const html=original.apply(this,arguments);
+      try{
+        if(!Array.isArray(lista)||!lista.length||typeof window.mv4Resumen!=="function")return html;
+        const r=window.mv4Resumen(lista),produccion=num(r.produccion),meta=num(r.metaProduccion);
+        const actual=produccion===null||meta===null?null:produccion;
+        const cuerpo=barra("Producción",actual,Math.max(1,meta||0),"pts","#3b82f6")+
+          barra("Meta mensual",meta,Math.max(1,meta||0),"pts","#22c55e");
+        return html+panel("📊 Avance de producción · gráfico complementario",cuerpo);
+      }catch(e){console.warn("V637 gráfico resumen omitido",e);return html;}
+    };
+  }
+  if(typeof window.mv198ResumenCuadrilla==="function"){
+    const original=window.mv198ResumenCuadrilla;
+    window.mv198ResumenCuadrilla=function(x){
+      const html=original.apply(this,arguments);
+      try{
+        if(!x)return html;
+        const meta=Number(window.META_PRODUCCION_CUADRILLA)||130;
+        const cifras=[["Producción",num(x.produccion),meta,"pts"],["Efectividad",num(x.efectividad),100,"%"],["Recableado",num(x.recableado),100,"%"],["GAR/VTR",num(x.vtrgar),100,"%"],["SLA",num(x.slaAjustado??x.sla),100,"%"]];
+        return html+panel("📊 Indicadores de cuadrilla · barras de referencia",cifras.map(([n,v,m,u])=>barra(n,v,m,u,"#60a5fa")).join(""));
+      }catch(e){console.warn("V637 gráfico cuadrilla omitido",e);return html;}
+    };
+  }
+  if(typeof window.mv282RenderResultado==="function"){
+    const original=window.mv282RenderResultado;
+    window.mv282RenderResultado=function(data){
+      const html=original.apply(this,arguments);
+      try{
+        if(!data?.resumen)return html;
+        const r=data.resumen,campos=[["Finalizadas",r.finalizadas,"#22c55e"],["Canceladas",r.canceladas,"#ef4444"],["Reprogramadas",r.reprogramadas,"#f59e0b"],["Regestiones",r.regestiones,"#60a5fa"],["Otros estados",r.otrosEstados,"#94a3b8"]];
+        const total=num(r.total)||0;
+        const cuerpo=campos.map(([n,v,c])=>barra(n,num(v),Math.max(1,total),"órdenes",c)).join("");
+        return panel("📊 Trabajos diarios · distribución por estado",cuerpo)+html;
+      }catch(e){console.warn("V637 gráfico diario omitido",e);return html;}
+    };
+  }
+  window.MV637_COMPLEMENTOS_OK=true;
+})();
