@@ -550,6 +550,8 @@ function aeFilas(lista,tipo){
 }
 /* V617: filtro local por sede, sin consultar nuevamente al servidor. */
 function aeSedeCuadrillaV618(x){
+ // V632: el backend resuelve la sede historica junto con la poblacion mensual.
+ if(String(window.aeDatosAnalisisActual?.versionPoblacionEconomica||"").startsWith("V632."))return String(x?.sede||"SIN SEDE").trim().toUpperCase();
  const nombre=String(x?.cuadrilla||"").toUpperCase().replace(/\s+/g," ").trim();
  if(nombre==="P22 VISUAL SGI CESAR AUGUSTO BERNAL ALCANTARA"||
     nombre==="P19 VISUAL SGI LUIS ENRIQUE ALBINES PINTADO")return "PIURA";
