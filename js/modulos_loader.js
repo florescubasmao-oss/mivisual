@@ -110,7 +110,7 @@
       entradas: ["mostrarEquiposAveriados"]
     },
     analisis: {
-      archivos: [`./js/analisis_economico.js?v=V620-CONTRASTE-20261015`],
+      archivos: [`./js/analisis_economico.js?v=V632-POBLACION-PERIODO-20261019`],
       entradas: ["mostrarAnalisisEconomico"]
     },
     checklist: {
