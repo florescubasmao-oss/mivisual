@@ -31,7 +31,7 @@ for(let i=1; i<filas.length; i++){
 
 const datos = filas[i].split(",");
 
-if(datos[2] && datos[2].trim() === cuadrilla.trim()){
+if(datos[2] && mvHomologarCuadrillaOctubre(datos[2], datos[3]) === mvHomologarCuadrillaOctubre(cuadrilla, datos[3])){
 
 let finalizadas = Number(datos[4]) || 0;
 let canceladas = Number(datos[5]) || 0;
@@ -151,7 +151,7 @@ for(let i=1; i<filas.length; i++){
 
 const datos = filas[i].split(",");
 
-if(datos[2] && datos[2].trim() === cuadrilla.trim()){
+if(datos[2] && mvHomologarCuadrillaOctubre(datos[2], datos[3]) === mvHomologarCuadrillaOctubre(cuadrilla, datos[3])){
 
 let fecha = datos[3];
 let losRojos = Number(datos[4]) || 0;
@@ -265,7 +265,7 @@ for(let i=1; i<filas.length; i++){
 
 const datos = filas[i].split(",");
 
-if(datos[2] && datos[2].trim() === cuadrilla.trim()){
+if(datos[2] && mvHomologarCuadrillaOctubre(datos[2], datos[3]) === mvHomologarCuadrillaOctubre(cuadrilla, datos[3])){
 
 let fecha = datos[3];
 let ordenes = Number(datos[4]) || 0;

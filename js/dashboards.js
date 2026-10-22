@@ -676,8 +676,9 @@ console.log(
 const hoja = d[1].replace("...", "").trim();
 
 const login = cuadrilla.trim();
-
-if(!login.startsWith(hoja)){
+const hojaHomologada = mvHomologarCuadrillaOctubre(hoja, d[2]);
+const loginHomologado = mvHomologarCuadrillaOctubre(login, d[2]);
+if(!(login.startsWith(hoja) || loginHomologado === hojaHomologada)){
     console.log("NO COINCIDE");
     continue;
 }
@@ -2083,7 +2084,7 @@ function mv4FilaRanking(datos){
     if(typeof filaRanking === "function") return filaRanking(datos);
     return {
         id: datos[0] || "",
-        cuadrilla: datos[1] || "",
+        cuadrilla: mvHomologarCuadrillaOctubre(datos[1] || "", datos[2] || ""),
         actualizacion: datos[2] || "",
         usuario: datos[3] || "",
         sede: mv4Norm(datos[4] || ""),

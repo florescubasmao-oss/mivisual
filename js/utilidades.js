@@ -360,3 +360,20 @@ async function mv336FetchTextoCache(url, ttlMs, forzar){
             : error;
     }
 }
+
+
+/* Homologación de identidades operativas SOLO para octubre de 2026.
+   No transforma periodos anteriores ni combina plataformas fuera de esta excepción. */
+function mvHomologarCuadrillaOctubre(nombre, periodo) {
+  const original = String(nombre || "").trim();
+  const fecha = String(periodo || "").trim().toUpperCase();
+  if (!(/(?:^|\W)2026-10(?:\W|$)|(?:^|\W)(?:\d{1,2}\/)?10\/2026(?:\W|$)|(?:^|\W)OCTUBRE\s+2026(?:\W|$)/.test(fecha))) return original;
+  const clave = original.toUpperCase().normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "").replace(/\s+/g, " ").trim();
+  const equivalencias = {
+    "P22 VISUAL SGI MARCELO JULIAN ARELLANO VALDIVIEZO": "P22 VISUAL SGI ERICK GARY SAMAME HEREDIA",
+    "P8 VISUAL SGA BRUNO ANGELO ATARAMA OROZCO": "P8 VISUAL SGA CARLOS EDUARDO COVEÑAS ASANZA",
+    "P11 VISUAL SGI ANDRYK JEFFRY CARDENAS AGUILAR": "P1 VISUAL SGA ANDRYK JEFFRY CARDENAS AGUILAR"
+  };
+  return equivalencias[clave] || original;
+}

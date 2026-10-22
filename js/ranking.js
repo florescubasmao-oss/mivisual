@@ -117,7 +117,7 @@ function colorSemaforoRanking(tipo, valor){
 function filaRanking(datos){
     return {
         id: datos[0] || "",
-        cuadrilla: normalizarCuadrillaRanking(datos[1] || ""),
+        cuadrilla: normalizarCuadrillaRanking(mvHomologarCuadrillaOctubre(datos[1] || "", datos[2] || "")),
         actualizacion: datos[2] || "",
         usuario: datos[3] || "",
         sede: normalizarTextoRanking(datos[4] || ""),
@@ -464,7 +464,8 @@ async function mostrarRanking(periodoSeleccionado){
         }
 
         if(perfil === "TECNICO"){
-            const item = lista.find(x => normalizarCuadrillaRanking(x.cuadrilla) === cuadrillaUsuario);
+            const cuadrillaUsuarioPeriodo = normalizarCuadrillaRanking(mvHomologarCuadrillaOctubre(cuadrillaUsuario, MV276_RANKING_PERIODO));
+            const item = lista.find(x => normalizarCuadrillaRanking(x.cuadrilla) === cuadrillaUsuarioPeriodo);
 
             if(!item){
                 mostrarPantalla(`<div style="padding:20px;"><h2>🏆 MI RANKING</h2>No se encontró ranking para tu cuadrilla.<br><br><button class="button_1" onclick="volverInicio()">⬅️ Volver al menú</button></div>`);
