@@ -8,12 +8,13 @@ function togglePasswordLogin(){
 
 async function login() {
 
-    const correo = document.getElementById("correo").value.trim();
+    const identificador = document.getElementById("correo").value.trim();
+    const identificadorNormalizado = identificador.toLowerCase();
     const clave = document.getElementById("clave").value.trim();
     const btn = document.getElementById("btnLogin");
     const msg = document.getElementById("loginMensaje");
 
-    if(!correo || !clave){
+    if(!identificador || !clave){
         if(msg){ msg.innerHTML = "⚠ Ingresa usuario y contraseña."; msg.style.color = "#dc2626"; }
         return;
     }
@@ -38,7 +39,12 @@ async function login() {
             const correoSheet = datos[1]?.replace(/"/g, "").trim();
             const claveSheet = datos[2]?.replace(/"/g, "").trim();
 
-            if (correo === correoSheet && clave === claveSheet) {
+            const usuarioSheet = datos[0]?.replace(/"/g, "").trim() || "";
+            // V641: acepta correo o código de usuario exacto, siempre con clave.
+            // Nunca trata un correo vacío como coincidencia.
+            const coincideIdentidad = (correoSheet && identificadorNormalizado === correoSheet.toLowerCase()) ||
+                (usuarioSheet && identificadorNormalizado === usuarioSheet.toLowerCase());
+            if (coincideIdentidad && clave === claveSheet) {
                 const usuario = datos[0]?.replace(/"/g, "").trim();
                 const cuadrilla = datos[3]?.replace(/"/g, "").trim();
                 const sede = datos[4]?.replace(/"/g, "").trim();
@@ -55,7 +61,7 @@ async function login() {
                 localStorage.setItem("perfil", perfil);
                 localStorage.setItem("nivel", nivel);
                 localStorage.setItem("estado", estado);
-                localStorage.setItem("correo", correo);
+                localStorage.setItem("correo", correoSheet || "");
                 localStorage.setItem("nombresApellidos", nombresApellidos);
 
                 document.getElementById("usuarioInfo").innerHTML = "";
