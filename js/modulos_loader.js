@@ -171,7 +171,7 @@
         `./js/base_operativa.js?v=V408-RESTAURA-V403`,
         `./js/base_operativa_lectura_v385.js?v=V408-RESTAURA-V403`,
         `./js/base_operativa_sync_v367.js?v=V408-RESTAURA-V403`,
-        `./js/parnet_diario_v611.js?v=V611-20261013`,
+        `./js/parnet_diario_v611.js?v=V642-PUBLICACION-LISTA-20261022`,
         `./js/admin_checklist.js?v=${VERSION}`
       ],
       entradas: ["mostrarAdministracion"]
