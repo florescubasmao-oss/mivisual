@@ -367,7 +367,7 @@ async function mv336FetchTextoCache(url, ttlMs, forzar){
 function mvHomologarCuadrillaOctubre(nombre, periodo) {
   const original = String(nombre || "").trim();
   const fecha = String(periodo || "").trim().toUpperCase();
-  if (!(/2026-10|10\/2026|OCTUBRE(?:\s+2026)?/.test(fecha))) return original;
+  if (!(/(?:^|\W)2026-10(?:\W|$)|(?:^|\W)(?:\d{1,2}\/)?10\/2026(?:\W|$)|(?:^|\W)OCTUBRE\s+2026(?:\W|$)/.test(fecha))) return original;
   const clave = original.toUpperCase().normalize("NFD")
     .replace(/[\u0300-\u036f]/g, "").replace(/\s+/g, " ").trim();
   const equivalencias = {
