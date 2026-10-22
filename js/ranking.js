@@ -433,7 +433,7 @@ function vistaTecnicoRanking(item){
 async function mostrarRanking(periodoSeleccionado){
 
     const perfil = normalizarTextoRanking(localStorage.getItem("perfil"));
-    const cuadrillaUsuario = normalizarCuadrillaRanking(mvHomologarCuadrillaOctubre(localStorage.getItem("cuadrilla"), periodoSeleccionado || "2026-10"));
+    const cuadrillaUsuario = normalizarCuadrillaRanking(localStorage.getItem("cuadrilla"));
     const sedeUsuario = normalizarTextoRanking(localStorage.getItem("sede"));
 
     const url = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRpVkCmSvopgPByWsEX6nkuAT6mf3yD2_Cywpl9pFSZEqYpxmprDePPeV0KNgT14YpEP6gkVlvOAtZy/pub?gid=1269910675&single=true&output=csv";
@@ -464,7 +464,8 @@ async function mostrarRanking(periodoSeleccionado){
         }
 
         if(perfil === "TECNICO"){
-            const item = lista.find(x => normalizarCuadrillaRanking(x.cuadrilla) === cuadrillaUsuario);
+            const cuadrillaUsuarioPeriodo = normalizarCuadrillaRanking(mvHomologarCuadrillaOctubre(cuadrillaUsuario, MV276_RANKING_PERIODO));
+            const item = lista.find(x => normalizarCuadrillaRanking(x.cuadrilla) === cuadrillaUsuarioPeriodo);
 
             if(!item){
                 mostrarPantalla(`<div style="padding:20px;"><h2>🏆 MI RANKING</h2>No se encontró ranking para tu cuadrilla.<br><br><button class="button_1" onclick="volverInicio()">⬅️ Volver al menú</button></div>`);
