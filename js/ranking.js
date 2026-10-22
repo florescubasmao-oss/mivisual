@@ -117,7 +117,7 @@ function colorSemaforoRanking(tipo, valor){
 function filaRanking(datos){
     return {
         id: datos[0] || "",
-        cuadrilla: normalizarCuadrillaRanking(datos[1] || ""),
+        cuadrilla: normalizarCuadrillaRanking(mvHomologarCuadrillaOctubre(datos[1] || "", datos[2] || "")),
         actualizacion: datos[2] || "",
         usuario: datos[3] || "",
         sede: normalizarTextoRanking(datos[4] || ""),
@@ -433,7 +433,7 @@ function vistaTecnicoRanking(item){
 async function mostrarRanking(periodoSeleccionado){
 
     const perfil = normalizarTextoRanking(localStorage.getItem("perfil"));
-    const cuadrillaUsuario = normalizarCuadrillaRanking(localStorage.getItem("cuadrilla"));
+    const cuadrillaUsuario = normalizarCuadrillaRanking(mvHomologarCuadrillaOctubre(localStorage.getItem("cuadrilla"), periodoSeleccionado || "2026-10"));
     const sedeUsuario = normalizarTextoRanking(localStorage.getItem("sede"));
 
     const url = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRpVkCmSvopgPByWsEX6nkuAT6mf3yD2_Cywpl9pFSZEqYpxmprDePPeV0KNgT14YpEP6gkVlvOAtZy/pub?gid=1269910675&single=true&output=csv";
