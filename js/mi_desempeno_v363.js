@@ -101,10 +101,11 @@
 
   function seleccionarTecnico(data){
     const lista = Array.isArray(data?.lista) ? data.lista : [];
-    const cuadrilla = normalizarCuadrilla(localStorage.getItem("cuadrilla"));
+    const periodo = data?.periodo || periodoActualLima();
+    const cuadrilla = normalizarCuadrilla(mvHomologarCuadrillaOctubre(localStorage.getItem("cuadrilla"), periodo));
 
     return lista.find(item=>
-      normalizarCuadrilla(item?.cuadrilla) === cuadrilla
+      normalizarCuadrilla(mvHomologarCuadrillaOctubre(item?.cuadrilla, periodo)) === cuadrilla
     ) || lista[0] || {};
   }
 
