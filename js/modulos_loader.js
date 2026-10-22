@@ -42,13 +42,13 @@
       entradas: ["mostrarBonosSupervisores"]
     },
     indicadores: {
-      archivos: [`./js/indicadores.js?v=${VERSION}`],
+      archivos: [`./js/indicadores.js?v=V640-HOMOLOGACION-OCTUBRE-20261022`],
       entradas: ["mostrarEfectividad", "mostrarRecableado", "mostrarVTRGAR"]
     },
     ranking: {
       depende: ["dashboards_core"],
       archivos: [
-        `./js/ranking.js?v=V408-RANKING-CORRECTO`,
+        `./js/ranking.js?v=V640-HOMOLOGACION-OCTUBRE-20261022`,
         `./js/ranking_informe_v358.js?v=V415-RANKING-SLA-PRIMERA-CARGA`
       ],
       entradas: ["mostrarRanking"]
