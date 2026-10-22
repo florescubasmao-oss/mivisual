@@ -11,7 +11,7 @@
   const MODULOS = {
     dashboards_core: {
       archivos: [
-        `./js/dashboards.js?v=V564-TRABAJOS-DIARIOS-GET`,
+        `./js/dashboards.js?v=V640-CUADRILLAS-OCTUBRE`,
         `./js/resumen_dashboard_v361.js?v=V520H-DASHBOARD-SINCRONIZADO-20260902-3`,
         `./js/sla_gestion_v363.js?v=V408-RESTAURA-V403`,
         `./js/sla_excepciones_v411.js?v=V411-SLA-EXCEPCIONES`,
@@ -29,7 +29,7 @@
     },
     mi_desempeno: {
       depende: ["dashboards_core", "indicadores", "ranking"],
-      archivos: [`./js/mi_desempeno_v363.js?v=V634-P7-BONOS-MI-DESEMPENO`],
+      archivos: [`./js/mi_desempeno_v363.js?v=V640-CUADRILLAS-OCTUBRE`],
       entradas: ["mostrarMiDesempeno"]
     },
     dashboard: {
