@@ -110,7 +110,7 @@
       entradas: ["mostrarEquiposAveriados"]
     },
     analisis: {
-      archivos: [`./js/analisis_economico.js?v=V632-POBLACION-PERIODO-20261019`],
+      archivos: [`./js/analisis_economico.js?v=V643-CONCILIACION-20261023`],
       entradas: ["mostrarAnalisisEconomico"]
     },
     checklist: {

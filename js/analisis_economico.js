@@ -749,6 +749,24 @@ function aeToggleAlerta(btn){
   const abierto=detalle.classList.toggle("visible");
   btn.classList.toggle("abierta",abierto);
 }
+function aeConciliacionV643(data){
+  const c=data.conciliacionOrdenes;
+  if(!c)return "";
+  const hasMapa=Number.isFinite(Number(c.finalizadasMapa))&&c.finalizadasMapa!==null;
+  const n=x=>aeNumero(Number(x)||0);
+  const campos=[
+    ["Finalizadas Mapa Operativo",hasMapa?n(c.finalizadasMapa):"No disponible"],
+    ["Registradas en Producción (cantidad)",n(c.produccionApp)],
+    ["Consideradas en Análisis Económico",n(c.consideradasAnalisis)],
+    ["Valorizadas con tarifa activa",n(c.valorizadas)],
+    ["Sin tarifa activa",n(c.sinTarifa)],
+    ["Exclusiones GAR/VTR",c.excluidasVtrGar==null?"No disponible":n(c.excluidasVtrGar)],
+    ["Sin partida segura",n(c.sinPartidaSegura)]
+  ];
+  const filas=campos.map(([k,v])=>'<tr><th scope="row">'+k+'</th><td>'+v+'</td></tr>').join("");
+  const nota='Los conteos corresponden a fuentes y reglas distintas; no deben sumarse ni interpretarse automáticamente como órdenes faltantes. Las exclusiones GAR/VTR y las órdenes sin partida son categorías de control. El monto generado conserva las tarifas vigentes.';
+  return aeSeccion("🔎 Conciliación de órdenes · fuentes y exclusiones",'<div class="ae-conciliacion-v643"><p>'+nota+'</p><table><tbody>'+filas+'</tbody></table></div>',false);
+}
 function renderAnalisisEconomico(data){
   const r=data.resumen||{},pm=data.parametrosMeta||{},rp=data.resumenProgramacion||{};
   const faltante=Math.max(0,(Number(r.metaTotal)||0)-(Number(r.montoTotal)||0));
@@ -761,7 +779,7 @@ function renderAnalisisEconomico(data){
   const estimadoPendiente=Number(rp.produccionEstimadaPendiente)||0;
   const textoProyeccion=rp.periodoCerrado?"Periodo cerrado · monto real final":`${aeMoneda(estimadoPendiente)} estimados en ${aeNumero(diasPendientes)} días y ${aeNumero(jornadasPendientes)} jornadas pendientes`;
   window.aeDatosAnalisisActual=data;
-  document.getElementById("aeResultado").innerHTML=`<div class="ae-periodo"><b>${data.periodo}</b><span>Actualizado: ${data.fechaActualizacion}</span></div><div class="ae-kpis">${aeTarjeta("Monto generado",aeMoneda(r.montoTotal),`Meta programada ${aeMoneda(r.metaTotal)}`,aeClaseCumplimiento(r.cumplimiento))}${aeTarjeta("Cumplimiento mensual",aePorcentaje(r.cumplimiento),faltante>0?`Faltan ${aeMoneda(faltante)}`:"Meta programada alcanzada",aeClaseCumplimiento(r.cumplimiento))}${aeTarjeta("Meta acumulada al corte",aeMoneda(metaCorte),`${aeNumero(rp.jornadasProgramadasAlCorte||0)} jornadas programadas${textoCorte}`)}${aeTarjeta("Cumplimiento al corte",aePorcentaje(cumplimientoCorte),faltanteCorte>0?`Faltan ${aeMoneda(faltanteCorte)} frente a la programación`:"Meta acumulada alcanzada",aeClaseCumplimiento(cumplimientoCorte))}${aeTarjeta("Proyección de cierre",aeMoneda(r.proyeccionCierre),textoProyeccion,aeClaseCumplimiento((r.proyeccionCierre||0)/(r.metaTotal||1)))}${aeTarjeta("Órdenes ejecutadas",aeNumero(r.ordenesEjecutadas),"Finalizadas registradas en Producción")}${aeTarjeta("Ticket promedio",aeMoneda(r.ticketPromedio),"Monto promedio por orden")}${aeTarjeta("Cuadrillas activas",aeNumero(pm.cuadrillasActivas),`${aeMoneda(pm.metaDiariaCuadrilla||500)} solo por jornada EN CAMPO`)}</div>${aeSeccion("📈 Lectura al corte",aeLecturaAlCorte(data),false)}${aeSeccion("📆 Proyección diaria hasta el cierre",aeTablaProyeccionDiaria(data),false)}${aeSeccion("🏢 Monto generado por sede",aeFilas((data.porSede||[]).filter(x=>String(x.sede||"").toUpperCase()!=="TODAS"),"sede"),false)}${aeSeccion("👷 Monto generado por cuadrilla · filtro por sede",aeCuadrillasPorSedeV617(data),false)}${aeSeccion("🧭 Monto generado por plataforma",aeFilas(data.porPlataforma,"plataforma"),false)}${aeSeccion("📦 Monto generado por tipo de partida",aeFilas(data.porTipoPartida,"tipo"),false)}${aeSeccion("📅 Monto diario por sede y promedio",aeModuloMontoDiarioSede(data),false)}${aeAlertaSinTarifa(data)}`;
+  document.getElementById("aeResultado").innerHTML=`<div class="ae-periodo"><b>${data.periodo}</b><span>Actualizado: ${data.fechaActualizacion}</span></div><div class="ae-kpis">${aeTarjeta("Monto generado",aeMoneda(r.montoTotal),`Meta programada ${aeMoneda(r.metaTotal)}`,aeClaseCumplimiento(r.cumplimiento))}${aeTarjeta("Cumplimiento mensual",aePorcentaje(r.cumplimiento),faltante>0?`Faltan ${aeMoneda(faltante)}`:"Meta programada alcanzada",aeClaseCumplimiento(r.cumplimiento))}${aeTarjeta("Meta acumulada al corte",aeMoneda(metaCorte),`${aeNumero(rp.jornadasProgramadasAlCorte||0)} jornadas programadas${textoCorte}`)}${aeTarjeta("Cumplimiento al corte",aePorcentaje(cumplimientoCorte),faltanteCorte>0?`Faltan ${aeMoneda(faltanteCorte)} frente a la programación`:"Meta acumulada alcanzada",aeClaseCumplimiento(cumplimientoCorte))}${aeTarjeta("Proyección de cierre",aeMoneda(r.proyeccionCierre),textoProyeccion,aeClaseCumplimiento((r.proyeccionCierre||0)/(r.metaTotal||1)))}${aeTarjeta("Órdenes consideradas",aeNumero(r.ordenesEjecutadas),data.fuenteProduccion==="MAPA_ORDENES_V560"?"Finalizadas clasificadas desde Mapa Operativo":"Cantidad registrada en Producción")}${aeTarjeta("Ticket promedio",aeMoneda(r.ticketPromedio),"Monto promedio por orden")}${aeTarjeta("Cuadrillas activas",aeNumero(pm.cuadrillasActivas),`${aeMoneda(pm.metaDiariaCuadrilla||500)} solo por jornada EN CAMPO`)}</div>${aeConciliacionV643(data)}${aeSeccion("📈 Lectura al corte",aeLecturaAlCorte(data),false)}${aeSeccion("📆 Proyección diaria hasta el cierre",aeTablaProyeccionDiaria(data),false)}${aeSeccion("🏢 Monto generado por sede",aeFilas((data.porSede||[]).filter(x=>String(x.sede||"").toUpperCase()!=="TODAS"),"sede"),false)}${aeSeccion("👷 Monto generado por cuadrilla · filtro por sede",aeCuadrillasPorSedeV617(data),false)}${aeSeccion("🧭 Monto generado por plataforma",aeFilas(data.porPlataforma,"plataforma"),false)}${aeSeccion("📦 Monto generado por tipo de partida",aeFilas(data.porTipoPartida,"tipo"),false)}${aeSeccion("📅 Monto diario por sede y promedio",aeModuloMontoDiarioSede(data),false)}${aeAlertaSinTarifa(data)}`;
 }
 
 /* =====================================================
