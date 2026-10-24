@@ -54,7 +54,7 @@
       entradas: ["mostrarRanking"]
     },
     bonos: {
-      archivos: [`./js/bonos_v633.js?v=V636-P7-BONOS-20261016`],
+      archivos: [`./js/bonos_v633.js?v=V645-P7-NORMAL-20261024`],
       entradas: ["mostrarBonos"]
     },
     observaciones: {
