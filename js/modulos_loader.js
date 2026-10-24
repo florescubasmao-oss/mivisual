@@ -94,7 +94,7 @@
     actas: {
       archivos: [
         `./js/actas.js?v=V614-VALIDACION-LOTE40-20261015`,
-        `./js/actas_lote5_v613.js?v=V613-1-CONTRASTE-20261015`,
+        `./js/actas_lote5_v613.js?v=V644-PDF-MOVIL-FIRMA-20261024`,
         `./js/actas_pdf_movil_v373.js?v=V408-RESTAURA-V403`,
         `./js/actas_correccion_v387.js?v=V408-RESTAURA-V403`,
         `./js/actas_api_resiliente_v392.js?v=V621-CONFIRMACION-SUBIDA-20261015`,
