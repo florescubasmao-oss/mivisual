@@ -188,6 +188,8 @@ function mb242ValorPuntoCuadrilla(cuadrilla){
 function mv633EsEspecialVigente_(cuadrilla,fecha){
   const nombre=mb242Cuadrilla(cuadrilla);
   const fechaClave=fecha instanceof Date?mb242ClaveFecha(fecha):String(fecha||"").slice(0,10);
+  // V645: P7 Pacherres mantiene historial anterior; desde octubre tarifa normal S/30.
+  if(/^P7\b/.test(nombre)&&nombre.includes("SGI")&&nombre.includes("PACHERRES")&&fechaClave>="2026-10-01")return false;
   if(/^P7\b/.test(nombre)&&nombre.includes("SGI")&&nombre.includes("PACHERRES")&&fechaClave>="2026-08-01")return true;
   const modalidad=mv633ModalidadCuadrilla_(cuadrilla,fecha);
   if(modalidad==="ESPECIAL")return true;
@@ -205,6 +207,7 @@ function mv633ModalidadCuadrilla_(cuadrilla,fecha){
   if(!/^\d{4}-\d{2}-\d{2}$/.test(clave)||clave<"2026-10-01")return "";
   const n=mb242Cuadrilla(cuadrilla);
   const reglas=[
+    ["P7","SGI","PACHERRES","REGULAR"],
     ["P2","SGI","WILMER ANTONIO RACCHUMI","ESPECIAL"],
     ["P9","SGI","ANTHONY JUNIOR CHAMBA","ESPECIAL"],
     ["P9","SGA","RONAL ENRIQUE TESEN","ESPECIAL"],
