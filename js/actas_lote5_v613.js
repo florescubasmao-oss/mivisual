@@ -63,14 +63,48 @@ function pintar(){
  const pick=document.getElementById("actasLoteArchivos");if(pick)pick.disabled=ocupado;
  const back=document.getElementById("actasLoteVolver");if(back)back.disabled=ocupado;
 }
-function seleccionar(e){
+// V644: el selector de Android/iOS puede omitir el MIME o entregar un nombre
+// genérico aun cuando el archivo contiene un PDF válido. Validar contenido.
+async function mv644EsPdfReal_(archivo){
+ if(!archivo||typeof archivo.slice!=="function")return false;
+ try{
+  const bloque=archivo.slice(0,1024);
+  const buffer=typeof bloque.arrayBuffer==="function"
+   ? await bloque.arrayBuffer()
+   : await new Promise((resolve,reject)=>{
+       const lector=new FileReader();
+       lector.onload=()=>resolve(lector.result);
+       lector.onerror=()=>reject(lector.error||new Error("No se pudo leer el archivo"));
+       lector.readAsArrayBuffer(bloque);
+     });
+  const bytes=new Uint8Array(buffer);
+  for(let i=0;i<Math.min(bytes.length-4,1024);i++){
+   if(bytes[i]===37&&bytes[i+1]===80&&bytes[i+2]===68&&bytes[i+3]===70&&bytes[i+4]===45)return true;
+  }
+ }catch(error){console.warn("V644: no se pudo validar la firma PDF",error);}
+ return false;
+}
+async function seleccionar(e){
  if(ocupado)return;
- const selected=Array.from(e.target.files||[]);
+ const campo=e.target;
+ const selected=Array.from(campo.files||[]);
  if(!selected.length)return;
- if(selected.length>5){alert("Solo se permiten hasta 5 PDF por lote.");e.target.value="";return;}
- if(selected.some(f=>!f.name.toLowerCase().endsWith(".pdf")&&f.type!=="application/pdf")){alert("Selecciona solo archivos PDF.");e.target.value="";return;}
- filas=selected.map(archivo=>({archivo,identificador:"",opciones:[],seleccion:"",orden:"",pedido:"",numero:"",estado:"espera",mensaje:""}));
- pintar();
+ if(selected.length>5){alert("Solo se permiten hasta 5 PDF por lote.");campo.value="";return;}
+ campo.disabled=true;
+ try{
+  const resultado=await Promise.all(selected.map(mv644EsPdfReal_));
+  const incorrectos=selected.filter((_,i)=>!resultado[i]);
+  if(incorrectos.length){
+   alert("Selecciona únicamente documentos PDF válidos. No se aceptan imágenes ni otros formatos. Archivo no válido: "+String(incorrectos[0].name||"sin nombre"));
+   campo.value="";
+   return;
+  }
+  filas=selected.map(archivo=>({archivo,identificador:"",opciones:[],seleccion:"",orden:"",pedido:"",numero:"",estado:"espera",mensaje:""}));
+  pintar();
+ }catch(error){
+  alert("No se pudo verificar el PDF seleccionado. Vuelve a elegirlo desde Archivos o Descargas.");
+  campo.value="";
+ }finally{campo.disabled=ocupado;}
 }
 function validar(){
  const datos=[],vistos=new Set();
