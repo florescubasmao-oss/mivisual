@@ -24,6 +24,15 @@
     const titulo = pantalla.querySelector("h2");
     if(!titulo || !/MI\s+DESEMPEÑO/i.test((titulo.textContent || "").trim())) return;
 
+    // Oculta también el bloque "Mi posición en el ranking" (región/sede/plataforma).
+    // No altera las métricas ni la vista de otros perfiles.
+    Array.from(pantalla.querySelectorAll("div")).forEach(el => {
+      const text = (el.textContent || "").replace(/\\s+/g," ").trim().toUpperCase();
+      if(/^🏆?\\s*MI POSICI[ÓO]N EN EL RANKING$/.test(text)){
+        const card = el.parentElement;
+        if(card && card.style.display !== "none") card.style.display = "none";
+      }
+    });
     Array.from(pantalla.querySelectorAll("button")).forEach(btn => {
       const texto = (btn.textContent || "").replace(/\s+/g," ").trim().toUpperCase();
       if(texto === "VER RANKING COMPLETO") btn.style.display = "none";
