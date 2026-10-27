@@ -358,7 +358,7 @@ function aplicarPermisosMenuActualizados(){
     // cálculos, los registros o los permisos de Supervisor/Jefatura/Almacén.
     // Bonos sigue disponible únicamente desde Producción para el técnico.
     if (perfilActual === "TECNICO") {
-        ["cardBonos", "cardRanking", "cardChecklistAlmacen"].forEach(id => {
+        ["cardBonos", "cardRanking"].forEach(id => {
             const indice = opciones.indexOf(id);
             if (indice >= 0) opciones.splice(indice, 1);
         });
@@ -461,6 +461,7 @@ async function configurarMenu(){
             "cardValidacionTecnica",
             "cardActas",
             "cardEquiposAveriados",
+            "cardChecklistAlmacen",
             "cardTrabajosConjunta",
             "cardAccesos",
             "cardBiblioteca",
