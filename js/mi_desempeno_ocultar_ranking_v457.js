@@ -27,8 +27,8 @@
     // Oculta también el bloque "Mi posición en el ranking" (región/sede/plataforma).
     // No altera las métricas ni la vista de otros perfiles.
     Array.from(pantalla.querySelectorAll("div")).forEach(el => {
-      const text = (el.textContent || "").replace(/\\s+/g," ").trim().toUpperCase();
-      if(/^🏆?\\s*MI POSICI[ÓO]N EN EL RANKING$/.test(text)){
+      const text = (el.textContent || "").replace(/\s+/g," ").trim().toUpperCase();
+      if(/^🏆?\s*MI POSICI[ÓO]N EN EL RANKING$/.test(text)){
         const card = el.parentElement;
         if(card && card.style.display !== "none") card.style.display = "none";
       }
