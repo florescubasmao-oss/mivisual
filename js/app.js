@@ -353,10 +353,15 @@ function aplicarPermisosMenuActualizados(){
         && !opciones.includes("cardBonos")) {
         opciones.push("cardBonos");
     }
-    // El Técnico accede a Bonos únicamente desde el botón ubicado dentro de Producción.
+    // V642: vista Tecnico sin Ranking ni Checklist de Materiales.
+    // Se filtra también el menú dinámico de PERMISOS_MODULOS, sin alterar los
+    // cálculos, los registros o los permisos de Supervisor/Jefatura/Almacén.
+    // Bonos sigue disponible únicamente desde Producción para el técnico.
     if (perfilActual === "TECNICO") {
-        const indiceBonos = opciones.indexOf("cardBonos");
-        if (indiceBonos >= 0) opciones.splice(indiceBonos, 1);
+        ["cardBonos", "cardRanking", "cardChecklistAlmacen"].forEach(id => {
+            const indice = opciones.indexOf(id);
+            if (indice >= 0) opciones.splice(indice, 1);
+        });
     }
     opciones.forEach(id => mostrarCardSeguro(id, true));
     const recursosIds = ['cardAccesos','cardBiblioteca','cardCapacitacion','cardConsultasReclamos'];
@@ -452,12 +457,10 @@ async function configurarMenu(){
             "cardEfectividad",
             "cardRecableado",
             "cardVTRGAR",
-            "cardRanking",
             "cardObservaciones",
             "cardValidacionTecnica",
             "cardActas",
             "cardEquiposAveriados",
-            "cardChecklistAlmacen",
             "cardTrabajosConjunta",
             "cardAccesos",
             "cardBiblioteca",
