@@ -7,7 +7,7 @@
   const estados={BASE_V610_7:'Fuente inicial vigente',PENDIENTE_PUBLICACION:'Guardada, pendiente de publicar',PUBLICANDO:'Publicación iniciada; consulte el estado',PUBLICADO:'Publicada',PUBLICACION_INCOMPLETA:'Publicación incompleta',ERROR_PUBLICACION:'Error de publicación'};
   const api=(accion,extra={})=>boApi(Object.assign({accion,usuario:boUsuario(),periodo:'2026-10'},extra));
   function message(t,error=false){const e=$('pnMensaje');if(e){e.className='bo-msg '+(error?'bo-error':'');e.textContent=t;}}
-  function disable(v){busy=v;['pnArchivo','pnRevisar','pnVolver','pnPublicar'].forEach(id=>{if($(id))$(id).disabled=v;});if($('pnAplicar'))$('pnAplicar').disabled=v||!preview;}
+  function disable(v){busy=v;['pnArchivo','pnRevisar','pnVolver','pnPublicar','pnDiagnostico','pnConsultar'].forEach(id=>{if($(id))$(id).disabled=v;});if($('pnAplicar'))$('pnAplicar').disabled=v||!preview;}
   function invalidate(){generation++;records=[];preview=null;if($('pnResultado'))$('pnResultado').replaceChildren();if($('pnAplicar'))$('pnAplicar').disabled=true;}
   function selectedFile(){newUpload=true;statusRequest++;invalidate();if(lastStatus)renderStatus(lastStatus);message('Archivo seleccionado. Revise las diferencias antes de aplicar.');}
   function renderStatus(r){
@@ -36,10 +36,44 @@
     const t=p.totales,d=p.diagnostico||{},pending=d.pendientes||[];
     $('pnResultado').innerHTML='<h3>Revisión de octubre 2026</h3><p>Resultado propuesto: <b>'+esc(t.ordenes)+' órdenes · '+esc(t.puntos)+' puntos</b>. Finalizadas: '+esc(t.finalizadas)+' / '+esc(t.total)+'. Recableados: '+esc(t.recableados)+' / '+esc(t.losRojo)+'.</p><p>'+esc(p.cambios.length)+' cambios en PARNET; '+esc(p.duplicadosOmitidos)+' copias idénticas omitidas. Las órdenes de WIN ausentes del archivo se conservan.</p><div class="bo-table-wrap"><table class="bo-table"><thead><tr><th>Orden</th><th>PARNET anterior</th><th>Archivo nuevo</th></tr></thead><tbody>'+p.cambios.map(x=>'<tr><td>'+esc(x.id)+'</td><td>'+esc(x.anterior?x.anterior.cuadrilla+' · '+x.anterior.tipoPartida:'Nueva en PARNET guardado')+'</td><td>'+esc(x.nuevo.cuadrilla+' · '+x.nuevo.tipoPartida)+'</td></tr>').join('')+'</tbody></table></div><p>Altas respecto a WIN: '+esc((d.altas||[]).length)+' · Partidas/puntos distintos de WIN: '+esc((d.cambiosPartida||[]).length)+'.</p><details><summary>Diferencias por orden respecto a WIN</summary><pre style="white-space:pre-wrap">'+esc((d.altas||[]).map(x=>'Orden '+x.id+': finalizada según PARNET.').concat((d.cambiosPartida||[]).map(x=>'Orden '+x.id+': partida '+(x.codigoAnterior||'sin clasificar')+' → '+x.codigoParnet+'; puntos '+x.puntosAnteriores+' → '+x.puntosParnet)).join('\n')||'Sin diferencias de partidas ni nuevas finalizadas.')+'</pre></details>'+(pending.length?'<h4>Pendientes: conservan WIN</h4><ul>'+pending.map(x=>'<li>'+esc(x.id)+' · '+esc(({PARTIDA_NO_CATALOGADA_CONSERVAR_WIN:'Partida pendiente de catálogo; conserva WIN',FECHA_DISTINTA_SE_CONSERVA_WIN:'Fecha diferente; conserva la fecha WIN'})[x.motivo]||x.motivo)+' · '+esc(x.partida||'')+'</li>').join('')+'</ul>':'')+'<p>SGI, SGA y TRASLADO se revisan por separado, junto con sede y número de cuadrilla.</p>';
   }
+
+  // Diagnostico de solo lectura; nunca reenvia una carga ni una publicacion.
+  let lastReviewDiagnostic='';
+  async function connectionProbe(method){
+    const base=window.MI_VISUAL_API_URL || (typeof API_BASE_OPERATIVA!=='undefined'?API_BASE_OPERATIVA:'');
+    if(!base)throw new Error('No se encontro la direccion del servidor.');
+    const url=new URL(base),controller=new AbortController();
+    const started=Date.now(),timer=setTimeout(()=>controller.abort(),25000);
+    const options={method,cache:'no-store',redirect:'follow',signal:controller.signal};
+    if(method==='GET'){url.searchParams.set('accion','versionMiVisual');url.searchParams.set('_pn',String(started));}
+    else{options.headers={'Content-Type':'text/plain;charset=utf-8'};options.body=JSON.stringify({accion:'estadoParnetV611',usuario:boUsuario(),periodo:'2026-10'});}
+    try{
+      const res=await fetch(url.toString(),options),raw=await res.text();
+      if(!res.ok)throw new Error('HTTP '+res.status);
+      let data;try{data=JSON.parse(raw);}catch(_){throw new Error('El servidor no devolvio JSON (posible pagina de acceso o error).');}
+      if(!data||data.ok!==true)throw new Error(data&&data.error||'Respuesta sin confirmacion.');
+      if(method==='POST'&&!data.fuente)throw new Error('La respuesta no contiene el estado PARNET.');
+      return method+': OK · '+Math.round((Date.now()-started)/1000)+' s'+(method==='GET'&&data.version?' · '+String(data.version):'');
+    }catch(e){return method+': ERROR · '+Math.round((Date.now()-started)/1000)+' s · '+(e.name==='AbortError'?'Sin respuesta en 25 segundos':e.message);}
+    finally{clearTimeout(timer);}
+  }
+  async function diagnose(){
+    if(busy)return;
+    disable(true);message('Comprobando conexion. Esta prueba no aplica ni publica datos.');
+    try{
+      const lines=[];
+      for(const method of ['GET','POST'])lines.push(await connectionProbe(method));
+      message('COMPROBACION PARNET V611-DIAG-20261027\n'+lines.join('\n')+
+        (lastReviewDiagnostic?'\nUltima revision: '+lastReviewDiagnostic:'')+
+        '\nEsta prueba no confirma la publicacion del archivo seleccionado.',lines.some(x=>x.includes(': ERROR')));
+    }catch(e){message('No se completo la comprobacion: '+e.message,true);}
+    finally{disable(false);}
+  }
+
   async function review(){
-    if(busy)return;selectedFile();const gen=generation;disable(true);message('Leyendo y comparando con WIN. Puede tardar unos minutos.');
-    try{const f=$('pnArchivo').files[0],r=await parseFile(f),p=await api('previsualizarParnetV611',{archivo:f.name,registros:r});if(gen!==generation||!$('pnResultado'))return;records=r;preview=p;renderPreview(p);message('Revisión lista. Compruebe las diferencias y pulse Aplicar correcciones.');}
-    catch(e){preview=null;message('No se guardó esta carga. '+e.message,true);}finally{disable(false);}
+    if(busy)return;selectedFile();const gen=generation,started=Date.now();let stage='Lectura del Excel',count=0;lastReviewDiagnostic='';disable(true);message('Leyendo y comparando con WIN. Puede tardar unos minutos.');
+    try{const f=$('pnArchivo').files[0],r=await parseFile(f);count=r.length;stage='Respuesta de revision del servidor';const p=await api('previsualizarParnetV611',{archivo:f.name,registros:r});if(gen!==generation||!$('pnResultado'))return;records=r;preview=p;renderPreview(p);message('Revisión lista. Compruebe las diferencias y pulse Aplicar correcciones.');}
+    catch(e){preview=null;lastReviewDiagnostic=stage+' · '+count+' registros · '+Math.round((Date.now()-started)/1000)+' s · '+e.message;message('Revision sin completar. '+lastReviewDiagnostic+'\nPulse Comprobar conexion para obtener el diagnostico aqui mismo.',true);}finally{disable(false);}
   }
   async function publish(){
     if(busy)return;statusRequest++;disable(true);message('Publicando las correcciones guardadas. Puede tardar varios minutos.');
@@ -52,8 +86,8 @@
     catch(e){message('No se confirmó el guardado. Consulte el estado antes de repetir la carga. '+e.message,true);}finally{disable(false);}
   }
   window.mostrarParnetDiarioV611=function(){
-    invalidate();lastStatus=null;newUpload=false;statusRequest++;mostrarPantalla(boCss()+'<div class="pn-wrap" style="max-width:1100px;margin:auto;padding:18px;color:#f8fafc"><h2>Actualizar PARNET · octubre 2026</h2><div class="bo-card"><p>Suba el corte actualizado del mes. Revise las diferencias y aplique las correcciones. WIN seguirá recibiendo la operación diaria.</p><input id="pnArchivo" class="bo-file" type="file" accept=".xlsx,.xls,.csv,.htm,.html"><div class="bo-actions"><button id="pnRevisar" class="bo-btn">Revisar diferencias</button><button id="pnAplicar" class="bo-btn" disabled>Aplicar correcciones</button></div><div id="pnMensaje" class="bo-msg">Seleccione el archivo PARNET.</div></div><div class="bo-card"><div id="pnEstado">Consultando última carga...</div><button id="pnConsultar" class="bo-btn alt">Consultar estado</button></div><div id="pnResultado" class="bo-card"></div><button id="pnVolver" class="bo-btn alt">Volver a Administración</button></div>');
-    $('pnArchivo').onchange=selectedFile;$('pnRevisar').onclick=review;$('pnAplicar').onclick=apply;$('pnConsultar').onclick=status;$('pnVolver').onclick=()=>mostrarAdministracion();disable(false);status();
+    invalidate();lastStatus=null;newUpload=false;statusRequest++;mostrarPantalla(boCss()+'<div class="pn-wrap" style="max-width:1100px;margin:auto;padding:18px;color:#f8fafc"><h2>Actualizar PARNET · octubre 2026</h2><div class="bo-card"><p>Suba el corte actualizado del mes. Revise las diferencias y aplique las correcciones. WIN seguirá recibiendo la operación diaria.</p><input id="pnArchivo" class="bo-file" type="file" accept=".xlsx,.xls,.csv,.htm,.html"><div class="bo-actions"><button id="pnRevisar" class="bo-btn">Revisar diferencias</button><button id="pnAplicar" class="bo-btn" disabled>Aplicar correcciones</button><button id="pnDiagnostico" class="bo-btn alt">Comprobar conexion</button></div><div id="pnMensaje" class="bo-msg">Seleccione el archivo PARNET.</div></div><div class="bo-card"><div id="pnEstado">Consultando última carga...</div><button id="pnConsultar" class="bo-btn alt">Consultar estado</button></div><div id="pnResultado" class="bo-card"></div><button id="pnVolver" class="bo-btn alt">Volver a Administración</button></div>');
+    $('pnArchivo').onchange=selectedFile;$('pnRevisar').onclick=review;$('pnDiagnostico').onclick=diagnose;$('pnAplicar').onclick=apply;$('pnConsultar').onclick=status;$('pnVolver').onclick=()=>mostrarAdministracion();disable(false);status();
   };
   const original=window.mostrarActualizarBaseOperativa;
   if(typeof original==='function')window.mostrarActualizarBaseOperativa=function(){
