@@ -115,7 +115,7 @@
     },
     checklist: {
       archivos: [
-        `./js/checklist_almacen.js?v=V510-CHECKLIST-OPERATIVO`,
+        `./js/checklist_almacen.js?v=V643-TECNICO-SIN-MATERIALES-20261027`,
         `./js/checklist_confirmacion_v398.js?v=V408-RESTAURA-V403`
       ],
       entradas: ["mostrarChecklistAlmacen"]
