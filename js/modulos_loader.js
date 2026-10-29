@@ -18,7 +18,8 @@
         `./js/dashboard_consolidado_v365.js?v=V408-RESTAURA-V403`,
         `./js/dashboard_sla_tools_v366.js?v=V408-RESTAURA-V403`,
         `./js/informe_gerencial_lazy_v361.js?v=V408-RESTAURA-V403`,
-        `./js/cierre_diario_supervisor_v603.js?v=V609-ESTADOS-COMPACTOS-20261010`
+        `./js/cierre_diario_supervisor_v603.js?v=V609-ESTADOS-COMPACTOS-20261010`,
+        `./js/dashboard_visual_v637.js?v=V637-DASHBOARD-VISUAL-SEGURO`
       ],
       entradas: [
         "mostrarProduccionV2",
