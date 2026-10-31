@@ -106,7 +106,7 @@
       entradas: ["mostrarGestionActas"]
     },
     equipos: {
-      archivos: [`./js/equipos_averiados.js?v=V408-RESTAURA-V403`],
+      archivos: [`./js/equipos_averiados.js?v=V647-CARGA-INDEPENDIENTE-20261031`],
       entradas: ["mostrarEquiposAveriados"]
     },
     analisis: {
