@@ -362,47 +362,65 @@ async function escribirValidacionV556(s){
 /* =========================
    ESCRITURAS GENERALES
 ========================= */
-/* V621: confirmar UNA subida incierta por identidad exacta y PDF real.
-   Nunca vuelve a enviar el PDF; fallo de lectura no equivale a ausencia. */
-async function confirmarSubidaV621(s){
-  if(!txt(s?.codigoOrden)||!txt(s?.numeroActa)||txt(s?.idActaOriginal))return null; // correcciones requieren control de versión separado
-  const pedido={accion:"listarActasEscaneadas",usuario:s.usuario,__forzar:true,_v621:Date.now()};
-  try{
-    let r;
-    if(typeof mv336ApiGet==="function"){
-      r=await mv336ApiGet(API_ACTAS,pedido,{intentos:1,tiempoMs:12000});
-    }else{
-      const url=new URL(API_ACTAS);
-      Object.entries(pedido).forEach(([k,v])=>url.searchParams.set(k,String(v)));
-      const c=typeof AbortController==="function"?new AbortController():null;
-      const timeout=c?setTimeout(()=>c.abort(),12000):null;
-      try{
-        const respuesta=await fetch(url.toString(),{method:"GET",cache:"no-store",signal:c?c.signal:undefined});
-        if(!respuesta.ok)return null;
-        r=await respuesta.json();
-      }finally{if(timeout)clearTimeout(timeout);}
-    }
-    if(!r||r.ok!==true||!Array.isArray(r.actas))return null;
-    const coincidencias=r.actas.filter(a=>
-      txt(a.codigoOrden)===txt(s.codigoOrden)&&
-      txt(a.numeroActa)===txt(s.numeroActa)&&
-      txt(a.codigoPedido)===txt(s.codigoPedido)&&
-      !!txt(a.linkActa)&&
-      norm(a.cuadrilla)===norm(localStorage.getItem("cuadrilla")||a.cuadrilla)
-    );
-    if(coincidencias.length!==1)return null;
-    const a=coincidencias[0];
-    return {ok:true,modulo:"ACTAS",accion:"REGISTRO_CONFIRMADO_V621",
-      id:a.id,codigoOrden:a.codigoOrden,codigoPedido:a.codigoPedido,
-      numeroActa:a.numeroActa,nombreArchivo:a.nombreArchivo||s.archivoNombre||"",
-      version:a.version||1,estadoFechaCarpeta:a.estadoFechaCarpeta||"",
-      fechaCarpeta:a.fechaCarpeta||a.fechaGestion||"",
-      tipoPartida:a.tipoPartida||"",dni:a.dni||"",cliente:a.cliente||"",
-      estadoVerificado:true,escrituraRepetida:false};
-  }catch(e){console.warn("V621: verificación no concluyente",e);return null;}
+/* V646: lectura puntual de la subida incierta, sin reenviar el PDF.
+   Una respuesta ausente no prueba que la escritura haya fallado. */
+function numeroActaV646(v){return txt(v).toUpperCase().replace(/[^A-Z0-9]/g, "").replace(/^0+(?=\d)/, "");}
+function registroCoincideV646(s,r,inicio){
+  if(!r||r.ok!==true||!r.acta)return false;
+  const a=r.acta;
+  if(txt(a.codigoOrden)!==txt(s.codigoOrden)||
+     numeroActaV646(a.numeroActa)!==numeroActaV646(s.numeroActa)||
+     txt(a.codigoPedido)!==txt(s.codigoPedido)||!txt(a.linkActa))return false;
+  // Exigir fecha y hora de esta operación; no confirmar un PDF antiguo.
+  const f=txt(a.fechaRegistro),h=txt(a.horaRegistro);
+  const d=f.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+  const iso=f.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  const hora=h.match(/^(\d{1,2}):(\d{2})(?::(\d{2}))?$/);
+  if((!d&&!iso)||!hora)return false;
+  const y=Number(d?d[3]:iso[1]),m=Number(d?d[2]:iso[2]),dia=Number(d?d[1]:iso[3]);
+  const ts=Date.UTC(y,m-1,dia,Number(hora[1])+5,Number(hora[2]),Number(hora[3]||0));
+  return ts>=inicio-120000&&ts<=Date.now()+120000;
+}
+async function confirmarSubidaV621(s,inicio){
+  if(!txt(s?.codigoOrden)||!txt(s?.numeroActa)||txt(s?.idActaOriginal))return null;
+  const id="ACTA-"+txt(s.codigoOrden)+"-"+numeroActaV646(s.numeroActa);
+  for(let intento=0;intento<3;intento++){
+    if(intento)await dormir(intento*2000);
+    const pedido={accion:"obtenerActaPorIdV532",usuario:s.usuario,id,
+      _v646:Date.now()+"-"+intento};
+    try{
+      let r;
+      if(typeof mv336ApiGet==="function"){
+        r=await mv336ApiGet(API_ACTAS,pedido,{intentos:1,tiempoMs:20000});
+      }else{
+        const url=new URL(API_ACTAS);
+        Object.entries(pedido).forEach(([k,v])=>url.searchParams.set(k,String(v)));
+        const c=typeof AbortController==="function"?new AbortController():null;
+        const timeout=c?setTimeout(()=>c.abort(),20000):null;
+        try{
+          const respuesta=await fetch(url.toString(),{method:"GET",cache:"no-store",redirect:"follow",signal:c?c.signal:undefined});
+          if(!respuesta.ok)continue;
+          r=await respuesta.json();
+        }finally{if(timeout)clearTimeout(timeout);}
+      }
+      if(!registroCoincideV646(s,r,inicio))continue;
+      const a=r.acta;
+      return {ok:true,modulo:"ACTAS",accion:"REGISTRO_CONFIRMADO_V646",
+        id:a.id,codigoOrden:a.codigoOrden,codigoPedido:a.codigoPedido,
+        numeroActa:a.numeroActa,nombreArchivo:a.nombreArchivo||"",linkActa:a.linkActa,
+        version:a.version||1,estado:a.estado||"PENDIENTE",
+        estadoFechaCarpeta:a.estadoFechaCarpeta||"",
+        fechaCarpeta:a.fechaCarpeta||a.fechaGestion||"",
+        datosAutomaticos:{fechaGestion:a.fechaGestion||"",tipoPartida:a.tipoPartida||"",dni:a.dni||"",cliente:a.cliente||""},
+        tipoPartida:a.tipoPartida||"",dni:a.dni||"",cliente:a.cliente||"",
+        estadoVerificado:true,escrituraRepetida:false};
+    }catch(e){console.warn("V646: lectura puntual no concluyente",e);}
+  }
+  return null;
 }
 
 async function escribirGeneralV556(s){
+  const inicioSubida=Date.now();
   let intento=0;
   while(true){
     try{return await postUnaVez(s);}catch(error){
@@ -412,7 +430,7 @@ async function escribirGeneralV556(s){
       const puedeReintentar=intento===0&&segura&&transitorio;
       if(!puedeReintentar){
         if(accion==="registrarActaEscaneada"&&error&&error.incierto){
-          const confirmado=await confirmarSubidaV621(s);
+          const confirmado=await confirmarSubidaV621(s,inicioSubida);
           if(confirmado){
             try{if(typeof limpiarCacheActas==="function")limpiarCacheActas();}catch(_){}
             limpiarSnapshotsV524();
@@ -471,3 +489,4 @@ window.MV556_ACTAS_ESTABLE_OK=true;
 window.mv524LimpiarSnapshotActas=limpiarSnapshotsV524;
 console.log("MI VISUAL V556: Actas con validación de escritura única y confirmación real habilitada.");
 })();
+
