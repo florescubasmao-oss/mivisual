@@ -182,68 +182,55 @@ function eaFechaCortaSolicitud(item){
   return v||"SIN FECHA";
 }
 
-async function mostrarEquiposAveriados(){
-  const p=document.getElementById("pantalla");
-  if(!p)return;
-  const u=eaUsuario();
-
-  if(eaEsTecnico(u.perfil)){
-    const cache=eaCacheLeerV539();
-    if(cache){
-      EA_STATE.solicitudes=cache.solicitudes||[];
-      EA_STATE.resumen=cache.resumen||{};
-      eaRender();
-      eaAvisoV539("Mostrando la última información disponible. Actualizando en segundo plano...","ok");
-    }else{
-      const carga=eaStyles()+`<div class="ea-wrap"><div class="ea-head"><h2>🔧 Equipos Averiados</h2><p>Registro técnico, recepción física de almacén y cargos.</p></div><div class="ea-card">⏳ Cargando sus equipos...</div></div>`;
-      if(typeof mostrarPantalla==="function")mostrarPantalla(carga);else p.innerHTML=carga;
+// V647: carga principal independiente de catálogos y cargos.
+let eaCargaV647=null;
+async function eaLeerV647(payload){
+  for(let intento=0;intento<2;intento++){
+    try{return await eaApi(payload);}catch(e){
+      const temporal=e.transitorio||/demor|HTTP (404|408|429|500|502|503|504)|fetch|network/i.test(e.message||"");
+      if(intento||!temporal)throw e;
+      await new Promise(r=>setTimeout(r,1500));
     }
-
+  }
+}
+async function mostrarEquiposAveriados(){
+  if(eaEsTecnico(eaUsuario().perfil))return eaMostrarTecnicoV539();
+  if(eaCargaV647)return eaCargaV647;
+  const p=document.getElementById("pantalla");if(!p)return;
+  const u=eaUsuario();
+  const carga=eaStyles()+`<div class="ea-wrap" id="eaCargaV647"><div class="ea-head"><h2>🔧 Equipos Averiados</h2></div><div class="ea-card">⏳ Consultando solicitudes...</div></div>`;
+  if(typeof mostrarPantalla==="function")mostrarPantalla(carga);else p.innerHTML=carga;
+  const marcador=document.getElementById("eaCargaV647");
+  const vigente=()=>document.getElementById("eaCargaV647")===marcador&&eaUsuario().usuario===u.usuario;
+  eaCargaV647=(async()=>{
     try{
-      const lis=await eaApi({accion:"listarEquiposAveriados",usuario:u.usuario});
-      EA_STATE.solicitudes=lis.solicitudes||[];
-      EA_STATE.resumen=lis.resumen||{};
-      eaCacheGuardarV539();
+      const lis=await eaLeerV647({accion:"listarEquiposAveriados",usuario:u.usuario});
+      if(!vigente())return;
+      if(!Array.isArray(lis.solicitudes))throw Error("El servidor no devolvió el listado de solicitudes.");
+      EA_STATE.solicitudes=lis.solicitudes;EA_STATE.resumen=lis.resumen||{};
+      EA_STATE.catalogos=null;EA_STATE.cargos=[];
+      if(eaEsTecnico(u.perfil))eaCacheGuardarV539();
       eaRender();
     }catch(e){
-      if(cache){
-        eaAvisoV539("No se pudo actualizar ahora. Se mantiene la última información disponible.","warn");
-      }else{
-        p.innerHTML=eaStyles()+`<div class="ea-wrap"><div class="ea-head"><h2>🔧 Equipos Averiados</h2></div><div class="ea-alert warn">❌ ${eaEsc(e.message)}</div></div>`;
-        return;
-      }
+      if(!vigente())return;
+      p.innerHTML=eaStyles()+`<div class="ea-wrap"><div class="ea-head"><h2>🔧 Equipos Averiados</h2></div><div class="ea-alert warn">${eaEsc(e.message)}<br>No se pudo consultar la información; esto no significa que no existan registros.</div><button class="ea-btn blue" onclick="mostrarEquiposAveriados()">Reintentar consulta</button></div>`;
     }
-
-    setTimeout(async function(){
-      try{EA_STATE.catalogos=await eaApi({accion:"catalogosEquiposAveriados",usuario:u.usuario});}
-      catch(_){ }
-      setTimeout(async function(){
-        try{
-          const c=await eaApi({accion:"listarCargosEquiposAveriados",usuario:u.usuario});
-          EA_STATE.cargos=c.cargos||[];
-        }catch(_){ }
-      },300);
-    },250);
-    return;
-  }
-
-  const carga=eaStyles()+`<div class="ea-wrap"><div class="ea-head"><h2>🔧 Equipos Averiados</h2><p>Registro técnico, recepción física de almacén y cargos.</p></div><div class="ea-card">⏳ Cargando información...</div></div>`;
-  if(typeof mostrarPantalla==="function") mostrarPantalla(carga);
-  else {
-    const menu=document.getElementById("menuPrincipal");
-    if(menu)menu.style.display="none";
-    p.innerHTML=carga;
-    if(typeof setBotonNavegacion==="function")setBotonNavegacion("modulo");
-  }
+  })().finally(()=>{eaCargaV647=null;});
+  return eaCargaV647;
+}
+async function eaCargarCargosV647(btn){
+  if(btn.disabled)return;
+  const u=eaUsuario();btn.disabled=true;btn.textContent="Consultando cargos...";
   try{
-    const [cat,lis,cargos]=await Promise.all([
-      eaApi({accion:"catalogosEquiposAveriados",usuario:u.usuario}),
-      eaApi({accion:"listarEquiposAveriados",usuario:u.usuario}),
-      eaApi({accion:"listarCargosEquiposAveriados",usuario:u.usuario})
-    ]);
-    EA_STATE.catalogos=cat;EA_STATE.solicitudes=lis.solicitudes||[];EA_STATE.resumen=lis.resumen||{};EA_STATE.cargos=cargos.cargos||[];
-    eaRender();
-  }catch(e){p.innerHTML=eaStyles()+`<div class="ea-wrap"><div class="ea-head"><h2>🔧 Equipos Averiados</h2></div><div class="ea-alert warn">❌ ${eaEsc(e.message)}</div></div>`;}
+    const d=await eaLeerV647({accion:"listarCargosEquiposAveriados",usuario:u.usuario});
+    if(!document.body.contains(btn)||eaUsuario().usuario!==u.usuario)return;
+    if(!Array.isArray(d.cargos))throw Error("Respuesta de cargos incompleta.");
+    EA_STATE.cargos=d.cargos;
+    const panel=document.getElementById("eaCargosV647");
+    if(panel)panel.innerHTML=d.cargos.length?eaCargosHtml():"No hay cargos registrados.";
+    btn.textContent="Actualizar historial de cargos";
+  }catch(e){if(document.body.contains(btn)){btn.textContent="Reintentar historial de cargos";eaAvisoV539(e.message,"warn");}}
+  finally{btn.disabled=false;}
 }
 
 function eaRender(){
@@ -267,7 +254,7 @@ function eaRender(){
     </div>
     ${!eaEsTecnico(u.perfil)?eaFiltrosHtml():""}
     <div id="eaLista">${eaListaHtml()}</div>
-    ${eaCargosHtml()}
+    <button class="ea-btn light" onclick="eaCargarCargosV647(this)">Consultar historial de cargos</button><div id="eaCargosV647">${eaCargosHtml()}</div>
   </div>`;
 }
 
@@ -364,7 +351,11 @@ async function eaGuardarTecnico(){
   }catch(e){alert(e.message);const b=document.querySelector("#eaModal .ea-btn.blue");if(b){b.disabled=false;b.textContent="Guardar solicitud";}}
 }
 
-function eaAbrirSolicitudAlmacen(){
+async function eaAbrirSolicitudAlmacen(){
+  if(!EA_STATE.catalogos){
+    try{EA_STATE.catalogos=await eaLeerV647({accion:"catalogosEquiposAveriados",usuario:eaUsuario().usuario});}
+    catch(e){alert("No se pudo consultar el catálogo: "+e.message);return;}
+  }
   const tecnicos=EA_STATE.catalogos?.tecnicos||[];
   eaModal(`<h3>📣 Solicitar registro a técnico</h3><div class="ea-grid"><div class="ea-field"><label>TÉCNICO / CUADRILLA</label><select id="eaSolTecnico"><option value="">Seleccione</option>${tecnicos.map(t=>`<option value="${eaEsc(t.usuario)}">${eaEsc(t.sede)} · ${eaEsc(t.cuadrilla)} · ${eaEsc(t.tecnico)}</option>`).join("")}</select></div><div class="ea-field"><label>CANTIDAD REFERENCIAL</label><select id="eaSolCantidad">${[1,2,3,4,5,6,7,8].map(n=>`<option>${n}</option>`).join("")}</select></div></div><div class="ea-field" style="margin-top:8px"><label>OBSERVACIÓN OPCIONAL</label><textarea id="eaSolObs" rows="3" placeholder="Indicación para el técnico"></textarea></div><div class="ea-actions"><button class="ea-btn orange" onclick="eaCrearSolicitudAlmacen()">Crear solicitud pendiente</button></div>`);
 }
@@ -461,3 +452,51 @@ function eaDescargarInforme(){
 }
 
 window.mostrarEquiposAveriados=mostrarEquiposAveriados;
+
+async function eaMostrarTecnicoV539(){
+  const p=document.getElementById("pantalla");
+  if(!p)return;
+  const u=eaUsuario();
+
+  if(eaEsTecnico(u.perfil)){
+    const cache=eaCacheLeerV539();
+    if(cache){
+      EA_STATE.solicitudes=cache.solicitudes||[];
+      EA_STATE.resumen=cache.resumen||{};
+      eaRender();
+      eaAvisoV539("Mostrando la última información disponible. Actualizando en segundo plano...","ok");
+    }else{
+      const carga=eaStyles()+`<div class="ea-wrap"><div class="ea-head"><h2>🔧 Equipos Averiados</h2><p>Registro técnico, recepción física de almacén y cargos.</p></div><div class="ea-card">⏳ Cargando sus equipos...</div></div>`;
+      if(typeof mostrarPantalla==="function")mostrarPantalla(carga);else p.innerHTML=carga;
+    }
+
+    try{
+      const lis=await eaApi({accion:"listarEquiposAveriados",usuario:u.usuario});
+      EA_STATE.solicitudes=lis.solicitudes||[];
+      EA_STATE.resumen=lis.resumen||{};
+      eaCacheGuardarV539();
+      eaRender();
+    }catch(e){
+      if(cache){
+        eaAvisoV539("No se pudo actualizar ahora. Se mantiene la última información disponible.","warn");
+      }else{
+        p.innerHTML=eaStyles()+`<div class="ea-wrap"><div class="ea-head"><h2>🔧 Equipos Averiados</h2></div><div class="ea-alert warn">❌ ${eaEsc(e.message)}</div></div>`;
+        return;
+      }
+    }
+
+    setTimeout(async function(){
+      try{EA_STATE.catalogos=await eaApi({accion:"catalogosEquiposAveriados",usuario:u.usuario});}
+      catch(_){ }
+      setTimeout(async function(){
+        try{
+          const c=await eaApi({accion:"listarCargosEquiposAveriados",usuario:u.usuario});
+          EA_STATE.cargos=c.cargos||[];
+        }catch(_){ }
+      },300);
+    },250);
+    return;
+  }
+
+}
+
