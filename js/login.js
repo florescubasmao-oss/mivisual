@@ -55,6 +55,13 @@ async function login() {
                 const nombresApellidos = datos[10]?.replace(/"/g, "").trim() || "";
 
                 localStorage.setItem("usuario", usuario);
+                localStorage.removeItem("actas649token");
+                if (["SUPERVISOR","ALMACEN"].includes(perfil.trim().toUpperCase()) && estado.trim().toUpperCase()==="ACTIVO") {
+                    const intento=crypto.randomUUID();localStorage.setItem("actas649intento",intento);
+                    window.mv649Ingreso=fetch("https://script.google.com/macros/s/AKfycbwugGpuEMcJYFsDNS1hkcdZXJ92PUvXNv5ttpktyhZWv2fWB7ceCZNkfIFYxAs5wsgN/exec",{method:"POST",headers:{"Content-Type":"text/plain;charset=UTF-8"},body:JSON.stringify({accion:"sesionActas649",usuario,claveActa:clave})}).then(r=>r.json()).then(j=>{
+                      if(j.ok && typeof j.token==="string" && localStorage.getItem("usuario")===usuario && localStorage.getItem("actas649intento")===intento)localStorage.setItem("actas649token",j.token);
+                    }).catch(()=>{});
+                }
                 localStorage.setItem("cuadrilla", cuadrilla);
                 localStorage.setItem("sede", sede);
                 localStorage.setItem("plataforma", plataforma);
