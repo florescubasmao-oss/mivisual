@@ -173,7 +173,7 @@ async function comprobarExecV556(){
 
 function timeoutEscrituraV556(accion){
   if(accion==="registrarActaEscaneada")return 105000;
-  if(accion==="validarActaEscaneada")return 45000;
+  if(accion==="validarActaEscaneada")return 90000;
   return 60000;
 }
 
@@ -248,13 +248,13 @@ async function leerActaPorIdV556(s){
   };
   try{
     if(typeof mv336ApiGet==="function"){
-      const r=await mv336ApiGet(API_ACTAS,payload,{intentos:1,tiempoMs:6500});
+      const r=await mv336ApiGet(API_ACTAS,payload,{intentos:1,tiempoMs:25000});
       return r&&r.ok===true?r:null;
     }
     const u=new URL(API_ACTAS);
     Object.entries(payload).forEach(([k,v])=>u.searchParams.set(k,String(v)));
     const c=typeof AbortController==="function"?new AbortController():null;
-    const timer=c?setTimeout(()=>c.abort(),6500):null;
+    const timer=c?setTimeout(()=>c.abort(),25000):null;
     try{
       const res=await fetch(u.toString(),{method:"GET",cache:"no-store",redirect:"follow",headers:{"Accept":"application/json"},signal:c?c.signal:undefined});
       if(!res.ok)return null;
@@ -309,7 +309,8 @@ function validacionCoincideV556(s,r){
     resultado=norm(a.resultadoJefatura);
     validador=txt(a.validadoJefaturaPor);
   }else return false;
-  if(resultado!==esperado||!validador)return false;
+  if(txt(a.id)!==txt(s.id)||resultado!==esperado||!validador)return false;
+  if(esperado==="OBSERVADO" && txt(perfil==="ALMACEN"?a.motivoAlmacen:a.motivoJefatura)!==txt(s.motivoObservacion||s.motivo))return false;
   if(perfil==="JEFATURA ALMACEN"&&esperado==="CORRECTO"&&norm(a.estado)!=="FINALIZADO")return false;
   return true;
 }
@@ -353,6 +354,8 @@ async function escribirValidacionV556(s){
         escrituraRepetida:false
       };
     }
+    try{if(typeof limpiarCacheActas==="function")limpiarCacheActas();}catch(_){}
+    limpiarSnapshotsV524();
     throw new Error(
       "Google no confirmó todavía la validación. MI VISUAL no la repetirá automáticamente. Pulse Actualizar vista antes de volver a validar."
     );
