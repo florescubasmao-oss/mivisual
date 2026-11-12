@@ -713,6 +713,10 @@ function botonesEscaneoActa(a){
         html += ` <button class="actas-btn ok" onclick="validarActa('${id}','CORRECTO')">Finalizar correcto</button>`;
         html += ` <button class="actas-btn warn" onclick="validarActa('${id}','OBSERVADO')">Observado</button>`;
     }
+    // V650: Jefatura puede corregir una aprobación errónea usando la validación existente.
+    if(esJefaturaAlmacenActas(u.perfil) && estaFinalizadaActa(a)){
+        html += ` <button class="actas-btn warn" onclick="observarActaFinalizadaV650('${id}')">Marcar como observada</button>`;
+    }
     return html;
 }
 
@@ -833,6 +837,10 @@ function accionesEscaneoCompactas(a){
     if(esJefaturaAlmacenActas(u.perfil) && !estaFinalizadaActa(a)){
         html += `<button class="actas-btn ok" onclick="validarActa('${id}','CORRECTO')">Finalizar correcto</button>`;
         html += `<button class="actas-btn warn" onclick="validarActa('${id}','OBSERVADO')">Observado</button>`;
+    }
+    // V650: Jefatura puede corregir una aprobación errónea usando la validación existente.
+    if(esJefaturaAlmacenActas(u.perfil) && estaFinalizadaActa(a)){
+        html += ` <button class="actas-btn warn" onclick="observarActaFinalizadaV650('${id}')">Marcar como observada</button>`;
     }
     return html;
 }
@@ -1663,4 +1671,16 @@ async function confirmarLoteActasV614(){
  alert("Validación finalizada. OK: "+correctas+". Errores: "+errores.length+(errores.length?"\\n"+errores.slice(0,6).join("\\n"):""));
  const vista=obtenerEstadoVistaActas();limpiarSeleccionLoteActasV614();
  await cargarActas({...vista,forzar:true});
+}
+
+/* V650: reapertura de escaneo por Jefatura; conserva PDF y entrega física.
+   validarActa abre el catálogo vigente de motivos y usa el POST único existente. */
+async function observarActaFinalizadaV650(id){
+    const u=usuarioActualActas();
+    if(!esJefaturaAlmacenActas(u.perfil)){
+        alert("Solo Jefatura de Logística / Almacén puede observar un acta finalizada.");
+        return;
+    }
+    if(!confirm("¿Marcar este escaneo finalizado como OBSERVADO? Deberá indicar el motivo. El PDF y la entrega física se conservan."))return;
+    return await validarActa(id,"OBSERVADO");
 }
