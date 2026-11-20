@@ -165,17 +165,7 @@
     seccion.innerHTML = `
       <h3>🏆 Certificación WIN</h3>
       <div class="mv55-resource-grid">
-        <button
-          type="button"
-          class="mv362-folder-card"
-          data-resource-item
-          data-search="MI CERTIFICACION WIN EXAMEN SEGURIDAD LINEAMIENTOS PROTOCOLOS APLICATIVOS UNIFICADA"
-          onclick="mostrarMiCertificacionWin()"
-        >
-          <span>📁</span>
-          <b>MI CERTIFICACIÓN WIN</b>
-          <small>4 módulos y certificación unificada · Disponible para todos</small>
-        </button>
+
       </div>
     `;
 
