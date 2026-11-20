@@ -66,10 +66,9 @@
     },
     accesos: {
       archivos: [
-        `./js/accesos.js?v=${VERSION}`,
-        `./js/accesos_certificacion_v362.js?v=V408-RESTAURA-V403`,
-        `./js/accesos_simulacro_v383.js?v=V408-RESTAURA-V403`,
-        `./js/accesos_examenes_setiembre_v384.js?v=V579-AVERIAS-LINK-CORRECTO`
+        `./js/accesos.js?v=ACCESOS-20261120`,
+        `./js/accesos_certificacion_v362.js?v=ACCESOS-20261120`,
+        `./js/accesos_simulacro_v383.js?v=V408-RESTAURA-V403`
       ],
       entradas: ["mostrarAccesos", "mostrarBiblioteca", "mostrarCapacitacion"]
     },
