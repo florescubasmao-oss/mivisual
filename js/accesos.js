@@ -215,6 +215,11 @@ async function mostrarAccesos(){
     const nombre = datos[3]?.trim();
     const link = datos[4]?.trim();
     if(!nombre || !link) continue;
+    // Accesos retirados por Jefatura el 20/11/2026.
+    const nombreAcceso = normalizarDestinoAcceso(nombre).replace(/[·–—]/g, "-");
+    if(nombreAcceso === "MI CERTIFICACION WIN" ||
+       /^EXAMEN WIN\s*-?\s*(INSTALACIONES|(?:AVERIAS\s*\/\s*)?VISITA TECNICA)(?:\s*\(SETIEMBRE\))?$/.test(nombreAcceso)) continue;
+
 
     if(accesoVisiblePorDestino(destino, sede, cuadrilla, perfilUsuario, usuarioApp) && accesoVisiblePorPerfil(perfilDestino, perfilUsuario, usuarioApp)){
       recursos.push({
