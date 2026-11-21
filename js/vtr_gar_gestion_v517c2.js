@@ -339,8 +339,12 @@
   function hojasInformeGarVtr(data,seleccion,generado){
     const lista=filtros(data,seleccion);
     const manual=noEstandarActivos(data);
-    const fecha=v=>typeof window.formatearFechaExcelVT==="function"
-      ? window.formatearFechaExcelVT(v) : txt(v);
+    const fecha=v=>{
+      const s=txt(v);
+      const dia=/^(\d{4})-(\d{2})-(\d{2})$/.exec(s);
+      if(dia)return dia[3]+"/"+dia[2]+"/"+dia[1];
+      return typeof window.formatearFechaExcelVT==="function" ? window.formatearFechaExcelVT(v) : s;
+    };
     const numero=v=>v!==null && v!==undefined && v!=="" && Number.isFinite(Number(v)) ? Number(v) : "";
     const detalle=[[
       "PERIODO","FECHA INCIDENCIA","TIPO","TICKET","CODIGO / PEDIDO","DNI",
