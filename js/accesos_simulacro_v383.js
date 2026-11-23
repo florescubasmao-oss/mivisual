@@ -87,6 +87,13 @@
     `;
 
     grid.appendChild(card);
+    const guia=card.cloneNode(false);
+    guia.id="mv383BalotarioWin";
+    guia.href="https://drive.google.com/file/d/1ntQwUACbf0xLbOYK3ISrIFSZVgf_Bi-q/view?usp=sharing";
+    guia.style.background="linear-gradient(135deg,#0f766e,#115e59)";
+    guia.setAttribute("data-search","BALOTARIO WIN 2026 CERTIFICACION PREGUNTAS RESPUESTAS PDF");
+    guia.innerHTML="<span>📖</span><b>BALOTARIO WIN 2026</b><small>Preguntas y respuestas correctas · PDF</small>";
+    grid.appendChild(guia);
   }
 
   const mostrarAccesosBaseV383=window.mostrarAccesos;
