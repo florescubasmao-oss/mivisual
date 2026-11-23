@@ -68,7 +68,7 @@
       archivos: [
         `./js/accesos.js?v=ACCESOS-20261120`,
         `./js/accesos_certificacion_v362.js?v=ACCESOS-20261120`,
-        `./js/accesos_simulacro_v383.js?v=V408-RESTAURA-V403`
+        `./js/accesos_simulacro_v383.js?v=BALOTARIO-20261123`
       ],
       entradas: ["mostrarAccesos", "mostrarBiblioteca", "mostrarCapacitacion"]
     },
