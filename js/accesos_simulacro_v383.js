@@ -19,13 +19,27 @@
     const style=document.createElement("style");
     style.id="mv383EstilosSimulacro";
     style.textContent=`
-      #mvEvaluacionesWin{grid-column:1/-1;border-radius:15px;background:#183961;color:white;border:1px solid #527baa}
-      #mvEvaluacionesWin summary{padding:16px;cursor:pointer;font-size:16px}
-      #mvEvaluacionesWin summary small{display:block;margin:5px 0 0 20px;color:#daeafb}
-      .mv-win-panel{display:grid;gap:8px;padding:0 16px 16px}
-      .mv-win-panel b{font-size:13px;margin-top:6px;color:#c8e4ff}
-      .mv-win-panel a{display:block;background:#f1f7ff;color:#12365d;border-radius:8px;padding:10px 12px;text-decoration:underline;font-weight:600}
-      .mv-win-bloques{display:grid;grid-template-columns:repeat(auto-fit,minmax(100px,1fr));gap:8px}
+      #mv362CarpetaCertificacion .mv55-resource-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+      #mv362CarpetaCertificacion .mv383-simulacro-card,#mvEvaluacionesWin,#mvEvaluacionesWin *{box-sizing:border-box;min-width:0}
+      #mvEvaluacionesWin{grid-column:1/-1;background:#0f243b;color:#f6f9fc;border:1px solid #416078;border-radius:16px;overflow:hidden;text-align:left}
+      #mvEvaluacionesWin summary{cursor:pointer;list-style:none;display:flex;align-items:center;gap:14px;padding:20px;background:linear-gradient(110deg,#103c50,#162b46);border-left:4px solid #58decb}
+      #mvEvaluacionesWin summary::-webkit-details-marker{display:none}
+      #mvEvaluacionesWin .mv-win-copy{display:grid;gap:4px;flex:1}
+      #mvEvaluacionesWin .mv-win-kicker{color:#92e5d9;font:700 10px/1.4 system-ui;letter-spacing:.12em;text-transform:uppercase}
+      #mvEvaluacionesWin strong{font:700 clamp(19px,3vw,25px)/1.2 system-ui}
+      #mvEvaluacionesWin small{font:400 13px/1.45 system-ui;color:#cee0ed}
+      #mvEvaluacionesWin .mv-win-toggle{border:1px solid #638395;border-radius:50%;width:32px;height:32px;display:grid;place-items:center;font:20px system-ui}
+      #mvEvaluacionesWin[open] .mv-win-toggle{transform:rotate(180deg)}
+      .mv-win-panel{display:grid;gap:16px;padding:18px}
+      .mv-win-panel h3{margin:0 0 8px;color:#b9d2df;font:650 13px/1.3 system-ui}
+      .mv-win-bloques,.mv-win-tools{display:grid;gap:8px;grid-template-columns:repeat(4,minmax(0,1fr))}
+      .mv-win-tools{grid-template-columns:repeat(2,minmax(0,1fr))}
+      #mvEvaluacionesWin a{display:flex;align-items:center;justify-content:space-between;gap:6px;min-height:44px;padding:10px 14px;border-radius:9px;border:1px solid #47647b;background:#1a344e;color:#fff;font:650 14px/1.4 system-ui;text-decoration:none}
+      #mvEvaluacionesWin .mv-win-primary{background:#a5eadb;color:#103b38;border-color:#a5eadb}
+      #mvEvaluacionesWin a:hover{filter:brightness(1.15);text-decoration:underline}
+      #mvEvaluacionesWin :focus-visible{outline:3px solid #ffc66c;outline-offset:-3px}
+      @media(max-width:600px){#mvEvaluacionesWin summary{padding:14px}.mv-win-panel{padding:13px}.mv-win-bloques{grid-template-columns:repeat(2,minmax(0,1fr))}.mv-win-tools{grid-template-columns:1fr}}
+      @media(max-width:450px){#mv362CarpetaCertificacion .mv55-resource-grid{grid-template-columns:minmax(0,1fr)}}
       .mv383-simulacro-card{
         width:100%;
         min-height:112px;
@@ -83,11 +97,11 @@
     panel.setAttribute("data-resource-item","");
     panel.setAttribute("data-search","EVALUACIONES WIN DETECTOR CERTIFICACION TECNICA UNIFICADA BLOQUES DASHBOARD SEGUIMIENTO");
     const base="https://windetector.vercel.app/";
-    const link=(url,label)=>'<a target="_blank" rel="noopener noreferrer" href="'+url+'">'+label+' ↗</a>';
-    panel.innerHTML='<summary><strong>📋 Evaluaciones WIN</strong><small>Bloques, certificación y seguimiento</small></summary>'+
-      '<div class="mv-win-panel"><b>Evaluaciones modulares</b><div class="mv-win-bloques">'+[1,2,3,4].map(n=>link(base+'#/evaluacion/CERT%20BLOQ-0'+n,'Bloque '+n)).join('')+'</div>'+
-      '<b>Evaluación de certificación</b>'+link(base+'#/evaluacion/CERT%20TEC%20UNIF','Certificación técnica unificada')+
-      '<b>Aplicativos</b>'+link(base,'WIN Detector')+link('https://eval-tecnicos-staging.vercel.app/','Dashboard de seguimiento')+'</div>';
+    const link=(url,label,primary=false)=>'<a class="'+(primary?'mv-win-primary':'mv-win-link')+'" target="_blank" rel="noopener noreferrer" href="'+url+'">'+label+'<span aria-hidden="true">↗</span></a>';
+    panel.innerHTML='<summary><span class="mv-win-copy"><span class="mv-win-kicker">Certificación técnica · Zona Norte</span><strong>Evaluaciones WIN</strong><small>Acceso a los exámenes y al seguimiento por sede.</small></span><span class="mv-win-toggle" aria-hidden="true">⌄</span></summary>'+
+      '<div class="mv-win-panel"><section><h3>Evaluaciones modulares</h3><div class="mv-win-bloques">'+[1,2,3,4].map(n=>link(base+'#/evaluacion/CERT%20BLOQ-0'+n,'Bloque '+n)).join('')+'</div></section>'+
+      '<section><h3>Evaluación final</h3>'+link(base+'#/evaluacion/CERT%20TEC%20UNIF','Certificación técnica unificada',true)+'</section>'+
+      '<section><h3>Plataformas de gestión</h3><div class="mv-win-tools">'+link(base,'WIN Detector')+link('https://eval-tecnicos-staging.vercel.app/','Dashboard de seguimiento')+'</div></section></div>';
     grid.appendChild(panel);
   }
 
