@@ -19,6 +19,13 @@
     const style=document.createElement("style");
     style.id="mv383EstilosSimulacro";
     style.textContent=`
+      #mvEvaluacionesWin{grid-column:1/-1;border-radius:15px;background:#183961;color:white;border:1px solid #527baa}
+      #mvEvaluacionesWin summary{padding:16px;cursor:pointer;font-size:16px}
+      #mvEvaluacionesWin summary small{display:block;margin:5px 0 0 20px;color:#daeafb}
+      .mv-win-panel{display:grid;gap:8px;padding:0 16px 16px}
+      .mv-win-panel b{font-size:13px;margin-top:6px;color:#c8e4ff}
+      .mv-win-panel a{display:block;background:#f1f7ff;color:#12365d;border-radius:8px;padding:10px 12px;text-decoration:underline;font-weight:600}
+      .mv-win-bloques{display:grid;grid-template-columns:repeat(auto-fit,minmax(100px,1fr));gap:8px}
       .mv383-simulacro-card{
         width:100%;
         min-height:112px;
@@ -60,14 +67,39 @@
     document.head.appendChild(style);
   }
 
+  function puedeVerEvaluaciones(perfil){
+    return ["SUPERVISOR","JEFATURA","JEFATURA GENERAL"].includes(String(perfil||"").trim().toUpperCase());
+  }
+
+  function tarjetaEvaluaciones(grid){
+    const anterior=grid.querySelector("#mvEvaluacionesWin");
+    if(!puedeVerEvaluaciones(localStorage.getItem("perfil"))){
+      if(anterior) anterior.remove();
+      return;
+    }
+    if(anterior) return;
+    const panel=document.createElement("details");
+    panel.id="mvEvaluacionesWin";
+    panel.setAttribute("data-resource-item","");
+    panel.setAttribute("data-search","EVALUACIONES WIN DETECTOR CERTIFICACION TECNICA UNIFICADA BLOQUES DASHBOARD SEGUIMIENTO");
+    const base="https://windetector.vercel.app/";
+    const link=(url,label)=>'<a target="_blank" rel="noopener noreferrer" href="'+url+'">'+label+' ↗</a>';
+    panel.innerHTML='<summary><strong>📋 Evaluaciones WIN</strong><small>Bloques, certificación y seguimiento</small></summary>'+
+      '<div class="mv-win-panel"><b>Evaluaciones modulares</b><div class="mv-win-bloques">'+[1,2,3,4].map(n=>link(base+'#/evaluacion/CERT%20BLOQ-0'+n,'Bloque '+n)).join('')+'</div>'+
+      '<b>Evaluación de certificación</b>'+link(base+'#/evaluacion/CERT%20TEC%20UNIF','Certificación técnica unificada')+
+      '<b>Aplicativos</b>'+link(base,'WIN Detector')+link('https://eval-tecnicos-staging.vercel.app/','Dashboard de seguimiento')+'</div>';
+    grid.appendChild(panel);
+  }
+
   function inyectarSimulacroV383(){
     estilosV383();
 
     const seccion=document.getElementById("mv362CarpetaCertificacion");
-    if(!seccion || document.getElementById("mv383SimulacroCertificacion")) return;
+    if(!seccion) return;
 
     const grid=seccion.querySelector(".mv55-resource-grid");
     if(!grid) return;
+    if(document.getElementById("mv383SimulacroCertificacion")){ tarjetaEvaluaciones(grid); return; }
 
     const card=document.createElement("a");
     card.id="mv383SimulacroCertificacion";
@@ -94,6 +126,7 @@
     guia.setAttribute("data-search","BALOTARIO WIN 2026 CERTIFICACION PREGUNTAS RESPUESTAS PDF");
     guia.innerHTML="<span>📖</span><b>BALOTARIO WIN 2026</b><small>Preguntas y respuestas correctas · PDF</small>";
     grid.appendChild(guia);
+    tarjetaEvaluaciones(grid);
   }
 
   const mostrarAccesosBaseV383=window.mostrarAccesos;
